@@ -118,46 +118,46 @@ class Moteur3D {
     }
 
     matrixPush() {
-        this.m_view.Push();
+        this.m_view.push();
         return this;
     }
 
     matrixPop() {
-        this.m_view.Pop();
+        this.m_view.pop();
         return this;
     }
 
     matrixTranslate(vx, vy, vz) {
         const m = new Matrix();
-        m.Translation(vx, vy, vz);
+        m.translation(vx, vy, vz);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateX(rx) {
         const m = new Matrix();
-        m.RotationX(this.PI_180 * rx);
+        m.rotationX(this.PI_180 * rx);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateY(ry) {
         const m = new Matrix();
-        m.RotationY(this.PI_180 * ry);
+        m.rotationY(this.PI_180 * ry);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateZ(rz) {
         const m = new Matrix();
-        m.RotationZ(this.PI_180 * rz);
+        m.rotationZ(this.PI_180 * rz);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixScale(sx, sy, sz) {
         const m = new Matrix();
-        m.Scale(sx, sy, sz);
+        m.scale(sx, sy, sz);
         this.m_view.multiply(m);
         return this;
     }

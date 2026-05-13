@@ -24,7 +24,7 @@ class Matrix {
         return this;
     }
 
-    Translation(tx, ty, tz) {
+    translation(tx, ty, tz) {
         this.v = [
             [1.,0.,0.,0.],
             [0.,1.,0.,0.],
@@ -34,7 +34,7 @@ class Matrix {
         return this;
     }
 
-    Scale(sx, sy, sz) {
+    scale(sx, sy, sz) {
         this.v = [
             [sx,0.,0.,0.],
             [0.,sy,0.,0.],
@@ -44,7 +44,7 @@ class Matrix {
         return this;
     }
 
-    RotationX(rx) {
+    rotationX(rx) {
         const c = Math.cos(rx);
         const s = Math.sin(rx);
         this.v = [
@@ -56,7 +56,7 @@ class Matrix {
         return this;
     }
 
-    RotationY(ry) {
+    rotationY(ry) {
         const c = Math.cos(ry);
         const s = Math.sin(ry);
         this.v = [
@@ -68,7 +68,7 @@ class Matrix {
         return this;
     }
 
-    RotationZ(rz) {
+    rotationZ(rz) {
         const c = Math.cos(rz);
         const s = Math.sin(rz);
         this.v = [
@@ -103,17 +103,17 @@ class Matrix {
         ];
     }
 
-    Push() {
+    push() {
         this.pile.push(this.v);
         return this;
     }
 
-    Pop() {
+    pop() {
         this.v = this.pile.pop();
         return this;
     }
 
-    Draw() {
+    draw() {
         let txt = "----------------------\n";
         for (let y = 0; y < 4; y++) {
             txt += "[";

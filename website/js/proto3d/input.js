@@ -3,8 +3,7 @@ let InputObject_private = null;
 class Input {
     constructor() {
         if (InputObject_private) {
-            alert('Input object already exists...');
-            return;
+            throw new Error('Input object already exists...');
         }
 
         InputObject_private = this;

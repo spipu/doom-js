@@ -89,9 +89,9 @@ class Objet {
             color[2] = parseFloat(color[2]);
         }
 
-        if (this.pt_ori[pt1-1] === undefined) alert('pt1 ' + pt1 + ' undefined');
-        if (this.pt_ori[pt2-1] === undefined) alert('pt2 ' + pt2 + ' undefined');
-        if (this.pt_ori[pt3-1] === undefined) alert('pt3 ' + pt3 + ' undefined');
+        if (this.pt_ori[pt1-1] === undefined) throw new Error('pt1 ' + pt1 + ' undefined');
+        if (this.pt_ori[pt2-1] === undefined) throw new Error('pt2 ' + pt2 + ' undefined');
+        if (this.pt_ori[pt3-1] === undefined) throw new Error('pt3 ' + pt3 + ' undefined');
 
         this.fc_lst.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha]);
         this.fc_inf.push([null, null]);
@@ -159,7 +159,7 @@ class Objet {
 
             for (let i = 0; i < faces.length; i++) {
                 const val = faces[i].match(/[\d]+/g);
-                this.fcAdd(nb_pts+parseInt(val[1])+1, nb_pts+parseInt(val[2])+1, nb_pts+parseInt(val[3])+1, color);
+                this.fcAdd(nb_pts+parseInt(val[1], 10)+1, nb_pts+parseInt(val[2], 10)+1, nb_pts+parseInt(val[3], 10)+1, color);
             }
 
             nb_pts += nb;
@@ -190,8 +190,8 @@ class Objet {
         this.pt_2d = [];
         for (let k = 0; k < this.pt_nb; k++) {
             this.pt_2d[k] = [
-                parseInt(vue.calcul_fx * this.pt_3d[k][0] / this.pt_3d[k][2] - vue.calcul_sx),
-                parseInt(vue.calcul_fy * this.pt_3d[k][1] / this.pt_3d[k][2] - vue.calcul_sy),
+                Math.trunc(vue.calcul_fx * this.pt_3d[k][0] / this.pt_3d[k][2] - vue.calcul_sx),
+                Math.trunc(vue.calcul_fy * this.pt_3d[k][1] / this.pt_3d[k][2] - vue.calcul_sy),
                 this.pt_3d[k][2],
             ];
         }
@@ -405,8 +405,8 @@ class Objet {
             if (lt0[0] === lt1[0]) continue;
             if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
 
-            let xMin = parseInt(lt0[0]);
-            let xMax = parseInt(lt1[0] + 0.5);
+            let xMin = Math.trunc(lt0[0]);
+            let xMax = Math.trunc(lt1[0] + 0.5);
             xMin += this.subPixel(lt1[1]);
 
             const dt = [];
@@ -419,9 +419,9 @@ class Objet {
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
                 if (vue.zBufSet(lx, ly, lz)) {
-                    const r = parseInt(lt0[3] + dt[3]*al);
-                    const g = parseInt(lt0[4] + dt[4]*al);
-                    const b = parseInt(lt0[5] + dt[5]*al);
+                    const r = Math.trunc(lt0[3] + dt[3]*al);
+                    const g = Math.trunc(lt0[4] + dt[4]*al);
+                    const b = Math.trunc(lt0[5] + dt[5]*al);
                     const p = 4 * (lx + ly * vue.scr_width);
 
                     if (alpha < 1.) {
@@ -510,8 +510,8 @@ class Objet {
             if (lt0[0] === lt1[0]) continue;
             if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
 
-            const xMin = parseInt(lt0[0]);
-            const xMax = parseInt(lt1[0] + 0.5);
+            const xMin = Math.trunc(lt0[0]);
+            const xMax = Math.trunc(lt1[0] + 0.5);
 
             const dt = [];
             dt[3] = lt1[3] - lt0[3];
@@ -525,14 +525,14 @@ class Objet {
                 const lz   = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
                 if (vue.zBufSet(lx, ly, lz)) {
-                    let xt   = parseInt(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text[0];
-                    let yt   = parseInt(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text[1];
+                    let xt   = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text[0];
+                    let yt   = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text[1];
                     const post = 4 * (xt + yt * text.width);
                     const posi = 4 * (lx + ly * vue.scr_width);
 
-                    const r = parseInt((lt0[3] + dt[3]*al) * text.data[post+0]);
-                    const g = parseInt((lt0[4] + dt[4]*al) * text.data[post+1]);
-                    const b = parseInt((lt0[5] + dt[5]*al) * text.data[post+2]);
+                    const r = Math.trunc((lt0[3] + dt[3]*al) * text.data[post+0]);
+                    const g = Math.trunc((lt0[4] + dt[4]*al) * text.data[post+1]);
+                    const b = Math.trunc((lt0[5] + dt[5]*al) * text.data[post+2]);
                     const a = alpha * parseFloat(text.data[post+3]) / 255.;
 
                     if (a < 1.) {

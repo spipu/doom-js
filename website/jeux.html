@@ -1,5 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html>
     <head>
         <title>Proto3d - exemple de jeu</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
@@ -9,24 +9,21 @@
         <meta name="Reply-to"           content="webmaster@spipu.net" />  
         <meta name="Copyright"          content="(c)2026 Spipu" />
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <style type="text/css">
-<!--
+        <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
 canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
--->
-        </style>
-        <script type="text/javascript" src="js/proto3d/objet.js" ></script>
-        <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
-        <script type="text/javascript" src="js/proto3d/light.js" ></script>
-        <script type="text/javascript" src="js/proto3d/moteur3D.js" ></script>
-        <script type="text/javascript" src="js/proto3d/input.js" ></script>
-        <script type="text/javascript" src="objets/sol.obj.js" ></script>
-        <script type="text/javascript" src="objets/tuture.obj.js" ></script>
-        <script type="text/javascript">
-<!--
+</style>
+        <script src="js/proto3d/objet.js" ></script>
+        <script src="js/proto3d/matrix.js" ></script>
+        <script src="js/proto3d/light.js" ></script>
+        <script src="js/proto3d/moteur3D.js" ></script>
+        <script src="js/proto3d/input.js" ></script>
+        <script src="objets/sol.obj.js" ></script>
+        <script src="objets/tuture.obj.js" ></script>
+        <script>
 var image = null;
 var fps_count = 0;
 var t_1 = 0;
@@ -123,18 +120,17 @@ function anim()
 
     image.drawFinish();
     fps_count++;
-    setTimeout('anim()',  1);
+    setTimeout(anim,  1);
 }
 
 function fps()
 {
-    document.getElementById('div_fps').innerHTML = parseInt(fps_count/3.)+' FPS';
+    document.getElementById('div_fps').innerHTML = Math.floor(fps_count / 3)+' FPS';
     fps_count=0;
 }
 
-setInterval('fps()', 3000);
+setInterval(fps, 3000);
 
--->
 </script>
     </head>
     <body>

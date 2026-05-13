@@ -1,5 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html>
     <head>
         <title>Proto3d - exemple</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
@@ -9,22 +9,19 @@
         <meta name="Reply-to"           content="webmaster@spipu.net" />  
         <meta name="Copyright"          content="(c)2026 Spipu" />
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <style type="text/css">
-<!--
+        <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
 canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
--->
-        </style>
-        <script type="text/javascript" src="js/proto3d/objet.js" ></script>
-        <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
-        <script type="text/javascript" src="js/proto3d/light.js" ></script>
-        <script type="text/javascript" src="js/proto3d/moteur3D.js" ></script>
-        <script type="text/javascript" src="js/proto3d/input.js" ></script>
-        <script type="text/javascript">
-<!--
+</style>
+        <script src="js/proto3d/objet.js" ></script>
+        <script src="js/proto3d/matrix.js" ></script>
+        <script src="js/proto3d/light.js" ></script>
+        <script src="js/proto3d/moteur3D.js" ></script>
+        <script src="js/proto3d/input.js" ></script>
+        <script>
 var image = null;
 var fps_count = 0;
 var t_1 = 0;
@@ -64,7 +61,7 @@ function init3d()
     // si l'objet n'est pas encore dispo, on reessaye dans 0.5s
     if(!eval(obj) || !eval(obj+'.isReady();'))
     {
-        setTimeout('init3d()', 500);
+        setTimeout(init3d, 500);
         return false;
     }
     
@@ -105,8 +102,8 @@ function anim()
     }
     else
     {
-        x = 2.*(x - parseInt(image.scr_width/2))/image.scr_width; 
-        y = 2.*(y - parseInt(image.scr_height/2))/image.scr_height;
+        x = 2.*(x - Math.trunc(image.scr_width / 2))/image.scr_width; 
+        y = 2.*(y - Math.trunc(image.scr_height / 2))/image.scr_height;
     }
 
     if (Math.abs(x)<0.1) x=0;
@@ -124,13 +121,13 @@ function anim()
     image.drawObject(eval(obj));
     image.drawFinish();
     fps_count++;
-    setTimeout('anim()',  2);
+    setTimeout(anim,  2);
 }
 
 function fps()
 {
     var txt = '';
-    txt+= parseInt(fps_count/3.)+' fps';
+    txt+= Math.floor(fps_count / 3)+' fps';
     txt+= ' ('+eval(obj).fcGetNb()+' pts | '+eval(obj).ptGetNb()+' faces)';
     document.getElementById('div_fps').innerHTML = txt;
     fps_count=0;
@@ -153,8 +150,7 @@ function fastDisplay()
         image.fastDisplay('off');
 }
 
-setInterval('fps()', 3000);
--->
+setInterval(fps, 3000);
 </script>
     </head>
     <body>
