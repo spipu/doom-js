@@ -1,9 +1,9 @@
-const nb_r = 16.;
-const nb_z = 10.;
-const rayon = 15.;
-const f = Math.PI/180.0;
+var nb_r = 16.;
+var nb_z = 10.;
+var rayon = 15.;
+var f = Math.PI/180.0;
 
-const sphere = objectRegistry['sphere'] = new Object3d('sphere');
+var sphere = objectRegistry['sphere'] = new Object3d();
 
 for (let a=0.; a<=360.; a+=360./nb_r)
 {
@@ -16,7 +16,7 @@ for (let a=0.; a<=360.; a+=360./nb_r)
     }
 }
 
-const i=0;
+var i=0;
 for (let a=0.; a<360.; a+=360./nb_r)
 {
     for (let b=-90.; b<90.; b+=180./nb_z)

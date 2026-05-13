@@ -1,5 +1,5 @@
 // plane
-const points=[[-57.3205,27.28,1.2447],
+var points=[[-57.3205,27.28,1.2447],
 [-57.316,27.177,1.2447],
 [-57.316,27.177,1.0384],
 [-57.3205,27.28,1.0384],
@@ -1544,7 +1544,7 @@ const points=[[-57.3205,27.28,1.2447],
 [-1.8398,19.5385,5.8294],
 [-1.8398,19.5385,-3.5464]];
 
-const faces=[[0,1,2],
+var faces=[[0,1,2],
 [2,3,0],
 [6,5,4],
 [8,9,7],
@@ -3153,7 +3153,7 @@ for (let k=0; k<faces.length; k++)
    faces[k][1] = l;
 }
 
-objectRegistry['z_plane'] = new Object3d('z_plane')
+objectRegistry['plane'] = new Object3d()
     .ptsAdd(points, [-15., 15., 0.], 0.6)
     .fcsAdd(faces)
     .ready();

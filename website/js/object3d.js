@@ -1,8 +1,7 @@
 var objectRegistry = {};
 
 class Object3d {
-    constructor(name) {
-        this.name     = name;
+    constructor() {
         this.pt_ori   = [];
         this.pt_3d    = [];
         this.pt_2d    = [];

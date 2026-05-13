@@ -1,5 +1,5 @@
 // helicopter
-const points=[
+var points=[
 [-0.010000,13.150000,3.670000],
 [-0.620000,3.690000,3.670000],
 [-0.620000,-3.740000,3.670000],
@@ -676,7 +676,7 @@ const points=[
 [0.960000,5.730000,3.300000],
 [0.000000,2.760000,3.060000]];
 
-const faces=[[1,6,7],
+var faces=[[1,6,7],
 [1,7,2],
 [2,7,8],
 [2,8,3],
@@ -1947,7 +1947,7 @@ const faces=[[1,6,7],
 [673,625,624],
 [674,675,625]];
 
-objectRegistry['z_helico'] = new Object3d('z_helico')
+objectRegistry['helico_civil'] = new Object3d()
     .ptsAdd(points, [0., 0., 0.], 0.8)
     .fcsAdd(faces)
     .ready();

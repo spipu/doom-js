@@ -1,5 +1,5 @@
 // dyno
-const points=[
+var points=[
 [-31.75,-22.61,-150.88],
 [-29.72,-33.02,-156.46],
 [-21.84,-23.88,-157.23],
@@ -557,7 +557,7 @@ const points=[
 [-10.67,-68.07,-84.84]];
 
 
-const faces=[[3,2,1],
+var faces=[[3,2,1],
 [6,5,4],
 [7,6,4],
 [8,7,4],
@@ -1601,7 +1601,7 @@ const faces=[[3,2,1],
 [555,383,384],
 [555,377,383]];
 
-objectRegistry['z_dyno'] = new Object3d('z_dyno')
+objectRegistry['dyno'] = new Object3d()
     .ptsAdd(points, [0., 0., -100.], 0.15)
     .fcsAdd(faces)
     .ready();

@@ -1,4 +1,4 @@
-objectRegistry['cube'] = new Object3d('cube')
+objectRegistry['cube'] = new Object3d()
     .ptAdd(-10, 10,-10)
     .ptAdd( 10, 10,-10)
     .ptAdd( 10,-10,-10)
