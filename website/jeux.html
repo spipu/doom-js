@@ -15,7 +15,16 @@ canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
-</style>
+        </style>
+    </head>
+    <body>
+        <input type="button" onclick="init3d()" value="Start / Stop" /><br />
+        <i>click on the "Start / Stop" button, and use the keyboard to move the car</i><br />
+        <br />
+        <canvas id="canvasElem"></canvas><br />
+        <span id="div_fps"></span><br />
+        <br />
+        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/object3d.js" ></script>
         <script src="js/object3dFactory.js" ></script>
         <script src="js/matrix.js" ></script>
@@ -130,15 +139,6 @@ function fps()
 }
 
 setInterval(fps, 3000);
-</script>
-    </head>
-    <body>
-        <input type="button" onclick="init3d()" value="Start / Stop" /><br />
-        <i>click on the "Start / Stop" button, and use the keyboard to move the car</i><br />
-        <br />
-        <canvas id="canvasElem"></canvas><br />
-        <span id="div_fps"></span><br />
-        <br />
-        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        </script>
     </body>
 </html>

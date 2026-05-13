@@ -16,6 +16,10 @@ div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
         </style>
+    </head>
+    <body onload="afficher();">
+        <canvas id="canvasElem"></canvas><br />
+        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="./js/object3d.js" ></script>
         <script src="js/object3dFactory.js" ></script>
         <script src="./js/matrix.js" ></script>
@@ -50,10 +54,6 @@ function afficher()
     
     image.drawFinish();
 }
-</script>
-    </head>
-    <body onload="afficher();">
-        <canvas id="canvasElem"></canvas><br />
-        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        </script>
     </body>
 </html>

@@ -15,7 +15,41 @@ canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
-</style>
+        </style>
+    </head>
+    <body>
+        Objet :
+        <select id="obj" onchange="changeObject();">
+            <option value="cube" selected="selected">cube</option>
+            <option value="helico_military">helico_military</option>
+            <option value="helico_civil"   >helico_civil   </option>
+            <option value="lotus"          >lotus          </option>
+            <option value="sphere"         >sphere         </option>
+            <option value="tank"           >tank           </option>
+            <option value="tore"           >tore           </option>
+            <option value="voiture"        >voiture        </option>
+            <option value="dyno"           >dyno           </option>
+            <option value="head"           >head           </option>
+            <option value="plane"          >plane          </option>
+            <option value="ship"           >ship           </option>
+            <option value="teddy"          >teddy          </option>
+        </select>
+         - Resolution
+         <select id="res" onchange="changeResolution();">
+            <option value="160">160x120</option>
+            <option value="320" selected="selected">320x240</option>
+            <option value="640">640x480</option>
+            <option value="800">800x600</option>
+            <option value="1024">1024x768</option>
+        </select>
+        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="switchFastDisplay();" onchange="switchFastDisplay();" onkeyup="switchFastDisplay();" /> fastDisplay
+        - <input type="button" onclick="switchStartStop()" value="Start / Stop" /><br />
+        <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
+        <br />
+        <canvas id="canvasElem"></canvas><br />
+        <span id="div_fps"></span><br />
+        <br />
+        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/object3d.js" ></script>
         <script src="js/object3dFactory.js" ></script>
         <script src="js/matrix.js" ></script>
@@ -150,40 +184,6 @@ setInterval(displayFps, 3000);
 
 document.addEventListener('DOMContentLoaded', changeObject);
 
-</script>
-    </head>
-    <body>
-        Objet :
-        <select id="obj" onchange="changeObject();">
-            <option value="cube" selected="selected">cube</option>
-            <option value="helico_military">helico_military</option>
-            <option value="helico_civil"   >helico_civil   </option>
-            <option value="lotus"          >lotus          </option>
-            <option value="sphere"         >sphere         </option>
-            <option value="tank"           >tank           </option>
-            <option value="tore"           >tore           </option>
-            <option value="voiture"        >voiture        </option>
-            <option value="dyno"           >dyno           </option>
-            <option value="head"           >head           </option>
-            <option value="plane"          >plane          </option>
-            <option value="ship"           >ship           </option>
-            <option value="teddy"          >teddy          </option>
-        </select>
-         - Resolution
-         <select id="res" onchange="changeResolution();">
-            <option value="160">160x120</option>
-            <option value="320" selected="selected">320x240</option>
-            <option value="640">640x480</option>
-            <option value="800">800x600</option>
-            <option value="1024">1024x768</option>
-        </select>
-        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="switchFastDisplay();" onchange="switchFastDisplay();" onkeyup="switchFastDisplay();" /> fastDisplay
-        - <input type="button" onclick="switchStartStop()" value="Start / Stop" /><br />
-        <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
-        <br />
-        <canvas id="canvasElem"></canvas><br />
-        <span id="div_fps"></span><br />
-        <br />
-        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        </script>
     </body>
 </html>
