@@ -16,6 +16,7 @@ class Engine3d {
 
         this._renderer = new Object3dRenderer();
         this._renderer.addRenderer(new Object3dRendererFull());
+        this._renderer.addRenderer(new Object3dRendererFlat());
         this._renderer.addRenderer(new Object3dRendererFast());
 
         this.m_view.identity();
