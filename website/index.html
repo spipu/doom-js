@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Proto3d - exemple</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <meta name="Title"              content="mini moteur 3D en javascript" /> 
+        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Author"             content="Laurent Minguet - Spipu" />
+        <meta name="Reply-to"           content="webmaster@spipu.net" />  
+        <meta name="Copyright"          content="(c)2010 Laurent Minguet - Spipu" />
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <style type="text/css">
+<!--
+body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
+canvas           { border: 1px solid grey; background: #FFF;}
+div.copy         { text-align: center;color: #ccc;}
+div.copy a       { color: #bbb; text-decoration: none;}
+div.copy a:hover { color: #ddd; text-decoration: underline; }
+-->
+        </style>
+        <script type="text/javascript" src="js/proto3d/jquery.js" ></script>
+        <script type="text/javascript" src="js/proto3d/objet.js" ></script>
+        <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
+        <script type="text/javascript" src="js/proto3d/light.js" ></script>
+        <script type="text/javascript" src="js/proto3d/moteur3D.js" ></script>
+        <script type="text/javascript" src="js/proto3d/input.js" ></script>
+        <script type="text/javascript">
+<!--
+var image = null;
+var fps_count = 0;
+var t_1 = 0;
+var t_2 = 0;
+var t_d = 0;
+var lst_obj = new Array();
+var obj='cube';
+var res='';
+var angle_x = 0;
+var angle_y = 0;
+
+var input = new Input();
+input.initMouse('canvasElem');
+
+function init3d()
+{
+    // switch on/off
+    if (image)
+    {
+        image = null;
+        return true;
+    }
+
+    // recuperation des parametres du formulaire
+    res = document.getElementById('res').value;
+    obj = document.getElementById('obj').value;
+
+    // si l'objet n'est pas chargé, on demande de le charger
+    if(!lst_obj[obj])
+    {
+        eval(obj+'=null;');
+        var js_add=document.createElement("script");
+        js_add.setAttribute("type", "text/javascript");
+        js_add.setAttribute("src", "./objets/"+obj+".obj.js");
+        document.getElementsByTagName("head")[0].appendChild(js_add);
+        lst_obj[obj] = true;
+    }
+
+    // si l'objet n'est pas encore dispo, on reessaye dans 0.5s
+    if(!eval(obj) || !eval(obj+'.isReady();'))
+    {
+        setTimeout('init3d()', 500);
+        return false;
+    }
+    
+    image = new Moteur3D('canvasElem');
+    image.setScreen(res, res*24/32);
+    image.setBackground(35, 35, 35);
+    image.setOuverture(45.0);
+    image.setView(-32, 32, -24, 24);
+    image.setZBuffer(1, 100);
+
+    image.lightAmbiant([40., 40., 40.]);
+    image.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
+    image.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
+    image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
+
+    fastDisplay();
+    
+    t_obj = new Date();
+    t_1 = t_obj.getTime();
+
+    anim();
+}
+
+function anim()
+{
+    if (!image) return false;
+    t_obj = new Date();
+    t_2 = t_1;
+    t_1 = t_obj.getTime();
+    t_d = (t_1-t_2);
+
+    var x = input.readMouseX(); 
+    var y = input.readMouseY();
+    if (x<0)
+    {
+        x=0;
+        y=0;
+    }
+    else
+    {
+        x = 2.*(x - parseInt(image.scr_width/2))/image.scr_width; 
+        y = 2.*(y - parseInt(image.scr_height/2))/image.scr_height;
+    }
+
+    if (Math.abs(x)<0.1) x=0;
+    if (Math.abs(y)<0.1) y=0;
+
+    angle_x-= x*0.1*t_d;
+    angle_y+= y*0.1*t_d;
+    
+    image.matrixIdentity();
+    image.matrixTranslate(0, 0, 35);
+    image.matrixRotateY(angle_x);
+    image.matrixRotateX(angle_y);
+
+    image.drawInit();
+    image.drawObject(eval(obj));
+    image.drawFinish();
+    fps_count++;
+    setTimeout('anim()',  2);
+}
+
+function fps()
+{
+    var txt = '';
+    txt+= parseInt(fps_count/3.)+' fps';
+    txt+= ' ('+eval(obj).fcGetNb()+' pts | '+eval(obj).ptGetNb()+' faces)';
+    document.getElementById('div_fps').innerHTML = txt;
+    fps_count=0;
+}
+
+function change()
+{
+    if (image)
+    {
+        image = null;
+        init3d();
+    }
+}
+
+function fastDisplay()
+{
+    if (document.getElementById('check_fastdisplay').checked)
+        image.fastDisplay('on');
+    else
+        image.fastDisplay('off');
+}
+
+setInterval('fps()', 3000);
+-->
+</script>
+    </head>
+    <body>
+        Objet :
+        <select id="obj" onchange="change();">
+            <option value="cube" selected="selected">cube</option>
+            <option value="helico"   >helico   </option>
+            <option value="lotus"    >lotus    </option>
+            <option value="sphere"   >sphere   </option>
+            <option value="tank"     >tank     </option>
+            <option value="tore"     >tore     </option>
+            <option value="voiture"  >voiture  </option>
+            <option value="z_dyno"   >z_dyno   </option>
+            <option value="z_head"   >z_head   </option>
+            <option value="z_helico" >z_helico </option>
+            <option value="z_plane"  >z_plane  </option>
+            <option value="z_ship"   >z_ship   </option>
+            <option value="z_teddy"  >z_teddy  </option>
+        </select>
+         - Resolution
+         <select id="res" onchange="change();">
+            <option value="160">160x120</option>
+            <option value="320" selected="selected">320x240</option>
+            <option value="640">640x480</option>
+            <option value="800">800x600</option>
+            <option value="1024">1024x768</option>
+        </select>
+        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="fastDisplay();" onchange="fastDisplay();" onkeyup="fastDisplay();" /> fastDisplay
+        - <input type="button" onclick="init3d()" value="Start / Stop" /><br />
+        <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
+        <br />
+        <canvas id="canvasElem"></canvas><br />
+        <span id="div_fps"></span><br />
+        <br />
+        <div class="copy">&copy;2010 <a href="http://spipu.net/">Laurent MINGUET</a></div>
+    </body>
+</html>

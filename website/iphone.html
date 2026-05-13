@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Proto3d - exemple</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <meta name="Title"              content="mini moteur 3D en javascript" /> 
+        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Author"             content="Laurent Minguet - Spipu" />
+        <meta name="Reply-to"           content="webmaster@spipu.net" />  
+        <meta name="Copyright"          content="(c)2010 Laurent Minguet - Spipu" />
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <style type="text/css">
+<!--
+body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
+canvas           { border: 1px solid grey; background: #FFF;}
+div.copy         { text-align: center;color: #ccc;}
+div.copy a       { color: #bbb; text-decoration: none;}
+div.copy a:hover { color: #ddd; text-decoration: underline; }
+-->
+        </style>
+        <script type="text/javascript" src="js/proto3d/objet.js" ></script>
+        <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
+        <script type="text/javascript" src="js/proto3d/light.js" ></script>
+        <script type="text/javascript" src="js/proto3d/moteur3D.js" ></script>
+         <script type="text/javascript" src="objets/cube.obj.js" ></script>
+        <script type="text/javascript">
+<!--
+var image = null;
+var t_1 = 0;
+var t_2 = 0;
+var t_d = 0;
+var angle = 0;
+
+var act_angle = 0;
+var act_sens = 0;
+var act_speed = 60;
+
+function init3d()
+{
+    image = new Moteur3D('canvasElem');
+    image.setScreen(320, 240);
+    image.setBackground(35, 35, 35);
+    image.setOuverture(45.0);
+    image.setView(-32, 32, -24, 24);
+    image.setZBuffer(1, 100);
+
+    image.lightAmbiant([40., 40., 40.]);
+    image.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
+
+    draw();
+}
+
+function anim()
+{
+    if (t_1==0)
+    {
+        t_obj = new Date();
+        t_1 = t_obj.getTime();
+    }
+
+    t_obj = new Date();
+    t_2 = t_1;
+    t_1 = t_obj.getTime();
+    t_d = (t_1-t_2);
+
+    if (t_d>0) angle+= act_speed * act_sens * t_d / 1000.;
+
+    if ((act_sens<0 && act_angle>=angle) || (act_sens>0 && act_angle<=angle) || act_sens==0)
+        {
+                angle = act_angle;
+                act_sens = 0;
+        t_1=0;
+        }
+
+    draw();
+
+    if (act_sens!=0)
+        setTimeout('anim()', 5);
+}
+
+function draw()
+{
+        image.matrixIdentity();
+        image.matrixTranslate(0, 0, 30);
+    image.matrixRotateX(25);
+        image.matrixRotateY(angle);
+
+        image.drawInit();
+        image.drawObject(cube);
+        image.drawFinish();
+}
+
+function turnRight()
+{
+    if (angle==act_angle)
+    {
+        act_angle-= 90;
+        act_sens = -1;
+        anim();
+    }
+}
+
+function turnLeft()
+{
+    if (angle==act_angle)
+    {
+        act_angle+= 90;
+        act_sens = 1;
+        anim();
+    }
+}
+
+function fastDisplay()
+{
+        if (document.getElementById('check_fastdisplay').checked)
+                image.fastDisplay('on');
+        else
+                image.fastDisplay('off');
+
+    draw();
+}
+
+-->
+</script>
+    </head>
+    <body onload="init3d();">
+        <input type="button" value="LEFT" onclick="turnLeft()" style="width: 100px;"/>
+        <input type="button" value="RIGHT" onclick="turnRight()" style="width: 100px;"/>
+        <br />
+        <br />
+        <canvas id="canvasElem"></canvas><br />
+        <input type="checkbox" id="check_fastdisplay" value="1" onchange="fastDisplay();" onclick="fastDisplay();" /> FastDisplay<br />
+        <br />
+        <div class="copy">&copy;2010 <a href="http://spipu.net/">Laurent MINGUET</a></div>
+    </body>
+</html>

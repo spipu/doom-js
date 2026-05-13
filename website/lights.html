@@ -1,0 +1,144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Proto3d - exemple de jeu</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <meta name="Title"              content="mini moteur 3D en javascript" /> 
+        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Author"             content="Laurent Minguet - Spipu" />
+        <meta name="Reply-to"           content="webmaster@spipu.net" />  
+        <meta name="Copyright"          content="(c)2010 Laurent Minguet - Spipu" />
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <style type="text/css">
+<!--
+body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
+canvas           { border: 1px solid grey; background: #FFF;}
+div.copy         { text-align: center;color: #ccc;}
+div.copy a       { color: #bbb; text-decoration: none;}
+div.copy a:hover { color: #ddd; text-decoration: underline; }
+-->
+        </style>
+        <script type="text/javascript" src="js/proto3d/jquery.js" ></script>
+        <script type="text/javascript" src="js/proto3d/objet.js" ></script>
+        <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
+        <script type="text/javascript" src="js/proto3d/light.js" ></script>
+        <script type="text/javascript" src="js/proto3d/moteur3D.js" ></script>
+        <script type="text/javascript" src="js/proto3d/input.js" ></script>
+        <script type="text/javascript" src="objets/sol.obj.js" ></script>
+        <script type="text/javascript" src="objets/light.obj.js" ></script>
+        <script type="text/javascript">
+<!--
+var image = null;
+var fps_count = 0;
+var t_1 = 0;
+var t_2 = 0;
+var t_d = 0;
+var obj_z = 25.;
+var obj_r = 5.;
+var obj_dv = 0.015;
+
+var light1 = null;
+var light2 = null;
+var light3 = null;
+
+var input = new Input();
+input.initKeyboard();
+
+function init3d()
+{
+    if (image)
+    {
+        image = null;
+        return true;
+    }
+
+    image = new Moteur3D('canvasElem');
+    image.setScreen(320, 240);
+    image.setBackground(10, 10, 10);
+    image.setOuverture(45.0);
+    image.setView(-32, 32, -24, 24);
+    image.setZBuffer(1, 100);
+
+    image.lightAmbiant([20., 20., 20.]);
+    light1 = image.lightAdd([255., 0., 0.], 30);
+    light2 = image.lightAdd([0., 255., 0.], 30);
+    light3 = image.lightAdd([0., 0., 255.], 30);
+    
+    var t_obj = new Date();
+    t_1 = t_obj.getTime();
+    
+    anim();
+}
+function anim()
+{
+    if (!image) return false;
+    var t_obj = new Date();
+    t_2 = t_1;
+    t_1 = t_obj.getTime();
+    t_d = (t_1-t_2);
+    
+    if (input.readKeyUp())    obj_z+= t_d*obj_dv;
+    if (input.readKeyDown())  obj_z-= t_d*obj_dv;
+    if (input.readKeyLeft())  obj_r-= t_d*obj_dv;
+    if (input.readKeyRight()) obj_r+= t_d*obj_dv;
+
+    if (obj_z<0)  obj_z=0;
+    if (obj_z>30) obj_z=30;
+    if (obj_r<0)  obj_r=0;
+    if (obj_r>30) obj_r=30;
+
+    image.drawInit();
+
+    image.matrixIdentity();
+    image.matrixRotateX(180);
+    image.matrixTranslate(0,-5,-35);
+    image.matrixRotateX(45);
+    var p1 = [obj_r, obj_z, 0.];
+    var p2 = [-0.5*obj_r, obj_z, 0.866*obj_r];
+    var p3 = [-0.5*obj_r, obj_z,-0.866*obj_r];
+    image.lightMove(light1, p1);
+    image.lightMove(light2, p2);
+    image.lightMove(light3, p3);
+    
+    image.matrixPush();
+    image.matrixTranslate(p1[0], p1[1], p1[2]);
+    image.drawObject(light);
+    image.matrixPop();
+    
+    image.matrixPush();
+    image.matrixTranslate(p2[0], p2[1], p2[2]);
+    image.drawObject(light);
+    image.matrixPop();
+
+    image.matrixPush();
+    image.matrixTranslate(p3[0], p3[1], p3[2]);
+    image.drawObject(light);
+    image.matrixPop();
+    
+    image.drawObject(sol);
+    image.drawFinish();
+    fps_count++;
+    setTimeout('anim()',  1);
+}
+
+function fps()
+{
+    document.getElementById('div_fps').innerHTML = parseInt(fps_count/3.)+' FPS';
+    fps_count=0;
+}
+
+setInterval('fps()', 3000);
+
+-->
+</script>
+    </head>
+    <body>
+        <input type="button" onclick="init3d()" value="Start / Stop" /><br />
+        <i>click on the "Start / Stop" button, and use the keyboard to move the lights</i><br />
+        <br />
+        <canvas id="canvasElem"></canvas><br />
+        <span id="div_fps"></span><br />
+        <br />
+        <div class="copy">&copy;2010 <a href="http://spipu.net/">Laurent MINGUET</a></div>
+    </body>
+</html>
