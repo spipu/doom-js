@@ -166,7 +166,14 @@ Objet.prototype.loadASE = function(nom_ase, center, scale, color)
     center[2] = parseFloat(center[2]);
     
     var objet = this;
-    $.get(nom_ase, null, function (result) { objet.loadASE_CB(result, center, scale, color); });
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', nom_ase, true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            objet.loadASE_CB(xhr.responseText, center, scale, color);
+        }
+    };
+    xhr.send(null);
     
     return this;
 }

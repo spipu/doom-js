@@ -18,7 +18,6 @@ div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 -->
         </style>
-        <script type="text/javascript" src="js/proto3d/jquery.js" ></script>
         <script type="text/javascript" src="js/proto3d/objet.js" ></script>
         <script type="text/javascript" src="js/proto3d/matrix.js" ></script>
         <script type="text/javascript" src="js/proto3d/light.js" ></script>
@@ -49,11 +48,9 @@ function init3d()
         return true;
     }
 
-    // recuperation des parametres du formulaire
     res = document.getElementById('res').value;
     obj = document.getElementById('obj').value;
 
-    // si l'objet n'est pas chargé, on demande de le charger
     if(!lst_obj[obj])
     {
         eval(obj+'=null;');
