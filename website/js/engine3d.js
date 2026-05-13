@@ -2,31 +2,29 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
     constructor(obj_id) {
-        this.scr_id       = obj_id;
-        this.scr_width    = 0;
-        this.scr_height   = 0;
-        this.background   = [0, 0, 0];
-        this.m_view        = new Matrix();
-        this.fov    = 0.0;
-        this.view_xMin    = 0.0;
-        this.view_xMax    = 0.0;
-        this.view_yMin    = 0.0;
-        this.view_yMax    = 0.0;
-        this.light_lst    = [];
-        this.light_amp    = [0, 0, 0];
-        this.zBuffer      = [];
-        this.z_near       = 0;
-        this.z_far        = 0;
-        this.z_def        = 1000;
-        this.fast_display = false;
+        this.scr_id    = obj_id;
+        this.scr_width = 0;
+        this.scr_height = 0;
+        this.background = [0, 0, 0];
+        this.m_view    = new Matrix();
+        this.fov       = 0.0;
+        this.view_xMin = 0.0;
+        this.view_xMax = 0.0;
+        this.view_yMin = 0.0;
+        this.view_yMax = 0.0;
+        this.light_lst = [];
+        this.zBuffer   = new ZBuffer();
+
+        this._renderer = new Object3dRenderer();
+        this._renderer.addRenderer(new Object3dRendererFull());
+        this._renderer.addRenderer(new Object3dRendererFast());
 
         this.m_view.identity();
 
         this.scr_obj = document.getElementById(obj_id);
         if (!this.scr_obj || !this.scr_obj.getContext) return;
 
-        this.scr_ctx  = this.scr_obj.getContext('2d');
-        this.scr_data = [];
+        this.scr_ctx = this.scr_obj.getContext('2d');
 
         this.setScreen(320, 240);
         this.setView(-32., 32., -24., 24.);
@@ -66,19 +64,16 @@ class Engine3d {
     }
 
     setZBuffer(near, far) {
-        this.z_near = near || 1;
-        this.z_far  = far  || 80;
+        this.zBuffer.setRange(near || 1, far || 80);
         return this;
     }
 
-    fastDisplay(mode) {
-        this.fast_display = (mode === 'on');
+    setRenderer(code) {
+        this._renderer.setRenderer(code);
     }
 
     preComputeViewport() {
-        if (!this.scr_width)  return false;
-        if (!this.scr_height) return false;
-        if (!this.fov)  return false;
+        if (!this.scr_width || !this.scr_height || !this.fov) return false;
         if (this.view_xMax <= this.view_xMin) return false;
         if (this.view_yMax <= this.view_yMin) return false;
 
@@ -113,20 +108,9 @@ class Engine3d {
         return id;
     }
 
-    matrixIdentity() {
-        this.m_view.identity();
-        return this;
-    }
-
-    matrixPush() {
-        this.m_view.push();
-        return this;
-    }
-
-    matrixPop() {
-        this.m_view.pop();
-        return this;
-    }
+    matrixIdentity() { this.m_view.identity(); return this; }
+    matrixPush()     { this.m_view.push();     return this; }
+    matrixPop()      { this.m_view.pop();      return this; }
 
     matrixTranslate(vx, vy, vz) {
         const m = new Matrix();
@@ -164,45 +148,19 @@ class Engine3d {
     }
 
     drawInit() {
-        if (this.fast_display) {
-            this.scr_ctx.clearRect(0, 0, this.scr_width, this.scr_height);
-        } else {
-            const nb = this.scr_width * this.scr_height;
-            this.zBuffer  = new Array(nb).fill(this.z_far);
-            this.scr_data = this.scr_ctx.createImageData(this.scr_width, this.scr_height);
-        }
-        return this;
-    }
-
-    drawFinish() {
-        if (!this.fast_display) {
-            this.scr_ctx.putImageData(this.scr_data, 0, 0);
-        }
+        this._renderer.begin(this);
         return this;
     }
 
     drawObject(obj) {
         obj.ptTransform(this.m_view);
         obj.ptProjection(this);
-        if (this.fast_display) {
-            obj.fcDrawFast(this);
-        } else {
-            obj.fcDraw(this);
-        }
+        this._renderer.draw(obj, this);
         return this;
     }
 
-    zBufSet(x, y, z) {
-        if (x < 0)                  return false;
-        if (y < 0)                  return false;
-        if (x > this.scr_width - 1) return false;
-        if (y > this.scr_height - 1) return false;
-        if (z < this.z_near)        return false;
-        if (z > this.z_far)         return false;
-
-        const t = x + y * this.scr_width;
-        if (this.zBuffer[t] < z) return false;
-        this.zBuffer[t] = z;
-        return true;
+    drawFinish() {
+        this._renderer.end(this);
+        return this;
     }
 }
