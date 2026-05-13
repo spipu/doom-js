@@ -3,6 +3,10 @@ class Object3dFactory {
         this._registry = {};
     }
 
+    reset() {
+        this._registry = {};
+    }
+
     isReady() {
         const objects = Object.values(this._registry);
         return objects.length > 0 && objects.every(obj => obj.isReady());
