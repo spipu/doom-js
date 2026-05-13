@@ -1,88 +1,78 @@
-var InputObject_private = null;
+let InputObject_private = null;
 
-function Input()
-{
-    if (InputObject_private)
-    {
-        alert('l\'objet Input existre deja...');
-        return false;
+class Input {
+    constructor() {
+        if (InputObject_private) {
+            alert('l\'objet Input existe deja...');
+            return;
+        }
+
+        InputObject_private = this;
+
+        this.key_add   = false;
+        this.key_lst   = [];
+
+        this.mouse_add = false;
+        this.mouse_obj = null;
+        this.mouse_x   = null;
+        this.mouse_y   = null;
     }
 
-    InputObject_private = this;
+    initKeyboard() {
+        if (this.key_add) return;
 
-    this.key_add    = false;
-    this.key_lst    = new Array();
+        this.key_add = true;
+        this.key_lst = new Array(256).fill(false);
 
-    this.mouse_add    = false;
-    this.mouse_obj    = null;
-    this.mouse_x    = null;
-    this.mouse_y    = null;
-}
+        document.addEventListener('keydown', InputObject_private.onkeydown, false);
+        document.addEventListener('keyup',   InputObject_private.onkeyup,   false);
+    }
 
-Input.prototype.initKeyboard = function()
-{
-    if (this.key_add) return true;
+    initMouse(obj_id) {
+        if (this.mouse_add) return;
 
-    this.key_add = true;
-    this.key_lst = new Array();
-    for (var k=0; k<256; k++) this.key_lst[k] = false;
+        this.mouse_add = true;
+        this.mouse_obj = obj_id;
+        this.mouse_x   = -1;
+        this.mouse_y   = -1;
 
-    document.addEventListener('keydown',    InputObject_private.onkeydown, false);
-    document.addEventListener('keyup',      InputObject_private.onkeyup, false);
-}
+        document.addEventListener('mousemove', InputObject_private.onmousemove, false);
+    }
 
-Input.prototype.initMouse = function(obj_id)
-{
-    if (this.mouse_add) return true;
+    readKey(k, reset) {
+        const v = this.key_lst[k];
+        if (reset) this.key_lst[k] = false;
+        return v;
+    }
 
-    this.mouse_add = true;
-    this.mouse_obj = obj_id;
-    this.mouse_x = -1;
-    this.mouse_y = -1;
+    readKeyUp()    { return this.key_lst[38]; }
+    readKeyDown()  { return this.key_lst[40]; }
+    readKeyLeft()  { return this.key_lst[37]; }
+    readKeyRight() { return this.key_lst[39]; }
 
-    document.addEventListener('mousemove',  InputObject_private.onmousemove, false);
-}
+    readMouseX() { return this.mouse_x; }
+    readMouseY() { return this.mouse_y; }
 
-Input.prototype.readKey = function(k, reset)
-{
-    var v = this.key_lst[k];
-    if (reset) this.key_lst[k]=false;
-    return v;
-}
+    onkeyup(e) {
+        InputObject_private.key_lst[e.keyCode] = false;
+        return true;
+    }
 
-Input.prototype.readKeyUp    = function() { return this.key_lst[38]; }
-Input.prototype.readKeyDown  = function() { return this.key_lst[40]; }
-Input.prototype.readKeyLeft  = function() { return this.key_lst[37]; }
-Input.prototype.readKeyRight = function() { return this.key_lst[39]; }
+    onkeydown(e) {
+        InputObject_private.key_lst[e.keyCode] = true;
+        return true;
+    }
 
-Input.prototype.readMouseX   = function () { return this.mouse_x; }
-Input.prototype.readMouseY   = function () { return this.mouse_y; }
+    onmousemove(e) {
+        const obj = document.getElementById(InputObject_private.mouse_obj);
+        if (!obj) return true;
 
-Input.prototype.onkeyup = function(e)
-{
-    InputObject_private.key_lst[e.keyCode] = false;
-    return true;
-}
+        const x = e.clientX - obj.offsetLeft;
+        const y = e.clientY - obj.offsetTop;
 
-Input.prototype.onkeydown = function(e)
-{
-    InputObject_private.key_lst[e.keyCode] = true;
-    return true;
-}
+        if (x < 0 || y < 0 || x > obj.width || y > obj.height) return true;
 
-Input.prototype.onmousemove = function(e)
-{
-    var obj = document.getElementById(InputObject_private.mouse_obj);
-    if (!obj) return true;
-
-    var x = (e.clientX - obj.offsetLeft);
-    var y = (e.clientY - obj.offsetTop);
-
-    if (x<0) return true;
-    if (y<0) return true;
-    if (x>obj.width) return true;
-    if (y>obj.height) return true;
-
-    InputObject_private.mouse_x = x;
-    InputObject_private.mouse_y = y;
+        InputObject_private.mouse_x = x;
+        InputObject_private.mouse_y = y;
+    }
 }
