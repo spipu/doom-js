@@ -28,13 +28,11 @@ let fps_count = 0;
 let t_1       = 0;
 let t_2       = 0;
 let t_d       = 0;
-let obj       = 'cube';
 let res       = '';
 let angle_x   = 0;
 let angle_y   = 0;
 
-const lst_obj = {};
-const input   = new Input();
+const input = new Input();
 input.initMouse('canvasElem');
 
 function init3d()
@@ -45,14 +43,12 @@ function init3d()
     }
 
     res = document.getElementById('res').value;
-    obj = document.getElementById('obj').value;
 
-    if (!lst_obj[obj]) {
-        object3dFactory.load(obj, './objects/' + obj + '.obj.json');
-        lst_obj[obj] = true;
-    }
-
-    if (!object3dFactory.get(obj)) {
+    if (!object3dFactory.isReady()) {
+        if (object3dFactory._registry['object'] === undefined) {
+            const obj = document.getElementById('obj').value;
+            object3dFactory.load('object', './objects/' + obj + '.obj.json');
+        }
         setTimeout(init3d, 500);
         return;
     }
@@ -103,7 +99,7 @@ function anim()
     image.matrixRotateX(angle_y);
 
     image.drawInit();
-    image.drawObject(object3dFactory.get(obj));
+    image.drawObject(object3dFactory.get('object'));
     image.drawFinish();
     fps_count++;
     setTimeout(anim, 2);
@@ -111,7 +107,8 @@ function anim()
 
 function fps()
 {
-    const current = object3dFactory.get(obj);
+    const current = object3dFactory.get('object');
+    if (!current) return;
     const txt = Math.floor(fps_count / 3) + ' fps'
               + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
     document.getElementById('div_fps').innerHTML = txt;
@@ -120,10 +117,11 @@ function fps()
 
 function change()
 {
-    if (image) {
-        image = null;
-        init3d();
-    }
+    image = null;
+    object3dFactory.reset();
+    const obj = document.getElementById('obj').value;
+    object3dFactory.load('object', './objects/' + obj + '.obj.json');
+    init3d();
 }
 
 function fastDisplay()
