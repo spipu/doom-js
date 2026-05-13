@@ -132,13 +132,13 @@ function anim()
     setTimeout(anim, 1);
 }
 
-function fps()
+function displayFps()
 {
     document.getElementById('div_fps').innerHTML = Math.floor(fps_count / 3)+' FPS';
     fps_count=0;
 }
 
-setInterval(fps, 3000);
+setInterval(displayFps, 3000);
         </script>
     </body>
 </html>
