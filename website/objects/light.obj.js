@@ -1,4 +1,4 @@
-var light = new Objet('light')
+objectRegistry['light'] = new Object3d('light')
     .ptAdd( 0,0,-0.5)
     .ptAdd( 1,1, 0)
     .ptAdd(-1,1, 0)

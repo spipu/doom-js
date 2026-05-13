@@ -16,17 +16,17 @@ div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
         </style>
-        <script src="./js/proto3d/objet.js" ></script>
-        <script src="./js/proto3d/matrix.js" ></script>
-        <script src="./js/proto3d/light.js" ></script>
-        <script src="./js/proto3d/moteur3D.js" ></script>
-        <script src="./objets/lotus.obj.js" ></script>
+        <script src="./js/object3d.js" ></script>
+        <script src="./js/matrix.js" ></script>
+        <script src="./js/light.js" ></script>
+        <script src="./js/engine3d.js" ></script>
+        <script src="./objects/lotus.obj.js" ></script>
         <script>
 function afficher()
 {
-    if (!lotus.isReady()) { setTimeout(afficher, 500); return false; }
+    if (!objectRegistry['lotus'].isReady()) { setTimeout(afficher, 500); return false; }
     
-    var image = new Moteur3D('canvasElem');
+    var image = new Engine3d('canvasElem');
     image.setScreen(800, 600);
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
@@ -44,7 +44,7 @@ function afficher()
     image.matrixTranslate(4, 5, -37);
     image.matrixRotateY(-30);
     image.matrixRotateX(-60);
-    image.drawObject(lotus);
+    image.drawObject(objectRegistry['lotus']);
     
     image.drawFinish();
 }

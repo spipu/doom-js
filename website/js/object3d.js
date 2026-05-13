@@ -1,4 +1,6 @@
-class Objet {
+var objectRegistry = {};
+
+class Object3d {
     constructor(name) {
         this.name     = name;
         this.pt_ori   = [];

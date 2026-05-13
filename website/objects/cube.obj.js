@@ -1,4 +1,4 @@
-var cube = new Objet('cube')
+objectRegistry['cube'] = new Object3d('cube')
     .ptAdd(-10, 10,-10)
     .ptAdd( 10, 10,-10)
     .ptAdd( 10,-10,-10)

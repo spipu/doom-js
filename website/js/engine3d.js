@@ -1,6 +1,6 @@
 const DEG_TO_RAD = Math.PI / 180;
 
-class Moteur3D {
+class Engine3d {
     constructor(obj_id) {
         this.scr_id       = obj_id;
         this.scr_width    = 0;

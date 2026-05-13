@@ -16,13 +16,13 @@ div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
-        <script src="js/proto3d/objet.js" ></script>
-        <script src="js/proto3d/matrix.js" ></script>
-        <script src="js/proto3d/light.js" ></script>
-        <script src="js/proto3d/moteur3D.js" ></script>
-        <script src="js/proto3d/input.js" ></script>
-        <script src="objets/sol.obj.js" ></script>
-        <script src="objets/tuture.obj.js" ></script>
+        <script src="js/object3d.js" ></script>
+        <script src="js/matrix.js" ></script>
+        <script src="js/light.js" ></script>
+        <script src="js/engine3d.js" ></script>
+        <script src="js/input.js" ></script>
+        <script src="objects/sol.obj.js" ></script>
+        <script src="objects/tuture.obj.js" ></script>
         <script>
 var image = null;
 var fps_count = 0;
@@ -51,7 +51,7 @@ function init3d()
         return true;
     }
 
-    image = new Moteur3D('canvasElem');
+    image = new Engine3d('canvasElem');
     image.setScreen(320, 240);
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
@@ -81,8 +81,8 @@ function anim()
         if (input.readKeyLeft())    obj_a+= t_d*obj_da; // left
         if (input.readKeyRight())    obj_a-= t_d*obj_da; // right
         
-        obj_x+= t_d*obj_dv*Math.cos(image.PI_180*obj_a);
-        obj_z-= t_d*obj_dv*Math.sin(image.PI_180*obj_a);
+        obj_x+= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
+        obj_z-= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
     // down
     if (input.readKeyDown())
@@ -90,8 +90,8 @@ function anim()
         if (input.readKeyLeft())    obj_a-= t_d*obj_da; // left
         if (input.readKeyRight())    obj_a+= t_d*obj_da; // right
 
-        obj_x-= t_d*obj_dv*Math.cos(image.PI_180*obj_a);
-        obj_z+= t_d*obj_dv*Math.sin(image.PI_180*obj_a);
+        obj_x-= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
+        obj_z+= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
 
     if (obj_x<-25.) obj_x =-25.
@@ -113,10 +113,10 @@ function anim()
     image.matrixRotateY(obj_a);
     image.lightMove(light2, [9, 2., 0.]);
     image.lightMove(light3, [-8, 2., 0.]);
-    image.drawObject(tuture);
+    image.drawObject(objectRegistry['tuture']);
     image.matrixPop();
     
-    image.drawObject(sol);
+    image.drawObject(objectRegistry['sol']);
 
     image.drawFinish();
     fps_count++;

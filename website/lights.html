@@ -16,13 +16,13 @@ div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
-        <script src="js/proto3d/objet.js" ></script>
-        <script src="js/proto3d/matrix.js" ></script>
-        <script src="js/proto3d/light.js" ></script>
-        <script src="js/proto3d/moteur3D.js" ></script>
-        <script src="js/proto3d/input.js" ></script>
-        <script src="objets/sol.obj.js" ></script>
-        <script src="objets/light.obj.js" ></script>
+        <script src="js/object3d.js" ></script>
+        <script src="js/matrix.js" ></script>
+        <script src="js/light.js" ></script>
+        <script src="js/engine3d.js" ></script>
+        <script src="js/input.js" ></script>
+        <script src="objects/sol.obj.js" ></script>
+        <script src="objects/light.obj.js" ></script>
         <script>
 var image = null;
 var fps_count = 0;
@@ -48,7 +48,7 @@ function init3d()
         return true;
     }
 
-    image = new Moteur3D('canvasElem');
+    image = new Engine3d('canvasElem');
     image.setScreen(320, 240);
     image.setBackground(10, 10, 10);
     image.setFov(45.0);
@@ -98,20 +98,20 @@ function anim()
     
     image.matrixPush();
     image.matrixTranslate(p1[0], p1[1], p1[2]);
-    image.drawObject(light);
+    image.drawObject(objectRegistry['light']);
     image.matrixPop();
     
     image.matrixPush();
     image.matrixTranslate(p2[0], p2[1], p2[2]);
-    image.drawObject(light);
+    image.drawObject(objectRegistry['light']);
     image.matrixPop();
 
     image.matrixPush();
     image.matrixTranslate(p3[0], p3[1], p3[2]);
-    image.drawObject(light);
+    image.drawObject(objectRegistry['light']);
     image.matrixPop();
     
-    image.drawObject(sol);
+    image.drawObject(objectRegistry['sol']);
     image.drawFinish();
     fps_count++;
     setTimeout(anim,  1);
