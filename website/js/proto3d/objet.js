@@ -202,7 +202,7 @@ class Objet {
         return (pt1[2] + pt2[2] + pt3[2]) / 3.;
     }
 
-    fcNorme(v) {
+    faceNorm(v) {
         return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
     }
 
@@ -214,7 +214,7 @@ class Objet {
         const v1 = [pt2[0]-pt1[0], pt2[1]-pt1[1], pt2[2]-pt1[2]];
         const v2 = [pt3[0]-pt1[0], pt3[1]-pt1[1], pt3[2]-pt1[2]];
         const v  = [v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]];
-        const n  = this.fcNorme(v);
+        const n  = this.faceNorm(v);
 
         if (n > 0) {
             v[0] /= n;
@@ -224,7 +224,7 @@ class Objet {
         return v;
     }
 
-    fcMoyenne(pt1, pt2, pt3) {
+    faceCenter(pt1, pt2, pt3) {
         return [
             (pt1[0]+pt2[0]+pt3[0]) / 3.,
             (pt1[1]+pt2[1]+pt3[1]) / 3.,
@@ -234,7 +234,7 @@ class Objet {
     }
 
     ptColor(vue, color, pt, normal) {
-        const col = [vue.light_amb[0], vue.light_amb[1], vue.light_amb[2]];
+        const col = [vue.light_ambient[0], vue.light_ambient[1], vue.light_ambient[2]];
 
         for (let k = 0; k < vue.light_lst.length; k++) {
             const temp = vue.light_lst[k].getColorFor(pt, normal);

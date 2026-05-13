@@ -5,9 +5,9 @@
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
         <meta name="Title"              content="mini moteur 3D en javascript" /> 
         <meta name="Description"        content="moteur 3D, javascript" />
-        <meta name="Author"             content="Laurent Minguet - Spipu" />
+        <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />  
-        <meta name="Copyright"          content="(c)2010 Laurent Minguet - Spipu" />
+        <meta name="Copyright"          content="(c)2026 Spipu" />
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
         <style type="text/css">
 <!--
@@ -71,11 +71,11 @@ function init3d()
     image = new Moteur3D('canvasElem');
     image.setScreen(res, res*24/32);
     image.setBackground(35, 35, 35);
-    image.setOuverture(45.0);
+    image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
     image.setZBuffer(1, 100);
 
-    image.lightAmbiant([40., 40., 40.]);
+    image.lightAmbient([40., 40., 40.]);
     image.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
     image.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
     image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
@@ -189,6 +189,6 @@ setInterval('fps()', 3000);
         <canvas id="canvasElem"></canvas><br />
         <span id="div_fps"></span><br />
         <br />
-        <div class="copy">&copy;2010 <a href="http://spipu.net/">Laurent MINGUET</a></div>
+        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
     </body>
 </html>

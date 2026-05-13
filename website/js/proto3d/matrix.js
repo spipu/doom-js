@@ -4,7 +4,7 @@ class Matrix {
         this.pile = [];
     }
 
-    Vide() {
+    clear() {
         this.v = [
             [0.,0.,0.,0.],
             [0.,0.,0.,0.],
@@ -14,7 +14,7 @@ class Matrix {
         return this;
     }
 
-    Identite() {
+    identity() {
         this.v = [
             [1.,0.,0.,0.],
             [0.,1.,0.,0.],
@@ -80,10 +80,10 @@ class Matrix {
         return this;
     }
 
-    Multiplication(m) {
+    multiply(m) {
         const a = this.v;
         const b = m.v;
-        this.Vide();
+        this.clear();
         for (let x = 0; x < 4; x++) {
             this.v[x][0] = a[0][0]*b[x][0] + a[1][0]*b[x][1] + a[2][0]*b[x][2] + a[3][0]*b[x][3];
             this.v[x][1] = a[0][1]*b[x][0] + a[1][1]*b[x][1] + a[2][1]*b[x][2] + a[3][1]*b[x][3];
@@ -93,7 +93,7 @@ class Matrix {
         return this;
     }
 
-    MultiplicationPos(pos) {
+    multiplyPosition(pos) {
         pos[3] = 1;
         return [
             this.v[0][0]*pos[0] + this.v[1][0]*pos[1] + this.v[2][0]*pos[2] + this.v[3][0]*pos[3],

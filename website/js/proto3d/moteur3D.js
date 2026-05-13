@@ -5,8 +5,8 @@ class Moteur3D {
         this.scr_width    = 0;
         this.scr_height   = 0;
         this.background   = [0, 0, 0];
-        this.m_vue        = new Matrix();
-        this.ouverture    = 0.0;
+        this.m_view        = new Matrix();
+        this.fov    = 0.0;
         this.view_xMin    = 0.0;
         this.view_xMax    = 0.0;
         this.view_yMin    = 0.0;
@@ -19,7 +19,7 @@ class Moteur3D {
         this.z_def        = 1000;
         this.fast_display = false;
 
-        this.m_vue.Identite();
+        this.m_view.identity();
 
         this.scr_obj = document.getElementById(obj_id);
         if (!this.scr_obj || !this.scr_obj.getContext) return;
@@ -29,7 +29,7 @@ class Moteur3D {
 
         this.setScreen(320, 240);
         this.setView(-32., 32., -24., 24.);
-        this.setOuverture(45.);
+        this.setFov(45.);
     }
 
     setBackground(r, g, b) {
@@ -45,13 +45,13 @@ class Moteur3D {
         this.scr_height     = h;
         this.scr_obj.width  = w;
         this.scr_obj.height = h;
-        this.preCalculViewport();
+        this.preComputeViewport();
         return this;
     }
 
-    setOuverture(angle_ouverture) {
-        this.ouverture = this.PI_180 * angle_ouverture;
-        this.preCalculViewport();
+    setFov(angle_fov) {
+        this.fov = this.PI_180 * angle_fov;
+        this.preComputeViewport();
         return this;
     }
 
@@ -60,7 +60,7 @@ class Moteur3D {
         this.view_xMax = xMax;
         this.view_yMin = yMin;
         this.view_yMax = yMax;
-        this.preCalculViewport();
+        this.preComputeViewport();
         return this;
     }
 
@@ -74,18 +74,18 @@ class Moteur3D {
         this.fast_display = (mode === 'on');
     }
 
-    preCalculViewport() {
+    preComputeViewport() {
         if (!this.scr_width)  return false;
         if (!this.scr_height) return false;
-        if (!this.ouverture)  return false;
+        if (!this.fov)  return false;
         if (this.view_xMax <= this.view_xMin) return false;
         if (this.view_yMax <= this.view_yMin) return false;
 
         let sx = this.scr_width  / (this.view_xMax - this.view_xMin);
         let sy = this.scr_height / (this.view_yMax - this.view_yMin);
 
-        const factor_x = sx * (this.view_xMax - this.view_xMin) / (2 * Math.tan(this.ouverture));
-        const factor_y = sy * (this.view_xMax - this.view_xMin) / (2 * Math.tan(this.ouverture));
+        const factor_x = sx * (this.view_xMax - this.view_xMin) / (2 * Math.tan(this.fov));
+        const factor_y = sy * (this.view_xMax - this.view_xMin) / (2 * Math.tan(this.fov));
 
         sx = sx * this.view_xMin - 0.5;
         sy = sy * this.view_yMin - 0.5;
@@ -96,69 +96,69 @@ class Moteur3D {
         this.calcul_fy = factor_y;
     }
 
-    lightAmbiant(color) {
-        this.light_amb = color;
+    lightAmbient(color) {
+        this.light_ambient = color;
         return this;
     }
 
     lightAdd(color, length, pos) {
         if (!pos) pos = [0., 0., 0.];
-        this.light_lst.push(new Light(color, length, this.m_vue.MultiplicationPos(pos)));
+        this.light_lst.push(new Light(color, length, this.m_view.multiplyPosition(pos)));
         return this.light_lst.length;
     }
 
     lightMove(id, pos) {
-        if (id) this.light_lst[id - 1].changePos(this.m_vue.MultiplicationPos(pos));
+        if (id) this.light_lst[id - 1].changePos(this.m_view.multiplyPosition(pos));
         return id;
     }
 
     matrixIdentity() {
-        this.m_vue.Identite();
+        this.m_view.identity();
         return this;
     }
 
     matrixPush() {
-        this.m_vue.Push();
+        this.m_view.Push();
         return this;
     }
 
     matrixPop() {
-        this.m_vue.Pop();
+        this.m_view.Pop();
         return this;
     }
 
     matrixTranslate(vx, vy, vz) {
         const m = new Matrix();
         m.Translation(vx, vy, vz);
-        this.m_vue.Multiplication(m);
+        this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateX(rx) {
         const m = new Matrix();
         m.RotationX(this.PI_180 * rx);
-        this.m_vue.Multiplication(m);
+        this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateY(ry) {
         const m = new Matrix();
         m.RotationY(this.PI_180 * ry);
-        this.m_vue.Multiplication(m);
+        this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateZ(rz) {
         const m = new Matrix();
         m.RotationZ(this.PI_180 * rz);
-        this.m_vue.Multiplication(m);
+        this.m_view.multiply(m);
         return this;
     }
 
     matrixScale(sx, sy, sz) {
         const m = new Matrix();
         m.Scale(sx, sy, sz);
-        this.m_vue.Multiplication(m);
+        this.m_view.multiply(m);
         return this;
     }
 
@@ -181,7 +181,7 @@ class Moteur3D {
     }
 
     drawObject(obj) {
-        obj.ptTransform(this.m_vue);
+        obj.ptTransform(this.m_view);
         obj.ptProjection(this);
         if (this.fast_display) {
             obj.fcDrawFast(this);
