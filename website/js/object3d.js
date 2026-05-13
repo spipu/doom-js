@@ -112,59 +112,6 @@ class Object3d {
         return this;
     }
 
-    loadASE(nom_ase, center, scale, color) {
-        if (!center) center = [0., 0., 0.];
-        if (!scale)  scale  = 1.;
-
-        center[0] = parseFloat(center[0]);
-        center[1] = parseFloat(center[1]);
-        center[2] = parseFloat(center[2]);
-
-        const objet = this;
-        const xhr   = new XMLHttpRequest();
-        xhr.open('GET', nom_ase, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                objet.loadASE_CB(xhr.responseText, center, scale, color);
-            }
-        };
-        xhr.send(null);
-
-        return this;
-    }
-
-    loadASE_CB(result, center, scale, color) {
-        result = result.replace(/\s+/gi, ' ');
-        result = result.split('GEOMOBJECT');
-
-        let nb_pts  = 0;
-        let nb      = 0;
-        let matches = null;
-        const nb_obj = result.length;
-
-        for (let k = 1; k < nb_obj; k++) {
-            matches = result[k].match(/\*MESH_VERTEX ([\d]+) ([\d\.\-]+) ([\d\.\-]+) ([\d\.\-]+) /g);
-            if (!matches) continue;
-            nb = matches.length;
-
-            for (let i = 0; i < nb; i++) {
-                const val = matches[i].match(/[\d\.\-]+/g);
-                this.ptAdd(scale*(parseFloat(val[1])-center[0]), scale*(parseFloat(val[2])-center[1]), scale*(parseFloat(val[3])-center[2]));
-            }
-
-            const faces = result[k].match(/\*MESH_FACE ([\d]+): A: ([\d]+) B: ([\d]+) C: ([\d]+) /g);
-            if (!faces) { nb_pts += nb; continue; }
-
-            for (let i = 0; i < faces.length; i++) {
-                const val = faces[i].match(/[\d]+/g);
-                this.fcAdd(nb_pts+parseInt(val[1], 10)+1, nb_pts+parseInt(val[2], 10)+1, nb_pts+parseInt(val[3], 10)+1, color);
-            }
-
-            nb_pts += nb;
-        }
-        this.ready();
-    }
-
     ready() {
         this.is_ready = true;
         return this;
