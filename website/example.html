@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - exemple simple</title>
+        <title>Proto3d - example</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini moteur 3D en javascript" /> 
-        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Title"              content="mini 3D engine in javascript" /> 
+        <meta name="Description"        content="3D engine, javascript" />
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />  
         <meta name="Copyright"          content="(c)2026 Spipu" />
@@ -17,7 +17,7 @@ div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
         </style>
     </head>
-    <body onload="afficher();">
+    <body>
         <canvas id="canvasElem"></canvas><br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="./js/object3d.js" ></script>
@@ -28,9 +28,9 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script>
 object3dFactory.load('lotus', './objects/lotus.obj.json');
 
-function afficher()
+function render()
 {
-    if (!object3dFactory.get('lotus')) { setTimeout(afficher, 500); return false; }
+    if (!object3dFactory.isReady()) { setTimeout(render, 500); return false; }
     
     var image = new Engine3d('canvasElem');
     image.setScreen(800, 600);
@@ -54,6 +54,8 @@ function afficher()
     
     image.drawFinish();
 }
+
+render();
         </script>
     </body>
 </html>
