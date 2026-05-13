@@ -16,11 +16,11 @@ div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
-        <script src="js/proto3d/objet.js" ></script>
-        <script src="js/proto3d/matrix.js" ></script>
-        <script src="js/proto3d/light.js" ></script>
-        <script src="js/proto3d/moteur3D.js" ></script>
-        <script src="js/proto3d/input.js" ></script>
+        <script src="js/object3d.js" ></script>
+        <script src="js/matrix.js" ></script>
+        <script src="js/light.js" ></script>
+        <script src="js/engine3d.js" ></script>
+        <script src="js/input.js" ></script>
         <script>
 let image     = null;
 let fps_count = 0;
@@ -47,19 +47,18 @@ function init3d()
     obj = document.getElementById('obj').value;
 
     if (!lst_obj[obj]) {
-        window[obj] = null;
         const js_add = document.createElement('script');
-        js_add.setAttribute('src', './objets/' + obj + '.obj.js');
+        js_add.setAttribute('src', './objects/' + obj + '.obj.js?v=2');
         document.getElementsByTagName('head')[0].appendChild(js_add);
         lst_obj[obj] = true;
     }
 
-    if (!window[obj] || !window[obj].isReady()) {
+    if (!objectRegistry[obj] || !objectRegistry[obj].isReady()) {
         setTimeout(init3d, 500);
         return;
     }
 
-    image = new Moteur3D('canvasElem');
+    image = new Engine3d('canvasElem');
     image.setScreen(res, res * 24 / 32);
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
@@ -105,7 +104,7 @@ function anim()
     image.matrixRotateX(angle_y);
 
     image.drawInit();
-    image.drawObject(window[obj]);
+    image.drawObject(objectRegistry[obj]);
     image.drawFinish();
     fps_count++;
     setTimeout(anim, 2);
@@ -113,7 +112,7 @@ function anim()
 
 function fps()
 {
-    const current = window[obj];
+    const current = objectRegistry[obj];
     const txt = Math.floor(fps_count / 3) + ' fps'
               + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
     document.getElementById('div_fps').innerHTML = txt;

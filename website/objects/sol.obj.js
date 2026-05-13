@@ -1,14 +1,14 @@
-var size = 10;
-var sol = new Objet('sol');
+const size = 10;
+const sol = objectRegistry['sol'] = new Object3d('sol');
 
-for(var z=-size; z<=size; z++)
-    for(var x=-size; x<=size; x++)
+for (let z=-size; z<=size; z++)
+    for (let x=-size; x<=size; x++)
         sol.ptAdd(30.*x/size, 0, 20*z/size);
 
 
-for(var l=0; l<2*size; l++)
+for (let l=0; l<2*size; l++)
 {
-    for(var k=0; k<2*size; k++)
+    for (let k=0; k<2*size; k++)
     {
         var i0 = (k+0)+(l+0)*(2*size+1)+1;
         var i1 = (k+1)+(l+0)*(2*size+1)+1;

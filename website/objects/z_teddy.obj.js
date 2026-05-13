@@ -1,5 +1,5 @@
 // teddy
-var points=[[7.2482,41.036,0.5683],
+const points=[[7.2482,41.036,0.5683],
 [8.5206,40.3576,0.7332],
 [6.1898,40.4797,0.6164],
 [5.9361,40.6507,0.0815],
@@ -259,7 +259,7 @@ var points=[[7.2482,41.036,0.5683],
 [14.8719,25.7958,19.7953],
 [16.7741,27.8018,18.5344]];
 
-var faces=[[2,0,1],
+const faces=[[2,0,1],
 [3,0,2],
 [4,0,3],
 [1,0,4],
@@ -710,18 +710,19 @@ var faces=[[2,0,1],
 [248,199,239],
 [199,249,239]];
 
-for(var k=0; k<faces.length; k++)
+for (let k=0; k<faces.length; k++)
 {
-    for(var l=0; l<faces[k].length; l++)
+    let l;
+    for (l=0; l<faces[k].length; l++)
     {
         faces[k][l]++;
     }
-    l = faces[k][0]; 
-    faces[k][0] = faces[k][1]
-   faces[k][1] = l;
+    l = faces[k][0];
+    faces[k][0] = faces[k][1];
+    faces[k][1] = l;
 }
 
-var z_teddy = new Objet('z_teddy')
+objectRegistry['z_teddy'] = new Object3d('z_teddy')
     .ptsAdd(points, [0., 12., 4.], 0.5)
     .fcsAdd(faces)
     .ready();
