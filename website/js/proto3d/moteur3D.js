@@ -1,6 +1,7 @@
+const DEG_TO_RAD = Math.PI / 180;
+
 class Moteur3D {
     constructor(obj_id) {
-        this.PI_180       = Math.PI / 180.0;
         this.scr_id       = obj_id;
         this.scr_width    = 0;
         this.scr_height   = 0;
@@ -50,7 +51,7 @@ class Moteur3D {
     }
 
     setFov(angle_fov) {
-        this.fov = this.PI_180 * angle_fov;
+        this.fov = DEG_TO_RAD * angle_fov;
         this.preComputeViewport();
         return this;
     }
@@ -136,21 +137,21 @@ class Moteur3D {
 
     matrixRotateX(rx) {
         const m = new Matrix();
-        m.rotationX(this.PI_180 * rx);
+        m.rotationX(DEG_TO_RAD * rx);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateY(ry) {
         const m = new Matrix();
-        m.rotationY(this.PI_180 * ry);
+        m.rotationY(DEG_TO_RAD * ry);
         this.m_view.multiply(m);
         return this;
     }
 
     matrixRotateZ(rz) {
         const m = new Matrix();
-        m.rotationZ(this.PI_180 * rz);
+        m.rotationZ(DEG_TO_RAD * rz);
         this.m_view.multiply(m);
         return this;
     }
