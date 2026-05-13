@@ -1,6 +1,5 @@
 class Objet {
     constructor(name) {
-        this.PI_180   = Math.PI / 180.0;
         this.name     = name;
         this.pt_ori   = [];
         this.pt_3d    = [];
@@ -99,8 +98,8 @@ class Objet {
         return this;
     }
 
-    fcGetNb() { return this.fc_nb; }
-    ptGetNb() { return this.pt_nb; }
+    getFaceCount()   { return this.fc_nb; }
+    getVertexCount() { return this.pt_nb; }
 
     fcsAdd(lst, color) {
         if (!color) color = [255., 255., 255.];

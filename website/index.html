@@ -22,51 +22,45 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/proto3d/moteur3D.js" ></script>
         <script src="js/proto3d/input.js" ></script>
         <script>
-var image = null;
-var fps_count = 0;
-var t_1 = 0;
-var t_2 = 0;
-var t_d = 0;
-var lst_obj = new Array();
-var obj='cube';
-var res='';
-var angle_x = 0;
-var angle_y = 0;
+let image     = null;
+let fps_count = 0;
+let t_1       = 0;
+let t_2       = 0;
+let t_d       = 0;
+let obj       = 'cube';
+let res       = '';
+let angle_x   = 0;
+let angle_y   = 0;
 
-var input = new Input();
+const lst_obj = {};
+const input   = new Input();
 input.initMouse('canvasElem');
 
 function init3d()
 {
-    // switch on/off
-    if (image)
-    {
+    if (image) {
         image = null;
-        return true;
+        return;
     }
 
     res = document.getElementById('res').value;
     obj = document.getElementById('obj').value;
 
-    if(!lst_obj[obj])
-    {
-        eval(obj+'=null;');
-        var js_add=document.createElement("script");
-        js_add.setAttribute("type", "text/javascript");
-        js_add.setAttribute("src", "./objets/"+obj+".obj.js");
-        document.getElementsByTagName("head")[0].appendChild(js_add);
+    if (!lst_obj[obj]) {
+        window[obj] = null;
+        const js_add = document.createElement('script');
+        js_add.setAttribute('src', './objets/' + obj + '.obj.js');
+        document.getElementsByTagName('head')[0].appendChild(js_add);
         lst_obj[obj] = true;
     }
 
-    // si l'objet n'est pas encore dispo, on reessaye dans 0.5s
-    if(!eval(obj) || !eval(obj+'.isReady();'))
-    {
+    if (!window[obj] || !window[obj].isReady()) {
         setTimeout(init3d, 500);
-        return false;
+        return;
     }
-    
+
     image = new Moteur3D('canvasElem');
-    image.setScreen(res, res*24/32);
+    image.setScreen(res, res * 24 / 32);
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
@@ -78,65 +72,57 @@ function init3d()
     image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
 
     fastDisplay();
-    
-    t_obj = new Date();
-    t_1 = t_obj.getTime();
-
+    t_1 = new Date().getTime();
     anim();
 }
 
 function anim()
 {
-    if (!image) return false;
-    t_obj = new Date();
+    if (!image) return;
     t_2 = t_1;
-    t_1 = t_obj.getTime();
-    t_d = (t_1-t_2);
+    t_1 = new Date().getTime();
+    t_d = t_1 - t_2;
 
-    var x = input.readMouseX(); 
-    var y = input.readMouseY();
-    if (x<0)
-    {
-        x=0;
-        y=0;
-    }
-    else
-    {
-        x = 2.*(x - Math.trunc(image.scr_width / 2))/image.scr_width; 
-        y = 2.*(y - Math.trunc(image.scr_height / 2))/image.scr_height;
+    let x = input.readMouseX();
+    let y = input.readMouseY();
+    if (x < 0) {
+        x = 0;
+        y = 0;
+    } else {
+        x = 2. * (x - Math.trunc(image.scr_width  / 2)) / image.scr_width;
+        y = 2. * (y - Math.trunc(image.scr_height / 2)) / image.scr_height;
     }
 
-    if (Math.abs(x)<0.1) x=0;
-    if (Math.abs(y)<0.1) y=0;
+    if (Math.abs(x) < 0.1) x = 0;
+    if (Math.abs(y) < 0.1) y = 0;
 
-    angle_x-= x*0.1*t_d;
-    angle_y+= y*0.1*t_d;
-    
+    angle_x -= x * 0.1 * t_d;
+    angle_y += y * 0.1 * t_d;
+
     image.matrixIdentity();
     image.matrixTranslate(0, 0, 35);
     image.matrixRotateY(angle_x);
     image.matrixRotateX(angle_y);
 
     image.drawInit();
-    image.drawObject(eval(obj));
+    image.drawObject(window[obj]);
     image.drawFinish();
     fps_count++;
-    setTimeout(anim,  2);
+    setTimeout(anim, 2);
 }
 
 function fps()
 {
-    var txt = '';
-    txt+= Math.floor(fps_count / 3)+' fps';
-    txt+= ' ('+eval(obj).fcGetNb()+' pts | '+eval(obj).ptGetNb()+' faces)';
+    const current = window[obj];
+    const txt = Math.floor(fps_count / 3) + ' fps'
+              + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
     document.getElementById('div_fps').innerHTML = txt;
-    fps_count=0;
+    fps_count = 0;
 }
 
 function change()
 {
-    if (image)
-    {
+    if (image) {
         image = null;
         init3d();
     }
@@ -144,10 +130,7 @@ function change()
 
 function fastDisplay()
 {
-    if (document.getElementById('check_fastdisplay').checked)
-        image.fastDisplay('on');
-    else
-        image.fastDisplay('off');
+    image.fastDisplay(document.getElementById('check_fastdisplay').checked ? 'on' : 'off');
 }
 
 setInterval(fps, 3000);
