@@ -2,11 +2,10 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
     constructor(obj_id) {
-        this.scr_id    = obj_id;
-        this.scr_width = 0;
+        this.scr_width  = 0;
         this.scr_height = 0;
         this.background = [0, 0, 0];
-        this.m_view    = new Matrix();
+        this.m_view     = new Matrix();
         this.fov       = 0.0;
         this.view_xMin = 0.0;
         this.view_xMax = 0.0;
@@ -86,10 +85,10 @@ class Engine3d {
         sx = sx * this.view_xMin - 0.5;
         sy = sy * this.view_yMin - 0.5;
 
-        this.calcul_sx = sx;
-        this.calcul_sy = sy;
-        this.calcul_fx = factor_x;
-        this.calcul_fy = factor_y;
+        this.proj_offsetX = sx;
+        this.proj_offsetY = sy;
+        this.proj_scaleX = factor_x;
+        this.proj_scaleY = factor_y;
     }
 
     lightAmbient(color) {
