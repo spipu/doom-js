@@ -18,10 +18,6 @@ class Object3dRenderer {
         return this;
     }
 
-    get currentCode() {
-        return this._currentCode;
-    }
-
     begin(engine) {
         this._renderers[this._currentCode].begin(engine);
     }

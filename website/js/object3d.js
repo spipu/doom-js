@@ -135,8 +135,8 @@ class Object3d {
         this.pt_2d = [];
         for (let k = 0; k < this.pt_nb; k++) {
             this.pt_2d[k] = [
-                Math.trunc(engine.calcul_fx * this.pt_3d[k][0] / this.pt_3d[k][2] - engine.calcul_sx),
-                Math.trunc(engine.calcul_fy * this.pt_3d[k][1] / this.pt_3d[k][2] - engine.calcul_sy),
+                Math.trunc(engine.proj_scaleX * this.pt_3d[k][0] / this.pt_3d[k][2] - engine.proj_offsetX),
+                Math.trunc(engine.proj_scaleY * this.pt_3d[k][1] / this.pt_3d[k][2] - engine.proj_offsetY),
                 this.pt_3d[k][2],
             ];
         }
