@@ -1,11 +1,11 @@
-const col_metal = [200, 200, 200];
-const col_roue  = [50, 50, 50];
-const col_vitre = [50, 50, 250];
+var col_metal = [200, 200, 200];
+var col_roue  = [50, 50, 50];
+var col_vitre = [50, 50, 250];
 
-const p = 3.;
-const ps = p+0.2;
+var p = 3.;
+var ps = p+0.2;
 
-objectRegistry['tuture'] = new Object3d('tuture')
+objectRegistry['tuture'] = new Object3d()
      // face gauche
     .ptAdd( 8, 1, -p) //1
     .ptAdd( 8, 3, -p) //2

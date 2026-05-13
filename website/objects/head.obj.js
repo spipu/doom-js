@@ -1,5 +1,5 @@
 // Head
-const points=[
+var points=[
 [3,-0.7,26.5],
 [-11,-18.2,-13.7],
 [23.6,10.9,-7.3],
@@ -876,7 +876,7 @@ const points=[
 [14.4,-18.9,-10.6],
 [21.9,6.8,-7]];
 
-const faces=[
+var faces=[
 [455,586,290],
 [863,819,80],
 [199,301,666],
@@ -2550,7 +2550,7 @@ for (let k=0; k<faces.length; k++)
    faces[k][1] = l;
 }
 
-objectRegistry['z_head'] = new Object3d('z_head')
+objectRegistry['head'] = new Object3d()
     .ptsAdd(points, [0., 0., 0.], 0.6)
     .fcsAdd(faces)
     .ready();

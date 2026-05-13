@@ -1,8 +1,8 @@
-const size = 10;
-const sol = objectRegistry['sol'] = new Object3d('sol');
+var size = 10;
+var sol = objectRegistry['sol'] = new Object3d();
 
-for (let z=-size; z<=size; z++)
-    for (let x=-size; x<=size; x++)
+for (var z=-size; z<=size; z++)
+    for (var x=-size; x<=size; x++)
         sol.ptAdd(30.*x/size, 0, 20*z/size);
 
 
