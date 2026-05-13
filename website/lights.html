@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - exemple de jeu</title>
+        <title>Proto3d - lights</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini moteur 3D en javascript" />
-        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Title"              content="mini 3D engine in javascript" />
+        <meta name="Description"        content="3D engine, javascript" />
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
@@ -77,10 +77,10 @@ function init3d()
     light3 = image.lightAdd([0., 0., 255.], 30);
 
     t_1 = new Date().getTime();
-    anim();
+    animate();
 }
 
-function anim()
+function animate()
 {
     if (!image) return;
     t_2 = t_1;
@@ -128,7 +128,7 @@ function anim()
     image.drawObject(object3dFactory.get('ground'));
     image.drawFinish();
     fps_count++;
-    setTimeout(anim, 1);
+    setTimeout(animate, 1);
 }
 
 function displayFps()

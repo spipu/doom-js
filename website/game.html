@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - exemple de jeu</title>
+        <title>Proto3d - game</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini moteur 3D en javascript" />
-        <meta name="Description"        content="moteur 3D, javascript" />
+        <meta name="Title"              content="mini 3D engine in javascript" />
+        <meta name="Description"        content="3D engine, javascript" />
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
@@ -33,7 +33,7 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/input.js" ></script>
         <script>
 object3dFactory.load('ground', 'objects/ground.obj.json');
-object3dFactory.load('tuture', 'objects/tuture.obj.json');
+object3dFactory.load('van', 'objects/van.obj.json');
 
 var image = null;
 var fps_count = 0;
@@ -80,10 +80,10 @@ function init3d()
     light3 = image.lightAdd([200., 0., 0.], 5);
 
     t_1 = (new Date()).getTime();
-    anim();
+    animate();
 }
 
-function anim()
+function animate()
 {
     if (!image) return;
     t_2 = t_1;
@@ -123,13 +123,13 @@ function anim()
     image.matrixRotateY(obj_a);
     image.lightMove(light2, [9, 2., 0.]);
     image.lightMove(light3, [-8, 2., 0.]);
-    image.drawObject(object3dFactory.get('tuture'));
+    image.drawObject(object3dFactory.get('van'));
     image.matrixPop();
 
     image.drawObject(object3dFactory.get('ground'));
     image.drawFinish();
     fps_count++;
-    setTimeout(anim, 1);
+    setTimeout(animate, 1);
 }
 
 function displayFps()

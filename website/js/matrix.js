@@ -1,7 +1,7 @@
 class Matrix {
     constructor() {
         this.v    = [[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.]];
-        this.pile = [];
+        this.stack = [];
     }
 
     clear() {
@@ -104,12 +104,12 @@ class Matrix {
     }
 
     push() {
-        this.pile.push(this.v);
+        this.stack.push(this.v);
         return this;
     }
 
     pop() {
-        this.v = this.pile.pop();
+        this.v = this.stack.pop();
         return this;
     }
 
