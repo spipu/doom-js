@@ -3,10 +3,10 @@
     <head>
         <title>Proto3d - exemple</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini moteur 3D en javascript" /> 
+        <meta name="Title"              content="mini moteur 3D en javascript" />
         <meta name="Description"        content="moteur 3D, javascript" />
         <meta name="Author"             content="Spipu" />
-        <meta name="Reply-to"           content="webmaster@spipu.net" />  
+        <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
         <style>
@@ -19,7 +19,7 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
     </head>
     <body>
         Objet :
-        <select id="obj" onchange="changeObject();">
+        <select id="obj">
             <option value="cube" selected="selected">cube</option>
             <option value="helico_military">helico_military</option>
             <option value="helico_civil"   >helico_civil   </option>
@@ -35,15 +35,15 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
             <option value="teddy"          >teddy          </option>
         </select>
          - Resolution
-         <select id="res" onchange="changeResolution();">
+         <select id="res">
             <option value="160">160x120</option>
             <option value="320" selected="selected">320x240</option>
             <option value="640">640x480</option>
             <option value="800">800x600</option>
             <option value="1024">1024x768</option>
         </select>
-        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="switchFastDisplay();" onchange="switchFastDisplay();" onkeyup="switchFastDisplay();" /> fastDisplay
-        - <input type="button" onclick="switchStartStop()" value="Start / Stop" /><br />
+        - <input type="checkbox" value="1" id="check_fastdisplay" /> fastDisplay
+        - <input type="button" id="btn_startstop" value="Start / Stop" /><br />
         <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
@@ -62,17 +62,28 @@ let fps_count = 0;
 let t_1       = 0;
 let t_2       = 0;
 let t_d       = 0;
-let res       = '';
 let angle_x   = 0;
 let angle_y   = 0;
 
 const input = new Input();
-input.initMouse('canvasElem');
+
+function init()
+{
+    input.initMouse('canvasElem');
+
+    document.getElementById('obj').addEventListener('change', changeObject);
+    document.getElementById('res').addEventListener('change', changeResolution);
+    document.getElementById('check_fastdisplay').addEventListener('change', switchFastDisplay);
+    document.getElementById('btn_startstop').addEventListener('click', switchStartStop);
+
+    setInterval(displayFps, 3000);
+
+    changeObject();
+}
 
 function changeObject()
 {
-    let obj = document.getElementById('obj').value;
-
+    const obj = document.getElementById('obj').value;
     object3dFactory.reset();
     object3dFactory.load('object', './objects/' + obj + '.obj.json');
 }
@@ -109,7 +120,7 @@ function stop()
 
 function start()
 {
-    let res = document.getElementById('res').value;
+    const res = document.getElementById('res').value;
 
     image = new Engine3d('canvasElem');
     image.setScreen(res, res * 24 / 32);
@@ -180,10 +191,7 @@ function displayFps()
     fps_count = 0;
 }
 
-setInterval(displayFps, 3000);
-
-document.addEventListener('DOMContentLoaded', changeObject);
-
+init();
         </script>
     </body>
 </html>
