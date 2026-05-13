@@ -1601,7 +1601,7 @@ var faces=[[3,2,1],
 [555,383,384],
 [555,377,383]];
 
-objectRegistry['dyno'] = new Object3d()
+object3dFactory.create('dyno')
     .ptsAdd(points, [0., 0., -100.], 0.15)
     .fcsAdd(faces)
     .ready();

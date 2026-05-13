@@ -3,7 +3,7 @@ var nb_z = 10.;
 var rayon = 15.;
 var f = Math.PI/180.0;
 
-var sphere = objectRegistry['sphere'] = new Object3d();
+var sphere = object3dFactory.create('sphere');
 
 for (let a=0.; a<=360.; a+=360./nb_r)
 {

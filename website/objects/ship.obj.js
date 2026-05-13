@@ -850,7 +850,7 @@ var faces=[[212,206,33,27,21,15,9,3,224,218],
 [427,428,424,415],
 [428,425,423,424]];
 
-objectRegistry['ship'] = new Object3d()
+object3dFactory.create('ship')
     .ptsAdd(points, [0., 0., 0.], 0.13)
     .fcsAdd(faces)
     .ready();

@@ -3153,7 +3153,7 @@ for (let k=0; k<faces.length; k++)
    faces[k][1] = l;
 }
 
-objectRegistry['plane'] = new Object3d()
+object3dFactory.create('plane')
     .ptsAdd(points, [-15., 15., 0.], 0.6)
     .fcsAdd(faces)
     .ready();
