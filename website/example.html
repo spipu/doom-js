@@ -21,8 +21,9 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="./js/matrix.js" ></script>
         <script src="./js/light.js" ></script>
         <script src="./js/engine3d.js" ></script>
-        <script src="./objects/lotus.obj.js" ></script>
         <script>
+object3dFactory.load('lotus', './objects/lotus.obj.json');
+
 function afficher()
 {
     if (!object3dFactory.get('lotus')) { setTimeout(afficher, 500); return false; }

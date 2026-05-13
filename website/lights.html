@@ -3,10 +3,10 @@
     <head>
         <title>Proto3d - exemple de jeu</title>
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini moteur 3D en javascript" /> 
+        <meta name="Title"              content="mini moteur 3D en javascript" />
         <meta name="Description"        content="moteur 3D, javascript" />
         <meta name="Author"             content="Spipu" />
-        <meta name="Reply-to"           content="webmaster@spipu.net" />  
+        <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
         <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
         <style>
@@ -22,9 +22,10 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/light.js" ></script>
         <script src="js/engine3d.js" ></script>
         <script src="js/input.js" ></script>
-        <script src="objects/sol.obj.js" ></script>
-        <script src="objects/light.obj.js" ></script>
         <script>
+object3dFactory.load('ground', 'objects/ground.obj.json');
+object3dFactory.load('light',  'objects/light.obj.json');
+
 var image = null;
 var fps_count = 0;
 var t_1 = 0;
@@ -46,7 +47,12 @@ function init3d()
     if (image)
     {
         image = null;
-        return true;
+        return;
+    }
+
+    if (!object3dFactory.get('ground') || !object3dFactory.get('light')) {
+        setTimeout(init3d, 100);
+        return;
     }
 
     image = new Engine3d('canvasElem');
@@ -60,20 +66,18 @@ function init3d()
     light1 = image.lightAdd([255., 0., 0.], 30);
     light2 = image.lightAdd([0., 255., 0.], 30);
     light3 = image.lightAdd([0., 0., 255.], 30);
-    
-    var t_obj = new Date();
-    t_1 = t_obj.getTime();
-    
+
+    t_1 = new Date().getTime();
     anim();
 }
+
 function anim()
 {
-    if (!image) return false;
-    var t_obj = new Date();
+    if (!image) return;
     t_2 = t_1;
-    t_1 = t_obj.getTime();
+    t_1 = new Date().getTime();
     t_d = (t_1-t_2);
-    
+
     if (input.readKeyUp())    obj_z+= t_d*obj_dv;
     if (input.readKeyDown())  obj_z-= t_d*obj_dv;
     if (input.readKeyLeft())  obj_r-= t_d*obj_dv;
@@ -96,12 +100,12 @@ function anim()
     image.lightMove(light1, p1);
     image.lightMove(light2, p2);
     image.lightMove(light3, p3);
-    
+
     image.matrixPush();
     image.matrixTranslate(p1[0], p1[1], p1[2]);
     image.drawObject(object3dFactory.get('light'));
     image.matrixPop();
-    
+
     image.matrixPush();
     image.matrixTranslate(p2[0], p2[1], p2[2]);
     image.drawObject(object3dFactory.get('light'));
@@ -111,11 +115,11 @@ function anim()
     image.matrixTranslate(p3[0], p3[1], p3[2]);
     image.drawObject(object3dFactory.get('light'));
     image.matrixPop();
-    
-    image.drawObject(object3dFactory.get('sol'));
+
+    image.drawObject(object3dFactory.get('ground'));
     image.drawFinish();
     fps_count++;
-    setTimeout(anim,  1);
+    setTimeout(anim, 1);
 }
 
 function fps()
@@ -125,7 +129,6 @@ function fps()
 }
 
 setInterval(fps, 3000);
-
 </script>
     </head>
     <body>

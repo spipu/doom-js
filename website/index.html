@@ -48,9 +48,7 @@ function init3d()
     obj = document.getElementById('obj').value;
 
     if (!lst_obj[obj]) {
-        const js_add = document.createElement('script');
-        js_add.setAttribute('src', './objects/' + obj + '.obj.js?v=2');
-        document.getElementsByTagName('head')[0].appendChild(js_add);
+        object3dFactory.load(obj, './objects/' + obj + '.obj.json');
         lst_obj[obj] = true;
     }
 
