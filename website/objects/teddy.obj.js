@@ -722,7 +722,7 @@ for (let k=0; k<faces.length; k++)
     faces[k][1] = l;
 }
 
-objectRegistry['teddy'] = new Object3d()
+object3dFactory.create('teddy')
     .ptsAdd(points, [0., 12., 4.], 0.5)
     .fcsAdd(faces)
     .ready();

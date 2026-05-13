@@ -17,6 +17,7 @@ div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
         <script src="js/object3d.js" ></script>
+        <script src="js/object3dFactory.js" ></script>
         <script src="js/matrix.js" ></script>
         <script src="js/light.js" ></script>
         <script src="js/engine3d.js" ></script>
@@ -113,10 +114,10 @@ function anim()
     image.matrixRotateY(obj_a);
     image.lightMove(light2, [9, 2., 0.]);
     image.lightMove(light3, [-8, 2., 0.]);
-    image.drawObject(objectRegistry['tuture']);
+    image.drawObject(object3dFactory.get('tuture'));
     image.matrixPop();
     
-    image.drawObject(objectRegistry['sol']);
+    image.drawObject(object3dFactory.get('sol'));
 
     image.drawFinish();
     fps_count++;

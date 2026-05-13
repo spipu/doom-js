@@ -1,5 +1,5 @@
 var size = 10;
-var sol = objectRegistry['sol'] = new Object3d();
+var sol = object3dFactory.create('sol');
 
 for (var z=-size; z<=size; z++)
     for (var x=-size; x<=size; x++)

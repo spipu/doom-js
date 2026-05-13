@@ -5,7 +5,7 @@ var col_vitre = [50, 50, 250];
 var p = 3.;
 var ps = p+0.2;
 
-objectRegistry['tuture'] = new Object3d()
+object3dFactory.create('tuture')
      // face gauche
     .ptAdd( 8, 1, -p) //1
     .ptAdd( 8, 3, -p) //2

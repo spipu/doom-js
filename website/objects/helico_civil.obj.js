@@ -1947,7 +1947,7 @@ var faces=[[1,6,7],
 [673,625,624],
 [674,675,625]];
 
-objectRegistry['helico_civil'] = new Object3d()
+object3dFactory.create('helico_civil')
     .ptsAdd(points, [0., 0., 0.], 0.8)
     .fcsAdd(faces)
     .ready();

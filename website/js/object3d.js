@@ -1,5 +1,3 @@
-var objectRegistry = {};
-
 class Object3d {
     constructor() {
         this.pt_ori   = [];

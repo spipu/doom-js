@@ -2550,7 +2550,7 @@ for (let k=0; k<faces.length; k++)
    faces[k][1] = l;
 }
 
-objectRegistry['head'] = new Object3d()
+object3dFactory.create('head')
     .ptsAdd(points, [0., 0., 0.], 0.6)
     .fcsAdd(faces)
     .ready();

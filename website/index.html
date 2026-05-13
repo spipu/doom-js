@@ -17,6 +17,7 @@ div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
         <script src="js/object3d.js" ></script>
+        <script src="js/object3dFactory.js" ></script>
         <script src="js/matrix.js" ></script>
         <script src="js/light.js" ></script>
         <script src="js/engine3d.js" ></script>
@@ -53,7 +54,7 @@ function init3d()
         lst_obj[obj] = true;
     }
 
-    if (!objectRegistry[obj] || !objectRegistry[obj].isReady()) {
+    if (!object3dFactory.get(obj)) {
         setTimeout(init3d, 500);
         return;
     }
@@ -104,7 +105,7 @@ function anim()
     image.matrixRotateX(angle_y);
 
     image.drawInit();
-    image.drawObject(objectRegistry[obj]);
+    image.drawObject(object3dFactory.get(obj));
     image.drawFinish();
     fps_count++;
     setTimeout(anim, 2);
@@ -112,7 +113,7 @@ function anim()
 
 function fps()
 {
-    const current = objectRegistry[obj];
+    const current = object3dFactory.get(obj);
     const txt = Math.floor(fps_count / 3) + ' fps'
               + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
     document.getElementById('div_fps').innerHTML = txt;
