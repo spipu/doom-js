@@ -53,7 +53,7 @@ function init3d()
         return;
     }
 
-    if (!object3dFactory.get('ground') || !object3dFactory.get('tuture')) {
+    if (!object3dFactory.isReady()) {
         setTimeout(init3d, 100);
         return;
     }
