@@ -35,23 +35,47 @@ let angle_y   = 0;
 const input = new Input();
 input.initMouse('canvasElem');
 
-function init3d()
+function changeObject()
+{
+    let obj = document.getElementById('obj').value;
+
+    object3dFactory.reset();
+    object3dFactory.load('object', './objects/' + obj + '.obj.json');
+}
+
+function changeResolution()
 {
     if (image) {
-        image = null;
+        stop();
+        start();
+    }
+}
+
+function switchFastDisplay()
+{
+    if (image) {
+        image.fastDisplay(document.getElementById('check_fastdisplay').checked ? 'on' : 'off');
+    }
+}
+
+function switchStartStop()
+{
+    if (image) {
+        stop();
         return;
     }
 
-    res = document.getElementById('res').value;
+    start();
+}
 
-    if (!object3dFactory.isReady()) {
-        if (object3dFactory._registry['object'] === undefined) {
-            const obj = document.getElementById('obj').value;
-            object3dFactory.load('object', './objects/' + obj + '.obj.json');
-        }
-        setTimeout(init3d, 500);
-        return;
-    }
+function stop()
+{
+    image = null;
+}
+
+function start()
+{
+    let res = document.getElementById('res').value;
 
     image = new Engine3d('canvasElem');
     image.setScreen(res, res * 24 / 32);
@@ -65,14 +89,22 @@ function init3d()
     image.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
     image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
 
-    fastDisplay();
+    switchFastDisplay();
     t_1 = new Date().getTime();
-    anim();
+    display();
 }
 
-function anim()
+function display()
 {
-    if (!image) return;
+    if (!image) {
+        return;
+    }
+
+    if (!object3dFactory.isReady()) {
+        setTimeout(display, 500);
+        return;
+    }
+
     t_2 = t_1;
     t_1 = new Date().getTime();
     t_d = t_1 - t_2;
@@ -102,39 +134,27 @@ function anim()
     image.drawObject(object3dFactory.get('object'));
     image.drawFinish();
     fps_count++;
-    setTimeout(anim, 2);
+    setTimeout(display, 2);
 }
 
-function fps()
+function displayFps()
 {
     const current = object3dFactory.get('object');
     if (!current) return;
-    const txt = Math.floor(fps_count / 3) + ' fps'
-              + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
-    document.getElementById('div_fps').innerHTML = txt;
+    document.getElementById('div_fps').innerHTML = Math.floor(fps_count / 3) + ' fps'
+        + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
     fps_count = 0;
 }
 
-function change()
-{
-    image = null;
-    object3dFactory.reset();
-    const obj = document.getElementById('obj').value;
-    object3dFactory.load('object', './objects/' + obj + '.obj.json');
-    init3d();
-}
+setInterval(displayFps, 3000);
 
-function fastDisplay()
-{
-    image.fastDisplay(document.getElementById('check_fastdisplay').checked ? 'on' : 'off');
-}
+document.addEventListener('DOMContentLoaded', changeObject);
 
-setInterval(fps, 3000);
 </script>
     </head>
     <body>
         Objet :
-        <select id="obj" onchange="change();">
+        <select id="obj" onchange="changeObject();">
             <option value="cube" selected="selected">cube</option>
             <option value="helico_military">helico_military</option>
             <option value="helico_civil"   >helico_civil   </option>
@@ -150,15 +170,15 @@ setInterval(fps, 3000);
             <option value="teddy"          >teddy          </option>
         </select>
          - Resolution
-         <select id="res" onchange="change();">
+         <select id="res" onchange="changeResolution();">
             <option value="160">160x120</option>
             <option value="320" selected="selected">320x240</option>
             <option value="640">640x480</option>
             <option value="800">800x600</option>
             <option value="1024">1024x768</option>
         </select>
-        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="fastDisplay();" onchange="fastDisplay();" onkeyup="fastDisplay();" /> fastDisplay
-        - <input type="button" onclick="init3d()" value="Start / Stop" /><br />
+        - <input type="checkbox" value="1" id="check_fastdisplay" onclick="switchFastDisplay();" onchange="switchFastDisplay();" onkeyup="switchFastDisplay();" /> fastDisplay
+        - <input type="button" onclick="switchStartStop()" value="Start / Stop" /><br />
         <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
