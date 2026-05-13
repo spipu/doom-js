@@ -37,12 +37,16 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
          - Resolution
          <select id="res">
             <option value="160">160x120</option>
-            <option value="320" selected="selected">320x240</option>
+            <option value="320" selected>320x240</option>
             <option value="640">640x480</option>
             <option value="800">800x600</option>
             <option value="1024">1024x768</option>
         </select>
-        - <input type="checkbox" value="1" id="check_fastdisplay" /> fastDisplay
+        - Renderer:
+        <select id="renderer">
+            <option value="full" selected>full</option>
+            <option value="fast">fast</option>
+        </select>
         - <input type="button" id="btn_startstop" value="Start / Stop" /><br />
         <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
         <br />
@@ -54,6 +58,10 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/object3dFactory.js" ></script>
         <script src="js/matrix.js" ></script>
         <script src="js/light.js" ></script>
+        <script src="js/zBuffer.js" ></script>
+        <script src="js/object3dRendererFast.js" ></script>
+        <script src="js/object3dRendererFull.js" ></script>
+        <script src="js/object3dRenderer.js" ></script>
         <script src="js/engine3d.js" ></script>
         <script src="js/input.js" ></script>
         <script>
@@ -73,7 +81,7 @@ function init()
 
     document.getElementById('obj').addEventListener('change', changeObject);
     document.getElementById('res').addEventListener('change', changeResolution);
-    document.getElementById('check_fastdisplay').addEventListener('change', switchFastDisplay);
+    document.getElementById('renderer').addEventListener('change', changeRenderer);
     document.getElementById('btn_startstop').addEventListener('click', switchStartStop);
 
     setInterval(displayFps, 3000);
@@ -96,10 +104,10 @@ function changeResolution()
     }
 }
 
-function switchFastDisplay()
+function changeRenderer()
 {
     if (image) {
-        image.fastDisplay(document.getElementById('check_fastdisplay').checked ? 'on' : 'off');
+        image.setRenderer(document.getElementById('renderer').value);
     }
 }
 
