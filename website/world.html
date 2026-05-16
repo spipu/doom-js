@@ -29,10 +29,10 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
 // let cam_z = -5.25;
 // let cam_yaw = 180;
 
-let cam_x   = -3.74;
+let cam_x   =  7.50;
 let cam_y   = -0.70;
-let cam_z   = -8.21;
-let cam_yaw =  -22.9;
+let cam_z   = -14.44;
+let cam_yaw =  -28.2;
 
 const MOVE_SPEED = 0.004;
 const TURN_SPEED = 0.09;
@@ -51,6 +51,7 @@ let light_ids = [];
 const input = new Input();
 input.initKeyboard();
 object3dFactory.load('object', './world/objects/map.obj.json');
+object3dFactory.load('porte',  './world/objects/porte.obj.json');
 
 function start()
 {
@@ -61,7 +62,7 @@ function start()
 
     image = new Engine3d('canvasElem');
     image.setScreen(640, 480);
-    image.setBackground(35, 35, 35);
+    image.setBackground(120, 100, 140);
     image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
     image.setZBuffer(0.1, 100);
@@ -103,6 +104,12 @@ function display()
 
     image.drawInit();
     image.drawObject(object3dFactory.get('object'));
+
+    image.matrixPush();
+    image.matrixTranslate(5.25, 0.0, -10.40);
+    image.drawObject(object3dFactory.get('porte'));
+    image.matrixPop();
+
     image.drawFinish();
 
     document.getElementById('debug').innerText =
