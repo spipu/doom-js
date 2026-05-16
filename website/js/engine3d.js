@@ -19,6 +19,13 @@ class Engine3d {
         this._renderer.addRenderer(new Object3dRendererFlat());
         this._renderer.addRenderer(new Object3dRendererFast());
 
+        this._fpsEnabled   = false;
+        this._fpsCount     = 0;
+        this._fpsDisplay   = 0;
+        this._fpsLastCheck = 0;
+        this._deltaTime    = 0;
+        this._deltaLast    = new Date().getTime();
+
         this.m_view.identity();
 
         this.scr_obj = document.getElementById(obj_id);
@@ -29,6 +36,25 @@ class Engine3d {
         this.setScreen(320, 240);
         this.setView(-32., 32., -24., 24.);
         this.setFov(45.);
+    }
+
+    enableFps() {
+        this._fpsEnabled   = true;
+        this._fpsCount     = 0;
+        this._fpsDisplay   = 0;
+        this._fpsLastCheck = (new Date()).getTime();
+        return this;
+    }
+
+    calculateDeltaTime() {
+        const now = new Date().getTime();
+        this._deltaTime = now - this._deltaLast;
+        this._deltaLast = now;
+        return this;
+    }
+
+    getDeltaTime() {
+        return this._deltaTime;
     }
 
     setBackground(r, g, b) {
@@ -161,6 +187,32 @@ class Engine3d {
 
     drawFinish() {
         this._renderer.end(this);
+        this.drawFps();
         return this;
+    }
+
+    drawFps() {
+        if (!this._fpsEnabled) {
+            return
+        }
+
+        const now = new Date().getTime();
+        this._fpsCount++;
+
+        if (now - this._fpsLastCheck >= 1000) {
+            this._fpsDisplay   = Math.floor(this._fpsCount * 1000 / (now - this._fpsLastCheck));
+            this._fpsCount     = 0;
+            this._fpsLastCheck = now;
+        }
+
+        const text = this._fpsDisplay + ' fps';
+        this.scr_ctx.save();
+        this.scr_ctx.font        = '12px verdana';
+        this.scr_ctx.shadowColor = 'black';
+        this.scr_ctx.shadowBlur  = 3;
+        this.scr_ctx.fillStyle   = 'white';
+        const w = this.scr_ctx.measureText(text).width;
+        this.scr_ctx.fillText(text, this.scr_width - w - 5, this.scr_height - 5);
+        this.scr_ctx.restore();
     }
 }

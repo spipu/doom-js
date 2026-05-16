@@ -22,7 +22,6 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <i>click on the "Start / Stop" button, and use the keyboard to move the lights</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
-        <span id="div_fps"></span><br />
         <br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/loader.js" ></script>
@@ -31,10 +30,6 @@ object3dFactory.load('ground', 'objects/ground.obj.json');
 object3dFactory.load('light',  'objects/light.obj.json');
 
 var image = null;
-var fps_count = 0;
-var t_1 = 0;
-var t_2 = 0;
-var t_d = 0;
 var obj_z = 25.;
 var obj_r = 5.;
 var obj_dv = 0.015;
@@ -65,22 +60,21 @@ function init3d()
     image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
     image.setZBuffer(1, 100);
+    image.enableFps();
 
     image.lightAmbient([20., 20., 20.]);
     light1 = image.lightAdd([255., 0., 0.], 30);
     light2 = image.lightAdd([0., 255., 0.], 30);
     light3 = image.lightAdd([0., 0., 255.], 30);
 
-    t_1 = new Date().getTime();
     animate();
 }
 
 function animate()
 {
     if (!image) return;
-    t_2 = t_1;
-    t_1 = new Date().getTime();
-    t_d = (t_1-t_2);
+    image.calculateDeltaTime();
+    const t_d = image.getDeltaTime();
 
     if (input.readKeyUp())    obj_z+= t_d*obj_dv;
     if (input.readKeyDown())  obj_z-= t_d*obj_dv;
@@ -122,17 +116,8 @@ function animate()
 
     image.drawObject(object3dFactory.get('ground'));
     image.drawFinish();
-    fps_count++;
     setTimeout(animate, 1);
 }
-
-function displayFps()
-{
-    document.getElementById('div_fps').innerHTML = Math.floor(fps_count / 3)+' FPS';
-    fps_count=0;
-}
-
-setInterval(displayFps, 3000);
         </script>
     </body>
 </html>
