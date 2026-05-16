@@ -18,18 +18,24 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
     </head>
     <body>
         <canvas id="canvasElem"></canvas>
+        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/loader.js" ></script>
         <script>
 
-// Camera state � starting position
-let cam_x   = -5.25;
-let cam_y   = -0.80;
-let cam_z   = -5.25;
-let cam_yaw =  180;  // face toward negative Z where the map is
+// Camera state and starting position
+// let cam_x = -5.25;
+// let cam_y = -0.70;
+// let cam_z = -5.25;
+// let cam_yaw = 180;
 
-const MOVE_SPEED = 0.008;
-const TURN_SPEED = 0.08;
+let cam_x   = -3.74;
+let cam_y   = -0.70;
+let cam_z   = -8.21;
+let cam_yaw =  -22.9;
+
+const MOVE_SPEED = 0.004;
+const TURN_SPEED = 0.09;
 
 // Static light world positions
 const LIGHTS = [
@@ -58,7 +64,7 @@ function start()
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
-    image.setZBuffer(1, 100);
+    image.setZBuffer(0.1, 100);
     image.enableFps();
 
     image.lightAmbient([20., 20., 20.]);
@@ -98,6 +104,10 @@ function display()
     image.drawInit();
     image.drawObject(object3dFactory.get('object'));
     image.drawFinish();
+
+    document.getElementById('debug').innerText =
+        'x=' + cam_x.toFixed(2) + '  y=' + cam_y.toFixed(2) + '  z=' + cam_z.toFixed(2) + '  yaw=' + cam_yaw.toFixed(1);
+
     setTimeout(display, 2);
 }
 

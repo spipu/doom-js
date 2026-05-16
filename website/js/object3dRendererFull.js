@@ -26,40 +26,97 @@ class Object3dRendererFull extends Object3dRendererBase {
             obj.fc_inf[k][1] = this._faceNormal2d(obj.pt_2d[fc[0]], obj.pt_2d[fc[1]], obj.pt_2d[fc[2]]);
         }
 
-        this._p1 = [];
-        this._p2 = [];
-        this._p3 = [];
-
         for (let k = 0; k < obj.fc_nb; k++) {
-            if (!this._prepare(obj, engine, obj.fc_lst[k], obj.fc_inf[k])) continue;
+            const fc     = obj.fc_lst[k];
+            const fc_inf = obj.fc_inf[k];
 
-            if (obj.fc_lst[k][4] !== null)
-                this._renderTexture(engine, obj.fc_lst[k][6], obj.tx_lst[obj.fc_lst[k][4]]);
-            else
-                this._renderNoTexture(engine, obj.fc_lst[k][6]);
+            const v0 = this._buildVertex(engine, fc, fc_inf, obj, 0);
+            const v1 = this._buildVertex(engine, fc, fc_inf, obj, 1);
+            const v2 = this._buildVertex(engine, fc, fc_inf, obj, 2);
+
+            const zNear      = engine.zBuffer._z_near;
+            const allInFront = v0[2] >= zNear && v1[2] >= zNear && v2[2] >= zNear;
+            if (allInFront && fc_inf[1] > 0) continue;
+
+            const tris    = this._clipNear(engine, v0, v1, v2);
+            const texture = fc[4] !== null ? obj.tx_lst[fc[4]] : null;
+            const alpha   = fc[6];
+
+            for (const tri of tris) {
+                this._p1 = [...tri[0]];
+                this._p2 = [...tri[1]];
+                this._p3 = [...tri[2]];
+                this._sortVertices();
+                this._rasterize(engine, alpha, texture);
+            }
         }
     }
 
-    _prepare(obj, engine, fc, fc_inf) {
-        if (fc_inf[1] > 0) return false;
+    // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]
+    // Indices 0-7 used by rasterizer, 8-9 (3D camera XY) used for clipping only
+    _buildVertex(engine, fc, fc_inf, obj, idx) {
+        const col  = this._pointColor(engine, fc[3], obj.pt_3d[fc[idx]], fc_inf[0]);
+        const pt3d = obj.pt_3d[fc[idx]];
+        const pt2d = obj.pt_2d[fc[idx]];
+        return [
+            pt2d[0], pt2d[1], pt3d[2],
+            col[0], col[1], col[2],
+            fc[5][idx][0], fc[5][idx][1],
+            pt3d[0], pt3d[1],
+        ];
+    }
 
-        let col = this._pointColor(engine, fc[3], obj.pt_3d[fc[0]], fc_inf[0]);
-        this._p1[0] = obj.pt_2d[fc[0]][0]; this._p1[1] = obj.pt_2d[fc[0]][1]; this._p1[2] = obj.pt_2d[fc[0]][2];
-        this._p1[3] = col[0]; this._p1[4] = col[1]; this._p1[5] = col[2];
-        this._p1[6] = fc[5][0][0]; this._p1[7] = fc[5][0][1];
+    _clipVertex(engine, va, vb) {
+        const zNear = engine.zBuffer._z_near;
+        const t  = (zNear - va[2]) / (vb[2] - va[2]);
+        const cx = va[8] + t * (vb[8] - va[8]);
+        const cy = va[9] + t * (vb[9] - va[9]);
+        return [
+            Math.trunc(engine.proj_scaleX * cx / zNear - engine.proj_offsetX),
+            Math.trunc(engine.proj_scaleY * cy / zNear - engine.proj_offsetY),
+            zNear,
+            va[3] + t * (vb[3] - va[3]),
+            va[4] + t * (vb[4] - va[4]),
+            va[5] + t * (vb[5] - va[5]),
+            va[6] + t * (vb[6] - va[6]),
+            va[7] + t * (vb[7] - va[7]),
+            cx, cy,
+        ];
+    }
 
-        col = this._pointColor(engine, fc[3], obj.pt_3d[fc[1]], fc_inf[0]);
-        this._p2[0] = obj.pt_2d[fc[1]][0]; this._p2[1] = obj.pt_2d[fc[1]][1]; this._p2[2] = obj.pt_2d[fc[1]][2];
-        this._p2[3] = col[0]; this._p2[4] = col[1]; this._p2[5] = col[2];
-        this._p2[6] = fc[5][1][0]; this._p2[7] = fc[5][1][1];
+    _clipNear(engine, v0, v1, v2) {
+        const zNear  = engine.zBuffer._z_near;
+        const verts  = [v0, v1, v2];
+        const inside = [v0[2] >= zNear, v1[2] >= zNear, v2[2] >= zNear];
+        const cnt    = inside.filter(Boolean).length;
 
-        col = this._pointColor(engine, fc[3], obj.pt_3d[fc[2]], fc_inf[0]);
-        this._p3[0] = obj.pt_2d[fc[2]][0]; this._p3[1] = obj.pt_2d[fc[2]][1]; this._p3[2] = obj.pt_2d[fc[2]][2];
-        this._p3[3] = col[0]; this._p3[4] = col[1]; this._p3[5] = col[2];
-        this._p3[6] = fc[5][2][0]; this._p3[7] = fc[5][2][1];
+        if (cnt === 3) return [[v0, v1, v2]];
+        if (cnt === 0) return [];
 
-        if (this._p1[2] < 1 || this._p2[2] < 1 || this._p3[2] < 1) return false;
+        if (cnt === 1) {
+            const i = inside.indexOf(true);
+            const j = (i + 1) % 3;
+            const k = (i + 2) % 3;
+            return [[
+                verts[i],
+                this._clipVertex(engine, verts[i], verts[j]),
+                this._clipVertex(engine, verts[i], verts[k]),
+            ]];
+        }
 
+        // cnt === 2 : quad → 2 triangles
+        const i_out = inside.indexOf(false);
+        const i_in1 = (i_out + 1) % 3;
+        const i_in2 = (i_out + 2) % 3;
+        const a = this._clipVertex(engine, verts[i_out], verts[i_in1]);
+        const b = this._clipVertex(engine, verts[i_out], verts[i_in2]);
+        return [
+            [verts[i_in1], verts[i_in2], a],
+            [verts[i_in2], b, a],
+        ];
+    }
+
+    _sortVertices() {
         if (
             (this._p1[1] < this._p2[1] || (this._p1[1] === this._p2[1] && this._p1[0] < this._p2[0])) &&
             (this._p1[1] < this._p3[1] || (this._p1[1] === this._p3[1] && this._p1[0] < this._p3[0]))
@@ -81,126 +138,32 @@ class Object3dRendererFull extends Object3dRendererBase {
                 t = this._p2; this._p2 = this._p3; this._p3 = t;
             }
         }
-
-        return true;
     }
 
-    _subPixel(y) {
-        return (1. + y - Math.ceil(y));
-    }
+    _rasterize(engine, alpha, text) {
+        if (text) {
+            this._p1[6] /= this._p1[2]; this._p1[7] /= this._p1[2];
+            this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
+            this._p3[6] /= this._p3[2]; this._p3[7] /= this._p3[2];
+        }
 
-    _renderNoTexture(engine, alpha) {
         const ymin = Math.max(0, Math.ceil(this._p1[1]));
         const ymax = Math.min(engine.scr_height - 1, Math.max(this._p2[1], this._p3[1]));
         if (ymin > ymax) return;
 
         const dt12 = []; const dt23 = []; const dt13 = [];
-        dt12[0] = this._p2[0]-this._p1[0]; dt23[0] = this._p3[0]-this._p2[0]; dt13[0] = this._p3[0]-this._p1[0];
-        dt12[1] = this._p2[1]-this._p1[1]; dt23[1] = this._p3[1]-this._p2[1]; dt13[1] = this._p3[1]-this._p1[1];
-        dt12[3] = this._p2[3]-this._p1[3]; dt23[3] = this._p3[3]-this._p2[3]; dt13[3] = this._p3[3]-this._p1[3];
-        dt12[4] = this._p2[4]-this._p1[4]; dt23[4] = this._p3[4]-this._p2[4]; dt13[4] = this._p3[4]-this._p1[4];
-        dt12[5] = this._p2[5]-this._p1[5]; dt23[5] = this._p3[5]-this._p2[5]; dt13[5] = this._p3[5]-this._p1[5];
-
-        for (let ly = ymin; ly <= ymax; ly++) {
-            let lt0 = [];
-            let lt1 = [];
-
-            if (ly <= this._p2[1]) {
-                const al = dt12[1] ? (ly - this._p1[1]) / dt12[1] : 0;
-                lt0[1] = ly;
-                lt0[2] = 1. / ((1.-al)/this._p1[2] + al/this._p2[2]);
-                lt0[0] = this._p1[0] + dt12[0]*al;
-                lt0[3] = this._p1[3] + dt12[3]*al;
-                lt0[4] = this._p1[4] + dt12[4]*al;
-                lt0[5] = this._p1[5] + dt12[5]*al;
-            } else {
-                const al = dt23[1] ? (ly - this._p2[1]) / dt23[1] : 0;
-                lt0[1] = ly;
-                lt0[2] = 1. / ((1.-al)/this._p2[2] + al/this._p3[2]);
-                lt0[0] = this._p2[0] + dt23[0]*al;
-                lt0[3] = this._p2[3] + dt23[3]*al;
-                lt0[4] = this._p2[4] + dt23[4]*al;
-                lt0[5] = this._p2[5] + dt23[5]*al;
-            }
-
-            if (ly < this._p3[1]) {
-                const al = dt13[1] ? (ly - this._p1[1]) / dt13[1] : 0;
-                lt1[1] = ly;
-                lt1[2] = 1. / ((1.-al)/this._p1[2] + al/this._p3[2]);
-                lt1[0] = this._p1[0] + dt13[0]*al;
-                lt1[3] = this._p1[3] + dt13[3]*al;
-                lt1[4] = this._p1[4] + dt13[4]*al;
-                lt1[5] = this._p1[5] + dt13[5]*al;
-            } else {
-                const al = dt23[1] ? (this._p3[1] - ly) / dt23[1] : 0;
-                lt1[1] = ly;
-                lt1[2] = 1. / ((1.-al)/this._p3[2] + al/this._p2[2]);
-                lt1[0] = this._p3[0] - dt23[0]*al;
-                lt1[3] = this._p3[3] - dt23[3]*al;
-                lt1[4] = this._p3[4] - dt23[4]*al;
-                lt1[5] = this._p3[5] - dt23[5]*al;
-            }
-
-            if (lt0[0] === lt1[0]) continue;
-            if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
-
-            let xMin = Math.trunc(lt0[0]);
-            let xMax = Math.trunc(lt1[0] + 0.5);
-            xMin += this._subPixel(lt1[1]);
-            const lxMin = Math.max(0, Math.ceil(xMin));
-            const lxMax = Math.min(engine.scr_width - 1, xMax);
-            if (lxMin > lxMax) continue;
-
-            const dt = [];
-            dt[3] = lt1[3] - lt0[3];
-            dt[4] = lt1[4] - lt0[4];
-            dt[5] = lt1[5] - lt0[5];
-
-            for (let lx = lxMin; lx <= lxMax; lx++) {
-                const al = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.;
-                const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
-
-                if (engine.zBuffer.set(lx, ly, lz)) {
-                    const r = Math.trunc(lt0[3] + dt[3]*al);
-                    const g = Math.trunc(lt0[4] + dt[4]*al);
-                    const b = Math.trunc(lt0[5] + dt[5]*al);
-                    const p = 4 * (lx + ly * engine.scr_width);
-
-                    if (alpha < 1.) {
-                        engine.scr_data.data[p+0] = alpha*r + (1-alpha)*engine.scr_data.data[p+0];
-                        engine.scr_data.data[p+1] = alpha*g + (1-alpha)*engine.scr_data.data[p+1];
-                        engine.scr_data.data[p+2] = alpha*b + (1-alpha)*engine.scr_data.data[p+2];
-                        engine.scr_data.data[p+3] = 255;
-                    } else {
-                        engine.scr_data.data[p+0] = r;
-                        engine.scr_data.data[p+1] = g;
-                        engine.scr_data.data[p+2] = b;
-                        engine.scr_data.data[p+3] = 255;
-                    }
-                }
+        for (const i of [0, 1, 3, 4, 5]) {
+            dt12[i] = this._p2[i] - this._p1[i];
+            dt23[i] = this._p3[i] - this._p2[i];
+            dt13[i] = this._p3[i] - this._p1[i];
+        }
+        if (text) {
+            for (const i of [6, 7]) {
+                dt12[i] = this._p2[i] - this._p1[i];
+                dt23[i] = this._p3[i] - this._p2[i];
+                dt13[i] = this._p3[i] - this._p1[i];
             }
         }
-    }
-
-    _renderTexture(engine, alpha, text) {
-        if (!text) return this._renderNoTexture(engine, alpha);
-
-        this._p1[6] /= this._p1[2]; this._p1[7] /= this._p1[2];
-        this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
-        this._p3[6] /= this._p3[2]; this._p3[7] /= this._p3[2];
-
-        const ymin = Math.max(0, Math.ceil(this._p1[1]));
-        const ymax = Math.min(engine.scr_height - 1, Math.max(this._p2[1], this._p3[1]));
-        if (ymin > ymax) return;
-
-        const dt12 = []; const dt23 = []; const dt13 = [];
-        dt12[0] = this._p2[0]-this._p1[0]; dt23[0] = this._p3[0]-this._p2[0]; dt13[0] = this._p3[0]-this._p1[0];
-        dt12[1] = this._p2[1]-this._p1[1]; dt23[1] = this._p3[1]-this._p2[1]; dt13[1] = this._p3[1]-this._p1[1];
-        dt12[3] = this._p2[3]-this._p1[3]; dt23[3] = this._p3[3]-this._p2[3]; dt13[3] = this._p3[3]-this._p1[3];
-        dt12[4] = this._p2[4]-this._p1[4]; dt23[4] = this._p3[4]-this._p2[4]; dt13[4] = this._p3[4]-this._p1[4];
-        dt12[5] = this._p2[5]-this._p1[5]; dt23[5] = this._p3[5]-this._p2[5]; dt13[5] = this._p3[5]-this._p1[5];
-        dt12[6] = this._p2[6]-this._p1[6]; dt23[6] = this._p3[6]-this._p2[6]; dt13[6] = this._p3[6]-this._p1[6];
-        dt12[7] = this._p2[7]-this._p1[7]; dt23[7] = this._p3[7]-this._p2[7]; dt13[7] = this._p3[7]-this._p1[7];
 
         for (let ly = ymin; ly <= ymax; ly++) {
             let lt0 = [];
@@ -208,53 +171,57 @@ class Object3dRendererFull extends Object3dRendererBase {
 
             if (ly <= this._p2[1]) {
                 const al = dt12[1] ? (ly - this._p1[1]) / dt12[1] : 0;
-                lt0[1] = ly;
                 lt0[2] = 1. / ((1.-al)/this._p1[2] + al/this._p2[2]);
                 lt0[0] = this._p1[0] + dt12[0]*al;
                 lt0[3] = this._p1[3] + dt12[3]*al;
                 lt0[4] = this._p1[4] + dt12[4]*al;
                 lt0[5] = this._p1[5] + dt12[5]*al;
-                lt0[6] = (this._p1[6] + dt12[6]*al) * text.width;
-                lt0[7] = (this._p1[7] + dt12[7]*al) * text.height;
+                if (text) {
+                    lt0[6] = (this._p1[6] + dt12[6]*al) * text.width;
+                    lt0[7] = (this._p1[7] + dt12[7]*al) * text.height;
+                }
             } else {
                 const al = dt23[1] ? (ly - this._p2[1]) / dt23[1] : 0;
-                lt0[1] = ly;
                 lt0[2] = 1. / ((1.-al)/this._p2[2] + al/this._p3[2]);
                 lt0[0] = this._p2[0] + dt23[0]*al;
                 lt0[3] = this._p2[3] + dt23[3]*al;
                 lt0[4] = this._p2[4] + dt23[4]*al;
                 lt0[5] = this._p2[5] + dt23[5]*al;
-                lt0[6] = (this._p2[6] + dt23[6]*al) * text.width;
-                lt0[7] = (this._p2[7] + dt23[7]*al) * text.height;
+                if (text) {
+                    lt0[6] = (this._p2[6] + dt23[6]*al) * text.width;
+                    lt0[7] = (this._p2[7] + dt23[7]*al) * text.height;
+                }
             }
 
             if (ly < this._p3[1]) {
                 const al = dt13[1] ? (ly - this._p1[1]) / dt13[1] : 0;
-                lt1[1] = ly;
                 lt1[2] = 1. / ((1.-al)/this._p1[2] + al/this._p3[2]);
                 lt1[0] = this._p1[0] + dt13[0]*al;
                 lt1[3] = this._p1[3] + dt13[3]*al;
                 lt1[4] = this._p1[4] + dt13[4]*al;
                 lt1[5] = this._p1[5] + dt13[5]*al;
-                lt1[6] = (this._p1[6] + dt13[6]*al) * text.width;
-                lt1[7] = (this._p1[7] + dt13[7]*al) * text.height;
+                if (text) {
+                    lt1[6] = (this._p1[6] + dt13[6]*al) * text.width;
+                    lt1[7] = (this._p1[7] + dt13[7]*al) * text.height;
+                }
             } else {
                 const al = dt23[1] ? (this._p3[1] - ly) / dt23[1] : 0;
-                lt1[1] = ly;
                 lt1[2] = 1. / ((1.-al)/this._p3[2] + al/this._p2[2]);
                 lt1[0] = this._p3[0] - dt23[0]*al;
                 lt1[3] = this._p3[3] - dt23[3]*al;
                 lt1[4] = this._p3[4] - dt23[4]*al;
                 lt1[5] = this._p3[5] - dt23[5]*al;
-                lt1[6] = (this._p3[6] - dt23[6]*al) * text.width;
-                lt1[7] = (this._p3[7] - dt23[7]*al) * text.height;
+                if (text) {
+                    lt1[6] = (this._p3[6] - dt23[6]*al) * text.width;
+                    lt1[7] = (this._p3[7] - dt23[7]*al) * text.height;
+                }
             }
 
             if (lt0[0] === lt1[0]) continue;
             if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
 
-            const xMin = Math.trunc(lt0[0]);
-            const xMax = Math.trunc(lt1[0] + 0.5);
+            const xMin  = Math.trunc(lt0[0]);
+            const xMax  = Math.trunc(lt1[0] + 0.5);
             const lxMin = Math.max(0, xMin);
             const lxMax = Math.min(engine.scr_width - 1, xMax);
             if (lxMin > lxMax) continue;
@@ -263,35 +230,45 @@ class Object3dRendererFull extends Object3dRendererBase {
             dt[3] = lt1[3] - lt0[3];
             dt[4] = lt1[4] - lt0[4];
             dt[5] = lt1[5] - lt0[5];
-            dt[6] = lt1[6] - lt0[6];
-            dt[7] = lt1[7] - lt0[7];
+            if (text) {
+                dt[6] = lt1[6] - lt0[6];
+                dt[7] = lt1[7] - lt0[7];
+            }
 
             for (let lx = lxMin; lx <= lxMax; lx++) {
-                const al   = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0;
-                const lz   = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
+                const al = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.;
+                const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
-                if (engine.zBuffer.set(lx, ly, lz)) {
-                    let xt   = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text[0];
-                    let yt   = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text[1];
+                if (!engine.zBuffer.set(lx, ly, lz)) continue;
+
+                const posi = 4 * (lx + ly * engine.scr_width);
+                let r, g, b, a;
+
+                if (text) {
+                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text.width;
+                    let yt = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text.height;
                     const post = 4 * (xt + yt * text.width);
-                    const posi = 4 * (lx + ly * engine.scr_width);
+                    r = Math.trunc((lt0[3] + dt[3]*al) * text.data[post+0]);
+                    g = Math.trunc((lt0[4] + dt[4]*al) * text.data[post+1]);
+                    b = Math.trunc((lt0[5] + dt[5]*al) * text.data[post+2]);
+                    a = alpha * parseFloat(text.data[post+3]) / 255.;
+                } else {
+                    r = Math.trunc(lt0[3] + dt[3]*al);
+                    g = Math.trunc(lt0[4] + dt[4]*al);
+                    b = Math.trunc(lt0[5] + dt[5]*al);
+                    a = alpha;
+                }
 
-                    const r = Math.trunc((lt0[3] + dt[3]*al) * text.data[post+0]);
-                    const g = Math.trunc((lt0[4] + dt[4]*al) * text.data[post+1]);
-                    const b = Math.trunc((lt0[5] + dt[5]*al) * text.data[post+2]);
-                    const a = alpha * parseFloat(text.data[post+3]) / 255.;
-
-                    if (a < 1.) {
-                        engine.scr_data.data[posi+0] = a*r + (1-a)*engine.scr_data.data[posi+0];
-                        engine.scr_data.data[posi+1] = a*g + (1-a)*engine.scr_data.data[posi+1];
-                        engine.scr_data.data[posi+2] = a*b + (1-a)*engine.scr_data.data[posi+2];
-                        engine.scr_data.data[posi+3] = a*255 + (1-a)*engine.scr_data.data[posi+3];
-                    } else {
-                        engine.scr_data.data[posi+0] = r;
-                        engine.scr_data.data[posi+1] = g;
-                        engine.scr_data.data[posi+2] = b;
-                        engine.scr_data.data[posi+3] = 255;
-                    }
+                if (a < 1.) {
+                    engine.scr_data.data[posi+0] = a*r + (1-a)*engine.scr_data.data[posi+0];
+                    engine.scr_data.data[posi+1] = a*g + (1-a)*engine.scr_data.data[posi+1];
+                    engine.scr_data.data[posi+2] = a*b + (1-a)*engine.scr_data.data[posi+2];
+                    engine.scr_data.data[posi+3] = a*255 + (1-a)*engine.scr_data.data[posi+3];
+                } else {
+                    engine.scr_data.data[posi+0] = r;
+                    engine.scr_data.data[posi+1] = g;
+                    engine.scr_data.data[posi+2] = b;
+                    engine.scr_data.data[posi+3] = 255;
                 }
             }
         }
