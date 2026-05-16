@@ -58,7 +58,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         this._p3[3] = col[0]; this._p3[4] = col[1]; this._p3[5] = col[2];
         this._p3[6] = fc[5][2][0]; this._p3[7] = fc[5][2][1];
 
-        if (this._p1[2] < 1 && this._p2[2] < 1 && this._p3[2] < 1) return false;
+        if (this._p1[2] < 1 || this._p2[2] < 1 || this._p3[2] < 1) return false;
 
         if (
             (this._p1[1] < this._p2[1] || (this._p1[1] === this._p2[1] && this._p1[0] < this._p2[0])) &&
@@ -90,8 +90,9 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     _renderNoTexture(engine, alpha) {
-        const ymin = this._p1[1];
-        const ymax = Math.max(this._p2[1], this._p3[1]);
+        const ymin = Math.max(0, Math.ceil(this._p1[1]));
+        const ymax = Math.min(engine.scr_height - 1, Math.max(this._p2[1], this._p3[1]));
+        if (ymin > ymax) return;
 
         const dt12 = []; const dt23 = []; const dt13 = [];
         dt12[0] = this._p2[0]-this._p1[0]; dt23[0] = this._p3[0]-this._p2[0]; dt13[0] = this._p3[0]-this._p1[0];
@@ -146,13 +147,16 @@ class Object3dRendererFull extends Object3dRendererBase {
             let xMin = Math.trunc(lt0[0]);
             let xMax = Math.trunc(lt1[0] + 0.5);
             xMin += this._subPixel(lt1[1]);
+            const lxMin = Math.max(0, Math.ceil(xMin));
+            const lxMax = Math.min(engine.scr_width - 1, xMax);
+            if (lxMin > lxMax) continue;
 
             const dt = [];
             dt[3] = lt1[3] - lt0[3];
             dt[4] = lt1[4] - lt0[4];
             dt[5] = lt1[5] - lt0[5];
 
-            for (let lx = xMin; lx <= xMax; lx++) {
+            for (let lx = lxMin; lx <= lxMax; lx++) {
                 const al = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.;
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
@@ -185,8 +189,9 @@ class Object3dRendererFull extends Object3dRendererBase {
         this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
         this._p3[6] /= this._p3[2]; this._p3[7] /= this._p3[2];
 
-        const ymin = this._p1[1];
-        const ymax = Math.max(this._p2[1], this._p3[1]);
+        const ymin = Math.max(0, Math.ceil(this._p1[1]));
+        const ymax = Math.min(engine.scr_height - 1, Math.max(this._p2[1], this._p3[1]));
+        if (ymin > ymax) return;
 
         const dt12 = []; const dt23 = []; const dt13 = [];
         dt12[0] = this._p2[0]-this._p1[0]; dt23[0] = this._p3[0]-this._p2[0]; dt13[0] = this._p3[0]-this._p1[0];
@@ -250,6 +255,9 @@ class Object3dRendererFull extends Object3dRendererBase {
 
             const xMin = Math.trunc(lt0[0]);
             const xMax = Math.trunc(lt1[0] + 0.5);
+            const lxMin = Math.max(0, xMin);
+            const lxMax = Math.min(engine.scr_width - 1, xMax);
+            if (lxMin > lxMax) continue;
 
             const dt = [];
             dt[3] = lt1[3] - lt0[3];
@@ -258,7 +266,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             dt[6] = lt1[6] - lt0[6];
             dt[7] = lt1[7] - lt0[7];
 
-            for (let lx = xMin; lx <= xMax; lx++) {
+            for (let lx = lxMin; lx <= lxMax; lx++) {
                 const al   = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0;
                 const lz   = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 

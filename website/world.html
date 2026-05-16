@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Proto3d - world</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <meta name="Title"              content="mini 3D engine in javascript" />
+        <meta name="Description"        content="3D engine, javascript" />
+        <meta name="Author"             content="Spipu" />
+        <meta name="Reply-to"           content="webmaster@spipu.net" />
+        <meta name="Copyright"          content="(c)2026 Spipu" />
+        <style>
+body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
+canvas           { border: 1px solid grey; background: #FFF;}
+div.copy         { text-align: center;color: #ccc;}
+div.copy a       { color: #bbb; text-decoration: none;}
+div.copy a:hover { color: #ddd; text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvasElem"></canvas>
+        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        <script src="js/loader.js" ></script>
+        <script>
+
+// Camera state � starting position
+let cam_x   = -5.25;
+let cam_y   = -0.80;
+let cam_z   = -5.25;
+let cam_yaw =  180;  // face toward negative Z where the map is
+
+const MOVE_SPEED = 0.008;
+const TURN_SPEED = 0.08;
+
+// Static light world positions
+const LIGHTS = [
+    { color: [200, 200, 200], dist: 24.75, pos: [ 0.00, -13.00,   0.00] },
+    { color: [255,   0,   0], dist:  3.15, pos: [ 5.25,  -1.30,  -8.75] },
+    { color: [  0, 255,   0], dist:  3.15, pos: [-1.75,  -1.30,  -5.25] },
+    { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,   0.90, -40.25] },
+];
+
+let image = null;
+let light_ids = [];
+
+const input = new Input();
+input.initKeyboard();
+object3dFactory.load('object', './world/objects/map.obj.json');
+
+function start()
+{
+    if (!object3dFactory.isReady()) {
+        setTimeout(start, 500);
+        return;
+    }
+
+    image = new Engine3d('canvasElem');
+    image.setScreen(640, 480);
+    image.setBackground(35, 35, 35);
+    image.setFov(45.0);
+    image.setView(-32, 32, -24, 24);
+    image.setZBuffer(1, 100);
+    image.enableFps();
+
+    image.lightAmbient([20., 20., 20.]);
+    for (let i = 0; i < LIGHTS.length; i++) {
+        light_ids[i] = image.lightAdd(LIGHTS[i].color, LIGHTS[i].dist);
+    }
+
+    display();
+}
+
+function display()
+{
+    image.calculateDeltaTime();
+
+    const t_d = image.getDeltaTime();
+
+    if (input.readKeyLeft())  cam_yaw -= TURN_SPEED * t_d;
+    if (input.readKeyRight()) cam_yaw += TURN_SPEED * t_d;
+
+    if (input.readKeyUp()) {
+        cam_x += t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * cam_yaw);
+        cam_z += t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * cam_yaw);
+    }
+    if (input.readKeyDown()) {
+        cam_x -= t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * cam_yaw);
+        cam_z -= t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * cam_yaw);
+    }
+
+    image.matrixIdentity();
+    image.matrixRotateY(-cam_yaw);
+    image.matrixTranslate(-cam_x, -cam_y, -cam_z);
+
+    for (let i = 0; i < LIGHTS.length; i++) {
+        image.lightMove(light_ids[i], LIGHTS[i].pos);
+    }
+
+    image.drawInit();
+    image.drawObject(object3dFactory.get('object'));
+    image.drawFinish();
+    setTimeout(display, 2);
+}
+
+start();
+        </script>
+    </body>
+</html>
