@@ -57,13 +57,9 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/loader.js" ></script>
         <script>
-let image     = null;
-let fps_count = 0;
-let t_1       = 0;
-let t_2       = 0;
-let t_d       = 0;
-let angle_x   = 0;
-let angle_y   = 0;
+let image   = null;
+let angle_x = 0;
+let angle_y = 0;
 
 const input = new Input();
 
@@ -128,6 +124,7 @@ function start()
     image.setFov(45.0);
     image.setView(-32, 32, -24, 24);
     image.setZBuffer(1, 100);
+    image.enableFps();
 
     image.lightAmbient([40., 40., 40.]);
     image.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
@@ -135,7 +132,6 @@ function start()
     image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
 
     changeRenderer();
-    t_1 = new Date().getTime();
     display();
 }
 
@@ -145,15 +141,14 @@ function display()
         return;
     }
 
+    image.calculateDeltaTime();
+
     if (!object3dFactory.isReady()) {
         setTimeout(display, 500);
         return;
     }
 
-    t_2 = t_1;
-    t_1 = new Date().getTime();
-    t_d = t_1 - t_2;
-
+    const t_d = image.getDeltaTime();
     let x = input.readMouseX();
     let y = input.readMouseY();
     if (x < 0) {
@@ -178,7 +173,6 @@ function display()
     image.drawInit();
     image.drawObject(object3dFactory.get('object'));
     image.drawFinish();
-    fps_count++;
     setTimeout(display, 2);
 }
 
@@ -186,9 +180,7 @@ function displayFps()
 {
     const current = object3dFactory.get('object');
     if (!current) return;
-    document.getElementById('div_fps').innerHTML = Math.floor(fps_count / 3) + ' fps'
-        + ' (' + current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces)';
-    fps_count = 0;
+    document.getElementById('div_fps').innerHTML = current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces';
 }
 
 init();
