@@ -44,10 +44,10 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         </select>
         - Renderer:
         <select id="renderer">
-            <option value="full" selected>Full</option>
+            <option value="webgl" selected>WebGL</option>
+            <option value="full">Full</option>
             <option value="flat">Flat</option>
             <option value="fast">Fast</option>
-            <option value="webgl">WebGL</option>
         </select><br />
         <i>move the mouse under the 3D object</i><br />
         <br />
@@ -94,9 +94,15 @@ function restart()
     }
     displayDebug();
 
-    const res = document.getElementById('res').value;
+    const res      = document.getElementById('res').value;
+    const renderer = document.getElementById('renderer').value;
 
-    engine = new Engine3d('canvasElem', document.getElementById('renderer').value);
+    const old = document.getElementById('canvasElem');
+    const fresh = document.createElement('canvas');
+    fresh.id = old.id;
+    old.parentNode.replaceChild(fresh, old);
+
+    engine = new Engine3d('canvasElem', renderer);
     engine.setScreen(res, res * 24 / 32);
     engine.setBackground(35, 35, 35);
     engine.setFov(45.0);
