@@ -12,4 +12,5 @@
     'js/engine3d.js',
     'js/object3dFactory.js',
     'js/input.js',
+    'js/user.js',
 ].forEach(src => document.write('<script src="' + src + '"><\/script>'));
