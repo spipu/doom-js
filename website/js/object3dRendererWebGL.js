@@ -37,7 +37,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         for (let k = 0; k < obj.fc_nb; k++) {
             const fc = obj.fc_lst[k];
             obj.fc_inf[k][0] = this._faceNormal(obj.pt_3d[fc[0]], obj.pt_3d[fc[1]], obj.pt_3d[fc[2]]);
-            obj.fc_inf[k][1] = this._faceNormal2d(obj.pt_2d[fc[0]], obj.pt_2d[fc[1]], obj.pt_2d[fc[2]]);
         }
 
         gl.uniform1f(loc.sx,   engine.proj_scaleX);
@@ -49,11 +48,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer._z_near);
         gl.uniform1f(loc.far,  engine.zBuffer._z_far);
 
-        // Group visible faces by texture
+        // Group visible faces by texture — back-face cull in 3D camera space:
+        // dot(normal, vertex_pos) < 0 means face points toward camera
         const groups = new Map();
         for (let k = 0; k < obj.fc_nb; k++) {
-            if (obj.fc_inf[k][1] >= 0) continue;
-            const texId = obj.fc_lst[k][4];
+            const fc = obj.fc_lst[k];
+            const n  = obj.fc_inf[k][0];
+            const p  = obj.pt_3d[fc[0]];
+            if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
+            const texId = fc[4];
             if (!groups.has(texId)) groups.set(texId, []);
             groups.get(texId).push(k);
         }

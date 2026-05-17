@@ -223,6 +223,6 @@ class Engine3d {
             this._fpsLastCheck = now;
         }
 
-        this._fpsDiv.innerText = this._fpsDisplay + ' fps';
+        this._fpsDiv.innerText = this._fpsDisplay + ' fps - ' + this._renderer._currentCode;
     }
 }
