@@ -23,27 +23,18 @@ class Object3dRendererFull extends Object3dRendererBase {
         for (let k = 0; k < obj.fc_nb; k++) {
             const fc = obj.fc_lst[k];
             obj.fc_inf[k][0] = this._faceNormal(obj.pt_3d[fc[0]], obj.pt_3d[fc[1]], obj.pt_3d[fc[2]]);
-            obj.fc_inf[k][1] = this._faceNormal2d(obj.pt_2d[fc[0]], obj.pt_2d[fc[1]], obj.pt_2d[fc[2]]);
         }
 
         for (let k = 0; k < obj.fc_nb; k++) {
             const fc     = obj.fc_lst[k];
             const fc_inf = obj.fc_inf[k];
+            const n      = fc_inf[0];
+            const p      = obj.pt_3d[fc[0]];
+            if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
 
             const v0 = this._buildVertex(engine, fc, fc_inf, obj, 0);
             const v1 = this._buildVertex(engine, fc, fc_inf, obj, 1);
             const v2 = this._buildVertex(engine, fc, fc_inf, obj, 2);
-
-            const zNear      = engine.zBuffer._z_near;
-            const allInFront = v0[2] >= zNear && v1[2] >= zNear && v2[2] >= zNear;
-            if (allInFront && fc_inf[1] > 0) continue;
-            if (!allInFront) {
-                const n  = fc_inf[0];
-                const cx = (obj.pt_3d[fc[0]][0] + obj.pt_3d[fc[1]][0] + obj.pt_3d[fc[2]][0]) / 3;
-                const cy = (obj.pt_3d[fc[0]][1] + obj.pt_3d[fc[1]][1] + obj.pt_3d[fc[2]][1]) / 3;
-                const cz = (obj.pt_3d[fc[0]][2] + obj.pt_3d[fc[1]][2] + obj.pt_3d[fc[2]][2]) / 3;
-                if (n[0]*cx + n[1]*cy + n[2]*cz > 0) continue;
-            }
 
             const tris    = this._clipNear(engine, v0, v1, v2);
             const texture = fc[4] !== null ? obj.tx_lst[fc[4]] : null;
@@ -80,7 +71,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         const cy = va[9] + t * (vb[9] - va[9]);
         return [
             Math.trunc(engine.proj_scaleX * cx / zNear - engine.proj_offsetX),
-            Math.trunc(engine.proj_scaleY * cy / zNear - engine.proj_offsetY),
+            Math.trunc(-engine.proj_scaleY * cy / zNear - engine.proj_offsetY),
             zNear,
             va[3] + t * (vb[3] - va[3]),
             va[4] + t * (vb[4] - va[4]),
