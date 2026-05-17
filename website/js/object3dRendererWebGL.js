@@ -144,7 +144,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             void main() {
                 float z  = a_pos.z;
                 float xn = 2.0 * (u_sx * a_pos.x / z - u_ox) / u_w - 1.0;
-                float yn = 1.0 - 2.0 * (u_sy * a_pos.y / z - u_oy) / u_h;
+                float yn = 1.0 - 2.0 * (-u_sy * a_pos.y / z - u_oy) / u_h;
                 float A  = (u_far + u_near) / (u_far - u_near);
                 float B  = -2.0 * u_far * u_near / (u_far - u_near);
                 gl_Position = vec4(xn * z, yn * z, A * z + B, z);

@@ -24,20 +24,20 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script>
 
 // Camera state and starting position
-let cam_x = -5.25;
-let cam_y = -0.70;
-let cam_z = -5.25;
-let cam_yaw = 180;
+let cam_x = 9.35;
+let cam_y = 0.70;
+let cam_z = -15.21;
+let cam_yaw = -36.4;
 
 const MOVE_SPEED = 0.004;
 const TURN_SPEED = 0.09;
 
 // Static light world positions
 const LIGHTS = [
-    { color: [200, 200, 200], dist: 24.75, pos: [ 0.00, -13.00,   0.00] },
-    { color: [255,   0,   0], dist:  3.15, pos: [ 5.25,  -1.30,  -8.75] },
-    { color: [  0, 255,   0], dist:  3.15, pos: [-1.75,  -1.30,  -5.25] },
-    { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,   0.90, -40.25] },
+    { color: [200, 200, 200], dist: 24.75, pos: [ 0.00,  13.00,   0.00] },
+    { color: [255,   0,   0], dist:  3.15, pos: [ 5.25,   1.30,  -8.75] },
+    { color: [  0, 255,   0], dist:  3.15, pos: [-1.75,   1.30,  -5.25] },
+    { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,  -0.90, -40.25] },
 ];
 
 let engine = null;
