@@ -142,7 +142,7 @@ function display()
     if (Math.abs(y) < 0.1) y = 0;
 
     angle_x -= x * 0.1 * t_d;
-    angle_y += y * 0.1 * t_d;
+    angle_y -= y * 0.1 * t_d;
 
     engine.matrixIdentity();
     engine.matrixTranslate(0, 0, 35);
