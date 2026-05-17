@@ -106,13 +106,17 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     _getTexture(gl, imageData) {
         if (this._texCache.has(imageData)) return this._texCache.get(imageData);
-        const tex = gl.createTexture();
+        const tex  = gl.createTexture();
+        const w    = imageData.width;
+        const h    = imageData.height;
+        const pow2 = (n) => n > 0 && (n & (n - 1)) === 0;
+        const wrap = (pow2(w) && pow2(h)) ? gl.REPEAT : gl.CLAMP_TO_EDGE;
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imageData.width, imageData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(imageData.data.buffer));
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
         this._texCache.set(imageData, tex);
         return tex;
     }
