@@ -85,6 +85,7 @@ function changeObject()
 function restart()
 {
     if (engine) {
+        engine.destroy();
         engine = null;
     }
 

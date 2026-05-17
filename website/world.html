@@ -55,7 +55,7 @@ function start()
         return;
     }
 
-    engine = new Engine3d('canvasElem');
+    engine = new Engine3d('canvasElem', 'webgl');
     engine.setScreen(640, 480);
     engine.setBackground(120, 100, 140);
     engine.setFov(45.0);
