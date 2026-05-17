@@ -1,4 +1,4 @@
-class Object3dRendererFast {
+class Object3dRendererFast extends Object3dRendererBase {
     get code() {
         return 'fast';
     }

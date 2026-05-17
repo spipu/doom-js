@@ -18,7 +18,7 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         </style>
     </head>
     <body>
-        Objet :
+        Object :
         <select id="obj">
             <option value="cube" selected="selected">cube</option>
             <option value="helico_military">helico_military</option>
@@ -47,19 +47,19 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
             <option value="full" selected>Full</option>
             <option value="flat">Flat</option>
             <option value="fast">Fast</option>
-        </select>
-        - <input type="button" id="btn_startstop" value="Start / Stop" /><br />
-        <i>click on the "Start / Stop" button, and move the mouse under the 3D object</i><br />
+            <option value="webgl">WebGL</option>
+        </select><br />
+        <i>move the mouse under the 3D object</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
-        <span id="div_fps"></span><br />
+        <span id="div_debug"></span><br />
         <br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/loader.js" ></script>
         <script>
 let image   = null;
-let angle_x = 0;
-let angle_y = 0;
+let angle_x = 0.;
+let angle_y = 0.;
 
 const input = new Input();
 
@@ -68,11 +68,8 @@ function init()
     input.initMouse('canvasElem');
 
     document.getElementById('obj').addEventListener('change', changeObject);
-    document.getElementById('res').addEventListener('change', changeResolution);
-    document.getElementById('renderer').addEventListener('change', changeRenderer);
-    document.getElementById('btn_startstop').addEventListener('click', switchStartStop);
-
-    setInterval(displayFps, 3000);
+    document.getElementById('res').addEventListener('change', restart);
+    document.getElementById('renderer').addEventListener('change', restart);
 
     changeObject();
 }
@@ -82,43 +79,24 @@ function changeObject()
     const obj = document.getElementById('obj').value;
     object3dFactory.reset();
     object3dFactory.load('object', './objects/' + obj + '.obj.json');
+    restart();
 }
 
-function changeResolution()
+function restart()
 {
     if (image) {
-        stop();
-        start();
+        image = null;
     }
-}
 
-function changeRenderer()
-{
-    if (image) {
-        image.setRenderer(document.getElementById('renderer').value);
-    }
-}
-
-function switchStartStop()
-{
-    if (image) {
-        stop();
+    if (!object3dFactory.isReady()) {
+        setTimeout(restart, 500);
         return;
     }
+    displayDebug();
 
-    start();
-}
-
-function stop()
-{
-    image = null;
-}
-
-function start()
-{
     const res = document.getElementById('res').value;
 
-    image = new Engine3d('canvasElem');
+    image = new Engine3d('canvasElem', document.getElementById('renderer').value);
     image.setScreen(res, res * 24 / 32);
     image.setBackground(35, 35, 35);
     image.setFov(45.0);
@@ -131,7 +109,6 @@ function start()
     image.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
     image.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
 
-    changeRenderer();
     display();
 }
 
@@ -142,11 +119,6 @@ function display()
     }
 
     image.calculateDeltaTime();
-
-    if (!object3dFactory.isReady()) {
-        setTimeout(display, 500);
-        return;
-    }
 
     const t_d = image.getDeltaTime();
     let x = input.readMouseX();
@@ -176,11 +148,10 @@ function display()
     setTimeout(display, 2);
 }
 
-function displayFps()
+function displayDebug()
 {
     const current = object3dFactory.get('object');
-    if (!current) return;
-    document.getElementById('div_fps').innerHTML = current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces';
+    document.getElementById('div_debug').innerHTML = current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces';
 }
 
 init();

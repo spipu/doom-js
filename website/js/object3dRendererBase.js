@@ -1,4 +1,8 @@
 class Object3dRendererBase {
+    initCanvas(canvas) {
+        return canvas.getContext('2d');
+    }
+
     _norm(v) {
         return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
     }
