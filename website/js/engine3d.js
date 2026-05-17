@@ -195,9 +195,9 @@ class Engine3d {
 
     setCamera(user) {
         this.matrixIdentity();
-        this.matrixRotateX(-user.pitch);
+        this.matrixRotateX(user.pitch);
         this.matrixRotateY(-user.yaw);
-        this.matrixTranslate(-user.x, -(user.y + user.eyeHeight), -user.z);
+        this.matrixTranslate(-user.getCameraX(), -user.getCameraY(), -user.getCameraZ());
         return this;
     }
 

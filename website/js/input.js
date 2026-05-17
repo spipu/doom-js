@@ -39,6 +39,9 @@ class Input {
     }
 
     readKey(k, reset) {
+        if (typeof k === 'string') {
+            k = k.toUpperCase().charCodeAt(0);
+        }
         const v = this.key_lst[k];
         if (reset) this.key_lst[k] = false;
         return v;
