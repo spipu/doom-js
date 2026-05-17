@@ -41,7 +41,7 @@ class User {
         this._walking = true;
     }
 
-    updateTime(deltaTime) {
+    beginFrame(deltaTime) {
         this._deltaTime = deltaTime;
         this._walking   = false;
     }
