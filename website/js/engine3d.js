@@ -46,6 +46,16 @@ class Engine3d {
         this._fpsCount     = 0;
         this._fpsDisplay   = 0;
         this._fpsLastCheck = (new Date()).getTime();
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative;display:inline-block;';
+        this.scr_obj.parentNode.insertBefore(wrapper, this.scr_obj);
+        wrapper.appendChild(this.scr_obj);
+
+        this._fpsDiv = document.createElement('div');
+        this._fpsDiv.style.cssText = 'position:absolute;right:5px;bottom:5px;color:white;text-shadow:1px 1px 3px black;font:12px verdana;pointer-events:none;';
+        wrapper.appendChild(this._fpsDiv);
+
         return this;
     }
 
@@ -191,9 +201,7 @@ class Engine3d {
     }
 
     drawFps() {
-        if (!this._fpsEnabled) {
-            return
-        }
+        if (!this._fpsEnabled) return;
 
         const now = new Date().getTime();
         this._fpsCount++;
@@ -204,14 +212,6 @@ class Engine3d {
             this._fpsLastCheck = now;
         }
 
-        const text = this._fpsDisplay + ' fps';
-        this.scr_ctx.save();
-        this.scr_ctx.font        = '12px verdana';
-        this.scr_ctx.shadowColor = 'black';
-        this.scr_ctx.shadowBlur  = 3;
-        this.scr_ctx.fillStyle   = 'white';
-        const w = this.scr_ctx.measureText(text).width;
-        this.scr_ctx.fillText(text, this.scr_width - w - 5, this.scr_height - 5);
-        this.scr_ctx.restore();
+        this._fpsDiv.innerText = this._fpsDisplay + ' fps';
     }
 }
