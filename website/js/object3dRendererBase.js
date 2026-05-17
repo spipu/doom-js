@@ -1,4 +1,8 @@
 class Object3dRendererBase {
+    isAvailable() {
+        return true;
+    }
+
     initCanvas(canvas) {
         return canvas.getContext('2d');
     }

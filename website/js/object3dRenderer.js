@@ -14,6 +14,13 @@ class Object3dRenderer {
         if (!this._renderers[code]) {
             throw new Error('Unknown renderer: "' + code + '"');
         }
+        if (!this._renderers[code].isAvailable()) {
+            if (!this._renderers['full']) {
+                throw new Error('Renderer "' + code + '" is not available and fallback "full" is not registered');
+            }
+            console.warn('Renderer "' + code + '" is not available, falling back to "full"');
+            code = 'full';
+        }
         this._currentCode = code;
         return this;
     }
