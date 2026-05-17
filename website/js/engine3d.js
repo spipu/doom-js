@@ -1,7 +1,7 @@
 const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
-    constructor(obj_id) {
+    constructor(obj_id, initialRenderer = 'full') {
         this.scr_width  = 0;
         this.scr_height = 0;
         this.background = [0, 0, 0];
@@ -18,6 +18,9 @@ class Engine3d {
         this._renderer.addRenderer(new Object3dRendererFull());
         this._renderer.addRenderer(new Object3dRendererFlat());
         this._renderer.addRenderer(new Object3dRendererFast());
+        this._renderer.addRenderer(new Object3dRendererWebGL());
+
+        this._renderer.setRenderer(initialRenderer);
 
         this._fpsEnabled   = false;
         this._fpsCount     = 0;
@@ -31,7 +34,7 @@ class Engine3d {
         this.scr_obj = document.getElementById(obj_id);
         if (!this.scr_obj || !this.scr_obj.getContext) return;
 
-        this.scr_ctx = this.scr_obj.getContext('2d');
+        this.scr_ctx = this._renderer.initCanvas(this.scr_obj);
 
         this.setScreen(320, 240);
         this.setView(-32., 32., -24., 24.);
@@ -92,10 +95,6 @@ class Engine3d {
     setZBuffer(near, far) {
         this.zBuffer.setRange(near || 1, far || 80);
         return this;
-    }
-
-    setRenderer(code) {
-        this._renderer.setRenderer(code);
     }
 
     preComputeViewport() {

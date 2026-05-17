@@ -7,6 +7,7 @@
     'js/object3dRendererFast.js',
     'js/object3dRendererFull.js',
     'js/object3dRendererFlat.js',
+    'js/object3dRendererWebGL.js',
     'js/object3dRenderer.js',
     'js/engine3d.js',
     'js/object3dFactory.js',

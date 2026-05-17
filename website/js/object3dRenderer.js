@@ -18,6 +18,10 @@ class Object3dRenderer {
         return this;
     }
 
+    initCanvas(canvas) {
+        return this._renderers[this._currentCode].initCanvas(canvas);
+    }
+
     begin(engine) {
         this._renderers[this._currentCode].begin(engine);
     }

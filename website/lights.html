@@ -18,8 +18,7 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
 </style>
     </head>
     <body>
-        <input type="button" onclick="init3d()" value="Start / Stop" /><br />
-        <i>click on the "Start / Stop" button, and use the keyboard to move the lights</i><br />
+        <i>use the keyboard to move the lights</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
         <br />
@@ -41,14 +40,10 @@ var light3 = null;
 var input = new Input();
 input.initKeyboard();
 
+init3d();
+
 function init3d()
 {
-    if (image)
-    {
-        image = null;
-        return;
-    }
-
     if (!object3dFactory.isReady()) {
         setTimeout(init3d, 100);
         return;
@@ -72,7 +67,6 @@ function init3d()
 
 function animate()
 {
-    if (!image) return;
     image.calculateDeltaTime();
     const t_d = image.getDeltaTime();
 
