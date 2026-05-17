@@ -23,14 +23,10 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/loader.js" ></script>
         <script>
 
-// Camera state and starting position
-let cam_x = -5.25;
-let cam_y = 0.70;
-let cam_z = -5.25;
-let cam_yaw = 180;
-
 const MOVE_SPEED = 0.004;
 const TURN_SPEED = 0.09;
+
+const user = new User(-5.25, 0, -5.25, 0.70, 180, 0);
 
 // Static light world positions
 const LIGHTS = [
@@ -77,21 +73,19 @@ function display()
 
     const t_d = engine.getDeltaTime();
 
-    if (input.readKeyLeft())  cam_yaw -= TURN_SPEED * t_d;
-    if (input.readKeyRight()) cam_yaw += TURN_SPEED * t_d;
+    if (input.readKeyLeft())  user.yaw -= TURN_SPEED * t_d;
+    if (input.readKeyRight()) user.yaw += TURN_SPEED * t_d;
 
     if (input.readKeyUp()) {
-        cam_x += t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * cam_yaw);
-        cam_z += t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * cam_yaw);
+        user.x += t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * user.yaw);
+        user.z += t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * user.yaw);
     }
     if (input.readKeyDown()) {
-        cam_x -= t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * cam_yaw);
-        cam_z -= t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * cam_yaw);
+        user.x -= t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * user.yaw);
+        user.z -= t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * user.yaw);
     }
 
-    engine.matrixIdentity();
-    engine.matrixRotateY(-cam_yaw);
-    engine.matrixTranslate(-cam_x, -cam_y, -cam_z);
+    engine.setCamera(user);
 
     for (let i = 0; i < LIGHTS.length; i++) {
         engine.lightMove(light_ids[i], LIGHTS[i].pos);
@@ -108,7 +102,7 @@ function display()
     engine.drawFinish();
 
     document.getElementById('debug').innerText =
-        'x=' + cam_x.toFixed(2) + '  y=' + cam_y.toFixed(2) + '  z=' + cam_z.toFixed(2) + '  yaw=' + cam_yaw.toFixed(1);
+        'x=' + user.x.toFixed(2) + '  y=' + user.y.toFixed(2) + '  z=' + user.z.toFixed(2) + '  yaw=' + user.yaw.toFixed(1);
 
     setTimeout(display, 2);
 }
