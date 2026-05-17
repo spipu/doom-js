@@ -75,15 +75,15 @@ function animate()
 
     if (input.readKeyUp())
     {
-        if (input.readKeyLeft())  obj_a+= t_d*obj_da;
-        if (input.readKeyRight()) obj_a-= t_d*obj_da;
+        if (input.readKeyLeft())  obj_a-= t_d*obj_da;
+        if (input.readKeyRight()) obj_a+= t_d*obj_da;
         obj_x+= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
         obj_z-= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
     if (input.readKeyDown())
     {
-        if (input.readKeyLeft())  obj_a-= t_d*obj_da;
-        if (input.readKeyRight()) obj_a+= t_d*obj_da;
+        if (input.readKeyLeft())  obj_a+= t_d*obj_da;
+        if (input.readKeyRight()) obj_a-= t_d*obj_da;
         obj_x-= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
         obj_z+= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
@@ -96,6 +96,7 @@ function animate()
     engine.drawInit();
 
     engine.matrixIdentity();
+    engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
     engine.matrixTranslate(0,-10,-35);
 
