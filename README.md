@@ -28,13 +28,15 @@ Then open `http://localhost:8080` in a browser.
 | `example.html` | Static render of the Lotus F1 |
 | `lights.html` | Coloured light sources demo (keyboard moves lights) |
 | `game.html` | Interactive van — drive it with the keyboard |
+| `world.html` | First-person navigation inside a 3D labyrinth (arrow keys + A/Q to look up/down) |
 
 ## Renderer modes
 
-Three rendering modes are available via the **Renderer** selector on `index.html`:
+Four rendering modes are available via the **Renderer** selector on `index.html`:
 
 | Mode | Description |
 |---|---|
+| `webgl` | WebGL — GPU shaders, z-buffer, texture mapping (default, falls back to `full` if unavailable) |
 | `full` | Per-pixel z-buffer with Gouraud shading and texture mapping |
 | `flat` | Painter's algorithm with flat shading (one colour per face) |
 | `fast` | Wireframe — no lighting, canvas 2D paths only |
@@ -57,8 +59,10 @@ website/
 │   ├── zBuffer.js       Z-buffer
 │   ├── matrix.js        4×4 transformation matrices
 │   ├── light.js         Point light sources
-│   └── input.js         Keyboard and mouse input
+│   ├── input.js         Keyboard and mouse input
+│   └── user.js          FPS player (position, eye height, angles, walk animation)
 ├── objects/             3D objects in .obj.json format
+├── world/               World map objects and textures (used by world.html)
 └── texture/             Texture images
 ```
 
