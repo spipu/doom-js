@@ -45,7 +45,7 @@ const LIGHTS = [
     { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,   0.90, -40.25] },
 ];
 
-let image = null;
+let engine = null;
 let light_ids = [];
 
 const input = new Input();
@@ -60,17 +60,17 @@ function start()
         return;
     }
 
-    image = new Engine3d('canvasElem');
-    image.setScreen(640, 480);
-    image.setBackground(120, 100, 140);
-    image.setFov(45.0);
-    image.setView(-32, 32, -24, 24);
-    image.setZBuffer(0.1, 100);
-    image.enableFps();
+    engine = new Engine3d('canvasElem');
+    engine.setScreen(640, 480);
+    engine.setBackground(120, 100, 140);
+    engine.setFov(45.0);
+    engine.setView(-32, 32, -24, 24);
+    engine.setZBuffer(0.1, 100);
+    engine.enableFps();
 
-    image.lightAmbient([20., 20., 20.]);
+    engine.lightAmbient([20., 20., 20.]);
     for (let i = 0; i < LIGHTS.length; i++) {
-        light_ids[i] = image.lightAdd(LIGHTS[i].color, LIGHTS[i].dist);
+        light_ids[i] = engine.lightAdd(LIGHTS[i].color, LIGHTS[i].dist);
     }
 
     display();
@@ -78,9 +78,9 @@ function start()
 
 function display()
 {
-    image.calculateDeltaTime();
+    engine.calculateDeltaTime();
 
-    const t_d = image.getDeltaTime();
+    const t_d = engine.getDeltaTime();
 
     if (input.readKeyLeft())  cam_yaw -= TURN_SPEED * t_d;
     if (input.readKeyRight()) cam_yaw += TURN_SPEED * t_d;
@@ -94,23 +94,23 @@ function display()
         cam_z -= t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * cam_yaw);
     }
 
-    image.matrixIdentity();
-    image.matrixRotateY(-cam_yaw);
-    image.matrixTranslate(-cam_x, -cam_y, -cam_z);
+    engine.matrixIdentity();
+    engine.matrixRotateY(-cam_yaw);
+    engine.matrixTranslate(-cam_x, -cam_y, -cam_z);
 
     for (let i = 0; i < LIGHTS.length; i++) {
-        image.lightMove(light_ids[i], LIGHTS[i].pos);
+        engine.lightMove(light_ids[i], LIGHTS[i].pos);
     }
 
-    image.drawInit();
-    image.drawObject(object3dFactory.get('object'));
+    engine.drawInit();
+    engine.drawObject(object3dFactory.get('object'));
 
-    image.matrixPush();
-    image.matrixTranslate(5.25, 0.0, -10.40);
-    image.drawObject(object3dFactory.get('porte'));
-    image.matrixPop();
+    engine.matrixPush();
+    engine.matrixTranslate(5.25, 0.0, -10.40);
+    engine.drawObject(object3dFactory.get('porte'));
+    engine.matrixPop();
 
-    image.drawFinish();
+    engine.drawFinish();
 
     document.getElementById('debug').innerText =
         'x=' + cam_x.toFixed(2) + '  y=' + cam_y.toFixed(2) + '  z=' + cam_z.toFixed(2) + '  yaw=' + cam_yaw.toFixed(1);

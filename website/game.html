@@ -28,7 +28,7 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
 object3dFactory.load('ground', 'objects/ground.obj.json');
 object3dFactory.load('van', 'objects/van.obj.json');
 
-var image = null;
+var engine = null;
 var obj_x =-5.;
 var obj_y = 0.;
 var obj_z =-10.;
@@ -52,26 +52,26 @@ function init3d()
         return;
     }
 
-    image = new Engine3d('canvasElem');
-    image.setScreen(320, 240);
-    image.setBackground(35, 35, 35);
-    image.setFov(45.0);
-    image.setView(-32, 32, -24, 24);
-    image.setZBuffer(1, 100);
-    image.enableFps();
+    engine = new Engine3d('canvasElem');
+    engine.setScreen(640, 480);
+    engine.setBackground(35, 35, 35);
+    engine.setFov(45.0);
+    engine.setView(-32, 32, -24, 24);
+    engine.setZBuffer(1, 100);
+    engine.enableFps();
 
-    image.lightAmbient([40., 40., 40.]);
-    light1 = image.lightAdd([255., 255., 255.], 30);
-    light2 = image.lightAdd([0., 200., 0.], 5);
-    light3 = image.lightAdd([200., 0., 0.], 5);
+    engine.lightAmbient([40., 40., 40.]);
+    light1 = engine.lightAdd([255., 255., 255.], 30);
+    light2 = engine.lightAdd([0., 200., 0.], 5);
+    light3 = engine.lightAdd([200., 0., 0.], 5);
 
     animate();
 }
 
 function animate()
 {
-    image.calculateDeltaTime();
-    const t_d = image.getDeltaTime();
+    engine.calculateDeltaTime();
+    const t_d = engine.getDeltaTime();
 
     if (input.readKeyUp())
     {
@@ -93,24 +93,24 @@ function animate()
     if (obj_z<-15.) obj_z =-15.;
     if (obj_z>15.)  obj_z = 15.;
 
-    image.drawInit();
+    engine.drawInit();
 
-    image.matrixIdentity();
-    image.matrixRotateX(180);
-    image.matrixTranslate(0,-10,-35);
+    engine.matrixIdentity();
+    engine.matrixRotateX(180);
+    engine.matrixTranslate(0,-10,-35);
 
-    image.lightMove(light1, [0., 25., 0.]);
+    engine.lightMove(light1, [0., 25., 0.]);
 
-    image.matrixPush();
-    image.matrixTranslate(obj_x, obj_y, obj_z);
-    image.matrixRotateY(obj_a);
-    image.lightMove(light2, [9, 2., 0.]);
-    image.lightMove(light3, [-8, 2., 0.]);
-    image.drawObject(object3dFactory.get('van'));
-    image.matrixPop();
+    engine.matrixPush();
+    engine.matrixTranslate(obj_x, obj_y, obj_z);
+    engine.matrixRotateY(obj_a);
+    engine.lightMove(light2, [9, 2., 0.]);
+    engine.lightMove(light3, [-8, 2., 0.]);
+    engine.drawObject(object3dFactory.get('van'));
+    engine.matrixPop();
 
-    image.drawObject(object3dFactory.get('ground'));
-    image.drawFinish();
+    engine.drawObject(object3dFactory.get('ground'));
+    engine.drawFinish();
     setTimeout(animate, 1);
 }
         </script>

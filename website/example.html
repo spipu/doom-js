@@ -28,27 +28,27 @@ function render()
 {
     if (!object3dFactory.isReady()) { setTimeout(render, 500); return false; }
     
-    var image = new Engine3d('canvasElem');
-    image.setScreen(800, 600);
-    image.setBackground(35, 35, 35);
-    image.setFov(45.0);
-    image.setView(-32, 32, -24, 24);
-    image.setZBuffer(1, 80);
+    var engine = new Engine3d('canvasElem');
+    engine.setScreen(800, 600);
+    engine.setBackground(35, 35, 35);
+    engine.setFov(45.0);
+    engine.setView(-32, 32, -24, 24);
+    engine.setZBuffer(1, 80);
     
-    image.lightAmbient([40., 40., 40.]);
-    image.lightAdd([255., 50., 50.], 50, [10.,0, 10.]);
-    image.lightAdd([50., 255., 50.], 50, [-10.,0, 10.]);
+    engine.lightAmbient([40., 40., 40.]);
+    engine.lightAdd([255., 50., 50.], 50, [10.,0, 10.]);
+    engine.lightAdd([50., 255., 50.], 50, [-10.,0, 10.]);
 
-    image.drawInit();
+    engine.drawInit();
     
-    image.matrixIdentity();
-    image.matrixRotateX(180);
-    image.matrixTranslate(4, 5, -37);
-    image.matrixRotateY(-30);
-    image.matrixRotateX(-60);
-    image.drawObject(object3dFactory.get('lotus'));
+    engine.matrixIdentity();
+    engine.matrixRotateX(180);
+    engine.matrixTranslate(4, 5, -37);
+    engine.matrixRotateY(-30);
+    engine.matrixRotateX(-60);
+    engine.drawObject(object3dFactory.get('lotus'));
     
-    image.drawFinish();
+    engine.drawFinish();
 }
 
 render();
