@@ -37,6 +37,13 @@ class Object3dRendererFull extends Object3dRendererBase {
             const zNear      = engine.zBuffer._z_near;
             const allInFront = v0[2] >= zNear && v1[2] >= zNear && v2[2] >= zNear;
             if (allInFront && fc_inf[1] > 0) continue;
+            if (!allInFront) {
+                const n  = fc_inf[0];
+                const cx = (obj.pt_3d[fc[0]][0] + obj.pt_3d[fc[1]][0] + obj.pt_3d[fc[2]][0]) / 3;
+                const cy = (obj.pt_3d[fc[0]][1] + obj.pt_3d[fc[1]][1] + obj.pt_3d[fc[2]][1]) / 3;
+                const cz = (obj.pt_3d[fc[0]][2] + obj.pt_3d[fc[1]][2] + obj.pt_3d[fc[2]][2]) / 3;
+                if (n[0]*cx + n[1]*cy + n[2]*cz > 0) continue;
+            }
 
             const tris    = this._clipNear(engine, v0, v1, v2);
             const texture = fc[4] !== null ? obj.tx_lst[fc[4]] : null;
