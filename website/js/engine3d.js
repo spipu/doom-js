@@ -59,6 +59,17 @@ class Engine3d {
         return this;
     }
 
+    destroy() {
+        if (this._fpsDiv) {
+            const wrapper = this._fpsDiv.parentNode;
+            if (wrapper) {
+                wrapper.parentNode.insertBefore(this.scr_obj, wrapper);
+                wrapper.remove();
+            }
+            this._fpsDiv = null;
+        }
+    }
+
     calculateDeltaTime() {
         const now = new Date().getTime();
         this._deltaTime = now - this._deltaLast;
