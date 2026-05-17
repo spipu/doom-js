@@ -68,7 +68,7 @@ function display()
 {
     engine.calculateDeltaTime();
 
-    user.updateTime(engine.getDeltaTime());
+    user.beginFrame(engine.getDeltaTime());
 
     if (input.readKeyLeft())     user.lookLeft();
     if (input.readKeyRight())    user.lookRight();
