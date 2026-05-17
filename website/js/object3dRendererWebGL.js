@@ -152,10 +152,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 float a;
                 if (u_hasTex == 1) {
                     vec4 t = texture2D(u_tex, v_uv);
-                    col = v_color / 255.0 * t.rgb;
+                    col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
                 } else {
-                    col = v_color / 255.0;
+                    col = min(v_color / 255.0, vec3(1.0));
                     a   = u_alpha;
                 }
                 gl_FragColor = vec4(col, a);
