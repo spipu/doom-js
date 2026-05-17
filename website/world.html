@@ -23,9 +23,6 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/loader.js" ></script>
         <script>
 
-const MOVE_SPEED = 0.004;
-const TURN_SPEED = 0.09;
-
 const user = new User(-5.25, 0, -5.25, 0.70, 180, 0);
 
 // Static light world positions
@@ -71,20 +68,16 @@ function display()
 {
     engine.calculateDeltaTime();
 
-    const t_d = engine.getDeltaTime();
+    user.updateTime(engine.getDeltaTime());
 
-    if (input.readKeyLeft())  user.yaw -= TURN_SPEED * t_d;
-    if (input.readKeyRight()) user.yaw += TURN_SPEED * t_d;
+    if (input.readKeyLeft())     user.lookLeft();
+    if (input.readKeyRight())    user.lookRight();
+    if (input.readKey('a'))      user.lookUp();
+    if (input.readKey('q'))      user.lookDown();
+    if (input.readKeyUp())       user.moveForward();
+    if (input.readKeyDown())     user.moveBackward();
 
-    if (input.readKeyUp()) {
-        user.x += t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * user.yaw);
-        user.z += t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * user.yaw);
-    }
-    if (input.readKeyDown()) {
-        user.x -= t_d * MOVE_SPEED * Math.sin(DEG_TO_RAD * user.yaw);
-        user.z -= t_d * MOVE_SPEED * Math.cos(DEG_TO_RAD * user.yaw);
-    }
-
+    user.updateMove();
     engine.setCamera(user);
 
     for (let i = 0; i < LIGHTS.length; i++) {
@@ -102,7 +95,7 @@ function display()
     engine.drawFinish();
 
     document.getElementById('debug').innerText =
-        'x=' + user.x.toFixed(2) + '  y=' + user.y.toFixed(2) + '  z=' + user.z.toFixed(2) + '  yaw=' + user.yaw.toFixed(1);
+        'x=' + user.x.toFixed(2) + ' | y=' + user.y.toFixed(2) + ' | z=' + user.z.toFixed(2) + ' | yaw=' + user.yaw.toFixed(1) + ' | pitch=' + user.pitch.toFixed(1);
 
     setTimeout(display, 2);
 }
