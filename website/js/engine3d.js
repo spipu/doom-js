@@ -1,7 +1,7 @@
 const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
-    constructor(obj_id, initialRenderer = 'full') {
+    constructor(obj_id, initialRenderer = 'webgl') {
         this.scr_width  = 0;
         this.scr_height = 0;
         this.background = [0, 0, 0];

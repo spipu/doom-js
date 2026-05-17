@@ -10,6 +10,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     get code() { return 'webgl'; }
 
+    isAvailable() {
+        try {
+            const canvas = document.createElement('canvas');
+            return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+        } catch (e) {
+            return false;
+        }
+    }
+
     initCanvas(canvas) {
         const ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         if (!ctx) throw new Error('WebGL not available');
