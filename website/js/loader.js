@@ -12,6 +12,8 @@
     'js/object3dRendererFactory.js',
     'js/engine3d.js',
     'js/object3dFactory.js',
+    'js/instance.js',
+    'js/instanceFactory.js',
     'js/inputKeyboard.js',
     'js/inputMouse.js',
     'js/user.js',
