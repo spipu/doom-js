@@ -12,6 +12,8 @@
     'js/object3dRendererFactory.js',
     'js/engine3d.js',
     'js/object3dFactory.js',
-    'js/input.js',
+    'js/inputKeyboard.js',
+    'js/inputMouse.js',
     'js/user.js',
+    'js/debug.js',
 ].forEach(src => document.write('<script src="' + src + '"><\/script>'));

@@ -21,8 +21,8 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <i>use the keyboard to move the car</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
-        <br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/loader.js" ></script>
         <script>
 object3dFactory.load('ground', 'objects/ground.obj.json');
@@ -40,8 +40,8 @@ var light1 = null;
 var light2 = null;
 var light3 = null;
 
-var input = new Input();
-input.initKeyboard();
+const keyboard = new InputKeyboard();
+const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
 init3d();
 
@@ -73,17 +73,17 @@ function animate()
     engine.calculateDeltaTime();
     const t_d = engine.getDeltaTime();
 
-    if (input.readKeyUp())
+    if (keyboard.readKeyUp())
     {
-        if (input.readKeyLeft())  obj_a-= t_d*obj_da;
-        if (input.readKeyRight()) obj_a+= t_d*obj_da;
+        if (keyboard.readKeyLeft())  obj_a-= t_d*obj_da;
+        if (keyboard.readKeyRight()) obj_a+= t_d*obj_da;
         obj_x+= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
         obj_z-= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
-    if (input.readKeyDown())
+    if (keyboard.readKeyDown())
     {
-        if (input.readKeyLeft())  obj_a+= t_d*obj_da;
-        if (input.readKeyRight()) obj_a-= t_d*obj_da;
+        if (keyboard.readKeyLeft())  obj_a+= t_d*obj_da;
+        if (keyboard.readKeyRight()) obj_a-= t_d*obj_da;
         obj_x-= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
         obj_z+= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
     }
@@ -112,6 +112,7 @@ function animate()
 
     engine.drawObject(object3dFactory.get('ground'));
     engine.drawFinish();
+    debug.update();
     setTimeout(animate, 1);
 }
         </script>

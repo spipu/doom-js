@@ -18,12 +18,14 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
     </head>
     <body>
         <canvas id="canvasElem"></canvas>
-        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/loader.js" ></script>
         <script>
 
-const user = new User(-5.25, 0, -5.25, 0.70, 180, 0);
+const user = new User(-5.25, 0, -5.25, 180, 0)
+    .setHeight(0.85)
+    .setEyeRatio(0.82);
 
 // Static light world positions
 const LIGHTS = [
@@ -33,13 +35,18 @@ const LIGHTS = [
     { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,  -0.90, -40.25] },
 ];
 
-let engine = null;
+let engine    = null;
 let light_ids = [];
 
-const input = new Input();
-input.initKeyboard();
+const keyboard = new InputKeyboard();
+const mouse    = new InputMouse(document.getElementById('canvasElem'));
+const debug = new Debug(document.getElementById('debug'))
+    .bindUser(user)
+    .bindKeyboard(keyboard)
+    .bindMouse(mouse);
+
 object3dFactory.load('object', './world/objects/map.obj.json');
-object3dFactory.load('porte',  './world/objects/porte.obj.json');
+object3dFactory.load('door', './world/objects/door.obj.json');
 
 function start()
 {
@@ -70,12 +77,12 @@ function display()
 
     user.beginFrame(engine.getDeltaTime());
 
-    if (input.readKeyLeft())     user.lookLeft();
-    if (input.readKeyRight())    user.lookRight();
-    if (input.readKey('a'))      user.lookUp();
-    if (input.readKey('q'))      user.lookDown();
-    if (input.readKeyUp())       user.moveForward();
-    if (input.readKeyDown())     user.moveBackward();
+    if (keyboard.readKeyForward())     user.moveForward();
+    if (keyboard.readKeyBackward())    user.moveBackward();
+    if (keyboard.readKeyStrafeLeft())  user.strafeLeft();
+    if (keyboard.readKeyStrafeRight()) user.strafeRight();
+
+    user.lookMouse(mouse.readDeltaX(), mouse.readDeltaY());
 
     user.updateMove();
     engine.setCamera(user);
@@ -89,15 +96,14 @@ function display()
 
     engine.matrixPush();
     engine.matrixTranslate(5.25, 0.0, -10.40);
-    engine.drawObject(object3dFactory.get('porte'));
+    engine.drawObject(object3dFactory.get('door'));
     engine.matrixPop();
 
     engine.drawFinish();
 
-    document.getElementById('debug').innerText =
-        'x=' + user.x.toFixed(2) + ' | y=' + user.y.toFixed(2) + ' | z=' + user.z.toFixed(2) + ' | yaw=' + user.yaw.toFixed(1) + ' | pitch=' + user.pitch.toFixed(1);
+    debug.update();
 
-    setTimeout(display, 2);
+    setTimeout(display, 1);
 }
 
 start();
