@@ -48,6 +48,9 @@ const debug = new Debug(document.getElementById('debug'))
 object3dFactory.load('map', './world/objects/map.obj.json');
 instanceFactory.load('entrance', './world/instances/entrance.instance.json');
 instanceFactory.load('door',     './world/instances/door.instance.json');
+instanceFactory.load('cube1',    './world/instances/cube1.instance.json');
+instanceFactory.load('cube2',    './world/instances/cube2.instance.json');
+instanceFactory.load('lift',     './world/instances/lift.instance.json');
 
 function start()
 {
@@ -96,14 +99,14 @@ function display()
         engine.lightMove(light_ids[i], LIGHTS[i].pos);
     }
 
-    const action = keyboard.readKeyAction();
-    instanceFactory.get('entrance').update(engine.getDeltaTime(), user, action);
-    instanceFactory.get('door').update(engine.getDeltaTime(), user, action);
+    const dt        = engine.getDeltaTime();
+    const action    = keyboard.readKeyAction();
+    const instances = instanceFactory.getAll();
+    instances.forEach(inst => inst.update(dt, user, action));
 
     engine.drawInit();
     engine.drawObject(object3dFactory.get('map'));
-    engine.drawInstance(instanceFactory.get('entrance'));
-    engine.drawInstance(instanceFactory.get('door'));
+    instances.forEach(inst => engine.drawInstance(inst));
 
     engine.drawFinish();
 

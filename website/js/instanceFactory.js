@@ -1,10 +1,12 @@
 class InstanceFactory {
     constructor() {
         this._registry = {};
+        this._order    = [];
     }
 
     reset() {
         this._registry = {};
+        this._order    = [];
     }
 
     isReady() {
@@ -30,7 +32,12 @@ class InstanceFactory {
         return entry.instance;
     }
 
+    getAll() {
+        return this._order.map(code => this._registry[code].instance).filter(i => i !== null);
+    }
+
     load(code, url) {
+        this._order.push(code);
         this._registry[code] = { data: null, instance: null };
         fetch(url)
             .then(r => r.json())
