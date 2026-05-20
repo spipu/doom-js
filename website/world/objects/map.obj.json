@@ -1,11 +1,11 @@
 {
   "textures": [
-    "./world/texture/sol.jpg",
-    "./world/texture/mur.jpg",
-    "./world/texture/plafond.jpg",
-    "./world/texture/sable.jpg",
-    "./world/texture/bord.jpg",
-    "./world/texture/trans.jpg"
+    "./world/texture/floor.jpg",
+    "./world/texture/wall.jpg",
+    "./world/texture/ceiling.jpg",
+    "./world/texture/sand.jpg",
+    "./world/texture/trim.jpg",
+    "./world/texture/glass.jpg"
   ],
   "points": [
     [-3.5, 0.0, -10.5],
