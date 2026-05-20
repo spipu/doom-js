@@ -58,15 +58,24 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <script src="js/loader.js" ></script>
         <script>
 let engine   = null;
-let angle_x = 0.;
-let angle_y = 0.;
+let angle_x  = 0.;
+let angle_y  = 0.;
+let mouse_x  = -1;
+let mouse_y  = -1;
 
-const input = new Input();
+document.addEventListener('mousemove', (e) => {
+    const canvas = document.getElementById('canvasElem');
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
+        mouse_x = x; mouse_y = y;
+    }
+});
 
 function init()
 {
-    input.initMouse('canvasElem');
-
     document.getElementById('obj').addEventListener('change', changeObject);
     document.getElementById('res').addEventListener('change', restart);
     document.getElementById('renderer').addEventListener('change', restart);
@@ -128,8 +137,8 @@ function display()
     engine.calculateDeltaTime();
 
     const t_d = engine.getDeltaTime();
-    let x = input.readMouseX();
-    let y = input.readMouseY();
+    let x = mouse_x;
+    let y = mouse_y;
     if (x < 0) {
         x = 0;
         y = 0;
@@ -152,7 +161,7 @@ function display()
     engine.drawInit();
     engine.drawObject(object3dFactory.get('object'));
     engine.drawFinish();
-    setTimeout(display, 2);
+    setTimeout(display, 1);
 }
 
 function displayDebug()

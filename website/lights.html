@@ -21,8 +21,8 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <i>use the keyboard to move the lights</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
-        <br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
+        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/loader.js" ></script>
         <script>
 object3dFactory.load('ground', 'objects/ground.obj.json');
@@ -37,8 +37,8 @@ var light1 = null;
 var light2 = null;
 var light3 = null;
 
-var input = new Input();
-input.initKeyboard();
+const keyboard = new InputKeyboard();
+const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
 init3d();
 
@@ -70,10 +70,10 @@ function animate()
     engine.calculateDeltaTime();
     const t_d = engine.getDeltaTime();
 
-    if (input.readKeyUp())    obj_z+= t_d*obj_dv;
-    if (input.readKeyDown())  obj_z-= t_d*obj_dv;
-    if (input.readKeyLeft())  obj_r-= t_d*obj_dv;
-    if (input.readKeyRight()) obj_r+= t_d*obj_dv;
+    if (keyboard.readKeyUp())    obj_z+= t_d*obj_dv;
+    if (keyboard.readKeyDown())  obj_z-= t_d*obj_dv;
+    if (keyboard.readKeyLeft())  obj_r-= t_d*obj_dv;
+    if (keyboard.readKeyRight()) obj_r+= t_d*obj_dv;
 
     if (obj_z<0)  obj_z=0;
     if (obj_z>30) obj_z=30;
@@ -112,6 +112,7 @@ function animate()
 
     engine.drawObject(object3dFactory.get('ground'));
     engine.drawFinish();
+    debug.update();
     setTimeout(animate, 1);
 }
         </script>
