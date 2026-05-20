@@ -58,7 +58,7 @@ function init3d()
     engine.setFov(45.0);
     engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(1, 100);
-    engine.enableFps();
+    debug.bindEngine(engine);
 
     engine.lightAmbient([40., 40., 40.]);
     light1 = engine.lightAdd([255., 255., 255.], 30);

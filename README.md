@@ -24,15 +24,24 @@ Then open `http://localhost:8080` in a browser.
 
 | Page | Description |
 |---|---|
-| `index.html` | Main demo — pick an object, resolution and renderer |
+| `index.html` | Home page — links to all demos |
+| `objects.html` | Object viewer — pick an object, resolution and renderer |
 | `example.html` | Static render of the Lotus F1 |
-| `lights.html` | Coloured light sources demo (keyboard moves lights) |
-| `game.html` | Interactive van — drive it with the keyboard |
-| `world.html` | First-person navigation inside a 3D labyrinth (arrow keys + A/Q to look up/down) |
+| `lights.html` | Coloured light sources demo (arrow keys move lights) |
+| `game.html` | Interactive van — drive it with the arrow keys |
+| `world.html` | First-person navigation inside a 3D labyrinth (ZQSD/arrows + mouse) |
+
+## Controls (world.html)
+
+| Input | Action |
+|---|---|
+| Arrow keys / ZQSD | Move forward / backward / strafe |
+| Mouse (click canvas first) | Look around |
+| ESC | Release mouse |
 
 ## Renderer modes
 
-Four rendering modes are available via the **Renderer** selector on `index.html`:
+Four rendering modes are available via the **Renderer** selector on `objects.html`:
 
 | Mode | Description |
 |---|---|
@@ -44,26 +53,34 @@ Four rendering modes are available via the **Renderer** selector on `index.html`
 ## Objects
 
 Thirteen 3D objects are included in `website/objects/`:
-`cube`, `sphere`, `torus`, `lotus`, `helico_military`, `helico_civil`, `tank`, `car`, `van`, `dyno`, `head`, `plane`, `ship`, `ship`, `teddy`
+`cube`, `sphere`, `torus`, `lotus`, `helico_military`, `helico_civil`, `tank`, `car`, `van`, `dyno`, `head`, `plane`, `ship`, `teddy`
 
 ## Architecture
 
 ```
 website/
-├── js/                  Engine source files
-│   ├── loader.js        Loads all scripts in the correct order
-│   ├── engine3d.js      Main engine (viewport, lights, matrix)
-│   ├── object3d.js      3D object (geometry, textures)
-│   ├── object3dFactory.js  Object registry and JSON loader
-│   ├── object3dRenderer*.js  Rendering strategies
-│   ├── zBuffer.js       Z-buffer
-│   ├── matrix.js        4×4 transformation matrices
-│   ├── light.js         Point light sources
-│   ├── input.js         Keyboard and mouse input
-│   └── user.js          FPS player (position, eye height, angles, walk animation)
-├── objects/             3D objects in .obj.json format
-├── world/               World map objects and textures (used by world.html)
-└── texture/             Texture images
+├── js/
+│   ├── constants.js             Shared constants (DEG_TO_RAD)
+│   ├── loader.js                Loads all scripts in the correct order
+│   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering)
+│   ├── object3d.js              3D object (geometry, textures, projection)
+│   ├── object3dFactory.js       Object registry and async JSON loader
+│   ├── object3dRendererBase.js  Base renderer class (shared utilities)
+│   ├── object3dRendererFull.js  Per-pixel z-buffer + textures (CPU)
+│   ├── object3dRendererFlat.js  Flat shading + Painter's algorithm
+│   ├── object3dRendererFast.js  Wireframe (canvas 2D)
+│   ├── object3dRendererWebGL.js WebGL renderer (GLSL shaders, GPU z-buffer)
+│   ├── object3dRendererFactory.js  Selects and instantiates the right renderer
+│   ├── zBuffer.js               Z-buffer
+│   ├── matrix.js                4×4 transformation matrices
+│   ├── light.js                 Point light sources
+│   ├── inputKeyboard.js         Keyboard input (e.code, Set-based)
+│   ├── inputMouse.js            Mouse input via Pointer Lock API
+│   ├── user.js                  FPS player (position, yaw/pitch, walk animation)
+│   └── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
+├── objects/                     3D objects in .obj.json format
+├── world/                       World map objects and textures (world.html)
+└── texture/                     Texture images
 ```
 
 ## License

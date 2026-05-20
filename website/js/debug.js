@@ -1,17 +1,20 @@
 class Debug {
     constructor(element) {
         this._el       = element;
+        this._engine   = null;
         this._user     = null;
         this._keyboard = null;
         this._mouse    = null;
     }
 
+    bindEngine(engine)     { this._engine   = engine;   return this; }
     bindUser(user)         { this._user     = user;     return this; }
     bindKeyboard(keyboard) { this._keyboard = keyboard; return this; }
     bindMouse(mouse)       { this._mouse    = mouse;    return this; }
 
     update() {
         const lines = [];
+        if (this._engine)   lines.push(this._buildEngine());
         if (this._mouse) {
             lines.push(this._mouse.isLocked() ? 'Souris capturée — ESC pour relâcher' : 'Cliquer sur le canvas pour capturer la souris');
             lines.push(this._buildMouse());
@@ -19,6 +22,10 @@ class Debug {
         if (this._keyboard) lines.push(this._buildKeyboard());
         if (this._user)     lines.push(this._buildUser());
         this._el.innerText = lines.join('\n');
+    }
+
+    _buildEngine() {
+        return this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode();
     }
 
     _buildUser() {
