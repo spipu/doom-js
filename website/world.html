@@ -100,12 +100,12 @@ function display()
     engine.drawObject(object3dFactory.get('map'));
 
     engine.matrixPush();
-    engine.matrixTranslate(1.75, 0.0, -10.40);
+    engine.matrixTranslate(5.25, 0.0, -10.40);
     engine.drawObject(object3dFactory.get('entrance'));
     engine.matrixPop();
 
     engine.matrixPush();
-    engine.matrixTranslate(1.75, 0.97, -10.40);
+    engine.matrixTranslate(5.25, 0.97, -10.40);
     engine.matrixRotateX(-90);
     engine.drawObject(object3dFactory.get('door'));
     engine.matrixPop();
