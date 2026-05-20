@@ -3,7 +3,7 @@
   "position":  [5.25, 0.97, -10.40],
   "rotation":  [-90, 0, 0],
   "trigger":   "action",
-  "radius":    1.5,
+  "radius":    1,
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 1.0, "translate": [0, 0, 0], "rotate": [90, 0, 0]},

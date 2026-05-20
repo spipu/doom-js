@@ -6,10 +6,12 @@ class Instance {
         this._trigger   = 'none';
         this._radius    = null;
         this._keyframes = [];
-        this._maxTime   = 0;
-        this._time      = 0;
-        this._playing   = false;
-        this.is_ready   = false;
+        this._maxTime     = 0;
+        this._time        = 0;
+        this._playing     = false;
+        this._worldCenter = [0, 0, 0];
+        this._delta       = { translate: [0, 0, 0], rotate: [0, 0, 0] };
+        this.is_ready     = false;
     }
 
     _load(data, object) {
@@ -23,7 +25,30 @@ class Instance {
             ? this._keyframes[this._keyframes.length - 1].t
             : 0;
         this._time      = this._keyframes.length > 0 ? this._keyframes[0].t : 0;
-        this.is_ready   = true;
+
+        this._computeWorldCenter();
+        this.is_ready     = true;
+    }
+
+    _computeWorldCenter() {
+        const [px, py, pz]    = this._position;
+        const [irx, iry, irz] = this._rotation;
+        this._delta           = this._interpolate();
+        const [dtx, dty, dtz] = this._delta.translate;
+        const [drx, dry, drz] = this._delta.rotate;
+        const lc              = this._object.getCenter();
+        const m = new Matrix();
+        m.identity();
+        const t = new Matrix(); t.translation(px, py, pz); m.multiply(t);
+        if (irx) { const r = new Matrix(); r.rotationX(irx * DEG_TO_RAD); m.multiply(r); }
+        if (irz) { const r = new Matrix(); r.rotationZ(irz * DEG_TO_RAD); m.multiply(r); }
+        if (iry) { const r = new Matrix(); r.rotationY(iry * DEG_TO_RAD); m.multiply(r); }
+        if (dtx || dty || dtz) { const t2 = new Matrix(); t2.translation(dtx, dty, dtz); m.multiply(t2); }
+        if (drx) { const r = new Matrix(); r.rotationX(drx * DEG_TO_RAD); m.multiply(r); }
+        if (drz) { const r = new Matrix(); r.rotationZ(drz * DEG_TO_RAD); m.multiply(r); }
+        if (dry) { const r = new Matrix(); r.rotationY(dry * DEG_TO_RAD); m.multiply(r); }
+        const p = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
+        this._worldCenter = [p[0], p[1], p[2]];
     }
 
     isReady()   { return this.is_ready; }
@@ -36,9 +61,9 @@ class Instance {
 
         const inRange = this._radius !== null &&
             Math.sqrt(
-                (user.getCenterX() - this._position[0]) ** 2 +
-                (user.getCenterY() - this._position[1]) ** 2 +
-                (user.getCenterZ() - this._position[2]) ** 2
+                (user.getCenterX() - this._worldCenter[0]) ** 2 +
+                (user.getCenterY() - this._worldCenter[1]) ** 2 +
+                (user.getCenterZ() - this._worldCenter[2]) ** 2
             ) <= this._radius;
 
         const wasPlaying = this._playing;
@@ -60,6 +85,8 @@ class Instance {
             this._time = this._trigger === 'loop' ? this._time % this._maxTime : this._maxTime;
             if (this._trigger !== 'loop') this._playing = false;
         }
+
+        this._computeWorldCenter();
     }
 
     _interpolate() {
@@ -85,12 +112,11 @@ class Instance {
     }
 
     getTransform() {
-        const d = this._interpolate();
         return {
-            position:     this._position,
-            rotation:     this._rotation,
-            deltaTranslate: d.translate,
-            deltaRotate:    d.rotate,
+            position:       this._position,
+            rotation:       this._rotation,
+            deltaTranslate: this._delta.translate,
+            deltaRotate:    this._delta.rotate,
         };
     }
 }
