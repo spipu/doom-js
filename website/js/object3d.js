@@ -114,16 +114,21 @@ class Object3d {
 
     ready() {
         const n = this.pt_nb;
-        let cx = 0, cy = 0, cz = 0;
-        for (let i = 0; i < n; i++) { cx += this.pt_ori[i][0]; cy += this.pt_ori[i][1]; cz += this.pt_ori[i][2]; }
-        cx /= n; cy /= n; cz /= n;
-        this._center = [cx, cy, cz];
-        let r = 0;
-        for (let i = 0; i < n; i++) {
-            const d = (this.pt_ori[i][0]-cx)**2 + (this.pt_ori[i][1]-cy)**2 + (this.pt_ori[i][2]-cz)**2;
-            if (d > r) r = d;
+        if (n > 0) {
+            let cx = 0, cy = 0, cz = 0;
+            for (let i = 0; i < n; i++) { cx += this.pt_ori[i][0]; cy += this.pt_ori[i][1]; cz += this.pt_ori[i][2]; }
+            cx /= n; cy /= n; cz /= n;
+            this._center = [cx, cy, cz];
+            let r = 0;
+            for (let i = 0; i < n; i++) {
+                const d = (this.pt_ori[i][0]-cx)**2 + (this.pt_ori[i][1]-cy)**2 + (this.pt_ori[i][2]-cz)**2;
+                if (d > r) r = d;
+            }
+            this._boundingRadius = Math.sqrt(r);
+        } else {
+            this._center = [0, 0, 0];
+            this._boundingRadius = 0;
         }
-        this._boundingRadius = Math.sqrt(r);
         this.is_ready = true;
         return this;
     }

@@ -57,8 +57,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer._z_near);
         gl.uniform1f(loc.far,  engine.zBuffer._z_far);
 
-        // Group visible faces by texture — back-face cull in 3D camera space:
-        // dot(normal, vertex_pos) < 0 means face points toward camera
+        // Group visible faces by (texture, alpha) — back-face cull in 3D camera space
         const groups = new Map();
         for (let k = 0; k < obj.fc_nb; k++) {
             const fc = obj.fc_lst[k];
@@ -66,17 +65,26 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const p  = obj.pt_3d[fc[0]];
             if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
             const texId = fc[4];
-            if (!groups.has(texId)) groups.set(texId, []);
-            groups.get(texId).push(k);
+            const alpha = fc[6];
+            const key   = texId + ',' + alpha;
+            if (!groups.has(key)) groups.set(key, { texId, alpha, faces: [] });
+            groups.get(key).faces.push(k);
         }
 
-        for (const [texId, faceList] of groups) {
-            const texture = (texId !== null) ? obj.tx_lst[texId] : null;
+        // Draw opaque first, then transparent (with depth write disabled)
+        const sorted = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
+        let depthWriting = true;
 
-            // Build interleaved VBO: [x, y, z, r, g, b, u, v] × 3 vertices × N faces
-            const data = new Float32Array(faceList.length * 3 * 8);
+        for (const group of sorted) {
+            const texture  = (group.texId !== null) ? obj.tx_lst[group.texId] : null;
+            const opaque   = group.alpha >= 1.0;
+
+            if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }
+            if (!opaque && depthWriting) { gl.depthMask(false); depthWriting = false; }
+
+            const data = new Float32Array(group.faces.length * 3 * 8);
             let di = 0;
-            for (const k of faceList) {
+            for (const k of group.faces) {
                 const fc     = obj.fc_lst[k];
                 const normal = obj.fc_inf[k][0];
                 const map    = fc[5];
@@ -101,19 +109,20 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.enableVertexAttribArray(loc.aUv);
             gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
 
+            gl.uniform1f(loc.alpha, group.alpha);
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
-                gl.uniform1f(loc.alpha,  1.0);
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, texture));
                 gl.uniform1i(loc.uTex, 0);
             } else {
                 gl.uniform1i(loc.hasTex, 0);
-                gl.uniform1f(loc.alpha,  1.0);
             }
 
-            gl.drawArrays(gl.TRIANGLES, 0, faceList.length * 3);
+            gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
+
+        if (!depthWriting) gl.depthMask(true);
     }
 
     _getTexture(gl, imageData) {

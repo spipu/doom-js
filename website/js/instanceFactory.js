@@ -10,8 +10,7 @@ class InstanceFactory {
     }
 
     isReady() {
-        const entries = Object.values(this._registry);
-        if (entries.length === 0) return false;
+        if (Object.keys(this._registry).length === 0) return false;
         if (!object3dFactory.isReady()) return false;
 
         for (const code in this._registry) {

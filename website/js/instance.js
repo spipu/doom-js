@@ -3,10 +3,10 @@ class Instance {
         this._object    = null;
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
-        this._trigger    = 'none';
-        this._collidable = false;
-        this._radius     = null;
-        this._keyframes = [];
+        this._trigger     = 'none';
+        this._collidable  = false;
+        this._radius      = null;
+        this._keyframes   = [];
         this._maxTime     = 0;
         this._time        = 0;
         this._playing     = false;
