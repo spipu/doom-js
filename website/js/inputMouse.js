@@ -49,7 +49,7 @@ class InputMouse {
         }
     }
 
-    // Retourne le delta accumulé depuis le dernier appel et le remet à 0 — appeler une fois par frame.
+    // Returns accumulated delta since last call and resets to 0 — call once per frame.
     readDeltaX() { this._lastDx = this._dx; this._dx = 0; return this._lastDx; }
     readDeltaY() { this._lastDy = this._dy; this._dy = 0; return this._lastDy; }
 

@@ -4,7 +4,7 @@ class Engine3d {
         this.scr_height = 0;
         this.background = [0, 0, 0];
         this.m_view     = new Matrix();
-        this.fov       = 0.0;
+        this.fov        = 0.0;
         this.view_xMin = 0.0;
         this.view_xMax = 0.0;
         this.view_yMin = 0.0;
@@ -108,9 +108,9 @@ class Engine3d {
         return this;
     }
 
-    lightAdd(color, length, pos) {
+    lightAdd(color, distance, pos) {
         if (!pos) pos = [0., 0., 0.];
-        this.light_lst.push(new Light(color, length, this.m_view.multiplyPosition(pos)));
+        this.light_lst.push(new Light(color, distance, this.m_view.multiplyPosition(pos)));
         return this.light_lst.length;
     }
 

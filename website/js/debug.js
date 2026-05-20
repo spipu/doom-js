@@ -16,7 +16,7 @@ class Debug {
         const lines = [];
         if (this._engine)   lines.push(this._buildEngine());
         if (this._mouse) {
-            lines.push(this._mouse.isLocked() ? 'Souris capturée — ESC pour relâcher' : 'Cliquer sur le canvas pour capturer la souris');
+            lines.push(this._mouse.isLocked() ? 'Mouse captured — ESC to release' : 'Click on canvas to capture mouse');
             lines.push(this._buildMouse());
         }
         if (this._keyboard) lines.push(this._buildKeyboard());
