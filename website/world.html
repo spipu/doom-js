@@ -45,7 +45,7 @@ const debug = new Debug(document.getElementById('debug'))
     .bindKeyboard(keyboard)
     .bindMouse(mouse);
 
-object3dFactory.load('object',   './world/objects/map.obj.json');
+object3dFactory.load('map',      './world/objects/map.obj.json');
 object3dFactory.load('entrance', './world/objects/entrance.obj.json');
 object3dFactory.load('door',     './world/objects/door.obj.json');
 
@@ -97,7 +97,7 @@ function display()
     }
 
     engine.drawInit();
-    engine.drawObject(object3dFactory.get('object'));
+    engine.drawObject(object3dFactory.get('map'));
 
     engine.matrixPush();
     engine.matrixTranslate(5.25, 0.0, -10.40);
