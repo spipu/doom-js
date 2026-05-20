@@ -6,30 +6,31 @@ class User {
         this.yaw   = yaw;
         this.pitch = pitch;
 
-        this._height      = 0.85;
-        this._eyeRatio    = 0.82;
-        this._crouchRatio = 0.55;
-        this._crouchSpeed = 4.0;
-        this._radius      = 0.2;
-        this._gravity     = 15.0;
+        this._height          = 0.85;
+        this._eyeRatio        = 0.82;
+        this._crouchRatio     = 0.55;
+        this._crouchSpeed     = 4.0;
+        this._radius          = 0.2;
+        this._gravity         = 15.0;
         this._maxJumpVelocity = 5.0;
-        this.moveSpeed    = 0.003;
-        this.turnSpeed    = 0.1;
+        this.moveSpeed        = 0.003;
+        this.turnSpeed        = 0.1;
 
-        this._walkAngle   = 0;
-        this._walking     = false;
-        this._deltaTime   = 0;
+        this._crouchProgress = 0;
+        this._walkAngle      = 0;
+        this._walking        = false;
+        this._deltaTime      = 0;
     }
 
-    setHeight(v)           { this._height           = v; return this; }
-    setEyeRatio(v)         { this._eyeRatio         = v; return this; }
-    setCrouchRatio(v)      { this._crouchRatio       = v; return this; }
-    setCrouchSpeed(v)      { this._crouchSpeed       = v; return this; }
-    setRadius(v)           { this._radius            = v; return this; }
-    setGravity(v)          { this._gravity           = v; return this; }
-    setMaxJumpVelocity(v)  { this._maxJumpVelocity   = v; return this; }
-    setMoveSpeed(v)        { this.moveSpeed          = v; return this; }
-    setTurnSpeed(v)        { this.turnSpeed          = v; return this; }
+    setHeight(v)          { this._height          = v; return this; }
+    setEyeRatio(v)        { this._eyeRatio        = v; return this; }
+    setCrouchRatio(v)     { this._crouchRatio      = v; return this; }
+    setCrouchSpeed(v)     { this._crouchSpeed      = v; return this; }
+    setRadius(v)          { this._radius           = v; return this; }
+    setGravity(v)         { this._gravity          = v; return this; }
+    setMaxJumpVelocity(v) { this._maxJumpVelocity  = v; return this; }
+    setMoveSpeed(v)       { this.moveSpeed         = v; return this; }
+    setTurnSpeed(v)       { this.turnSpeed         = v; return this; }
 
     beginFrame(deltaTime) {
         this._deltaTime = deltaTime;
@@ -74,10 +75,17 @@ class User {
         if (this._walkAngle > 360) this._walkAngle -= 360;
     }
 
+    getCurrentHeight() {
+        return this._height * (1 - this._crouchProgress * (1 - this._crouchRatio));
+    }
+    getCenterX() { return this.x; }
+    getCenterY() { return this.y + this.getCurrentHeight() * 0.5; }
+    getCenterZ() { return this.z; }
+
     getCameraX() { return this.x; }
     getCameraY() {
-        const eyeHeight = this._height * this._eyeRatio;
-        return this.y + eyeHeight * (1 + 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD));
+        const h = this.getCurrentHeight() * this._eyeRatio;
+        return this.y + h * (1 + 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD));
     }
     getCameraZ() { return this.z; }
 }

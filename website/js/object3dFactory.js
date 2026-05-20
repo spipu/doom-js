@@ -8,8 +8,9 @@ class Object3dFactory {
     }
 
     isReady() {
-        const objects = Object.values(this._registry);
-        return objects.length > 0 && objects.every(obj => obj.isReady());
+        const entries = Object.values(this._registry);
+        if (entries.length === 0) return false;
+        return entries.every(obj => obj.isReady());
     }
 
     get(code) {

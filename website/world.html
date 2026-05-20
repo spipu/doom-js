@@ -45,13 +45,13 @@ const debug = new Debug(document.getElementById('debug'))
     .bindKeyboard(keyboard)
     .bindMouse(mouse);
 
-object3dFactory.load('map',      './world/objects/map.obj.json');
-object3dFactory.load('entrance', './world/objects/entrance.obj.json');
-object3dFactory.load('door',     './world/objects/door.obj.json');
+object3dFactory.load('map', './world/objects/map.obj.json');
+instanceFactory.load('entrance', './world/instances/entrance.instance.json');
+instanceFactory.load('door',     './world/instances/door.instance.json');
 
 function start()
 {
-    if (!object3dFactory.isReady()) {
+    if (!object3dFactory.isReady() || !instanceFactory.isReady()) {
         setTimeout(start, 500);
         return;
     }
@@ -96,19 +96,14 @@ function display()
         engine.lightMove(light_ids[i], LIGHTS[i].pos);
     }
 
+    const action = keyboard.readKeyAction();
+    instanceFactory.get('entrance').update(engine.getDeltaTime(), user, action);
+    instanceFactory.get('door').update(engine.getDeltaTime(), user, action);
+
     engine.drawInit();
     engine.drawObject(object3dFactory.get('map'));
-
-    engine.matrixPush();
-    engine.matrixTranslate(5.25, 0.0, -10.40);
-    engine.drawObject(object3dFactory.get('entrance'));
-    engine.matrixPop();
-
-    engine.matrixPush();
-    engine.matrixTranslate(5.25, 0.97, -10.40);
-    engine.matrixRotateX(-90);
-    engine.drawObject(object3dFactory.get('door'));
-    engine.matrixPop();
+    engine.drawInstance(instanceFactory.get('entrance'));
+    engine.drawInstance(instanceFactory.get('door'));
 
     engine.drawFinish();
 

@@ -166,6 +166,26 @@ class Engine3d {
         return this;
     }
 
+    drawInstance(instance) {
+        const tf              = instance.getTransform();
+        const [px, py, pz]    = tf.position;
+        const [irx, iry, irz] = tf.rotation;
+        const [dtx, dty, dtz] = tf.deltaTranslate;
+        const [drx, dry, drz] = tf.deltaRotate;
+        this.matrixPush();
+        this.matrixTranslate(px, py, pz);
+        if (irx) this.matrixRotateX(irx);
+        if (irz) this.matrixRotateZ(irz);
+        if (iry) this.matrixRotateY(iry);
+        if (dtx || dty || dtz) this.matrixTranslate(dtx, dty, dtz);
+        if (drx) this.matrixRotateX(drx);
+        if (drz) this.matrixRotateZ(drz);
+        if (dry) this.matrixRotateY(dry);
+        this.drawObject(instance.getObject());
+        this.matrixPop();
+        return this;
+    }
+
     drawInit() {
         this._renderer.begin(this);
         return this;

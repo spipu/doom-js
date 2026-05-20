@@ -1,0 +1,8 @@
+{
+  "object":    "./world/objects/entrance.obj.json",
+  "position":  [5.25, 0.0, -10.40],
+  "rotation":  [0, 0, 0],
+  "trigger":   "none",
+  "radius":    null,
+  "keyframes": []
+}

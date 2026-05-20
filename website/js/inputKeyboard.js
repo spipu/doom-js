@@ -25,8 +25,9 @@ class InputKeyboard {
 
     readKey(code) { return this._keys.has(code); }
 
-    readKeyCtrl()  { return this._keys.has('ControlLeft') || this._keys.has('ControlRight'); }
-    readKeyShift() { return this._keys.has('ShiftLeft')   || this._keys.has('ShiftRight'); }
+    readKeyCtrl()   { return this._keys.has('ControlLeft') || this._keys.has('ControlRight'); }
+    readKeyShift()  { return this._keys.has('ShiftLeft')   || this._keys.has('ShiftRight'); }
+    readKeyAction() { return this._keys.has('KeyE'); }
 
     getKeys() { return [...this._keys]; }
 }
