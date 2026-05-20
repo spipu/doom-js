@@ -14,12 +14,12 @@ class Engine3d {
 
         this._renderer = renderer;
 
-        this._fpsEnabled   = false;
         this._fpsCount     = 0;
         this._fpsDisplay   = 0;
-        this._fpsLastCheck = 0;
         this._deltaTime    = 0;
-        this._deltaLast    = new Date().getTime();
+        const now          = new Date().getTime();
+        this._fpsLastCheck = now;
+        this._deltaLast    = now;
 
         this.m_view.identity();
 
@@ -33,34 +33,7 @@ class Engine3d {
         this.setFov(45.);
     }
 
-    enableFps() {
-        this._fpsEnabled   = true;
-        this._fpsCount     = 0;
-        this._fpsDisplay   = 0;
-        this._fpsLastCheck = (new Date()).getTime();
-
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:relative;display:inline-block;';
-        this.scr_obj.parentNode.insertBefore(wrapper, this.scr_obj);
-        wrapper.appendChild(this.scr_obj);
-
-        this._fpsDiv = document.createElement('div');
-        this._fpsDiv.style.cssText = 'position:absolute;right:5px;bottom:5px;color:white;text-shadow:1px 1px 3px black;font:12px verdana;pointer-events:none;';
-        wrapper.appendChild(this._fpsDiv);
-
-        return this;
-    }
-
-    destroy() {
-        if (this._fpsDiv) {
-            const wrapper = this._fpsDiv.parentNode;
-            if (wrapper) {
-                wrapper.parentNode.insertBefore(this.scr_obj, wrapper);
-                wrapper.remove();
-            }
-            this._fpsDiv = null;
-        }
-    }
+    destroy() {}
 
     calculateDeltaTime() {
         const now = new Date().getTime();
@@ -205,24 +178,22 @@ class Engine3d {
         return this;
     }
 
+    getFps()          { return this._fpsDisplay; }
+    getRendererCode() { return this._renderer.code; }
+
     drawFinish() {
         this._renderer.end(this);
-        this.drawFps();
+        this._updateFps();
         return this;
     }
 
-    drawFps() {
-        if (!this._fpsEnabled) return;
-
+    _updateFps() {
         const now = new Date().getTime();
         this._fpsCount++;
-
         if (now - this._fpsLastCheck >= 1000) {
             this._fpsDisplay   = Math.floor(this._fpsCount * 1000 / (now - this._fpsLastCheck));
             this._fpsCount     = 0;
             this._fpsLastCheck = now;
         }
-
-        this._fpsDiv.innerText = this._fpsDisplay + ' fps - ' + this._renderer.code;
     }
 }
