@@ -23,6 +23,8 @@ class InputKeyboard {
     readKeyStrafeLeft()  { return this._keys.has('ArrowLeft')  || this._keys.has('KeyA'); }
     readKeyStrafeRight() { return this._keys.has('ArrowRight') || this._keys.has('KeyD'); }
 
+    readKey(code) { return this._keys.has(code); }
+
     readKeyCtrl()  { return this._keys.has('ControlLeft') || this._keys.has('ControlRight'); }
     readKeyShift() { return this._keys.has('ShiftLeft')   || this._keys.has('ShiftRight'); }
 

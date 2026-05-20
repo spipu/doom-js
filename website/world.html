@@ -83,7 +83,11 @@ function display()
     if (keyboard.readKeyStrafeLeft())  user.strafeLeft();
     if (keyboard.readKeyStrafeRight()) user.strafeRight();
 
-    user.lookMouse(mouse.readDeltaX(), mouse.readDeltaY());
+    const lookDelta = engine.getDeltaTime() * 1.5;
+    user.lookMouse(
+        mouse.readDeltaX() + (keyboard.readKey('KeyU') ? -lookDelta : 0) + (keyboard.readKey('KeyI') ? lookDelta : 0),
+        mouse.readDeltaY()
+    );
 
     user.updateMove();
     engine.setCamera(user);
