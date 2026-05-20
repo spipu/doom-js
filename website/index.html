@@ -1,167 +1,48 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - example</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
-        <meta name="Title"              content="mini 3D engine in javascript" />
-        <meta name="Description"        content="3D engine, javascript" />
-        <meta name="Author"             content="Spipu" />
-        <meta name="Reply-to"           content="webmaster@spipu.net" />
-        <meta name="Copyright"          content="(c)2026 Spipu" />
-        <meta http-equiv="Content-Type" content="text/html; charset=windows-1252" />
+        <title>Proto3d</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="Title"       content="mini 3D engine in javascript" />
+        <meta name="Description" content="3D engine, javascript" />
+        <meta name="Author"      content="Spipu" />
+        <meta name="Copyright"   content="(c)2026 Spipu" />
         <style>
-body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-canvas           { border: 1px solid grey; background: #FFF;}
-div.copy         { text-align: center;color: #ccc;}
-div.copy a       { color: #bbb; text-decoration: none;}
-div.copy a:hover { color: #ddd; text-decoration: underline; }
+body        { background: #111; color: #EEE; padding: 0; margin: 40px auto; max-width: 600px; font-size: 14px; font-family: verdana; }
+h1          { color: #CCC; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+ul          { list-style: none; padding: 0; margin: 20px 0; }
+li          { margin: 10px 0; }
+a           { color: #88AACC; text-decoration: none; font-size: 15px; }
+a:hover     { color: #AACCEE; text-decoration: underline; }
+.desc       { color: #888; font-size: 12px; margin-left: 8px; }
+.copy       { text-align: center; color: #555; font-size: 11px; margin-top: 40px; }
+.copy a     { color: #666; }
         </style>
     </head>
     <body>
-        Object :
-        <select id="obj">
-            <option value="cube" selected="selected">cube</option>
-            <option value="helico_military">helico_military</option>
-            <option value="helico_civil"   >helico_civil   </option>
-            <option value="lotus"          >lotus          </option>
-            <option value="sphere"         >sphere         </option>
-            <option value="tank"           >tank           </option>
-            <option value="torus"          >torus          </option>
-            <option value="car"            >car            </option>
-            <option value="dyno"           >dyno           </option>
-            <option value="head"           >head           </option>
-            <option value="plane"          >plane          </option>
-            <option value="ship"           >ship           </option>
-            <option value="teddy"          >teddy          </option>
-        </select>
-         - Resolution
-         <select id="res">
-            <option value="160">160x120</option>
-            <option value="320">320x240</option>
-            <option value="640" selected>640x480</option>
-            <option value="800">800x600</option>
-            <option value="1024">1024x768</option>
-        </select>
-        - Renderer:
-        <select id="renderer">
-            <option value="webgl" selected>WebGL</option>
-            <option value="full">Full</option>
-            <option value="flat">Flat</option>
-            <option value="fast">Fast</option>
-        </select><br />
-        <i>move the mouse under the 3D object</i><br />
-        <br />
-        <canvas id="canvasElem"></canvas><br />
-        <span id="div_debug"></span><br />
-        <br />
+        <h1>Proto3d — demos</h1>
+        <ul>
+            <li>
+                <a href="objects.html">Objects</a>
+                <span class="desc">— visualiseur d'objets 3D, choix du renderer (WebGL / Full / Flat / Fast)</span>
+            </li>
+            <li>
+                <a href="example.html">Example</a>
+                <span class="desc">— rendu statique de la Lotus F1</span>
+            </li>
+            <li>
+                <a href="lights.html">Lights</a>
+                <span class="desc">— démonstration lumières colorées (flèches pour déplacer)</span>
+            </li>
+            <li>
+                <a href="game.html">Game</a>
+                <span class="desc">— conduite du van avec le clavier</span>
+            </li>
+            <li>
+                <a href="world.html">World</a>
+                <span class="desc">— navigation FPS dans la map (WebGL)</span>
+            </li>
+        </ul>
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <script src="js/loader.js" ></script>
-        <script>
-let engine   = null;
-let angle_x = 0.;
-let angle_y = 0.;
-
-const input = new Input();
-
-function init()
-{
-    input.initMouse('canvasElem');
-
-    document.getElementById('obj').addEventListener('change', changeObject);
-    document.getElementById('res').addEventListener('change', restart);
-    document.getElementById('renderer').addEventListener('change', restart);
-
-    changeObject();
-}
-
-function changeObject()
-{
-    const obj = document.getElementById('obj').value;
-    object3dFactory.reset();
-    object3dFactory.load('object', './objects/' + obj + '.obj.json');
-    restart();
-}
-
-function restart()
-{
-    if (engine) {
-        engine.destroy();
-        engine = null;
-    }
-
-    if (!object3dFactory.isReady()) {
-        setTimeout(restart, 500);
-        return;
-    }
-    displayDebug();
-
-    const res      = document.getElementById('res').value;
-    const renderer = document.getElementById('renderer').value;
-
-    const old = document.getElementById('canvasElem');
-    const fresh = document.createElement('canvas');
-    fresh.id = old.id;
-    old.parentNode.replaceChild(fresh, old);
-
-    engine = new Engine3d('canvasElem', renderer);
-    engine.setScreen(res, res * 24 / 32);
-    engine.setBackground(35, 35, 35);
-    engine.setFov(45.0);
-    engine.setView(-32, 32, -24, 24);
-    engine.setZBuffer(1, 100);
-    engine.enableFps();
-
-    engine.lightAmbient([40., 40., 40.]);
-    engine.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
-    engine.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
-    engine.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
-
-    display();
-}
-
-function display()
-{
-    if (!engine) {
-        return;
-    }
-
-    engine.calculateDeltaTime();
-
-    const t_d = engine.getDeltaTime();
-    let x = input.readMouseX();
-    let y = input.readMouseY();
-    if (x < 0) {
-        x = 0;
-        y = 0;
-    } else {
-        x = 2. * (x - Math.trunc(engine.scr_width  / 2)) / engine.scr_width;
-        y = 2. * (y - Math.trunc(engine.scr_height / 2)) / engine.scr_height;
-    }
-
-    if (Math.abs(x) < 0.1) x = 0;
-    if (Math.abs(y) < 0.1) y = 0;
-
-    angle_x -= x * 0.1 * t_d;
-    angle_y -= y * 0.1 * t_d;
-
-    engine.matrixIdentity();
-    engine.matrixTranslate(0, 0, 35);
-    engine.matrixRotateY(angle_x);
-    engine.matrixRotateX(angle_y);
-
-    engine.drawInit();
-    engine.drawObject(object3dFactory.get('object'));
-    engine.drawFinish();
-    setTimeout(display, 2);
-}
-
-function displayDebug()
-{
-    const current = object3dFactory.get('object');
-    document.getElementById('div_debug').innerHTML = current.getFaceCount() + ' pts | ' + current.getVertexCount() + ' faces';
-}
-
-init();
-        </script>
     </body>
 </html>
