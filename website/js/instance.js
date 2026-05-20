@@ -3,8 +3,9 @@ class Instance {
         this._object    = null;
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
-        this._trigger   = 'none';
-        this._radius    = null;
+        this._trigger    = 'none';
+        this._collidable = false;
+        this._radius     = null;
         this._keyframes = [];
         this._maxTime     = 0;
         this._time        = 0;
@@ -18,8 +19,9 @@ class Instance {
         this._object    = object;
         this._position  = data.position;
         this._rotation  = data.rotation;
-        this._trigger   = data.trigger;
-        this._radius    = data.radius;
+        this._trigger    = data.trigger;
+        this._collidable = data.collidable === true;
+        this._radius     = data.radius;
         this._keyframes = data.keyframes || [];
         this._maxTime   = this._keyframes.length > 0
             ? this._keyframes[this._keyframes.length - 1].t
@@ -51,8 +53,9 @@ class Instance {
         this._worldCenter = [p[0], p[1], p[2]];
     }
 
-    isReady()   { return this.is_ready; }
-    getObject() { return this._object; }
+    isReady()      { return this.is_ready; }
+    isCollidable() { return this._collidable; }
+    getObject()    { return this._object; }
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {

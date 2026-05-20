@@ -3,6 +3,7 @@
   "position":  [5.25, 0.97, -10.40],
   "rotation":  [-90, 0, 0],
   "trigger":   "action",
+  "collidable": true,
   "radius":    1,
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
