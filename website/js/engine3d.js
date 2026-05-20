@@ -1,7 +1,5 @@
-const DEG_TO_RAD = Math.PI / 180;
-
 class Engine3d {
-    constructor(obj_id, initialRenderer = 'webgl') {
+    constructor(obj_id, renderer) {
         this.scr_width  = 0;
         this.scr_height = 0;
         this.background = [0, 0, 0];
@@ -14,13 +12,7 @@ class Engine3d {
         this.light_lst = [];
         this.zBuffer   = new ZBuffer();
 
-        this._renderer = new Object3dRenderer();
-        this._renderer.addRenderer(new Object3dRendererFull());
-        this._renderer.addRenderer(new Object3dRendererFlat());
-        this._renderer.addRenderer(new Object3dRendererFast());
-        this._renderer.addRenderer(new Object3dRendererWebGL());
-
-        this._renderer.setRenderer(initialRenderer);
+        this._renderer = renderer;
 
         this._fpsEnabled   = false;
         this._fpsCount     = 0;
@@ -231,6 +223,6 @@ class Engine3d {
             this._fpsLastCheck = now;
         }
 
-        this._fpsDiv.innerText = this._fpsDisplay + ' fps - ' + this._renderer._currentCode;
+        this._fpsDiv.innerText = this._fpsDisplay + ' fps - ' + this._renderer.code;
     }
 }

@@ -1,4 +1,5 @@
 [
+    'js/constants.js',
     'js/matrix.js',
     'js/light.js',
     'js/object3d.js',
@@ -8,7 +9,7 @@
     'js/object3dRendererFull.js',
     'js/object3dRendererFlat.js',
     'js/object3dRendererWebGL.js',
-    'js/object3dRenderer.js',
+    'js/object3dRendererFactory.js',
     'js/engine3d.js',
     'js/object3dFactory.js',
     'js/input.js',
