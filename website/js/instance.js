@@ -14,6 +14,7 @@ class Instance {
         this._delta            = { translate: [0, 0, 0], rotate: [0, 0, 0] };
         this._damage           = null;
         this._wasInDamageRange = false;
+        this._prevTransform    = null;
         this.is_ready          = false;
     }
 
@@ -60,6 +61,41 @@ class Instance {
     isCollidable() { return this._collidable; }
     getDamage()    { return this._damage; }
     getObject()    { return this._object; }
+
+    savePreviousTransform() {
+        this._prevTransform = {
+            position:       [...this._position],
+            rotation:       [...this._rotation],
+            deltaTranslate: [...this._delta.translate],
+            deltaRotate:    [...this._delta.rotate],
+            time:           this._time,
+            playing:        this._playing,
+        };
+    }
+
+    getPreviousTransform() { return this._prevTransform; }
+
+    rollbackTransform(prev) {
+        this._delta.translate = [...prev.deltaTranslate];
+        this._delta.rotate    = [...prev.deltaRotate];
+        this._time    = prev.time;
+        this._playing = prev.playing;
+        this._computeWorldCenter();
+    }
+
+    checkDamage(user, dt) {
+        if (!this._damage || !this.is_ready || user.isDead()) return;
+        const dx = user.getCenterX() - this._worldCenter[0];
+        const dy = user.getCenterY() - this._worldCenter[1];
+        const dz = user.getCenterZ() - this._worldCenter[2];
+        const inRange = Math.sqrt(dx*dx + dy*dy + dz*dz) <= this._damage.radius;
+        if (this._damage.type === 'direct') {
+            if (inRange && !this._wasInDamageRange) user.takeDamage(this._damage.delta);
+            this._wasInDamageRange = inRange;
+        } else {
+            if (inRange) user.takeDamage(this._damage.delta * dt / 1000);
+        }
+    }
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {

@@ -165,6 +165,7 @@ class Engine3d {
     setCamera(user) {
         this.matrixIdentity();
         this.matrixRotateX(user.pitch);
+        this.matrixRotateZ(user.getStrafeLean());
         this.matrixRotateY(-user.yaw);
         this.matrixTranslate(-user.getCameraX(), -user.getCameraY(), -user.getCameraZ());
         return this;

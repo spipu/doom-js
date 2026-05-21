@@ -14,6 +14,7 @@
     'js/object3dFactory.js',
     'js/instance.js',
     'js/instanceFactory.js',
+    'js/collision.js',
     'js/inputKeyboard.js',
     'js/inputMouse.js',
     'js/user.js',
