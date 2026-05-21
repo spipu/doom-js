@@ -12,6 +12,7 @@ class InputKeyboard {
 
         document.addEventListener('keydown', (e) => {
             this._keys.add(e.code);
+            if (e.ctrlKey && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) e.preventDefault();
             if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.onJumpPress) this.onJumpPress();
         });
         document.addEventListener('keyup', (e) => {
