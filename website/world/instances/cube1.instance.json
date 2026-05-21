@@ -5,7 +5,7 @@
   "trigger": "loop",
   "collidable": false,
   "radius": null,
-  "damage": {"radius": 0.8, "delta": 10, "type": "direct"},
+  "damage": {"radius": 0.2, "delta": 10, "type": "direct"},
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 1.0, "translate": [0, 0, 0], "rotate": [-90, -10, 50]},
