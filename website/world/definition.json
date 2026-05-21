@@ -3,7 +3,7 @@
     "position":       [-5.25, 0, -5.25],
     "yaw":            180,
     "pitch":          0,
-    "maxEnergy":      30,
+    "maxEnergy":      100,
     "height":         0.85,
     "eyeRatio":       0.82,
     "radius":         0.2,
