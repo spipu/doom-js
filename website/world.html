@@ -26,39 +26,24 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         <script src="js/loader.js" ></script>
         <script>
 
-const user = new User(-5.25, 0, -5.25, 180, 0, 30)
-    .setHeight(0.85)
-    .setEyeRatio(0.82);
-
-const lights = [
-    new Light([200, 200, 200], 24.75, [ 0.00,  13.00,   0.00]),
-    new Light([255,   0,   0],  3.15, [ 5.25,   1.30,  -8.75]),
-    new Light([  0, 255,   0],  3.15, [-1.75,   1.30,  -5.25]),
-    new Light([  0,   0, 200], 19.95, [ 0.00,  -0.90, -40.25]),
-];
+const world = new World('./world/definition.json');
 
 let engine = null;
 
 const keyboard = new InputKeyboard();
 const mouse    = new InputMouse(document.getElementById('canvasElem'));
-const debug = new Debug(document.getElementById('debug'))
-    .bindUser(user)
+const debug    = new Debug(document.getElementById('debug'))
     .bindKeyboard(keyboard)
     .bindMouse(mouse);
 
-object3dFactory.load('map',      './world/objects/map.obj.json');
-instanceFactory.load('entrance', './world/instances/entrance.instance.json');
-instanceFactory.load('door',     './world/instances/door.instance.json');
-instanceFactory.load('cube1',    './world/instances/cube1.instance.json');
-instanceFactory.load('cube2',    './world/instances/cube2.instance.json');
-instanceFactory.load('lift',     './world/instances/lift.instance.json');
-
 function start()
 {
-    if (!object3dFactory.isReady() || !instanceFactory.isReady()) {
+    if (!world.isReady()) {
         setTimeout(start, 500);
         return;
     }
+
+    debug.bindUser(world.getUser());
 
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
     engine.setScreen(800, 600);
@@ -68,8 +53,8 @@ function start()
     engine.setZBuffer(0.1, 100);
     debug.bindEngine(engine);
 
-    engine.lightAmbient([20., 20., 20.]);
-    lights.forEach(l => engine.lightAdd(l));
+    engine.lightAmbient(world.getLightAmbient());
+    world.getLights().forEach(l => engine.lightAdd(l));
 
     display();
 }
@@ -77,35 +62,8 @@ function start()
 function display()
 {
     engine.calculateDeltaTime();
-
-    user.beginFrame(engine.getDeltaTime());
-
-    if (keyboard.readKeyForward())     user.moveForward();
-    if (keyboard.readKeyBackward())    user.moveBackward();
-    if (keyboard.readKeyStrafeLeft())  user.strafeLeft();
-    if (keyboard.readKeyStrafeRight()) user.strafeRight();
-
-    const lookDelta = engine.getDeltaTime() * 1.5;
-    user.lookMouse(
-        mouse.readDeltaX() + (keyboard.readKey('KeyU') ? -lookDelta : 0) + (keyboard.readKey('KeyI') ? lookDelta : 0),
-        mouse.readDeltaY()
-    );
-
-    user.updateMove();
-    engine.setCamera(user);
-    engine.lightsCalculatePosition();
-
-    const dt        = engine.getDeltaTime();
-    const action    = keyboard.readKeyAction();
-    const instances = instanceFactory.getAll();
-    instances.forEach(inst => inst.update(dt, user, action));
-
-    engine.drawInit();
-    engine.drawObject(object3dFactory.get('map'));
-    instances.forEach(inst => engine.drawInstance(inst));
-
-    engine.drawFinish();
-
+    world.update(engine.getDeltaTime(), keyboard, mouse);
+    engine.displayWorld(world);
     debug.update();
 
     setTimeout(display, 1);

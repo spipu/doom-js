@@ -18,4 +18,5 @@
     'js/inputMouse.js',
     'js/user.js',
     'js/debug.js',
+    'js/world.js',
 ].forEach(src => document.write('<script src="' + src + '"><\/script>'));

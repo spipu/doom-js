@@ -1,0 +1,27 @@
+{
+  "user": {
+    "position":  [-5.25, 0, -5.25],
+    "yaw":       180,
+    "pitch":     0,
+    "maxEnergy": 30,
+    "height":    0.85,
+    "eyeRatio":  0.82
+  },
+  "lights": {
+    "ambient": [20, 20, 20],
+    "sources": [
+      {"color": [200, 200, 200], "range": 24.75, "position": [ 0.00,  13.00,   0.00]},
+      {"color": [255,   0,   0], "range":  3.15, "position": [ 5.25,   1.30,  -8.75]},
+      {"color": [  0, 255,   0], "range":  3.15, "position": [-1.75,   1.30,  -5.25]},
+      {"color": [  0,   0, 200], "range": 19.95, "position": [ 0.00,  -0.90, -40.25]}
+    ]
+  },
+  "map": "./world/objects/map.obj.json",
+  "instances": {
+    "entrance": "./world/instances/entrance.instance.json",
+    "door":     "./world/instances/door.instance.json",
+    "cube1":    "./world/instances/cube1.instance.json",
+    "cube2":    "./world/instances/cube2.instance.json",
+    "lift":     "./world/instances/lift.instance.json"
+  }
+}
