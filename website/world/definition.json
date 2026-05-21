@@ -1,11 +1,14 @@
 {
   "user": {
-    "position":  [-5.25, 0, -5.25],
-    "yaw":       180,
-    "pitch":     0,
-    "maxEnergy": 30,
-    "height":    0.85,
-    "eyeRatio":  0.82
+    "position":       [-5.25, 0, -5.25],
+    "yaw":            180,
+    "pitch":          0,
+    "maxEnergy":      30,
+    "height":         0.85,
+    "eyeRatio":       0.82,
+    "radius":         0.2,
+    "gravity":        15.0,
+    "maxJumpVelocity": 5.0
   },
   "lights": {
     "ambient": [20, 20, 20],

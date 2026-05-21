@@ -7,9 +7,17 @@ class InputKeyboard {
         }
         InputKeyboard_private = this;
         this._keys = new Set();
+        this.onJumpPress   = null;
+        this.onJumpRelease = null;
 
-        document.addEventListener('keydown', (e) => this._keys.add(e.code));
-        document.addEventListener('keyup',   (e) => this._keys.delete(e.code));
+        document.addEventListener('keydown', (e) => {
+            this._keys.add(e.code);
+            if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.onJumpPress) this.onJumpPress();
+        });
+        document.addEventListener('keyup', (e) => {
+            this._keys.delete(e.code);
+            if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.onJumpRelease) this.onJumpRelease();
+        });
     }
 
     readKeyUp()    { return this._keys.has('ArrowUp'); }
