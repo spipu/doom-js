@@ -36,12 +36,14 @@ function render()
     engine.setZBuffer(1, 80);
     
     engine.lightAmbient([40., 40., 40.]);
-    engine.lightAdd([255., 50., 50.], 50, [10.,0, 10.]);
-    engine.lightAdd([50., 255., 50.], 50, [-10.,0, 10.]);
+    engine.lightAdd(new Light([255., 50., 50.], 50, [10.,0, 10.]));
+    engine.lightAdd(new Light([50., 255., 50.], 50, [-10.,0, 10.]));
 
     engine.drawInit();
-    
+
     engine.matrixIdentity();
+    engine.lightsCalculatePosition();
+
     engine.matrixRotateX(180);
     engine.matrixRotateZ(180);
     engine.matrixTranslate(4, 5, -37);

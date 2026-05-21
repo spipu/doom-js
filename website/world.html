@@ -27,16 +27,14 @@ const user = new User(-5.25, 0, -5.25, 180, 0)
     .setHeight(0.85)
     .setEyeRatio(0.82);
 
-// Static light world positions
-const LIGHTS = [
-    { color: [200, 200, 200], dist: 24.75, pos: [ 0.00,  13.00,   0.00] },
-    { color: [255,   0,   0], dist:  3.15, pos: [ 5.25,   1.30,  -8.75] },
-    { color: [  0, 255,   0], dist:  3.15, pos: [-1.75,   1.30,  -5.25] },
-    { color: [  0,   0, 200], dist: 19.95, pos: [ 0.00,  -0.90, -40.25] },
+const lights = [
+    new Light([200, 200, 200], 24.75, [ 0.00,  13.00,   0.00]),
+    new Light([255,   0,   0],  3.15, [ 5.25,   1.30,  -8.75]),
+    new Light([  0, 255,   0],  3.15, [-1.75,   1.30,  -5.25]),
+    new Light([  0,   0, 200], 19.95, [ 0.00,  -0.90, -40.25]),
 ];
 
-let engine    = null;
-let light_ids = [];
+let engine = null;
 
 const keyboard = new InputKeyboard();
 const mouse    = new InputMouse(document.getElementById('canvasElem'));
@@ -68,9 +66,7 @@ function start()
     debug.bindEngine(engine);
 
     engine.lightAmbient([20., 20., 20.]);
-    for (let i = 0; i < LIGHTS.length; i++) {
-        light_ids[i] = engine.lightAdd(LIGHTS[i].color, LIGHTS[i].dist);
-    }
+    lights.forEach(l => engine.lightAdd(l));
 
     display();
 }
@@ -94,10 +90,7 @@ function display()
 
     user.updateMove();
     engine.setCamera(user);
-
-    for (let i = 0; i < LIGHTS.length; i++) {
-        engine.lightMove(light_ids[i], LIGHTS[i].pos);
-    }
+    engine.lightsCalculatePosition();
 
     const dt        = engine.getDeltaTime();
     const action    = keyboard.readKeyAction();

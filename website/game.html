@@ -36,9 +36,9 @@ var obj_a = -0.;
 var obj_dv = 0.015;
 var obj_da = 0.1;
 
-var light1 = null;
-var light2 = null;
-var light3 = null;
+const light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
+const light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
+const light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 
 const keyboard = new InputKeyboard();
 const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
@@ -61,9 +61,9 @@ function init3d()
     debug.bindEngine(engine);
 
     engine.lightAmbient([40., 40., 40.]);
-    light1 = engine.lightAdd([255., 255., 255.], 30);
-    light2 = engine.lightAdd([0., 200., 0.], 5);
-    light3 = engine.lightAdd([200., 0., 0.], 5);
+    engine.lightAdd(light1);
+    engine.lightAdd(light2);
+    engine.lightAdd(light3);
 
     animate();
 }
@@ -99,14 +99,13 @@ function animate()
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
     engine.matrixTranslate(0,-10,-35);
-
-    engine.lightMove(light1, [0., 25., 0.]);
+    engine.lightCalculatePosition(light1);
 
     engine.matrixPush();
     engine.matrixTranslate(obj_x, obj_y, obj_z);
     engine.matrixRotateY(obj_a);
-    engine.lightMove(light2, [9, 2., 0.]);
-    engine.lightMove(light3, [-8, 2., 0.]);
+    engine.lightCalculatePosition(light2);
+    engine.lightCalculatePosition(light3);
     engine.drawObject(object3dFactory.get('van'));
     engine.matrixPop();
 

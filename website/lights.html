@@ -33,9 +33,9 @@ var obj_z = 25.;
 var obj_r = 5.;
 var obj_dv = 0.015;
 
-var light1 = null;
-var light2 = null;
-var light3 = null;
+const light1 = new Light([255., 0., 0.], 30, [0, 0, 0]);
+const light2 = new Light([0., 255., 0.], 30, [0, 0, 0]);
+const light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
 
 const keyboard = new InputKeyboard();
 const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
@@ -58,9 +58,9 @@ function init3d()
     debug.bindEngine(engine);
 
     engine.lightAmbient([20., 20., 20.]);
-    light1 = engine.lightAdd([255., 0., 0.], 30);
-    light2 = engine.lightAdd([0., 255., 0.], 30);
-    light3 = engine.lightAdd([0., 0., 255.], 30);
+    engine.lightAdd(light1);
+    engine.lightAdd(light2);
+    engine.lightAdd(light3);
 
     animate();
 }
@@ -80,20 +80,22 @@ function animate()
     if (obj_r<0)  obj_r=0;
     if (obj_r>30) obj_r=30;
 
+    const p1 = [obj_r, obj_z, 0.];
+    const p2 = [-0.5*obj_r, obj_z, 0.866*obj_r];
+    const p3 = [-0.5*obj_r, obj_z,-0.866*obj_r];
+    light1.setPosition(p1);
+    light2.setPosition(p2);
+    light3.setPosition(p3);
+
+
     engine.drawInit();
 
     engine.matrixIdentity();
-
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
     engine.matrixTranslate(0,-5,-35);
     engine.matrixRotateX(45);
-    var p1 = [obj_r, obj_z, 0.];
-    var p2 = [-0.5*obj_r, obj_z, 0.866*obj_r];
-    var p3 = [-0.5*obj_r, obj_z,-0.866*obj_r];
-    engine.lightMove(light1, p1);
-    engine.lightMove(light2, p2);
-    engine.lightMove(light3, p3);
+    engine.lightsCalculatePosition();
 
     engine.matrixPush();
     engine.matrixTranslate(p1[0], p1[1], p1[2]);
