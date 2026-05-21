@@ -5,6 +5,7 @@
   "trigger": "action",
   "collidable": true,
   "radius": 2.0,
+  "damage": null,
   "keyframes": [
     {"t":  0.0, "translate": [0,  0,  0], "rotate": [0,    0, 0]},
     {"t":  4.0, "translate": [0,  6,  0], "rotate": [0,    0, 0]},

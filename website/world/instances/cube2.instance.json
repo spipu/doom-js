@@ -5,6 +5,7 @@
   "trigger": "proximity",
   "collidable": false,
   "radius": 1,
+  "damage": {"radius": 1.0, "delta": 5, "type": "continuous"},
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 1.0, "translate": [0, 0, 0], "rotate": [-90, -10, 50]},
