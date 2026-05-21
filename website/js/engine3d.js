@@ -205,6 +205,16 @@ class Engine3d {
     getFps()          { return this._fpsDisplay; }
     getRendererCode() { return this._renderer.code; }
 
+    displayWorld(world) {
+        this.setCamera(world.getUser());
+        this.lightsCalculatePosition();
+        this.drawInit();
+        this.drawObject(world.getMap());
+        world.getInstances().forEach(inst => this.drawInstance(inst));
+        this.drawFinish();
+        return this;
+    }
+
     drawFinish() {
         this._renderer.end(this);
         this._updateFps();
