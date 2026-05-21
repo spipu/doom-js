@@ -108,15 +108,19 @@ class Engine3d {
         return this;
     }
 
-    lightAdd(color, distance, pos) {
-        if (!pos) pos = [0., 0., 0.];
-        this.light_lst.push(new Light(color, distance, this.m_view.multiplyPosition(pos)));
-        return this.light_lst.length;
+    lightAdd(light) {
+        this.light_lst.push(light);
+        return this;
     }
 
-    lightMove(id, pos) {
-        if (id) this.light_lst[id - 1].changePos(this.m_view.multiplyPosition(pos));
-        return id;
+    lightsCalculatePosition() {
+        this.light_lst.forEach(l => this.lightCalculatePosition(l));
+        return this;
+    }
+
+    lightCalculatePosition(light) {
+        light.calculateFinalPosition(this.m_view);
+        return this;
     }
 
     matrixIdentity() { this.m_view.identity(); return this; }

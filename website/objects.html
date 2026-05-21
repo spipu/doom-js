@@ -119,9 +119,9 @@ function restart()
     engine.setZBuffer(1, 100);
 
     engine.lightAmbient([40., 40., 40.]);
-    engine.lightAdd([250., 250., 250.], 40, [  0., 5, 10.]);
-    engine.lightAdd([250.,   0.,   0.], 30, [ 20., 0,  0.]);
-    engine.lightAdd([  0.,   0., 250.], 30, [-20., 0,  0.]);
+    engine.lightAdd(new Light([250., 250., 250.], 40, [  0., 5, 10.]));
+    engine.lightAdd(new Light([250.,   0.,   0.], 30, [ 20., 0,  0.]));
+    engine.lightAdd(new Light([  0.,   0., 250.], 30, [-20., 0,  0.]));
 
     display();
 }
@@ -151,12 +151,14 @@ function display()
     angle_x -= x * 0.1 * t_d;
     angle_y -= y * 0.1 * t_d;
 
+
+    engine.drawInit();
     engine.matrixIdentity();
+    engine.lightsCalculatePosition();
+
     engine.matrixTranslate(0, 0, 35);
     engine.matrixRotateY(angle_x);
     engine.matrixRotateX(angle_y);
-
-    engine.drawInit();
     engine.drawObject(object3dFactory.get('object'));
     engine.drawFinish();
 
