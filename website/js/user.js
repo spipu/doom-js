@@ -51,9 +51,10 @@ class User {
         this._inputZ         = 0;
 
         // Energy / death
-        this._energy    = maxEnergy;
-        this._dead      = false;
-        this._fallPeakY = null;
+        this._energy      = maxEnergy;
+        this._dead        = false;
+        this._fallPeakY   = null;
+        this._energyFlash = 0;
 
         // Walk animation
         this._walkAngle = 0;
@@ -84,16 +85,18 @@ class User {
     setTurnSpeed(v)        { this.turnSpeed          = v; return this; }
 
     // --- Getters ---
-    getEnergy()     { return this._energy; }
-    getMaxEnergy()  { return this._maxEnergy; }
-    getRadius()     { return this._radius; }
-    getStrafeLean() { return this._strafeLean; }
-    isDead()        { return this._dead; }
+    getEnergy()      { return this._energy; }
+    getMaxEnergy()   { return this._maxEnergy; }
+    getRadius()      { return this._radius; }
+    getStrafeLean()  { return this._strafeLean; }
+    getEnergyFlash() { return this._energyFlash; }
+    isDead()         { return this._dead; }
 
     // --- Energy ---
     takeDamage(delta) {
         this._energy = Math.max(0, this._energy - delta);
         if (this._energy <= 0) this._dead = true;
+        this._energyFlash += delta * 0.05;
     }
 
     // --- Input ---
@@ -346,6 +349,9 @@ class User {
 
         // 15. Reset one-frame flags
         this._jumpPressed = false;
+
+        // 16. Energy flash fade
+        if (this._energyFlash > 0) this._energyFlash = Math.max(0, this._energyFlash - dt_s);
     }
 
     _tryStepUp(collision, vx, vz) {

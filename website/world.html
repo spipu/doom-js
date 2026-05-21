@@ -11,6 +11,7 @@
         <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
 canvas           { border: 1px solid grey; background: #FFF;}
+div#energy-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; pointer-events: none; opacity: 0; }
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
@@ -19,7 +20,10 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         </style>
     </head>
     <body>
-        <canvas id="canvasElem"></canvas>
+        <div style="position:relative; display:inline-block;">
+            <canvas id="canvasElem"></canvas>
+            <div id="energy-overlay"></div>
+        </div>
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <div class="mouse">Click on canvas to capture mouse. Press [ESC] to release.</div>
         <div id="debug"></div>
@@ -29,6 +33,7 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
 const world = new World('./world/definition.json');
 
 let engine = null;
+const energyOverlay = document.getElementById('energy-overlay');
 
 const keyboard = new InputKeyboard();
 const mouse    = new InputMouse(document.getElementById('canvasElem'));
@@ -65,6 +70,9 @@ function display()
     world.update(engine.getDeltaTime(), keyboard, mouse);
     engine.displayWorld(world);
     debug.update();
+
+    const user = world.getUser();
+    energyOverlay.style.opacity = user.isDead() ? 0.8 : Math.min(0.6, user.getEnergyFlash());
 
     setTimeout(display, 1);
 }
