@@ -14,16 +14,19 @@ canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
+div.mouse        { color:#aaa; margin:4px 0;}
+div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         </style>
     </head>
     <body>
         <canvas id="canvasElem"></canvas>
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
+        <div class="mouse">Click on canvas to capture mouse. Press [ESC] to release.</div>
+        <div id="debug"></div>
         <script src="js/loader.js" ></script>
         <script>
 
-const user = new User(-5.25, 0, -5.25, 180, 0)
+const user = new User(-5.25, 0, -5.25, 180, 0, 30)
     .setHeight(0.85)
     .setEyeRatio(0.82);
 
@@ -58,7 +61,7 @@ function start()
     }
 
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
-    engine.setScreen(640, 480);
+    engine.setScreen(800, 600);
     engine.setBackground(120, 100, 140);
     engine.setFov(45.0);
     engine.setView(-32, 32, -24, 24);

@@ -6,13 +6,15 @@ class Instance {
         this._trigger     = 'none';
         this._collidable  = false;
         this._radius      = null;
-        this._keyframes   = [];
-        this._maxTime     = 0;
-        this._time        = 0;
-        this._playing     = false;
-        this._worldCenter = [0, 0, 0];
-        this._delta       = { translate: [0, 0, 0], rotate: [0, 0, 0] };
-        this.is_ready     = false;
+        this._keyframes        = [];
+        this._maxTime          = 0;
+        this._time             = 0;
+        this._playing          = false;
+        this._worldCenter      = [0, 0, 0];
+        this._delta            = { translate: [0, 0, 0], rotate: [0, 0, 0] };
+        this._damage           = null;
+        this._wasInDamageRange = false;
+        this.is_ready          = false;
     }
 
     _load(data, object) {
@@ -22,7 +24,8 @@ class Instance {
         this._trigger    = data.trigger;
         this._collidable = data.collidable === true;
         this._radius     = data.radius;
-        this._keyframes = data.keyframes || [];
+        this._damage     = data.damage || null;
+        this._keyframes  = data.keyframes || [];
         this._maxTime   = this._keyframes.length > 0
             ? this._keyframes[this._keyframes.length - 1].t
             : 0;
@@ -55,6 +58,7 @@ class Instance {
 
     isReady()      { return this.is_ready; }
     isCollidable() { return this._collidable; }
+    getDamage()    { return this._damage; }
     getObject()    { return this._object; }
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state

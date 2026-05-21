@@ -15,34 +15,34 @@ class Debug {
     update() {
         const lines = [];
         if (this._engine)   lines.push(this._buildEngine());
-        if (this._mouse) {
-            lines.push(this._mouse.isLocked() ? 'Mouse captured — ESC to release' : 'Click on canvas to capture mouse');
-            lines.push(this._buildMouse());
-        }
-        if (this._keyboard) lines.push(this._buildKeyboard());
         if (this._user)     lines.push(this._buildUser());
+        if (this._keyboard) lines.push(this._buildKeyboard());
+        if (this._mouse)    lines.push(this._buildMouse());
         this._el.innerText = lines.join('\n');
     }
 
     _buildEngine() {
-        return this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode();
+        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode();
     }
 
     _buildUser() {
         const u = this._user;
-        return 'pos: x=' + u.x.toFixed(2) + ' y=' + u.y.toFixed(2) + ' z=' + u.z.toFixed(2)
-             + ' | yaw=' + u.yaw.toFixed(1) + '° pitch=' + u.pitch.toFixed(1) + '°';
+        return '[USER]'
+            + ' x=' + u.x.toFixed(2) + ' y=' + u.y.toFixed(2) + ' z=' + u.z.toFixed(2)
+            + ' | yaw=' + u.yaw.toFixed(1) + '° pitch=' + u.pitch.toFixed(1) + '°'
+            + ' | energy: ' + Math.ceil(u.getEnergy()) + '/' + u.getMaxEnergy();
     }
 
     _buildKeyboard() {
         const keys = this._keyboard.getKeys();
-        return 'keys: ' + (keys.length ? keys.join(' ') : '(none)');
+        return '[KEYBOARD] ' + (keys.length ? keys.join(' ') : '...');
     }
 
     _buildMouse() {
         const m = this._mouse;
-        return 'mouse: locked=' + m.isLocked()
-             + ' | L=' + m.isLeftClickDown() + ' | R=' + m.isRightClickDown()
-             + ' | dx=' + m.getLastDx() + ' dy=' + m.getLastDy();
+        return '[MOUSE]'
+            + ' locked=' + m.isLocked()
+            + ' | L=' + m.isLeftClickDown() + ' | R=' + m.isRightClickDown()
+            + ' | dx=' + m.getLastDx() + ' dy=' + m.getLastDy();
     }
 }

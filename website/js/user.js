@@ -1,5 +1,5 @@
 class User {
-    constructor(x, y, z, yaw, pitch) {
+    constructor(x, y, z, yaw, pitch, maxEnergy) {
         this.x     = x;
         this.y     = y;
         this.z     = z;
@@ -13,9 +13,13 @@ class User {
         this._radius          = 0.2;
         this._gravity         = 15.0;
         this._maxJumpVelocity = 5.0;
+        this._maxEnergy       = maxEnergy;
         this.moveSpeed        = 0.003;
         this.turnSpeed        = 0.1;
 
+        this._energy         = this._maxEnergy;
+        this._dead           = false;
+        this._fallPeakY      = null;
         this._crouchProgress = 0;
         this._walkAngle      = 0;
         this._walking        = false;
@@ -29,8 +33,41 @@ class User {
     setRadius(v)          { this._radius           = v; return this; }
     setGravity(v)         { this._gravity          = v; return this; }
     setMaxJumpVelocity(v) { this._maxJumpVelocity  = v; return this; }
+    setEnergyMax(v)       { this._maxEnergy = v; this._energy = Math.min(this._energy, v); return this; }
     setMoveSpeed(v)       { this.moveSpeed         = v; return this; }
     setTurnSpeed(v)       { this.turnSpeed         = v; return this; }
+
+    getEnergy()    { return this._energy; }
+    getMaxEnergy() { return this._maxEnergy; }
+    isDead()       { return this._dead; }
+
+    takeDamage(delta) {
+        this._energy = Math.max(0, this._energy - delta);
+        if (this._energy <= 0) this._dead = true;
+    }
+
+    // Called by updateMove(collision) in étape 3 when player becomes airborne
+    _startFall() {
+        if (this._fallPeakY === null) this._fallPeakY = this.y;
+    }
+
+    // Called each frame while airborne to track the highest point reached
+    _trackFallPeak() {
+        if (this._fallPeakY !== null) this._fallPeakY = Math.max(this._fallPeakY, this.y);
+    }
+
+    // Called by updateMove(collision) in étape 3 when player lands
+    _endFall() {
+        if (this._fallPeakY === null) return;
+        const fallDist  = this._fallPeakY - this.y;
+        const safeH     = this._height * 2.5;
+        const maxH      = this._height * 10;
+        if (fallDist > safeH) {
+            const ratio = Math.min(1, (fallDist - safeH) / (maxH - safeH));
+            this.takeDamage(ratio * this._maxEnergy);
+        }
+        this._fallPeakY = null;
+    }
 
     beginFrame(deltaTime) {
         this._deltaTime = deltaTime;
@@ -38,30 +75,35 @@ class User {
     }
 
     moveForward() {
+        if (this.isDead()) return;
         this.x += this._deltaTime * this.moveSpeed * Math.sin(DEG_TO_RAD * this.yaw);
         this.z += this._deltaTime * this.moveSpeed * Math.cos(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     moveBackward() {
+        if (this.isDead()) return;
         this.x -= this._deltaTime * this.moveSpeed * Math.sin(DEG_TO_RAD * this.yaw);
         this.z -= this._deltaTime * this.moveSpeed * Math.cos(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     strafeLeft() {
+        if (this.isDead()) return;
         this.x -= this._deltaTime * this.moveSpeed * Math.cos(DEG_TO_RAD * this.yaw);
         this.z += this._deltaTime * this.moveSpeed * Math.sin(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     strafeRight() {
+        if (this.isDead()) return;
         this.x += this._deltaTime * this.moveSpeed * Math.cos(DEG_TO_RAD * this.yaw);
         this.z -= this._deltaTime * this.moveSpeed * Math.sin(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     lookMouse(dx, dy) {
+        if (this.isDead()) return;
         this.yaw   += dx * this.turnSpeed;
         this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this.turnSpeed));
     }
