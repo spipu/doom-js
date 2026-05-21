@@ -37,26 +37,26 @@ class Collision {
 
     // --- Queries ---
 
-    getFloor(px, pz, r) {
+    getFloor(px, pz, r, maxSearchY = Infinity) {
         let maxY = -Infinity;
         const check = (tri) => {
             if (!this._aabbXZ(px, pz, r, tri)) return;
             if (!this._circleIntersectsTri(px, pz, r, tri)) return;
             const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY) maxY = y;
+            if (y > maxY && y <= maxSearchY) maxY = y;
         };
         for (const sc of this._static)  sc.floors.forEach(check);
         for (const dc of this._dynamic) { if (this._broadphaseXZ(px, pz, r, dc)) dc.floors.forEach(check); }
         return maxY;
     }
 
-    getFloorNormal(px, pz, r) {
+    getFloorNormal(px, pz, r, maxSearchY = Infinity) {
         let maxY = -Infinity, bestN = null;
         const check = (tri) => {
             if (!this._aabbXZ(px, pz, r, tri)) return;
             if (!this._circleIntersectsTri(px, pz, r, tri)) return;
             const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY) { maxY = y; bestN = tri.n; }
+            if (y > maxY && y <= maxSearchY) { maxY = y; bestN = tri.n; }
         };
         for (const sc of this._static)  sc.floors.forEach(check);
         for (const dc of this._dynamic) { if (this._broadphaseXZ(px, pz, r, dc)) dc.floors.forEach(check); }
@@ -138,7 +138,7 @@ class Collision {
                 const xf = user.x - objCx, zf = user.z - objCz;
                 user.x += xf * (Math.cos(rad) - 1) - zf * Math.sin(rad);
                 user.z += xf * Math.sin(rad) + zf * (Math.cos(rad) - 1);
-                user.yaw -= dRy;
+                user.yaw += dRy;
             }
         }
     }
@@ -150,6 +150,8 @@ class Collision {
 
             const prev = dc.instance.getPreviousTransform();
             if (prev) {
+                // Only roll back if the movement caused the intersection (not pre-existing)
+                if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) continue;
                 dc.instance.rollbackTransform(prev);
                 this._updateDynamicCollider(dc);
             }
@@ -245,13 +247,38 @@ class Collision {
         let C = [cx, cz], V = [vx, vz];
         let prevNx = null, prevNz = null;
 
+        // Depenetration: push the circle out of any wall segment it already overlaps.
+        // Without this, _sweptCircleVsSegment returns null for already-overlapping geometry
+        // (t < 0), causing those faces to be ignored and the player to pass through.
+        for (const walls of wallLists) {
+            for (const tri of walls) {
+                if (feetY >= tri.yMax || feetY + h < tri.yMin) continue;
+                const pts = tri.pts;
+                for (let e = 0; e < 3; e++) {
+                    const P = pts[e], Q = pts[(e + 1) % 3];
+                    const sdx = Q[0]-P[0], sdz = Q[2]-P[2];
+                    const len2 = sdx*sdx + sdz*sdz;
+                    if (len2 < 1e-10) continue;
+                    const t = Math.max(0, Math.min(1, ((C[0]-P[0])*sdx + (C[1]-P[2])*sdz) / len2));
+                    const ex = C[0] - (P[0] + t*sdx);
+                    const ez = C[1] - (P[2] + t*sdz);
+                    const dist = Math.sqrt(ex*ex + ez*ez);
+                    if (dist < r && dist > 1e-6) {
+                        const push = r - dist;
+                        C[0] += (ex / dist) * push;
+                        C[1] += (ez / dist) * push;
+                    }
+                }
+            }
+        }
+
         for (let iter = 0; iter < 3; iter++) {
             if (Math.sqrt(V[0]*V[0] + V[1]*V[1]) < EPSILON) break;
 
             let tMin = 1.0, bestNx = 0, bestNz = 0, hit = false;
 
             const check = (tri) => {
-                if (feetY > tri.yMax || feetY + h < tri.yMin) return;
+                if (feetY >= tri.yMax || feetY + h < tri.yMin) return;
                 if (!this._aabbXZSweep(C[0], C[1], V[0], V[1], r, tri)) return;
                 const [A, B, Ct] = tri.pts;
                 for (const [P, Q] of [[A,B],[B,Ct],[Ct,A]]) {
@@ -288,6 +315,25 @@ class Collision {
         const h = user.getCurrentHeight();
         // Floors excluded: standing on an object's floor is normal (platform riding), not a block
         for (const tri of [...dc.walls, ...dc.ceilings]) {
+            if (user.y > tri.yMax || user.y + h < tri.yMin) continue;
+            if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) return true;
+        }
+        return false;
+    }
+
+    _instanceCylinderIntersectsAtTransform(user, dc, tf) {
+        const m  = this._buildInstanceMatrix(tf);
+        const cw = m.multiplyPosition([dc.centerLocal[0], dc.centerLocal[1], dc.centerLocal[2], 1]);
+        const bpDx = user.x - cw[0], bpDz = user.z - cw[2];
+        if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > user.getRadius() + dc.bRadius) return false;
+        const h = user.getCurrentHeight();
+        for (const [la, lb, lc] of dc.localTris) {
+            const wa = m.multiplyPosition([la[0], la[1], la[2], 1]);
+            const wb = m.multiplyPosition([lb[0], lb[1], lb[2], 1]);
+            const wc = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
+            const tri = this._makeTri([wa[0],wa[1],wa[2]], [wb[0],wb[1],wb[2]], [wc[0],wc[1],wc[2]]);
+            if (!tri) continue;
+            if (tri.n[1] > 0.7) continue;
             if (user.y > tri.yMax || user.y + h < tri.yMin) continue;
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) return true;
         }

@@ -264,9 +264,11 @@ class User {
             if (this._vy > 0) this._vy = 0;
         }
 
-        // 8. Floor check
-        const floorY      = collision.getFloor(this.x, this.z, this._radius);
-        const floorNormal = collision.getFloorNormal(this.x, this.z, this._radius);
+        // 8. Floor check — maxSearchY prevents floors above the player (e.g. a rising lift)
+        //    from being mistaken for the ground and invalidating the onGround state.
+        const maxFloorSearch = yBeforeVertical + this._stepHeight;
+        const floorY      = collision.getFloor(this.x, this.z, this._radius, maxFloorSearch);
+        const floorNormal = collision.getFloorNormal(this.x, this.z, this._radius, maxFloorSearch);
         const maxSlopeCos = Math.cos(this._maxSlopeAngle * DEG_TO_RAD);
 
         if (floorNormal && floorNormal[1] < maxSlopeCos) {
@@ -318,7 +320,7 @@ class User {
             this._crouchProgress = Math.min(1, this._crouchProgress + crouchDelta);
         } else {
             const targetH = this._height * (1 - (this._crouchProgress - crouchDelta) * (1 - this._crouchRatio));
-            if (collision.getCeiling(this.x, this.z, this._radius, this.y + targetH) >= this.y + targetH) {
+            if (collision.getCeiling(this.x, this.z, this._radius, this.y) >= this.y + targetH) {
                 this._crouchProgress = Math.max(0, this._crouchProgress - crouchDelta);
             }
         }
