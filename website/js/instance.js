@@ -89,6 +89,8 @@ class Instance {
     }
 
     rollbackTransform(prev) {
+        this._position        = [...prev.position];
+        this._rotation        = [...prev.rotation];
         this._delta.translate = [...prev.deltaTranslate];
         this._delta.rotate    = [...prev.deltaRotate];
         this._time    = prev.time;

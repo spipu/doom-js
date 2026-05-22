@@ -290,8 +290,9 @@ class User {
             return;
         }
 
-        const dt   = this._deltaTime;
-        const dt_s = Math.min(dt, 200) / 1000;
+        const dt    = this._deltaTime;
+        const dt_ms = Math.min(dt, 200);
+        const dt_s  = dt_ms / 1000;
 
         // 0. Prep
         this._wasOnGround = this._onGround;
@@ -329,7 +330,7 @@ class User {
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
                 if (vLen > this.moveSpeed) { this._vx = this._vx/vLen * this.moveSpeed; this._vz = this._vz/vLen * this.moveSpeed; }
             }
-            const vx = this._vx * dt, vz = this._vz * dt;
+            const vx = this._vx * dt_ms, vz = this._vz * dt_ms;
             if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
                 const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight());
                 const blocked = Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8;
