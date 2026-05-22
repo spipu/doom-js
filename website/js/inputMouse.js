@@ -50,12 +50,35 @@ class InputMouse {
     }
 
     // Returns accumulated delta since last call and resets to 0 — call once per frame.
-    readDeltaX() { this._lastDx = this._dx; this._dx = 0; return this._lastDx; }
-    readDeltaY() { this._lastDy = this._dy; this._dy = 0; return this._lastDy; }
+    readDeltaX() {
+        this._lastDx = this._dx;
+        this._dx = 0;
+        return this._lastDx;
+    }
 
-    isLocked()       { return this._locked; }
-    isLeftClickDown()  { return this._leftClick; }
-    isRightClickDown() { return this._rightClick; }
-    getLastDx()      { return this._lastDx; }
-    getLastDy()      { return this._lastDy; }
+    readDeltaY() {
+        this._lastDy = this._dy;
+        this._dy = 0;
+        return this._lastDy;
+    }
+
+    isLocked() {
+        return this._locked;
+    }
+
+    isLeftClickDown() {
+        return this._leftClick;
+    }
+
+    isRightClickDown() {
+        return this._rightClick;
+    }
+
+    getLastDx() {
+        return this._lastDx;
+    }
+
+    getLastDy() {
+        return this._lastDy;
+    }
 }

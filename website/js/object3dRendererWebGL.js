@@ -8,7 +8,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._loc      = {};
     }
 
-    get code() { return 'webgl'; }
+    get code() {
+        return 'webgl';
+    }
 
     isAvailable() {
         try {
@@ -36,7 +38,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     }
 
-    end(engine) {}
+    end(engine) {
+    }
 
     draw(obj, engine) {
         const gl  = engine.scr_ctx;

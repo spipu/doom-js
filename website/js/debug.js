@@ -7,10 +7,25 @@ class Debug {
         this._mouse    = null;
     }
 
-    bindEngine(engine)     { this._engine   = engine;   return this; }
-    bindUser(user)         { this._user     = user;     return this; }
-    bindKeyboard(keyboard) { this._keyboard = keyboard; return this; }
-    bindMouse(mouse)       { this._mouse    = mouse;    return this; }
+    bindEngine(engine) {
+        this._engine = engine;
+        return this;
+    }
+
+    bindUser(user) {
+        this._user = user;
+        return this;
+    }
+
+    bindKeyboard(keyboard) {
+        this._keyboard = keyboard;
+        return this;
+    }
+
+    bindMouse(mouse) {
+        this._mouse = mouse;
+        return this;
+    }
 
     update() {
         const lines = [];
@@ -22,7 +37,7 @@ class Debug {
     }
 
     _buildEngine() {
-        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode();
+        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode() + ' | v' + loader.getVersion();
     }
 
     _buildUser() {

@@ -49,7 +49,7 @@ class Object3d {
 
         this.tx_lst[tx_nb] = null;
         this.tx_nb++;
-        img.src = nom_img;
+        img.src = loader.buildUrl(nom_img);
 
         return this;
     }
@@ -97,8 +97,13 @@ class Object3d {
         return this;
     }
 
-    getFaceCount()   { return this.fc_nb; }
-    getVertexCount() { return this.pt_nb; }
+    getFaceCount() {
+        return this.fc_nb;
+    }
+
+    getVertexCount() {
+        return this.pt_nb;
+    }
 
     fcsAdd(lst, color) {
         if (!color) color = [255., 255., 255.];
@@ -133,9 +138,17 @@ class Object3d {
         return this;
     }
 
-    isReady()         { return this.is_ready; }
-    getCenter()        { return this._center; }
-    getBoundingRadius() { return this._boundingRadius; }
+    isReady() {
+        return this.is_ready;
+    }
+
+    getCenter() {
+        return this._center;
+    }
+
+    getBoundingRadius() {
+        return this._boundingRadius;
+    }
 
     ptTransform(m) {
         for (let x = 0; x < this.pt_nb; x++) {

@@ -7,7 +7,8 @@ class Object3dRendererFlat extends Object3dRendererBase {
         engine.scr_ctx.clearRect(0, 0, engine.scr_width, engine.scr_height);
     }
 
-    end(engine) {}
+    end(engine) {
+    }
 
     draw(obj, engine) {
         const faces = [];

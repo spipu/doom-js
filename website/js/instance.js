@@ -57,10 +57,21 @@ class Instance {
         this._worldCenter = [p[0], p[1], p[2]];
     }
 
-    isReady()      { return this.is_ready; }
-    isCollidable() { return this._collidable; }
-    getDamage()    { return this._damage; }
-    getObject()    { return this._object; }
+    isReady() {
+        return this.is_ready;
+    }
+
+    isCollidable() {
+        return this._collidable;
+    }
+
+    getDamage() {
+        return this._damage;
+    }
+
+    getObject() {
+        return this._object;
+    }
 
     savePreviousTransform() {
         this._prevTransform = {
@@ -73,7 +84,9 @@ class Instance {
         };
     }
 
-    getPreviousTransform() { return this._prevTransform; }
+    getPreviousTransform() {
+        return this._prevTransform;
+    }
 
     rollbackTransform(prev) {
         this._delta.translate = [...prev.deltaTranslate];

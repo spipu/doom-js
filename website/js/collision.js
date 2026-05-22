@@ -387,7 +387,9 @@ class Collision {
             && maxZ >= tri.zMin && minZ <= tri.zMax;
     }
 
-    _cross2D(ux, uz, vx, vz) { return ux * vz - uz * vx; }
+    _cross2D(ux, uz, vx, vz) {
+        return ux * vz - uz * vx;
+    }
 
     _distToSegment(px, pz, ax, az, bx, bz) {
         const dx = bx - ax, dz = bz - az;
