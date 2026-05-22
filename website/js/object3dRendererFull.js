@@ -1,9 +1,12 @@
 class Object3dRendererFull extends Object3dRendererBase {
     constructor() {
         super();
-        this._p1 = [];
-        this._p2 = [];
-        this._p3 = [];
+        this._p1 = new Array(10);
+        this._p2 = new Array(10);
+        this._p3 = new Array(10);
+        this._v0 = new Array(10);
+        this._v1 = new Array(10);
+        this._v2 = new Array(10);
     }
 
     get code() {
@@ -21,29 +24,24 @@ class Object3dRendererFull extends Object3dRendererBase {
 
     draw(obj, engine) {
         for (let k = 0; k < obj.fc_nb; k++) {
-            const fc = obj.fc_lst[k];
-            obj.fc_inf[k][0] = this._faceNormal(obj.pt_3d[fc[0]], obj.pt_3d[fc[1]], obj.pt_3d[fc[2]]);
-        }
-
-        for (let k = 0; k < obj.fc_nb; k++) {
             const fc     = obj.fc_lst[k];
             const fc_inf = obj.fc_inf[k];
             const n      = fc_inf[0];
             const p      = obj.pt_3d[fc[0]];
             if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
 
-            const v0 = this._buildVertex(engine, fc, fc_inf, obj, 0);
-            const v1 = this._buildVertex(engine, fc, fc_inf, obj, 1);
-            const v2 = this._buildVertex(engine, fc, fc_inf, obj, 2);
+            this._buildVertex(this._v0, engine, fc, fc_inf, obj, 0);
+            this._buildVertex(this._v1, engine, fc, fc_inf, obj, 1);
+            this._buildVertex(this._v2, engine, fc, fc_inf, obj, 2);
 
-            const tris    = this._clipNear(engine, v0, v1, v2);
+            const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
             const texture = fc[4] !== null ? obj.tx_lst[fc[4]] : null;
             const alpha   = fc[6];
 
             for (const tri of tris) {
-                this._p1 = [...tri[0]];
-                this._p2 = [...tri[1]];
-                this._p3 = [...tri[2]];
+                const s0 = tri[0], s1 = tri[1], s2 = tri[2];
+                const p1 = this._p1, p2 = this._p2, p3 = this._p3;
+                for (let i = 0; i < 10; i++) { p1[i] = s0[i]; p2[i] = s1[i]; p3[i] = s2[i]; }
                 this._sortVertices();
                 this._rasterize(engine, alpha, texture);
             }
@@ -52,16 +50,14 @@ class Object3dRendererFull extends Object3dRendererBase {
 
     // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]
     // Indices 0-7 used by rasterizer, 8-9 (3D camera XY) used for clipping only
-    _buildVertex(engine, fc, fc_inf, obj, idx) {
+    _buildVertex(out, engine, fc, fc_inf, obj, idx) {
         const col  = this._pointColor(engine, fc[3], obj.pt_3d[fc[idx]], fc_inf[0]);
         const pt3d = obj.pt_3d[fc[idx]];
         const pt2d = obj.pt_2d[fc[idx]];
-        return [
-            pt2d[0], pt2d[1], pt3d[2],
-            col[0], col[1], col[2],
-            fc[5][idx][0], fc[5][idx][1],
-            pt3d[0], pt3d[1],
-        ];
+        out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
+        out[3] = col[0];  out[4] = col[1];  out[5] = col[2];
+        out[6] = fc[5][idx][0]; out[7] = fc[5][idx][1];
+        out[8] = pt3d[0]; out[9] = pt3d[1];
     }
 
     _clipVertex(engine, va, vb) {

@@ -24,12 +24,12 @@ class Light {
         );
     }
 
-    getColorFor(pt, normal) {
+    getColorFor(pt, normal, out) {
         const fp = this._finalPosition;
-        const dp = [fp[0] - pt[0], fp[1] - pt[1], fp[2] - pt[2]];
-        const dn = Math.sqrt(dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]);
+        const dpx = fp[0] - pt[0], dpy = fp[1] - pt[1], dpz = fp[2] - pt[2];
+        const dn = Math.sqrt(dpx*dpx + dpy*dpy + dpz*dpz);
 
-        let f = (normal[0]*dp[0] + normal[1]*dp[1] + normal[2]*dp[2]);
+        let f = (normal[0]*dpx + normal[1]*dpy + normal[2]*dpz);
         if (f < 0.) f = 0.;
         else if (dn) f /= dn;
 
@@ -39,6 +39,8 @@ class Light {
             else        f = f * Math.sqrt(d);
         }
 
-        return [this.color[0]*f, this.color[1]*f, this.color[2]*f];
+        out[0] = this.color[0]*f;
+        out[1] = this.color[1]*f;
+        out[2] = this.color[2]*f;
     }
 }

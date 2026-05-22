@@ -16,6 +16,7 @@ class Object3d {
         x = parseFloat(x); y = parseFloat(y); z = parseFloat(z);
         this.pt_ori.push([x, y, z, 1]);
         this.pt_3d.push([x, y, z, 1]);
+        this.pt_2d.push([0, 0, 0]);
         this.pt_nb++;
         return this;
     }
@@ -92,7 +93,7 @@ class Object3d {
         if (this.pt_ori[pt3-1] === undefined) throw new Error('pt3 ' + pt3 + ' undefined');
 
         this.fc_lst.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha]);
-        this.fc_inf.push([null, null]);
+        this.fc_inf.push([[0, 0, 0], null]);
         this.fc_nb++;
         return this;
     }
@@ -134,6 +135,21 @@ class Object3d {
             this._center = [0, 0, 0];
             this._boundingRadius = 0;
         }
+        this._localNormals = new Float32Array(this.fc_nb * 3);
+        for (let k = 0; k < this.fc_nb; k++) {
+            const fc = this.fc_lst[k];
+            const A = this.pt_ori[fc[0]], B = this.pt_ori[fc[1]], C = this.pt_ori[fc[2]];
+            const abx = B[0]-A[0], aby = B[1]-A[1], abz = B[2]-A[2];
+            const acx = C[0]-A[0], acy = C[1]-A[1], acz = C[2]-A[2];
+            let nx = aby*acz - abz*acy;
+            let ny = abz*acx - abx*acz;
+            let nz = abx*acy - aby*acx;
+            const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+            if (len > 1e-10) { nx /= len; ny /= len; nz /= len; }
+            this._localNormals[k*3]   = nx;
+            this._localNormals[k*3+1] = ny;
+            this._localNormals[k*3+2] = nz;
+        }
         this.is_ready = true;
         return this;
     }
@@ -157,17 +173,26 @@ class Object3d {
             this.pt_3d[x][2] = m.v[0][2]*this.pt_ori[x][0] + m.v[1][2]*this.pt_ori[x][1] + m.v[2][2]*this.pt_ori[x][2] + m.v[3][2]*this.pt_ori[x][3];
             this.pt_3d[x][3] = m.v[0][3]*this.pt_ori[x][0] + m.v[1][3]*this.pt_ori[x][1] + m.v[2][3]*this.pt_ori[x][2] + m.v[3][3]*this.pt_ori[x][3];
         }
+        const m00=m.v[0][0], m10=m.v[1][0], m20=m.v[2][0];
+        const m01=m.v[0][1], m11=m.v[1][1], m21=m.v[2][1];
+        const m02=m.v[0][2], m12=m.v[1][2], m22=m.v[2][2];
+        for (let k = 0; k < this.fc_nb; k++) {
+            const i = k * 3;
+            const nx = this._localNormals[i], ny = this._localNormals[i+1], nz = this._localNormals[i+2];
+            const n = this.fc_inf[k][0];
+            n[0] = m00*nx + m10*ny + m20*nz;
+            n[1] = m01*nx + m11*ny + m21*nz;
+            n[2] = m02*nx + m12*ny + m22*nz;
+        }
         return this;
     }
 
     ptProjection(engine) {
-        this.pt_2d = [];
         for (let k = 0; k < this.pt_nb; k++) {
-            this.pt_2d[k] = [
-                Math.trunc(engine.proj_scaleX * this.pt_3d[k][0] / this.pt_3d[k][2] - engine.proj_offsetX),
-                Math.trunc(-engine.proj_scaleY * this.pt_3d[k][1] / this.pt_3d[k][2] - engine.proj_offsetY),
-                this.pt_3d[k][2],
-            ];
+            const p = this.pt_2d[k];
+            p[0] = Math.trunc(engine.proj_scaleX * this.pt_3d[k][0] / this.pt_3d[k][2] - engine.proj_offsetX);
+            p[1] = Math.trunc(-engine.proj_scaleY * this.pt_3d[k][1] / this.pt_3d[k][2] - engine.proj_offsetY);
+            p[2] = this.pt_3d[k][2];
         }
         return this;
     }
