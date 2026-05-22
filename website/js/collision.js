@@ -86,7 +86,7 @@ class Collision {
 
     // --- Platform riding & object blocking ---
 
-    applyPlatformRiding(user, instances) {
+    applyPlatformRiding(user) {
         for (const dc of this._dynamic) {
             dc._platformDeltaApplied = null;
             if (!dc.instance.isCollidable()) continue;
@@ -111,11 +111,24 @@ class Collision {
             }
             if (floorY === -Infinity || Math.abs(user.y - floorY) > 0.15) continue;
 
-            dc._platformDeltaApplied = { x: dx, y: dy, z: dz, yaw: dRy };
+            const origX = user.x, origZ = user.z;
+            const staticWalls = this._static.map(sc => sc.walls);
 
-            // XZ with static wall check only (avoid recursion)
-            const res = this._resolveWallFromLists(user.x, user.z, dx, dz, user.getRadius(), user.y, user.getCurrentHeight(), this._static.map(sc => sc.walls));
-            user.x = res.x; user.z = res.z;
+            // Step 1: polar rotation — orbit user around previous platform center by dRy
+            const prevCx = prevTf.position[0] + prevTf.deltaTranslate[0];
+            const prevCz = prevTf.position[2] + prevTf.deltaTranslate[2];
+            const relX   = user.x - prevCx;
+            const relZ   = user.z - prevCz;
+            const r      = Math.sqrt(relX*relX + relZ*relZ);
+            const newAng = Math.atan2(relZ, relX) - dRy * DEG_TO_RAD;
+            const rotX   = prevCx + r * Math.cos(newAng);
+            const rotZ   = prevCz + r * Math.sin(newAng);
+            const res1   = this._resolveWallFromLists(user.x, user.z, rotX - user.x, rotZ - user.z, user.getRadius(), user.y, user.getCurrentHeight(), staticWalls);
+            user.x = res1.x; user.z = res1.z;
+
+            // Step 2: platform translation drift (dx, dz)
+            const res2 = this._resolveWallFromLists(user.x, user.z, dx, dz, user.getRadius(), user.y, user.getCurrentHeight(), staticWalls);
+            user.x = res2.x; user.z = res2.z;
 
             // Y: clamp against static geometry so the player detaches when the platform
             // passes through a floor (descending) or a ceiling (ascending).
@@ -130,20 +143,14 @@ class Collision {
                 user.y = newY;
             }
 
-            // Orbital correction for Y rotation
-            if (Math.abs(dRy) > 1e-6) {
-                const rad  = dRy * DEG_TO_RAD;
-                const objCx = curTf.position[0] + curTf.deltaTranslate[0];
-                const objCz = curTf.position[2] + curTf.deltaTranslate[2];
-                const xf = user.x - objCx, zf = user.z - objCz;
-                user.x += xf * (Math.cos(rad) - 1) - zf * Math.sin(rad);
-                user.z += xf * Math.sin(rad) + zf * (Math.cos(rad) - 1);
-                user.yaw += dRy;
-            }
+            user.yaw += dRy;
+            user.syncPositionTracking();
+
+            dc._platformDeltaApplied = { x: user.x - origX, y: dy, z: user.z - origZ, yaw: dRy };
         }
     }
 
-    resolveObjectPlayerBlockage(user, instances) {
+    resolveObjectPlayerBlockage(user) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) continue;
             if (!this._instanceCylinderIntersects(user, dc)) continue;
