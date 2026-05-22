@@ -334,7 +334,11 @@ class User {
                 const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight());
                 const blocked = Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8;
                 if (!blocked) {
-                    this.x = res.x; this.z = res.z;
+                    const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
+                    const destCeil  = collision.getCeiling(res.x, res.z, this._radius, destFloor !== -Infinity ? destFloor : this.y);
+                    if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
+                        this.x = res.x; this.z = res.z;
+                    }
                 } else if (this._onGround) {
                     this._tryStepUp(collision, vx, vz);
                 }
