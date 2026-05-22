@@ -21,10 +21,10 @@ class World {
         this._user = new User(u.position[0], u.position[1], u.position[2], u.yaw, u.pitch, u.maxEnergy)
             .setHeight(u.height)
             .setEyeRatio(u.eyeRatio);
-        if (u.radius)          this._user.setRadius(u.radius);
-        if (u.gravity)         this._user.setGravity(u.gravity);
-        if (u.maxJumpVelocity) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
-        if (u.maxSlopeAngle)   this._user.setMaxSlopeAngle(u.maxSlopeAngle);
+        if (u.radius          !== undefined) this._user.setRadius(u.radius);
+        if (u.gravity         !== undefined) this._user.setGravity(u.gravity);
+        if (u.maxJumpVelocity !== undefined) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
+        if (u.maxSlopeAngle   !== undefined) this._user.setMaxSlopeAngle(u.maxSlopeAngle);
 
         this._lightAmbient = data.lights.ambient;
         this._lights = data.lights.sources.map(s => new Light(s.color, s.range, s.position));

@@ -314,7 +314,11 @@ class Collision {
         if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > user.getRadius() + dc.bRadius) return false;
         const h = user.getCurrentHeight();
         // Floors excluded: standing on an object's floor is normal (platform riding), not a block
-        for (const tri of [...dc.walls, ...dc.ceilings]) {
+        for (const tri of dc.walls) {
+            if (user.y > tri.yMax || user.y + h < tri.yMin) continue;
+            if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) return true;
+        }
+        for (const tri of dc.ceilings) {
             if (user.y > tri.yMax || user.y + h < tri.yMin) continue;
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) return true;
         }

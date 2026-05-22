@@ -12,23 +12,6 @@ class Object3dRendererBase {
         return canvas.getContext('2d');
     }
 
-    _norm(v) {
-        return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    }
-
-    _faceNormal2d(pt1, pt2, pt3) {
-        return (pt2[0]-pt1[0])*(pt3[1]-pt1[1]) - (pt2[1]-pt1[1])*(pt3[0]-pt1[0]);
-    }
-
-    _faceNormal(pt1, pt2, pt3) {
-        const v1 = [pt2[0]-pt1[0], pt2[1]-pt1[1], pt2[2]-pt1[2]];
-        const v2 = [pt3[0]-pt1[0], pt3[1]-pt1[1], pt3[2]-pt1[2]];
-        const v  = [v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]];
-        const n  = this._norm(v);
-        if (n > 0) { v[0] /= n; v[1] /= n; v[2] /= n; }
-        return v;
-    }
-
     _pointColor(engine, color, pt, normal) {
         const col = this._col;
         col[0] = engine.light_ambient[0];
