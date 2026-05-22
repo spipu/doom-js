@@ -2,7 +2,7 @@
 
 A pure-JavaScript 3D rendering engine — no external dependency, just for fun.
 
-Renders 3D objects with lights, textures, and projection entirely in the browser using the HTML5 `<canvas>` API.
+Renders 3D objects with lights, textures, and projection entirely in the browser using the HTML5 `<canvas>` API. Includes a full FPS physics engine with collision detection, gravity, jumping, crouching, and animated objects.
 
 ## Requirements
 
@@ -29,14 +29,19 @@ Then open `http://localhost:8080` in a browser.
 | `example.html` | Static render of the Lotus F1 |
 | `lights.html` | Coloured light sources demo (arrow keys move lights) |
 | `game.html` | Interactive van — drive it with the arrow keys |
-| `world.html` | First-person navigation inside a 3D labyrinth (ZQSD/arrows + mouse) |
+| `world.html` | First-person navigation inside a 3D labyrinth |
 
 ## Controls (world.html)
 
 | Input | Action |
 |---|---|
 | Arrow keys / ZQSD | Move forward / backward / strafe |
+| Alt | Walk slowly |
+| Ctrl | Crouch |
+| Shift | Jump |
+| E | Interact (open door, trigger lift) |
 | Mouse (click canvas first) | Look around |
+| U / I | Rotate left / right (keyboard fallback if no Pointer Lock) |
 | ESC | Release mouse |
 
 ## Renderer modes
@@ -60,8 +65,8 @@ Thirteen 3D objects are included in `website/objects/`:
 ```
 website/
 ├── js/
+│   ├── loader.js                Loads all scripts; provides buildUrl() for cache busting
 │   ├── constants.js             Shared constants (DEG_TO_RAD)
-│   ├── loader.js                Loads all scripts in the correct order
 │   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering)
 │   ├── object3d.js              3D object (geometry, textures, projection)
 │   ├── object3dFactory.js       Object registry and async JSON loader
@@ -74,14 +79,41 @@ website/
 │   ├── zBuffer.js               Z-buffer
 │   ├── matrix.js                4×4 transformation matrices
 │   ├── light.js                 Point light sources
+│   ├── instance.js              Animated 3D object (keyframes, triggers, damage)
+│   ├── instanceFactory.js       Instance registry and async JSON loader
+│   ├── collision.js             FPS physics: floor/ceiling/wall detection, platform riding
 │   ├── inputKeyboard.js         Keyboard input (e.code, Set-based)
 │   ├── inputMouse.js            Mouse input via Pointer Lock API
-│   ├── user.js                  FPS player (position, yaw/pitch, walk animation)
+│   ├── user.js                  FPS player (physics, gravity, jump, crouch, energy)
+│   ├── world.js                 Scene orchestrator: loads definition.json, runs physics
 │   └── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
 ├── objects/                     3D objects in .obj.json format
-├── world/                       World map objects and textures (world.html)
-└── texture/                     Texture images
+├── world/
+│   ├── definition.json          Scene definition (player, lights, instances)
+│   ├── objects/                 Map and interactive object geometry
+│   ├── instances/               Instance descriptors (.instance.json)
+│   └── texture/                 World textures
+└── texture/                     Shared texture images
 ```
+
+## World definition format
+
+The FPS world is defined in `world/definition.json`:
+
+```json
+{
+  "user": { "position": [x, y, z], "yaw": 180, "height": 0.85, ... },
+  "lights": { "ambient": [r, g, b], "sources": [...] },
+  "map": "./world/objects/map.obj.json",
+  "instances": { "door": "./world/instances/door.instance.json", ... }
+}
+```
+
+Each `.instance.json` supports keyframe animation, collision, proximity/action triggers, and damage zones.
+
+## Cache busting
+
+`js/loader.js` exposes a global `loader` object. All asset URLs (JS, JSON, textures) are loaded via `loader.buildUrl(url)`, appending `?v=<version>`. Increment `this._version` in `loader.js` after any file change to force a browser cache refresh.
 
 ## License
 
