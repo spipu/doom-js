@@ -4,7 +4,7 @@
   "rotation": [0, 0, 0],
   "trigger": "action",
   "collidable": true,
-  "radius": 2.5,
+  "radius": 2.8,
   "damage": null,
   "keyframes": [
     {"t":  0.0, "translate": [0,  0,  0], "rotate": [0,    0, 0]},
