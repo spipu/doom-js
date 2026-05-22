@@ -23,7 +23,6 @@
   },
   "map": "./world/objects/map.obj.json",
   "instances": {
-    "entrance": "./world/instances/entrance.instance.json",
     "door":     "./world/instances/door.instance.json",
     "cube1":    "./world/instances/cube1.instance.json",
     "cube2":    "./world/instances/cube2.instance.json",
