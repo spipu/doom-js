@@ -15,7 +15,7 @@ class Object3dRendererFlat extends Object3dRendererBase {
 
         for (let k = 0; k < obj.fc_nb; k++) {
             const fc      = obj.fc_lst[k];
-            const normal = this._faceNormal(obj.pt_3d[fc[0]], obj.pt_3d[fc[1]], obj.pt_3d[fc[2]]);
+            const normal = obj.fc_inf[k][0];
             const p      = obj.pt_3d[fc[0]];
             if (normal[0]*p[0] + normal[1]*p[1] + normal[2]*p[2] >= 0) continue;
 

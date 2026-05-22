@@ -8,7 +8,8 @@
     "eyeRatio":       0.82,
     "radius":         0.2,
     "gravity":        15.0,
-    "maxJumpVelocity": 5.0
+    "maxJumpVelocity": 5.0,
+    "maxSlopeAngle":   50
   },
   "lights": {
     "ambient": [10, 10, 10],

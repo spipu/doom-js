@@ -24,6 +24,7 @@ class World {
         if (u.radius)          this._user.setRadius(u.radius);
         if (u.gravity)         this._user.setGravity(u.gravity);
         if (u.maxJumpVelocity) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
+        if (u.maxSlopeAngle)   this._user.setMaxSlopeAngle(u.maxSlopeAngle);
 
         this._lightAmbient = data.lights.ambient;
         this._lights = data.lights.sources.map(s => new Light(s.color, s.range, s.position));

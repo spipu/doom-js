@@ -46,11 +46,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         if (!gl) return;
         const loc = this._loc;
 
-        for (let k = 0; k < obj.fc_nb; k++) {
-            const fc = obj.fc_lst[k];
-            obj.fc_inf[k][0] = this._faceNormal(obj.pt_3d[fc[0]], obj.pt_3d[fc[1]], obj.pt_3d[fc[2]]);
-        }
-
         gl.uniform1f(loc.sx,   engine.proj_scaleX);
         gl.uniform1f(loc.sy,   engine.proj_scaleY);
         gl.uniform1f(loc.ox,   engine.proj_offsetX);
