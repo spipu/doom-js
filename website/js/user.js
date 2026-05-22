@@ -63,40 +63,138 @@ class User {
     }
 
     // --- Setters ---
-    setHeight(v)           { this._height           = v; return this; }
-    setEyeRatio(v)         { this._eyeRatio         = v; return this; }
-    setCrouchRatio(v)      { this._crouchRatio       = v; return this; }
-    setCrouchSpeed(v)      { this._crouchSpeed       = v; return this; }
-    setRadius(v)           { this._radius            = v; return this; }
-    setGravity(v)          { this._gravity           = v; return this; }
-    setMaxJumpVelocity(v)  { this._maxJumpVelocity   = v; return this; }
-    setMaxFallSpeed(v)     { this._maxFallSpeed      = v; return this; }
-    setApexGravityBoost(v) { this._apexGravityBoost  = v; return this; }
-    setMaxSlopeAngle(deg)  { this._maxSlopeAngle     = deg; return this; }
-    setStepHeight(v)       { this._stepHeight        = v; return this; }
-    setGroundSnapDist(v)   { this._groundSnapDist    = v; return this; }
-    setCoyoteTime(ms)      { this._coyoteTime        = ms; return this; }
-    setJumpBufferTime(ms)  { this._jumpBufferTime    = ms; return this; }
-    setAirControl(f)       { this._airControl        = f; return this; }
-    setMaxLean(deg)        { this._maxLean           = deg; return this; }
-    setLeanSpeed(v)        { this._leanSpeed         = v; return this; }
-    setEnergyMax(v)        { this._maxEnergy = v; this._energy = Math.min(this._energy, v); return this; }
-    setMoveSpeed(v)        { this.moveSpeed          = v; return this; }
-    setTurnSpeed(v)        { this.turnSpeed          = v; return this; }
+    setHeight(v) {
+        this._height = v;
+        return this;
+    }
+
+    setEyeRatio(v) {
+        this._eyeRatio = v;
+        return this;
+    }
+
+    setCrouchRatio(v) {
+        this._crouchRatio = v;
+        return this;
+    }
+
+    setCrouchSpeed(v) {
+        this._crouchSpeed = v;
+        return this;
+    }
+
+    setRadius(v) {
+        this._radius = v;
+        return this;
+    }
+
+    setGravity(v) {
+        this._gravity = v;
+        return this;
+    }
+
+    setMaxJumpVelocity(v) {
+        this._maxJumpVelocity = v;
+        return this;
+    }
+
+    setMaxFallSpeed(v) {
+        this._maxFallSpeed = v;
+        return this;
+    }
+
+    setApexGravityBoost(v) {
+        this._apexGravityBoost = v;
+        return this;
+    }
+
+    setMaxSlopeAngle(deg) {
+        this._maxSlopeAngle = deg;
+        return this;
+    }
+
+    setStepHeight(v) {
+        this._stepHeight = v;
+        return this;
+    }
+
+    setGroundSnapDist(v) {
+        this._groundSnapDist = v;
+        return this;
+    }
+
+    setCoyoteTime(ms) {
+        this._coyoteTime = ms;
+        return this;
+    }
+
+    setJumpBufferTime(ms) {
+        this._jumpBufferTime = ms;
+        return this;
+    }
+
+    setAirControl(f) {
+        this._airControl = f;
+        return this;
+    }
+
+    setMaxLean(deg) {
+        this._maxLean = deg;
+        return this;
+    }
+
+    setLeanSpeed(v) {
+        this._leanSpeed = v;
+        return this;
+    }
+
+    setEnergyMax(v) {
+        this._maxEnergy = v;
+        this._energy = Math.min(this._energy, v);
+        return this;
+    }
+
+    setMoveSpeed(v) {
+        this.moveSpeed = v;
+        return this;
+    }
+
+    setTurnSpeed(v) {
+        this.turnSpeed = v;
+        return this;
+    }
 
     // --- Getters ---
-    getEnergy()      { return this._energy; }
-    getMaxEnergy()   { return this._maxEnergy; }
-    getRadius()      { return this._radius; }
-    getStrafeLean()  { return this._strafeLean; }
-    getEnergyFlash() { return this._energyFlash; }
-    isDead()         { return this._dead; }
+    getEnergy() {
+        return this._energy;
+    }
+
+    getMaxEnergy() {
+        return this._maxEnergy;
+    }
+
+    getRadius() {
+        return this._radius;
+    }
+
+    getStrafeLean() {
+        return this._strafeLean;
+    }
+
+    getEnergyFlash() {
+        return this._energyFlash;
+    }
+
+    isDead() {
+        return this._dead;
+    }
 
     // --- Energy ---
     takeDamage(delta) {
         this._energy = Math.max(0, this._energy - delta);
         if (this._energy <= 0) this._dead = true;
         this._energyFlash += delta * 0.05;
+        this._energyFlash = Math.max(this._energyFlash, 0.7);
     }
 
     // --- Input ---
@@ -144,8 +242,13 @@ class User {
         this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this.turnSpeed));
     }
 
-    setWalkSlow(bool)  { if (!this.isDead()) this._walkSlow    = bool; }
-    setCrouch(bool)    { if (!this.isDead()) this._crouchTarget = bool ? 1 : 0; }
+    setWalkSlow(bool) {
+        if (!this.isDead()) this._walkSlow = bool;
+    }
+
+    setCrouch(bool) {
+        if (!this.isDead()) this._crouchTarget = bool ? 1 : 0;
+    }
 
     pressJump() {
         if (this.isDead()) return;
@@ -370,16 +473,29 @@ class User {
         return this._height * (1 - this._crouchProgress * (1 - this._crouchRatio));
     }
 
-    getCenterX() { return this.x; }
-    getCenterY() { return this.y + this.getCurrentHeight() * 0.5; }
-    getCenterZ() { return this.z; }
+    getCenterX() {
+        return this.x;
+    }
 
-    getCameraX() { return this.x; }
+    getCenterY() {
+        return this.y + this.getCurrentHeight() * 0.5;
+    }
+
+    getCenterZ() {
+        return this.z;
+    }
+
+    getCameraX() {
+        return this.x;
+    }
+
     getCameraY() {
         const eyeH = this.getCurrentHeight() * this._eyeRatio;
         const bob  = (this._onGround && this._realVelocityXZ > 0.01)
             ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0;
         return this.y + eyeH * (1 + bob);
     }
-    getCameraZ() { return this.z; }
+    getCameraZ() {
+        return this.z;
+    }
 }

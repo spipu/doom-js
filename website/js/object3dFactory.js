@@ -30,7 +30,7 @@ class Object3dFactory {
 
     load(code, url) {
         const obj = this.create(code);
-        fetch(url)
+        fetch(loader.buildUrl(url))
             .then(r => r.json())
             .then(data => {
                 (data.textures || []).forEach(t => obj.textureAdd(t));

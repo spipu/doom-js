@@ -33,7 +33,8 @@ class Engine3d {
         this.setFov(45.);
     }
 
-    destroy() {}
+    destroy() {
+    }
 
     calculateDeltaTime() {
         const now = new Date().getTime();
@@ -123,9 +124,20 @@ class Engine3d {
         return this;
     }
 
-    matrixIdentity() { this.m_view.identity(); return this; }
-    matrixPush()     { this.m_view.push();     return this; }
-    matrixPop()      { this.m_view.pop();      return this; }
+    matrixIdentity() {
+        this.m_view.identity();
+        return this;
+    }
+
+    matrixPush() {
+        this.m_view.push();
+        return this;
+    }
+
+    matrixPop() {
+        this.m_view.pop();
+        return this;
+    }
 
     matrixTranslate(vx, vy, vz) {
         const m = new Matrix();
@@ -203,8 +215,13 @@ class Engine3d {
         return this;
     }
 
-    getFps()          { return this._fpsDisplay; }
-    getRendererCode() { return this._renderer.code; }
+    getFps() {
+        return this._fpsDisplay;
+    }
+
+    getRendererCode() {
+        return this._renderer.code;
+    }
 
     displayWorld(world) {
         this.setCamera(world.getUser());

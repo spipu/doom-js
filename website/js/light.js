@@ -6,9 +6,17 @@ class Light {
         this._finalPosition = [position[0], position[1], position[2], 1];
     }
 
-    setPosition(position) { this.position = position; }
-    setColor(color)       { this.color    = color; }
-    setRange(range)       { this.range    = range; }
+    setPosition(position) {
+        this.position = position;
+    }
+
+    setColor(color) {
+        this.color = color;
+    }
+
+    setRange(range) {
+        this.range = range;
+    }
 
     calculateFinalPosition(matrix) {
         this._finalPosition = matrix.multiplyPosition(

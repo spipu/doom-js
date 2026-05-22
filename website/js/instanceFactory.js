@@ -38,7 +38,7 @@ class InstanceFactory {
     load(code, url) {
         this._order.push(code);
         this._registry[code] = { data: null, instance: null };
-        fetch(url)
+        fetch(loader.buildUrl(url))
             .then(r => r.json())
             .then(data => {
                 object3dFactory.load('_inst_' + code, data.object);

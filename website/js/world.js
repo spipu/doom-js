@@ -10,7 +10,7 @@ class World {
         object3dFactory.reset();
         instanceFactory.reset();
 
-        fetch(url)
+        fetch(loader.buildUrl(url))
             .then(r => r.json())
             .then(data => this._init(data))
             .catch(e => console.error('Failed to load world "' + url + '": ' + e));
@@ -42,8 +42,9 @@ class World {
             this._collision = new Collision();
             this._collision.addMap(object3dFactory.get('map'));
             instanceFactory.getAll().forEach(inst => this._collision.addInstance(inst));
-            // Snap player to floor on first load
-            const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius());
+            // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
+            // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
+            const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
             if (floorY !== -Infinity) this._user.y = floorY;
         }
         return true;
@@ -98,10 +99,27 @@ class World {
         this.getInstances().forEach(inst => inst.checkDamage(user, dt));
     }
 
-    getUser()         { return this._user; }
-    getLightAmbient() { return this._lightAmbient; }
-    getLights()       { return this._lights; }
-    getMap()          { return object3dFactory.get('map'); }
-    getInstances()    { return instanceFactory.getAll(); }
-    getCollision()    { return this._collision; }
+    getUser() {
+        return this._user;
+    }
+
+    getLightAmbient() {
+        return this._lightAmbient;
+    }
+
+    getLights() {
+        return this._lights;
+    }
+
+    getMap() {
+        return object3dFactory.get('map');
+    }
+
+    getInstances() {
+        return instanceFactory.getAll();
+    }
+
+    getCollision() {
+        return this._collision;
+    }
 }
