@@ -51,10 +51,12 @@ class User {
         this._inputZ         = 0;
 
         // Energy / death
-        this._energy      = maxEnergy;
-        this._dead        = false;
-        this._fallPeakY   = null;
-        this._energyFlash = 0;
+        this._energy         = maxEnergy;
+        this._dead           = false;
+        this._fallPeakY      = null;
+        this._energyFlash    = 0;
+        this._deathRoll      = 0;
+        this._deathEyeRatio  = 1.0;
 
         // Walk animation
         this._walkAngle = 0;
@@ -178,7 +180,7 @@ class User {
     }
 
     getStrafeLean() {
-        return this._strafeLean;
+        return this._strafeLean + this._deathRoll;
     }
 
     getEnergyFlash() {
@@ -465,6 +467,12 @@ class User {
 
         // 16. Energy flash fade
         if (this._energyFlash > 0) this._energyFlash = Math.max(0, this._energyFlash - dt_s);
+
+        // 17. Death animation — roll camera sideways and lower eye height
+        if (this._dead) {
+            if (this._deathRoll < 30)       this._deathRoll     = Math.min(30,  this._deathRoll     + 30  * dt_s);
+            if (this._deathEyeRatio > 0.3)  this._deathEyeRatio = Math.max(0.3, this._deathEyeRatio - 0.7 * dt_s);
+        }
     }
 
     _tryStepUp(collision, vx, vz) {
@@ -500,8 +508,9 @@ class User {
     }
 
     getCameraY() {
-        const eyeH = this.getCurrentHeight() * this._eyeRatio;
-        const bob  = (this._onGround && this._realVelocityXZ > 0.01)
+        const baseH = this._dead ? this._height : this.getCurrentHeight();
+        const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
+        const bob   = (!this._dead && this._onGround && this._realVelocityXZ > 0.01)
             ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0;
         return this.y + eyeH * (1 + bob);
     }
