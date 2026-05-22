@@ -189,6 +189,11 @@ class User {
         return this._dead;
     }
 
+    syncPositionTracking() {
+        this._prevX = this.x;
+        this._prevZ = this.z;
+    }
+
     // --- Energy ---
     takeDamage(delta) {
         this._energy = Math.max(0, this._energy - delta);

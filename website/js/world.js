@@ -88,13 +88,13 @@ class World {
         this._collision.updateDynamicColliders();
 
         // 5. Platform riding
-        this._collision.applyPlatformRiding(user, this.getInstances());
+        this._collision.applyPlatformRiding(user);
 
         // 6. Player physics + collision
         user.updateMove(this._collision);
 
         // 7. Object-player blocking (rollback)
-        this._collision.resolveObjectPlayerBlockage(user, this.getInstances());
+        this._collision.resolveObjectPlayerBlockage(user);
 
         // 8. Damage
         this.getInstances().forEach(inst => inst.checkDamage(user, dt));
