@@ -43,11 +43,6 @@ const debug    = new Debug(document.getElementById('debug'))
 
 function start()
 {
-    if (!world.isReady()) {
-        setTimeout(start, 500);
-        return;
-    }
-
     debug.bindUser(world.getUser());
 
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
@@ -77,7 +72,7 @@ function display()
     setTimeout(display, 1);
 }
 
-start();
+world.setLoadedCallback(start);
         </script>
     </body>
 </html>

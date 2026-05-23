@@ -1,19 +1,16 @@
-class World {
+class World extends AbstractLoader {
     constructor(url) {
+        super();
         this._user          = null;
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
-        this._loaded        = false;
         this._keyboardBound = false;
 
         object3dFactory.reset();
         instanceFactory.reset();
 
-        fetch(loader.buildUrl(url))
-            .then(r => r.json())
-            .then(data => this._init(data))
-            .catch(e => console.error('Failed to load world "' + url + '": ' + e));
+        this._fetchJson(url, data => this._init(data));
     }
 
     _init(data) {
@@ -34,21 +31,18 @@ class World {
             instanceFactory.load(code, url);
         }
 
-        this._loaded = true;
+        instanceFactory.setLoadedCallback(() => this._onFullyLoaded());
     }
 
-    isReady() {
-        if (!this._loaded || !object3dFactory.isReady() || !instanceFactory.isReady()) return false;
-        if (!this._collision) {
-            this._collision = new Collision();
-            this._collision.addMap(object3dFactory.get('map'));
-            instanceFactory.getAll().forEach(inst => this._collision.addInstance(inst));
-            // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
-            // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
-            const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
-            if (floorY !== -Infinity) this._user.y = floorY;
-        }
-        return true;
+    _onFullyLoaded() {
+        this._collision = new Collision();
+        this._collision.addMap(object3dFactory.get('map'));
+        instanceFactory.getAll().forEach(inst => this._collision.addInstance(inst));
+        // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
+        // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
+        const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
+        if (floorY !== -Infinity) this._user.y = floorY;
+        this._executeLoadedCallback();
     }
 
     update(dt, keyboard, mouse) {

@@ -1,5 +1,6 @@
-class Object3d {
+class Object3d extends AbstractLoader {
     constructor() {
+        super();
         this.pt_ori   = [];
         this.pt_3d    = [];
         this.pt_2d    = [];
@@ -9,7 +10,6 @@ class Object3d {
         this.fc_nb    = 0;
         this.tx_lst   = [];
         this.tx_nb    = 0;
-        this.is_ready = false;
     }
 
     ptAdd(x, y, z) {
@@ -150,12 +150,8 @@ class Object3d {
             this._localNormals[k*3+1] = ny;
             this._localNormals[k*3+2] = nz;
         }
-        this.is_ready = true;
+        this._executeLoadedCallback();
         return this;
-    }
-
-    isReady() {
-        return this.is_ready;
     }
 
     getCenter() {

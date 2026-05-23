@@ -26,8 +26,6 @@ object3dFactory.load('lotus', './objects/lotus.obj.json');
 
 function render()
 {
-    if (!object3dFactory.isReady()) { setTimeout(render, 500); return false; }
-    
     const engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
     engine.setScreen(800, 600);
     engine.setBackground(35, 35, 35);
@@ -54,7 +52,7 @@ function render()
     engine.drawFinish();
 }
 
-render();
+object3dFactory.setLoadedCallback(render);
         </script>
     </body>
 </html>

@@ -1,5 +1,6 @@
-class Instance {
+class Instance extends AbstractLoader {
     constructor() {
+        super();
         this._object    = null;
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
@@ -15,7 +16,6 @@ class Instance {
         this._damage           = null;
         this._wasInDamageRange = false;
         this._prevTransform    = null;
-        this.is_ready          = false;
     }
 
     _load(data, object) {
@@ -33,7 +33,7 @@ class Instance {
         this._time      = this._keyframes.length > 0 ? this._keyframes[0].t : 0;
 
         this._computeWorldCenter();
-        this.is_ready     = true;
+        this._executeLoadedCallback();
     }
 
     _computeWorldCenter() {
@@ -55,10 +55,6 @@ class Instance {
         if (dry) { const r = new Matrix(); r.rotationY(dry * DEG_TO_RAD); m.multiply(r); }
         const p = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         this._worldCenter = [p[0], p[1], p[2]];
-    }
-
-    isReady() {
-        return this.is_ready;
     }
 
     isCollidable() {
@@ -99,7 +95,7 @@ class Instance {
     }
 
     checkDamage(user, dt) {
-        if (!this._damage || !this.is_ready || user.isDead()) return;
+        if (!this._damage || user.isDead()) return;
         const dx = user.getCenterX() - this._worldCenter[0];
         const dy = user.getCenterY() - this._worldCenter[1];
         const dz = user.getCenterZ() - this._worldCenter[2];
@@ -114,7 +110,7 @@ class Instance {
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {
-        if (!this.is_ready || this._keyframes.length === 0) return;
+        if (this._keyframes.length === 0) return;
         if (this._trigger === 'none') return;
 
         const inRange = this._radius !== null &&
