@@ -240,16 +240,17 @@ class Engine3d {
     }
 
     _updateFps() {
-        const now = this._currentTimestamp;
         this._fpsCount++;
+
         if (this._fpsLastCheck === null) {
-            this._fpsLastCheck = now;
+            this._fpsLastCheck = this._currentTimestamp;
             return;
         }
-        if (now - this._fpsLastCheck >= 1000) {
-            this._fpsDisplay   = Math.floor(this._fpsCount * 1000 / (now - this._fpsLastCheck));
+
+        if (this._currentTimestamp - this._fpsLastCheck >= 1000) {
+            this._fpsDisplay   = Math.floor(this._fpsCount * 1000 / (this._currentTimestamp - this._fpsLastCheck));
             this._fpsCount     = 0;
-            this._fpsLastCheck = now;
+            this._fpsLastCheck = this._currentTimestamp;
         }
     }
 }
