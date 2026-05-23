@@ -74,11 +74,11 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
-function init()
+function setup()
 {
     document.getElementById('obj').addEventListener('change', changeObject);
-    document.getElementById('res').addEventListener('change', restart);
-    document.getElementById('renderer').addEventListener('change', restart);
+    document.getElementById('res').addEventListener('change', init);
+    document.getElementById('renderer').addEventListener('change', init);
 
     changeObject();
 }
@@ -88,10 +88,10 @@ function changeObject()
     const obj = document.getElementById('obj').value;
     object3dFactory.reset();
     object3dFactory.load('object', './objects/' + obj + '.obj.json');
-    object3dFactory.setLoadedCallback(restart);
+    object3dFactory.setLoadedCallback(init);
 }
 
-function restart()
+function init()
 {
     if (engine) {
         engine.destroy();
@@ -118,16 +118,16 @@ function restart()
     engine.lightAdd(new Light([250.,   0.,   0.], 30, [ 20., 0,  0.]));
     engine.lightAdd(new Light([  0.,   0., 250.], 30, [-20., 0,  0.]));
 
-    display();
+    requestAnimationFrame(animate);
 }
 
-function display()
+function animate(timestamp)
 {
     if (!engine) {
         return;
     }
 
-    engine.calculateDeltaTime();
+    engine.calculateDeltaTime(timestamp);
 
     const t_d = engine.getDeltaTime();
     let x = mouse_x;
@@ -162,10 +162,10 @@ function display()
         obj.getFaceCount() + ' pts | ' + obj.getVertexCount() + ' faces | ' +
         engine.getFps() + ' fps | renderer: ' + engine.getRendererCode();
 
-    setTimeout(display, 1);
+    requestAnimationFrame(animate);
 }
 
-init();
+setup();
         </script>
     </body>
 </html>

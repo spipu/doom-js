@@ -14,12 +14,12 @@ class Engine3d {
 
         this._renderer = renderer;
 
-        this._fpsCount     = 0;
-        this._fpsDisplay   = 0;
-        this._deltaTime    = 0;
-        const now          = new Date().getTime();
-        this._fpsLastCheck = now;
-        this._deltaLast    = now;
+        this._fpsCount        = 0;
+        this._fpsDisplay      = 0;
+        this._deltaTime       = 0;
+        this._deltaLast       = null;
+        this._currentTimestamp = 0;
+        this._fpsLastCheck    = null;
 
         this.m_view.identity();
 
@@ -36,10 +36,10 @@ class Engine3d {
     destroy() {
     }
 
-    calculateDeltaTime() {
-        const now = new Date().getTime();
-        this._deltaTime = now - this._deltaLast;
-        this._deltaLast = now;
+    calculateDeltaTime(timestamp) {
+        this._currentTimestamp = timestamp;
+        this._deltaTime = this._deltaLast === null ? 0 : Math.min(timestamp - this._deltaLast, 100);
+        this._deltaLast = timestamp;
         return this;
     }
 
@@ -240,8 +240,12 @@ class Engine3d {
     }
 
     _updateFps() {
-        const now = new Date().getTime();
+        const now = this._currentTimestamp;
         this._fpsCount++;
+        if (this._fpsLastCheck === null) {
+            this._fpsLastCheck = now;
+            return;
+        }
         if (now - this._fpsLastCheck >= 1000) {
             this._fpsDisplay   = Math.floor(this._fpsCount * 1000 / (now - this._fpsLastCheck));
             this._fpsCount     = 0;
