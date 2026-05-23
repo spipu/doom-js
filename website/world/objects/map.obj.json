@@ -1,12 +1,12 @@
 {
   "textures": [
-    "./world/texture/floor.jpg",
-    "./world/texture/wall.jpg",
-    "./world/texture/ceiling.jpg",
-    "./world/texture/sand.jpg",
-    "./world/texture/trim.jpg",
-    "./world/texture/glass.jpg",
-    "./world/texture/wood.jpg"
+    "./world/texture/hd/floor.jpg",
+    "./world/texture/hd/wall.jpg",
+    "./world/texture/hd/ceiling.jpg",
+    "./world/texture/hd/sand.jpg",
+    "./world/texture/hd/trim.jpg",
+    "./world/texture/hd/glass.jpg",
+    "./world/texture/hd/wood.jpg"
   ],
   "points": [
     [-3.5, 0.0, -10.5],

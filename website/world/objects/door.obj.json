@@ -1,6 +1,6 @@
 {
   "textures": [
-    "./world/texture/door.jpg"
+    "./world/texture/hd/door.jpg"
   ],
   "points": [
     [-0.49, 0.0, 0.0],
