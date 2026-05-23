@@ -1,12 +1,12 @@
 {
   "textures": [
-    "./world/texture/hd/floor.jpg",
-    "./world/texture/hd/wall.jpg",
-    "./world/texture/hd/ceiling.jpg",
-    "./world/texture/hd/sand.jpg",
-    "./world/texture/hd/trim.jpg",
-    "./world/texture/hd/glass.jpg",
-    "./world/texture/hd/wood.jpg"
+    "./assets/world/texture/hd/floor.jpg",
+    "./assets/world/texture/hd/wall.jpg",
+    "./assets/world/texture/hd/ceiling.jpg",
+    "./assets/world/texture/hd/sand.jpg",
+    "./assets/world/texture/hd/trim.jpg",
+    "./assets/world/texture/hd/glass.jpg",
+    "./assets/world/texture/hd/wood.jpg"
   ],
   "points": [
     [-3.5, 0.0, -10.5],

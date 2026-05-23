@@ -87,7 +87,7 @@ function changeObject()
 {
     const obj = document.getElementById('obj').value;
     object3dFactory.reset();
-    object3dFactory.load('object', './objects/' + obj + '.obj.json');
+    object3dFactory.load('object', './assets/objects/' + obj + '.obj.json');
     object3dFactory.setLoadedCallback(init);
 }
 

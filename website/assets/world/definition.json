@@ -21,11 +21,11 @@
       {"color": [  0,   0, 200], "range": 19.95, "position": [ 0.00,  -0.90, -40.25]}
     ]
   },
-  "map": "./world/objects/map.obj.json",
+  "map": "./assets/world/objects/map.obj.json",
   "instances": {
-    "door":     "./world/instances/door.instance.json",
-    "cube1":    "./world/instances/cube1.instance.json",
-    "cube2":    "./world/instances/cube2.instance.json",
-    "lift":     "./world/instances/lift.instance.json"
+    "door":     "./assets/world/instances/door.instance.json",
+    "cube1":    "./assets/world/instances/cube1.instance.json",
+    "cube2":    "./assets/world/instances/cube2.instance.json",
+    "lift":     "./assets/world/instances/lift.instance.json"
   }
 }

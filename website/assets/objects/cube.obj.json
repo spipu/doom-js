@@ -1,5 +1,5 @@
 {
-  "textures": ["./texture/grille.gif"],
+  "textures": ["./assets/texture/grille.gif"],
   "points": [
     [-10, 10, -10],
     [10, 10, -10],

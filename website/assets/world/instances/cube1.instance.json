@@ -1,11 +1,11 @@
 {
-  "object": "./world/objects/cube.obj.json",
-  "position": [1.75, 0.6, -1.75],
+  "object": "./assets/world/objects/cube.obj.json",
+  "position": [-1.75, 0.6, -8.75],
   "rotation": [0, 0, 0],
-  "trigger": "proximity",
+  "trigger": "loop",
   "collidable": false,
-  "radius": 1,
-  "damage": {"radius": 0.2, "delta": 5, "type": "continuous"},
+  "radius": null,
+  "damage": {"radius": 0.2, "delta": 10, "type": "direct"},
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 1.0, "translate": [0, 0, 0], "rotate": [-90, -10, 50]},
