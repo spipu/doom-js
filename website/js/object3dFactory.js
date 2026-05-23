@@ -1,21 +1,21 @@
-class Object3dFactory {
+class Object3dFactory extends AbstractLoader {
     constructor() {
-        this._registry = {};
+        super();
+        this._registry    = {};
+        this._pendingCount = 0;
+        this._loaded = true;
     }
 
     reset() {
-        this._registry = {};
-    }
-
-    isReady() {
-        const entries = Object.values(this._registry);
-        if (entries.length === 0) return false;
-        return entries.every(obj => obj.isReady());
+        this._registry    = {};
+        this._pendingCount = 0;
+        this._loaded = true;
     }
 
     get(code) {
+        if (!this._loaded) throw new Error('Object3dFactory is not loaded');
         const obj = this._registry[code];
-        if (!obj || !obj.isReady()) return null;
+        if (!obj) throw new Error('Object3d "' + code + '" not found in registry');
         return obj;
     }
 
@@ -29,22 +29,30 @@ class Object3dFactory {
     }
 
     load(code, url) {
+        this._resetIsLoaded();
+        this._pendingCount++;
         const obj = this.create(code);
-        fetch(loader.buildUrl(url))
-            .then(r => r.json())
-            .then(data => {
-                (data.textures || []).forEach(t => obj.textureAdd(t));
-                data.points.forEach(p => obj.ptAdd(p[0], p[1], p[2]));
-                data.faces.forEach(f => obj.fcAdd(
-                    f.pts[0], f.pts[1], f.pts[2],
-                    f.color   !== undefined ? f.color   : null,
-                    f.texture !== undefined ? f.texture : null,
-                    f.map     !== undefined ? f.map     : null
-                ));
-                obj.ready();
-            })
-            .catch(e => console.error('Failed to load "' + code + '": ' + e));
+        this._fetchJson(url, data => {
+            (data.textures || []).forEach(t => obj.textureAdd(t));
+            data.points.forEach(p => obj.ptAdd(p[0], p[1], p[2]));
+            data.faces.forEach(f => obj.fcAdd(
+                f.pts[0], f.pts[1], f.pts[2],
+                f.color   !== undefined ? f.color   : null,
+                f.texture !== undefined ? f.texture : null,
+                f.map     !== undefined ? f.map     : null
+            ));
+            obj.ready();
+            this._pendingCount--;
+            this._checkAllReady();
+        });
         return obj;
+    }
+
+    _checkAllReady() {
+        const entries = Object.values(this._registry);
+        if (this._pendingCount === 0 && entries.length > 0 && entries.every(o => o.isLoaded())) {
+            this._executeLoadedCallback();
+        }
     }
 }
 

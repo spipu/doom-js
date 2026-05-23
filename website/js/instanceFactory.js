@@ -1,51 +1,60 @@
-class InstanceFactory {
+class InstanceFactory extends AbstractLoader {
     constructor() {
-        this._registry = {};
-        this._order    = [];
+        super();
+        this._registry     = {};
+        this._order        = [];
+        this._pendingFetches = 0;
+        this._loaded = true;
     }
 
     reset() {
-        this._registry = {};
-        this._order    = [];
+        this._registry     = {};
+        this._order        = [];
+        this._pendingFetches = 0;
+        this._loaded = true;
     }
 
-    isReady() {
-        if (Object.keys(this._registry).length === 0) return false;
-        if (!object3dFactory.isReady()) return false;
+    get(code) {
+        if (!this._loaded) throw new Error('InstanceFactory is not loaded');
+        const entry = this._registry[code];
+        if (!entry || !entry.instance) throw new Error('Instance "' + code + '" not found in registry');
+        return entry.instance;
+    }
 
+    getAll() {
+        if (!this._loaded) throw new Error('InstanceFactory is not loaded');
+        return this._order.map(code => this._registry[code].instance);
+    }
+
+    load(code, url) {
+        this._resetIsLoaded();
+        this._pendingFetches++;
+        this._order.push(code);
+        this._registry[code] = { data: null, instance: null };
+        this._fetchJson(url, data => {
+            object3dFactory.load('_inst_' + code, data.object);
+            this._registry[code].data = data;
+            this._pendingFetches--;
+            this._checkAllDataReady();
+        });
+        return this;
+    }
+
+    _checkAllDataReady() {
+        if (this._pendingFetches > 0) return;
+        object3dFactory.setLoadedCallback(() => this._createInstances());
+    }
+
+    _createInstances() {
         for (const code in this._registry) {
             const entry = this._registry[code];
-            if (!entry.data) return false;
             if (!entry.instance) {
                 const inst = new Instance();
                 inst._load(entry.data, object3dFactory.get('_inst_' + code));
                 entry.instance = inst;
             }
         }
-        return true;
-    }
-
-    get(code) {
-        const entry = this._registry[code];
-        if (!entry || !entry.instance) return null;
-        return entry.instance;
-    }
-
-    getAll() {
-        return this._order.map(code => this._registry[code].instance).filter(i => i !== null);
-    }
-
-    load(code, url) {
-        this._order.push(code);
-        this._registry[code] = { data: null, instance: null };
-        fetch(loader.buildUrl(url))
-            .then(r => r.json())
-            .then(data => {
-                object3dFactory.load('_inst_' + code, data.object);
-                this._registry[code].data = data;
-            })
-            .catch(e => console.error('Failed to load instance "' + code + '": ' + e));
-        return this;
+        this._executeLoadedCallback();
     }
 }
 

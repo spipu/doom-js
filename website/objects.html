@@ -88,7 +88,7 @@ function changeObject()
     const obj = document.getElementById('obj').value;
     object3dFactory.reset();
     object3dFactory.load('object', './objects/' + obj + '.obj.json');
-    restart();
+    object3dFactory.setLoadedCallback(restart);
 }
 
 function restart()
@@ -96,11 +96,6 @@ function restart()
     if (engine) {
         engine.destroy();
         engine = null;
-    }
-
-    if (!object3dFactory.isReady()) {
-        setTimeout(restart, 500);
-        return;
     }
 
     const res      = document.getElementById('res').value;

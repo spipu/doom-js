@@ -43,15 +43,8 @@ const light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 const keyboard = new InputKeyboard();
 const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
-init3d();
-
 function init3d()
 {
-    if (!object3dFactory.isReady()) {
-        setTimeout(init3d, 100);
-        return;
-    }
-
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
     engine.setScreen(640, 480);
     engine.setBackground(35, 35, 35);
@@ -114,6 +107,8 @@ function animate()
     debug.update();
     setTimeout(animate, 1);
 }
+
+object3dFactory.setLoadedCallback(init3d);
         </script>
     </body>
 </html>
