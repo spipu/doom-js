@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - world</title>
+        <title>Proto3d - doom</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta name="Title"              content="mini 3D engine in javascript" />
         <meta name="Description"        content="3D engine, javascript" />
@@ -30,7 +30,7 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         <script src="js/loader.js" ></script>
         <script>
 
-const world = new World('./assets/world/definition.json');
+const world = new World('./assets/doom/definition.json');
 
 let engine = null;
 const energyOverlay = document.getElementById('energy-overlay');
@@ -47,7 +47,7 @@ function init()
 
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
     engine.setScreen(800, 600);
-    engine.setBackground(120, 100, 140);
+    engine.setBackground(50, 50, 50);
     engine.setFov(45.0);
     engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(0.1, 100);

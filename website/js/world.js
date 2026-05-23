@@ -31,7 +31,9 @@ class World extends AbstractLoader {
             instanceFactory.load(code, url);
         }
 
-        instanceFactory.setLoadedCallback(() => this._onFullyLoaded());
+        instanceFactory.setLoadedCallback(() => {
+            object3dFactory.setLoadedCallback(() => this._onFullyLoaded());
+        });
     }
 
     _onFullyLoaded() {

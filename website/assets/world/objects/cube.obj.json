@@ -1,6 +1,6 @@
 {
   "textures": [
-    "./world/texture/hd/cube.jpg"
+    "./assets/world/texture/hd/cube.jpg"
   ],
   "points": [
     [-0.1, 0.1, -0.1],

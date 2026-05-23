@@ -1,0 +1,22 @@
+{
+  "user": {
+    "position":        [0, 0, 0],
+    "yaw":             0,
+    "pitch":           0,
+    "maxEnergy":       100,
+    "height":          1.80,
+    "eyeRatio":        0.92,
+    "radius":          0.30,
+    "gravity":         9.81,
+    "maxJumpVelocity": 3.5,
+    "maxSlopeAngle":   50
+  },
+  "lights": {
+    "ambient": [30, 30, 30],
+    "sources": [
+      {"color": [200, 200, 200], "range": 20.0, "position": [0, 10, 0]}
+    ]
+  },
+  "map": "./assets/doom/objects/map.obj.json",
+  "instances": {}
+}

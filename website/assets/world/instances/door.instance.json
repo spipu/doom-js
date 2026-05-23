@@ -1,5 +1,5 @@
 {
-  "object":    "./world/objects/door.obj.json",
+  "object":    "./assets/world/objects/door.obj.json",
   "position":  [5.25, 0.97, -10.40],
   "rotation":  [-90, 0, 0],
   "trigger":   "action",
