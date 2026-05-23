@@ -38,7 +38,7 @@ class Engine3d {
 
     calculateDeltaTime(timestamp) {
         this._currentTimestamp = timestamp;
-        this._deltaTime = this._deltaLast === null ? 0 : Math.min(timestamp - this._deltaLast, 100);
+        this._deltaTime = this._deltaLast === null ? 0 : Math.min(timestamp - this._deltaLast, 50);
         this._deltaLast = timestamp;
         return this;
     }
