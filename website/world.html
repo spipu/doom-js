@@ -41,7 +41,7 @@ const debug    = new Debug(document.getElementById('debug'))
     .bindKeyboard(keyboard)
     .bindMouse(mouse);
 
-function start()
+function init()
 {
     debug.bindUser(world.getUser());
 
@@ -56,12 +56,12 @@ function start()
     engine.lightAmbient(world.getLightAmbient());
     world.getLights().forEach(l => engine.lightAdd(l));
 
-    display();
+    requestAnimationFrame(animate);
 }
 
-function display()
+function animate(timestamp)
 {
-    engine.calculateDeltaTime();
+    engine.calculateDeltaTime(timestamp);
     world.update(engine.getDeltaTime(), keyboard, mouse);
     engine.displayWorld(world);
     debug.update();
@@ -69,10 +69,10 @@ function display()
     const user = world.getUser();
     energyOverlay.style.opacity = user.isDead() ? 0.5 : Math.min(0.6, user.getEnergyFlash());
 
-    setTimeout(display, 1);
+    requestAnimationFrame(animate);
 }
 
-world.setLoadedCallback(start);
+world.setLoadedCallback(init);
         </script>
     </body>
 </html>

@@ -40,7 +40,7 @@ const light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
 const keyboard = new InputKeyboard();
 const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
-function init3d()
+function init()
 {
     engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
     engine.setScreen(640, 480);
@@ -55,12 +55,12 @@ function init3d()
     engine.lightAdd(light2);
     engine.lightAdd(light3);
 
-    animate();
+    requestAnimationFrame(animate);
 }
 
-function animate()
+function animate(timestamp)
 {
-    engine.calculateDeltaTime();
+    engine.calculateDeltaTime(timestamp);
     const t_d = engine.getDeltaTime();
 
     if (keyboard.readKeyUp())    obj_z+= t_d*obj_dv;
@@ -108,10 +108,10 @@ function animate()
     engine.drawObject(object3dFactory.get('ground'));
     engine.drawFinish();
     debug.update();
-    setTimeout(animate, 1);
+    requestAnimationFrame(animate);
 }
 
-object3dFactory.setLoadedCallback(init3d);
+object3dFactory.setLoadedCallback(init);
         </script>
     </body>
 </html>
