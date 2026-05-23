@@ -67,9 +67,10 @@ website/
 ├── js/
 │   ├── loader.js                Loads all scripts; provides buildUrl() for cache busting
 │   ├── constants.js             Shared constants (DEG_TO_RAD)
+│   ├── abstractLoader.js        Base class for async loaders (isLoaded, setLoadedCallback, _fetchJson)
 │   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering)
 │   ├── object3d.js              3D object (geometry, textures, projection)
-│   ├── object3dFactory.js       Object registry and async JSON loader
+│   ├── object3dFactory.js       Object registry; async JSON loader; fires setLoadedCallback when ready
 │   ├── object3dRendererBase.js  Base renderer class (shared utilities)
 │   ├── object3dRendererFull.js  Per-pixel z-buffer + textures (CPU)
 │   ├── object3dRendererFlat.js  Flat shading + Painter's algorithm
@@ -80,12 +81,12 @@ website/
 │   ├── matrix.js                4×4 transformation matrices
 │   ├── light.js                 Point light sources
 │   ├── instance.js              Animated 3D object (keyframes, triggers, damage)
-│   ├── instanceFactory.js       Instance registry and async JSON loader
+│   ├── instanceFactory.js       Instance registry; async JSON loader; fires setLoadedCallback when ready
 │   ├── collision.js             FPS physics: floor/ceiling/wall detection, platform riding
 │   ├── inputKeyboard.js         Keyboard input (e.code, Set-based)
 │   ├── inputMouse.js            Mouse input via Pointer Lock API
 │   ├── user.js                  FPS player (physics, gravity, jump, crouch, energy)
-│   ├── world.js                 Scene orchestrator: loads definition.json, runs physics
+│   ├── world.js                 Scene orchestrator: loads definition.json, fires setLoadedCallback when ready
 │   └── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
 ├── objects/                     3D objects in .obj.json format
 ├── world/
