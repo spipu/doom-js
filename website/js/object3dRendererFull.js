@@ -214,8 +214,8 @@ class Object3dRendererFull extends Object3dRendererBase {
             if (lt0[0] === lt1[0]) continue;
             if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
 
-            const xMin  = Math.trunc(lt0[0]);
-            const xMax  = Math.trunc(lt1[0] + 0.5);
+            const xMin  = Math.ceil(lt0[0]);
+            const xMax  = Math.ceil(lt1[0]) - 1;
             const lxMin = Math.max(0, xMin);
             const lxMax = Math.min(engine.scr_width - 1, xMax);
             if (lxMin > lxMax) continue;
