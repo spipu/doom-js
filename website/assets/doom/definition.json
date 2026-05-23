@@ -1,18 +1,19 @@
 {
   "user": {
-    "position":        [0, 0, 0],
-    "yaw":             0,
-    "pitch":           0,
-    "maxEnergy":       100,
-    "height":          1.80,
-    "eyeRatio":        0.92,
-    "radius":          0.30,
-    "gravity":         9.81,
+    "position": [-6.5, 0.3, -4.0],
+    "yaw": 90,
+    "pitch": 0,
+    "maxEnergy": 100,
+    "height": 0.875,
+    "eyeRatio": 0.73,
+    "radius": 0.25,
+    "gravity": 0,
     "maxJumpVelocity": 3.5,
-    "maxSlopeAngle":   50
+    "maxSlopeAngle": 50
   },
+  "background": [255, 0, 128],
   "lights": {
-    "ambient": [30, 30, 30],
+    "ambient": [128, 128, 128],
     "sources": [
       {"color": [200, 200, 200], "range": 20.0, "position": [0, 10, 0]}
     ]
