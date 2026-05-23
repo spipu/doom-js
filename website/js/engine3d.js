@@ -104,6 +104,14 @@ class Engine3d {
         this.proj_scaleY = factor_y;
     }
 
+    initFromWorld(world) {
+        const bg = world.getBackground();
+        this.setBackground(bg[0], bg[1], bg[2]);
+        this.lightAmbient(world.getLightAmbient());
+        world.getLights().forEach(l => this.lightAdd(l));
+        return this;
+    }
+
     lightAmbient(color) {
         this.light_ambient = color;
         return this;

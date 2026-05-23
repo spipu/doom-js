@@ -11,6 +11,7 @@
     "maxJumpVelocity": 5.0,
     "maxSlopeAngle":   50
   },
+  "background": [120, 100, 140],
   "lights": {
     "ambient": [10, 10, 10],
     "sources": [

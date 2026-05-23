@@ -2,6 +2,7 @@ class World extends AbstractLoader {
     constructor(url) {
         super();
         this._user          = null;
+        this._background    = [0, 0, 0];
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
@@ -23,6 +24,7 @@ class World extends AbstractLoader {
         if (u.maxJumpVelocity !== undefined) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
         if (u.maxSlopeAngle   !== undefined) this._user.setMaxSlopeAngle(u.maxSlopeAngle);
 
+        this._background   = data.background || [0, 0, 0];
         this._lightAmbient = data.lights.ambient;
         this._lights = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
 
@@ -98,6 +100,10 @@ class World extends AbstractLoader {
 
     getUser() {
         return this._user;
+    }
+
+    getBackground() {
+        return this._background;
     }
 
     getLightAmbient() {
