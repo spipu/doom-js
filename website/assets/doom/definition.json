@@ -16,8 +16,8 @@
     "maxSlopeAngle": 50
   },
   "background": [
-    255,
-    0,
+    128,
+    128,
     128
   ],
   "lights": {
