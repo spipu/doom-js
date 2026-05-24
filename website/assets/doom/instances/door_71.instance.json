@@ -1,15 +1,15 @@
 {
   "object":     "./assets/doom/objects/door_71.obj.json",
-  "position":   [13.0, -2.0, 23.25],
+  "position":   [13.0, 0.0, 23.25],
   "rotation":   [0, 0, 0],
   "trigger":    "action",
   "collidable": true,
-  "radius":     2.5,
+  "radius":     1.5,
   "damage":     null,
   "keyframes":  [
     {"t": 0.0, "translate": [0, 0, 0],          "rotate": [0,0,0]},
-    {"t": 2.0, "translate": [0, 0.0, 0],   "rotate": [0,0,0]},
-    {"t": 5.0, "translate": [0, 0.0, 0],   "rotate": [0,0,0]},
+    {"t": 2.0, "translate": [0, 1.9375, 0],   "rotate": [0,0,0]},
+    {"t": 5.0, "translate": [0, 1.9375, 0],   "rotate": [0,0,0]},
     {"t": 7.0, "translate": [0, 0, 0],          "rotate": [0,0,0]}
   ]
 }
