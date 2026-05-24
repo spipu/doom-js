@@ -135,7 +135,15 @@ class Object3d extends AbstractLoader {
             this._localNormals[k*3+1] = ny;
             this._localNormals[k*3+2] = nz;
         }
-        this._executeLoadedCallback();
+        if (this.textureCount === 0) {
+            this._executeLoadedCallback();
+            return this;
+        }
+        let pending = this.textureCount;
+        const onTextureLoaded = () => { if (--pending === 0) this._executeLoadedCallback(); };
+        for (let i = 0; i < this.textureCount; i++) {
+            this.textureList[i].setLoadedCallback(onTextureLoaded);
+        }
         return this;
     }
 
