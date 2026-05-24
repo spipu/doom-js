@@ -41,9 +41,11 @@ class Object3dFactory extends AbstractLoader {
                 f.texture !== undefined ? f.texture : null,
                 f.map     !== undefined ? f.map     : null
             ));
+            obj.setLoadedCallback(() => {
+                this._pendingCount--;
+                this._checkAllReady();
+            });
             obj.ready();
-            this._pendingCount--;
-            this._checkAllReady();
         });
         return obj;
     }
