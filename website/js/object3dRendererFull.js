@@ -23,27 +23,29 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     draw(obj, engine) {
-        for (let k = 0; k < obj.faceCount; k++) {
-            const fc     = obj.faceList[k];
-            const faceInfo = obj.faceInfo[k];
-            const n      = faceInfo[0];
-            const p      = obj.pt3d[fc[0]];
-            if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
+        for (const faceIndices of [obj._opaqueFaces, obj._alphaFaces]) {
+            for (const k of faceIndices) {
+                const fc       = obj.faceList[k];
+                const faceInfo = obj.faceInfo[k];
+                const n      = faceInfo[0];
+                const p      = obj.pt3d[fc[0]];
+                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
 
-            this._buildVertex(this._v0, engine, fc, faceInfo, obj, 0);
-            this._buildVertex(this._v1, engine, fc, faceInfo, obj, 1);
-            this._buildVertex(this._v2, engine, fc, faceInfo, obj, 2);
+                this._buildVertex(this._v0, engine, fc, faceInfo, obj, 0);
+                this._buildVertex(this._v1, engine, fc, faceInfo, obj, 1);
+                this._buildVertex(this._v2, engine, fc, faceInfo, obj, 2);
 
-            const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
-            const texture = fc[4] !== null && obj.textureList[fc[4]].isLoaded() ? obj.textureList[fc[4]] : null;
-            const alpha   = fc[6];
+                const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
+                const texture = fc[4] !== null ? obj.textureList[fc[4]] : null;
+                const alpha   = fc[6];
 
-            for (const tri of tris) {
-                const s0 = tri[0], s1 = tri[1], s2 = tri[2];
-                const p1 = this._p1, p2 = this._p2, p3 = this._p3;
-                for (let i = 0; i < 10; i++) { p1[i] = s0[i]; p2[i] = s1[i]; p3[i] = s2[i]; }
-                this._sortVertices();
-                this._rasterize(engine, alpha, texture);
+                for (const tri of tris) {
+                    const s0 = tri[0], s1 = tri[1], s2 = tri[2];
+                    const p1 = this._p1, p2 = this._p2, p3 = this._p3;
+                    for (let i = 0; i < 10; i++) { p1[i] = s0[i]; p2[i] = s1[i]; p3[i] = s2[i]; }
+                    this._sortVertices();
+                    this._rasterize(engine, alpha, texture);
+                }
             }
         }
     }
