@@ -55,27 +55,30 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer._z_near);
         gl.uniform1f(loc.far,  engine.zBuffer._z_far);
 
-        // Group visible faces by (texture, alpha) — back-face cull in 3D camera space
-        const groups = new Map();
-        for (let k = 0; k < obj.faceCount; k++) {
-            const fc = obj.faceList[k];
-            const n  = obj.faceInfo[k][0];
-            const p  = obj.pt3d[fc[0]];
-            if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
-            const texId = fc[4];
-            const alpha = fc[6];
-            const key   = texId + ',' + alpha;
-            if (!groups.has(key)) groups.set(key, { texId, alpha, faces: [] });
-            groups.get(key).faces.push(k);
-        }
+        const buildGroups = (faceIndices, isAlpha) => {
+            const groups = new Map();
+            for (const k of faceIndices) {
+                const fc = obj.faceList[k];
+                const n  = obj.faceInfo[k][0];
+                const p  = obj.pt3d[fc[0]];
+                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
+                const key = fc[4] + ',' + fc[6];
+                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, faces: [] });
+                groups.get(key).faces.push(k);
+            }
+            return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
+        };
 
-        // Draw opaque first, then transparent (with depth write disabled)
-        const sorted = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
+        // Draw opaque faces first (depth write on), then alpha faces (depth write off)
+        const allGroups = [
+            ...buildGroups(obj._opaqueFaces, false),
+            ...buildGroups(obj._alphaFaces,  true),
+        ];
         let depthWriting = true;
 
-        for (const group of sorted) {
-            const texture  = group.texId !== null && obj.textureList[group.texId].isLoaded() ? obj.textureList[group.texId] : null;
-            const opaque   = group.alpha >= 1.0;
+        for (const group of allGroups) {
+            const texture = group.texId !== null ? obj.textureList[group.texId] : null;
+            const opaque  = !group.isAlpha;
 
             if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }
             if (!opaque && depthWriting) { gl.depthMask(false); depthWriting = false; }

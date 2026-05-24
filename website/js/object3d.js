@@ -1,15 +1,17 @@
 class Object3d extends AbstractLoader {
     constructor() {
         super();
-        this.ptOrigin   = [];
-        this.pt3d    = [];
-        this.pt2d    = [];
-        this.ptCount    = 0;
-        this.faceList   = [];
-        this.faceInfo   = [];
-        this.faceCount    = 0;
+        this.ptOrigin      = [];
+        this.pt3d          = [];
+        this.pt2d          = [];
+        this.ptCount       = 0;
+        this.faceList      = [];
+        this.faceInfo      = [];
+        this.faceCount     = 0;
         this.textureList   = [];
-        this.textureCount    = 0;
+        this.textureCount  = 0;
+        this._opaqueFaces  = [];
+        this._alphaFaces   = [];
     }
 
     ptAdd(x, y, z) {
@@ -77,7 +79,7 @@ class Object3d extends AbstractLoader {
         if (this.ptOrigin[pt2-1] === undefined) throw new Error('pt2 ' + pt2 + ' undefined');
         if (this.ptOrigin[pt3-1] === undefined) throw new Error('pt3 ' + pt3 + ' undefined');
 
-        this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha]);
+        this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, false]);
         this.faceInfo.push([[0, 0, 0], null]);
         this.faceCount++;
         return this;
@@ -136,15 +138,26 @@ class Object3d extends AbstractLoader {
             this._localNormals[k*3+2] = nz;
         }
         if (this.textureCount === 0) {
-            this._executeLoadedCallback();
+            this._onReady();
             return this;
         }
         let pending = this.textureCount;
-        const onTextureLoaded = () => { if (--pending === 0) this._executeLoadedCallback(); };
+        const onTextureLoaded = () => { if (--pending === 0) this._onReady(); };
         for (let i = 0; i < this.textureCount; i++) {
             this.textureList[i].setLoadedCallback(onTextureLoaded);
         }
         return this;
+    }
+
+    _onReady() {
+        this._opaqueFaces = [];
+        this._alphaFaces  = [];
+        for (let k = 0; k < this.faceCount; k++) {
+            const fc = this.faceList[k];
+            fc[7] = fc[6] < 1 || (fc[4] !== null && this.textureList[fc[4]].isAlpha());
+            (fc[7] ? this._alphaFaces : this._opaqueFaces).push(k);
+        }
+        this._executeLoadedCallback();
     }
 
     getCenter() {
