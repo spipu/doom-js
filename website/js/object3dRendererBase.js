@@ -14,13 +14,13 @@ class Object3dRendererBase {
 
     _pointColor(engine, color, pt, normal) {
         const col = this._col;
-        col[0] = engine.light_ambient[0];
-        col[1] = engine.light_ambient[1];
-        col[2] = engine.light_ambient[2];
+        col[0] = engine.ambientLight[0];
+        col[1] = engine.ambientLight[1];
+        col[2] = engine.ambientLight[2];
 
         const tmp = this._lightTemp;
-        for (let k = 0; k < engine.light_lst.length; k++) {
-            engine.light_lst[k].getColorFor(pt, normal, tmp);
+        for (let k = 0; k < engine.lightList.length; k++) {
+            engine.lightList[k].getColorFor(pt, normal, tmp);
             col[0] += tmp[0];
             col[1] += tmp[1];
             col[2] += tmp[2];

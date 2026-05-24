@@ -136,8 +136,8 @@ function animate(timestamp)
         x = 0;
         y = 0;
     } else {
-        x = 2. * (x - Math.trunc(engine.scr_width  / 2)) / engine.scr_width;
-        y = 2. * (y - Math.trunc(engine.scr_height / 2)) / engine.scr_height;
+        x = 2. * (x - Math.trunc(engine.scrWidth  / 2)) / engine.scrWidth;
+        y = 2. * (y - Math.trunc(engine.scrHeight / 2)) / engine.scrHeight;
     }
 
     if (Math.abs(x) < 0.1) x = 0;

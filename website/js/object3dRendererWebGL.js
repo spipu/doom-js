@@ -28,11 +28,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     begin(engine) {
-        const gl = engine.scr_ctx;
+        const gl = engine.scrCtx;
         if (!gl) return;
         if (!this._program) this._setup(gl);
         gl.useProgram(this._program);
-        gl.viewport(0, 0, engine.scr_width, engine.scr_height);
+        gl.viewport(0, 0, engine.scrWidth, engine.scrHeight);
         const bg = engine.background;
         gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -42,25 +42,25 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     draw(obj, engine) {
-        const gl  = engine.scr_ctx;
+        const gl  = engine.scrCtx;
         if (!gl) return;
         const loc = this._loc;
 
-        gl.uniform1f(loc.sx,   engine.proj_scaleX);
-        gl.uniform1f(loc.sy,   engine.proj_scaleY);
-        gl.uniform1f(loc.ox,   engine.proj_offsetX);
-        gl.uniform1f(loc.oy,   engine.proj_offsetY);
-        gl.uniform1f(loc.w,    engine.scr_width);
-        gl.uniform1f(loc.h,    engine.scr_height);
+        gl.uniform1f(loc.sx,   engine.projScaleX);
+        gl.uniform1f(loc.sy,   engine.projScaleY);
+        gl.uniform1f(loc.ox,   engine.projOffsetX);
+        gl.uniform1f(loc.oy,   engine.projOffsetY);
+        gl.uniform1f(loc.w,    engine.scrWidth);
+        gl.uniform1f(loc.h,    engine.scrHeight);
         gl.uniform1f(loc.near, engine.zBuffer._z_near);
         gl.uniform1f(loc.far,  engine.zBuffer._z_far);
 
         // Group visible faces by (texture, alpha) — back-face cull in 3D camera space
         const groups = new Map();
-        for (let k = 0; k < obj.fc_nb; k++) {
-            const fc = obj.fc_lst[k];
-            const n  = obj.fc_inf[k][0];
-            const p  = obj.pt_3d[fc[0]];
+        for (let k = 0; k < obj.faceCount; k++) {
+            const fc = obj.faceList[k];
+            const n  = obj.faceInfo[k][0];
+            const p  = obj.pt3d[fc[0]];
             if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
             const texId = fc[4];
             const alpha = fc[6];
@@ -74,7 +74,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         let depthWriting = true;
 
         for (const group of sorted) {
-            const texture  = (group.texId !== null) ? obj.tx_lst[group.texId] : null;
+            const texture  = group.texId !== null && obj.textureList[group.texId].isLoaded() ? obj.textureList[group.texId] : null;
             const opaque   = group.alpha >= 1.0;
 
             if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }
@@ -83,11 +83,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const data = new Float32Array(group.faces.length * 3 * 8);
             let di = 0;
             for (const k of group.faces) {
-                const fc     = obj.fc_lst[k];
-                const normal = obj.fc_inf[k][0];
+                const fc     = obj.faceList[k];
+                const normal = obj.faceInfo[k][0];
                 const map    = fc[5];
                 for (let v = 0; v < 3; v++) {
-                    const pt  = obj.pt_3d[fc[v]];
+                    const pt  = obj.pt3d[fc[v]];
                     const col = this._pointColor(engine, fc[3], pt, normal);
                     const uv  = map ? map[v] : [0, 0];
                     data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
@@ -123,20 +123,20 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         if (!depthWriting) gl.depthMask(true);
     }
 
-    _getTexture(gl, imageData) {
-        if (this._texCache.has(imageData)) return this._texCache.get(imageData);
+    _getTexture(gl, texture) {
+        if (this._texCache.has(texture)) return this._texCache.get(texture);
         const tex  = gl.createTexture();
-        const w    = imageData.width;
-        const h    = imageData.height;
+        const w    = texture.width;
+        const h    = texture.height;
         const pow2 = (n) => n > 0 && (n & (n - 1)) === 0;
         const wrap = (pow2(w) && pow2(h)) ? gl.REPEAT : gl.CLAMP_TO_EDGE;
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(imageData.data.buffer));
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
-        this._texCache.set(imageData, tex);
+        this._texCache.set(texture, tex);
         return tex;
     }
 
