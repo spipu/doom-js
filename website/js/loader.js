@@ -1,6 +1,6 @@
 class Loader {
     constructor() {
-        this._version = '1.095';
+        this._version = '1.096';
     }
 
     getVersion() {
