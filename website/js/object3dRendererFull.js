@@ -14,28 +14,28 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     begin(engine) {
-        engine.zBuffer.clear(engine.scr_width, engine.scr_height);
-        engine.scr_data = engine.scr_ctx.createImageData(engine.scr_width, engine.scr_height);
+        engine.zBuffer.clear(engine.scrWidth, engine.scrHeight);
+        engine.scrData = engine.scrCtx.createImageData(engine.scrWidth, engine.scrHeight);
     }
 
     end(engine) {
-        engine.scr_ctx.putImageData(engine.scr_data, 0, 0);
+        engine.scrCtx.putImageData(engine.scrData, 0, 0);
     }
 
     draw(obj, engine) {
-        for (let k = 0; k < obj.fc_nb; k++) {
-            const fc     = obj.fc_lst[k];
-            const fc_inf = obj.fc_inf[k];
-            const n      = fc_inf[0];
-            const p      = obj.pt_3d[fc[0]];
+        for (let k = 0; k < obj.faceCount; k++) {
+            const fc     = obj.faceList[k];
+            const faceInfo = obj.faceInfo[k];
+            const n      = faceInfo[0];
+            const p      = obj.pt3d[fc[0]];
             if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
 
-            this._buildVertex(this._v0, engine, fc, fc_inf, obj, 0);
-            this._buildVertex(this._v1, engine, fc, fc_inf, obj, 1);
-            this._buildVertex(this._v2, engine, fc, fc_inf, obj, 2);
+            this._buildVertex(this._v0, engine, fc, faceInfo, obj, 0);
+            this._buildVertex(this._v1, engine, fc, faceInfo, obj, 1);
+            this._buildVertex(this._v2, engine, fc, faceInfo, obj, 2);
 
             const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
-            const texture = fc[4] !== null ? obj.tx_lst[fc[4]] : null;
+            const texture = fc[4] !== null && obj.textureList[fc[4]].isLoaded() ? obj.textureList[fc[4]] : null;
             const alpha   = fc[6];
 
             for (const tri of tris) {
@@ -50,10 +50,10 @@ class Object3dRendererFull extends Object3dRendererBase {
 
     // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]
     // Indices 0-7 used by rasterizer, 8-9 (3D camera XY) used for clipping only
-    _buildVertex(out, engine, fc, fc_inf, obj, idx) {
-        const col  = this._pointColor(engine, fc[3], obj.pt_3d[fc[idx]], fc_inf[0]);
-        const pt3d = obj.pt_3d[fc[idx]];
-        const pt2d = obj.pt_2d[fc[idx]];
+    _buildVertex(out, engine, fc, faceInfo, obj, idx) {
+        const col  = this._pointColor(engine, fc[3], obj.pt3d[fc[idx]], faceInfo[0]);
+        const pt3d = obj.pt3d[fc[idx]];
+        const pt2d = obj.pt2d[fc[idx]];
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
         out[3] = col[0];  out[4] = col[1];  out[5] = col[2];
         out[6] = fc[5][idx][0]; out[7] = fc[5][idx][1];
@@ -66,8 +66,8 @@ class Object3dRendererFull extends Object3dRendererBase {
         const cx = va[8] + t * (vb[8] - va[8]);
         const cy = va[9] + t * (vb[9] - va[9]);
         return [
-            Math.trunc(engine.proj_scaleX * cx / zNear - engine.proj_offsetX),
-            Math.trunc(-engine.proj_scaleY * cy / zNear - engine.proj_offsetY),
+            Math.trunc(engine.projScaleX * cx / zNear - engine.projOffsetX),
+            Math.trunc(-engine.projScaleY * cy / zNear - engine.projOffsetY),
             zNear,
             va[3] + t * (vb[3] - va[3]),
             va[4] + t * (vb[4] - va[4]),
@@ -142,7 +142,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
 
         const ymin = Math.max(0, Math.ceil(this._p1[1]));
-        const ymax = Math.min(engine.scr_height - 1, Math.max(this._p2[1], this._p3[1]));
+        const ymax = Math.min(engine.scrHeight - 1, Math.max(this._p2[1], this._p3[1]));
         if (ymin > ymax) return;
 
         const dt12 = []; const dt23 = []; const dt13 = [];
@@ -217,7 +217,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             const xMin  = Math.ceil(lt0[0]);
             const xMax  = Math.ceil(lt1[0]) - 1;
             const lxMin = Math.max(0, xMin);
-            const lxMax = Math.min(engine.scr_width - 1, xMax);
+            const lxMax = Math.min(engine.scrWidth - 1, xMax);
             if (lxMin > lxMax) continue;
 
             const dt = [];
@@ -243,7 +243,7 @@ class Object3dRendererFull extends Object3dRendererBase {
 
                 if (!engine.zBuffer.set(lx, ly, lz)) continue;
 
-                const posi = 4 * (lx + ly * engine.scr_width);
+                const posi = 4 * (lx + ly * engine.scrWidth);
                 let r, g, b, a;
 
                 if (text) {
@@ -259,15 +259,15 @@ class Object3dRendererFull extends Object3dRendererBase {
                 }
 
                 if (a < 1.) {
-                    engine.scr_data.data[posi+0] = a*r + (1-a)*engine.scr_data.data[posi+0];
-                    engine.scr_data.data[posi+1] = a*g + (1-a)*engine.scr_data.data[posi+1];
-                    engine.scr_data.data[posi+2] = a*b + (1-a)*engine.scr_data.data[posi+2];
-                    engine.scr_data.data[posi+3] = a*255 + (1-a)*engine.scr_data.data[posi+3];
+                    engine.scrData.data[posi+0] = a*r + (1-a)*engine.scrData.data[posi+0];
+                    engine.scrData.data[posi+1] = a*g + (1-a)*engine.scrData.data[posi+1];
+                    engine.scrData.data[posi+2] = a*b + (1-a)*engine.scrData.data[posi+2];
+                    engine.scrData.data[posi+3] = a*255 + (1-a)*engine.scrData.data[posi+3];
                 } else {
-                    engine.scr_data.data[posi+0] = r;
-                    engine.scr_data.data[posi+1] = g;
-                    engine.scr_data.data[posi+2] = b;
-                    engine.scr_data.data[posi+3] = 255;
+                    engine.scrData.data[posi+0] = r;
+                    engine.scrData.data[posi+1] = g;
+                    engine.scrData.data[posi+2] = b;
+                    engine.scrData.data[posi+3] = 255;
                 }
             }
         }
