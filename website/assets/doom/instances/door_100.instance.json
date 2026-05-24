@@ -1,6 +1,6 @@
 {
   "object":     "./assets/doom/objects/door_100.obj.json",
-  "position":   [15.0, 0.0, 2.375],
+  "position":   [15.0, 0.0, -2.375],
   "rotation":   [0, 0, 0],
   "trigger":    "action",
   "collidable": true,

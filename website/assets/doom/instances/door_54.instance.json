@@ -1,6 +1,6 @@
 {
   "object":     "./assets/doom/objects/door_54.obj.json",
-  "position":   [35.25, 2.25, -3.625],
+  "position":   [35.25, 2.25, 3.625],
   "rotation":   [0, 0, 0],
   "trigger":    "action",
   "collidable": true,
