@@ -233,19 +233,24 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const al = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.;
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
+                let post = -1;
+                if (text) {
+                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text.width;
+                    let yt = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text.height;
+                    post = 4 * (xt + yt * text.width);
+                    if (text.data[post+3] === 0) continue;  // fully transparent: skip z-buffer write
+                }
+
                 if (!engine.zBuffer.set(lx, ly, lz)) continue;
 
                 const posi = 4 * (lx + ly * engine.scr_width);
                 let r, g, b, a;
 
                 if (text) {
-                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text.width;
-                    let yt = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text.height;
-                    const post = 4 * (xt + yt * text.width);
                     r = Math.trunc((lt0[3] + dt[3]*al) * text.data[post+0]);
                     g = Math.trunc((lt0[4] + dt[4]*al) * text.data[post+1]);
                     b = Math.trunc((lt0[5] + dt[5]*al) * text.data[post+2]);
-                    a = alpha * parseFloat(text.data[post+3]) / 255.;
+                    a = alpha * text.data[post+3] / 255.;
                 } else {
                     r = Math.trunc(lt0[3] + dt[3]*al);
                     g = Math.trunc(lt0[4] + dt[4]*al);
