@@ -39,7 +39,8 @@ class Object3dFactory extends AbstractLoader {
                 f.pts[0], f.pts[1], f.pts[2],
                 f.color   !== undefined ? f.color   : null,
                 f.texture !== undefined ? f.texture : null,
-                f.map     !== undefined ? f.map     : null
+                f.map     !== undefined ? f.map     : null,
+                f.clamp_v !== undefined ? f.clamp_v : false
             ));
             obj.setLoadedCallback(() => {
                 this._pendingCount--;

@@ -36,15 +36,16 @@ class Object3dRendererFull extends Object3dRendererBase {
                 this._buildVertex(this._v2, engine, fc, faceInfo, obj, 2);
 
                 const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
-                const texture = fc[4] !== null ? obj.textureList[fc[4]] : null;
-                const alpha   = fc[6];
+                const texture  = fc[4] !== null ? obj.textureList[fc[4]] : null;
+                const alpha    = fc[6];
+                const clamp_v  = fc[8] || false;
 
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
                     const p1 = this._p1, p2 = this._p2, p3 = this._p3;
                     for (let i = 0; i < 10; i++) { p1[i] = s0[i]; p2[i] = s1[i]; p3[i] = s2[i]; }
                     this._sortVertices();
-                    this._rasterize(engine, alpha, texture);
+                    this._rasterize(engine, alpha, texture, clamp_v);
                 }
             }
         }
@@ -136,7 +137,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 
-    _rasterize(engine, alpha, text) {
+    _rasterize(engine, alpha, text, clamp_v = false) {
         if (text) {
             this._p1[6] /= this._p1[2]; this._p1[7] /= this._p1[2];
             this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
@@ -238,7 +239,10 @@ class Object3dRendererFull extends Object3dRendererBase {
                 let post = -1;
                 if (text) {
                     let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text.width;
-                    let yt = Math.trunc(lz * (lt0[7] + dt[7]*al)) % text.height; if (yt < 0) yt += text.height;
+                    let yt_raw = lz * (lt0[7] + dt[7]*al);
+                    let yt = clamp_v
+                        ? Math.min(text.height - 1, Math.max(0, Math.trunc(yt_raw)))
+                        : (Math.trunc(yt_raw) % text.height + text.height) % text.height;
                     post = 4 * (xt + yt * text.width);
                     if (text.data[post+3] === 0) continue;  // fully transparent: skip z-buffer write
                 }
