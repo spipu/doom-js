@@ -13,7 +13,9 @@
     "radius": 0.25,
     "gravity": 9.81,
     "maxJumpVelocity": 2.7,
-    "maxSlopeAngle": 50
+    "maxSlopeAngle": 50,
+    "moveSpeed": 0.0036,
+    "stepHeight": 0.375
   },
   "background": [
     255,

@@ -23,6 +23,8 @@ class World extends AbstractLoader {
         if (u.gravity         !== undefined) this._user.setGravity(u.gravity);
         if (u.maxJumpVelocity !== undefined) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
         if (u.maxSlopeAngle   !== undefined) this._user.setMaxSlopeAngle(u.maxSlopeAngle);
+        if (u.moveSpeed       !== undefined) this._user.setMoveSpeed(u.moveSpeed);
+        if (u.stepHeight      !== undefined) this._user.setStepHeight(u.stepHeight);
 
         this._background   = data.background || [0, 0, 0];
         this._lightAmbient = data.lights.ambient;
