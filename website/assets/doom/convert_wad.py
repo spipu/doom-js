@@ -730,23 +730,31 @@ def main():
         poly_doom = [vertexes[vi] for vi in chains[0]]  # first chain = outer boundary
 
         if si in door_sector_ids:
-            # Floor at the lowest adjacent non-door sector floor height
-            adj_fh = [sectors[sidedefs[ld['left']]['sector']]['fh']
-                      for ld in linedefs
-                      if ld['right'] >= 0 and ld['left'] >= 0
-                      and sidedefs[ld['right']]['sector'] == si
-                      and sidedefs[ld['left']]['sector'] not in door_sector_ids]
-            adj_fh += [sectors[sidedefs[ld['right']]['sector']]['fh']
-                       for ld in linedefs
-                       if ld['right'] >= 0 and ld['left'] >= 0
-                       and sidedefs[ld['left']]['sector'] == si
-                       and sidedefs[ld['right']]['sector'] not in door_sector_ids]
-            if not adj_fh: continue
-            floor_h = min(adj_fh)
+            # Collect adjacent non-door sectors (both directions of two-sided linedefs)
+            adj_sectors = []
+            for ld in linedefs:
+                if ld['right'] < 0 or ld['left'] < 0: continue
+                if sidedefs[ld['right']]['sector'] == si:
+                    other = sidedefs[ld['left']]['sector']
+                    if other not in door_sector_ids: adj_sectors.append(sectors[other])
+                elif sidedefs[ld['left']]['sector'] == si:
+                    other = sidedefs[ld['right']]['sector']
+                    if other not in door_sector_ids: adj_sectors.append(sectors[other])
+            if not adj_sectors: continue
+            # Floor at the lowest adjacent floor height
+            floor_h = min(s['fh'] for s in adj_sectors)
             ft = ensure_flat_tex(sec['ft'])
             if ft >= 0:
                 add_flat_quad(pts, faces, ft, poly_doom, floor_h,
                               is_floor=True, light=sec['light'])
+            # Ceiling at the highest adjacent ceiling height (skip sky sectors)
+            non_sky = [s for s in adj_sectors if not s['ct'].startswith('F_SKY')]
+            if non_sky:
+                ceil_h = max(s['ch'] for s in non_sky)
+                ct = ensure_flat_tex(sec['ct'])
+                if ct >= 0:
+                    add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
+                                  is_floor=False, light=sec['light'])
             continue
 
         ft = ensure_flat_tex(sec['ft'])
