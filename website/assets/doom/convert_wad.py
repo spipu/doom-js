@@ -824,8 +824,6 @@ def main():
         chains = build_sector_polygons(si, linedefs, sidedefs, vertexes)
         if not chains: continue
 
-        poly_doom = [vertexes[vi] for vi in chains[0]]  # first chain = outer boundary
-
         if si in door_sector_ids:
             # Collect adjacent non-door sectors (both directions of two-sided linedefs)
             adj_sectors = []
@@ -841,27 +839,32 @@ def main():
             # Floor at the lowest adjacent floor height
             floor_h = min(s['fh'] for s in adj_sectors)
             ft = ensure_flat_tex(sec['ft'])
-            if ft >= 0:
-                add_flat_quad(pts, faces, ft, poly_doom, floor_h,
-                              is_floor=True, light=sec['light'])
             # Ceiling: P_FindLowestCeilingSurrounding − DOOR_TRACK_OFFSET (Doom exact behaviour)
             non_sky = [s for s in adj_sectors if not s['ct'].startswith('F_SKY')]
-            if non_sky:
-                ceil_h = min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET
-                ct = ensure_flat_tex(sec['ct'])
-                if ct >= 0:
+            ct      = ensure_flat_tex(sec['ct']) if non_sky else -1
+            ceil_h  = (min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET) if non_sky else None
+            for chain in chains:
+                poly_doom = [vertexes[vi] for vi in chain]
+                if ft >= 0:
+                    add_flat_quad(pts, faces, ft, poly_doom, floor_h,
+                                  is_floor=True, light=sec['light'])
+                if ct >= 0 and ceil_h is not None:
                     add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
                                   is_floor=False, light=sec['light'])
             continue
 
-        ft = ensure_flat_tex(sec['ft'])
-        if ft >= 0:
-            add_flat_quad(pts, faces, ft, poly_doom, sec['fh'],
-                          is_floor=True, light=sec['light'])
-
-        # Skip sky flats — outdoor areas have no ceiling geometry
-        if not sec['ct'].startswith('F_SKY'):
-            ct = ensure_flat_tex(sec['ct'])
+        ft         = ensure_flat_tex(sec['ft'])
+        has_sky    = sec['ct'].startswith('F_SKY')
+        ct         = ensure_flat_tex(sec['ct']) if not has_sky else -1
+        # All chains of a sector share the same floor/ceiling heights — iterate all of them
+        # so that sectors with multiple disconnected areas (different rooms with the same
+        # sector index) get geometry everywhere, not just on the first chain.
+        for chain in chains:
+            poly_doom = [vertexes[vi] for vi in chain]
+            if ft >= 0:
+                add_flat_quad(pts, faces, ft, poly_doom, sec['fh'],
+                              is_floor=True, light=sec['light'])
+            # Skip sky flats — outdoor areas have no ceiling geometry
             if ct >= 0:
                 add_flat_quad(pts, faces, ct, poly_doom, sec['ch'],
                               is_floor=False, light=sec['light'])
@@ -1030,7 +1033,9 @@ def main():
             'radius':          0.25,    # 16 doom units
             'gravity':         9.81,
             'maxJumpVelocity': 2.7,
-            'maxSlopeAngle':   50
+            'maxSlopeAngle':   50,
+            'moveSpeed':       0.0036,  # default +20% vs generic world; tune per map
+            'stepHeight':      0.375    # 24 doom units — standard Doom step height
         },
         'background': [255, 0, 255],  # fuchsia: debug — visible through geometry gaps
         'lights': {
