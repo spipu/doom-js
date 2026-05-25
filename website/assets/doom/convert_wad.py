@@ -747,10 +747,10 @@ def main():
             if ft >= 0:
                 add_flat_quad(pts, faces, ft, poly_doom, floor_h,
                               is_floor=True, light=sec['light'])
-            # Ceiling at the highest adjacent ceiling height (skip sky sectors)
+            # Ceiling: P_FindLowestCeilingSurrounding − DOOR_TRACK_OFFSET (Doom exact behaviour)
             non_sky = [s for s in adj_sectors if not s['ct'].startswith('F_SKY')]
             if non_sky:
-                ceil_h = max(s['ch'] for s in non_sky)
+                ceil_h = min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET
                 ct = ensure_flat_tex(sec['ct'])
                 if ct >= 0:
                     add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
