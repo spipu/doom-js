@@ -562,6 +562,36 @@ def main():
 
     print(f"  {len(door_sector_ids)} door sectors identified")
 
+    # Pre-compute real room heights for each door sector via BFS on adjacent sectors.
+    # Door sectors have fh=ch=-128 (underground); we need the actual corridor heights
+    # to generate correct frame geometry (jambs and lintel) and floor/ceiling.
+    door_room_heights = {}  # sector_id → (room_fh, room_ch) in Doom units
+    for si in door_sector_ids:
+        sec = sectors[si]
+        room_fh     = max(0, sec['fh'])
+        room_ch     = room_fh + 128  # fallback: standard Doom room height
+        visited_bfs = {si}
+        bfs_queue   = [si]
+        found_ch    = False
+        for _ in range(2):
+            next_q = []
+            for curr in bfs_queue:
+                for ld in linedefs:
+                    for r, l in [(ld['right'], ld['left']), (ld['left'], ld['right'])]:
+                        if r < 0 or l < 0: continue
+                        if sidedefs[r]['sector'] != curr: continue
+                        other = sidedefs[l]['sector']
+                        if other in visited_bfs or other in door_sector_ids: continue
+                        visited_bfs.add(other)
+                        ch = sectors[other]['ch']
+                        if room_fh + 32 < ch <= room_fh + 192:
+                            if not found_ch or ch > room_ch:
+                                room_ch = ch
+                                found_ch = True
+                        next_q.append(other)
+            bfs_queue = next_q
+        door_room_heights[si] = (room_fh, room_ch)
+
     # ── Wall geometry ─────────────────────────────────────────────────────────
     pts   = []
     faces = []
@@ -588,6 +618,7 @@ def main():
         if not has_left:
             # One-sided linedef → solid wall; skip if it belongs to a door sector
             if r_is_door: continue
+            # One-sided linedef → solid wall
             tex_name = r_sd['middle']
             ti = ensure_wall_tex(tex_name)
             if ti >= 0:
@@ -695,9 +726,28 @@ def main():
     for si, sec in enumerate(sectors):
         chains = build_sector_polygons(si, linedefs, sidedefs, vertexes)
         if not chains: continue
-        if si in door_sector_ids: continue
 
         poly_doom = [vertexes[vi] for vi in chains[0]]  # first chain = outer boundary
+
+        if si in door_sector_ids:
+            # Floor at the lowest adjacent non-door sector floor height
+            adj_fh = [sectors[sidedefs[ld['left']]['sector']]['fh']
+                      for ld in linedefs
+                      if ld['right'] >= 0 and ld['left'] >= 0
+                      and sidedefs[ld['right']]['sector'] == si
+                      and sidedefs[ld['left']]['sector'] not in door_sector_ids]
+            adj_fh += [sectors[sidedefs[ld['right']]['sector']]['fh']
+                       for ld in linedefs
+                       if ld['right'] >= 0 and ld['left'] >= 0
+                       and sidedefs[ld['left']]['sector'] == si
+                       and sidedefs[ld['right']]['sector'] not in door_sector_ids]
+            if not adj_fh: continue
+            floor_h = min(adj_fh)
+            ft = ensure_flat_tex(sec['ft'])
+            if ft >= 0:
+                add_flat_quad(pts, faces, ft, poly_doom, floor_h,
+                              is_floor=True, light=sec['light'])
+            continue
 
         ft = ensure_flat_tex(sec['ft'])
         if ft >= 0:
@@ -747,33 +797,8 @@ def main():
         cx = (min(all_vx)+max(all_vx))/2 * SCALE
         cz = (min(all_vy)+max(all_vy))/2 * SCALE
 
-        # Doom door sectors start underground (fh=-128 is the standard track trick)
-        room_fh = max(0, sec['fh'])
-
-        # Find the adjacent room ceiling via a 2-hop BFS.
-        # Accept only ceilings in [room_fh+32, room_fh+192] to skip sky sectors
-        # and tiny 0-height track sectors.
-        room_ch     = room_fh + 128  # fallback: standard Doom room height
-        visited_bfs = {si}
-        bfs_queue   = [si]
-        found_ch    = False
-        for _ in range(2):
-            next_q = []
-            for curr in bfs_queue:
-                for ld in linedefs:
-                    for r, l in [(ld['right'], ld['left']), (ld['left'], ld['right'])]:
-                        if r < 0 or l < 0: continue
-                        if sidedefs[r]['sector'] != curr: continue
-                        other = sidedefs[l]['sector']
-                        if other in visited_bfs or other in door_sector_ids: continue
-                        visited_bfs.add(other)
-                        ch = sectors[other]['ch']
-                        if room_fh + 32 < ch <= room_fh + 192:
-                            if not found_ch or ch > room_ch:
-                                room_ch = ch
-                                found_ch = True
-                        next_q.append(other)
-            bfs_queue = next_q
+        # Room heights were pre-computed during frame geometry generation
+        room_fh, room_ch = door_room_heights[si]
 
         # Door panel height: full room height minus the track clearance at the top
         h      = (room_ch - DOOR_TRACK_OFFSET - room_fh) * SCALE
@@ -874,12 +899,26 @@ def main():
         spawn_x, spawn_z, spawn_yaw = -6.5, 4.0, 90
 
     # ── Write definition.json ─────────────────────────────────────────────────
+    # Preserve position/yaw/pitch from an existing definition.json so that a
+    # custom debug spawn set by the user survives map regeneration.
     def_path = os.path.join(OUT_DIR, 'definition.json')
+    if os.path.exists(def_path):
+        with open(def_path) as f:
+            existing = json.load(f)
+        u = existing.get('user', {})
+        spawn_x   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[0]
+        spawn_y   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[1]
+        spawn_z   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[2]
+        spawn_yaw = u.get('yaw',   spawn_yaw)
+        spawn_pitch = u.get('pitch', 0)
+    else:
+        spawn_y     = 0.3
+        spawn_pitch = 0
     defn = {
         'user': {
-            'position':        [round(spawn_x,4), 0.3, round(spawn_z,4)],
+            'position':        [round(spawn_x,4), round(spawn_y,4), round(spawn_z,4)],
             'yaw':             spawn_yaw,
-            'pitch':           0,
+            'pitch':           spawn_pitch,
             'maxEnergy':       100,
             'height':          0.875,   # 56 doom units
             'eyeRatio':        0.73,    # eyes at 41/56 of height
