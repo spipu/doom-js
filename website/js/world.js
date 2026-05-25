@@ -77,8 +77,8 @@ class World extends AbstractLoader {
 
         const lookDelta = dt * 1.5;
         user.lookMouse(
-            mouse.readDeltaX() + (keyboard.readKey('KeyU') ? -lookDelta : 0) + (keyboard.readKey('KeyI') ? lookDelta : 0),
-            mouse.readDeltaY()
+            mouse.readDeltaX() + (keyboard.readKey('KeyJ') ? -lookDelta : 0) + (keyboard.readKey('KeyL') ? lookDelta : 0),
+            mouse.readDeltaY() + (keyboard.readKey('KeyI') ? -lookDelta : 0) + (keyboard.readKey('KeyK') ? lookDelta : 0)
         );
 
         // 3. Animate instances
