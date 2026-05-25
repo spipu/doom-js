@@ -673,6 +673,70 @@ def main():
             upper_unpeg = bool(ld['flags'] & ML_DONTPEGTOP)
             lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
 
+            # Door/lift sector: gaps on two-sided linedefs (corridor ↔ door sector)
+            # r_is_door → right=door, left=corridor (corr = l_*, flip=False)
+            # l_is_door → left=door, right=corridor (corr = r_*, flip=True)
+            if r_is_door and l_sd['sector'] not in door_sector_ids:
+                door_si = r_sd['sector']
+                if door_si in door_heights:
+                    floor_h, ceil_h = door_heights[door_si]
+                    # Upper track band: corridor ceiling above door ceiling
+                    if l_ch > ceil_h:
+                        tex_name = l_sd['upper']
+                        ti = ensure_wall_tex(tex_name)
+                        if ti >= 0:
+                            tw, th = Image.open(get_tex_abspath(tex_name)).size
+                            yo = l_sd['yo'] + (l_ch - ceil_h if upper_unpeg else 0)
+                            add_wall_quad(pts, faces, ti,
+                                          wx1, wz1, wx2, wz2,
+                                          ceil_h*SCALE, l_ch*SCALE,
+                                          wall_len, tw, th,
+                                          l_sd['xo'], yo,
+                                          flip=False, light=l_sec['light'])
+                    # Lower step: corridor floor above door floor
+                    if l_fh > floor_h:
+                        tex_name = l_sd['lower']
+                        ti = ensure_wall_tex(tex_name)
+                        if ti >= 0:
+                            tw, th = Image.open(get_tex_abspath(tex_name)).size
+                            yo = l_sd['yo'] + (l_ch - l_fh if lower_unpeg else 0)
+                            add_wall_quad(pts, faces, ti,
+                                          wx1, wz1, wx2, wz2,
+                                          floor_h*SCALE, l_fh*SCALE,
+                                          wall_len, tw, th,
+                                          l_sd['xo'], yo,
+                                          flip=False, light=l_sec['light'])
+            elif l_is_door and r_sd['sector'] not in door_sector_ids:
+                door_si = l_sd['sector']
+                if door_si in door_heights:
+                    floor_h, ceil_h = door_heights[door_si]
+                    # Upper track band: corridor ceiling above door ceiling
+                    if r_ch > ceil_h:
+                        tex_name = r_sd['upper']
+                        ti = ensure_wall_tex(tex_name)
+                        if ti >= 0:
+                            tw, th = Image.open(get_tex_abspath(tex_name)).size
+                            yo = r_sd['yo'] + (r_ch - ceil_h if upper_unpeg else 0)
+                            add_wall_quad(pts, faces, ti,
+                                          wx1, wz1, wx2, wz2,
+                                          ceil_h*SCALE, r_ch*SCALE,
+                                          wall_len, tw, th,
+                                          r_sd['xo'], yo,
+                                          flip=True, light=r_sec['light'])
+                    # Lower step: corridor floor above door floor
+                    if r_fh > floor_h:
+                        tex_name = r_sd['lower']
+                        ti = ensure_wall_tex(tex_name)
+                        if ti >= 0:
+                            tw, th = Image.open(get_tex_abspath(tex_name)).size
+                            yo = r_sd['yo'] + (r_ch - r_fh if lower_unpeg else 0)
+                            add_wall_quad(pts, faces, ti,
+                                          wx1, wz1, wx2, wz2,
+                                          floor_h*SCALE, r_fh*SCALE,
+                                          wall_len, tw, th,
+                                          r_sd['xo'], yo,
+                                          flip=True, light=r_sec['light'])
+
             # Lower wall: step up from right sector floor to left sector floor
             if l_fh > r_fh and not r_is_door and not l_is_door:
                 tex_name = r_sd['lower']
