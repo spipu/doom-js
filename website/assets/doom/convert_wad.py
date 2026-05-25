@@ -5,8 +5,12 @@ import struct, json, math, os, sys
 from collections import defaultdict
 from PIL import Image
 
-WAD_PATH  = "/home/lamin/git/test/lib3d_js/.old/freedoom/freedoom1.wad"
-OUT_DIR   = "/home/lamin/git/test/lib3d_js/website/assets/doom"
+if len(sys.argv) < 2:
+    print(f"Usage: {sys.argv[0]} <path/to/freedoom.wad>")
+    sys.exit(1)
+
+WAD_PATH  = sys.argv[1]
+OUT_DIR   = os.path.dirname(os.path.abspath(__file__))
 TEX_DIR   = os.path.join(OUT_DIR, "texture")
 MAP_NAME  = "E1M1"
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
