@@ -58,12 +58,13 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const buildGroups = (faceIndices, isAlpha) => {
             const groups = new Map();
             for (const k of faceIndices) {
-                const fc = obj.faceList[k];
-                const n  = obj.faceInfo[k][0];
-                const p  = obj.pt3d[fc[0]];
+                const fc      = obj.faceList[k];
+                const n       = obj.faceInfo[k][0];
+                const p       = obj.pt3d[fc[0]];
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
-                const key = fc[4] + ',' + fc[6];
-                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, faces: [] });
+                const clamp_v = fc[8] || false;
+                const key     = fc[4] + ',' + fc[6] + ',' + clamp_v;
+                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clamp_v, faces: [] });
                 groups.get(key).faces.push(k);
             }
             return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
@@ -111,6 +112,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
 
             gl.uniform1f(loc.alpha, group.alpha);
+            gl.uniform1i(loc.clampV, group.clamp_v ? 1 : 0);
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
@@ -167,13 +169,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform sampler2D u_tex;
             uniform int       u_hasTex;
             uniform float     u_alpha;
+            uniform int       u_clampV;
             varying vec3 v_color;
             varying vec2 v_uv;
             void main() {
                 vec3  col;
                 float a;
                 if (u_hasTex == 1) {
-                    vec4 t = texture2D(u_tex, v_uv);
+                    vec2 uv = u_clampV == 1 ? clamp(v_uv, vec2(0.0), vec2(1.0)) : v_uv;
+                    vec4 t  = texture2D(u_tex, uv);
                     col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
                 } else {
@@ -205,6 +209,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uTex:   gl.getUniformLocation(this._program, 'u_tex'),
             hasTex: gl.getUniformLocation(this._program, 'u_hasTex'),
             alpha:  gl.getUniformLocation(this._program, 'u_alpha'),
+            clampV: gl.getUniformLocation(this._program, 'u_clampV'),
         };
 
         this._vbo = gl.createBuffer();

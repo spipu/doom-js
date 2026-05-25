@@ -369,7 +369,7 @@ def add_wall_quad(pts, faces, tex_idx,
                   y_bot, y_top,
                   wall_len_doom, tex_w, tex_h,
                   x_off=0, y_off=0,
-                  flip=False, light=128):
+                  flip=False, light=128, clamp_v=False):
     """Append a textured wall quad (two triangles) to pts and faces.
 
     flip=False → front face (normal on the right-hand side of v1→v2).
@@ -401,6 +401,8 @@ def add_wall_quad(pts, faces, tex_idx,
         if tex_idx >= 0:
             f['texture'] = tex_idx + 1
             f['map']     = map_list
+        if clamp_v:
+            f['clamp_v'] = True
         return f
 
     if not flip:
@@ -656,11 +658,14 @@ def main():
             ti = ensure_wall_tex(tex_name)
             if ti >= 0:
                 tw, th = Image.open(get_tex_abspath(tex_name)).size
+                h_doom = r_sec['ch'] - r_sec['fh']
+                # ML_DONTPEGBOTTOM: texture bottom at floor instead of texture top at ceiling
+                yo = r_sd['yo'] + (th - h_doom if bool(ld['flags'] & ML_DONTPEGBOTTOM) else 0)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               r_sec['fh'] * SCALE, r_sec['ch'] * SCALE,
                               wall_len, tw, th,
-                              r_sd['xo'], r_sd['yo'],
+                              r_sd['xo'], yo,
                               flip=True, light=r_sec['light'])
         else:
             l_sd  = sidedefs[ld['left']]
@@ -686,7 +691,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = l_sd['yo'] + (l_ch - ceil_h if upper_unpeg else 0)
+                            yo = l_sd['yo'] - (l_ch - ceil_h if upper_unpeg else 0)
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, l_ch*SCALE,
@@ -716,7 +721,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = r_sd['yo'] + (r_ch - ceil_h if upper_unpeg else 0)
+                            yo = r_sd['yo'] - (r_ch - ceil_h if upper_unpeg else 0)
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, r_ch*SCALE,
@@ -769,8 +774,9 @@ def main():
                 tex_name = r_sd['upper']
                 ti = ensure_wall_tex(tex_name)
                 tw, th = (128, 128) if ti < 0 else Image.open(get_tex_abspath(tex_name)).size
-                # upper_unpeg: v=0 anchored to the lower ceiling, shift down by wall height
-                yo = r_sd['yo'] + (r_ch - l_ch if upper_unpeg else 0)
+                # upper_unpeg (ML_DONTPEGTOP): v=0 anchored to the lower ceiling (l_ch).
+                # Shift y_off by -h so that at y_bot (l_ch) display_v = yo/th ≈ 0.
+                yo = r_sd['yo'] - (r_ch - l_ch if upper_unpeg else 0)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               l_ch*SCALE, r_ch*SCALE,
@@ -783,7 +789,7 @@ def main():
                 tex_name = l_sd['upper']
                 ti = ensure_wall_tex(tex_name)
                 tw, th = (128, 128) if ti < 0 else Image.open(get_tex_abspath(tex_name)).size
-                yo = l_sd['yo'] + (l_ch - r_ch if upper_unpeg else 0)
+                yo = l_sd['yo'] - (l_ch - r_ch if upper_unpeg else 0)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               r_ch*SCALE, l_ch*SCALE,
@@ -791,7 +797,9 @@ def main():
                               l_sd['xo'], yo,
                               flip=False, light=l_sec['light'])
 
-            # Middle texture — transparent fence/grating, rendered from both sides
+            # Middle texture — transparent fence/grating, rendered from both sides.
+            # In Doom, middle textures are shown exactly ONCE (no vertical tiling):
+            # the geometry is clipped to one texture height within the opening.
             for m_sd, m_sec, other_sec in [(r_sd, r_sec, l_sec), (l_sd, l_sec, r_sec)]:
                 if not (m_sd['middle'] and m_sd['middle'] != '-'): continue
                 if m_sd['sector'] in door_sector_ids: continue
@@ -799,23 +807,33 @@ def main():
                 ti = ensure_wall_tex(tex_name)
                 if ti < 0: continue
                 tw, th = Image.open(get_tex_abspath(tex_name)).size
-                bot = max(r_fh, l_fh)
-                top = min(r_ch, l_ch)
-                opening_h = top - bot
-                # lower_unpeg: bottom-anchored (texture sits on floor)
-                yo = m_sd['yo'] - (opening_h if lower_unpeg else 0)
+                bot_du = max(r_fh, l_fh)
+                top_du = min(r_ch, l_ch)
+                if top_du <= bot_du: continue
+                if lower_unpeg:
+                    # DONTPEGBOTTOM: texture bottom anchored at floor, extends upward once
+                    ybot = bot_du
+                    ytop = min(top_du, bot_du + th)
+                    h_vis = ytop - ybot
+                    yo = m_sd['yo'] + (th - h_vis)  # ensures display_vb ≈ 1 at floor
+                else:
+                    # Default: texture top anchored at ceiling, hangs down once
+                    ytop = top_du
+                    ybot = max(bot_du, top_du - th)
+                    yo = m_sd['yo']
+                if ytop <= ybot: continue
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
-                              bot*SCALE, top*SCALE,
+                              ybot*SCALE, ytop*SCALE,
                               wall_len, tw, th,
                               m_sd['xo'], yo,
-                              flip=True, light=m_sec['light'])
+                              flip=True, light=m_sec['light'], clamp_v=True)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
-                              bot*SCALE, top*SCALE,
+                              ybot*SCALE, ytop*SCALE,
                               wall_len, tw, th,
                               m_sd['xo'], yo,
-                              flip=False, light=other_sec['light'])
+                              flip=False, light=other_sec['light'], clamp_v=True)
                 break  # both sides already covered by the flip=True/False pair above
 
     # ── Floor and ceiling geometry ────────────────────────────────────────────
@@ -1010,6 +1028,7 @@ def main():
     # Preserve position/yaw/pitch from an existing definition.json so that a
     # custom debug spawn set by the user survives map regeneration.
     def_path = os.path.join(OUT_DIR, 'definition.json')
+    ambient = [200, 200, 200]
     if os.path.exists(def_path):
         with open(def_path) as f:
             existing = json.load(f)
@@ -1019,6 +1038,7 @@ def main():
         spawn_z   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[2]
         spawn_yaw = u.get('yaw',   spawn_yaw)
         spawn_pitch = u.get('pitch', 0)
+        ambient   = existing.get('lights', {}).get('ambient', ambient)
     else:
         spawn_y     = 0.3
         spawn_pitch = 0
@@ -1032,14 +1052,14 @@ def main():
             'eyeRatio':        0.73,    # eyes at 41/56 of height
             'radius':          0.25,    # 16 doom units
             'gravity':         9.81,
-            'maxJumpVelocity': 2.7,
+            'maxJumpVelocity': 3.5,
             'maxSlopeAngle':   50,
             'moveSpeed':       0.0036,  # default +20% vs generic world; tune per map
-            'stepHeight':      0.375    # 24 doom units — standard Doom step height
+            'stepHeight':      0.5      # 32 doom units — covers all standard E1M1 steps
         },
-        'background': [255, 0, 255],  # fuchsia: debug — visible through geometry gaps
+        'background': [200, 200, 200],  # light grey sky placeholder
         'lights': {
-            'ambient': [200, 200, 200],
+            'ambient': ambient,
             'sources': []
         },
         'map': './assets/doom/objects/map.obj.json',
