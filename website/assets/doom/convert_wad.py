@@ -592,6 +592,25 @@ def main():
             bfs_queue = next_q
         door_room_heights[si] = (room_fh, room_ch)
 
+    # Pre-compute floor/ceiling heights for door sectors (same logic as the flat rendering).
+    # floor_h = min adjacent fh, ceil_h = min adjacent ch - DOOR_TRACK_OFFSET
+    door_heights = {}  # sector_id → (floor_h, ceil_h) in Doom units
+    for si in door_sector_ids:
+        adj = []
+        for ld in linedefs:
+            if ld['right'] < 0 or ld['left'] < 0: continue
+            if sidedefs[ld['right']]['sector'] == si:
+                other = sidedefs[ld['left']]['sector']
+                if other not in door_sector_ids: adj.append(sectors[other])
+            elif sidedefs[ld['left']]['sector'] == si:
+                other = sidedefs[ld['right']]['sector']
+                if other not in door_sector_ids: adj.append(sectors[other])
+        if not adj: continue
+        floor_h = min(s['fh'] for s in adj)
+        non_sky = [s for s in adj if not s['ct'].startswith('F_SKY')]
+        ceil_h  = (min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET) if non_sky else floor_h + 128
+        door_heights[si] = (floor_h, ceil_h)
+
     # ── Wall geometry ─────────────────────────────────────────────────────────
     pts   = []
     faces = []
@@ -616,8 +635,22 @@ def main():
         r_is_door = r_sd['sector'] in door_sector_ids
 
         if not has_left:
-            # One-sided linedef → solid wall; skip if it belongs to a door sector
-            if r_is_door: continue
+            if r_is_door:
+                # One-sided lateral wall of a door/lift sector
+                if r_sd['sector'] not in door_heights: continue
+                floor_h, ceil_h = door_heights[r_sd['sector']]
+                tex_name = r_sd['middle']
+                if not tex_name or tex_name == '-': continue
+                ti = ensure_wall_tex(tex_name)
+                if ti < 0: continue
+                tw, th = Image.open(get_tex_abspath(tex_name)).size
+                add_wall_quad(pts, faces, ti,
+                              wx1, wz1, wx2, wz2,
+                              floor_h * SCALE, ceil_h * SCALE,
+                              wall_len, tw, th,
+                              r_sd['xo'], r_sd['yo'],
+                              flip=True, light=r_sec['light'])
+                continue
             # One-sided linedef → solid wall
             tex_name = r_sd['middle']
             ti = ensure_wall_tex(tex_name)
