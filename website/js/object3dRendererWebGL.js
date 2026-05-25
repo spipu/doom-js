@@ -176,7 +176,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 vec3  col;
                 float a;
                 if (u_hasTex == 1) {
-                    vec2 uv = u_clampV == 1 ? clamp(v_uv, vec2(0.0), vec2(1.0)) : v_uv;
+                    vec2 uv = v_uv;
+                    if (u_clampV == 1) uv.y = clamp(v_uv.y, 0.0, 1.0);
                     vec4 t  = texture2D(u_tex, uv);
                     col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
