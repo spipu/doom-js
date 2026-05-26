@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Convert Freedoom Phase 1 E1M1 to Proto3d doom map format."""
+"""Convert a Doom WAD map to Proto3d format."""
 
 import struct, json, math, os, sys
 from collections import defaultdict
 from PIL import Image
 
 if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} <path/to/freedoom.wad>")
+    print(f"Usage: {sys.argv[0]} <path/to/freedoom.wad> [MAP_NAME]")
+    print(f"  MAP_NAME defaults to E1M1")
     sys.exit(1)
 
 WAD_PATH  = sys.argv[1]
+MAP_NAME  = sys.argv[2].upper() if len(sys.argv) >= 3 else None
 OUT_DIR   = os.path.dirname(os.path.abspath(__file__))
 TEX_DIR   = os.path.join(OUT_DIR, "texture")
-MAP_NAME  = "E1M1"
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # Linedef types that trigger door-open actions
@@ -58,6 +59,13 @@ class WAD:
             if active and s > 0:
                 result[name] = self.data[o:o+s]
         return result
+
+    def first_map_name(self):
+        """Return the name of the first map found in the WAD (the lump before THINGS)."""
+        for i, (name, o, s) in enumerate(self.lump_list):
+            if i + 1 < len(self.lump_list) and self.lump_list[i + 1][0] == 'THINGS':
+                return name
+        return None
 
     def get_map_lumps(self, map_name):
         """Return the sub-lumps of a map (THINGS, LINEDEFS, …) in order."""
@@ -489,6 +497,15 @@ def main():
 
     print("Loading WAD...")
     wad     = WAD(WAD_PATH)
+
+    global MAP_NAME
+    if MAP_NAME is None:
+        MAP_NAME = wad.first_map_name()
+        if MAP_NAME is None:
+            print("Error: no map found in WAD")
+            sys.exit(1)
+        print(f"Auto-detected first map: {MAP_NAME}")
+
     palette = load_palette(wad)
     pnames  = load_pnames(wad)
 
