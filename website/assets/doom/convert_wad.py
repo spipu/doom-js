@@ -406,8 +406,9 @@ def add_wall_quad(pts, faces, tex_idx,
         return f
 
     if not flip:
-        faces.append(face([i+1,i+2,i+3], [[u0,vb],[u1,vb],[u1,vt]]))
-        faces.append(face([i+1,i+3,i+4], [[u0,vb],[u1,vt],[u0,vt]]))
+        # flip=False: viewer on left of v1→v2, so v1 is to viewer's right → u reversed
+        faces.append(face([i+1,i+2,i+3], [[u1,vb],[u0,vb],[u0,vt]]))
+        faces.append(face([i+1,i+3,i+4], [[u1,vb],[u0,vt],[u1,vt]]))
     else:
         faces.append(face([i+1,i+3,i+2], [[u0,vb],[u1,vt],[u1,vb]]))
         faces.append(face([i+1,i+4,i+3], [[u0,vb],[u0,vt],[u1,vt]]))
@@ -691,7 +692,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = l_sd['yo'] - (l_ch - ceil_h if upper_unpeg else 0)
+                            yo = l_sd['yo'] + (0 if upper_unpeg else (th - (l_ch - ceil_h)))
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, l_ch*SCALE,
@@ -721,7 +722,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = r_sd['yo'] - (r_ch - ceil_h if upper_unpeg else 0)
+                            yo = r_sd['yo'] + (0 if upper_unpeg else (th - (r_ch - ceil_h)))
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, r_ch*SCALE,
@@ -774,9 +775,9 @@ def main():
                 tex_name = r_sd['upper']
                 ti = ensure_wall_tex(tex_name)
                 tw, th = (128, 128) if ti < 0 else Image.open(get_tex_abspath(tex_name)).size
-                # upper_unpeg (ML_DONTPEGTOP): v=0 anchored to the lower ceiling (l_ch).
-                # Shift y_off by -h so that at y_bot (l_ch) display_v = yo/th ≈ 0.
-                yo = r_sd['yo'] - (r_ch - l_ch if upper_unpeg else 0)
+                # Default: bottom of texture at lower ceiling (l_ch = y_bot).
+                # DONTPEGTOP: top of texture at higher ceiling (r_ch = y_top).
+                yo = r_sd['yo'] + (0 if upper_unpeg else (th - (r_ch - l_ch)))
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               l_ch*SCALE, r_ch*SCALE,
@@ -789,7 +790,7 @@ def main():
                 tex_name = l_sd['upper']
                 ti = ensure_wall_tex(tex_name)
                 tw, th = (128, 128) if ti < 0 else Image.open(get_tex_abspath(tex_name)).size
-                yo = l_sd['yo'] - (l_ch - r_ch if upper_unpeg else 0)
+                yo = l_sd['yo'] + (0 if upper_unpeg else (th - (l_ch - r_ch)))
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               r_ch*SCALE, l_ch*SCALE,
