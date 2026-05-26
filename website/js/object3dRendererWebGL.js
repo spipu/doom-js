@@ -130,17 +130,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     _getTexture(gl, texture) {
         if (this._texCache.has(texture)) return this._texCache.get(texture);
-        const tex  = gl.createTexture();
-        const w    = texture.width;
-        const h    = texture.height;
-        const pow2 = (n) => n > 0 && (n & (n - 1)) === 0;
-        const wrap = (pow2(w) && pow2(h)) ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+        const tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+        // Always CLAMP_TO_EDGE: repetition is handled by fract() in the fragment shader,
+        // preventing LINEAR filter from bleeding across the tile boundary at v=1.0.
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         this._texCache.set(texture, tex);
         return tex;
     }
@@ -176,8 +174,13 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 vec3  col;
                 float a;
                 if (u_hasTex == 1) {
-                    vec2 uv = v_uv;
-                    if (u_clampV == 1) uv.y = clamp(v_uv.y, 0.0, 1.0);
+                    vec2 uv;
+                    if (u_clampV == 1) {
+                        uv.x = fract(v_uv.x);
+                        uv.y = clamp(v_uv.y, 0.0, 1.0);
+                    } else {
+                        uv = fract(v_uv);
+                    }
                     vec4 t  = texture2D(u_tex, uv);
                     col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
