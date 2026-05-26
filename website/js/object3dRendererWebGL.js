@@ -152,7 +152,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             varying vec3 v_color;
             varying vec2 v_uv;
             void main() {
-                float z  = a_pos.z;
+                float z  = ((a_pos.z == 0.0) ? 1e-5 : a_pos.z);
                 float xn = 2.0 * (u_sx * a_pos.x / z - u_ox) / u_w - 1.0;
                 float yn = 1.0 - 2.0 * (-u_sy * a_pos.y / z - u_oy) / u_h;
                 float A  = (u_far + u_near) / (u_far - u_near);
