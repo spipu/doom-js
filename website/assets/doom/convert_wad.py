@@ -709,7 +709,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = l_sd['yo'] + (0 if upper_unpeg else (th - (l_ch - ceil_h)))
+                            yo = l_sd['yo'] - (ceil_h - floor_h) + (0 if upper_unpeg else (th - (l_ch - ceil_h)))
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, l_ch*SCALE,
@@ -739,7 +739,7 @@ def main():
                         ti = ensure_wall_tex(tex_name)
                         if ti >= 0:
                             tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = r_sd['yo'] + (0 if upper_unpeg else (th - (r_ch - ceil_h)))
+                            yo = r_sd['yo'] - (ceil_h - floor_h) + (0 if upper_unpeg else (th - (r_ch - ceil_h)))
                             add_wall_quad(pts, faces, ti,
                                           wx1, wz1, wx2, wz2,
                                           ceil_h*SCALE, r_ch*SCALE,
