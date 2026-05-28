@@ -11,16 +11,16 @@
     "height": 0.875,
     "eyeRatio": 0.73,
     "radius": 0.25,
-    "gravity": 4.905,
+    "gravity": 9.81,
     "maxJumpVelocity": 3.5,
     "maxSlopeAngle": 50,
     "moveSpeed": 0.0036,
     "stepHeight": 0.5
   },
   "background": [
-    255,
-    0,
-    255
+    200,
+    200,
+    200
   ],
   "lights": {
     "ambient": [
