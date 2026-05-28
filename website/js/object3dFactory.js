@@ -37,10 +37,12 @@ class Object3dFactory extends AbstractLoader {
             data.points.forEach(p => obj.ptAdd(p[0], p[1], p[2]));
             data.faces.forEach(f => obj.fcAdd(
                 f.pts[0], f.pts[1], f.pts[2],
-                f.color   !== undefined ? f.color   : null,
-                f.texture !== undefined ? f.texture : null,
-                f.map     !== undefined ? f.map     : null,
-                f.clamp_v !== undefined ? f.clamp_v : false
+                f.color          !== undefined ? f.color          : null,
+                f.texture        !== undefined ? f.texture        : null,
+                f.map            !== undefined ? f.map            : null,
+                f.clampV         !== undefined ? f.clampV         : false,
+                f.passableUser   !== undefined ? f.passableUser   : false,
+                f.passableEnemy  !== undefined ? f.passableEnemy  : false
             ));
             obj.setLoadedCallback(() => {
                 this._pendingCount--;
