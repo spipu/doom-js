@@ -16,6 +16,11 @@ OUT_DIR   = os.path.dirname(os.path.abspath(__file__))
 TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
+# ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
+SPAWN_POSITION = None   # e.g. [12.27, 0.3, -9.86]  (world units)
+SPAWN_YAW      = None   # e.g. 202.5  (degrees)
+SPAWN_PITCH    = None   # e.g. 0.0    (degrees)
+
 # Linedef types that trigger door-open actions
 DOOR_SPECIALS = {1, 26, 27, 28, 31, 32, 33, 34, 63, 118}
 
@@ -1181,6 +1186,15 @@ def main():
         gravity    = u.get('gravity',         gravity)
         max_jump   = u.get('maxJumpVelocity', max_jump)
         background = existing.get('background', background)
+
+    # Apply script-level spawn overrides if set
+    if SPAWN_POSITION is not None:
+        spawn_x, spawn_y, spawn_z = SPAWN_POSITION
+    if SPAWN_YAW is not None:
+        spawn_yaw = SPAWN_YAW
+    if SPAWN_PITCH is not None:
+        spawn_pitch = SPAWN_PITCH
+
     defn = {
         'user': {
             'position':        [round(spawn_x,4), round(spawn_y,4), round(spawn_z,4)],
