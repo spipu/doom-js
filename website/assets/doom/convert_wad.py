@@ -22,9 +22,17 @@ SPAWN_YAW      = None
 SPAWN_PITCH    = None
 
 # Linedef types that trigger door-open actions
-DOOR_SPECIALS = {1, 26, 27, 28, 31, 32, 33, 34, 63, 118}
+# 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
+# 117 = DR Turbo door (same as 1 but faster); same sector geometry, different animation speed
+DOOR_SPECIALS = {1, 2, 26, 27, 28, 31, 32, 33, 34, 63, 117, 118}
+
+# Linedef types that move a floor downward (Lower Lift, Lower Floor, etc.)
+# Static map shows these sectors with floor at min(adjacent_fh)
+FLOOR_MOVE_DOWN_SPECIALS = {23, 36, 37, 38, 56, 62, 82, 83, 84, 88}
 
 # Linedef flags
+ML_BLOCKING      = 0x01  # blocks players and monsters
+ML_BLOCKMONSTERS = 0x02  # blocks monsters only
 ML_DONTPEGTOP    = 0x08  # upper texture not pegged (anchored to lower ceiling)
 ML_DONTPEGBOTTOM = 0x10  # lower/middle textures not pegged (anchored to floor)
 
@@ -479,7 +487,8 @@ def add_wall_quad(pts, faces, tex_idx,
                   y_bot, y_top,
                   wall_len_doom, tex_w, tex_h,
                   x_off=0, y_off=0,
-                  flip=False, light=128, clamp_v=False):
+                  flip=False, light=128, clamp_v=False,
+                  passable_user=False, passable_enemy=False):
     """Append a textured wall quad (two triangles) to pts and faces.
 
     flip=False → front face (normal on the right-hand side of v1→v2).
@@ -512,7 +521,11 @@ def add_wall_quad(pts, faces, tex_idx,
             f['texture'] = tex_idx + 1
             f['map']     = map_list
         if clamp_v:
-            f['clamp_v'] = True
+            f['clampV'] = True
+        if passable_user:
+            f['passableUser'] = True
+        if passable_enemy:
+            f['passableEnemy'] = True
         return f
 
     if not flip:
@@ -698,6 +711,31 @@ def main():
                 door_sector_ids.add(sidedefs[ld['left']]['sector'])
 
     print(f"  {len(door_sector_ids)} door sectors identified")
+
+    # ── Identify floor-moves-down sectors (lifts, descending floors) ─────────────
+    # These linedefs reference target sectors via tag; patch fh before any geometry.
+    moving_floor_down_ids = set()
+    for ld in linedefs:
+        if ld['special'] in FLOOR_MOVE_DOWN_SPECIALS and ld['tag'] != 0:
+            for si, sec in enumerate(sectors):
+                if sec['tag'] == ld['tag'] and si not in door_sector_ids:
+                    moving_floor_down_ids.add(si)
+
+    # Patch fh to min(adjacent_fh) so static map shows the lift in down position.
+    for si in moving_floor_down_ids:
+        adj_fh = []
+        for ld in linedefs:
+            if ld['right'] < 0 or ld['left'] < 0: continue
+            r_si = sidedefs[ld['right']]['sector']
+            l_si = sidedefs[ld['left']]['sector']
+            if r_si == si and l_si not in moving_floor_down_ids:
+                adj_fh.append(sectors[l_si]['fh'])
+            elif l_si == si and r_si not in moving_floor_down_ids:
+                adj_fh.append(sectors[r_si]['fh'])
+        if adj_fh:
+            sectors[si]['fh'] = min(adj_fh)
+
+    print(f"  {len(moving_floor_down_ids)} floor-moves-down sectors patched")
 
     # Pre-compute real room heights for each door sector via BFS on adjacent sectors.
     # Door sectors have fh=ch=-128 (underground); we need the actual corridor heights
@@ -935,6 +973,9 @@ def main():
             # Middle texture — transparent fence/grating, rendered from both sides.
             # In Doom, middle textures are shown exactly ONCE (no vertical tiling):
             # the geometry is clipped to one texture height within the opening.
+            # A two-sided linedef without ML_BLOCKING is a "false wall": visible but passable.
+            mid_passable_user  = not bool(ld['flags'] & ML_BLOCKING)
+            mid_passable_enemy = mid_passable_user and not bool(ld['flags'] & ML_BLOCKMONSTERS)
             for m_sd, m_sec, other_sec in [(r_sd, r_sec, l_sec), (l_sd, l_sec, r_sec)]:
                 if not (m_sd['middle'] and m_sd['middle'] != '-'): continue
                 if m_sd['sector'] in door_sector_ids: continue
@@ -962,13 +1003,15 @@ def main():
                               ybot*SCALE, ytop*SCALE,
                               wall_len, tw, th,
                               m_sd['xo'], yo,
-                              flip=True, light=m_sec['light'], clamp_v=True)
+                              flip=True, light=m_sec['light'], clamp_v=True,
+                              passable_user=mid_passable_user, passable_enemy=mid_passable_enemy)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               ybot*SCALE, ytop*SCALE,
                               wall_len, tw, th,
                               m_sd['xo'], yo,
-                              flip=False, light=other_sec['light'], clamp_v=True)
+                              flip=False, light=other_sec['light'], clamp_v=True,
+                              passable_user=mid_passable_user, passable_enemy=mid_passable_enemy)
                 break  # both sides already covered by the flip=True/False pair above
 
     # ── Floor and ceiling geometry ────────────────────────────────────────────

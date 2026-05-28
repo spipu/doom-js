@@ -62,9 +62,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 const n       = obj.faceInfo[k][0];
                 const p       = obj.pt3d[fc[0]];
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
-                const clamp_v = fc[8] || false;
-                const key     = fc[4] + ',' + fc[6] + ',' + clamp_v;
-                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clamp_v, faces: [] });
+                const clampV  = fc[8] || false;
+                const key     = fc[4] + ',' + fc[6] + ',' + clampV;
+                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clampV, faces: [] });
                 groups.get(key).faces.push(k);
             }
             return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
@@ -112,7 +112,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
 
             gl.uniform1f(loc.alpha, group.alpha);
-            gl.uniform1i(loc.clampV, group.clamp_v ? 1 : 0);
+            gl.uniform1i(loc.clampV, group.clampV ? 1 : 0);
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
