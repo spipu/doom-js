@@ -1181,12 +1181,6 @@ def main():
         gravity    = u.get('gravity',         gravity)
         max_jump   = u.get('maxJumpVelocity', max_jump)
         background = existing.get('background', background)
-        # Apply forced position/orientation if present in existing definition.json
-        pos = u.get('position')
-        if pos and len(pos) >= 3:
-            spawn_x, spawn_y, spawn_z = pos[0], pos[1], pos[2]
-        if 'yaw'   in u: spawn_yaw   = u['yaw']
-        if 'pitch' in u: spawn_pitch = u['pitch']
     defn = {
         'user': {
             'position':        [round(spawn_x,4), round(spawn_y,4), round(spawn_z,4)],
