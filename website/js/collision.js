@@ -76,12 +76,12 @@ class Collision {
         return minY;
     }
 
-    resolveWall(cx, cz, vx, vz, r, feetY, h) {
+    resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0) {
         const allWalls = [
             ...this._static.map(sc => sc.walls),
             ...this._dynamic.map(dc => dc.walls),
         ];
-        return this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls);
+        return this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
     }
 
     // --- Platform riding & object blocking ---
@@ -249,7 +249,7 @@ class Collision {
 
     // --- Private: wall resolution ---
 
-    _resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, wallLists) {
+    _resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, wallLists, stepHeight = 0) {
         const EPSILON = 1e-4;
         let C = [cx, cz], V = [vx, vz];
         let prevNx = null, prevNz = null;
@@ -260,6 +260,7 @@ class Collision {
         for (const walls of wallLists) {
             for (const tri of walls) {
                 if (feetY >= tri.yMax || feetY + h < tri.yMin) continue;
+                if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) continue;
                 const pts = tri.pts;
                 for (let e = 0; e < 3; e++) {
                     const P = pts[e], Q = pts[(e + 1) % 3];
@@ -286,6 +287,7 @@ class Collision {
 
             const check = (tri) => {
                 if (feetY >= tri.yMax || feetY + h < tri.yMin) return;
+                if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) return;
                 if (!this._aabbXZSweep(C[0], C[1], V[0], V[1], r, tri)) return;
                 const [A, B, Ct] = tri.pts;
                 for (const [P, Q] of [[A,B],[B,Ct],[Ct,A]]) {
