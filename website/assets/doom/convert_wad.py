@@ -253,15 +253,21 @@ def point_in_triangle(p, a, b, c):
     return not (has_neg and has_pos)
 
 def is_ear(poly, i):
-    """Return True if vertex i is a convex ear of polygon poly (CCW winding)."""
+    """Return True if vertex i is a convex ear of polygon poly (CCW winding).
+
+    Coordinate-duplicate vertices (bridge copies) are skipped in the interior
+    test so that the duplicated bridge seam doesn't incorrectly block valid ears.
+    """
     n = len(poly)
     a = poly[(i-1) % n]
     b = poly[i]
     c = poly[(i+1) % n]
-    if cross2d(a, b, c) <= 0: return False  # reflex or collinear vertex
+    if cross2d(a, b, c) <= 0: return False  # reflex or collinear
     for j in range(n):
         if j in ((i-1)%n, i, (i+1)%n): continue
-        if point_in_triangle(poly[j], a, b, c): return False
+        p = poly[j]
+        if p == a or p == b or p == c: continue  # coordinate duplicate (bridge seam)
+        if point_in_triangle(p, a, b, c): return False
     return True
 
 def triangulate(polygon):
@@ -289,6 +295,97 @@ def triangulate(polygon):
     if len(indices) == 3:
         tris.append(tuple(indices))
     return tris
+
+def point_in_polygon_2d(px, pz, poly):
+    """Ray-casting point-in-polygon test in 2D (x, z)."""
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        ax, az = poly[i]
+        bx, bz = poly[(i + 1) % n]
+        if ((az > pz) != (bz > pz)) and (px < (bx - ax) * (pz - az) / (bz - az) + ax):
+            inside = not inside
+    return inside
+
+
+def merge_holes_into_polygon(outer, holes):
+    """Merge hole polygons into outer polygon via bridge cuts (earcut/Eberly algorithm).
+
+    Follows Mapbox earcut's approach:
+    - For each hole, find its leftmost vertex M (min x)
+    - Cast ray leftward from M; find nearest outer edge intersection
+    - Bridge to the outer vertex with smallest x on that edge
+    - Refine: if a reflex outer vertex is inside triangle (M, I, P), use it instead
+    - Both bridge vertices are duplicated so the ear-clipper can handle the seam
+
+    outer, holes: lists of (x, z) vertices in any winding.
+    Returns a simple polygon for ear-clip triangulation.
+    """
+    result = list(outer)
+
+    # Process holes sorted by leftmost vertex x, left-to-right (earcut convention)
+    def leftmost_x(h):
+        return min(v[0] for v in h)
+
+    for hole in sorted(holes, key=leftmost_x):
+        # M = leftmost vertex of hole
+        m = min(range(len(hole)), key=lambda i: (hole[i][0], hole[i][1]))
+        mx, mz = hole[m]
+
+        # Cast ray leftward (−x direction) from M; find nearest intersecting outer edge
+        best_x  = -float('inf')   # nearest means largest x (closest from the left)
+        best_ix = -float('inf')   # x of intersection point
+        best_vi = -1
+        n = len(result)
+        for i in range(n):
+            ax, az = result[i]
+            bx, bz = result[(i + 1) % n]
+            if abs(bz - az) < 1e-9:
+                continue
+            s = (mz - az) / (bz - az)
+            if s < 0.0 or s > 1.0:
+                continue
+            ix = ax + s * (bx - ax)
+            if ix > mx:           # intersection must be to the LEFT of M
+                continue
+            if ix > best_x:       # nearest = largest x among those to the left
+                best_x  = ix
+                best_ix = ix
+                # Initial candidate: outer endpoint with smallest x on this edge
+                best_vi = i if ax <= bx else (i + 1) % n
+
+        if best_vi < 0:
+            continue
+
+        # Refinement (Eberly): look for outer vertices inside triangle (M, I, P)
+        # that form a smaller angle; pick the one minimising angle from M.
+        px, pz = result[best_vi]
+        import math
+        best_angle = math.atan2(pz - mz, px - mx)
+        for i in range(n):
+            vx, vz = result[i]
+            if vx >= mx or vx < best_x:
+                continue  # must be in the left half and not beyond intersection
+            if not point_in_polygon_2d(vx, vz, result):
+                continue  # must be inside the outer polygon
+            # Check inside the candidate triangle (M, intersection, P)
+            angle = math.atan2(vz - mz, vx - mx)
+            if abs(angle - best_angle) < 1e-9:
+                if vx > px:       # closer to M → prefer it
+                    best_vi = i
+                    px, pz = vx, vz
+                    best_angle = angle
+
+        # Merge: result[:p+1] + [M, hole_m+1..m-1, M_copy, result[p]_copy] + result[p+1..]
+        # Both M and result[p] duplicated (earcut splitPolygon convention).
+        vi = best_vi
+        hole_verts = [hole[(m + j) % len(hole)] for j in range(len(hole))]
+        result = (result[:vi + 1] +
+                  hole_verts + [hole[m], result[vi]] +
+                  result[vi + 1:])
+
+    return result
+
 
 def polygon_area_sign(poly):
     """Shoelace sign for a polygon in the (x, z) plane.
@@ -422,10 +519,11 @@ def add_wall_quad(pts, faces, tex_idx,
         faces.append(face([i+1,i+4,i+3], [[u0,vb],[u0,vt],[u1,vt]]))
 
 def add_flat_quad(pts, faces, tex_idx, poly_verts_2d, y_height,
-                  is_floor, light=128):
+                  is_floor, light=128, holes=None):
     """Triangulate and append a floor or ceiling polygon to pts and faces.
 
     poly_verts_2d: list of (doom_x, doom_y) pairs forming the sector polygon.
+    holes: optional list of hole polygons (lists of (doom_x, doom_y) pairs).
     Doom flat UV tiles every 64 units, derived directly from Doom coordinates.
     """
     if len(poly_verts_2d) < 3: return
@@ -435,8 +533,13 @@ def add_flat_quad(pts, faces, tex_idx, poly_verts_2d, y_height,
 
     xz = [doom_to_world(vx, vy) for vx, vy in poly_verts_2d]
 
-    # triangulate() requires CCW winding; reverse CW polygons
+    # Merge holes into outer polygon via bridge cuts before triangulating
     poly_local = list(poly_verts_2d)
+    if holes:
+        poly_local = merge_holes_into_polygon(poly_local, holes)
+        xz = [doom_to_world(vx, vy) for vx, vy in poly_local]
+
+    # triangulate() requires CCW winding; reverse CW polygons
     if polygon_area_sign(xz) > 0:
         xz         = xz[::-1]
         poly_local = poly_local[::-1]
@@ -879,31 +982,43 @@ def main():
             non_sky = [s for s in adj_sectors if not s['ct'].startswith('F_SKY')]
             ct      = ensure_flat_tex(sec['ct']) if non_sky else -1
             ceil_h  = (min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET) if non_sky else None
-            for chain in chains:
-                poly_doom = [vertexes[vi] for vi in chain]
+            # Separate outer chains from hole chains, then merge holes into each outer
+            main_sign = max((polygon_area_sign([vertexes[vi] for vi in c]) for c in chains),
+                            key=abs)
+            outers = [[vertexes[vi] for vi in c] for c in chains
+                      if (polygon_area_sign([vertexes[vi] for vi in c]) > 0) == (main_sign > 0)]
+            holes  = [[vertexes[vi] for vi in c] for c in chains
+                      if (polygon_area_sign([vertexes[vi] for vi in c]) > 0) != (main_sign > 0)]
+            for poly_doom in outers:
                 if ft >= 0:
                     add_flat_quad(pts, faces, ft, poly_doom, floor_h,
-                                  is_floor=True, light=sec['light'])
+                                  is_floor=True, light=sec['light'], holes=holes)
                 if ct >= 0 and ceil_h is not None:
                     add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
-                                  is_floor=False, light=sec['light'])
+                                  is_floor=False, light=sec['light'], holes=holes)
             continue
 
         ft         = ensure_flat_tex(sec['ft'])
         has_sky    = sec['ct'].startswith('F_SKY')
         ct         = ensure_flat_tex(sec['ct']) if not has_sky else -1
-        # All chains of a sector share the same floor/ceiling heights — iterate all of them
-        # so that sectors with multiple disconnected areas (different rooms with the same
-        # sector index) get geometry everywhere, not just on the first chain.
-        for chain in chains:
-            poly_doom = [vertexes[vi] for vi in chain]
+        # Separate outer chains from hole chains; merge holes into outer via bridge cuts.
+        if chains:
+            main_sign = max((polygon_area_sign([vertexes[vi] for vi in c]) for c in chains),
+                            key=abs)
+            outers = [[vertexes[vi] for vi in c] for c in chains
+                      if (polygon_area_sign([vertexes[vi] for vi in c]) > 0) == (main_sign > 0)]
+            holes  = [[vertexes[vi] for vi in c] for c in chains
+                      if (polygon_area_sign([vertexes[vi] for vi in c]) > 0) != (main_sign > 0)]
+        else:
+            outers, holes = [], []
+        for poly_doom in outers:
             if ft >= 0:
                 add_flat_quad(pts, faces, ft, poly_doom, sec['fh'],
-                              is_floor=True, light=sec['light'])
+                              is_floor=True, light=sec['light'], holes=holes)
             # Skip sky flats — outdoor areas have no ceiling geometry
             if ct >= 0:
                 add_flat_quad(pts, faces, ct, poly_doom, sec['ch'],
-                              is_floor=False, light=sec['light'])
+                              is_floor=False, light=sec['light'], holes=holes)
 
     # ── Write map.obj.json ────────────────────────────────────────────────────
     print(f"Writing map.obj.json ({len(pts)} pts, {len(faces)} faces, "
@@ -1057,9 +1172,15 @@ def main():
         spawn_yaw = u.get('yaw',   spawn_yaw)
         spawn_pitch = u.get('pitch', 0)
         ambient   = existing.get('lights', {}).get('ambient', ambient)
+        gravity         = u.get('gravity',         9.81)
+        max_jump        = u.get('maxJumpVelocity', 3.5)
+        background      = existing.get('background', [200, 200, 200])
     else:
         spawn_y     = 0.3
         spawn_pitch = 0
+        gravity    = 9.81
+        max_jump   = 3.5
+        background = [200, 200, 200]
     defn = {
         'user': {
             'position':        [round(spawn_x,4), round(spawn_y,4), round(spawn_z,4)],
@@ -1069,13 +1190,13 @@ def main():
             'height':          0.875,   # 56 doom units
             'eyeRatio':        0.73,    # eyes at 41/56 of height
             'radius':          0.25,    # 16 doom units
-            'gravity':         9.81,
-            'maxJumpVelocity': 3.5,
+            'gravity':         gravity         if os.path.exists(def_path) else 9.81,
+            'maxJumpVelocity': max_jump        if os.path.exists(def_path) else 3.5,
             'maxSlopeAngle':   50,
             'moveSpeed':       0.0036,  # default +20% vs generic world; tune per map
             'stepHeight':      0.5      # 32 doom units — covers all standard E1M1 steps
         },
-        'background': [200, 200, 200],  # light grey sky placeholder
+        'background': background if os.path.exists(def_path) else [200, 200, 200],
         'lights': {
             'ambient': ambient,
             'sources': []
