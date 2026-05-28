@@ -1,12 +1,12 @@
 {
   "user": {
     "position": [
-      -6.5,
-      0.3,
-      4.0
+      12.45,
+      -1.5,
+      13.14
     ],
-    "yaw": 90,
-    "pitch": 0,
+    "yaw": -88.1,
+    "pitch": 11.4,
     "maxEnergy": 100,
     "height": 0.875,
     "eyeRatio": 0.73,
@@ -31,5 +31,21 @@
     "sources": []
   },
   "map": "./assets/doom/objects/map.obj.json",
-  "instances": {}
+  "instances": {
+    "door_10": "./assets/doom/instances/door_10.instance.json",
+    "door_34": "./assets/doom/instances/door_34.instance.json",
+    "door_48": "./assets/doom/instances/door_48.instance.json",
+    "door_51": "./assets/doom/instances/door_51.instance.json",
+    "door_54": "./assets/doom/instances/door_54.instance.json",
+    "door_64": "./assets/doom/instances/door_64.instance.json",
+    "door_71": "./assets/doom/instances/door_71.instance.json",
+    "door_77": "./assets/doom/instances/door_77.instance.json",
+    "door_78": "./assets/doom/instances/door_78.instance.json",
+    "door_79": "./assets/doom/instances/door_79.instance.json",
+    "door_80": "./assets/doom/instances/door_80.instance.json",
+    "door_81": "./assets/doom/instances/door_81.instance.json",
+    "door_84": "./assets/doom/instances/door_84.instance.json",
+    "door_100": "./assets/doom/instances/door_100.instance.json",
+    "door_145": "./assets/doom/instances/door_145.instance.json"
+  }
 }

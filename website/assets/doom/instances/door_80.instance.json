@@ -1,15 +1,11 @@
 {
   "object":     "./assets/doom/objects/door_80.obj.json",
-  "position":   [7.0, 0.0, 32.625],
+  "position":   [0, 0, 0],
   "rotation":   [0, 0, 0],
-  "trigger":    "action",
+  "trigger":    "none",
+  "loop":       false,
   "collidable": true,
-  "radius":     1.5,
+  "radius":     null,
   "damage":     null,
-  "keyframes":  [
-    {"t": 0.0, "translate": [0, 0, 0],          "rotate": [0,0,0]},
-    {"t": 2.0, "translate": [0, 1.9375, 0],   "rotate": [0,0,0]},
-    {"t": 5.0, "translate": [0, 1.9375, 0],   "rotate": [0,0,0]},
-    {"t": 7.0, "translate": [0, 0, 0],          "rotate": [0,0,0]}
-  ]
+  "keyframes":  []
 }
