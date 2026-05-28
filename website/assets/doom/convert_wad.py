@@ -990,12 +990,13 @@ def main():
             holes  = [[vertexes[vi] for vi in c] for c in chains
                       if (polygon_area_sign([vertexes[vi] for vi in c]) > 0) != (main_sign > 0)]
             for poly_doom in outers:
+                own_holes = [h for h in holes if point_in_polygon_2d(h[0][0], h[0][1], poly_doom)]
                 if ft >= 0:
                     add_flat_quad(pts, faces, ft, poly_doom, floor_h,
-                                  is_floor=True, light=sec['light'], holes=holes)
+                                  is_floor=True, light=sec['light'], holes=own_holes or None)
                 if ct >= 0 and ceil_h is not None:
                     add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
-                                  is_floor=False, light=sec['light'], holes=holes)
+                                  is_floor=False, light=sec['light'], holes=own_holes or None)
             continue
 
         ft         = ensure_flat_tex(sec['ft'])
@@ -1012,13 +1013,15 @@ def main():
         else:
             outers, holes = [], []
         for poly_doom in outers:
+            # Only pass holes that are geometrically inside this outer polygon
+            own_holes = [h for h in holes if point_in_polygon_2d(h[0][0], h[0][1], poly_doom)]
             if ft >= 0:
                 add_flat_quad(pts, faces, ft, poly_doom, sec['fh'],
-                              is_floor=True, light=sec['light'], holes=holes)
+                              is_floor=True, light=sec['light'], holes=own_holes or None)
             # Skip sky flats — outdoor areas have no ceiling geometry
             if ct >= 0:
                 add_flat_quad(pts, faces, ct, poly_doom, sec['ch'],
-                              is_floor=False, light=sec['light'], holes=holes)
+                              is_floor=False, light=sec['light'], holes=own_holes or None)
 
     # ── Write map.obj.json ────────────────────────────────────────────────────
     print(f"Writing map.obj.json ({len(pts)} pts, {len(faces)} faces, "
@@ -1158,29 +1161,32 @@ def main():
         spawn_x, spawn_z, spawn_yaw = -6.5, 4.0, 90
 
     # ── Write definition.json ─────────────────────────────────────────────────
-    # Preserve position/yaw/pitch from an existing definition.json so that a
-    # custom debug spawn set by the user survives map regeneration.
+    # Position/yaw/pitch always come from the WAD THINGS lump (computed above).
+    # Other tunable settings (gravity, jump, background, ambient) are preserved
+    # from an existing definition.json if present.
+    # To force a custom debug spawn, add "spawn_override": [x,y,z,yaw,pitch] in
+    # the user section of definition.json — the script will apply it on top.
     def_path = os.path.join(OUT_DIR, 'definition.json')
-    ambient = [200, 200, 200]
+    spawn_y     = 0.3
+    spawn_pitch = 0
+    ambient    = [200, 200, 200]
+    gravity    = 9.81
+    max_jump   = 3.5
+    background = [200, 200, 200]
     if os.path.exists(def_path):
         with open(def_path) as f:
             existing = json.load(f)
         u = existing.get('user', {})
-        spawn_x   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[0]
-        spawn_y   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[1]
-        spawn_z   = u.get('position', [round(spawn_x,4), 0.3, round(spawn_z,4)])[2]
-        spawn_yaw = u.get('yaw',   spawn_yaw)
-        spawn_pitch = u.get('pitch', 0)
-        ambient   = existing.get('lights', {}).get('ambient', ambient)
-        gravity         = u.get('gravity',         9.81)
-        max_jump        = u.get('maxJumpVelocity', 3.5)
-        background      = existing.get('background', [200, 200, 200])
-    else:
-        spawn_y     = 0.3
-        spawn_pitch = 0
-        gravity    = 9.81
-        max_jump   = 3.5
-        background = [200, 200, 200]
+        ambient    = existing.get('lights', {}).get('ambient', ambient)
+        gravity    = u.get('gravity',         gravity)
+        max_jump   = u.get('maxJumpVelocity', max_jump)
+        background = existing.get('background', background)
+        # Apply forced position/orientation if present in existing definition.json
+        pos = u.get('position')
+        if pos and len(pos) >= 3:
+            spawn_x, spawn_y, spawn_z = pos[0], pos[1], pos[2]
+        if 'yaw'   in u: spawn_yaw   = u['yaw']
+        if 'pitch' in u: spawn_pitch = u['pitch']
     defn = {
         'user': {
             'position':        [round(spawn_x,4), round(spawn_y,4), round(spawn_z,4)],
