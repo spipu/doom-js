@@ -5,6 +5,7 @@ class Instance extends AbstractLoader {
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
         this._trigger     = 'none';
+        this._loop        = false;
         this._collidable  = false;
         this._radius      = null;
         this._keyframes        = [];
@@ -23,6 +24,7 @@ class Instance extends AbstractLoader {
         this._position  = data.position;
         this._rotation  = data.rotation;
         this._trigger    = data.trigger;
+        this._loop       = data.loop === true;
         this._collidable = data.collidable === true;
         this._radius     = data.radius;
         this._damage     = data.damage || null;
@@ -123,7 +125,7 @@ class Instance extends AbstractLoader {
         const wasPlaying = this._playing;
 
         switch (this._trigger) {
-            case 'loop':      this._playing = true;              break;
+            case 'always':    this._playing = true;              break;
             case 'proximity': this._playing = inRange;           break;
             case 'action':    if (inRange && action) this._playing = true; break;
         }
@@ -136,8 +138,8 @@ class Instance extends AbstractLoader {
 
         this._time += dt / 1000;
         if (this._time >= this._maxTime) {
-            this._time = this._trigger === 'loop' ? this._time % this._maxTime : this._maxTime;
-            if (this._trigger !== 'loop') this._playing = false;
+            this._time = this._loop ? this._time % this._maxTime : this._maxTime;
+            if (!this._loop) this._playing = false;
         }
 
         this._computeWorldCenter();
