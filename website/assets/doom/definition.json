@@ -15,7 +15,7 @@
     "maxJumpVelocity": 3.5,
     "maxSlopeAngle": 50,
     "moveSpeed": 0.0036,
-    "stepHeight": 0.5
+    "stepHeight": 0.375
   },
   "background": [
     200,

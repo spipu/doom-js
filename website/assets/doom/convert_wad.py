@@ -1184,17 +1184,19 @@ def main():
     spawn_y     = 0.3
     spawn_pitch = 0
     ambient    = [200, 200, 200]
-    gravity    = 9.81
-    max_jump   = 3.5
-    background = [200, 200, 200]
+    gravity     = 9.81
+    max_jump    = 3.5
+    step_height = 0.375
+    background  = [200, 200, 200]
     if os.path.exists(def_path):
         with open(def_path) as f:
             existing = json.load(f)
         u = existing.get('user', {})
         ambient    = existing.get('lights', {}).get('ambient', ambient)
-        gravity    = u.get('gravity',         gravity)
-        max_jump   = u.get('maxJumpVelocity', max_jump)
-        background = existing.get('background', background)
+        gravity     = u.get('gravity',         gravity)
+        max_jump    = u.get('maxJumpVelocity', max_jump)
+        step_height = u.get('stepHeight',      step_height)
+        background  = existing.get('background', background)
 
     # Apply script-level spawn overrides if set
     if SPAWN_POSITION is not None:
@@ -1217,7 +1219,7 @@ def main():
             'maxJumpVelocity': max_jump        if os.path.exists(def_path) else 3.5,
             'maxSlopeAngle':   50,
             'moveSpeed':       0.0036,  # default +20% vs generic world; tune per map
-            'stepHeight':      0.5      # 32 doom units — covers all standard E1M1 steps
+            'stepHeight':      step_height,
         },
         'background': background if os.path.exists(def_path) else [200, 200, 200],
         'lights': {
