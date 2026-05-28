@@ -3,6 +3,7 @@
   "position":  [5.25, 0.97, -10.40],
   "rotation":  [-90, 0, 0],
   "trigger":   "action",
+  "loop":      false,
   "collidable": true,
   "radius":    1.3,
   "damage":    null,
