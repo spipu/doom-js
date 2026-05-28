@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None   # e.g. [12.27, 0.3, -9.86]  (world units)
-SPAWN_YAW      = None   # e.g. 202.5  (degrees)
-SPAWN_PITCH    = None   # e.g. 0.0    (degrees)
+SPAWN_POSITION = [12.01, 2.38, -10.21]
+SPAWN_YAW      = 202.5
+SPAWN_PITCH    = 7.5
 
 # Linedef types that trigger door-open actions
 DOOR_SPECIALS = {1, 26, 27, 28, 31, 32, 33, 34, 63, 118}
@@ -356,8 +356,8 @@ def merge_holes_into_polygon(outer, holes):
             if ix > best_x:       # nearest = largest x among those to the left
                 best_x  = ix
                 best_ix = ix
-                # Initial candidate: outer endpoint with smallest x on this edge
-                best_vi = i if ax <= bx else (i + 1) % n
+                # Candidate: outer endpoint whose x is closest to intersection ix
+                best_vi = i if abs(ax - ix) < abs(bx - ix) else (i + 1) % n
 
         if best_vi < 0:
             continue
@@ -538,11 +538,20 @@ def add_flat_quad(pts, faces, tex_idx, poly_verts_2d, y_height,
 
     xz = [doom_to_world(vx, vy) for vx, vy in poly_verts_2d]
 
-    # Merge holes into outer polygon via bridge cuts before triangulating
+    # Merge holes into outer polygon via bridge cuts before triangulating.
+    # Fallback to outer-only if the merged polygon fails to produce enough triangles.
     poly_local = list(poly_verts_2d)
+    pre_tris   = None
     if holes:
-        poly_local = merge_holes_into_polygon(poly_local, holes)
-        xz = [doom_to_world(vx, vy) for vx, vy in poly_local]
+        merged    = merge_holes_into_polygon(poly_local, holes)
+        xz_merged = [doom_to_world(vx, vy) for vx, vy in merged]
+        if polygon_area_sign(xz_merged) > 0:
+            xz_merged = xz_merged[::-1]; merged = merged[::-1]
+        t = triangulate(xz_merged)
+        if len(t) >= len(merged) - 2 - len(holes):   # good enough
+            poly_local = merged
+            xz         = xz_merged
+            pre_tris   = t
 
     # triangulate() requires CCW winding; reverse CW polygons
     if polygon_area_sign(xz) > 0:
@@ -553,7 +562,7 @@ def add_flat_quad(pts, faces, tex_idx, poly_verts_2d, y_height,
     for (x, z) in xz:
         pts.append([x, y_height * SCALE, z])
 
-    tris = triangulate(xz)
+    tris = pre_tris if pre_tris is not None else triangulate(xz)
 
     def flat_uv(idx):
         return [poly_local[idx][0] / 64.0, -poly_local[idx][1] / 64.0]
