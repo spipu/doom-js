@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None
-SPAWN_YAW      = None
-SPAWN_PITCH    = None
+SPAWN_POSITION = [12.45, -1.5, 13.14]
+SPAWN_YAW      = -88.1
+SPAWN_PITCH    = 11.4
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -41,6 +41,10 @@ PATCH_END_COLUMN = 0xFF
 
 # Doom units left at the top of a door panel for the ceiling track mechanism
 DOOR_TRACK_OFFSET = 4
+
+# Half player height in metres — door local origin is placed at this Y above the floor
+PLAYER_HEIGHT      = 0.875       # 56 doom units
+HALF_PLAYER_HEIGHT = PLAYER_HEIGHT / 2  # 0.4375 m
 
 # ─── WAD reader ───────────────────────────────────────────────────────────────
 
@@ -811,7 +815,7 @@ def main():
 
         if not has_left:
             if r_is_door:
-                # One-sided lateral wall of a door/lift sector
+                # One-sided lateral wall of door sector
                 if r_sd['sector'] not in door_heights: continue
                 floor_h, ceil_h = door_heights[r_sd['sector']]
                 tex_name = r_sd['middle']
@@ -819,11 +823,13 @@ def main():
                 ti = ensure_wall_tex(tex_name)
                 if ti < 0: continue
                 tw, th = Image.open(get_tex_abspath(tex_name)).size
+                lower_unpeg_ld = bool(ld['flags'] & ML_DONTPEGBOTTOM)
+                yo = r_sd['yo'] + ((th - (ceil_h - floor_h) % th) % th if lower_unpeg_ld else 0)
                 add_wall_quad(pts, faces, ti,
                               wx1, wz1, wx2, wz2,
                               floor_h * SCALE, ceil_h * SCALE,
                               wall_len, tw, th,
-                              r_sd['xo'], r_sd['yo'],
+                              r_sd['xo'], yo,
                               flip=True, light=r_sec['light'])
                 continue
             # One-sided linedef → solid wall
@@ -851,69 +857,8 @@ def main():
             upper_unpeg = bool(ld['flags'] & ML_DONTPEGTOP)
             lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
 
-            # Door/lift sector: gaps on two-sided linedefs (corridor ↔ door sector)
-            # r_is_door → right=door, left=corridor (corr = l_*, flip=False)
-            # l_is_door → left=door, right=corridor (corr = r_*, flip=True)
-            if r_is_door and l_sd['sector'] not in door_sector_ids:
-                door_si = r_sd['sector']
-                if door_si in door_heights:
-                    floor_h, ceil_h = door_heights[door_si]
-                    # Upper track band: corridor ceiling above door ceiling
-                    if l_ch > ceil_h:
-                        tex_name = l_sd['upper']
-                        ti = ensure_wall_tex(tex_name)
-                        if ti >= 0:
-                            tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = l_sd['yo'] - (ceil_h - floor_h) + (0 if upper_unpeg else (th - (l_ch - ceil_h)))
-                            add_wall_quad(pts, faces, ti,
-                                          wx1, wz1, wx2, wz2,
-                                          ceil_h*SCALE, l_ch*SCALE,
-                                          wall_len, tw, th,
-                                          l_sd['xo'], yo,
-                                          flip=False, light=l_sec['light'])
-                    # Lower step: corridor floor above door floor
-                    if l_fh > floor_h:
-                        tex_name = l_sd['lower']
-                        ti = ensure_wall_tex(tex_name)
-                        if ti >= 0:
-                            tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = l_sd['yo'] + (l_ch - l_fh if lower_unpeg else 0)
-                            add_wall_quad(pts, faces, ti,
-                                          wx1, wz1, wx2, wz2,
-                                          floor_h*SCALE, l_fh*SCALE,
-                                          wall_len, tw, th,
-                                          l_sd['xo'], yo,
-                                          flip=False, light=l_sec['light'])
-            elif l_is_door and r_sd['sector'] not in door_sector_ids:
-                door_si = l_sd['sector']
-                if door_si in door_heights:
-                    floor_h, ceil_h = door_heights[door_si]
-                    # Upper track band: corridor ceiling above door ceiling
-                    if r_ch > ceil_h:
-                        tex_name = r_sd['upper']
-                        ti = ensure_wall_tex(tex_name)
-                        if ti >= 0:
-                            tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = r_sd['yo'] - (ceil_h - floor_h) + (0 if upper_unpeg else (th - (r_ch - ceil_h)))
-                            add_wall_quad(pts, faces, ti,
-                                          wx1, wz1, wx2, wz2,
-                                          ceil_h*SCALE, r_ch*SCALE,
-                                          wall_len, tw, th,
-                                          r_sd['xo'], yo,
-                                          flip=True, light=r_sec['light'])
-                    # Lower step: corridor floor above door floor
-                    if r_fh > floor_h:
-                        tex_name = r_sd['lower']
-                        ti = ensure_wall_tex(tex_name)
-                        if ti >= 0:
-                            tw, th = Image.open(get_tex_abspath(tex_name)).size
-                            yo = r_sd['yo'] + (r_ch - r_fh if lower_unpeg else 0)
-                            add_wall_quad(pts, faces, ti,
-                                          wx1, wz1, wx2, wz2,
-                                          floor_h*SCALE, r_fh*SCALE,
-                                          wall_len, tw, th,
-                                          r_sd['xo'], yo,
-                                          flip=True, light=r_sec['light'])
+            # Door sector two-sided linedefs — geometry handled by door instance, skip
+            # (track band, lower step all belong to the instance)
 
             # Lower wall: step up from right sector floor to left sector floor
             if l_fh > r_fh and not r_is_door and not l_is_door:
@@ -1051,9 +996,7 @@ def main():
                 if ft >= 0:
                     add_flat_quad(pts, faces, ft, poly_doom, floor_h,
                                   is_floor=True, light=sec['light'], holes=own_holes or None)
-                if ct >= 0 and ceil_h is not None:
-                    add_flat_quad(pts, faces, ct, poly_doom, ceil_h,
-                                  is_floor=False, light=sec['light'], holes=own_holes or None)
+                # Ceiling of door sector omitted — the door instance covers it
             continue
 
         ft         = ensure_flat_tex(sec['ft'])
@@ -1116,71 +1059,96 @@ def main():
         cx = (min(all_vx)+max(all_vx))/2 * SCALE
         cz = (min(all_vy)+max(all_vy))/2 * SCALE
 
-        # Room heights were pre-computed during frame geometry generation
-        room_fh, room_ch = door_room_heights[si]
+        # Floor and ceiling heights for this door sector (adjacent corridor heights)
+        floor_h, ceil_h = door_heights[si]
 
-        # Door panel height: full room height minus the track clearance at the top
-        h      = (room_ch - DOOR_TRACK_OFFSET - room_fh) * SCALE
+        # Door panel height: from adjacent floor to door ceiling
+        h      = (ceil_h - floor_h) * SCALE
         travel = round(h, 4)
 
         door_name = f'door_{si}'
 
-        # ── Door box mesh (axis-aligned, centred at local origin) ─────────────
-        w  = (max(all_vx) - min(all_vx)) * SCALE  # width  (X axis)
-        d  = (max(all_vy) - min(all_vy)) * SCALE  # depth  (Z axis)
-        hw, hd = w/2, d/2
+        # ── Door mesh: world-space geometry, instance at [0,0,0] ─────────────
+        # Vertices at actual world positions — UV mapping via add_wall_quad
+        # exactly like the static map. No local-origin offset needed.
+        h_doom = ceil_h - floor_h  # door height in Doom units
+        d_pts_raw  = []
+        d_faces_raw = []
 
-        # Pick door texture from the middle textures of the bordering linedefs
-        door_tex_name = None
         for ld in linedefs:
-            if ld['right'] >= 0 and sidedefs[ld['right']]['sector'] == si:
-                t = sidedefs[ld['right']]['middle']
-                if t and t != '-': door_tex_name = t; break
-            if ld['left'] >= 0 and sidedefs[ld['left']]['sector'] == si:
-                t = sidedefs[ld['left']]['middle']
-                if t and t != '-': door_tex_name = t; break
-        if not door_tex_name:
-            door_tex_name = sec['ft']
-            door_tex = ensure_flat_tex(door_tex_name)
-        else:
-            door_tex = ensure_wall_tex(door_tex_name)
+            r_has = ld['right'] >= 0
+            l_has = ld['left']  >= 0
+            if not r_has: continue
+            r_si2 = sidedefs[ld['right']]['sector']
+            l_si2 = sidedefs[ld['left']]['sector'] if l_has else -1
+            if r_si2 != si and l_si2 != si: continue
 
-        textures = [tex_paths[door_tex]] if door_tex >= 0 else []
-        ti = 1  # 1-based texture index in the obj
+            dx1, dy1 = vertexes[ld['v1']]
+            dx2, dy2 = vertexes[ld['v2']]
+            lwx1, lwz1 = doom_to_world(dx1, dy1)
+            lwx2, lwz2 = doom_to_world(dx2, dy2)
+            lwall_len  = wall_length_doom(vertexes, ld['v1'], ld['v2'])
+            lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
 
-        # 8 vertices of the door box (y=0 bottom, y=h top)
-        d_pts = [
-            [-hw, 0, -hd],  # 1 bottom-front-left
-            [ hw, 0, -hd],  # 2 bottom-front-right
-            [ hw, h, -hd],  # 3 top-front-right
-            [-hw, h, -hd],  # 4 top-front-left
-            [-hw, 0,  hd],  # 5 bottom-back-left
-            [ hw, 0,  hd],  # 6 bottom-back-right
-            [ hw, h,  hd],  # 7 top-back-right
-            [-hw, h,  hd],  # 8 top-back-left
-        ]
-        d_pts = [[round(v,4) for v in p] for p in d_pts]
+            if r_si2 == si and not l_has:
+                # One-sided lateral wall (DOORTRAK)
+                sd = sidedefs[ld['right']]
+                tex = sd['middle']
+                if not tex or tex == '-': continue
+                ti_g = ensure_wall_tex(tex)
+                if ti_g < 0: continue
+                tw, th = Image.open(get_tex_abspath(tex)).size
+                yo = sd['yo'] + ((th - h_doom % th) % th if lower_unpeg else 0)
+                add_wall_quad(d_pts_raw, d_faces_raw, ti_g,
+                              lwx1, lwz1, lwx2, lwz2,
+                              floor_h*SCALE, ceil_h*SCALE,
+                              lwall_len, tw, th, sd['xo'], yo,
+                              flip=True, light=sec['light'])
 
-        col = [200, 200, 200]
-        d_faces = [
-            # Front  (normal -Z)
-            {'pts':[1,3,2],'color':col,'texture':ti,'map':[[0,1],[1,0],[1,1]]},
-            {'pts':[1,4,3],'color':col,'texture':ti,'map':[[0,1],[0,0],[1,0]]},
-            # Back   (normal +Z)
-            {'pts':[6,8,5],'color':col,'texture':ti,'map':[[0,1],[1,0],[1,1]]},
-            {'pts':[6,7,8],'color':col,'texture':ti,'map':[[0,1],[0,0],[1,0]]},
-            # Left   (normal -X)
-            {'pts':[5,4,1],'color':col,'texture':ti,'map':[[0,1],[1,0],[1,1]]},
-            {'pts':[5,8,4],'color':col,'texture':ti,'map':[[0,1],[0,0],[1,0]]},
-            # Right  (normal +X)
-            {'pts':[2,7,6],'color':col,'texture':ti,'map':[[0,1],[1,0],[1,1]]},
-            {'pts':[2,3,7],'color':col,'texture':ti,'map':[[0,1],[0,0],[1,0]]},
-            # Top (underside — visible when the door has risen)
-            {'pts':[4,7,3],'color':col,'texture':ti,'map':[[0,0],[1,1],[1,0]]},
-            {'pts':[4,8,7],'color':col,'texture':ti,'map':[[0,0],[0,1],[1,1]]},
-        ]
+            elif r_si2 == si and l_has and l_si2 not in door_sector_ids:
+                # Two-sided: door on right, corridor on left
+                # Panel covers from floor to THIS corridor's ceiling (not min of all adjacent)
+                l_sd   = sidedefs[ld['left']]
+                l_sec2 = sectors[l_si2]
+                tex = l_sd['upper']
+                if not tex or tex == '-': continue
+                ti_g = ensure_wall_tex(tex)
+                if ti_g < 0: continue
+                tw, th = Image.open(get_tex_abspath(tex)).size
+                add_wall_quad(d_pts_raw, d_faces_raw, ti_g,
+                              lwx1, lwz1, lwx2, lwz2,
+                              floor_h*SCALE, l_sec2['ch']*SCALE,
+                              lwall_len, tw, th, l_sd['xo'], l_sd['yo'],
+                              flip=False, light=l_sec2['light'])
 
-        write_obj_json({'textures': textures, 'points': d_pts, 'faces': d_faces},
+            elif l_si2 == si and r_has and r_si2 not in door_sector_ids:
+                # Two-sided: door on left, corridor on right
+                r_sd   = sidedefs[ld['right']]
+                r_sec2 = sectors[r_si2]
+                tex = r_sd['upper']
+                if not tex or tex == '-': continue
+                ti_g = ensure_wall_tex(tex)
+                if ti_g < 0: continue
+                tw, th = Image.open(get_tex_abspath(tex)).size
+                add_wall_quad(d_pts_raw, d_faces_raw, ti_g,
+                              lwx1, lwz1, lwx2, lwz2,
+                              floor_h*SCALE, r_sec2['ch']*SCALE,
+                              lwall_len, tw, th, r_sd['xo'], r_sd['yo'],
+                              flip=True, light=r_sec2['light'])
+
+        # No top or bottom flat: top is at corridor ceiling (z-fight with static ceiling),
+        # bottom is at corridor floor (z-fight with static floor).
+
+        # Remap global tex indices (1-based) → local 1-based for this obj.json
+        used_global = sorted(set(f['texture'] for f in d_faces_raw if 'texture' in f))
+        g_to_local  = {g: i+1 for i, g in enumerate(used_global)}
+        local_texs  = [tex_paths[g-1] for g in used_global]
+        for f in d_faces_raw:
+            if 'texture' in f:
+                f['texture'] = g_to_local[f['texture']]
+        d_pts_out = [[round(v, 4) for v in p] for p in d_pts_raw]
+
+        write_obj_json({'textures': local_texs, 'points': d_pts_out, 'faces': d_faces_raw},
                        os.path.join(obj_dir, f'{door_name}.obj.json'))
 
         # ── Door instance ──────────────────────────────────────────────────────
@@ -1188,18 +1156,14 @@ def main():
         inst_str = (
             '{\n'
             f'  "object":     "./assets/doom/objects/{door_name}.obj.json",\n'
-            f'  "position":   [{round(cx,4)}, {round(room_fh*SCALE,4)}, {round(cz,4)}],\n'
+            '  "position":   [0, 0, 0],\n'
             '  "rotation":   [0, 0, 0],\n'
-            '  "trigger":    "action",\n'
+            '  "trigger":    "none",\n'
+            '  "loop":       false,\n'
             '  "collidable": true,\n'
-            '  "radius":     1.5,\n'
+            '  "radius":     null,\n'
             '  "damage":     null,\n'
-            '  "keyframes":  [\n'
-            f'    {{"t": 0.0, "translate": [0, 0, 0],          "rotate": [0,0,0]}},\n'
-            f'    {{"t": 2.0, "translate": [0, {travel}, 0],   "rotate": [0,0,0]}},\n'
-            f'    {{"t": 5.0, "translate": [0, {travel}, 0],   "rotate": [0,0,0]}},\n'
-            f'    {{"t": 7.0, "translate": [0, 0, 0],          "rotate": [0,0,0]}}\n'
-            '  ]\n'
+            '  "keyframes":  []\n'
             '}'
         )
         with open(inst_path, 'w') as f:
@@ -1255,7 +1219,7 @@ def main():
             'yaw':             spawn_yaw,
             'pitch':           spawn_pitch,
             'maxEnergy':       100,
-            'height':          0.875,   # 56 doom units
+            'height':          PLAYER_HEIGHT,
             'eyeRatio':        0.73,    # eyes at 41/56 of height
             'radius':          0.25,    # 16 doom units
             'gravity':         gravity         if os.path.exists(def_path) else 9.81,
@@ -1270,7 +1234,7 @@ def main():
             'sources': []
         },
         'map': './assets/doom/objects/map.obj.json',
-        'instances': {}  # door instances disabled — enable manually in definition.json
+        'instances': door_instances
     }
     with open(def_path, 'w') as f:
         json.dump(defn, f, indent=2)
