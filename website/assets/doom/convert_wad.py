@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None
-SPAWN_YAW      = None
-SPAWN_PITCH    = None
+SPAWN_POSITION = [26.39, -1.75, 16.41]
+SPAWN_YAW      = 112.5
+SPAWN_PITCH    = 0.0
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -297,6 +297,101 @@ def get_tex_abspath(name):
         return _tex_abspath[uname]
     png_path = os.path.join(TEX_DIR, uname + '.png')
     return png_path if os.path.exists(png_path) else os.path.join(TEX_DIR, uname + '.jpg')
+
+# ─── Animated texture sequences ──────────────────────────────────────────────
+
+def _parse_animated_lump(data, wad, flats):
+    """Parse a Boom ANIMATED lump into animation sequences.
+
+    Each 23-byte record: type(1) + last_name(9) + first_name(9) + speed(4).
+    type 0xFF = end marker, 0 = flat, 1 = wall texture.
+
+    Expands first→last ranges using the ordered flat/texture name lists from
+    the WAD itself — no assumptions about naming conventions.
+    """
+    flat_names = list(flats.keys())
+
+    wall_names = []
+    for lump_name in ('TEXTURE1', 'TEXTURE2'):
+        tex = wad.get(lump_name)
+        if not tex:
+            continue
+        n = struct.unpack_from('<I', tex, 0)[0]
+        offsets = struct.unpack_from(f'<{n}I', tex, 4)
+        for i in range(n):
+            o = offsets[i]
+            name = tex[o:o+8].rstrip(b'\x00').decode('ascii', 'replace').upper()
+            if name not in wall_names:
+                wall_names.append(name)
+
+    sequences = []
+    i = 0
+    while i < len(data):
+        type_byte = data[i]
+        if type_byte == 0xFF:
+            break
+        if i + 23 > len(data):
+            break
+        is_flat   = (type_byte == 0)
+        last_name  = data[i+1 :i+10].rstrip(b'\x00').decode('ascii', 'replace').upper()
+        first_name = data[i+10:i+19].rstrip(b'\x00').decode('ascii', 'replace').upper()
+        i += 23
+
+        name_list = flat_names if is_flat else wall_names
+        if first_name not in name_list or last_name not in name_list:
+            continue
+        fi = name_list.index(first_name)
+        li = name_list.index(last_name)
+        if li < fi:
+            continue
+        frames = name_list[fi:li+1]
+        if len(frames) > 1:
+            sequences.append((is_flat, frames))
+
+    return sequences
+
+
+def load_anim_sequences(wad, flats):
+    """Return animation sequences for this WAD as a list of (is_flat, [frames]).
+
+    Reads the ANIMATED lump if present (Boom-compatible WADs).
+    Falls back to the vanilla Doom hardcoded list for WADs that rely on
+    engine-level animation definitions (no ANIMATED lump in file).
+    """
+    animated = wad.get('ANIMATED')
+    if animated:
+        sequences = _parse_animated_lump(animated, wad, flats)
+        if sequences:
+            print(f"  ANIMATED lump: {len(sequences)} sequences")
+            return sequences
+
+    # Fallback: vanilla Doom engine hardcoded animations (p_spec.c)
+    # All sequences run at 8 tics/frame = 35/8 ≈ 4.375 fps
+    print("  No ANIMATED lump — using vanilla fallback sequences")
+    return [
+        (True,  ['NUKAGE1', 'NUKAGE2', 'NUKAGE3']),
+        (True,  ['FWATER1', 'FWATER2', 'FWATER3', 'FWATER4']),
+        (True,  ['SWATER1', 'SWATER2', 'SWATER3', 'SWATER4']),
+        (True,  ['LAVA1',   'LAVA2',   'LAVA3',   'LAVA4']),
+        (True,  ['BLOOD1',  'BLOOD2',  'BLOOD3']),
+        (True,  ['RROCK05', 'RROCK06', 'RROCK07', 'RROCK08']),
+        (True,  ['SLIME01', 'SLIME02', 'SLIME03', 'SLIME04']),
+        (True,  ['SLIME05', 'SLIME06', 'SLIME07', 'SLIME08']),
+        (True,  ['SLIME09', 'SLIME10', 'SLIME11', 'SLIME12']),
+        (False, ['BLODGR1', 'BLODGR2', 'BLODGR3', 'BLODGR4']),
+        (False, ['SLADRIP1', 'SLADRIP2', 'SLADRIP3']),
+        (False, ['BLODRIP1', 'BLODRIP2', 'BLODRIP3', 'BLODRIP4']),
+        (False, ['FIREWALA', 'FIREWALB', 'FIREWALL']),
+        (False, ['GSTFONT1', 'GSTFONT2', 'GSTFONT3']),
+        (False, ['FIRELAV3', 'FIRELAVA']),
+        (False, ['FIREMAG1', 'FIREMAG2', 'FIREMAG3']),
+        (False, ['FIREBLU1', 'FIREBLU2']),
+        (False, ['ROCKRED1', 'ROCKRED2', 'ROCKRED3']),
+        (False, ['BFALL1', 'BFALL2', 'BFALL3', 'BFALL4']),
+        (False, ['SFALL1', 'SFALL2', 'SFALL3', 'SFALL4']),
+        (False, ['WFALL1', 'WFALL2', 'WFALL3', 'WFALL4']),
+        (False, ['DBRAIN1', 'DBRAIN2', 'DBRAIN3', 'DBRAIN4']),
+    ]
 
 # ─── Polygon triangulation (ear-clipping) ────────────────────────────────────
 
@@ -700,6 +795,8 @@ def main():
                 patches[pn] = data
 
     print(f"Found {len(patches)} patches, {len(flats)} flats")
+    print("Loading animation sequences...")
+    anim_sequences = load_anim_sequences(wad, flats)
 
     print(f"Loading map {MAP_NAME}...")
     lumps    = wad.get_map_lumps(MAP_NAME)
@@ -1351,9 +1448,38 @@ def main():
     with open(def_path, 'w') as f:
         json.dump(defn, f, indent=2)
 
+    # ── Export animation frame siblings ──────────────────────────────────────
+    # For each animated sequence where at least one frame is referenced by the
+    # map, export all remaining frames so the JS animation system can load them.
+    print("Exporting animation frame siblings...")
+    anim_exported = 0
+    for is_flat, frames in anim_sequences:
+        if is_flat:
+            if not any('FLAT_' + f in tex_index for f in frames):
+                continue
+            for name in frames:
+                if 'FLAT_' + name in tex_index:
+                    continue
+                data = flats.get(name)
+                if data:
+                    save_texture(flat_to_image(data, palette), name)
+                    anim_exported += 1
+        else:
+            if not any(f in tex_index for f in frames):
+                continue
+            for name in frames:
+                if name in tex_index:
+                    continue
+                img = build_wall_texture(wad, name, palette, pnames, patches)
+                if img:
+                    save_texture(img, name)
+                    anim_exported += 1
+    if anim_exported:
+        print(f"  {anim_exported} additional animation frames exported")
+
     print(f"Done! {len(door_instances)} door instances.")
     print(f"Map: {map_path}")
-    print(f"Textures: {len(tex_paths)} saved to {TEX_DIR}")
+    print(f"Textures: {len(tex_paths)} + {anim_exported} anim siblings saved to {TEX_DIR}")
 
 if __name__ == '__main__':
     main()
