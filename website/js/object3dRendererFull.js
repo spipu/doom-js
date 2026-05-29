@@ -84,7 +84,7 @@ class Object3dRendererFull extends Object3dRendererBase {
     _clipNear(engine, v0, v1, v2) {
         const zNear  = engine.zBuffer._z_near;
         const verts  = [v0, v1, v2];
-        const inside = [v0[2] >= zNear, v1[2] >= zNear, v2[2] >= zNear];
+        const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
         const cnt    = inside.filter(Boolean).length;
 
         if (cnt === 3) return [[v0, v1, v2]];
