@@ -38,6 +38,36 @@ DOOR_SPEED_BY_SPECIAL = {
 }
 DOOR_WAIT_TICS = 150  # tics before auto-close (~4.3 s)
 
+# Trigger type per door special ('action' = press E, 'always' = auto)
+DOOR_TRIGGER_BY_SPECIAL = {
+    # Use (press E): DR/D1, switch-activated, and walk-once (press E as approximation)
+    1: 'action', 2: 'action', 26: 'action', 27: 'action', 28: 'action',
+    31: 'action', 32: 'action', 33: 'action', 34: 'action',
+    63: 'action', 117: 'action', 118: 'action',
+}
+# Loop flag per door special
+DOOR_LOOP_BY_SPECIAL = {
+    # DR (repeatable): loop=false — plays once per press, restartable
+    1: False, 26: False, 27: False, 28: False, 63: False, 117: False,
+    # D1/W1 (one-shot open-stay): loop=false + onlyOnce — plays once, stays open
+    2: False, 31: False, 32: False, 33: False, 34: False, 118: False,
+}
+# onlyOnce: door plays exactly once then stays at final position
+DOOR_ONLY_ONCE_BY_SPECIAL = {
+    # Open-stay (one-shot): never close after opening
+    2: True, 31: True, 32: True, 33: True, 34: True, 118: True,
+    # Repeatable: can retrigger
+    1: False, 26: False, 27: False, 28: False, 63: False, 117: False,
+}
+# Animation type: 'round-trip' = open-wait-close, 'one-way' = open only
+DOOR_ANIM_BY_SPECIAL = {
+    2: 'one-way', 31: 'one-way', 32: 'one-way', 33: 'one-way', 34: 'one-way', 118: 'one-way',
+    1: 'round-trip', 26: 'round-trip', 27: 'round-trip', 28: 'round-trip',
+    63: 'round-trip', 117: 'round-trip',
+}
+# Action radius in metres (Doom USE distance = 64 u = 1 m; 1.5 m is comfortable)
+DOOR_ACTION_RADIUS = 1.5
+
 # Linedef types that move a floor downward (Lower Lift, Lower Floor, etc.)
 # Static map shows these sectors with floor at min(adjacent_fh)
 FLOOR_MOVE_DOWN_SPECIALS = {23, 36, 37, 38, 56, 62, 82, 83, 84, 88}
@@ -716,20 +746,37 @@ def main():
     # ── Identify door sectors ─────────────────────────────────────────────────
     # A linedef with a door special controls the sector referenced by its tag
     # (remote door) or by its left sidedef sector (local door, tag == 0).
-    door_sector_ids   = set()
-    door_sector_speed = {}  # si → doom units/tic
+    door_sector_ids      = set()
+    door_sector_speed    = {}  # si → doom units/tic
+    door_sector_trigger  = {}  # si → 'action' | 'always'
+    door_sector_loop     = {}  # si → bool
+    door_sector_onlyone  = {}  # si → bool
+    door_sector_anim     = {}  # si → 'round-trip' | 'one-way'
     for ld in linedefs:
         if ld['special'] in DOOR_SPECIALS:
-            speed = DOOR_SPEED_BY_SPECIAL.get(ld['special'], 2)
+            sp       = ld['special']
+            speed    = DOOR_SPEED_BY_SPECIAL.get(sp, 2)
+            trigger  = DOOR_TRIGGER_BY_SPECIAL.get(sp, 'action')
+            loop     = DOOR_LOOP_BY_SPECIAL.get(sp, False)
+            onlyone  = DOOR_ONLY_ONCE_BY_SPECIAL.get(sp, False)
+            anim     = DOOR_ANIM_BY_SPECIAL.get(sp, 'round-trip')
             if ld['tag'] != 0:
                 for si, sec in enumerate(sectors):
                     if sec['tag'] == ld['tag']:
                         door_sector_ids.add(si)
-                        door_sector_speed[si] = speed
+                        door_sector_speed[si]   = speed
+                        door_sector_trigger[si] = trigger
+                        door_sector_loop[si]    = loop
+                        door_sector_onlyone[si] = onlyone
+                        door_sector_anim[si]    = anim
             elif ld['left'] >= 0:
                 si = sidedefs[ld['left']]['sector']
                 door_sector_ids.add(si)
-                door_sector_speed[si] = speed
+                door_sector_speed[si]   = speed
+                door_sector_trigger[si] = trigger
+                door_sector_loop[si]    = loop
+                door_sector_onlyone[si] = onlyone
+                door_sector_anim[si]    = anim
 
     print(f"  {len(door_sector_ids)} door sectors identified")
 
@@ -1186,24 +1233,47 @@ def main():
         floor_h, ceil_h = door_heights[si]
         travel_y    = round((ceil_h - floor_h) * SCALE, 4)
         speed_tics  = door_sector_speed.get(si, 2)
+        trigger     = door_sector_trigger.get(si, 'action')
+        loop        = door_sector_loop.get(si, False)
+        onlyone     = door_sector_onlyone.get(si, False)
+        anim        = door_sector_anim.get(si, 'round-trip')
+
+        # Radius: half of the XZ bounding diagonal — scales with door width,
+        # minimum DOOR_ACTION_RADIUS for very small doors.
+        if d_pts_raw:
+            xs = [p[0] for p in d_pts_raw]
+            zs = [p[2] for p in d_pts_raw]
+            xz_diag = math.sqrt((max(xs) - min(xs))**2 + (max(zs) - min(zs))**2)
+            radius = round(xz_diag / 2.0 + DOOR_ACTION_RADIUS, 4)
+        else:
+            radius = DOOR_ACTION_RADIUS
+        loop_str    = 'true' if loop else 'false'
+        oo_str      = 'true' if onlyone else 'false'
         open_s      = round((ceil_h - floor_h) / speed_tics / 35.0, 4)
         wait_s      = round(DOOR_WAIT_TICS / 35.0, 4)
-        kf = [
-            {"t": 0.0,                              "translate": [0, 0, 0],          "rotate": [0, 0, 0]},
-            {"t": open_s,                           "translate": [0, travel_y, 0],   "rotate": [0, 0, 0]},
-            {"t": round(open_s + wait_s, 4),        "translate": [0, travel_y, 0],   "rotate": [0, 0, 0]},
-            {"t": round(open_s + wait_s + open_s, 4), "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
-        ]
+        if anim == 'one-way':
+            kf = [
+                {"t": 0.0,    "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+                {"t": open_s, "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
+            ]
+        else:
+            kf = [
+                {"t": 0.0,                                "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+                {"t": open_s,                             "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": round(open_s + wait_s, 4),          "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": round(open_s + wait_s + open_s, 4), "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+            ]
         kf_lines = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
         inst_str = (
             '{\n'
             f'  "object":     "./assets/doom/objects/{door_name}.obj.json",\n'
             '  "position":   [0, 0, 0],\n'
             '  "rotation":   [0, 0, 0],\n'
-            '  "trigger":    "always",\n'
-            '  "loop":       true,\n'
+            f'  "trigger":    "{trigger}",\n'
+            f'  "loop":       {loop_str},\n'
+            f'  "onlyOnce":   {oo_str},\n'
             '  "collidable": true,\n'
-            '  "radius":     null,\n'
+            f'  "radius":     {radius},\n'
             '  "damage":     null,\n'
             f'  "keyframes":  [\n    {kf_lines}\n  ]\n'
             '}'

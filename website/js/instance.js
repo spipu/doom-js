@@ -26,10 +26,10 @@ class Instance extends AbstractLoader {
         this._position  = data.position;
         this._rotation  = data.rotation;
         this._trigger    = data.trigger;
-        this._loop       = data.loop === true;
-        this._onlyOnce   = data.onlyOnce === true;
+        this._loop       = (data.loop === true);
+        this._onlyOnce   = (data.onlyOnce === true);
         this._done       = false;
-        this._collidable = data.collidable === true;
+        this._collidable = (data.collidable === true);
         this._radius     = data.radius;
         this._damage     = data.damage || null;
         this._keyframes  = data.keyframes || [];
@@ -123,7 +123,7 @@ class Instance extends AbstractLoader {
         const dx = user.getCenterX() - this._worldCenter[0];
         const dy = user.getCenterY() - this._worldCenter[1];
         const dz = user.getCenterZ() - this._worldCenter[2];
-        const inRange = Math.sqrt(dx*dx + dy*dy + dz*dz) <= this._damage.radius;
+        const inRange = (Math.sqrt(dx*dx + dy*dy + dz*dz) <= this._damage.radius);
         if (this._damage.type === 'direct') {
             if (inRange && !this._wasInDamageRange) {
                 user.takeDamage(this._damage.delta);
@@ -148,12 +148,14 @@ class Instance extends AbstractLoader {
             return;
         }
 
-        const inRange = this._radius !== null &&
-            Math.sqrt(
+        const inRange = (
+            (this._radius !== null) &&
+            (Math.sqrt(
                 (user.getCenterX() - this._worldCenter[0]) ** 2 +
                 (user.getCenterY() - this._worldCenter[1]) ** 2 +
                 (user.getCenterZ() - this._worldCenter[2]) ** 2
-            ) <= this._radius;
+            ) <= this._radius)
+        );
 
         const wasPlaying = this._playing;
 
