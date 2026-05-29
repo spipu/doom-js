@@ -6,9 +6,13 @@ class Object3dRendererFactory {
             'flat':  () => new Object3dRendererFlat(),
             'fast':  () => new Object3dRendererFast(),
         };
-        if (!map[code]) throw new Error('Unknown renderer: "' + code + '"');
+        if (!map[code]) {
+            throw new Error('Unknown renderer: "' + code + '"');
+        }
         const r = map[code]();
-        if (r.isAvailable()) return r;
+        if (r.isAvailable()) {
+            return r;
+        }
         console.warn('Renderer "' + code + '" is not available, falling back to "full"');
         return map['full']();
     }

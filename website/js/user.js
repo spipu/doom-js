@@ -273,7 +273,9 @@ class User {
     }
 
     _trackFallPeak() {
-        if (this._fallPeakY !== null) this._fallPeakY = Math.max(this._fallPeakY, this.y);
+        if (this._fallPeakY !== null) {
+            this._fallPeakY = Math.max(this._fallPeakY, this.y);
+        }
     }
 
     _endFall() {
@@ -305,8 +307,12 @@ class User {
         this._wasOnGround = this._onGround;
 
         // 1. Timers
-        if (this._coyoteTimer > 0) this._coyoteTimer = Math.max(0, this._coyoteTimer - dt);
-        if (this._jumpBuffer  > 0) this._jumpBuffer  = Math.max(0, this._jumpBuffer  - dt);
+        if (this._coyoteTimer > 0) {
+            this._coyoteTimer = Math.max(0, this._coyoteTimer - dt);
+        }
+        if (this._jumpBuffer > 0) {
+            this._jumpBuffer = Math.max(0, this._jumpBuffer - dt);
+        }
 
         // 2. Jump buffer: memorize jump intent if in air
         if (this._jumpPressed && !this._onGround && !this._canJump) {
@@ -395,7 +401,9 @@ class User {
         } else if (floorY !== -Infinity && this.y <= floorY && floorY <= yBeforeVertical + this._stepHeight) {
             this.y = floorY;
             if (this._vy < 0) this._vy = 0;
-            if (!this._wasOnGround) this._endFall();
+            if (!this._wasOnGround) {
+                this._endFall();
+            }
             this._onGround = true;
             this._canJump  = true;
             this._jumpHeld = false;
@@ -412,7 +420,9 @@ class User {
 
         // Track fall peak while airborne
         if (!this._onGround) {
-            if (this._wasOnGround) this._startFall();
+            if (this._wasOnGround) {
+                this._startFall();
+            }
             this._trackFallPeak();
         }
 
@@ -459,19 +469,28 @@ class User {
         // 14. Strafe lean
         const targetLean = this._strafeDir * this._maxLean;
         const leanDelta  = this._leanSpeed * dt_s;
-        if (this._strafeLean < targetLean) this._strafeLean = Math.min(targetLean, this._strafeLean + leanDelta);
-        else                               this._strafeLean = Math.max(targetLean, this._strafeLean - leanDelta);
+        if (this._strafeLean < targetLean) {
+            this._strafeLean = Math.min(targetLean, this._strafeLean + leanDelta);
+        } else {
+            this._strafeLean = Math.max(targetLean, this._strafeLean - leanDelta);
+        }
 
         // 15. Reset one-frame flags
         this._jumpPressed = false;
 
         // 16. Energy flash fade
-        if (this._energyFlash > 0) this._energyFlash = Math.max(0, this._energyFlash - dt_s);
+        if (this._energyFlash > 0) {
+            this._energyFlash = Math.max(0, this._energyFlash - dt_s);
+        }
 
         // 17. Death animation — roll camera sideways and lower eye height
         if (this._dead) {
-            if (this._deathRoll < 30)       this._deathRoll     = Math.min(30,  this._deathRoll     + 30  * dt_s);
-            if (this._deathEyeRatio > 0.3)  this._deathEyeRatio = Math.max(0.3, this._deathEyeRatio - 0.7 * dt_s);
+            if (this._deathRoll < 30) {
+                this._deathRoll = Math.min(30, this._deathRoll + 30 * dt_s);
+            }
+            if (this._deathEyeRatio > 0.3) {
+                this._deathEyeRatio = Math.max(0.3, this._deathEyeRatio - 0.7 * dt_s);
+            }
         }
     }
 

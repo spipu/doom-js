@@ -24,7 +24,9 @@ class Engine3d {
         this.viewMatrix.identity();
 
         this.scrCanvas = document.getElementById(canvasId);
-        if (!this.scrCanvas || !this.scrCanvas.getContext) return;
+        if (!this.scrCanvas || !this.scrCanvas.getContext) {
+            return;
+        }
 
         this.scrCtx = this._renderer.initCanvas(this.scrCanvas);
 
@@ -199,13 +201,27 @@ class Engine3d {
         const [drx, dry, drz] = tf.deltaRotate;
         this.matrixPush();
         this.matrixTranslate(px, py, pz);
-        if (irx) this.matrixRotateX(irx);
-        if (irz) this.matrixRotateZ(irz);
-        if (iry) this.matrixRotateY(iry);
-        if (dtx || dty || dtz) this.matrixTranslate(dtx, dty, dtz);
-        if (drx) this.matrixRotateX(drx);
-        if (drz) this.matrixRotateZ(drz);
-        if (dry) this.matrixRotateY(dry);
+        if (irx) {
+            this.matrixRotateX(irx);
+        }
+        if (irz) {
+            this.matrixRotateZ(irz);
+        }
+        if (iry) {
+            this.matrixRotateY(iry);
+        }
+        if (dtx || dty || dtz) {
+            this.matrixTranslate(dtx, dty, dtz);
+        }
+        if (drx) {
+            this.matrixRotateX(drx);
+        }
+        if (drz) {
+            this.matrixRotateZ(drz);
+        }
+        if (dry) {
+            this.matrixRotateY(dry);
+        }
         this.drawObject(instance.getObject());
         this.matrixPop();
         return this;

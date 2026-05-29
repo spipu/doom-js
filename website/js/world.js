@@ -19,12 +19,24 @@ class World extends AbstractLoader {
         this._user = new User(u.position[0], u.position[1], u.position[2], u.yaw, u.pitch, u.maxEnergy)
             .setHeight(u.height)
             .setEyeRatio(u.eyeRatio);
-        if (u.radius          !== undefined) this._user.setRadius(u.radius);
-        if (u.gravity         !== undefined) this._user.setGravity(u.gravity);
-        if (u.maxJumpVelocity !== undefined) this._user.setMaxJumpVelocity(u.maxJumpVelocity);
-        if (u.maxSlopeAngle   !== undefined) this._user.setMaxSlopeAngle(u.maxSlopeAngle);
-        if (u.moveSpeed       !== undefined) this._user.setMoveSpeed(u.moveSpeed);
-        if (u.stepHeight      !== undefined) this._user.setStepHeight(u.stepHeight);
+        if (u.radius          !== undefined) {
+            this._user.setRadius(u.radius);
+        }
+        if (u.gravity         !== undefined) {
+            this._user.setGravity(u.gravity);
+        }
+        if (u.maxJumpVelocity !== undefined) {
+            this._user.setMaxJumpVelocity(u.maxJumpVelocity);
+        }
+        if (u.maxSlopeAngle   !== undefined) {
+            this._user.setMaxSlopeAngle(u.maxSlopeAngle);
+        }
+        if (u.moveSpeed       !== undefined) {
+            this._user.setMoveSpeed(u.moveSpeed);
+        }
+        if (u.stepHeight      !== undefined) {
+            this._user.setStepHeight(u.stepHeight);
+        }
 
         this._background   = data.background || [0, 0, 0];
         this._lightAmbient = data.lights.ambient;
@@ -47,7 +59,9 @@ class World extends AbstractLoader {
         // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
         // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
         const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
-        if (floorY !== -Infinity) this._user.y = floorY;
+        if (floorY !== -Infinity) {
+            this._user.y = floorY;
+        }
         this._executeLoadedCallback();
     }
 
@@ -70,10 +84,18 @@ class World extends AbstractLoader {
         user.beginFrame(dt);
         user.setWalkSlow(keyboard.readKey('AltLeft') || keyboard.readKey('AltRight'));
         user.setCrouch(keyboard.readKeyCtrl());
-        if (keyboard.readKeyForward())     user.moveForward();
-        if (keyboard.readKeyBackward())    user.moveBackward();
-        if (keyboard.readKeyStrafeLeft())  user.strafeLeft();
-        if (keyboard.readKeyStrafeRight()) user.strafeRight();
+        if (keyboard.readKeyForward()) {
+            user.moveForward();
+        }
+        if (keyboard.readKeyBackward()) {
+            user.moveBackward();
+        }
+        if (keyboard.readKeyStrafeLeft()) {
+            user.strafeLeft();
+        }
+        if (keyboard.readKeyStrafeRight()) {
+            user.strafeRight();
+        }
 
         const lookDelta = dt * 1.5;
         user.lookMouse(

@@ -75,9 +75,15 @@ class Object3d extends AbstractLoader {
             color[2] = parseFloat(color[2]);
         }
 
-        if (this.ptOrigin[pt1-1] === undefined) throw new Error('pt1 ' + pt1 + ' undefined');
-        if (this.ptOrigin[pt2-1] === undefined) throw new Error('pt2 ' + pt2 + ' undefined');
-        if (this.ptOrigin[pt3-1] === undefined) throw new Error('pt3 ' + pt3 + ' undefined');
+        if (this.ptOrigin[pt1-1] === undefined) {
+            throw new Error('pt1 ' + pt1 + ' undefined');
+        }
+        if (this.ptOrigin[pt2-1] === undefined) {
+            throw new Error('pt2 ' + pt2 + ' undefined');
+        }
+        if (this.ptOrigin[pt3-1] === undefined) {
+            throw new Error('pt3 ' + pt3 + ' undefined');
+        }
 
         this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, false, clampV, passableUser, passableEnemy]);
         this.faceInfo.push([[0, 0, 0], null]);

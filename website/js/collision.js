@@ -57,7 +57,10 @@ class Collision {
             if (!this._aabbXZ(px, pz, r, tri)) return;
             if (!this._circleIntersectsTri(px, pz, r, tri)) return;
             const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY && y <= maxSearchY) { maxY = y; bestN = tri.n; }
+            if (y > maxY && y <= maxSearchY) {
+                maxY = y;
+                bestN = tri.n;
+            }
         };
         for (const sc of this._static)  sc.floors.forEach(check);
         for (const dc of this._dynamic) { if (this._broadphaseXZ(px, pz, r, dc)) dc.floors.forEach(check); }
@@ -183,9 +186,13 @@ class Collision {
             const A = obj.ptOrigin[fc[0]], B = obj.ptOrigin[fc[1]], C = obj.ptOrigin[fc[2]];
             const tri = this._makeTri([A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]]);
             if (!tri) continue;
-            if      (tri.n[1] >  0.7) floors.push(tri);
-            else if (tri.n[1] < -0.7) ceilings.push(tri);
-            else                       walls.push(tri);
+            if (tri.n[1] > 0.7) {
+                floors.push(tri);
+            } else if (tri.n[1] < -0.7) {
+                ceilings.push(tri);
+            } else {
+                walls.push(tri);
+            }
         }
         return { floors, ceilings, walls };
     }
@@ -219,9 +226,13 @@ class Collision {
             const wc = m.multiplyPosition([...lc, 1]);
             const tri = this._makeTri([wa[0],wa[1],wa[2]], [wb[0],wb[1],wb[2]], [wc[0],wc[1],wc[2]]);
             if (!tri) continue;
-            if      (tri.n[1] >  0.7) floors.push(tri);
-            else if (tri.n[1] < -0.7) ceilings.push(tri);
-            else                       walls.push(tri);
+            if (tri.n[1] > 0.7) {
+                floors.push(tri);
+            } else if (tri.n[1] < -0.7) {
+                ceilings.push(tri);
+            } else {
+                walls.push(tri);
+            }
         }
         dc.floors   = floors;
         dc.ceilings = ceilings;
@@ -239,13 +250,27 @@ class Collision {
         const m = new Matrix(); m.identity();
         const push = (fn, ...args) => { const r = new Matrix(); r[fn](...args); m.multiply(r); };
         push('translation', px, py, pz);
-        if (irx) push('rotationX', irx * DEG_TO_RAD);
-        if (irz) push('rotationZ', irz * DEG_TO_RAD);
-        if (iry) push('rotationY', iry * DEG_TO_RAD);
-        if (dtx || dty || dtz) push('translation', dtx, dty, dtz);
-        if (drx) push('rotationX', drx * DEG_TO_RAD);
-        if (drz) push('rotationZ', drz * DEG_TO_RAD);
-        if (dry) push('rotationY', dry * DEG_TO_RAD);
+        if (irx) {
+            push('rotationX', irx * DEG_TO_RAD);
+        }
+        if (irz) {
+            push('rotationZ', irz * DEG_TO_RAD);
+        }
+        if (iry) {
+            push('rotationY', iry * DEG_TO_RAD);
+        }
+        if (dtx || dty || dtz) {
+            push('translation', dtx, dty, dtz);
+        }
+        if (drx) {
+            push('rotationX', drx * DEG_TO_RAD);
+        }
+        if (drz) {
+            push('rotationZ', drz * DEG_TO_RAD);
+        }
+        if (dry) {
+            push('rotationY', dry * DEG_TO_RAD);
+        }
         return m;
     }
 
@@ -294,7 +319,9 @@ class Collision {
                 const [A, B, Ct] = tri.pts;
                 for (const [P, Q] of [[A,B],[B,Ct],[Ct,A]]) {
                     const res = this._sweptCircleVsSegment(C[0], C[1], V[0], V[1], P[0], P[2], Q[0], Q[2], r);
-                    if (res && res.t < tMin) { tMin = res.t; bestNx = res.nx; bestNz = res.nz; hit = true; }
+                    if (res && res.t < tMin) {
+                        tMin = res.t; bestNx = res.nx; bestNz = res.nz; hit = true;
+                    }
                 }
             };
             for (const walls of wallLists) walls.forEach(check);
@@ -409,7 +436,9 @@ class Collision {
     _distToSegment(px, pz, ax, az, bx, bz) {
         const dx = bx - ax, dz = bz - az;
         const len2 = dx*dx + dz*dz;
-        if (len2 < 1e-10) return Math.sqrt((px-ax)**2 + (pz-az)**2);
+        if (len2 < 1e-10) {
+            return Math.sqrt((px-ax)**2 + (pz-az)**2);
+        }
         const t = Math.max(0, Math.min(1, ((px-ax)*dx + (pz-az)*dz) / len2));
         return Math.sqrt((px-ax-t*dx)**2 + (pz-az-t*dz)**2);
     }
@@ -428,7 +457,9 @@ class Collision {
     _sweptCircleVsSegment(cx, cz, vx, vz, ax, az, bx, bz, r) {
         const sdx = bx - ax, sdz = bz - az;
         const slen = Math.sqrt(sdx*sdx + sdz*sdz);
-        if (slen < 1e-10) return this._sweptCircleVsPoint(cx, cz, vx, vz, ax, az, r);
+        if (slen < 1e-10) {
+            return this._sweptCircleVsPoint(cx, cz, vx, vz, ax, az, r);
+        }
 
         const nix = -sdz / slen, niz = sdx / slen;
         const dist = nix * (cx - ax) + niz * (cz - az);
@@ -438,7 +469,9 @@ class Collision {
             const t  = (sn * r - dist) / vn;
             if (t >= 0 && t <= 1) {
                 const s = (cx + t*vx - ax) * (sdx/slen) + (cz + t*vz - az) * (sdz/slen);
-                if (s >= 0 && s <= slen) return { t, nx: sn * nix, nz: sn * niz };
+                if (s >= 0 && s <= slen) {
+                    return { t, nx: sn * nix, nz: sn * niz };
+                }
             }
         }
 

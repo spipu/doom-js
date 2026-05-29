@@ -30,13 +30,19 @@ class Light {
         const dn = Math.sqrt(dpx*dpx + dpy*dpy + dpz*dpz);
 
         let f = (normal[0]*dpx + normal[1]*dpy + normal[2]*dpz);
-        if (f < 0.) f = 0.;
-        else if (dn) f /= dn;
+        if (f < 0.) {
+            f = 0.;
+        } else if (dn) {
+            f /= dn;
+        }
 
         if (this.range) {
             const d = (1. - dn / this.range);
-            if (d < 0.) f = 0.;
-            else        f = f * Math.sqrt(d);
+            if (d < 0.) {
+                f = 0.;
+            } else {
+                f = f * Math.sqrt(d);
+            }
         }
 
         out[0] = this.color[0]*f;

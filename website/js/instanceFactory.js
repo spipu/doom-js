@@ -15,14 +15,20 @@ class InstanceFactory extends AbstractLoader {
     }
 
     get(code) {
-        if (!this._loaded) throw new Error('InstanceFactory is not loaded');
+        if (!this._loaded) {
+            throw new Error('InstanceFactory is not loaded');
+        }
         const entry = this._registry[code];
-        if (!entry || !entry.instance) throw new Error('Instance "' + code + '" not found in registry');
+        if (!entry || !entry.instance) {
+            throw new Error('Instance "' + code + '" not found in registry');
+        }
         return entry.instance;
     }
 
     getAll() {
-        if (!this._loaded) throw new Error('InstanceFactory is not loaded');
+        if (!this._loaded) {
+            throw new Error('InstanceFactory is not loaded');
+        }
         return this._order.map(code => this._registry[code].instance);
     }
 
@@ -41,7 +47,9 @@ class InstanceFactory extends AbstractLoader {
     }
 
     _checkAllDataReady() {
-        if (this._pendingFetches > 0) return;
+        if (this._pendingFetches > 0) {
+            return;
+        }
         object3dFactory.setLoadedCallback(() => this._createInstances());
     }
 
