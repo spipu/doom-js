@@ -42,8 +42,11 @@ class Object3d extends AbstractLoader {
         return this;
     }
 
-    fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false) {
+    fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false, animTextures = null) {
         if (!color)   color   = [255., 255., 255.];
+        if (!texture && animTextures) {
+            texture = animTextures.ids[0];
+        }
         if (!texture) texture = null;
         if (!map)     map     = null;
 
@@ -85,7 +88,8 @@ class Object3d extends AbstractLoader {
             throw new Error('pt3 ' + pt3 + ' undefined');
         }
 
-        this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, false, clampV, passableUser, passableEnemy]);
+        const anim = animTextures ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration} : null;
+        this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, false, clampV, passableUser, passableEnemy, anim]);
         this.faceInfo.push([[0, 0, 0], null]);
         this.faceCount++;
         return this;

@@ -46,7 +46,8 @@ class Object3dFactory extends AbstractLoader {
                 f.map            !== undefined ? f.map            : null,
                 f.clampV         !== undefined ? f.clampV         : false,
                 f.passableUser   !== undefined ? f.passableUser   : false,
-                f.passableEnemy  !== undefined ? f.passableEnemy  : false
+                f.passableEnemy  !== undefined ? f.passableEnemy  : false,
+                f.textures       !== undefined ? f.textures       : null
             ));
             obj.setLoadedCallback(() => {
                 this._pendingCount--;

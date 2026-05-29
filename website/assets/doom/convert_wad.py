@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = [26.39, -1.75, 16.41]
-SPAWN_YAW      = 112.5
-SPAWN_PITCH    = 0.0
+SPAWN_POSITION = None
+SPAWN_YAW      = None
+SPAWN_PITCH    = None
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -344,19 +344,19 @@ def _parse_animated_lump(data, wad, flats):
         li = name_list.index(last_name)
         if li < fi:
             continue
+        speed_tics = struct.unpack_from('<I', data, i - 23 + 19)[0]
         frames = name_list[fi:li+1]
         if len(frames) > 1:
-            sequences.append((is_flat, frames))
+            sequences.append((is_flat, frames, speed_tics))
 
     return sequences
 
 
 def load_anim_sequences(wad, flats):
-    """Return animation sequences for this WAD as a list of (is_flat, [frames]).
+    """Return animation sequences as a list of (is_flat, [frames], speed_tics).
 
     Reads the ANIMATED lump if present (Boom-compatible WADs).
-    Falls back to the vanilla Doom hardcoded list for WADs that rely on
-    engine-level animation definitions (no ANIMATED lump in file).
+    Falls back to the vanilla Doom hardcoded list (p_spec.c, speed = 8 tics).
     """
     animated = wad.get('ANIMATED')
     if animated:
@@ -365,32 +365,30 @@ def load_anim_sequences(wad, flats):
             print(f"  ANIMATED lump: {len(sequences)} sequences")
             return sequences
 
-    # Fallback: vanilla Doom engine hardcoded animations (p_spec.c)
-    # All sequences run at 8 tics/frame = 35/8 ≈ 4.375 fps
     print("  No ANIMATED lump — using vanilla fallback sequences")
     return [
-        (True,  ['NUKAGE1', 'NUKAGE2', 'NUKAGE3']),
-        (True,  ['FWATER1', 'FWATER2', 'FWATER3', 'FWATER4']),
-        (True,  ['SWATER1', 'SWATER2', 'SWATER3', 'SWATER4']),
-        (True,  ['LAVA1',   'LAVA2',   'LAVA3',   'LAVA4']),
-        (True,  ['BLOOD1',  'BLOOD2',  'BLOOD3']),
-        (True,  ['RROCK05', 'RROCK06', 'RROCK07', 'RROCK08']),
-        (True,  ['SLIME01', 'SLIME02', 'SLIME03', 'SLIME04']),
-        (True,  ['SLIME05', 'SLIME06', 'SLIME07', 'SLIME08']),
-        (True,  ['SLIME09', 'SLIME10', 'SLIME11', 'SLIME12']),
-        (False, ['BLODGR1', 'BLODGR2', 'BLODGR3', 'BLODGR4']),
-        (False, ['SLADRIP1', 'SLADRIP2', 'SLADRIP3']),
-        (False, ['BLODRIP1', 'BLODRIP2', 'BLODRIP3', 'BLODRIP4']),
-        (False, ['FIREWALA', 'FIREWALB', 'FIREWALL']),
-        (False, ['GSTFONT1', 'GSTFONT2', 'GSTFONT3']),
-        (False, ['FIRELAV3', 'FIRELAVA']),
-        (False, ['FIREMAG1', 'FIREMAG2', 'FIREMAG3']),
-        (False, ['FIREBLU1', 'FIREBLU2']),
-        (False, ['ROCKRED1', 'ROCKRED2', 'ROCKRED3']),
-        (False, ['BFALL1', 'BFALL2', 'BFALL3', 'BFALL4']),
-        (False, ['SFALL1', 'SFALL2', 'SFALL3', 'SFALL4']),
-        (False, ['WFALL1', 'WFALL2', 'WFALL3', 'WFALL4']),
-        (False, ['DBRAIN1', 'DBRAIN2', 'DBRAIN3', 'DBRAIN4']),
+        (True,  ['NUKAGE1', 'NUKAGE2', 'NUKAGE3'],              8),
+        (True,  ['FWATER1', 'FWATER2', 'FWATER3', 'FWATER4'],   8),
+        (True,  ['SWATER1', 'SWATER2', 'SWATER3', 'SWATER4'],   8),
+        (True,  ['LAVA1',   'LAVA2',   'LAVA3',   'LAVA4'],     8),
+        (True,  ['BLOOD1',  'BLOOD2',  'BLOOD3'],                8),
+        (True,  ['RROCK05', 'RROCK06', 'RROCK07', 'RROCK08'],   8),
+        (True,  ['SLIME01', 'SLIME02', 'SLIME03', 'SLIME04'],   8),
+        (True,  ['SLIME05', 'SLIME06', 'SLIME07', 'SLIME08'],   8),
+        (True,  ['SLIME09', 'SLIME10', 'SLIME11', 'SLIME12'],   8),
+        (False, ['BLODGR1', 'BLODGR2', 'BLODGR3', 'BLODGR4'],  8),
+        (False, ['SLADRIP1', 'SLADRIP2', 'SLADRIP3'],           8),
+        (False, ['BLODRIP1', 'BLODRIP2', 'BLODRIP3', 'BLODRIP4'], 8),
+        (False, ['FIREWALA', 'FIREWALB', 'FIREWALL'],            8),
+        (False, ['GSTFONT1', 'GSTFONT2', 'GSTFONT3'],           8),
+        (False, ['FIRELAV3', 'FIRELAVA'],                        8),
+        (False, ['FIREMAG1', 'FIREMAG2', 'FIREMAG3'],           8),
+        (False, ['FIREBLU1', 'FIREBLU2'],                        8),
+        (False, ['ROCKRED1', 'ROCKRED2', 'ROCKRED3'],           8),
+        (False, ['BFALL1', 'BFALL2', 'BFALL3', 'BFALL4'],      8),
+        (False, ['SFALL1', 'SFALL2', 'SFALL3', 'SFALL4'],       8),
+        (False, ['WFALL1', 'WFALL2', 'WFALL3', 'WFALL4'],       8),
+        (False, ['DBRAIN1', 'DBRAIN2', 'DBRAIN3', 'DBRAIN4'],  8),
     ]
 
 # ─── Polygon triangulation (ear-clipping) ────────────────────────────────────
@@ -840,6 +838,50 @@ def main():
         tex_index[key] = idx
         return idx
 
+    def build_anim_groups(tex_list):
+        """Append animation siblings to tex_list and return (new_list, anim_map).
+
+        For each animated sequence where at least one frame is already in tex_list,
+        appends the missing frames at the end. Only actually-used sequences get
+        siblings — no unused textures added.
+
+        Returns:
+          new_list : original paths + appended siblings
+          anim_map : dict mapping 1-based first-frame index →
+                     {"ids": [idx1, idx2, ...], "duration": seconds_per_frame}
+                     Used to patch individual faces.
+        """
+        def name_from_path(p):
+            return os.path.splitext(os.path.basename(p))[0].upper()
+
+        name_to_idx = {name_from_path(p): i + 1 for i, p in enumerate(tex_list)}
+        new_list    = list(tex_list)
+        anim_map    = {}
+
+        for is_flat, frames, speed_tics in anim_sequences:
+            if not any(f in name_to_idx for f in frames):
+                continue
+            for name in frames:
+                if name in name_to_idx:
+                    continue
+                if is_flat:
+                    data = flats.get(name)
+                    if data:
+                        p = save_texture(flat_to_image(data, palette), name)
+                        name_to_idx[name] = len(new_list) + 1
+                        new_list.append(p)
+                else:
+                    img = build_wall_texture(wad, name, palette, pnames, patches)
+                    if img:
+                        p = save_texture(img, name)
+                        name_to_idx[name] = len(new_list) + 1
+                        new_list.append(p)
+            ids = [name_to_idx[f] for f in frames if f in name_to_idx]
+            if len(ids) > 1:
+                anim_map[ids[0]] = {'ids': ids, 'duration': round(speed_tics / 35, 4)}
+
+        return new_list, anim_map
+
     # ── Identify door sectors ─────────────────────────────────────────────────
     # A linedef with a door special controls the sector referenced by its tag
     # (remote door) or by its left sidedef sector (local door, tag == 0).
@@ -1189,8 +1231,14 @@ def main():
           f"{len(tex_paths)} textures)...")
 
     map_path = os.path.join(OUT_DIR, 'objects', 'map.obj.json')
+    map_texs, map_anim_map = build_anim_groups(tex_paths)
+    for face in faces:
+        idx = face.get('texture')
+        if idx in map_anim_map:
+            face['textures'] = map_anim_map[idx]
+            del face['texture']
     write_obj_json({
-        'textures': tex_paths,
+        'textures': map_texs,
         'points':   [[round(p[0],4), round(p[1],4), round(p[2],4)] for p in pts],
         'faces':    faces
     }, map_path)
@@ -1322,7 +1370,13 @@ def main():
                 f['texture'] = g_to_local[f['texture']]
         d_pts_out = [[round(v, 4) for v in p] for p in d_pts_raw]
 
-        write_obj_json({'textures': local_texs, 'points': d_pts_out, 'faces': d_faces_raw},
+        door_texs, door_anim_map = build_anim_groups(local_texs)
+        for face in d_faces_raw:
+            idx = face.get('texture')
+            if idx in door_anim_map:
+                face['textures'] = door_anim_map[idx]
+                del face['texture']
+        write_obj_json({'textures': door_texs, 'points': d_pts_out, 'faces': d_faces_raw},
                        os.path.join(obj_dir, f'{door_name}.obj.json'))
 
         # ── Door instance ──────────────────────────────────────────────────────
@@ -1453,7 +1507,7 @@ def main():
     # map, export all remaining frames so the JS animation system can load them.
     print("Exporting animation frame siblings...")
     anim_exported = 0
-    for is_flat, frames in anim_sequences:
+    for is_flat, frames, _speed in anim_sequences:
         if is_flat:
             if not any('FLAT_' + f in tex_index for f in frames):
                 continue
