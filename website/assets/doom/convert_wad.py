@@ -26,6 +26,18 @@ SPAWN_PITCH    = None
 # 117 = DR Turbo door (same as 1 but faster); same sector geometry, different animation speed
 DOOR_SPECIALS = {1, 2, 26, 27, 28, 31, 32, 33, 34, 63, 117, 118}
 
+# Speed in Doom units/tic for each door special type (35 tics/s)
+DOOR_SPEED_BY_SPECIAL = {
+    # Slow (2 u/tic)
+    1: 2, 2: 2, 3: 2, 4: 2, 26: 2, 27: 2, 28: 2, 29: 2,
+    42: 2, 50: 2, 61: 2, 75: 2, 76: 2, 86: 2, 90: 2, 103: 2,
+    # Fast (8 u/tic)
+    31: 8, 32: 8, 33: 8, 34: 8, 63: 8,
+    # Turbo (16 u/tic vanilla, slowed 25% for visual comfort → 12 u/tic)
+    117: 12, 118: 12,
+}
+DOOR_WAIT_TICS = 150  # tics before auto-close (~4.3 s)
+
 # Linedef types that move a floor downward (Lower Lift, Lower Floor, etc.)
 # Static map shows these sectors with floor at min(adjacent_fh)
 FLOOR_MOVE_DOWN_SPECIALS = {23, 36, 37, 38, 56, 62, 82, 83, 84, 88}
@@ -704,15 +716,20 @@ def main():
     # ── Identify door sectors ─────────────────────────────────────────────────
     # A linedef with a door special controls the sector referenced by its tag
     # (remote door) or by its left sidedef sector (local door, tag == 0).
-    door_sector_ids = set()
+    door_sector_ids   = set()
+    door_sector_speed = {}  # si → doom units/tic
     for ld in linedefs:
         if ld['special'] in DOOR_SPECIALS:
+            speed = DOOR_SPEED_BY_SPECIAL.get(ld['special'], 2)
             if ld['tag'] != 0:
                 for si, sec in enumerate(sectors):
                     if sec['tag'] == ld['tag']:
                         door_sector_ids.add(si)
+                        door_sector_speed[si] = speed
             elif ld['left'] >= 0:
-                door_sector_ids.add(sidedefs[ld['left']]['sector'])
+                si = sidedefs[ld['left']]['sector']
+                door_sector_ids.add(si)
+                door_sector_speed[si] = speed
 
     print(f"  {len(door_sector_ids)} door sectors identified")
 
@@ -1141,8 +1158,16 @@ def main():
                               lwall_len, tw, th, r_sd['xo'], yo,
                               flip=True, light=r_sec2['light'])
 
-        # No top or bottom flat: top is at corridor ceiling (z-fight with static ceiling),
-        # bottom is at corridor floor (z-fight with static floor).
+        # No top flat: at corridor ceiling (z-fight with static ceiling).
+        # Bottom flat: ceiling flat of door sector, visible from below when panel rises.
+        has_sky = sec['ct'].startswith('F_SKY')
+        ct = ensure_flat_tex(sec['ct']) if not has_sky else -1
+        if ct >= 0:
+            chains = build_sector_polygons(si, linedefs, sidedefs, vertexes)
+            for chain in chains:
+                poly_doom = [vertexes[vi] for vi in chain]
+                add_flat_quad(d_pts_raw, d_faces_raw, ct, poly_doom, floor_h,
+                              is_floor=False, light=sec['light'])
 
         # Remap global tex indices (1-based) → local 1-based for this obj.json
         used_global = sorted(set(f['texture'] for f in d_faces_raw if 'texture' in f))
@@ -1158,17 +1183,29 @@ def main():
 
         # ── Door instance ──────────────────────────────────────────────────────
         inst_path = os.path.join(inst_dir, f'{door_name}.instance.json')
+        floor_h, ceil_h = door_heights[si]
+        travel_y    = round((ceil_h - floor_h) * SCALE, 4)
+        speed_tics  = door_sector_speed.get(si, 2)
+        open_s      = round((ceil_h - floor_h) / speed_tics / 35.0, 4)
+        wait_s      = round(DOOR_WAIT_TICS / 35.0, 4)
+        kf = [
+            {"t": 0.0,                              "translate": [0, 0, 0],          "rotate": [0, 0, 0]},
+            {"t": open_s,                           "translate": [0, travel_y, 0],   "rotate": [0, 0, 0]},
+            {"t": round(open_s + wait_s, 4),        "translate": [0, travel_y, 0],   "rotate": [0, 0, 0]},
+            {"t": round(open_s + wait_s + open_s, 4), "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+        ]
+        kf_lines = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
         inst_str = (
             '{\n'
             f'  "object":     "./assets/doom/objects/{door_name}.obj.json",\n'
             '  "position":   [0, 0, 0],\n'
             '  "rotation":   [0, 0, 0],\n'
-            '  "trigger":    "none",\n'
-            '  "loop":       false,\n'
+            '  "trigger":    "always",\n'
+            '  "loop":       true,\n'
             '  "collidable": true,\n'
             '  "radius":     null,\n'
             '  "damage":     null,\n'
-            '  "keyframes":  []\n'
+            f'  "keyframes":  [\n    {kf_lines}\n  ]\n'
             '}'
         )
         with open(inst_path, 'w') as f:
