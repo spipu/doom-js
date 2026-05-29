@@ -13,9 +13,13 @@ class Object3dFactory extends AbstractLoader {
     }
 
     get(code) {
-        if (!this._loaded) throw new Error('Object3dFactory is not loaded');
+        if (!this._loaded) {
+            throw new Error('Object3dFactory is not loaded');
+        }
         const obj = this._registry[code];
-        if (!obj) throw new Error('Object3d "' + code + '" not found in registry');
+        if (!obj) {
+            throw new Error('Object3d "' + code + '" not found in registry');
+        }
         return obj;
     }
 

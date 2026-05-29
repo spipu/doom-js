@@ -6,6 +6,8 @@ class Instance extends AbstractLoader {
         this._rotation  = [0, 0, 0];
         this._trigger     = 'none';
         this._loop        = false;
+        this._onlyOnce    = false;
+        this._done        = false;
         this._collidable  = false;
         this._radius      = null;
         this._keyframes        = [];
@@ -25,6 +27,8 @@ class Instance extends AbstractLoader {
         this._rotation  = data.rotation;
         this._trigger    = data.trigger;
         this._loop       = data.loop === true;
+        this._onlyOnce   = data.onlyOnce === true;
+        this._done       = false;
         this._collidable = data.collidable === true;
         this._radius     = data.radius;
         this._damage     = data.damage || null;
@@ -48,13 +52,27 @@ class Instance extends AbstractLoader {
         const m = new Matrix();
         m.identity();
         const t = new Matrix(); t.translation(px, py, pz); m.multiply(t);
-        if (irx) { const r = new Matrix(); r.rotationX(irx * DEG_TO_RAD); m.multiply(r); }
-        if (irz) { const r = new Matrix(); r.rotationZ(irz * DEG_TO_RAD); m.multiply(r); }
-        if (iry) { const r = new Matrix(); r.rotationY(iry * DEG_TO_RAD); m.multiply(r); }
-        if (dtx || dty || dtz) { const t2 = new Matrix(); t2.translation(dtx, dty, dtz); m.multiply(t2); }
-        if (drx) { const r = new Matrix(); r.rotationX(drx * DEG_TO_RAD); m.multiply(r); }
-        if (drz) { const r = new Matrix(); r.rotationZ(drz * DEG_TO_RAD); m.multiply(r); }
-        if (dry) { const r = new Matrix(); r.rotationY(dry * DEG_TO_RAD); m.multiply(r); }
+        if (irx) {
+            const r = new Matrix(); r.rotationX(irx * DEG_TO_RAD); m.multiply(r);
+        }
+        if (irz) {
+            const r = new Matrix(); r.rotationZ(irz * DEG_TO_RAD); m.multiply(r);
+        }
+        if (iry) {
+            const r = new Matrix(); r.rotationY(iry * DEG_TO_RAD); m.multiply(r);
+        }
+        if (dtx || dty || dtz) {
+            const t2 = new Matrix(); t2.translation(dtx, dty, dtz); m.multiply(t2);
+        }
+        if (drx) {
+            const r = new Matrix(); r.rotationX(drx * DEG_TO_RAD); m.multiply(r);
+        }
+        if (drz) {
+            const r = new Matrix(); r.rotationZ(drz * DEG_TO_RAD); m.multiply(r);
+        }
+        if (dry) {
+            const r = new Matrix(); r.rotationY(dry * DEG_TO_RAD); m.multiply(r);
+        }
         const p = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         this._worldCenter = [p[0], p[1], p[2]];
     }
@@ -79,6 +97,7 @@ class Instance extends AbstractLoader {
             deltaRotate:    [...this._delta.rotate],
             time:           this._time,
             playing:        this._playing,
+            done:           this._done,
         };
     }
 
@@ -93,27 +112,41 @@ class Instance extends AbstractLoader {
         this._delta.rotate    = [...prev.deltaRotate];
         this._time    = prev.time;
         this._playing = prev.playing;
+        this._done    = prev.done;
         this._computeWorldCenter();
     }
 
     checkDamage(user, dt) {
-        if (!this._damage || user.isDead()) return;
+        if (!this._damage || user.isDead()) {
+            return;
+        }
         const dx = user.getCenterX() - this._worldCenter[0];
         const dy = user.getCenterY() - this._worldCenter[1];
         const dz = user.getCenterZ() - this._worldCenter[2];
         const inRange = Math.sqrt(dx*dx + dy*dy + dz*dz) <= this._damage.radius;
         if (this._damage.type === 'direct') {
-            if (inRange && !this._wasInDamageRange) user.takeDamage(this._damage.delta);
+            if (inRange && !this._wasInDamageRange) {
+                user.takeDamage(this._damage.delta);
+            }
             this._wasInDamageRange = inRange;
         } else {
-            if (inRange) user.takeDamage(this._damage.delta * dt / 1000);
+            if (inRange) {
+                user.takeDamage(this._damage.delta * dt / 1000);
+            }
         }
     }
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {
-        if (this._keyframes.length === 0) return;
-        if (this._trigger === 'none') return;
+        if (this._keyframes.length === 0) {
+            return;
+        }
+        if (this._trigger === 'none') {
+            return;
+        }
+        if (this._done) {
+            return;
+        }
 
         const inRange = this._radius !== null &&
             Math.sqrt(
@@ -134,12 +167,21 @@ class Instance extends AbstractLoader {
             this._time = this._keyframes[0].t;
         }
 
-        if (!this._playing) return;
+        if (!this._playing) {
+            return;
+        }
 
         this._time += dt / 1000;
         if (this._time >= this._maxTime) {
-            this._time = this._loop ? this._time % this._maxTime : this._maxTime;
-            if (!this._loop) this._playing = false;
+            if (this._loop) {
+                this._time = this._time % this._maxTime;
+            } else {
+                this._time    = this._maxTime;
+                this._playing = false;
+                if (this._onlyOnce) {
+                    this._done = true;
+                }
+            }
         }
 
         this._computeWorldCenter();

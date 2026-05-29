@@ -23,14 +23,20 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     initCanvas(canvas) {
         const ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (!ctx) throw new Error('WebGL not available');
+        if (!ctx) {
+            throw new Error('WebGL not available');
+        }
         return ctx;
     }
 
     begin(engine) {
         const gl = engine.scrCtx;
-        if (!gl) return;
-        if (!this._program) this._setup(gl);
+        if (!gl) {
+            return;
+        }
+        if (!this._program) {
+            this._setup(gl);
+        }
         gl.useProgram(this._program);
         gl.viewport(0, 0, engine.scrWidth, engine.scrHeight);
         const bg = engine.background;
@@ -64,7 +70,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
                 const clampV  = fc[8] || false;
                 const key     = fc[4] + ',' + fc[6] + ',' + clampV;
-                if (!groups.has(key)) groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clampV, faces: [] });
+                if (!groups.has(key)) {
+                    groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clampV, faces: [] });
+                }
                 groups.get(key).faces.push(k);
             }
             return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
@@ -125,11 +133,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
 
-        if (!depthWriting) gl.depthMask(true);
+        if (!depthWriting) {
+            gl.depthMask(true);
+        }
     }
 
     _getTexture(gl, texture) {
-        if (this._texCache.has(texture)) return this._texCache.get(texture);
+        if (this._texCache.has(texture)) {
+            return this._texCache.get(texture);
+        }
         const tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
@@ -226,8 +238,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const shader = gl.createShader(type);
         gl.shaderSource(shader, src);
         gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
             console.error('Shader error:', gl.getShaderInfoLog(shader));
+        }
         return shader;
     }
 }

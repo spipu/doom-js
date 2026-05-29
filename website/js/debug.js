@@ -29,10 +29,18 @@ class Debug {
 
     update() {
         const lines = [];
-        if (this._engine)   lines.push(this._buildEngine());
-        if (this._user)     lines.push(this._buildUser());
-        if (this._keyboard) lines.push(this._buildKeyboard());
-        if (this._mouse)    lines.push(this._buildMouse());
+        if (this._engine) {
+            lines.push(this._buildEngine());
+        }
+        if (this._user) {
+            lines.push(this._buildUser());
+        }
+        if (this._keyboard) {
+            lines.push(this._buildKeyboard());
+        }
+        if (this._mouse) {
+            lines.push(this._buildMouse());
+        }
         this._el.innerText = lines.join('\n');
     }
 
