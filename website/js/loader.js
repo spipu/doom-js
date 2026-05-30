@@ -1,6 +1,6 @@
 class Loader {
     constructor() {
-        this._version = '1.272';
+        this._version = '1.276';
     }
 
     getVersion() {
@@ -18,6 +18,7 @@ class Loader {
             'js/light.js',
             'js/abstractLoader.js',
             'js/texture.js',
+            'js/face.js',
             'js/object3d.js',
             'js/zBuffer.js',
             'js/object3dRendererBase.js',

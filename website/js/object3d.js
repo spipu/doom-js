@@ -6,7 +6,6 @@ class Object3d extends AbstractLoader {
         this.pt2d          = [];
         this.ptCount       = 0;
         this.faceList      = [];
-        this.faceInfo      = [];
         this.faceCount     = 0;
         this.textureList   = [];
         this.textureCount  = 0;
@@ -89,8 +88,7 @@ class Object3d extends AbstractLoader {
         }
 
         const anim = animTextures ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration} : null;
-        this.faceList.push([pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, false, clampV, passableUser, passableEnemy, anim]);
-        this.faceInfo.push([[0, 0, 0], null]);
+        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, clampV, passableUser, passableEnemy, anim));
         this.faceCount++;
         return this;
     }
@@ -135,7 +133,7 @@ class Object3d extends AbstractLoader {
         this._localNormals = new Float32Array(this.faceCount * 3);
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
-            const A = this.ptOrigin[fc[0]], B = this.ptOrigin[fc[1]], C = this.ptOrigin[fc[2]];
+            const A = this.ptOrigin[fc.pts[0]], B = this.ptOrigin[fc.pts[1]], C = this.ptOrigin[fc.pts[2]];
             const abx = B[0]-A[0], aby = B[1]-A[1], abz = B[2]-A[2];
             const acx = C[0]-A[0], acy = C[1]-A[1], acz = C[2]-A[2];
             let nx = aby*acz - abz*acy;
@@ -164,8 +162,8 @@ class Object3d extends AbstractLoader {
         this._alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
-            fc[7] = fc[6] < 1 || (fc[4] !== null && this.textureList[fc[4]].isAlpha());
-            (fc[7] ? this._alphaFaces : this._opaqueFaces).push(k);
+            fc.isAlpha = (fc.alpha < 1) || (fc.textureId !== null && this.textureList[fc.textureId].isAlpha());
+            (fc.isAlpha ? this._alphaFaces : this._opaqueFaces).push(k);
         }
         this._executeLoadedCallback();
     }
@@ -191,7 +189,7 @@ class Object3d extends AbstractLoader {
         for (let k = 0; k < this.faceCount; k++) {
             const i = k * 3;
             const nx = this._localNormals[i], ny = this._localNormals[i+1], nz = this._localNormals[i+2];
-            const n = this.faceInfo[k][0];
+            const n = this.faceList[k].normal;
             n[0] = m00*nx + m10*ny + m20*nz;
             n[1] = m01*nx + m11*ny + m21*nz;
             n[2] = m02*nx + m12*ny + m22*nz;

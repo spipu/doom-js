@@ -15,8 +15,8 @@ class Collision {
         const obj = instance.getObject();
         const localTris = [];
         for (const fc of obj.faceList) {
-            if (fc[9]) continue;
-            const A = obj.ptOrigin[fc[0]], B = obj.ptOrigin[fc[1]], C = obj.ptOrigin[fc[2]];
+            if (fc.passableUser) continue;
+            const A = obj.ptOrigin[fc.pts[0]], B = obj.ptOrigin[fc.pts[1]], C = obj.ptOrigin[fc.pts[2]];
             localTris.push([[A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]]]);
         }
         const dc = {
@@ -182,8 +182,8 @@ class Collision {
     _buildStaticCollider(obj) {
         const floors = [], ceilings = [], walls = [];
         for (const fc of obj.faceList) {
-            if (fc[9]) continue;
-            const A = obj.ptOrigin[fc[0]], B = obj.ptOrigin[fc[1]], C = obj.ptOrigin[fc[2]];
+            if (fc.passableUser) continue;
+            const A = obj.ptOrigin[fc.pts[0]], B = obj.ptOrigin[fc.pts[1]], C = obj.ptOrigin[fc.pts[2]];
             const tri = this._makeTri([A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]]);
             if (!tri) continue;
             if (tri.n[1] > 0.7) {

@@ -25,20 +25,19 @@ class Object3dRendererFull extends Object3dRendererBase {
     draw(obj, engine) {
         for (const faceIndices of [obj._opaqueFaces, obj._alphaFaces]) {
             for (const k of faceIndices) {
-                const fc       = obj.faceList[k];
-                const faceInfo = obj.faceInfo[k];
-                const n      = faceInfo[0];
-                const p      = obj.pt3d[fc[0]];
+                const fc = obj.faceList[k];
+                const n  = fc.normal;
+                const p  = obj.pt3d[fc.pts[0]];
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
 
-                this._buildVertex(this._v0, engine, fc, faceInfo, obj, 0);
-                this._buildVertex(this._v1, engine, fc, faceInfo, obj, 1);
-                this._buildVertex(this._v2, engine, fc, faceInfo, obj, 2);
+                this._buildVertex(this._v0, engine, fc, obj, 0);
+                this._buildVertex(this._v1, engine, fc, obj, 1);
+                this._buildVertex(this._v2, engine, fc, obj, 2);
 
                 const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
-                const texture  = fc[4] !== null ? obj.textureList[fc[4]] : null;
-                const alpha    = fc[6];
-                const clampV  = fc[8] || false;
+                const texture  = fc.textureId !== null ? obj.textureList[fc.textureId] : null;
+                const alpha    = fc.alpha;
+                const clampV  = fc.clampV || false;
 
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
@@ -53,13 +52,14 @@ class Object3dRendererFull extends Object3dRendererBase {
 
     // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]
     // Indices 0-7 used by rasterizer, 8-9 (3D camera XY) used for clipping only
-    _buildVertex(out, engine, fc, faceInfo, obj, idx) {
-        const col  = this._pointColor(engine, fc[3], obj.pt3d[fc[idx]], faceInfo[0]);
-        const pt3d = obj.pt3d[fc[idx]];
-        const pt2d = obj.pt2d[fc[idx]];
+    _buildVertex(out, engine, fc, obj, idx) {
+        const ptIdx = fc.pts[idx];
+        const col  = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
+        const pt3d = obj.pt3d[ptIdx];
+        const pt2d = obj.pt2d[ptIdx];
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
         out[3] = col[0];  out[4] = col[1];  out[5] = col[2];
-        out[6] = fc[5][idx][0]; out[7] = fc[5][idx][1];
+        out[6] = fc.map[idx][0]; out[7] = fc.map[idx][1];
         out[8] = pt3d[0]; out[9] = pt3d[1];
     }
 
