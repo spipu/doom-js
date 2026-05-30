@@ -12,6 +12,14 @@ class Object3dRendererBase {
         return canvas.getContext('2d');
     }
 
+    _resolveTexId(fc, sceneMs) {
+        if (fc.animTextures === null) {
+            return fc.textureId;
+        }
+        const frameIdx = Math.floor(sceneMs / fc.animTextures.durationMs) % fc.animTextures.ids.length;
+        return fc.animTextures.ids[frameIdx];
+    }
+
     _pointColor(engine, color, pt, normal) {
         const col = this._col;
         col[0] = engine.ambientLight[0];

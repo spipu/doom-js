@@ -20,6 +20,7 @@ class Engine3d {
         this._deltaLast       = null;
         this._currentTimestamp = 0;
         this._fpsLastCheck    = null;
+        this._sceneMs         = 0;
 
         this.viewMatrix.identity();
 
@@ -42,6 +43,7 @@ class Engine3d {
         this._currentTimestamp = timestamp;
         this._deltaTime = this._deltaLast === null ? 0 : Math.min(timestamp - this._deltaLast, 50);
         this._deltaLast = timestamp;
+        this._sceneMs  += Math.round(this._deltaTime);
         return this;
     }
 
