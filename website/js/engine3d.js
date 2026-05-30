@@ -41,7 +41,7 @@ class Engine3d {
 
     calculateDeltaTime(timestamp) {
         this._currentTimestamp = timestamp;
-        this._deltaTime = this._deltaLast === null ? 0 : Math.min(timestamp - this._deltaLast, 50);
+        this._deltaTime = ((this._deltaLast === null) ? 0 : Math.min(timestamp - this._deltaLast, 50));
         this._deltaLast = timestamp;
         this._sceneMs  += Math.round(this._deltaTime);
         return this;
@@ -89,9 +89,15 @@ class Engine3d {
     }
 
     preComputeViewport() {
-        if (!this.scrWidth || !this.scrHeight || !this.fov) return false;
-        if (this.viewXMax <= this.viewXMin) return false;
-        if (this.viewYMax <= this.viewYMin) return false;
+        if (!this.scrWidth || !this.scrHeight || !this.fov) {
+            return false;
+        }
+        if (this.viewXMax <= this.viewXMin) {
+            return false;
+        }
+        if (this.viewYMax <= this.viewYMin) {
+            return false;
+        }
 
         let sx = this.scrWidth  / (this.viewXMax - this.viewXMin);
         let sy = this.scrHeight / (this.viewYMax - this.viewYMin);

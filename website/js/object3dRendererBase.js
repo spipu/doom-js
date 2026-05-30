@@ -34,9 +34,24 @@ class Object3dRendererBase {
             col[2] += tmp[2];
         }
 
-        if (col[0] < 0.) col[0] = 0.; if (col[0] > 255.) col[0] = 255.;
-        if (col[1] < 0.) col[1] = 0.; if (col[1] > 255.) col[1] = 255.;
-        if (col[2] < 0.) col[2] = 0.; if (col[2] > 255.) col[2] = 255.;
+        if (col[0] < 0.) {
+            col[0] = 0.;
+        }
+        if (col[0] > 255.) {
+            col[0] = 255.;
+        }
+        if (col[1] < 0.) {
+            col[1] = 0.;
+        }
+        if (col[1] > 255.) {
+            col[1] = 255.;
+        }
+        if (col[2] < 0.) {
+            col[2] = 0.;
+        }
+        if (col[2] > 255.) {
+            col[2] = 255.;
+        }
 
         col[0] = color[0] * col[0] / 255.;
         col[1] = color[1] * col[1] / 255.;
