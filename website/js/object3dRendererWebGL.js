@@ -71,7 +71,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 const clampV = fc.clampV || false;
                 const key    = fc.textureId + ',' + fc.alpha + ',' + clampV;
                 if (!groups.has(key)) {
-                    groups.set(key, { texId: fc.textureId, alpha: fc.alpha, isAlpha, clampV, faces: [] });
+                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, isAlpha, clampV, faces: [] });
                 }
                 groups.get(key).faces.push(k);
             }
@@ -86,7 +86,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         let depthWriting = true;
 
         for (const group of allGroups) {
-            const texture = group.texId !== null ? obj.textureList[group.texId] : null;
+            const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
+            const texture = resolvedTexId !== null ? obj.textureList[resolvedTexId] : null;
             const opaque  = !group.isAlpha;
 
             if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }

@@ -87,7 +87,7 @@ class Object3d extends AbstractLoader {
             throw new Error('pt3 ' + pt3 + ' undefined');
         }
 
-        const anim = animTextures ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration} : null;
+        const anim = animTextures ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null;
         this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, clampV, passableUser, passableEnemy, anim));
         this.faceCount++;
         return this;
