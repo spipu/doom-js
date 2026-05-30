@@ -23,8 +23,12 @@ class Object3d extends AbstractLoader {
     }
 
     ptsAdd(lst, center, scale) {
-        if (!center) center = [0., 0., 0.];
-        if (!scale)  scale  = 1.;
+        if (!center) {
+            center = [0., 0., 0.];
+        }
+        if (!scale) {
+            scale = 1.;
+        }
         center[0] = parseFloat(center[0]);
         center[1] = parseFloat(center[1]);
         center[2] = parseFloat(center[2]);
@@ -42,16 +46,27 @@ class Object3d extends AbstractLoader {
     }
 
     fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false, animTextures = null) {
-        if (!color)   color   = [255., 255., 255.];
+        if (!color) {
+            color = [255., 255., 255.];
+        }
         if (!texture && animTextures) {
             texture = animTextures.ids[0];
         }
-        if (!texture) texture = null;
-        if (!map)     map     = null;
-
-        if (texture > this.textureCount) texture = null;
-        if (texture === null) map = null;
-        if (map === null) map = [[0, 0], [1, 0], [1, 1]];
+        if (!texture) {
+            texture = null;
+        }
+        if (!map) {
+            map = null;
+        }
+        if (texture > this.textureCount) {
+            texture = null;
+        }
+        if (texture === null) {
+            map = null;
+        }
+        if (map === null) {
+            map = [[0, 0], [1, 0], [1, 1]];
+        }
 
         let alpha;
         if (color[3]) {
@@ -87,8 +102,8 @@ class Object3d extends AbstractLoader {
             throw new Error('pt3 ' + pt3 + ' undefined');
         }
 
-        const anim = animTextures ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null;
-        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, (texture ? texture-1 : null), map, alpha, clampV, passableUser, passableEnemy, anim));
+        const anim = ((animTextures) ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null);
+        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, ((texture) ? texture-1 : null), map, alpha, clampV, passableUser, passableEnemy, anim));
         this.faceCount++;
         return this;
     }
@@ -102,7 +117,9 @@ class Object3d extends AbstractLoader {
     }
 
     fcsAdd(lst, color) {
-        if (!color) color = [255., 255., 255.];
+        if (!color) {
+            color = [255., 255., 255.];
+        }
 
         for (let k = 0; k < lst.length; k++) {
             for (let l = 2; l < lst[k].length; l++) {
@@ -123,7 +140,9 @@ class Object3d extends AbstractLoader {
             let r = 0;
             for (let i = 0; i < n; i++) {
                 const d = (this.ptOrigin[i][0]-cx)**2 + (this.ptOrigin[i][1]-cy)**2 + (this.ptOrigin[i][2]-cz)**2;
-                if (d > r) r = d;
+                if (d > r) {
+                    r = d;
+                }
             }
             this._boundingRadius = Math.sqrt(r);
         } else {
@@ -162,8 +181,8 @@ class Object3d extends AbstractLoader {
         this._alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
-            fc.isAlpha = (fc.alpha < 1) || (fc.textureId !== null && this.textureList[fc.textureId].isAlpha());
-            (fc.isAlpha ? this._alphaFaces : this._opaqueFaces).push(k);
+            fc.isAlpha = ((fc.alpha < 1) || (fc.textureId !== null && this.textureList[fc.textureId].isAlpha()));
+            ((fc.isAlpha) ? this._alphaFaces : this._opaqueFaces).push(k);
         }
         this._executeLoadedCallback();
     }

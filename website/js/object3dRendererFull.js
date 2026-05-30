@@ -28,7 +28,9 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const fc = obj.faceList[k];
                 const n  = fc.normal;
                 const p  = obj.pt3d[fc.pts[0]];
-                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
+                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) {
+                    continue;
+                }
 
                 this._buildVertex(this._v0, engine, fc, obj, 0);
                 this._buildVertex(this._v1, engine, fc, obj, 1);
@@ -36,7 +38,7 @@ class Object3dRendererFull extends Object3dRendererBase {
 
                 const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
                 const resolvedTexId = this._resolveTexId(fc, engine._sceneMs);
-                const texture  = resolvedTexId !== null ? obj.textureList[resolvedTexId] : null;
+                const texture  = ((resolvedTexId !== null) ? obj.textureList[resolvedTexId] : null);
                 const alpha    = fc.alpha;
                 const clampV  = fc.clampV || false;
 
@@ -88,8 +90,12 @@ class Object3dRendererFull extends Object3dRendererBase {
         const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
         const cnt    = inside.filter(Boolean).length;
 
-        if (cnt === 3) return [[v0, v1, v2]];
-        if (cnt === 0) return [];
+        if (cnt === 3) {
+            return [[v0, v1, v2]];
+        }
+        if (cnt === 0) {
+            return [];
+        }
 
         if (cnt === 1) {
             const i = inside.indexOf(true);
@@ -147,7 +153,9 @@ class Object3dRendererFull extends Object3dRendererBase {
 
         const ymin = Math.max(0, Math.ceil(this._p1[1]));
         const ymax = Math.min(engine.scrHeight - 1, Math.max(this._p2[1], this._p3[1]));
-        if (ymin > ymax) return;
+        if (ymin > ymax) {
+            return;
+        }
 
         const dt12 = []; const dt23 = []; const dt13 = [];
         for (const i of [0, 1, 3, 4, 5]) {
@@ -168,7 +176,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             let lt1 = [];
 
             if (ly <= this._p2[1]) {
-                const al = dt12[1] ? (ly - this._p1[1]) / dt12[1] : 0;
+                const al = ((dt12[1]) ? (ly - this._p1[1]) / dt12[1] : 0);
                 lt0[2] = 1. / ((1.-al)/this._p1[2] + al/this._p2[2]);
                 lt0[0] = this._p1[0] + dt12[0]*al;
                 lt0[3] = this._p1[3] + dt12[3]*al;
@@ -179,7 +187,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                     lt0[7] = (this._p1[7] + dt12[7]*al) * text.height;
                 }
             } else {
-                const al = dt23[1] ? (ly - this._p2[1]) / dt23[1] : 0;
+                const al = ((dt23[1]) ? (ly - this._p2[1]) / dt23[1] : 0);
                 lt0[2] = 1. / ((1.-al)/this._p2[2] + al/this._p3[2]);
                 lt0[0] = this._p2[0] + dt23[0]*al;
                 lt0[3] = this._p2[3] + dt23[3]*al;
@@ -192,7 +200,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             }
 
             if (ly < this._p3[1]) {
-                const al = dt13[1] ? (ly - this._p1[1]) / dt13[1] : 0;
+                const al = ((dt13[1]) ? (ly - this._p1[1]) / dt13[1] : 0);
                 lt1[2] = 1. / ((1.-al)/this._p1[2] + al/this._p3[2]);
                 lt1[0] = this._p1[0] + dt13[0]*al;
                 lt1[3] = this._p1[3] + dt13[3]*al;
@@ -203,7 +211,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                     lt1[7] = (this._p1[7] + dt13[7]*al) * text.height;
                 }
             } else {
-                const al = dt23[1] ? (this._p3[1] - ly) / dt23[1] : 0;
+                const al = ((dt23[1]) ? (this._p3[1] - ly) / dt23[1] : 0);
                 lt1[2] = 1. / ((1.-al)/this._p3[2] + al/this._p2[2]);
                 lt1[0] = this._p3[0] - dt23[0]*al;
                 lt1[3] = this._p3[3] - dt23[3]*al;
@@ -215,14 +223,20 @@ class Object3dRendererFull extends Object3dRendererBase {
                 }
             }
 
-            if (lt0[0] === lt1[0]) continue;
-            if (lt0[0] > lt1[0]) { const t = lt0; lt0 = lt1; lt1 = t; }
+            if (lt0[0] === lt1[0]) {
+                continue;
+            }
+            if (lt0[0] > lt1[0]) {
+                const t = lt0; lt0 = lt1; lt1 = t;
+            }
 
             const xMin  = Math.ceil(lt0[0]);
             const xMax  = Math.ceil(lt1[0]) - 1;
             const lxMin = Math.max(0, xMin);
             const lxMax = Math.min(engine.scrWidth - 1, xMax);
-            if (lxMin > lxMax) continue;
+            if (lxMin > lxMax) {
+                continue;
+            }
 
             const dt = [];
             dt[3] = lt1[3] - lt0[3];
@@ -234,21 +248,28 @@ class Object3dRendererFull extends Object3dRendererBase {
             }
 
             for (let lx = lxMin; lx <= lxMax; lx++) {
-                const al = (xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.;
+                const al = ((xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.);
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
                 let post = -1;
                 if (text) {
-                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;  if (xt < 0) xt += text.width;
+                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;
+                    if (xt < 0) {
+                        xt += text.width;
+                    }
                     let yt_raw = lz * (lt0[7] + dt[7]*al);
-                    let yt = clampV
+                    let yt = ((clampV)
                         ? Math.min(text.height - 1, Math.max(0, Math.trunc(yt_raw)))
-                        : (Math.trunc(yt_raw) % text.height + text.height) % text.height;
+                        : (Math.trunc(yt_raw) % text.height + text.height) % text.height);
                     post = 4 * (xt + yt * text.width);
-                    if (text.data[post+3] === 0) continue;  // fully transparent: skip z-buffer write
+                    if (text.data[post+3] === 0) {
+                        continue;
+                    }
                 }
 
-                if (!engine.zBuffer.set(lx, ly, lz)) continue;
+                if (!engine.zBuffer.set(lx, ly, lz)) {
+                    continue;
+                }
 
                 const posi = 4 * (lx + ly * engine.scrWidth);
                 let r, g, b, a;

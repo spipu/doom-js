@@ -49,7 +49,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     draw(obj, engine) {
         const gl  = engine.scrCtx;
-        if (!gl) return;
+        if (!gl) {
+            return;
+        }
         const loc = this._loc;
 
         gl.uniform1f(loc.sx,   engine.projScaleX);
@@ -67,7 +69,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 const fc     = obj.faceList[k];
                 const n      = fc.normal;
                 const p      = obj.pt3d[fc.pts[0]];
-                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
+                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) {
+                    continue;
+                }
                 const clampV = fc.clampV || false;
                 const key    = fc.textureId + ',' + fc.alpha + ',' + clampV;
                 if (!groups.has(key)) {
@@ -87,7 +91,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
         for (const group of allGroups) {
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
-            const texture = resolvedTexId !== null ? obj.textureList[resolvedTexId] : null;
+            const texture = ((resolvedTexId !== null) ? obj.textureList[resolvedTexId] : null);
             const opaque  = !group.isAlpha;
 
             if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }
@@ -101,7 +105,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     const ptIdx = fc.pts[v];
                     const pt  = obj.pt3d[ptIdx];
                     const col = this._pointColor(engine, fc.color, pt, fc.normal);
-                    const uv  = fc.map ? fc.map[v] : [0, 0];
+                    const uv  = ((fc.map) ? fc.map[v] : [0, 0]);
                     data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
                     data[di++] = col[0]; data[di++] = col[1]; data[di++] = col[2];
                     data[di++] = uv[0];  data[di++] = uv[1];
@@ -120,7 +124,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
 
             gl.uniform1f(loc.alpha, group.alpha);
-            gl.uniform1i(loc.clampV, group.clampV ? 1 : 0);
+            gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
