@@ -64,14 +64,14 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const buildGroups = (faceIndices, isAlpha) => {
             const groups = new Map();
             for (const k of faceIndices) {
-                const fc      = obj.faceList[k];
-                const n       = obj.faceInfo[k][0];
-                const p       = obj.pt3d[fc[0]];
+                const fc     = obj.faceList[k];
+                const n      = fc.normal;
+                const p      = obj.pt3d[fc.pts[0]];
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) continue;
-                const clampV  = fc[8] || false;
-                const key     = fc[4] + ',' + fc[6] + ',' + clampV;
+                const clampV = fc.clampV || false;
+                const key    = fc.textureId + ',' + fc.alpha + ',' + clampV;
                 if (!groups.has(key)) {
-                    groups.set(key, { texId: fc[4], alpha: fc[6], isAlpha, clampV, faces: [] });
+                    groups.set(key, { texId: fc.textureId, alpha: fc.alpha, isAlpha, clampV, faces: [] });
                 }
                 groups.get(key).faces.push(k);
             }
@@ -95,13 +95,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const data = new Float32Array(group.faces.length * 3 * 8);
             let di = 0;
             for (const k of group.faces) {
-                const fc     = obj.faceList[k];
-                const normal = obj.faceInfo[k][0];
-                const map    = fc[5];
+                const fc  = obj.faceList[k];
                 for (let v = 0; v < 3; v++) {
-                    const pt  = obj.pt3d[fc[v]];
-                    const col = this._pointColor(engine, fc[3], pt, normal);
-                    const uv  = map ? map[v] : [0, 0];
+                    const ptIdx = fc.pts[v];
+                    const pt  = obj.pt3d[ptIdx];
+                    const col = this._pointColor(engine, fc.color, pt, fc.normal);
+                    const uv  = fc.map ? fc.map[v] : [0, 0];
                     data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
                     data[di++] = col[0]; data[di++] = col[1]; data[di++] = col[2];
                     data[di++] = uv[0];  data[di++] = uv[1];
