@@ -1,6 +1,8 @@
+const DEG_TO_RAD = Math.PI / 180;
+
 class Bootstrap {
     constructor() {
-        this._version = '1.299';
+        this._version = '1.300';
     }
 
     getVersion() {
@@ -39,7 +41,6 @@ class Bootstrap {
             'js/loader/textureLoader.js',
             'js/loader/worldLoader.js',
             'js/loader.js',
-            'js/constants.js',
             'js/matrix.js',
             'js/zBuffer.js',
             'js/renderer/object3dRendererBase.js',
