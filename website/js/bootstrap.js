@@ -11,6 +11,18 @@ class Bootstrap {
         return asset + '?v=' + this._version;
     }
 
+    fetchJson(url, callback) {
+        fetch(this.buildUrl(url))
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+                }
+                return r.json();
+            })
+            .then(data => callback(data))
+            .catch(e => console.error('Failed to load "' + url + '": ' + e));
+    }
+
     init() {
         [
             'js/entity/abstractLoadedEntity.js',
