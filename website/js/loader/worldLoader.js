@@ -20,6 +20,50 @@ class WorldLoader {
 
         this._loaded = false;
         this._world = new World(0, url, () => {this._checkFullyLoaded(); });
+        this._initialiseEntityFromUrl(this._world);
+    }
+
+    _initialiseEntityFromUrl(entity) {
+        this._fetchJson(entity.getUrl(), data => {
+
+            loader.objects().loadByCode('map', data.map);
+            for (const [code, url] of Object.entries(data.instances)) {
+                loader.instances().loadByCode(code, url);
+            }
+
+            entity._user         = this._initUser(data.user)
+            entity._background   = data.background || [0, 0, 0];
+            entity._lightAmbient = data.lights.ambient;
+            entity._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
+            entity.setLoaded();
+        });
+    }
+    
+    _initUser(dataUser) {
+        const user = new User(dataUser.position[0], dataUser.position[1], dataUser.position[2], dataUser.yaw, dataUser.pitch, dataUser.maxEnergy)
+            .setHeight(dataUser.height)
+            .setEyeRatio(dataUser.eyeRatio);
+        
+        if (dataUser.radius          !== undefined) {
+            user.setRadius(dataUser.radius);
+        }
+        if (dataUser.gravity         !== undefined) {
+            user.setGravity(dataUser.gravity);
+        }
+        if (dataUser.maxJumpVelocity !== undefined) {
+            user.setMaxJumpVelocity(dataUser.maxJumpVelocity);
+        }
+        if (dataUser.maxSlopeAngle   !== undefined) {
+            user.setMaxSlopeAngle(dataUser.maxSlopeAngle);
+        }
+        if (dataUser.moveSpeed       !== undefined) {
+            user.setMoveSpeed(dataUser.moveSpeed);
+        }
+        if (dataUser.stepHeight      !== undefined) {
+            user.setStepHeight(dataUser.stepHeight);
+        }
+
+        return user;
     }
 
     get() {
@@ -45,5 +89,17 @@ class WorldLoader {
         if (this._world !== null) {
             this._world.finalizeInit();
         }
+    }
+
+    _fetchJson(url, callback) {
+        fetch(bootstrap.buildUrl(url))
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+                }
+                return r.json();
+            })
+            .then(data => callback(data))
+            .catch(e => console.error('Failed to load "' + url + '": ' + e));
     }
 }

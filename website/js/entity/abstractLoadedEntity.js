@@ -25,16 +25,4 @@ class AbstractLoadedEntity {
 
     finalizeInit() {
     }
-
-    _fetchJson(url, callback) {
-        fetch(bootstrap.buildUrl(url))
-            .then(r => {
-                if (!r.ok) {
-                    throw new Error('HTTP ' + r.status + ' ' + r.statusText);
-                }
-                return r.json();
-            })
-            .then(data => callback(data))
-            .catch(e => console.error('Failed to load "' + url + '": ' + e));
-    }
 }
