@@ -1,17 +1,13 @@
 class World extends AbstractLoadedEntity {
-    constructor(url) {
-        super();
+    constructor(id, url, callback) {
+        super(id, url, callback);
+
         this._user          = null;
         this._background    = [0, 0, 0];
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
         this._keyboardBound = false;
-
-        loader.reset();
-        loader.objects().reset();
-        loader.instances().reset();
-        loader.addInternalCallback(() => this.initOnFullyLoaded());
 
         this._fetchJson(url, data => this._init(data));
     }
@@ -44,16 +40,17 @@ class World extends AbstractLoadedEntity {
         this._lightAmbient = data.lights.ambient;
         this._lights = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
 
-        loader.objects().load('map', data.map);
+        loader.objects().loadByCode('map', data.map);
         for (const [code, url] of Object.entries(data.instances)) {
-            loader.instances().load(code, url);
+            loader.instances().loadByCode(code, url);
         }
 
+        this.setLoaded();
     }
 
-    initOnFullyLoaded() {
+    finalizeInit() {
         this._collision = new Collision();
-        this._collision.addMap(loader.objects().get('map'));
+        this._collision.addMap(loader.objects().getByCode('map'));
         loader.instances().getAll().forEach(inst => this._collision.addInstance(inst));
         // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
         // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
@@ -137,7 +134,7 @@ class World extends AbstractLoadedEntity {
     }
 
     getMap() {
-        return loader.objects().get('map');
+        return loader.objects().getByCode('map');
     }
 
     getInstances() {

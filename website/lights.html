@@ -25,8 +25,6 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/bootstrap.js" ></script>
         <script>
-loader.objects().load('ground', 'assets/objects/ground.obj.json');
-loader.objects().load('light',  'assets/objects/light.obj.json');
 
 var engine = null;
 var obj_z = 25.;
@@ -92,25 +90,27 @@ function animate(timestamp)
 
     engine.matrixPush();
     engine.matrixTranslate(p1[0], p1[1], p1[2]);
-    engine.drawObject(loader.objects().get('light'));
+    engine.drawObject(loader.objects().getByCode('light'));
     engine.matrixPop();
 
     engine.matrixPush();
     engine.matrixTranslate(p2[0], p2[1], p2[2]);
-    engine.drawObject(loader.objects().get('light'));
+    engine.drawObject(loader.objects().getByCode('light'));
     engine.matrixPop();
 
     engine.matrixPush();
     engine.matrixTranslate(p3[0], p3[1], p3[2]);
-    engine.drawObject(loader.objects().get('light'));
+    engine.drawObject(loader.objects().getByCode('light'));
     engine.matrixPop();
 
-    engine.drawObject(loader.objects().get('ground'));
+    engine.drawObject(loader.objects().getByCode('ground'));
     engine.drawFinish();
     debug.update();
     requestAnimationFrame(animate);
 }
 
+loader.objects().loadByCode('ground', 'assets/objects/ground.obj.json');
+loader.objects().loadByCode('light',  'assets/objects/light.obj.json');
 loader.setCallback(init);
         </script>
     </body>

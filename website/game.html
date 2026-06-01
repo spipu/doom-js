@@ -25,8 +25,6 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/bootstrap.js" ></script>
         <script>
-loader.objects().load('ground', 'assets/objects/ground.obj.json');
-loader.objects().load('van', 'assets/objects/van.obj.json');
 
 var engine = null;
 var obj_x =-5.;
@@ -99,15 +97,17 @@ function animate(timestamp)
     engine.matrixRotateY(obj_a);
     engine.lightCalculatePosition(light2);
     engine.lightCalculatePosition(light3);
-    engine.drawObject(loader.objects().get('van'));
+    engine.drawObject(loader.objects().getByCode('van'));
     engine.matrixPop();
 
-    engine.drawObject(loader.objects().get('ground'));
+    engine.drawObject(loader.objects().getByCode('ground'));
     engine.drawFinish();
     debug.update();
     requestAnimationFrame(animate);
 }
 
+loader.objects().loadByCode('ground', 'assets/objects/ground.obj.json');
+loader.objects().loadByCode('van', 'assets/objects/van.obj.json');
 loader.setCallback(init);
         </script>
     </body>

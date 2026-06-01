@@ -30,9 +30,9 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         <script src="js/bootstrap.js" ></script>
         <script>
 
-const world = new World('./assets/world/definition.json');
-
 let engine = null;
+let world = null;
+
 const energyOverlay = document.getElementById('energy-overlay');
 
 const keyboard = new InputKeyboard();
@@ -43,7 +43,9 @@ const debug    = new Debug(document.getElementById('debug'))
 
 function init()
 {
+    world = loader.world().get();
     debug.bindUser(world.getUser());
+
 
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
     engine.setScreen(800, 600);
@@ -52,7 +54,7 @@ function init()
     engine.setZBuffer(0.1, 100);
     debug.bindEngine(engine);
 
-    engine.initFromWorld(world);
+    engine.initFromWorld(loader.world().get());
 
     requestAnimationFrame(animate);
 }
@@ -70,7 +72,9 @@ function animate(timestamp)
     requestAnimationFrame(animate);
 }
 
+loader.world().load('./assets/world/definition.json');
 loader.setCallback(init);
+
         </script>
     </body>
 </html>
