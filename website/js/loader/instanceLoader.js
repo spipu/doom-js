@@ -12,7 +12,7 @@ class InstanceLoader extends AbstractLoader {
     }
 
     _initialiseEntityFromUrl(entity) {
-        this._fetchJson(
+        bootstrap.fetchJson(
             entity.getUrl(),
             data => {
                 entity._objectId   = loader.objects().load(data.object);
