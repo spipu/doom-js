@@ -1,6 +1,6 @@
 class Bootstrap {
     constructor() {
-        this._version = '1.298';
+        this._version = '1.299';
     }
 
     getVersion() {
