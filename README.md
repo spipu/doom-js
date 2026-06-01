@@ -30,8 +30,9 @@ Then open `http://localhost:8080` in a browser.
 | `lights.html` | Coloured light sources demo (arrow keys move lights) |
 | `game.html` | Interactive van — drive it with the arrow keys |
 | `world.html` | First-person navigation inside a 3D labyrinth |
+| `doom.html` | First-person navigation in Freedoom E1M1 (WIP) |
 
-## Controls (world.html)
+## Controls (world.html / doom.html)
 
 | Input | Action |
 |---|---|
@@ -41,7 +42,7 @@ Then open `http://localhost:8080` in a browser.
 | Shift | Jump |
 | E | Interact (open door, trigger lift) |
 | Mouse (click canvas first) | Look around |
-| U / I | Rotate left / right (keyboard fallback if no Pointer Lock) |
+| IJKL | Rotate (keyboard fallback if no Pointer Lock) |
 | ESC | Release mouse |
 
 ## Renderer modes
@@ -57,7 +58,7 @@ Four rendering modes are available via the **Renderer** selector on `objects.htm
 
 ## Objects
 
-Thirteen 3D objects are included in `website/objects/`:
+Thirteen 3D objects are included in `website/assets/objects/`:
 `cube`, `sphere`, `torus`, `lotus`, `helico_military`, `helico_civil`, `tank`, `car`, `van`, `dyno`, `head`, `plane`, `ship`, `teddy`
 
 ## Architecture
@@ -65,56 +66,66 @@ Thirteen 3D objects are included in `website/objects/`:
 ```
 website/
 ├── js/
-│   ├── loader.js                Loads all scripts; provides buildUrl() for cache busting
-│   ├── constants.js             Shared constants (DEG_TO_RAD)
-│   ├── abstractLoader.js        Base class for async loaders (isLoaded, setLoadedCallback, _fetchJson)
-│   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering)
-│   ├── object3d.js              3D object (geometry, textures, projection)
-│   ├── object3dFactory.js       Object registry; async JSON loader; fires setLoadedCallback when ready
-│   ├── object3dRendererBase.js  Base renderer class (shared utilities)
-│   ├── object3dRendererFull.js  Per-pixel z-buffer + textures (CPU)
-│   ├── object3dRendererFlat.js  Flat shading + Painter's algorithm
-│   ├── object3dRendererFast.js  Wireframe (canvas 2D)
-│   ├── object3dRendererWebGL.js WebGL renderer (GLSL shaders, GPU z-buffer)
-│   ├── object3dRendererFactory.js  Selects and instantiates the right renderer
-│   ├── zBuffer.js               Z-buffer
-│   ├── matrix.js                4×4 transformation matrices
-│   ├── light.js                 Point light sources
-│   ├── instance.js              Animated 3D object (keyframes, triggers, damage)
-│   ├── instanceFactory.js       Instance registry; async JSON loader; fires setLoadedCallback when ready
+│   ├── bootstrap.js             First script loaded; cache busting (buildUrl), fetchJson, DEG_TO_RAD
+│   ├── loader.js                Global Loader — synchronises all sub-loaders, fires app callback
+│   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering loop)
 │   ├── collision.js             FPS physics: floor/ceiling/wall detection, platform riding
 │   ├── inputKeyboard.js         Keyboard input (e.code, Set-based)
 │   ├── inputMouse.js            Mouse input via Pointer Lock API
-│   ├── user.js                  FPS player (physics, gravity, jump, crouch, energy)
-│   ├── world.js                 Scene orchestrator: loads definition.json, fires setLoadedCallback when ready
-│   └── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
-├── objects/                     3D objects in .obj.json format
-├── world/
-│   ├── definition.json          Scene definition (player, lights, instances)
-│   ├── objects/                 Map and interactive object geometry
-│   ├── instances/               Instance descriptors (.instance.json)
-│   └── texture/                 World textures
-└── texture/                     Shared texture images
+│   ├── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
+│   ├── matrix.js                4×4 transformation matrices
+│   ├── zBuffer.js               Z-buffer
+│   ├── entity/
+│   │   ├── abstractLoadedEntity.js  Base class: id, url, setLoaded(), finalizeInit()
+│   │   ├── face.js              Face data (vertices, color, texture, UV, flags)
+│   │   ├── light.js             Point light source
+│   │   ├── texture.js           Texture image data + alpha detection
+│   │   ├── object3d.js          3D geometry (vertices, faces, normals, projection)
+│   │   ├── instance.js          Animated 3D object (keyframes, triggers, damage)
+│   │   ├── user.js              FPS player (physics, gravity, jump, crouch, energy)
+│   │   └── world.js             FPS scene (user, lights, collision, update loop)
+│   ├── loader/
+│   │   ├── abstractLoader.js    Base loader: load/loadByCode/get/getByCode, registry, callbacks
+│   │   ├── textureLoader.js     Loads images, deduplicates by URL
+│   │   ├── object3dLoader.js    Parses .obj.json, feeds geometry to Object3d
+│   │   ├── instanceLoader.js    Parses .instance.json, links to Object3d
+│   │   └── worldLoader.js       Parses definition.json, creates User + lights
+│   └── renderer/
+│       ├── object3dRendererBase.js   Shared renderer utilities
+│       ├── object3dRendererList.js   Selects and instantiates the right renderer
+│       ├── object3dRendererFull.js   Per-pixel z-buffer + textures (CPU)
+│       ├── object3dRendererFlat.js   Flat shading + Painter's algorithm
+│       ├── object3dRendererFast.js   Wireframe (canvas 2D)
+│       └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer)
+└── assets/
+    ├── objects/                 Generic 3D objects (.obj.json)
+    ├── texture/                 Generic textures
+    ├── world/                   FPS world map + instances + textures
+    └── doom/                    Freedoom E1M1 map + instances + textures
 ```
 
-## World definition format
+## Loading pattern
 
-The FPS world is defined in `world/definition.json`:
+All asset loading is coordinated by the global `loader` object:
 
-```json
-{
-  "user": { "position": [x, y, z], "yaw": 180, "height": 0.85, ... },
-  "lights": { "ambient": [r, g, b], "sources": [...] },
-  "map": "./world/objects/map.obj.json",
-  "instances": { "door": "./world/instances/door.instance.json", ... }
+```javascript
+// Pages without a world (example, game, lights)
+loader.objects().loadByCode('van', 'assets/objects/van.obj.json');
+loader.setCallback(init);
+
+// FPS pages (world, doom)
+loader.world().load('./assets/world/definition.json');
+loader.setCallback(init);
+
+function init() {
+    const world = loader.world().get();
+    // ...
 }
 ```
 
-Each `.instance.json` supports keyframe animation, collision, proximity/action triggers, and damage zones.
-
 ## Cache busting
 
-`js/loader.js` exposes a global `loader` object. All asset URLs (JS, JSON, textures) are loaded via `loader.buildUrl(url)`, appending `?v=<version>`. Increment `this._version` in `loader.js` after any file change to force a browser cache refresh.
+All asset URLs go through `bootstrap.buildUrl(url)`, appending `?v=<version>`. Increment `this._version` in `bootstrap.js` after any file change to force a browser cache refresh.
 
 ## License
 
