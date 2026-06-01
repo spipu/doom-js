@@ -1,16 +1,14 @@
 class Object3dLoader extends AbstractLoader {
-    _create(id, url, callback) {
-        const entity = new Object3d(id, url, callback);
-
-        if (entity.getUrl()) {
-            this._initialiseEntityFromUrl(entity);
-        }
-
-        return entity;
+    constructor(loadedCallback) {
+        super('object3d', loadedCallback);
     }
 
     _alreadyLoaded(url) {
         return null;
+    }
+
+    _create(id, url, callback) {
+        return new Object3d(id, url, callback);
     }
 
     _initialiseEntityFromUrl(entity) {

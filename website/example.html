@@ -46,7 +46,7 @@ function render()
     engine.matrixTranslate(4, 5, -37);
     engine.matrixRotateY(-30);
     engine.matrixRotateX(-60);
-    engine.drawObject(loader.objects().get('lotus'));
+    engine.drawObject(loader.objects().getByCode('lotus'));
     
     engine.drawFinish();
 }

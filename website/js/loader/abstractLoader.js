@@ -6,6 +6,7 @@ class AbstractLoader {
     }
 
     reset() {
+        this._debug('reset');
         this._loaded       = true;
         this._entities     = [];
         this._codeRegistry = {};
@@ -44,6 +45,10 @@ class AbstractLoader {
             () => {this._checkFullyLoaded(); }
         );
 
+        if (url !== null) {
+            this._initialiseEntityFromUrl(entity);
+        }
+
         this._entities[entity.getId()] = entity;
         return entity.getId();
     }
@@ -67,12 +72,17 @@ class AbstractLoader {
         throw this._generateException('Not implemented');
     }
 
+    _initialiseEntityFromUrl(entity) {
+        throw this._generateException('Not implemented');
+    }
+
     _alreadyLoaded(url) {
         throw this._generateException('Not implemented');
     }
 
     _checkFullyLoaded() {
         if (this._entities.every(e => e.isLoaded())) {
+            this._debug('loaded');
             this._loaded = true;
             this._loadedCallback();
         }
@@ -102,5 +112,9 @@ class AbstractLoader {
 
     _generateException(message) {
         return new Error(this._factoryName + ' - ' + message);
+    }
+
+    _debug(message) {
+        console.log(this._factoryName + ' - ' + message);
     }
 }

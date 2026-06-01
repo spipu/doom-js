@@ -45,7 +45,7 @@ class Debug {
     }
 
     _buildEngine() {
-        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode() + ' | v' + loader.getVersion();
+        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode() + ' | v' + bootstrap.getVersion();
     }
 
     _buildUser() {

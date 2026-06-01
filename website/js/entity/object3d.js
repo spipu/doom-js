@@ -22,23 +22,6 @@ class Object3d extends AbstractLoadedEntity {
         return this;
     }
 
-    ptsAdd(lst, center, scale) {
-        if (!center) {
-            center = [0., 0., 0.];
-        }
-        if (!scale) {
-            scale = 1.;
-        }
-        center[0] = parseFloat(center[0]);
-        center[1] = parseFloat(center[1]);
-        center[2] = parseFloat(center[2]);
-
-        for (let k = 0; k < lst.length; k++)
-            this.ptAdd(scale*(lst[k][0]-center[0]), scale*(lst[k][1]-center[1]), scale*(lst[k][2]-center[2]));
-
-        return this;
-    }
-
     textureAdd(url) {
         this._textureIds.push(loader.textures().load(url));
         return this;
@@ -115,21 +98,7 @@ class Object3d extends AbstractLoadedEntity {
         return this.ptCount;
     }
 
-    fcsAdd(lst, color) {
-        if (!color) {
-            color = [255., 255., 255.];
-        }
-
-        for (let k = 0; k < lst.length; k++) {
-            for (let l = 2; l < lst[k].length; l++) {
-                this.fcAdd(lst[k][0], lst[k][l-1], lst[k][l], color);
-            }
-        }
-
-        return this;
-    }
-
-    ready() {
+    finalizeInit() {
         const n = this.ptCount;
         if (n > 0) {
             let cx = 0, cy = 0, cz = 0;
@@ -148,6 +117,7 @@ class Object3d extends AbstractLoadedEntity {
             this._center = [0, 0, 0];
             this._boundingRadius = 0;
         }
+
         this._localNormals = new Float32Array(this.faceCount * 3);
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
@@ -163,44 +133,13 @@ class Object3d extends AbstractLoadedEntity {
             this._localNormals[k*3+1] = ny;
             this._localNormals[k*3+2] = nz;
         }
-        const usedIds = new Set();
-        for (const fc of this.faceList) {
-            if (fc.textureId !== null) {
-                usedIds.add(fc.textureId);
-            }
-            if (fc.animTextures !== null) {
-                for (const id of fc.animTextures.ids) {
-                    usedIds.add(id);
-                }
-            }
-        }
-        if (usedIds.size === 0) {
-            this.initOnFullyLoaded();
-            return this;
-        }
-        let pending = usedIds.size;
-        const onTextureLoaded = () => {
-            if (--pending === 0) {
-                this.initOnFullyLoaded();
-            }
-        };
-        for (const id of usedIds) {
-            loader.textures().addLoadCallback(id, onTextureLoaded);
-        }
-        return this;
-    }
 
-    initOnFullyLoaded() {
         this._opaqueFaces = [];
         this._alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
             fc.isAlpha = ((fc.alpha < 1) || (fc.textureId !== null && loader.textures().get(fc.textureId).isAlpha()));
             ((fc.isAlpha) ? this._alphaFaces : this._opaqueFaces).push(k);
-        }
-        this._executeLoadedCallback();
-        if (this._onReadyCallback) {
-            this._onReadyCallback();
         }
     }
 

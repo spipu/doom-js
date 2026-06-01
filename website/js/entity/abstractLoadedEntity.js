@@ -1,31 +1,29 @@
 class AbstractLoadedEntity {
-    constructor(url, callback) {
+    constructor(id, url, callback) {
+        this._id             = id;
         this._url            = url;
-        this._loadedCallback = callback;
         this._loaded         = false;
+        this._loadedCallback = callback;
     }
 
-    setLoadedCallback(callback) {
-        this._loadedCallback = callback;
-        if (this._loaded) {
-            this._executeLoadedCallback();
-        }
+    getId() {
+        return this._id;
+    }
+
+    getUrl() {
+        return this._url;
     }
 
     isLoaded() {
         return this._loaded;
     }
 
-    _resetIsLoaded() {
-        this._loaded = false;
+    setLoaded() {
+        this._loaded = true;
+        this._loadedCallback();
     }
 
-    _executeLoadedCallback() {
-        this._loaded = true;
-        if (this._loadedCallback) {
-            this._loadedCallback();
-            this._loadedCallback = null;
-        }
+    finalizeInit() {
     }
 
     _fetchJson(url, callback) {

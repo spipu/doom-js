@@ -85,19 +85,20 @@ function setup()
 
 function changeObject()
 {
+    if (engine) {
+        engine.destroy();
+        engine = null;
+    }
+
     const obj = document.getElementById('obj').value;
+
     loader.reset();
-    loader.objects().reset();
-    loader.objects().load('object', './assets/objects/' + obj + '.obj.json');
+    loader.objects().load('./assets/objects/' + obj + '.obj.json');
     loader.setCallback(init);
 }
 
 function init()
 {
-    if (engine) {
-        engine.destroy();
-        engine = null;
-    }
 
     const res      = document.getElementById('res').value;
     const renderer = document.getElementById('renderer').value;
@@ -155,10 +156,10 @@ function animate(timestamp)
     engine.matrixTranslate(0, 0, 35);
     engine.matrixRotateY(angle_x);
     engine.matrixRotateX(angle_y);
-    engine.drawObject(loader.objects().get('object'));
+    engine.drawObject(loader.objects().get(0));
     engine.drawFinish();
 
-    const obj = loader.objects().get('object');
+    const obj = loader.objects().get(0);
     document.getElementById('div_debug').innerHTML =
         obj.getFaceCount() + ' pts | ' + obj.getVertexCount() + ' faces | ' +
         engine.getFps() + ' fps | renderer: ' + engine.getRendererCode();

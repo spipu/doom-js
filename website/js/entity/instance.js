@@ -1,6 +1,8 @@
 class Instance extends AbstractLoadedEntity {
-    constructor() {
-        super();
+    constructor(id, url, callback) {
+        super(id, url, callback);
+
+        this._objectId  = null;
         this._object    = null;
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
@@ -21,25 +23,9 @@ class Instance extends AbstractLoadedEntity {
         this._prevTransform    = null;
     }
 
-    _load(data, object) {
-        this._object    = object;
-        this._position  = data.position;
-        this._rotation  = data.rotation;
-        this._trigger    = data.trigger;
-        this._loop       = (data.loop === true);
-        this._onlyOnce   = (data.onlyOnce === true);
-        this._done       = false;
-        this._collidable = (data.collidable === true);
-        this._radius     = data.radius;
-        this._damage     = data.damage || null;
-        this._keyframes  = data.keyframes || [];
-        this._maxTime   = this._keyframes.length > 0
-            ? this._keyframes[this._keyframes.length - 1].t
-            : 0;
-        this._time      = this._keyframes.length > 0 ? this._keyframes[0].t : 0;
-
+    finalizeInit() {
+        this._object = loader.objects().get(this._objectId);
         this._computeWorldCenter();
-        this._executeLoadedCallback();
     }
 
     _computeWorldCenter() {
