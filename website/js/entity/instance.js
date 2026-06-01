@@ -1,4 +1,4 @@
-class Instance extends AbstractLoader {
+class Instance extends AbstractLoadedEntity {
     constructor() {
         super();
         this._object    = null;

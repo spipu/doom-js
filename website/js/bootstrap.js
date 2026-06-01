@@ -1,0 +1,48 @@
+class Bootstrap {
+    constructor() {
+        this._version = '1.293';
+    }
+
+    getVersion() {
+        return this._version;
+    }
+
+    buildUrl(asset) {
+        return asset + '?v=' + this._version;
+    }
+
+    init() {
+        [
+            'js/loader.js',
+            'js/constants.js',
+            'js/matrix.js',
+            'js/entity/abstractLoadedEntity.js',
+            'js/entity/light.js',
+            'js/entity/texture.js',
+            'js/loader/abstractLoader.js',
+            'js/loader/textureLoader.js',
+            'js/entity/face.js',
+            'js/entity/object3d.js',
+            'js/zBuffer.js',
+            'js/renderer/object3dRendererBase.js',
+            'js/renderer/object3dRendererFast.js',
+            'js/renderer/object3dRendererFull.js',
+            'js/renderer/object3dRendererFlat.js',
+            'js/renderer/object3dRendererWebGL.js',
+            'js/renderer/object3dRendererList.js',
+            'js/engine3d.js',
+            'js/loader/object3dLoader.js',
+            'js/entity/instance.js',
+            'js/loader/instanceLoader.js',
+            'js/collision.js',
+            'js/inputKeyboard.js',
+            'js/inputMouse.js',
+            'js/entity/user.js',
+            'js/debug.js',
+            'js/entity/world.js',
+        ].forEach(src => document.write('<script src="' + this.buildUrl(src) + '"><\/script>'));
+    }
+}
+
+var bootstrap = new Bootstrap();
+bootstrap.init();

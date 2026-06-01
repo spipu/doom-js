@@ -1,14 +1,14 @@
-class Object3d extends AbstractLoader {
-    constructor() {
-        super();
+class Object3d extends AbstractLoadedEntity {
+    constructor(id, url, callback) {
+        super(id, url, callback);
+
         this.ptOrigin      = [];
         this.pt3d          = [];
         this.pt2d          = [];
         this.ptCount       = 0;
         this.faceList      = [];
         this.faceCount     = 0;
-        this.textureList   = [];
-        this.textureCount  = 0;
+        this._textureIds   = [];
         this._opaqueFaces  = [];
         this._alphaFaces   = [];
     }
@@ -40,8 +40,7 @@ class Object3d extends AbstractLoader {
     }
 
     textureAdd(url) {
-        this.textureList[this.textureCount] = new Texture(url);
-        this.textureCount++;
+        this._textureIds.push(loader.textures().load(url));
         return this;
     }
 
@@ -58,7 +57,7 @@ class Object3d extends AbstractLoader {
         if (!map) {
             map = null;
         }
-        if (texture > this.textureCount) {
+        if (texture > this._textureIds.length) {
             texture = null;
         }
         if (texture === null) {
@@ -102,8 +101,8 @@ class Object3d extends AbstractLoader {
             throw new Error('pt3 ' + pt3 + ' undefined');
         }
 
-        const anim = ((animTextures) ? {ids: animTextures.ids.map(id => id - 1), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null);
-        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, ((texture) ? texture-1 : null), map, alpha, clampV, passableUser, passableEnemy, anim));
+        const anim = ((animTextures) ? {ids: animTextures.ids.map(id => this._textureIds[id - 1]), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null);
+        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, ((texture) ? this._textureIds[texture - 1] : null), map, alpha, clampV, passableUser, passableEnemy, anim));
         this.faceCount++;
         return this;
     }
@@ -164,27 +163,45 @@ class Object3d extends AbstractLoader {
             this._localNormals[k*3+1] = ny;
             this._localNormals[k*3+2] = nz;
         }
-        if (this.textureCount === 0) {
-            this._onReady();
+        const usedIds = new Set();
+        for (const fc of this.faceList) {
+            if (fc.textureId !== null) {
+                usedIds.add(fc.textureId);
+            }
+            if (fc.animTextures !== null) {
+                for (const id of fc.animTextures.ids) {
+                    usedIds.add(id);
+                }
+            }
+        }
+        if (usedIds.size === 0) {
+            this.initOnFullyLoaded();
             return this;
         }
-        let pending = this.textureCount;
-        const onTextureLoaded = () => { if (--pending === 0) this._onReady(); };
-        for (let i = 0; i < this.textureCount; i++) {
-            this.textureList[i].setLoadedCallback(onTextureLoaded);
+        let pending = usedIds.size;
+        const onTextureLoaded = () => {
+            if (--pending === 0) {
+                this.initOnFullyLoaded();
+            }
+        };
+        for (const id of usedIds) {
+            loader.textures().addLoadCallback(id, onTextureLoaded);
         }
         return this;
     }
 
-    _onReady() {
+    initOnFullyLoaded() {
         this._opaqueFaces = [];
         this._alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
-            fc.isAlpha = ((fc.alpha < 1) || (fc.textureId !== null && this.textureList[fc.textureId].isAlpha()));
+            fc.isAlpha = ((fc.alpha < 1) || (fc.textureId !== null && loader.textures().get(fc.textureId).isAlpha()));
             ((fc.isAlpha) ? this._alphaFaces : this._opaqueFaces).push(k);
         }
         this._executeLoadedCallback();
+        if (this._onReadyCallback) {
+            this._onReadyCallback();
+        }
     }
 
     getCenter() {

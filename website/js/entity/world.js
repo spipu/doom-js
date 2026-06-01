@@ -1,4 +1,4 @@
-class World extends AbstractLoader {
+class World extends AbstractLoadedEntity {
     constructor(url) {
         super();
         this._user          = null;
@@ -8,8 +8,10 @@ class World extends AbstractLoader {
         this._collision     = null;
         this._keyboardBound = false;
 
-        object3dFactory.reset();
-        instanceFactory.reset();
+        loader.reset();
+        loader.objects().reset();
+        loader.instances().reset();
+        loader.addInternalCallback(() => this.initOnFullyLoaded());
 
         this._fetchJson(url, data => this._init(data));
     }
@@ -42,27 +44,23 @@ class World extends AbstractLoader {
         this._lightAmbient = data.lights.ambient;
         this._lights = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
 
-        object3dFactory.load('map', data.map);
+        loader.objects().load('map', data.map);
         for (const [code, url] of Object.entries(data.instances)) {
-            instanceFactory.load(code, url);
+            loader.instances().load(code, url);
         }
 
-        instanceFactory.setLoadedCallback(() => {
-            object3dFactory.setLoadedCallback(() => this._onFullyLoaded());
-        });
     }
 
-    _onFullyLoaded() {
+    initOnFullyLoaded() {
         this._collision = new Collision();
-        this._collision.addMap(object3dFactory.get('map'));
-        instanceFactory.getAll().forEach(inst => this._collision.addInstance(inst));
+        this._collision.addMap(loader.objects().get('map'));
+        loader.instances().getAll().forEach(inst => this._collision.addInstance(inst));
         // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
         // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
         const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
         if (floorY !== -Infinity) {
             this._user.y = floorY;
         }
-        this._executeLoadedCallback();
     }
 
     update(dt, keyboard, mouse) {
@@ -139,11 +137,11 @@ class World extends AbstractLoader {
     }
 
     getMap() {
-        return object3dFactory.get('map');
+        return loader.objects().get('map');
     }
 
     getInstances() {
-        return instanceFactory.getAll();
+        return loader.instances().getAll();
     }
 
     getCollision() {

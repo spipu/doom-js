@@ -27,7 +27,7 @@ div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <div class="mouse">Click on canvas to capture mouse. Press [ESC] to release.</div>
         <div id="debug"></div>
-        <script src="js/loader.js" ></script>
+        <script src="js/bootstrap.js" ></script>
         <script>
 
 const world = new World('./assets/world/definition.json');
@@ -45,7 +45,7 @@ function init()
 {
     debug.bindUser(world.getUser());
 
-    engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
+    engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
     engine.setScreen(800, 600);
     engine.setFov(45.0);
     engine.setView(-32, 32, -24, 24);
@@ -70,7 +70,7 @@ function animate(timestamp)
     requestAnimationFrame(animate);
 }
 
-world.setLoadedCallback(init);
+loader.setCallback(init);
         </script>
     </body>
 </html>
