@@ -1,7 +1,8 @@
-class AbstractLoader {
-    constructor() {
-        this._loadedCallback = null;
-        this._loaded = false;
+class AbstractLoadedEntity {
+    constructor(url, callback) {
+        this._url            = url;
+        this._loadedCallback = callback;
+        this._loaded         = false;
     }
 
     setLoadedCallback(callback) {
@@ -28,7 +29,7 @@ class AbstractLoader {
     }
 
     _fetchJson(url, callback) {
-        fetch(loader.buildUrl(url))
+        fetch(bootstrap.buildUrl(url))
             .then(r => {
                 if (!r.ok) {
                     throw new Error('HTTP ' + r.status + ' ' + r.statusText);

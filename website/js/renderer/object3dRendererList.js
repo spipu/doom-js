@@ -1,4 +1,4 @@
-class Object3dRendererFactory {
+class Object3dRendererList {
     getRenderer(code) {
         const map = {
             'webgl': () => new Object3dRendererWebGL(),

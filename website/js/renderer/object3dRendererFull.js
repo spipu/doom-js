@@ -38,7 +38,7 @@ class Object3dRendererFull extends Object3dRendererBase {
 
                 const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
                 const resolvedTexId = this._resolveTexId(fc, engine._sceneMs);
-                const texture  = ((resolvedTexId !== null) ? obj.textureList[resolvedTexId] : null);
+                const texture  = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
                 const alpha    = fc.alpha;
                 const clampV  = fc.clampV || false;
 

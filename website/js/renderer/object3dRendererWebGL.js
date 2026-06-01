@@ -91,7 +91,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
         for (const group of allGroups) {
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
-            const texture = ((resolvedTexId !== null) ? obj.textureList[resolvedTexId] : null);
+            const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
             const opaque  = !group.isAlpha;
 
             if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }

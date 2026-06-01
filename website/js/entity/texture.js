@@ -1,6 +1,7 @@
-class Texture extends AbstractLoader {
+class Texture extends AbstractLoadedEntity {
     constructor(url) {
         super();
+        this._url       = url;
         this._imageData = null;
         this._alpha     = false;
         const img = new Image();
@@ -17,7 +18,7 @@ class Texture extends AbstractLoader {
             }
             this._executeLoadedCallback();
         };
-        img.src = loader.buildUrl(url);
+        img.src = bootstrap.buildUrl(url);
     }
 
     isAlpha() {

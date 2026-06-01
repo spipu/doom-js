@@ -1,45 +1,71 @@
 class Loader {
     constructor() {
-        this._version = '1.278';
+        this._loaders = {
+            instance: new InstanceFactory(),
+            object3d: new Object3dLoader(),
+            texture:  new TextureLoader(),
+        };
+
+        this._loaded     = false;
+        this._callback  = null;
     }
 
-    getVersion() {
-        return this._version;
+    reset() {
+        Object.values(this._loaders).forEach(e => e.reset());
     }
 
-    buildUrl(asset) {
-        return asset + '?v=' + this._version;
+    _checkFullyLoaded() {
+        if (this._entities.every(e => e.isLoaded())) {
+            this._loaded = true;
+            this._loadedCallback();
+        }
     }
 
-    init() {
-        [
-            'js/constants.js',
-            'js/matrix.js',
-            'js/light.js',
-            'js/abstractLoader.js',
-            'js/texture.js',
-            'js/face.js',
-            'js/object3d.js',
-            'js/zBuffer.js',
-            'js/object3dRendererBase.js',
-            'js/object3dRendererFast.js',
-            'js/object3dRendererFull.js',
-            'js/object3dRendererFlat.js',
-            'js/object3dRendererWebGL.js',
-            'js/object3dRendererFactory.js',
-            'js/engine3d.js',
-            'js/object3dFactory.js',
-            'js/instance.js',
-            'js/instanceFactory.js',
-            'js/collision.js',
-            'js/inputKeyboard.js',
-            'js/inputMouse.js',
-            'js/user.js',
-            'js/debug.js',
-            'js/world.js',
-        ].forEach(src => document.write('<script src="' + this.buildUrl(src) + '"><\/script>'));
+    get(code) {
+        return this.loaders[code];
+    }
+
+    setCallback(fn) {
+        this._finalCallback = fn;
+        if (this.fullyLoaded) {
+            fn();
+        }
+    }
+
+    reset() {
+        this.loaded         = {};
+        this.fullyLoaded    = false;
+        this._callbacks     = [];
+        this._finalCallback = null;
+    }
+
+    loadingStarted(key) {
+        this.loaded[key] = false;
+        this.fullyLoaded = false;
+    }
+
+    loadingReset(key) {
+        delete this.loaded[key];
+        this._checkFullyLoaded();
+    }
+
+    loadingFinished(key) {
+        this.loaded[key] = true;
+        this._checkFullyLoaded();
+    }
+
+    _checkFullyLoaded() {
+        if (this.fullyLoaded) {
+            return;
+        }
+        if (Object.keys(this.loaded).length > 0 && Object.values(this.loaded).every(v => v)) {
+            this.fullyLoaded = true;
+            this._callbacks.forEach(fn => fn());
+            if (this._finalCallback) {
+                this._finalCallback();
+            }
+        }
     }
 }
 
 var loader = new Loader();
-loader.init();

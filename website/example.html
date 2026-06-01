@@ -20,13 +20,12 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
     <body>
         <canvas id="canvasElem"></canvas><br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <script src="js/loader.js" ></script>
+        <script src="js/bootstrap.js" ></script>
         <script>
-object3dFactory.load('lotus', './assets/objects/lotus.obj.json');
 
 function render()
 {
-    const engine = new Engine3d('canvasElem', new Object3dRendererFactory().getRenderer('webgl'));
+    const engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
     engine.setScreen(800, 600);
     engine.setBackground(35, 35, 35);
     engine.setFov(45.0);
@@ -47,12 +46,13 @@ function render()
     engine.matrixTranslate(4, 5, -37);
     engine.matrixRotateY(-30);
     engine.matrixRotateX(-60);
-    engine.drawObject(object3dFactory.get('lotus'));
+    engine.drawObject(loader.objects().get('lotus'));
     
     engine.drawFinish();
 }
 
-object3dFactory.setLoadedCallback(render);
+loader.objects().loadByCode('lotus', './assets/objects/lotus.obj.json');
+loader.setCallback(render);
         </script>
     </body>
 </html>
