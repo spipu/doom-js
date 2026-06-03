@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None
-SPAWN_YAW      = None
-SPAWN_PITCH    = None
+SPAWN_POSITION = [18.52, 0.37, -11.16]
+SPAWN_YAW      = 45.0
+SPAWN_PITCH    = 0.0
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -71,6 +71,39 @@ DOOR_ACTION_RADIUS = 1.5
 # Linedef types that move a floor downward (Lower Lift, Lower Floor, etc.)
 # Static map shows these sectors with floor at min(adjacent_fh)
 FLOOR_MOVE_DOWN_SPECIALS = {23, 36, 37, 38, 56, 62, 82, 83, 84, 88}
+
+# Lift/floor animation properties by special type
+# Speed in Doom units/tic (35 tics/s) — Slow=2, Normal=4, Fast=8, Turbo=16
+LIFT_SPEED_BY_SPECIAL = {
+    62: 4,  88: 4,                    # Lower Lift: Normal (4 u/tic)
+    23: 2,  38: 2,  82: 2,  83: 2,   # Lower Floor: Slow (2 u/tic)
+    36: 8,  37: 2,  56: 2,  84: 2,   # Various floor movers
+}
+# 'round-trip' = goes down, waits, comes back up (loop)
+# 'one-way'    = goes down once and stays
+LIFT_ANIM_BY_SPECIAL = {
+    62: 'round-trip', 88: 'round-trip',
+    23: 'one-way', 36: 'one-way', 37: 'one-way', 38: 'one-way',
+    56: 'one-way', 82: 'one-way', 83: 'one-way', 84: 'one-way',
+}
+LIFT_TRIGGER_BY_SPECIAL = {
+    62: 'action',   # SR switch
+    88: 'always',   # WR walk → approximated as auto
+    23: 'action',   # S1 switch
+    36: 'always', 37: 'always', 38: 'always',
+    56: 'always', 82: 'always', 83: 'always', 84: 'always',
+}
+LIFT_LOOP_BY_SPECIAL = {
+    62: True, 88: True,
+    23: False, 36: False, 37: False, 38: False,
+    56: False, 82: False, 83: False, 84: False,
+}
+LIFT_ONLY_ONCE_BY_SPECIAL = {
+    62: False, 88: False,
+    23: True, 36: True, 37: True, 38: True,
+    56: True,  82: True, 83: True, 84: True,
+}
+LIFT_WAIT_TICS = 105  # tics at bottom before rising (Lower Lift)
 
 # Linedef flags
 ML_BLOCKING      = 0x01  # blocks players and monsters
@@ -922,13 +955,17 @@ def main():
     # ── Identify floor-moves-down sectors (lifts, descending floors) ─────────────
     # These linedefs reference target sectors via tag; patch fh before any geometry.
     moving_floor_down_ids = set()
+    lift_sector_special   = {}  # si → linedef special that triggered it
     for ld in linedefs:
         if ld['special'] in FLOOR_MOVE_DOWN_SPECIALS and ld['tag'] != 0:
             for si, sec in enumerate(sectors):
                 if sec['tag'] == ld['tag'] and si not in door_sector_ids:
                     moving_floor_down_ids.add(si)
+                    lift_sector_special[si] = ld['special']
 
-    # Patch fh to min(adjacent_fh) so static map shows the lift in down position.
+    # Save original fh and min adjacent fh before patching — needed for lift instances.
+    lift_original_fh = {}  # si → original fh (Doom units, before patch)
+    lift_min_adj_fh  = {}  # si → min(adjacent_fh) (Doom units)
     for si in moving_floor_down_ids:
         adj_fh = []
         for ld in linedefs:
@@ -939,8 +976,12 @@ def main():
                 adj_fh.append(sectors[l_si]['fh'])
             elif l_si == si and r_si not in moving_floor_down_ids:
                 adj_fh.append(sectors[r_si]['fh'])
-        if adj_fh:
-            sectors[si]['fh'] = min(adj_fh)
+        lift_original_fh[si] = sectors[si]['fh']
+        lift_min_adj_fh[si]  = min(adj_fh) if adj_fh else sectors[si]['fh']
+
+    # Patch fh to min(adjacent_fh) so static map shows the lift in down position.
+    for si in moving_floor_down_ids:
+        sectors[si]['fh'] = lift_min_adj_fh[si]
 
     print(f"  {len(moving_floor_down_ids)} floor-moves-down sectors patched")
 
@@ -1053,6 +1094,8 @@ def main():
             l_sd  = sidedefs[ld['left']]
             l_sec = sectors[l_sd['sector']]
             l_is_door = l_sd['sector'] in door_sector_ids
+            r_is_lift = r_sd['sector'] in moving_floor_down_ids
+            l_is_lift = l_sd['sector'] in moving_floor_down_ids
 
             r_fh = r_sec['fh'];  r_ch = r_sec['ch']
             l_fh = l_sec['fh'];  l_ch = l_sec['ch']
@@ -1061,7 +1104,6 @@ def main():
             lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
 
             # Door sector two-sided linedefs — geometry handled by door instance, skip
-            # (track band, lower step all belong to the instance)
 
             # Lower wall: step up from right sector floor to left sector floor
             if l_fh > r_fh and not r_is_door and not l_is_door:
@@ -1218,7 +1260,7 @@ def main():
         for poly_doom in outers:
             # Only pass holes that are geometrically inside this outer polygon
             own_holes = [h for h in holes if point_in_polygon_2d(h[0][0], h[0][1], poly_doom)]
-            if ft >= 0:
+            if ft >= 0 and si not in moving_floor_down_ids:
                 add_flat_quad(pts, faces, ft, poly_doom, sec['fh'],
                               is_floor=True, light=sec['light'], holes=own_holes or None)
             # Skip sky flats — outdoor areas have no ceiling geometry
@@ -1433,6 +1475,144 @@ def main():
             f.write(inst_str)
         door_instances[door_name] = f'./assets/doom/instances/{door_name}.instance.json'
 
+    # ── Lift meshes and instances ─────────────────────────────────────────────
+    print("Generating lift instances...")
+    lift_instances = {}
+
+    for si in sorted(moving_floor_down_ids):
+        sec     = sectors[si]
+        orig_fh = lift_original_fh[si]
+        min_fh  = lift_min_adj_fh[si]
+        if orig_fh <= min_fh:
+            continue
+
+        lift_name   = f'lift_{si}'
+        l_pts_raw   = []
+        l_faces_raw = []
+
+        # Top flat: floor surface of the platform at original height
+        ft = ensure_flat_tex(sec['ft'])
+        if ft >= 0:
+            chains = build_sector_polygons(si, linedefs, sidedefs, vertexes)
+            for chain in chains:
+                poly_doom = [vertexes[vi] for vi in chain]
+                add_flat_quad(l_pts_raw, l_faces_raw, ft, poly_doom, orig_fh,
+                              is_floor=True, light=sec['light'])
+
+        # Side walls: riser from min_fh to orig_fh, moves with the platform.
+        # Same convention as doors: corridor sidedef + matching flip.
+        for ld in linedefs:
+            if ld['right'] < 0 or ld['left'] < 0:
+                continue
+            r_si2 = sidedefs[ld['right']]['sector']
+            l_si2 = sidedefs[ld['left']]['sector']
+            if r_si2 != si and l_si2 != si:
+                continue
+            if r_si2 in moving_floor_down_ids and l_si2 in moving_floor_down_ids:
+                continue
+
+            dx1, dy1    = vertexes[ld['v1']]
+            dx2, dy2    = vertexes[ld['v2']]
+            lwx1, lwz1  = doom_to_world(dx1, dy1)
+            lwx2, lwz2  = doom_to_world(dx2, dy2)
+            lwall_len   = wall_length_doom(vertexes, ld['v1'], ld['v2'])
+            lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
+
+            if r_si2 == si and l_si2 not in door_sector_ids:
+                # Lift on right, corridor on left — same as door: l_sd + flip=False
+                l_sd2   = sidedefs[ld['left']]
+                l_sec2  = sectors[l_si2]
+                tex     = l_sd2['lower']
+                if not tex or tex == '-':
+                    continue
+                ti_g = ensure_wall_tex(tex)
+                if ti_g < 0:
+                    continue
+                tw, th = Image.open(get_tex_abspath(tex)).size
+                yo = l_sd2['yo'] + (l_sec2['ch'] - orig_fh if lower_unpeg else 0)
+                add_wall_quad(l_pts_raw, l_faces_raw, ti_g,
+                              lwx1, lwz1, lwx2, lwz2,
+                              min_fh*SCALE, orig_fh*SCALE,
+                              lwall_len, tw, th, l_sd2['xo'], yo,
+                              flip=False, light=l_sec2['light'])
+
+            elif l_si2 == si and r_si2 not in door_sector_ids:
+                # Lift on left, corridor on right — same as door: r_sd + flip=True
+                r_sd2   = sidedefs[ld['right']]
+                r_sec2  = sectors[r_si2]
+                tex     = r_sd2['lower']
+                if not tex or tex == '-':
+                    continue
+                ti_g = ensure_wall_tex(tex)
+                if ti_g < 0:
+                    continue
+                tw, th = Image.open(get_tex_abspath(tex)).size
+                yo = r_sd2['yo'] + (r_sec2['ch'] - orig_fh if lower_unpeg else 0)
+                add_wall_quad(l_pts_raw, l_faces_raw, ti_g,
+                              lwx1, lwz1, lwx2, lwz2,
+                              min_fh*SCALE, orig_fh*SCALE,
+                              lwall_len, tw, th, r_sd2['xo'], yo,
+                              flip=True, light=r_sec2['light'])
+
+        if not l_pts_raw:
+            continue
+
+        # Remap global tex indices → local 1-based (same pattern as doors)
+        used_global = sorted(set(f['texture'] for f in l_faces_raw if 'texture' in f))
+        g_to_local  = {g: i+1 for i, g in enumerate(used_global)}
+        local_texs  = [tex_paths[g-1] for g in used_global]
+        for f in l_faces_raw:
+            if 'texture' in f:
+                f['texture'] = g_to_local[f['texture']]
+        l_pts_out = [[round(v, 4) for v in p] for p in l_pts_raw]
+
+        lift_texs, lift_anim_map = build_anim_groups(local_texs)
+        for face in l_faces_raw:
+            idx = face.get('texture')
+            if idx in lift_anim_map:
+                face['textures'] = lift_anim_map[idx]
+                del face['texture']
+        write_obj_json({'textures': lift_texs, 'points': l_pts_out, 'faces': l_faces_raw},
+                       os.path.join(obj_dir, f'{lift_name}.obj.json'))
+
+        # Lift instance: animation selon le type, boucle auto
+        special  = lift_sector_special.get(si, 88)
+        speed    = LIFT_SPEED_BY_SPECIAL.get(special, 4)
+        xs       = [p[0] for p in l_pts_raw]
+        zs       = [p[2] for p in l_pts_raw]
+        xz_diag  = math.sqrt((max(xs) - min(xs))**2 + (max(zs) - min(zs))**2)
+        radius   = round(xz_diag / 2.0 + DOOR_ACTION_RADIUS, 4)
+        travel_y = round((orig_fh - min_fh) * SCALE, 4)
+        move_s   = round((orig_fh - min_fh) / (speed * 35.0), 4)
+        wait_s   = round(LIFT_WAIT_TICS / 35.0, 4)
+        kf = [
+            {"t": 0.0,                                "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+            {"t": move_s,                             "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
+            {"t": round(move_s + wait_s, 4),          "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
+            {"t": round(move_s + wait_s + move_s, 4), "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+        ]
+        kf_lines  = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
+        inst_path = os.path.join(inst_dir, f'{lift_name}.instance.json')
+        inst_str = (
+            '{\n'
+            f'  "object":     "./assets/doom/objects/{lift_name}.obj.json",\n'
+            '  "position":   [0, 0, 0],\n'
+            '  "rotation":   [0, 0, 0],\n'
+            '  "trigger":    "always",\n'
+            '  "loop":       true,\n'
+            '  "onlyOnce":   false,\n'
+            '  "collidable": true,\n'
+            f'  "radius":     {radius},\n'
+            '  "damage":     null,\n'
+            f'  "keyframes":  [\n    {kf_lines}\n  ]\n'
+            '}'
+        )
+        with open(inst_path, 'w') as f:
+            f.write(inst_str)
+        lift_instances[lift_name] = f'./assets/doom/instances/{lift_name}.instance.json'
+
+    print(f"  {len(lift_instances)} lift instances generated")
+
     # ── Player spawn from THINGS lump ─────────────────────────────────────────
     # Thing type 1 = Player 1 start. Doom angle 0 = east, 90 = north.
     # Engine yaw: 0 = north (+Z), 90 = east (+X). Conversion: yaw = (90 - doom_angle) % 360
@@ -1497,7 +1677,7 @@ def main():
             'sources': []
         },
         'map': './assets/doom/objects/map.obj.json',
-        'instances': door_instances
+        'instances': {**door_instances, **lift_instances}
     }
     with open(def_path, 'w') as f:
         json.dump(defn, f, indent=2)
