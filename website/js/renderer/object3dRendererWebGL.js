@@ -72,8 +72,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) {
                     continue;
                 }
-                const clampV = fc.clampV || false;
-                const key    = fc.textureId + ',' + fc.alpha + ',' + clampV;
+                const clampV   = fc.clampV || false;
+                const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
+                const key      = animKey + ',' + fc.alpha + ',' + clampV;
                 if (!groups.has(key)) {
                     groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, isAlpha, clampV, faces: [] });
                 }

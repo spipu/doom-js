@@ -19,6 +19,8 @@ class InstanceLoader extends AbstractLoader {
                 entity._position   = data.position;
                 entity._rotation   = data.rotation;
                 entity._trigger    = data.trigger;
+                entity._loop      = (data.loop     === true);
+                entity._onlyOnce  = (data.onlyOnce === true);
                 entity._collidable = data.collidable === true;
                 entity._radius     = data.radius;
                 entity._damage     = data.damage || null;
