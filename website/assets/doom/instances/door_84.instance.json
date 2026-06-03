@@ -6,12 +6,13 @@
   "loop":       false,
   "onlyOnce":   false,
   "collidable": true,
-  "radius":     2.0039,
+  "radius":     1.0039,
   "damage":     null,
   "keyframes":  [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 0.1429, "translate": [0, 0.9375, 0], "rotate": [0, 0, 0]},
     {"t": 4.4286, "translate": [0, 0.9375, 0], "rotate": [0, 0, 0]},
-    {"t": 4.5715, "translate": [0, 0, 0], "rotate": [0, 0, 0]}
+    {"t": 4.5715, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
+    {"t": 5.5715, "translate": [0, 0, 0], "rotate": [0, 0, 0]}
   ]
 }

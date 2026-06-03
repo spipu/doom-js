@@ -147,7 +147,7 @@ class Instance extends AbstractLoadedEntity {
 
         switch (this._trigger) {
             case 'always':    this._playing = true;              break;
-            case 'proximity': this._playing = inRange;           break;
+            case 'proximity': if (inRange) this._playing = true;  break;
             case 'action':    if (inRange && action) this._playing = true; break;
         }
 

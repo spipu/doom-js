@@ -2,16 +2,17 @@
   "object":     "./assets/doom/objects/lift_103.obj.json",
   "position":   [0, 0, 0],
   "rotation":   [0, 0, 0],
-  "trigger":    "always",
-  "loop":       true,
+  "trigger":    "proximity",
+  "loop":       false,
   "onlyOnce":   false,
   "collidable": true,
-  "radius":     4.1116,
+  "radius":     3.1116,
   "damage":     null,
   "keyframes":  [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 0.9143, "translate": [0, -2.0, 0], "rotate": [0, 0, 0]},
     {"t": 3.9143, "translate": [0, -2.0, 0], "rotate": [0, 0, 0]},
-    {"t": 4.8286, "translate": [0, 0, 0], "rotate": [0, 0, 0]}
+    {"t": 4.8286, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
+    {"t": 5.8286, "translate": [0, 0, 0], "rotate": [0, 0, 0]}
   ]
 }

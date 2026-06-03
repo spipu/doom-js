@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = [18.52, 0.37, -11.16]
-SPAWN_YAW      = 45.0
-SPAWN_PITCH    = 0.0
+SPAWN_POSITION = None
+SPAWN_YAW      = None
+SPAWN_PITCH    = None
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -40,10 +40,12 @@ DOOR_WAIT_TICS = 150  # tics before auto-close (~4.3 s)
 
 # Trigger type per door special ('action' = press E, 'always' = auto)
 DOOR_TRIGGER_BY_SPECIAL = {
-    # Use (press E): DR/D1, switch-activated, and walk-once (press E as approximation)
-    1: 'action', 2: 'action', 26: 'action', 27: 'action', 28: 'action',
+    # Press E (DR/D1/SR/S1): action
+    1: 'action', 26: 'action', 27: 'action', 28: 'action',
     31: 'action', 32: 'action', 33: 'action', 34: 'action',
     63: 'action', 117: 'action', 118: 'action',
+    # Walk (W1/WR): proximity
+    2: 'proximity', 86: 'proximity', 75: 'proximity', 76: 'proximity', 90: 'proximity',
 }
 # Loop flag per door special
 DOOR_LOOP_BY_SPECIAL = {
@@ -65,8 +67,8 @@ DOOR_ANIM_BY_SPECIAL = {
     1: 'round-trip', 26: 'round-trip', 27: 'round-trip', 28: 'round-trip',
     63: 'round-trip', 117: 'round-trip',
 }
-# Action radius in metres (Doom USE distance = 64 u = 1 m; 1.5 m is comfortable)
-DOOR_ACTION_RADIUS = 1.5
+# Action radius in metres (xz_diagonal/2 + this margin)
+DOOR_ACTION_RADIUS = 0.5
 
 # Linedef types that move a floor downward (Lower Lift, Lower Floor, etc.)
 # Static map shows these sectors with floor at min(adjacent_fh)
@@ -87,14 +89,14 @@ LIFT_ANIM_BY_SPECIAL = {
     56: 'one-way', 82: 'one-way', 83: 'one-way', 84: 'one-way',
 }
 LIFT_TRIGGER_BY_SPECIAL = {
-    62: 'action',   # SR switch
-    88: 'always',   # WR walk → approximated as auto
-    23: 'action',   # S1 switch
+    62: 'action',    # SR switch → press E
+    88: 'proximity', # WR walk → approximated as proximity
+    23: 'action',    # S1 switch → press E
     36: 'always', 37: 'always', 38: 'always',
     56: 'always', 82: 'always', 83: 'always', 84: 'always',
 }
 LIFT_LOOP_BY_SPECIAL = {
-    62: True, 88: True,
+    62: False, 88: False,
     23: False, 36: False, 37: False, 38: False,
     56: False, 82: False, 83: False, 84: False,
 }
@@ -1450,11 +1452,13 @@ def main():
                 {"t": open_s, "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
             ]
         else:
+            t_rest = round(open_s + wait_s + open_s, 4)
             kf = [
-                {"t": 0.0,                                "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
-                {"t": open_s,                             "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
-                {"t": round(open_s + wait_s, 4),          "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
-                {"t": round(open_s + wait_s + open_s, 4), "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+                {"t": 0.0,                       "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+                {"t": open_s,                    "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": round(open_s + wait_s, 4), "translate": [0, travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": t_rest,                    "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
+                {"t": round(t_rest + 1.0, 4),    "translate": [0, 0, 0],        "rotate": [0, 0, 0]},
             ]
         kf_lines = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
         inst_str = (
@@ -1585,12 +1589,26 @@ def main():
         travel_y = round((orig_fh - min_fh) * SCALE, 4)
         move_s   = round((orig_fh - min_fh) / (speed * 35.0), 4)
         wait_s   = round(LIFT_WAIT_TICS / 35.0, 4)
-        kf = [
-            {"t": 0.0,                                "translate": [0,  0,        0], "rotate": [0, 0, 0]},
-            {"t": move_s,                             "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
-            {"t": round(move_s + wait_s, 4),          "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
-            {"t": round(move_s + wait_s + move_s, 4), "translate": [0,  0,        0], "rotate": [0, 0, 0]},
-        ]
+        anim     = LIFT_ANIM_BY_SPECIAL.get(special, 'round-trip')
+        trigger  = LIFT_TRIGGER_BY_SPECIAL.get(special, 'action')
+        loop     = LIFT_LOOP_BY_SPECIAL.get(special, False)
+        onlyone  = LIFT_ONLY_ONCE_BY_SPECIAL.get(special, False)
+        if anim == 'one-way':
+            kf = [
+                {"t": 0.0,    "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+                {"t": move_s, "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
+            ]
+        else:
+            t_rest = round(move_s + wait_s + move_s, 4)
+            kf = [
+                {"t": 0.0,                       "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+                {"t": move_s,                    "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": round(move_s + wait_s, 4), "translate": [0, -travel_y, 0], "rotate": [0, 0, 0]},
+                {"t": t_rest,                    "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+                {"t": round(t_rest + 1.0, 4),    "translate": [0,  0,        0], "rotate": [0, 0, 0]},
+            ]
+        loop_str = 'true' if loop else 'false'
+        oo_str   = 'true' if onlyone else 'false'
         kf_lines  = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
         inst_path = os.path.join(inst_dir, f'{lift_name}.instance.json')
         inst_str = (
@@ -1598,9 +1616,9 @@ def main():
             f'  "object":     "./assets/doom/objects/{lift_name}.obj.json",\n'
             '  "position":   [0, 0, 0],\n'
             '  "rotation":   [0, 0, 0],\n'
-            '  "trigger":    "always",\n'
-            '  "loop":       true,\n'
-            '  "onlyOnce":   false,\n'
+            f'  "trigger":    "{trigger}",\n'
+            f'  "loop":       {loop_str},\n'
+            f'  "onlyOnce":   {oo_str},\n'
             '  "collidable": true,\n'
             f'  "radius":     {radius},\n'
             '  "damage":     null,\n'
