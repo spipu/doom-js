@@ -37,6 +37,7 @@ class Engine3d {
     }
 
     destroy() {
+        // no-op
     }
 
     calculateDeltaTime(timestamp) {

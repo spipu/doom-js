@@ -199,7 +199,9 @@ class User {
     // --- Energy ---
     takeDamage(delta) {
         this._energy = Math.max(0, this._energy - delta);
-        if (this._energy <= 0) this._dead = true;
+        if (this._energy <= 0) {
+            this._dead = true;
+        }
         this._energyFlash += delta * 0.05;
         this._energyFlash = Math.max(this._energyFlash, 0.7);
     }
@@ -214,21 +216,27 @@ class User {
     }
 
     moveForward() {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this._inputX += Math.sin(DEG_TO_RAD * this.yaw);
         this._inputZ += Math.cos(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     moveBackward() {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this._inputX -= Math.sin(DEG_TO_RAD * this.yaw);
         this._inputZ -= Math.cos(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
     strafeLeft() {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this._inputX -= Math.cos(DEG_TO_RAD * this.yaw);
         this._inputZ += Math.sin(DEG_TO_RAD * this.yaw);
         this._strafeDir = -1;
@@ -236,7 +244,9 @@ class User {
     }
 
     strafeRight() {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this._inputX += Math.cos(DEG_TO_RAD * this.yaw);
         this._inputZ -= Math.sin(DEG_TO_RAD * this.yaw);
         this._strafeDir = 1;
@@ -244,21 +254,29 @@ class User {
     }
 
     lookMouse(dx, dy) {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this.yaw   += dx * this.turnSpeed;
         this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this.turnSpeed));
     }
 
     setWalkSlow(bool) {
-        if (!this.isDead()) this._walkSlow = bool;
+        if (!this.isDead()) {
+            this._walkSlow = bool;
+        }
     }
 
     setCrouch(bool) {
-        if (!this.isDead()) this._crouchTarget = bool ? 1 : 0;
+        if (!this.isDead()) {
+            this._crouchTarget = ((bool) ? 1 : 0);
+        }
     }
 
     pressJump() {
-        if (this.isDead()) return;
+        if (this.isDead()) {
+            return;
+        }
         this._jumpPressed = true;
         this._jumpHeld    = true;
     }
@@ -269,7 +287,9 @@ class User {
 
     // --- Fall damage infrastructure ---
     _startFall() {
-        if (this._fallPeakY === null) this._fallPeakY = this.y;
+        if (this._fallPeakY === null) {
+            this._fallPeakY = this.y;
+        }
     }
 
     _trackFallPeak() {
@@ -279,7 +299,9 @@ class User {
     }
 
     _endFall() {
-        if (this._fallPeakY === null) return;
+        if (this._fallPeakY === null) {
+            return;
+        }
         const fallDist = this._fallPeakY - this.y;
         const safeH    = this._height * 2.5;
         const maxH     = this._height * 10;
@@ -293,9 +315,14 @@ class User {
     // --- Physics ---
     updateMove(collision) {
         if (!collision) {
-            if (!this._walking) { this._walkAngle = 0; return; }
+            if (!this._walking) {
+                this._walkAngle = 0;
+                return;
+            }
             this._walkAngle += this._deltaTime * 0.6;
-            if (this._walkAngle > 360) this._walkAngle -= 360;
+            if (this._walkAngle > 360) {
+                this._walkAngle -= 360;
+            }
             return;
         }
 
@@ -332,7 +359,8 @@ class User {
                     this._vx = ndx * speed;
                     this._vz = ndz * speed;
                 } else {
-                    this._vx = 0; this._vz = 0;
+                    this._vx = 0;
+                    this._vz = 0;
                 }
             } else if (inputLen > 1e-10) {
                 // Air steering: nudge velocity toward desired direction
@@ -341,7 +369,10 @@ class User {
                 this._vx += ndx * nudge * dt_s;
                 this._vz += ndz * nudge * dt_s;
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
-                if (vLen > this.moveSpeed) { this._vx = this._vx/vLen * this.moveSpeed; this._vz = this._vz/vLen * this.moveSpeed; }
+                if (vLen > this.moveSpeed) {
+                    this._vx = this._vx / vLen * this.moveSpeed;
+                    this._vz = this._vz / vLen * this.moveSpeed;
+                }
             }
             const vx = this._vx * dt_ms, vz = this._vz * dt_ms;
             if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
@@ -351,7 +382,8 @@ class User {
                     const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
                     const destCeil  = collision.getCeiling(res.x, res.z, this._radius, destFloor !== -Infinity ? destFloor + this._stepHeight : this.y);
                     if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
-                        this.x = res.x; this.z = res.z;
+                        this.x = res.x;
+                        this.z = res.z;
                     }
                 } else if (this._onGround) {
                     this._tryStepUp(collision, vx, vz);
@@ -361,7 +393,9 @@ class User {
 
         // 4. Gravity
         this._vy -= this._gravity * dt_s;
-        if (this._vy < 0) this._vy -= this._gravity * this._apexGravityBoost * dt_s;
+        if (this._vy < 0) {
+            this._vy -= this._gravity * this._apexGravityBoost * dt_s;
+        }
         this._vy = Math.max(this._vy, -this._maxFallSpeed);
 
         // 5. Jump trigger
@@ -385,7 +419,9 @@ class User {
         this.y += this._vy * dt_s;
         if (this.y + this.getCurrentHeight() > ceilBefore) {
             this.y   = ceilBefore - this.getCurrentHeight();
-            if (this._vy > 0) this._vy = 0;
+            if (this._vy > 0) {
+                this._vy = 0;
+            }
         }
 
         // 8. Floor check — maxSearchY prevents floors above the player (e.g. a rising lift)
@@ -400,7 +436,9 @@ class User {
             this._onGround = false;
         } else if (floorY !== -Infinity && this.y <= floorY && floorY <= yBeforeVertical + this._stepHeight) {
             this.y = floorY;
-            if (this._vy < 0) this._vy = 0;
+            if (this._vy < 0) {
+                this._vy = 0;
+            }
             if (!this._wasOnGround) {
                 this._endFall();
             }
@@ -414,7 +452,9 @@ class User {
                 this._startFall();
             }
         } else {
-            if (this._wasOnGround && !this._jumpPressed) this._coyoteTimer = this._coyoteTime;
+            if (this._wasOnGround && !this._jumpPressed) {
+                this._coyoteTimer = this._coyoteTime;
+            }
             this._onGround = false;
         }
 
@@ -439,7 +479,9 @@ class User {
         const ceilY = collision.getCeiling(this.x, this.z, this._radius, this.y + this.getCurrentHeight());
         if (this.y + this.getCurrentHeight() > ceilY) {
             this.y = ceilY - this.getCurrentHeight();
-            if (this._vy > 0) this._vy = 0;
+            if (this._vy > 0) {
+                this._vy = 0;
+            }
         }
 
         // 11. Crouch animation
@@ -454,9 +496,11 @@ class User {
         }
 
         // 12. Real XZ velocity
-        const dxActual = this.x - this._prevX, dzActual = this.z - this._prevZ;
-        this._realVelocityXZ = dt_s > 0 ? Math.sqrt(dxActual*dxActual + dzActual*dzActual) / dt_s : 0;
-        this._prevX = this.x; this._prevZ = this.z;
+        const dxActual = this.x - this._prevX;
+        const dzActual = this.z - this._prevZ;
+        this._realVelocityXZ = ((dt_s > 0) ? Math.sqrt(dxActual*dxActual + dzActual*dzActual) / dt_s : 0);
+        this._prevX = this.x;
+        this._prevZ = this.z;
 
         // 13. Head bob
         if (this._onGround && this._realVelocityXZ > 0.01) {
@@ -496,12 +540,20 @@ class User {
 
     _tryStepUp(collision, vx, vz) {
         const testY = this.y + this._stepHeight;
-        if (collision.getCeiling(this.x, this.z, this._radius, testY + this.getCurrentHeight()) < testY + this.getCurrentHeight()) return false;
+        if (collision.getCeiling(this.x, this.z, this._radius, testY + this.getCurrentHeight()) < testY + this.getCurrentHeight()) {
+            return false;
+        }
         const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());
-        if (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8) return false;
+        if (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8) {
+            return false;
+        }
         const newFloor = collision.getFloor(res.x, res.z, this._radius);
-        if (newFloor === -Infinity || newFloor < testY - this._stepHeight - 0.01) return false;
-        this.x = res.x; this.z = res.z; this.y = newFloor;
+        if (newFloor === -Infinity || newFloor < testY - this._stepHeight - 0.01) {
+            return false;
+        }
+        this.x = res.x;
+        this.z = res.z;
+        this.y = newFloor;
         return true;
     }
 
@@ -527,10 +579,10 @@ class User {
     }
 
     getCameraY() {
-        const baseH = this._dead ? this._height : this.getCurrentHeight();
+        const baseH = ((this._dead) ? this._height : this.getCurrentHeight());
         const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
-        const bob   = (!this._dead && this._onGround && this._realVelocityXZ > 0.01)
-            ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0;
+        const bob   = ((!this._dead && this._onGround && this._realVelocityXZ > 0.01)
+            ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0);
         return this.y + eyeH * (1 + bob);
     }
     getCameraZ() {

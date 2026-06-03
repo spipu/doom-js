@@ -45,6 +45,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     end(engine) {
+        // no-op
     }
 
     draw(obj, engine) {

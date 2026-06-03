@@ -102,7 +102,11 @@ class Object3d extends AbstractLoadedEntity {
         const n = this.ptCount;
         if (n > 0) {
             let cx = 0, cy = 0, cz = 0;
-            for (let i = 0; i < n; i++) { cx += this.ptOrigin[i][0]; cy += this.ptOrigin[i][1]; cz += this.ptOrigin[i][2]; }
+            for (let i = 0; i < n; i++) {
+                cx += this.ptOrigin[i][0];
+                cy += this.ptOrigin[i][1];
+                cz += this.ptOrigin[i][2];
+            }
             cx /= n; cy /= n; cz /= n;
             this._center = [cx, cy, cz];
             let r = 0;
@@ -128,7 +132,11 @@ class Object3d extends AbstractLoadedEntity {
             let ny = abz*acx - abx*acz;
             let nz = abx*acy - aby*acx;
             const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
-            if (len > 1e-10) { nx /= len; ny /= len; nz /= len; }
+            if (len > 1e-10) {
+                nx /= len;
+                ny /= len;
+                nz /= len;
+            }
             this._localNormals[k*3]   = nx;
             this._localNormals[k*3+1] = ny;
             this._localNormals[k*3+2] = nz;

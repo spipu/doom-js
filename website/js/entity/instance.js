@@ -37,27 +37,43 @@ class Instance extends AbstractLoadedEntity {
         const lc              = this._object.getCenter();
         const m = new Matrix();
         m.identity();
-        const t = new Matrix(); t.translation(px, py, pz); m.multiply(t);
+        const t = new Matrix();
+        t.translation(px, py, pz);
+        m.multiply(t);
         if (irx) {
-            const r = new Matrix(); r.rotationX(irx * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationX(irx * DEG_TO_RAD);
+            m.multiply(r);
         }
         if (irz) {
-            const r = new Matrix(); r.rotationZ(irz * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationZ(irz * DEG_TO_RAD);
+            m.multiply(r);
         }
         if (iry) {
-            const r = new Matrix(); r.rotationY(iry * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationY(iry * DEG_TO_RAD);
+            m.multiply(r);
         }
         if (dtx || dty || dtz) {
-            const t2 = new Matrix(); t2.translation(dtx, dty, dtz); m.multiply(t2);
+            const t2 = new Matrix();
+            t2.translation(dtx, dty, dtz);
+            m.multiply(t2);
         }
         if (drx) {
-            const r = new Matrix(); r.rotationX(drx * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationX(drx * DEG_TO_RAD);
+            m.multiply(r);
         }
         if (drz) {
-            const r = new Matrix(); r.rotationZ(drz * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationZ(drz * DEG_TO_RAD);
+            m.multiply(r);
         }
         if (dry) {
-            const r = new Matrix(); r.rotationY(dry * DEG_TO_RAD); m.multiply(r);
+            const r = new Matrix();
+            r.rotationY(dry * DEG_TO_RAD);
+            m.multiply(r);
         }
         const p = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         this._worldCenter = [p[0], p[1], p[2]];
@@ -146,9 +162,19 @@ class Instance extends AbstractLoadedEntity {
         const wasPlaying = this._playing;
 
         switch (this._trigger) {
-            case 'always':    this._playing = true;              break;
-            case 'proximity': if (inRange) this._playing = true;  break;
-            case 'action':    if (inRange && action) this._playing = true; break;
+            case 'always':
+                this._playing = true;
+                break;
+            case 'proximity':
+                if (inRange) {
+                    this._playing = true;
+                }
+                break;
+            case 'action':
+                if (inRange && action) {
+                    this._playing = true;
+                }
+                break;
         }
 
         if (!wasPlaying && this._playing && this._time >= this._maxTime) {
