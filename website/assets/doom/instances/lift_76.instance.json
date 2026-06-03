@@ -1,0 +1,17 @@
+{
+  "object":     "./assets/doom/objects/lift_76.obj.json",
+  "position":   [0, 0, 0],
+  "rotation":   [0, 0, 0],
+  "trigger":    "always",
+  "loop":       true,
+  "onlyOnce":   false,
+  "collidable": true,
+  "radius":     3.2678,
+  "damage":     null,
+  "keyframes":  [
+    {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
+    {"t": 1.9429, "translate": [0, -2.125, 0], "rotate": [0, 0, 0]},
+    {"t": 4.9429, "translate": [0, -2.125, 0], "rotate": [0, 0, 0]},
+    {"t": 6.8858, "translate": [0, 0, 0], "rotate": [0, 0, 0]}
+  ]
+}

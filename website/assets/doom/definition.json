@@ -1,12 +1,12 @@
 {
   "user": {
     "position": [
-      -6.5,
-      0.3,
-      4.0
+      18.52,
+      0.37,
+      -11.16
     ],
-    "yaw": 90,
-    "pitch": 0,
+    "yaw": 45.0,
+    "pitch": 0.0,
     "maxEnergy": 100,
     "height": 0.875,
     "eyeRatio": 0.73,
@@ -46,6 +46,11 @@
     "door_81": "./assets/doom/instances/door_81.instance.json",
     "door_84": "./assets/doom/instances/door_84.instance.json",
     "door_100": "./assets/doom/instances/door_100.instance.json",
-    "door_145": "./assets/doom/instances/door_145.instance.json"
+    "door_145": "./assets/doom/instances/door_145.instance.json",
+    "lift_76": "./assets/doom/instances/lift_76.instance.json",
+    "lift_98": "./assets/doom/instances/lift_98.instance.json",
+    "lift_103": "./assets/doom/instances/lift_103.instance.json",
+    "lift_126": "./assets/doom/instances/lift_126.instance.json",
+    "lift_129": "./assets/doom/instances/lift_129.instance.json"
   }
 }
