@@ -8,6 +8,7 @@ class Object3dRendererFlat extends Object3dRendererBase {
     }
 
     end(engine) {
+        // no-op
     }
 
     _collectFaces(obj, engine, faceIndices) {

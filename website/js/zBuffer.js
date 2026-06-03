@@ -19,12 +19,20 @@ class ZBuffer {
     }
 
     set(x, y, z) {
-        if (x < 0 || y < 0)                              return false;
-        if (x > this._width - 1 || y > this._height - 1) return false;
-        if (z < this._z_near || z > this._z_far)         return false;
+        if (x < 0 || y < 0) {
+            return false;
+        }
+        if (x > this._width - 1 || y > this._height - 1) {
+            return false;
+        }
+        if (z < this._z_near || z > this._z_far) {
+            return false;
+        }
 
         const t = x + y * this._width;
-        if (this._data[t] < z) return false;
+        if (this._data[t] < z) {
+            return false;
+        }
         this._data[t] = z;
         return true;
     }

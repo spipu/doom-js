@@ -8,6 +8,7 @@ class Object3dRendererFast extends Object3dRendererBase {
     }
 
     end(engine) {
+        // no-op
     }
 
     draw(obj, engine) {
