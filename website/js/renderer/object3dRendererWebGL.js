@@ -84,20 +84,17 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
         };
 
-        // Draw opaque faces first (depth write on), then alpha faces (depth write off)
+        // Draw opaque faces first, then alpha faces.
+        // Alpha faces use discard in the fragment shader for transparent pixels,
+        // so depth is written only where the texture is opaque (alpha >= 0.5).
         const allGroups = [
             ...buildGroups(obj._opaqueFaces, false),
             ...buildGroups(obj._alphaFaces,  true),
         ];
-        let depthWriting = true;
 
         for (const group of allGroups) {
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
-            const opaque  = !group.isAlpha;
-
-            if (opaque && !depthWriting) { gl.depthMask(true);  depthWriting = true;  }
-            if (!opaque && depthWriting) { gl.depthMask(false); depthWriting = false; }
 
             const data = new Float32Array(group.faces.length * 3 * 8);
             let di = 0;
@@ -139,9 +136,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
 
-        if (!depthWriting) {
-            gl.depthMask(true);
-        }
     }
 
     _getTexture(gl, texture) {
@@ -201,6 +195,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                         uv = fract(v_uv);
                     }
                     vec4 t  = texture2D(u_tex, uv);
+                    if (t.a < 0.5) { discard; }
                     col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
                 } else {
