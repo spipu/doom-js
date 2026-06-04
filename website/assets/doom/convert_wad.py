@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None
-SPAWN_YAW      = None
-SPAWN_PITCH    = None
+SPAWN_POSITION = [19.31, 0.37, -11.68]
+SPAWN_YAW      = 172.5
+SPAWN_PITCH    = 0.0
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -1344,22 +1344,7 @@ def main():
             lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
             upper_unpeg = bool(ld['flags'] & ML_DONTPEGTOP)
 
-            if r_si2 == si and not l_has:
-                # One-sided lateral wall (DOORTRAK)
-                sd = sidedefs[ld['right']]
-                tex = sd['middle']
-                if not tex or tex == '-': continue
-                ti_g = ensure_wall_tex(tex)
-                if ti_g < 0: continue
-                tw, th = Image.open(get_tex_abspath(tex)).size
-                yo = sd['yo'] + ((th - h_doom % th) % th if lower_unpeg else 0)
-                add_wall_quad(d_pts_raw, d_faces_raw, ti_g,
-                              lwx1, lwz1, lwx2, lwz2,
-                              floor_h*SCALE, ceil_h*SCALE,
-                              lwall_len, tw, th, sd['xo'], yo,
-                              flip=True, light=sec['light'])
-
-            elif r_si2 == si and l_has and l_si2 not in door_sector_ids:
+            if r_si2 == si and l_has and l_si2 not in door_sector_ids:
                 # Two-sided: door on right, corridor on left
                 # Panel covers from floor to THIS corridor's ceiling (not min of all adjacent)
                 l_sd   = sidedefs[ld['left']]
