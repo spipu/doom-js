@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "texture")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = [19.31, 0.37, -11.68]
-SPAWN_YAW      = 172.5
-SPAWN_PITCH    = 0.0
+SPAWN_POSITION = None
+SPAWN_YAW      = None
+SPAWN_PITCH    = None
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -106,6 +106,17 @@ LIFT_ONLY_ONCE_BY_SPECIAL = {
     56: True,  82: True, 83: True, 84: True,
 }
 LIFT_WAIT_TICS = 105  # tics at bottom before rising (Lower Lift)
+
+# Linedef specials that represent player-activated switches (S-type: SR/S1).
+# The linedef itself is the switch wall; it activates a distant sector via tag.
+SWITCH_SPECIALS = {
+    # E1M1 present
+    11,   # S1 Exit Level
+    23,   # S1 Lower Floor to Lowest
+    62,   # SR Lower Lift
+    # Common S-type specials for future maps
+    7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
+}
 
 # Linedef flags
 ML_BLOCKING      = 0x01  # blocks players and monsters
@@ -385,6 +396,27 @@ def _parse_animated_lump(data, wad, flats):
             sequences.append((is_flat, frames, speed_tics))
 
     return sequences
+
+
+def load_switch_pairs(wad):
+    """Parse SWITCHES lump → dict {sw1_name: sw2_name, sw2_name: sw1_name}.
+
+    Falls back to SW1↔SW2 name substitution if the lump is absent.
+    """
+    pairs = {}
+    data = wad.get('SWITCHES')
+    if data:
+        i = 0
+        while i + 20 <= len(data):
+            chunk = data[i:i + 20]
+            n1 = chunk[0:9].split(b'\x00')[0].decode('ascii', errors='replace').upper()
+            n2 = chunk[9:18].split(b'\x00')[0].decode('ascii', errors='replace').upper()
+            if not n1:
+                break
+            pairs[n1] = n2
+            pairs[n2] = n1
+            i += 20
+    return pairs
 
 
 def load_anim_sequences(wad, flats):
@@ -830,6 +862,7 @@ def main():
     print(f"Found {len(patches)} patches, {len(flats)} flats")
     print("Loading animation sequences...")
     anim_sequences = load_anim_sequences(wad, flats)
+    switch_pairs   = load_switch_pairs(wad)
 
     print(f"Loading map {MAP_NAME}...")
     lumps    = wad.get_map_lumps(MAP_NAME)
@@ -1036,12 +1069,26 @@ def main():
         ceil_h  = (min(s['ch'] for s in non_sky) - DOOR_TRACK_OFFSET) if non_sky else floor_h + 128
         door_heights[si] = (floor_h, ceil_h)
 
+    # ── Identify switch linedefs ──────────────────────────────────────────────
+    # One-sided linedefs with a S-type special — the wall face IS the switch.
+    switch_linedef_ids = set()
+    for ld_idx, ld in enumerate(linedefs):
+        if ld['special'] not in SWITCH_SPECIALS:
+            continue
+        if ld['right'] < 0 or ld['left'] >= 0:
+            continue  # one-sided only
+        sd = sidedefs[ld['right']]
+        if not sd['middle'] or sd['middle'] == '-':
+            continue
+        switch_linedef_ids.add(ld_idx)
+    print(f"  {len(switch_linedef_ids)} switch linedefs identified")
+
     # ── Wall geometry ─────────────────────────────────────────────────────────
     pts   = []
     faces = []
 
     print("Generating walls...")
-    for ld in linedefs:
+    for ld_idx, ld in enumerate(linedefs):
         v1i, v2i = ld['v1'], ld['v2']
         dx1, dy1 = vertexes[v1i]
         dx2, dy2 = vertexes[v2i]
@@ -1060,6 +1107,8 @@ def main():
         r_is_door = r_sd['sector'] in door_sector_ids
 
         if not has_left:
+            if ld_idx in switch_linedef_ids:
+                continue  # face extracted as switch instance
             if r_is_door:
                 # One-sided lateral wall of door sector
                 if r_sd['sector'] not in door_heights: continue
@@ -1616,6 +1665,92 @@ def main():
 
     print(f"  {len(lift_instances)} lift instances generated")
 
+    # ── Switch meshes and instances ───────────────────────────────────────────
+    print("Generating switch instances...")
+    switch_instances = {}
+
+    for ld_idx in sorted(switch_linedef_ids):
+        ld  = linedefs[ld_idx]
+        sd  = sidedefs[ld['right']]
+        sec = sectors[sd['sector']]
+
+        switch_name = f'switch_{ld_idx}'
+        dx1, dy1    = vertexes[ld['v1']]
+        dx2, dy2    = vertexes[ld['v2']]
+        wx1, wz1    = doom_to_world(dx1, dy1)
+        wx2, wz2    = doom_to_world(dx2, dy2)
+        wall_len    = wall_length_doom(vertexes, ld['v1'], ld['v2'])
+
+        tex_name    = sd['middle']
+        ti_g        = ensure_wall_tex(tex_name)
+        if ti_g < 0:
+            continue
+        tw, th      = Image.open(get_tex_abspath(tex_name)).size
+        h_doom      = sec['ch'] - sec['fh']
+        lower_unpeg = bool(ld['flags'] & ML_DONTPEGBOTTOM)
+        yo          = sd['yo'] + (th - h_doom if lower_unpeg else 0)
+
+        # Find SW2 partner for animated texture
+        partner_name = switch_pairs.get(tex_name)
+        if not partner_name and tex_name.startswith('SW1'):
+            partner_name = 'SW2' + tex_name[3:]
+        ti_g2 = ensure_wall_tex(partner_name) if partner_name else -1
+
+        s_pts_raw   = []
+        s_faces_raw = []
+        add_wall_quad(s_pts_raw, s_faces_raw, ti_g,
+                      wx1, wz1, wx2, wz2,
+                      sec['fh'] * SCALE, sec['ch'] * SCALE,
+                      wall_len, tw, th, sd['xo'], yo,
+                      flip=True, light=sec['light'])
+
+        # Remap global tex indices (1-based in faces) → local 1-based
+        # Include SW2 partner alongside SW1 so it's available for animation.
+        used_global_set = set(f['texture'] for f in s_faces_raw if 'texture' in f)
+        if ti_g2 >= 0:
+            used_global_set.add(ti_g2 + 1)  # faces store 1-based; ti_g2 is 0-based
+        used_global = sorted(used_global_set)
+        g_to_local  = {g: i + 1 for i, g in enumerate(used_global)}
+        local_texs  = [tex_paths[g - 1] for g in used_global]  # g is 1-based
+
+        for face in s_faces_raw:
+            if 'texture' in face:
+                face['texture'] = g_to_local[face['texture']]
+
+        # Animated texture: SW1 (off) → SW2 (on), 1s per frame
+        if ti_g2 >= 0:
+            local_1 = g_to_local[ti_g + 1]   # ti_g is 0-based → 1-based key
+            local_2 = g_to_local[ti_g2 + 1]
+            for face in s_faces_raw:
+                if 'texture' in face:
+                    face['textures'] = {'ids': [local_1, local_2], 'duration': 1.0}
+                    del face['texture']
+
+        s_pts_out = [[round(v, 4) for v in p] for p in s_pts_raw]
+        write_obj_json({'textures': local_texs, 'points': s_pts_out, 'faces': s_faces_raw},
+                       os.path.join(obj_dir, f'{switch_name}.obj.json'))
+
+        inst_path = os.path.join(inst_dir, f'{switch_name}.instance.json')
+        inst_str = (
+            '{\n'
+            f'  "object":     "./assets/doom/objects/{switch_name}.obj.json",\n'
+            '  "position":   [0, 0, 0],\n'
+            '  "rotation":   [0, 0, 0],\n'
+            '  "trigger":    "action",\n'
+            '  "loop":       false,\n'
+            '  "onlyOnce":   false,\n'
+            '  "collidable": false,\n'
+            '  "radius":     1.0,\n'
+            '  "damage":     null,\n'
+            '  "keyframes":  []\n'
+            '}'
+        )
+        with open(inst_path, 'w') as f:
+            f.write(inst_str)
+        switch_instances[switch_name] = f'./assets/doom/instances/{switch_name}.instance.json'
+
+    print(f"  {len(switch_instances)} switch instances generated")
+
     # ── Player spawn from THINGS lump ─────────────────────────────────────────
     # Thing type 1 = Player 1 start. Doom angle 0 = east, 90 = north.
     # Engine yaw: 0 = north (+Z), 90 = east (+X). Conversion: yaw = (90 - doom_angle) % 360
@@ -1680,7 +1815,7 @@ def main():
             'sources': []
         },
         'map': './assets/doom/objects/map.obj.json',
-        'instances': {**door_instances, **lift_instances}
+        'instances': {**door_instances, **lift_instances, **switch_instances}
     }
     with open(def_path, 'w') as f:
         json.dump(defn, f, indent=2)

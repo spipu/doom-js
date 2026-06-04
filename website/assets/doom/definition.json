@@ -51,6 +51,8 @@
     "lift_98": "./assets/doom/instances/lift_98.instance.json",
     "lift_103": "./assets/doom/instances/lift_103.instance.json",
     "lift_126": "./assets/doom/instances/lift_126.instance.json",
-    "lift_129": "./assets/doom/instances/lift_129.instance.json"
+    "lift_129": "./assets/doom/instances/lift_129.instance.json",
+    "switch_407": "./assets/doom/instances/switch_407.instance.json",
+    "switch_753": "./assets/doom/instances/switch_753.instance.json"
   }
 }
