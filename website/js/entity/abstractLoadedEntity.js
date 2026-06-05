@@ -11,12 +11,12 @@ class AbstractLoadedEntity {
         return this._id;
     }
 
-    getUrl() {
-        return this._url;
-    }
-
     getCode() {
         return this._code;
+    }
+
+    getUrl() {
+        return this._url;
     }
 
     isLoaded() {
