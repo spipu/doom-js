@@ -2,7 +2,7 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Bootstrap {
     constructor() {
-        this._version = '1.344';
+        this._version = '1.345';
     }
 
     getVersion() {
