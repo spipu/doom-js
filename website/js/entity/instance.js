@@ -141,7 +141,7 @@ class Instance extends AbstractLoadedEntity {
 
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {
-        if (this._keyframes.length === 0) {
+        if (this._keyframes.length === 0 && this._interaction === null) {
             return;
         }
         if (this._trigger === 'none') {
@@ -179,11 +179,17 @@ class Instance extends AbstractLoadedEntity {
         }
 
         if (!wasPlaying && this._playing) {
-            if (this._time >= this._maxTime) {
-                this._time = this._keyframes[0].t;
-            }
             if (this._interaction !== null) {
                 loader.interactions().getByCode(this._interaction).triggered(this);
+
+                if (this._keyframes.length === 0) {
+                    this._endOfTrigger();
+                    return;
+                }
+            }
+
+            if (this._time >= this._maxTime) {
+                this._time = this._keyframes[0].t;
             }
         }
 
@@ -197,14 +203,18 @@ class Instance extends AbstractLoadedEntity {
                 this._time = this._time % this._maxTime;
             } else {
                 this._time    = this._maxTime;
-                this._playing = false;
-                if (this._onlyOnce) {
-                    this._done = true;
-                }
+                this._endOfTrigger();
             }
         }
 
         this._computeWorldCenter();
+    }
+
+    _endOfTrigger() {
+        this._playing = false;
+        if (this._onlyOnce) {
+            this._done = true;
+        }
     }
 
     _interpolate() {
