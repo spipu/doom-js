@@ -1,4 +1,5 @@
 {
+  "code": "lift",
   "object": "./assets/world/objects/lift.obj.json",
   "position": [1.75, 0.55, -13.4],
   "rotation": [0, 0, 0],

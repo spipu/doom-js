@@ -1,12 +1,14 @@
 {
-  "object":     "./assets/doom/objects/switch_753.obj.json",
-  "position":   [0, 0, 0],
-  "rotation":   [0, 0, 0],
-  "trigger":    "action",
-  "loop":       false,
-  "onlyOnce":   false,
-  "collidable": false,
-  "radius":     1.0,
-  "damage":     null,
-  "keyframes":  []
+  "code":        "switch_753",
+  "object":      "./assets/doom/objects/switch_753.obj.json",
+  "position":    [0, 0, 0],
+  "rotation":    [0, 0, 0],
+  "trigger":     "action",
+  "loop":        false,
+  "onlyOnce":    false,
+  "collidable":  false,
+  "radius":      1.0,
+  "damage":      null,
+  "interaction": "switch_753",
+  "keyframes":   []
 }

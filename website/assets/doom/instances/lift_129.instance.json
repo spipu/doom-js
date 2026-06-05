@@ -1,4 +1,5 @@
 {
+  "code":       "lift_129",
   "object":     "./assets/doom/objects/lift_129.obj.json",
   "position":   [0, 0, 0],
   "rotation":   [0, 0, 0],

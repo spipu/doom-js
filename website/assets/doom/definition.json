@@ -31,28 +31,32 @@
     "sources": []
   },
   "map": "./assets/doom/objects/map.obj.json",
-  "instances": {
-    "door_10": "./assets/doom/instances/door_10.instance.json",
-    "door_34": "./assets/doom/instances/door_34.instance.json",
-    "door_48": "./assets/doom/instances/door_48.instance.json",
-    "door_51": "./assets/doom/instances/door_51.instance.json",
-    "door_54": "./assets/doom/instances/door_54.instance.json",
-    "door_64": "./assets/doom/instances/door_64.instance.json",
-    "door_71": "./assets/doom/instances/door_71.instance.json",
-    "door_77": "./assets/doom/instances/door_77.instance.json",
-    "door_78": "./assets/doom/instances/door_78.instance.json",
-    "door_79": "./assets/doom/instances/door_79.instance.json",
-    "door_80": "./assets/doom/instances/door_80.instance.json",
-    "door_81": "./assets/doom/instances/door_81.instance.json",
-    "door_84": "./assets/doom/instances/door_84.instance.json",
-    "door_100": "./assets/doom/instances/door_100.instance.json",
-    "door_145": "./assets/doom/instances/door_145.instance.json",
-    "lift_76": "./assets/doom/instances/lift_76.instance.json",
-    "lift_98": "./assets/doom/instances/lift_98.instance.json",
-    "lift_103": "./assets/doom/instances/lift_103.instance.json",
-    "lift_126": "./assets/doom/instances/lift_126.instance.json",
-    "lift_129": "./assets/doom/instances/lift_129.instance.json",
-    "switch_407": "./assets/doom/instances/switch_407.instance.json",
-    "switch_753": "./assets/doom/instances/switch_753.instance.json"
-  }
+  "instances": [
+    "./assets/doom/instances/door_10.instance.json",
+    "./assets/doom/instances/door_34.instance.json",
+    "./assets/doom/instances/door_48.instance.json",
+    "./assets/doom/instances/door_51.instance.json",
+    "./assets/doom/instances/door_54.instance.json",
+    "./assets/doom/instances/door_64.instance.json",
+    "./assets/doom/instances/door_71.instance.json",
+    "./assets/doom/instances/door_77.instance.json",
+    "./assets/doom/instances/door_78.instance.json",
+    "./assets/doom/instances/door_79.instance.json",
+    "./assets/doom/instances/door_80.instance.json",
+    "./assets/doom/instances/door_81.instance.json",
+    "./assets/doom/instances/door_84.instance.json",
+    "./assets/doom/instances/door_100.instance.json",
+    "./assets/doom/instances/door_145.instance.json",
+    "./assets/doom/instances/lift_76.instance.json",
+    "./assets/doom/instances/lift_98.instance.json",
+    "./assets/doom/instances/lift_103.instance.json",
+    "./assets/doom/instances/lift_126.instance.json",
+    "./assets/doom/instances/lift_129.instance.json",
+    "./assets/doom/instances/switch_407.instance.json",
+    "./assets/doom/instances/switch_753.instance.json"
+  ],
+  "interactions": [
+    "./assets/doom/interactions/switch_407.js",
+    "./assets/doom/interactions/switch_753.js"
+  ]
 }

@@ -1,4 +1,5 @@
 {
+  "code":       "door_48",
   "object":     "./assets/doom/objects/door_48.obj.json",
   "position":   [0, 0, 0],
   "rotation":   [0, 0, 0],

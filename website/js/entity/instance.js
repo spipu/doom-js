@@ -6,12 +6,13 @@ class Instance extends AbstractLoadedEntity {
         this._object    = null;
         this._position  = [0, 0, 0];
         this._rotation  = [0, 0, 0];
-        this._trigger     = 'none';
-        this._loop        = false;
-        this._onlyOnce    = false;
-        this._done        = false;
-        this._collidable  = false;
-        this._radius      = null;
+        this._trigger          = 'none';
+        this._loop             = false;
+        this._onlyOnce         = false;
+        this._done             = false;
+        this._collidable       = false;
+        this._radius           = null;
+        this._interaction      = null;
         this._keyframes        = [];
         this._maxTime          = 0;
         this._time             = 0;
@@ -177,8 +178,13 @@ class Instance extends AbstractLoadedEntity {
                 break;
         }
 
-        if (!wasPlaying && this._playing && this._time >= this._maxTime) {
-            this._time = this._keyframes[0].t;
+        if (!wasPlaying && this._playing) {
+            if (this._time >= this._maxTime) {
+                this._time = this._keyframes[0].t;
+            }
+            if (this._interaction !== null) {
+                loader.interactions().getByCode(this._interaction).triggered(this);
+            }
         }
 
         if (!this._playing) {

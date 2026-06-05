@@ -27,11 +27,10 @@ class WorldLoader {
         bootstrap.fetchJson(entity.getUrl(), data => {
 
             loader.objects().loadByCode('map', data.map);
-            for (const [code, url] of Object.entries(data.instances)) {
-                loader.instances().loadByCode(code, url);
-            }
+            (data.instances || []).forEach(url => loader.instances().load(url));
+            (data.interactions || []).forEach(url => loader.interactions().load(url));
 
-            entity._user         = this._initUser(data.user)
+            entity._user         = this._initUser(data.user);
             entity._background   = data.background || [0, 0, 0];
             entity._lightAmbient = data.lights.ambient;
             entity._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
