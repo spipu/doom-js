@@ -2,7 +2,7 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Bootstrap {
     constructor() {
-        this._version = '1.337';
+        this._version = '1.340';
     }
 
     getVersion() {
@@ -25,18 +25,26 @@ class Bootstrap {
             .catch(e => console.error('Failed to load "' + url + '": ' + e));
     }
 
+    loadJs(url) {
+        document.write('<script src="' + this.buildUrl(url) + '"><\/script>');
+    }
+
     init() {
         [
             'js/entity/abstractLoadedEntity.js',
             'js/entity/instance.js',
+            'js/entity/interaction.js',
             'js/entity/face.js',
             'js/entity/light.js',
             'js/entity/object3d.js',
             'js/entity/texture.js',
             'js/entity/user.js',
             'js/entity/world.js',
+            'js/interaction/abstractInteraction.js',
+            'js/interaction/switchInteraction.js',
             'js/loader/abstractLoader.js',
             'js/loader/instanceLoader.js',
+            'js/loader/interactionLoader.js',
             'js/loader/object3dLoader.js',
             'js/loader/textureLoader.js',
             'js/loader/worldLoader.js',
@@ -54,7 +62,7 @@ class Bootstrap {
             'js/inputKeyboard.js',
             'js/inputMouse.js',
             'js/debug.js',
-        ].forEach(src => document.write('<script src="' + this.buildUrl(src) + '"><\/script>'));
+        ].forEach(url => this.loadJs(url));
     }
 }
 

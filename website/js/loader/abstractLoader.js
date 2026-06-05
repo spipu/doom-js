@@ -10,6 +10,7 @@ class AbstractLoader {
         this._loaded       = true;
         this._entities     = [];
         this._codeRegistry = {};
+        this._loadedFiles  = {};
     }
 
     isLoaded() {
@@ -21,7 +22,9 @@ class AbstractLoader {
             throw this._generateException('Code [' + code + '] is already registered');
         }
 
-        this._codeRegistry[code] = this.load(url);
+        const id = this.load(url);
+        this._codeRegistry[code] = id;
+        this._entities[id]._code = code;
     }
 
     getByCode(code) {
@@ -50,6 +53,7 @@ class AbstractLoader {
         }
 
         this._entities[entity.getId()] = entity;
+        this._loadedFiles[url] = entity.getId();
         return entity.getId();
     }
 

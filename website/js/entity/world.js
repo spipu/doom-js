@@ -64,19 +64,22 @@ class World extends AbstractLoadedEntity {
         // 3. Animate instances
         this.getInstances().forEach(inst => inst.update(dt, user, action));
 
-        // 4. Refresh dynamic collider triangles
+        // 4. Update interactions
+        loader.interactions().tickAll(dt);
+
+        // 5. Refresh dynamic collider triangles
         this._collision.updateDynamicColliders();
 
-        // 5. Platform riding
+        // 6. Platform riding
         this._collision.applyPlatformRiding(user);
 
-        // 6. Player physics + collision
+        // 7. Player physics + collision
         user.updateMove(this._collision);
 
-        // 7. Object-player blocking (rollback)
+        // 8. Object-player blocking (rollback)
         this._collision.resolveObjectPlayerBlockage(user);
 
-        // 8. Damage
+        // 9. Damage
         this.getInstances().forEach(inst => inst.checkDamage(user, dt));
     }
 

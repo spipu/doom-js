@@ -2,6 +2,7 @@ class AbstractLoadedEntity {
     constructor(id, url, callback) {
         this._id             = id;
         this._url            = url;
+        this._code           = null;
         this._loaded         = false;
         this._loadedCallback = callback;
     }
@@ -12,6 +13,10 @@ class AbstractLoadedEntity {
 
     getUrl() {
         return this._url;
+    }
+
+    getCode() {
+        return this._code;
     }
 
     isLoaded() {

@@ -23,10 +23,10 @@
     ]
   },
   "map": "./assets/world/objects/map.obj.json",
-  "instances": {
-    "door":     "./assets/world/instances/door.instance.json",
-    "cube1":    "./assets/world/instances/cube1.instance.json",
-    "cube2":    "./assets/world/instances/cube2.instance.json",
-    "lift":     "./assets/world/instances/lift.instance.json"
-  }
+  "instances": [
+    "./assets/world/instances/door.instance.json",
+    "./assets/world/instances/cube1.instance.json",
+    "./assets/world/instances/cube2.instance.json",
+    "./assets/world/instances/lift.instance.json"
+  ]
 }
