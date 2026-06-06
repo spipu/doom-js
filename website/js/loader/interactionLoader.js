@@ -32,7 +32,7 @@ class InteractionLoader extends AbstractLoader {
         this._codeRegistry[entity.getCode()] = entity.getId();
     }
 
-    tickAll(dt) {
+    updateAll(dt) {
         for (const entity of this._entities) {
             entity.update(dt);
         }
