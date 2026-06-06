@@ -65,7 +65,7 @@ class World extends AbstractLoadedEntity {
         this.getInstances().forEach(inst => inst.update(dt, user, action));
 
         // 4. Update interactions
-        loader.interactions().tickAll(dt);
+        loader.interactions().updateAll(dt);
 
         // 5. Refresh dynamic collider triangles
         this._collision.updateDynamicColliders();
