@@ -1,8 +1,8 @@
 {
 "textures": [
-"./assets/doom/texture/BROWN1.jpg",
-"./assets/doom/texture/AQSUPP01.jpg",
-"./assets/doom/texture/CEIL5_2.jpg"
+"./assets/doom/textures/BROWN1.jpg",
+"./assets/doom/textures/AQSUPP01.jpg",
+"./assets/doom/textures/CEIL5_2.jpg"
 ],
 "points": [
 [8.875, -2.0, 13.0],

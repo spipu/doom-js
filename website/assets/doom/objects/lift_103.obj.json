@@ -1,7 +1,7 @@
 {
 "textures": [
-"./assets/doom/texture/FLAT20.jpg",
-"./assets/doom/texture/PLAT1.jpg"
+"./assets/doom/textures/FLAT20.jpg",
+"./assets/doom/textures/PLAT1.jpg"
 ],
 "points": [
 [19.875, 2.125, -7.875],

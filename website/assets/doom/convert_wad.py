@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert a Doom WAD map to Proto3d format."""
 
-import struct, json, math, os, sys
+import struct, json, math, os, sys, shutil
 from collections import defaultdict
 from PIL import Image
 
@@ -13,13 +13,13 @@ if len(sys.argv) < 2:
 WAD_PATH  = sys.argv[1]
 MAP_NAME  = sys.argv[2].upper() if len(sys.argv) >= 3 else None
 OUT_DIR   = os.path.dirname(os.path.abspath(__file__))
-TEX_DIR   = os.path.join(OUT_DIR, "texture")
+TEX_DIR   = os.path.join(OUT_DIR, "textures")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = None
-SPAWN_YAW      = None
-SPAWN_PITCH    = None
+SPAWN_POSITION = [32.22, 2.5, -5.38]
+SPAWN_YAW      = 0.0
+SPAWN_PITCH    = 0.0
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1
@@ -116,6 +116,16 @@ SWITCH_SPECIALS = {
     62,   # SR Lower Lift
     # Common S-type specials for future maps
     7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
+}
+
+# Interaction mode per linedef special:
+# 'once'   → setModeOnce()
+# 'timed'  → setModeTimed(minOnTime, minOffTime) in ms
+# 'toggle' → setModeToggle(minOnTime, minOffTime) in ms
+SWITCH_INTERACTION_BY_SPECIAL = {
+    11:  ('once',   None,        None),   # S1 Exit
+    23:  ('once',   None,        None),   # S1 Lower Floor
+    62:  ('timed',  1000,        1000),   # SR Lower Lift
 }
 
 # Linedef flags
@@ -315,17 +325,16 @@ def save_texture(img, name):
     _tex_abspath so get_tex_abspath() can resolve it without filesystem hits.
     Returns the relative URL path for use in .obj.json files.
     """
-    os.makedirs(TEX_DIR, exist_ok=True)
     uname = name.upper()
     has_alpha = (img.mode == 'RGBA' and img.getextrema()[3][0] < 255)
     if has_alpha:
         abspath = os.path.join(TEX_DIR, uname + '.png')
-        relpath = './assets/doom/texture/' + uname + '.png'
+        relpath = './assets/doom/textures/' + uname + '.png'
         if not os.path.exists(abspath):
             img.save(abspath, 'PNG')
     else:
         abspath = os.path.join(TEX_DIR, uname + '.jpg')
-        relpath = './assets/doom/texture/' + uname + '.jpg'
+        relpath = './assets/doom/textures/' + uname + '.jpg'
         if not os.path.exists(abspath):
             img.convert('RGB').save(abspath, 'JPEG', quality=85)
     _tex_abspath[uname] = abspath
@@ -829,7 +838,15 @@ def write_obj_json(obj, path):
 # ─── Main conversion ──────────────────────────────────────────────────────────
 
 def main():
-    os.makedirs(TEX_DIR, exist_ok=True)
+    print("Cleaning output directories...")
+    for d in ['objects', 'textures', 'instances', 'interactions']:
+        p = os.path.join(OUT_DIR, d)
+        if os.path.exists(p):
+            shutil.rmtree(p)
+        os.makedirs(p)
+    def_path_clean = os.path.join(OUT_DIR, 'definition.json')
+    if os.path.exists(def_path_clean):
+        os.remove(def_path_clean)
 
     print("Loading WAD...")
     wad     = WAD(WAD_PATH)
@@ -1340,8 +1357,6 @@ def main():
     print("Generating door instances...")
     inst_dir = os.path.join(OUT_DIR, 'instances')
     obj_dir  = os.path.join(OUT_DIR, 'objects')
-    os.makedirs(inst_dir, exist_ok=True)
-    os.makedirs(obj_dir,  exist_ok=True)
     door_instances = {}
 
     for si in sorted(door_sector_ids):
@@ -1497,16 +1512,17 @@ def main():
         kf_lines = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
         inst_str = (
             '{\n'
-            f'  "object":     "./assets/doom/objects/{door_name}.obj.json",\n'
-            '  "position":   [0, 0, 0],\n'
-            '  "rotation":   [0, 0, 0],\n'
-            f'  "trigger":    "{trigger}",\n'
-            f'  "loop":       {loop_str},\n'
-            f'  "onlyOnce":   {oo_str},\n'
-            '  "collidable": true,\n'
-            f'  "radius":     {radius},\n'
-            '  "damage":     null,\n'
-            f'  "keyframes":  [\n    {kf_lines}\n  ]\n'
+            f'  "code":        "{door_name}",\n'
+            f'  "object":      "./assets/doom/objects/{door_name}.obj.json",\n'
+            '  "position":    [0, 0, 0],\n'
+            '  "rotation":    [0, 0, 0],\n'
+            f'  "trigger":     "{trigger}",\n'
+            f'  "loop":        {loop_str},\n'
+            f'  "onlyOnce":    {oo_str},\n'
+            '  "collidable":  true,\n'
+            f'  "radius":      {radius},\n'
+            '  "damage":      null,\n'
+            f'  "keyframes":   [\n    {kf_lines}\n  ]\n'
             '}'
         )
         with open(inst_path, 'w') as f:
@@ -1647,16 +1663,17 @@ def main():
         inst_path = os.path.join(inst_dir, f'{lift_name}.instance.json')
         inst_str = (
             '{\n'
-            f'  "object":     "./assets/doom/objects/{lift_name}.obj.json",\n'
-            '  "position":   [0, 0, 0],\n'
-            '  "rotation":   [0, 0, 0],\n'
-            f'  "trigger":    "{trigger}",\n'
-            f'  "loop":       {loop_str},\n'
-            f'  "onlyOnce":   {oo_str},\n'
-            '  "collidable": true,\n'
-            f'  "radius":     {radius},\n'
-            '  "damage":     null,\n'
-            f'  "keyframes":  [\n    {kf_lines}\n  ]\n'
+            f'  "code":        "{lift_name}",\n'
+            f'  "object":      "./assets/doom/objects/{lift_name}.obj.json",\n'
+            '  "position":    [0, 0, 0],\n'
+            '  "rotation":    [0, 0, 0],\n'
+            f'  "trigger":     "{trigger}",\n'
+            f'  "loop":        {loop_str},\n'
+            f'  "onlyOnce":    {oo_str},\n'
+            '  "collidable":  true,\n'
+            f'  "radius":      {radius},\n'
+            '  "damage":      null,\n'
+            f'  "keyframes":   [\n    {kf_lines}\n  ]\n'
             '}'
         )
         with open(inst_path, 'w') as f:
@@ -1667,7 +1684,9 @@ def main():
 
     # ── Switch meshes and instances ───────────────────────────────────────────
     print("Generating switch instances...")
-    switch_instances = {}
+    switch_instances   = {}
+    switch_interactions = []
+    inter_dir = os.path.join(OUT_DIR, 'interactions')
 
     for ld_idx in sorted(switch_linedef_ids):
         ld  = linedefs[ld_idx]
@@ -1730,19 +1749,36 @@ def main():
         write_obj_json({'textures': local_texs, 'points': s_pts_out, 'faces': s_faces_raw},
                        os.path.join(obj_dir, f'{switch_name}.obj.json'))
 
+        # Interaction mode
+        special = ld['special']
+        mode, t_on, t_off = SWITCH_INTERACTION_BY_SPECIAL.get(special, ('once', None, None))
+        if mode == 'once':
+            js_call = f"new SwitchInteraction('{switch_name}').setModeOnce()"
+        elif mode == 'timed':
+            js_call = f"new SwitchInteraction('{switch_name}').setModeTimed({t_on}, {t_off})"
+        else:
+            js_call = f"new SwitchInteraction('{switch_name}').setModeToggle({t_on}, {t_off})"
+
+        inter_path = os.path.join(inter_dir, f'{switch_name}.js')
+        with open(inter_path, 'w') as f:
+            f.write(f'loader.interactions().register({js_call});\n')
+        switch_interactions.append(f'./assets/doom/interactions/{switch_name}.js')
+
         inst_path = os.path.join(inst_dir, f'{switch_name}.instance.json')
         inst_str = (
             '{\n'
-            f'  "object":     "./assets/doom/objects/{switch_name}.obj.json",\n'
-            '  "position":   [0, 0, 0],\n'
-            '  "rotation":   [0, 0, 0],\n'
-            '  "trigger":    "action",\n'
-            '  "loop":       false,\n'
-            '  "onlyOnce":   false,\n'
-            '  "collidable": false,\n'
-            '  "radius":     1.0,\n'
-            '  "damage":     null,\n'
-            '  "keyframes":  []\n'
+            f'  "code":        "{switch_name}",\n'
+            f'  "object":      "./assets/doom/objects/{switch_name}.obj.json",\n'
+            '  "position":    [0, 0, 0],\n'
+            '  "rotation":    [0, 0, 0],\n'
+            '  "trigger":     "action",\n'
+            '  "loop":        false,\n'
+            '  "onlyOnce":    false,\n'
+            '  "collidable":  false,\n'
+            '  "radius":      1.0,\n'
+            '  "damage":      null,\n'
+            f'  "interaction": "{switch_name}",\n'
+            '  "keyframes":   []\n'
             '}'
         )
         with open(inst_path, 'w') as f:
@@ -1771,7 +1807,7 @@ def main():
     def_path = os.path.join(OUT_DIR, 'definition.json')
     spawn_y     = 0.3
     spawn_pitch = 0
-    ambient    = [200, 200, 200]
+    ambient    = [235, 235, 235]
     gravity     = 9.81
     max_jump    = 3.5
     step_height = 0.375
@@ -1802,7 +1838,7 @@ def main():
             'maxEnergy':       100,
             'height':          PLAYER_HEIGHT,
             'eyeRatio':        0.73,    # eyes at 41/56 of height
-            'radius':          0.25,    # 16 doom units
+            'radius':          0.275,   # 16 doom units +10%
             'gravity':         gravity         if os.path.exists(def_path) else 9.81,
             'maxJumpVelocity': max_jump        if os.path.exists(def_path) else 3.5,
             'maxSlopeAngle':   50,
@@ -1815,7 +1851,8 @@ def main():
             'sources': []
         },
         'map': './assets/doom/objects/map.obj.json',
-        'instances': {**door_instances, **lift_instances, **switch_instances}
+        'instances': list({**door_instances, **lift_instances, **switch_instances}.values()),
+        'interactions': switch_interactions,
     }
     with open(def_path, 'w') as f:
         json.dump(defn, f, indent=2)

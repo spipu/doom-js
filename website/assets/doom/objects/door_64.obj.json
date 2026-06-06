@@ -1,7 +1,7 @@
 {
 "textures": [
-"./assets/doom/texture/AQF032.jpg",
-"./assets/doom/texture/EXITDOOR.jpg"
+"./assets/doom/textures/AQF032.jpg",
+"./assets/doom/textures/EXITDOOR.jpg"
 ],
 "points": [
 [-4.0, -2.0, 21.75],
