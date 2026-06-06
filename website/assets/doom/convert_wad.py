@@ -17,9 +17,9 @@ TEX_DIR   = os.path.join(OUT_DIR, "textures")
 SCALE     = 1.0 / 64.0   # 64 Doom units = 1 metre
 
 # ── Spawn override (set to override WAD THINGS position, leave None for WAD default) ──
-SPAWN_POSITION = [32.22, 2.5, -5.38]
-SPAWN_YAW      = 0.0
-SPAWN_PITCH    = 0.0
+SPAWN_POSITION = None
+SPAWN_YAW      = None
+SPAWN_PITCH    = None
 
 # Linedef types that trigger door-open actions
 # 2   = W1 Open Stay (walk, stays open) — 6x in E1M1

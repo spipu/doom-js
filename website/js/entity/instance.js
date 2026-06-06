@@ -144,11 +144,33 @@ class Instance extends AbstractLoadedEntity {
         if (this._keyframes.length === 0 && this._interaction === null) {
             return;
         }
-        if (this._trigger === 'none') {
-            return;
-        }
         if (this._done) {
             return;
+        }
+
+        if (this._checkTrigger(user, action)) {
+            return;
+        }
+
+        if (!this._playing) {
+            return;
+        }
+
+        this._time += dt / 1000;
+        if (this._time >= this._maxTime) {
+            if (this._loop) {
+                this._time = this._time % this._maxTime;
+            } else {
+                this.stop();
+            }
+        }
+
+        this._computeWorldCenter();
+    }
+
+    _checkTrigger(user, action) {
+        if (this._trigger === 'none' || this._playing) {
+            return false;
         }
 
         const inRange = (
@@ -184,25 +206,12 @@ class Instance extends AbstractLoadedEntity {
 
                 if (this._keyframes.length === 0) {
                     this.stop();
-                    return;
+                    return true;
                 }
             }
         }
 
-        if (!this._playing) {
-            return;
-        }
-
-        this._time += dt / 1000;
-        if (this._time >= this._maxTime) {
-            if (this._loop) {
-                this._time = this._time % this._maxTime;
-            } else {
-                this.stop();
-            }
-        }
-
-        this._computeWorldCenter();
+        return false;
     }
 
     start() {
