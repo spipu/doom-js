@@ -1,16 +1,16 @@
 {
   "user": {
     "position": [
-      -6.5,
-      0.3,
-      4.0
+      32.22,
+      2.5,
+      -5.38
     ],
-    "yaw": 90,
-    "pitch": 0,
+    "yaw": 0.0,
+    "pitch": 0.0,
     "maxEnergy": 100,
     "height": 0.875,
     "eyeRatio": 0.73,
-    "radius": 0.25,
+    "radius": 0.275,
     "gravity": 9.81,
     "maxJumpVelocity": 3.5,
     "maxSlopeAngle": 50,
@@ -24,9 +24,9 @@
   ],
   "lights": {
     "ambient": [
-      255,
-      255,
-      255
+      235,
+      235,
+      235
     ],
     "sources": []
   },

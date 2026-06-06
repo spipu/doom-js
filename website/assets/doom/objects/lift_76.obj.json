@@ -1,7 +1,7 @@
 {
 "textures": [
-"./assets/doom/texture/DOORSTOP.jpg",
-"./assets/doom/texture/CEIL5_1.jpg"
+"./assets/doom/textures/DOORSTOP.jpg",
+"./assets/doom/textures/CEIL5_1.jpg"
 ],
 "points": [
 [35.0, 4.25, -0.5],

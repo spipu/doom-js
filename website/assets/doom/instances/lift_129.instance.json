@@ -1,15 +1,15 @@
 {
-  "code":       "lift_129",
-  "object":     "./assets/doom/objects/lift_129.obj.json",
-  "position":   [0, 0, 0],
-  "rotation":   [0, 0, 0],
-  "trigger":    "action",
-  "loop":       false,
-  "onlyOnce":   true,
-  "collidable": true,
-  "radius":     1.0154,
-  "damage":     null,
-  "keyframes":  [
+  "code":        "lift_129",
+  "object":      "./assets/doom/objects/lift_129.obj.json",
+  "position":    [0, 0, 0],
+  "rotation":    [0, 0, 0],
+  "trigger":     "action",
+  "loop":        false,
+  "onlyOnce":    true,
+  "collidable":  true,
+  "radius":      1.0154,
+  "damage":      null,
+  "keyframes":   [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
     {"t": 1.8286, "translate": [0, -2.0, 0], "rotate": [0, 0, 0]}
   ]

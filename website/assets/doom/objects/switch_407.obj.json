@@ -1,7 +1,7 @@
 {
 "textures": [
-"./assets/doom/texture/SW1GRAY.jpg",
-"./assets/doom/texture/SW2GRAY.jpg"
+"./assets/doom/textures/SW1GRAY.jpg",
+"./assets/doom/textures/SW2GRAY.jpg"
 ],
 "points": [
 [-6.25, -1.875, 20.0],

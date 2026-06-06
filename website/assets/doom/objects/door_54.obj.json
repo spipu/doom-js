@@ -1,7 +1,7 @@
 {
 "textures": [
-"./assets/doom/texture/FLOOR0_3.jpg",
-"./assets/doom/texture/DOOR1.jpg"
+"./assets/doom/textures/FLOOR0_3.jpg",
+"./assets/doom/textures/DOOR1.jpg"
 ],
 "points": [
 [35.75, 2.25, 3.75],
