@@ -151,6 +151,10 @@ class Object3d extends AbstractLoadedEntity {
         }
     }
 
+    getTextureId(index) {
+        return this._textureIds[index - 1];
+    }
+
     getCenter() {
         return this._center;
     }

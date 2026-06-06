@@ -1723,27 +1723,19 @@ def main():
                       wall_len, tw, th, sd['xo'], yo,
                       flip=True, light=sec['light'])
 
-        # Remap global tex indices (1-based in faces) → local 1-based
-        # Include SW2 partner alongside SW1 so it's available for animation.
+        # Remap global tex indices (1-based in faces) → local 1-based.
+        # SW2 partner is kept in the textures array (index 2) for the interaction
+        # to switch to it at runtime, but the face starts with SW1 as static texture.
         used_global_set = set(f['texture'] for f in s_faces_raw if 'texture' in f)
         if ti_g2 >= 0:
-            used_global_set.add(ti_g2 + 1)  # faces store 1-based; ti_g2 is 0-based
+            used_global_set.add(ti_g2 + 1)
         used_global = sorted(used_global_set)
         g_to_local  = {g: i + 1 for i, g in enumerate(used_global)}
-        local_texs  = [tex_paths[g - 1] for g in used_global]  # g is 1-based
+        local_texs  = [tex_paths[g - 1] for g in used_global]
 
         for face in s_faces_raw:
             if 'texture' in face:
                 face['texture'] = g_to_local[face['texture']]
-
-        # Animated texture: SW1 (off) → SW2 (on), 1s per frame
-        if ti_g2 >= 0:
-            local_1 = g_to_local[ti_g + 1]   # ti_g is 0-based → 1-based key
-            local_2 = g_to_local[ti_g2 + 1]
-            for face in s_faces_raw:
-                if 'texture' in face:
-                    face['textures'] = {'ids': [local_1, local_2], 'duration': 1.0}
-                    del face['texture']
 
         s_pts_out = [[round(v, 4) for v in p] for p in s_pts_raw]
         write_obj_json({'textures': local_texs, 'points': s_pts_out, 'faces': s_faces_raw},
@@ -1752,16 +1744,33 @@ def main():
         # Interaction mode
         special = ld['special']
         mode, t_on, t_off = SWITCH_INTERACTION_BY_SPECIAL.get(special, ('once', None, None))
+        class_name = ''.join(w.capitalize() for w in switch_name.split('_')) + 'Interaction'
         if mode == 'once':
-            js_call = f"new SwitchInteraction('{switch_name}').setModeOnce()"
+            mode_call = 'this.setModeOnce();'
         elif mode == 'timed':
-            js_call = f"new SwitchInteraction('{switch_name}').setModeTimed({t_on}, {t_off})"
+            mode_call = f'this.setModeTimed({t_on}, {t_off});'
         else:
-            js_call = f"new SwitchInteraction('{switch_name}').setModeToggle({t_on}, {t_off})"
+            mode_call = f'this.setModeToggle({t_on}, {t_off});'
 
         inter_path = os.path.join(inter_dir, f'{switch_name}.js')
         with open(inter_path, 'w') as f:
-            f.write(f'loader.interactions().register({js_call});\n')
+            f.write(
+                f'class {class_name} extends SwitchInteraction {{\n'
+                f'    constructor() {{\n'
+                f'        super(\'{switch_name}\');\n'
+                f'        {mode_call}\n'
+                f'    }}\n'
+                f'    _triggerOn(instance) {{\n'
+                f'        const obj = instance.getObject();\n'
+                f'        obj.faceList.forEach(fc => {{ fc.textureId = obj.getTextureId(2); }});\n'
+                f'    }}\n'
+                f'    _triggerOff(instance) {{\n'
+                f'        const obj = instance.getObject();\n'
+                f'        obj.faceList.forEach(fc => {{ fc.textureId = obj.getTextureId(1); }});\n'
+                f'    }}\n'
+                f'}}\n'
+                f'loader.interactions().register(new {class_name}());\n'
+            )
         switch_interactions.append(f'./assets/doom/interactions/{switch_name}.js')
 
         inst_path = os.path.join(inst_dir, f'{switch_name}.instance.json')
