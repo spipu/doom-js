@@ -164,16 +164,16 @@ class Instance extends AbstractLoadedEntity {
 
         switch (this._trigger) {
             case 'always':
-                this._playing = true;
+                this.start();
                 break;
             case 'proximity':
                 if (inRange) {
-                    this._playing = true;
+                    this.start();
                 }
                 break;
             case 'action':
                 if (inRange && action) {
-                    this._playing = true;
+                    this.start();
                 }
                 break;
         }
@@ -183,13 +183,9 @@ class Instance extends AbstractLoadedEntity {
                 loader.interactions().getByCode(this._interaction).triggered(this);
 
                 if (this._keyframes.length === 0) {
-                    this._endOfTrigger();
+                    this.stop();
                     return;
                 }
-            }
-
-            if (this._time >= this._maxTime) {
-                this._time = this._keyframes[0].t;
             }
         }
 
@@ -202,15 +198,25 @@ class Instance extends AbstractLoadedEntity {
             if (this._loop) {
                 this._time = this._time % this._maxTime;
             } else {
-                this._time    = this._maxTime;
-                this._endOfTrigger();
+                this.stop();
             }
         }
 
         this._computeWorldCenter();
     }
 
-    _endOfTrigger() {
+    start() {
+        if (this._playing) {
+            return;
+        }
+        this._playing = true;
+        if (this._keyframes.length > 0 && this._time >= this._maxTime) {
+            this._time = this._keyframes[0].t;
+        }
+    }
+
+    stop() {
+        this._time    = this._maxTime;
         this._playing = false;
         if (this._onlyOnce) {
             this._done = true;
