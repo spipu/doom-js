@@ -89,9 +89,9 @@ LIFT_ANIM_BY_SPECIAL = {
     56: 'one-way', 82: 'one-way', 83: 'one-way', 84: 'one-way',
 }
 LIFT_TRIGGER_BY_SPECIAL = {
-    62: 'action',    # SR switch → press E
+    62: 'none',      # SR switch-controlled → started by SwitchInteraction.start()
     88: 'proximity', # WR walk → approximated as proximity
-    23: 'action',    # S1 switch → press E
+    23: 'none',      # S1 switch-controlled → started by SwitchInteraction.start()
     36: 'always', 37: 'always', 38: 'always',
     56: 'always', 82: 'always', 83: 'always', 84: 'always',
 }
@@ -1657,10 +1657,11 @@ def main():
                 {"t": t_rest,                    "translate": [0,  0,        0], "rotate": [0, 0, 0]},
                 {"t": round(t_rest + 1.0, 4),    "translate": [0,  0,        0], "rotate": [0, 0, 0]},
             ]
-        loop_str = 'true' if loop else 'false'
-        oo_str   = 'true' if onlyone else 'false'
-        kf_lines  = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
-        inst_path = os.path.join(inst_dir, f'{lift_name}.instance.json')
+        loop_str   = 'true' if loop else 'false'
+        oo_str     = 'true' if onlyone else 'false'
+        radius_str = 'null' if trigger == 'none' else str(radius)
+        kf_lines   = ',\n    '.join(json.dumps(k, separators=(', ', ': ')) for k in kf)
+        inst_path  = os.path.join(inst_dir, f'{lift_name}.instance.json')
         inst_str = (
             '{\n'
             f'  "code":        "{lift_name}",\n'
@@ -1671,7 +1672,7 @@ def main():
             f'  "loop":        {loop_str},\n'
             f'  "onlyOnce":    {oo_str},\n'
             '  "collidable":  true,\n'
-            f'  "radius":      {radius},\n'
+            f'  "radius":      {radius_str},\n'
             '  "damage":      null,\n'
             f'  "keyframes":   [\n    {kf_lines}\n  ]\n'
             '}'
@@ -1752,6 +1753,18 @@ def main():
         else:
             mode_call = f'this.setModeToggle({t_on}, {t_off});'
 
+        # Resolve tag → target lift/floor instances
+        tag = ld['tag']
+        targets = []
+        if tag != 0:
+            for lift_si in moving_floor_down_ids:
+                if sectors[lift_si]['tag'] == tag and f'lift_{lift_si}' in lift_instances:
+                    targets.append(f'lift_{lift_si}')
+
+        trigger_on_starts = ''.join(
+            f"        loader.instances().getByCode('{t}').start();\n" for t in targets
+        )
+
         inter_path = os.path.join(inter_dir, f'{switch_name}.js')
         with open(inter_path, 'w') as f:
             f.write(
@@ -1763,6 +1776,7 @@ def main():
                 f'    _triggerOn(instance) {{\n'
                 f'        const obj = instance.getObject();\n'
                 f'        obj.faceList.forEach(fc => {{ fc.textureId = obj.getTextureId(2); }});\n'
+                f'{trigger_on_starts}'
                 f'    }}\n'
                 f'    _triggerOff(instance) {{\n'
                 f'        const obj = instance.getObject();\n'

@@ -3,11 +3,11 @@
   "object":      "./assets/doom/objects/lift_129.obj.json",
   "position":    [0, 0, 0],
   "rotation":    [0, 0, 0],
-  "trigger":     "action",
+  "trigger":     "none",
   "loop":        false,
   "onlyOnce":    true,
   "collidable":  true,
-  "radius":      1.0154,
+  "radius":      null,
   "damage":      null,
   "keyframes":   [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},
