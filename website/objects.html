@@ -93,6 +93,11 @@ function changeObject()
         engine = null;
     }
 
+    if (screen) {
+        screen.destroyContainer();
+        screen = null;
+    }
+
     const obj = document.getElementById('obj').value;
 
     loader.reset();
@@ -120,12 +125,15 @@ function init()
     engine.setFov(45.0);
     engine.setZBuffer(1, 100);
 
-    screen = new ScreenManager(engine, new AbstractHud(engine), { width: res, height: ((res * 24) / 32) });
+    screen = new ScreenManager(engine, new HudDebug(engine), { width: res, height: ((res * 24) / 32) });
 
     engine.lightAmbient([40., 40., 40.]);
     engine.lightAdd(new Light([250., 250., 250.], 40, [  0., 5, 10.]));
     engine.lightAdd(new Light([250.,   0.,   0.], 30, [ 20., 0,  0.]));
     engine.lightAdd(new Light([  0.,   0., 250.], 30, [-20., 0,  0.]));
+
+    const obj = loader.objects().get(0);
+    document.getElementById('div_debug').innerHTML = obj.getFaceCount() + ' pts | ' + obj.getVertexCount() + ' faces';
 
     requestAnimationFrame(animate);
 }
@@ -165,10 +173,7 @@ function animate(timestamp)
     engine.drawObject(loader.objects().get(0));
     engine.drawFinish();
 
-    const obj = loader.objects().get(0);
-    document.getElementById('div_debug').innerHTML =
-        obj.getFaceCount() + ' pts | ' + obj.getVertexCount() + ' faces | ' +
-        engine.getFps() + ' fps | renderer: ' + engine.getRendererCode();
+    screen.update();
 
     requestAnimationFrame(animate);
 }
