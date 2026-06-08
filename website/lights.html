@@ -8,45 +8,44 @@
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
-</style>
+        </style>
     </head>
     <body>
         <i>use the keyboard to move the lights</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/bootstrap.js" ></script>
         <script>
 
-var engine = null;
-var obj_z = 25.;
-var obj_r = 5.;
-var obj_dv = 0.015;
+let engine   = null;
+let screen   = null;
+let hudDebug = null;
+
+let obj_z = 25.;
+let obj_r = 5.;
+const obj_dv = 0.015;
 
 const light1 = new Light([255., 0., 0.], 30, [0, 0, 0]);
 const light2 = new Light([0., 255., 0.], 30, [0, 0, 0]);
 const light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
 
 const keyboard = new InputKeyboard();
-const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
 function init()
 {
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
-    engine.setScreen(640, 480);
-    engine.setBackground(10, 10, 10);
     engine.setFov(45.0);
-    engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(1, 100);
-    debug.bindEngine(engine);
+    engine.setBackground(10, 10, 10);
+
+    hudDebug = new HudDebug(engine).bindKeyboard(keyboard);
+    screen   = new ScreenManager(engine, hudDebug, { width: 640, height: 480 });
 
     engine.lightAmbient([20., 20., 20.]);
     engine.lightAdd(light1);
@@ -61,30 +60,29 @@ function animate(timestamp)
     engine.calculateDeltaTime(timestamp);
     const t_d = engine.getDeltaTime();
 
-    if (keyboard.readKeyUp())    obj_z+= t_d*obj_dv;
-    if (keyboard.readKeyDown())  obj_z-= t_d*obj_dv;
-    if (keyboard.readKeyLeft())  obj_r-= t_d*obj_dv;
-    if (keyboard.readKeyRight()) obj_r+= t_d*obj_dv;
+    if (keyboard.readKeyUp())    { obj_z += t_d * obj_dv; }
+    if (keyboard.readKeyDown())  { obj_z -= t_d * obj_dv; }
+    if (keyboard.readKeyLeft())  { obj_r -= t_d * obj_dv; }
+    if (keyboard.readKeyRight()) { obj_r += t_d * obj_dv; }
 
-    if (obj_z<0)  obj_z=0;
-    if (obj_z>30) obj_z=30;
-    if (obj_r<0)  obj_r=0;
-    if (obj_r>30) obj_r=30;
+    if (obj_z < 0)  { obj_z = 0; }
+    if (obj_z > 30) { obj_z = 30; }
+    if (obj_r < 0)  { obj_r = 0; }
+    if (obj_r > 30) { obj_r = 30; }
 
     const p1 = [obj_r, obj_z, 0.];
-    const p2 = [-0.5*obj_r, obj_z, 0.866*obj_r];
-    const p3 = [-0.5*obj_r, obj_z,-0.866*obj_r];
+    const p2 = [-0.5 * obj_r, obj_z,  0.866 * obj_r];
+    const p3 = [-0.5 * obj_r, obj_z, -0.866 * obj_r];
     light1.setPosition(p1);
     light2.setPosition(p2);
     light3.setPosition(p3);
-
 
     engine.drawInit();
 
     engine.matrixIdentity();
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
-    engine.matrixTranslate(0,-5,-35);
+    engine.matrixTranslate(0, -5, -35);
     engine.matrixRotateX(45);
     engine.lightsCalculatePosition();
 
@@ -105,7 +103,7 @@ function animate(timestamp)
 
     engine.drawObject(loader.objects().getByCode('ground'));
     engine.drawFinish();
-    debug.update();
+    screen.update();
     requestAnimationFrame(animate);
 }
 

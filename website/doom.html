@@ -9,48 +9,32 @@
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
         <style>
-body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-canvas           { border: 1px solid grey; background: #FFF;}
-div#energy-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; pointer-events: none; opacity: 0; }
-div.copy         { text-align: center;color: #ccc;}
-div.copy a       { color: #bbb; text-decoration: none;}
-div.copy a:hover { color: #ddd; text-decoration: underline; }
-div.mouse        { color:#aaa; margin:4px 0;}
-div#debug        { color: #aaa; text-align: left; width: 600px; margin: auto }
+body { background: #000; padding: 0; margin: 0; }
         </style>
     </head>
     <body>
-        <div style="position:relative; display:inline-block;">
-            <canvas id="canvasElem"></canvas>
-            <div id="energy-overlay"></div>
-        </div>
-        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <div class="mouse">Click on canvas to capture mouse. Press [ESC] to release.</div>
-        <div id="debug"></div>
+        <canvas id="canvasElem"></canvas>
         <script src="js/bootstrap.js" ></script>
         <script>
 
-let engine = null;
-let world  = null;
-const energyOverlay = document.getElementById('energy-overlay');
+let engine   = null;
+let world    = null;
+let screen   = null;
+let hudDebug = null;
 
 const keyboard = new InputKeyboard();
 const mouse    = new InputMouse(document.getElementById('canvasElem'));
-const debug    = new Debug(document.getElementById('debug'))
-    .bindKeyboard(keyboard)
-    .bindMouse(mouse);
 
 function init()
 {
-    world = loader.world().get();
-    debug.bindUser(world.getUser());
+    world  = loader.world().get();
 
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
-    engine.setScreen(800, 600);
     engine.setFov(45.0);
-    engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(0.1, 100);
-    debug.bindEngine(engine);
+
+    hudDebug = new HudDebug(engine).bindKeyboard(keyboard).bindMouse(mouse).bindUser(world.getUser());
+    screen   = new ScreenManager(engine, hudDebug, { fullscreen: true });
 
     engine.initFromWorld(world);
 
@@ -62,10 +46,7 @@ function animate(timestamp)
     engine.calculateDeltaTime(timestamp);
     world.update(engine.getDeltaTime(), keyboard, mouse);
     engine.displayWorld(world);
-    debug.update();
-
-    const user = world.getUser();
-    energyOverlay.style.opacity = user.isDead() ? 0.5 : Math.min(0.6, user.getEnergyFlash());
+    screen.update();
 
     requestAnimationFrame(animate);
 }
