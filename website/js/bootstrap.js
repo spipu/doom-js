@@ -2,7 +2,7 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Bootstrap {
     constructor() {
-        this._version = '1.358';
+        this._version = '1.361';
     }
 
     getVersion() {
@@ -61,7 +61,9 @@ class Bootstrap {
             'js/collision.js',
             'js/inputKeyboard.js',
             'js/inputMouse.js',
-            'js/debug.js',
+            'js/hud/abstractHud.js',
+            'js/hud/hudDebug.js',
+            'js/screenManager.js',
         ].forEach(url => this.loadJs(url));
     }
 }

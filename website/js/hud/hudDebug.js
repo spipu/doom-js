@@ -1,33 +1,27 @@
-class Debug {
-    constructor(element) {
-        this._el       = element;
-        this._engine   = null;
-        this._user     = null;
-        this._keyboard = null;
-        this._mouse    = null;
-    }
+class HudDebug extends AbstractHud {
+    init(container) {
+        super.init(container);
 
-    bindEngine(engine) {
-        this._engine = engine;
-        return this;
-    }
+        this._container = container;
 
-    bindUser(user) {
-        this._user = user;
-        return this;
-    }
-
-    bindKeyboard(keyboard) {
-        this._keyboard = keyboard;
-        return this;
-    }
-
-    bindMouse(mouse) {
-        this._mouse = mouse;
-        return this;
+        this._el = document.createElement('div');
+        this._el.style.position   = 'absolute';
+        this._el.style.bottom     = '5px';
+        this._el.style.left       = '5px';
+        this._el.style.color      = '#aaa';
+        this._el.style.fontFamily = 'monospace';
+        this._el.style.fontSize   = '12px';
+        this._el.style.whiteSpace = 'pre';
+        this._el.style.textAlign  = 'left';
+        container.appendChild(this._el);
     }
 
     update() {
+        if (this._user) {
+            const alpha = ((this._user.isDead()) ? 0.5 : Math.min(0.6, this._user.getEnergyFlash()));
+            this._container.style.backgroundColor = 'rgba(255, 0, 0, ' + alpha + ')';
+        }
+
         const lines = [];
         if (this._engine) {
             lines.push(this._buildEngine());

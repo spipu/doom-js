@@ -8,10 +8,8 @@
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
@@ -57,20 +55,25 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
         <script src="js/bootstrap.js" ></script>
         <script>
-let engine   = null;
-let angle_x  = 0.;
-let angle_y  = 0.;
-let mouse_x  = -1;
-let mouse_y  = -1;
+
+let engine = null;
+let screen = null;
+let angle_x = 0.;
+let angle_y = 0.;
+let mouse_x = -1;
+let mouse_y = -1;
 
 document.addEventListener('mousemove', (e) => {
     const canvas = document.getElementById('canvasElem');
-    if (!canvas) return;
+    if (!canvas) {
+        return;
+    }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
-        mouse_x = x; mouse_y = y;
+        mouse_x = x;
+        mouse_y = y;
     }
 });
 
@@ -99,21 +102,25 @@ function changeObject()
 
 function init()
 {
-
-    const res      = document.getElementById('res').value;
+    const res      = parseInt(document.getElementById('res').value);
     const renderer = document.getElementById('renderer').value;
 
-    const old = document.getElementById('canvasElem');
+    if (screen) {
+        screen.destroyContainer();
+        screen = null;
+    }
+
+    const old   = document.getElementById('canvasElem');
     const fresh = document.createElement('canvas');
-    fresh.id = old.id;
+    fresh.id    = old.id;
     old.parentNode.replaceChild(fresh, old);
 
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer(renderer));
-    engine.setScreen(res, res * 24 / 32);
     engine.setBackground(35, 35, 35);
     engine.setFov(45.0);
-    engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(1, 100);
+
+    screen = new ScreenManager(engine, new AbstractHud(engine), { width: res, height: ((res * 24) / 32) });
 
     engine.lightAmbient([40., 40., 40.]);
     engine.lightAdd(new Light([250., 250., 250.], 40, [  0., 5, 10.]));
@@ -142,12 +149,11 @@ function animate(timestamp)
         y = 2. * (y - Math.trunc(engine.scrHeight / 2)) / engine.scrHeight;
     }
 
-    if (Math.abs(x) < 0.1) x = 0;
-    if (Math.abs(y) < 0.1) y = 0;
+    if (Math.abs(x) < 0.1) { x = 0; }
+    if (Math.abs(y) < 0.1) { y = 0; }
 
     angle_x -= x * 0.1 * t_d;
     angle_y -= y * 0.1 * t_d;
-
 
     engine.drawInit();
     engine.matrixIdentity();

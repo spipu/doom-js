@@ -8,10 +8,8 @@
         <meta name="Author"             content="Spipu" />
         <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style>
 body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-canvas           { border: 1px solid grey; background: #FFF;}
 div.copy         { text-align: center;color: #ccc;}
 div.copy a       { color: #bbb; text-decoration: none;}
 div.copy a:hover { color: #ddd; text-decoration: underline; }
@@ -22,34 +20,35 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         <br />
         <canvas id="canvasElem"></canvas><br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <div id="debug" style="color:#aaa;font-size:11px;margin:4px 0;"></div>
         <script src="js/bootstrap.js" ></script>
         <script>
 
-var engine = null;
-var obj_x =-5.;
-var obj_y = 0.;
-var obj_z =-10.;
-var obj_a = -0.;
-var obj_dv = 0.015;
-var obj_da = 0.1;
+let engine   = null;
+let screen   = null;
+let hudDebug = null;
+
+let obj_x =-5.;
+let obj_y = 0.;
+let obj_z =-10.;
+let obj_a = -0.;
+const obj_dv = 0.015;
+const obj_da = 0.1;
 
 const light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
 const light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
 const light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 
 const keyboard = new InputKeyboard();
-const debug    = new Debug(document.getElementById('debug')).bindKeyboard(keyboard);
 
 function init()
 {
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
-    engine.setScreen(640, 480);
-    engine.setBackground(35, 35, 35);
     engine.setFov(45.0);
-    engine.setView(-32, 32, -24, 24);
     engine.setZBuffer(1, 100);
-    debug.bindEngine(engine);
+    engine.setBackground(35, 35, 35);
+
+    hudDebug = new HudDebug(engine).bindKeyboard(keyboard);
+    screen   = new ScreenManager(engine, hudDebug, { width: 640, height: 480 });
 
     engine.lightAmbient([40., 40., 40.]);
     engine.lightAdd(light1);
@@ -66,30 +65,30 @@ function animate(timestamp)
 
     if (keyboard.readKeyUp())
     {
-        if (keyboard.readKeyLeft())  obj_a-= t_d*obj_da;
-        if (keyboard.readKeyRight()) obj_a+= t_d*obj_da;
-        obj_x+= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
-        obj_z-= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
+        if (keyboard.readKeyLeft())  { obj_a -= t_d * obj_da; }
+        if (keyboard.readKeyRight()) { obj_a += t_d * obj_da; }
+        obj_x += t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
+        obj_z -= t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
     }
     if (keyboard.readKeyDown())
     {
-        if (keyboard.readKeyLeft())  obj_a+= t_d*obj_da;
-        if (keyboard.readKeyRight()) obj_a-= t_d*obj_da;
-        obj_x-= t_d*obj_dv*Math.cos(DEG_TO_RAD*obj_a);
-        obj_z+= t_d*obj_dv*Math.sin(DEG_TO_RAD*obj_a);
+        if (keyboard.readKeyLeft())  { obj_a += t_d * obj_da; }
+        if (keyboard.readKeyRight()) { obj_a -= t_d * obj_da; }
+        obj_x -= t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
+        obj_z += t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
     }
 
-    if (obj_x<-25.) obj_x =-25.;
-    if (obj_x>25.)  obj_x = 25.;
-    if (obj_z<-15.) obj_z =-15.;
-    if (obj_z>15.)  obj_z = 15.;
+    if (obj_x < -25.) { obj_x = -25.; }
+    if (obj_x >  25.) { obj_x =  25.; }
+    if (obj_z < -15.) { obj_z = -15.; }
+    if (obj_z >  15.) { obj_z =  15.; }
 
     engine.drawInit();
 
     engine.matrixIdentity();
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
-    engine.matrixTranslate(0,-10,-35);
+    engine.matrixTranslate(0, -10, -35);
     engine.lightCalculatePosition(light1);
 
     engine.matrixPush();
@@ -102,7 +101,7 @@ function animate(timestamp)
 
     engine.drawObject(loader.objects().getByCode('ground'));
     engine.drawFinish();
-    debug.update();
+    screen.update();
     requestAnimationFrame(animate);
 }
 
