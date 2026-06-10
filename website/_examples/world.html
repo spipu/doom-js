@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - doom</title>
+        <title>Proto3d - world</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta name="Title"              content="mini 3D engine in javascript" />
         <meta name="Description"        content="3D engine, javascript" />
@@ -14,7 +14,7 @@ body { background: #000; padding: 0; margin: 0; }
     </head>
     <body>
         <canvas id="canvasElem"></canvas>
-        <script src="js/bootstrap.js" ></script>
+        <script src="../js/bootstrap.js" ></script>
         <script>
 
 let engine   = null;
@@ -51,8 +51,9 @@ function animate(timestamp)
     requestAnimationFrame(animate);
 }
 
-loader.world().load('./assets/doom/definition.json');
+loader.world().load('./assets/world/definition.json');
 loader.setCallback(init);
+
         </script>
     </body>
 </html>
