@@ -24,15 +24,15 @@ Then open `http://localhost:8080` in a browser.
 
 | Page | Description |
 |---|---|
-| `index.html` | Home page — links to all demos |
-| `objects.html` | Object viewer — pick an object, resolution and renderer |
-| `example.html` | Static render of the Lotus F1 |
-| `lights.html` | Coloured light sources demo (arrow keys move lights) |
-| `game.html` | Interactive van — drive it with the arrow keys |
-| `world.html` | First-person navigation inside a 3D labyrinth |
-| `doom.html` | First-person navigation in Freedoom E1M1 (WIP) |
+| `index.html` | First-person navigation in Freedoom E1M1 (WIP) — fullscreen |
+| `_examples/index.html` | Home page — links to all demos |
+| `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
+| `_examples/example.html` | Static render of the Lotus F1 |
+| `_examples/lights.html` | Coloured light sources demo (arrow keys move lights) |
+| `_examples/game.html` | Interactive van — drive it with the arrow keys |
+| `_examples/world.html` | First-person navigation inside a 3D labyrinth |
 
-## Controls (world.html / doom.html)
+## Controls (index.html / _examples/world.html)
 
 | Input | Action |
 |---|---|
@@ -65,43 +65,50 @@ Thirteen 3D objects are included in `website/assets/objects/`:
 
 ```
 website/
+├── index.html                   Freedoom E1M1 — fullscreen FPS (WIP)
+├── _examples/                   Simple demos (example, objects, lights, game, world)
+│   └── assets/                  Demo-specific 3D objects and textures
 ├── js/
-│   ├── bootstrap.js             First script loaded; cache busting (buildUrl), fetchJson, DEG_TO_RAD
-│   ├── loader.js                Global Loader — synchronises all sub-loaders, fires app callback
-│   ├── engine3d.js              Main engine (viewport, lights, matrix, rendering loop)
-│   ├── collision.js             FPS physics: floor/ceiling/wall detection, platform riding
-│   ├── inputKeyboard.js         Keyboard input (e.code, Set-based)
-│   ├── inputMouse.js            Mouse input via Pointer Lock API
-│   ├── debug.js                 Debug overlay (fps, keyboard, mouse, user state)
-│   ├── matrix.js                4×4 transformation matrices
-│   ├── zBuffer.js               Z-buffer
-│   ├── entity/
-│   │   ├── abstractLoadedEntity.js  Base class: id, url, setLoaded(), finalizeInit()
-│   │   ├── face.js              Face data (vertices, color, texture, UV, flags)
-│   │   ├── interaction.js       Interaction entity: wraps AbstractInteraction, proxies triggered/update
-│   │   ├── light.js             Point light source
-│   │   ├── texture.js           Texture image data + alpha detection
-│   │   ├── object3d.js          3D geometry (vertices, faces, normals, projection)
-│   │   ├── instance.js          Animated 3D object (keyframes, triggers, start/stop, damage)
-│   │   ├── user.js              FPS player (physics, gravity, jump, crouch, energy)
-│   │   └── world.js             FPS scene (user, lights, collision, update loop)
-│   ├── interaction/
-│   │   ├── abstractInteraction.js   Base interaction: code, triggered(instance), update(dt)
-│   │   └── switchInteraction.js     Switch modes: once / timed / toggle, SW1↔SW2 texture swap
-│   ├── loader/
-│   │   ├── abstractLoader.js    Base loader: load/loadByCode/get/getByCode, registry, callbacks
-│   │   ├── textureLoader.js     Loads images, deduplicates by URL
-│   │   ├── object3dLoader.js    Parses .obj.json, feeds geometry to Object3d
-│   │   ├── instanceLoader.js    Parses .instance.json, self-registers code, links to Object3d
-│   │   ├── interactionLoader.js Loads interaction JS files async, FIFO queue, register()
-│   │   └── worldLoader.js       Parses definition.json, creates User + lights + instances + interactions
-│   └── renderer/
-│       ├── object3dRendererBase.js   Shared renderer utilities
-│       ├── object3dRendererList.js   Selects and instantiates the right renderer
-│       ├── object3dRendererFull.js   Per-pixel z-buffer + textures (CPU)
-│       ├── object3dRendererFlat.js   Flat shading + Painter's algorithm
-│       ├── object3dRendererFast.js   Wireframe (canvas 2D)
-│       └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer)
+│   ├── bootstrap.js             First script loaded; loads all engine scripts, buildUrl, fetchJson, DEG_TO_RAD
+│   └── engine/
+│       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop)
+│       ├── collision.js         FPS physics: floor/ceiling/wall detection, platform riding
+│       ├── inputKeyboard.js     Keyboard input (e.code, Set-based)
+│       ├── inputMouse.js        Mouse input via Pointer Lock API
+│       ├── loader.js            Global Loader — synchronises all sub-loaders, fires app callback
+│       ├── matrix.js            4×4 transformation matrices
+│       ├── screenManager.js     Canvas container + HUD overlay (fullscreen or fixed size)
+│       ├── zBuffer.js           Z-buffer
+│       ├── entity/
+│       │   ├── abstractLoadedEntity.js  Base class: id, url, setLoaded(), finalizeInit()
+│       │   ├── face.js          Face data (vertices, color, texture, UV, flags)
+│       │   ├── interaction.js   Interaction entity: wraps AbstractInteraction, proxies triggered/update
+│       │   ├── light.js         Point light source
+│       │   ├── texture.js       Texture image data + alpha detection
+│       │   ├── object3d.js      3D geometry (vertices, faces, normals, projection)
+│       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage)
+│       │   ├── user.js          FPS player (physics, gravity, jump, crouch, energy)
+│       │   └── world.js         FPS scene (user, lights, collision, update loop)
+│       ├── hud/
+│       │   ├── abstractHud.js   Base HUD overlay: init(container), update(), bind helpers
+│       │   └── hudDebug.js      Debug HUD: fps, position, energy, keyboard, mouse, damage flash
+│       ├── interaction/
+│       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
+│       │   └── switchInteraction.js    Switch modes: once / timed / toggle, SW1↔SW2 texture swap
+│       ├── loader/
+│       │   ├── abstractLoader.js    Base loader: load/loadByCode/get/getByCode, registry, callbacks
+│       │   ├── textureLoader.js     Loads images, deduplicates by URL
+│       │   ├── object3dLoader.js    Parses .obj.json, feeds geometry to Object3d
+│       │   ├── instanceLoader.js    Parses .instance.json, self-registers code, links to Object3d
+│       │   ├── interactionLoader.js Loads interaction JS files async, FIFO queue, register()
+│       │   └── worldLoader.js       Parses definition.json, creates User + lights + instances + interactions
+│       └── renderer/
+│           ├── object3dRendererBase.js   Shared renderer utilities
+│           ├── object3dRendererList.js   Selects and instantiates the right renderer
+│           ├── object3dRendererFull.js   Per-pixel z-buffer + textures (CPU)
+│           ├── object3dRendererFlat.js   Flat shading + Painter's algorithm
+│           ├── object3dRendererFast.js   Wireframe (canvas 2D)
+│           └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer)
 └── assets/
     ├── objects/                 Generic 3D objects (.obj.json)
     ├── texture/                 Generic textures
@@ -128,7 +135,18 @@ loader.setCallback(init);
 
 function init() {
     const world = loader.world().get();
+    engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
+    const hud = new HudDebug(engine).bindUser(world.getUser()).bindKeyboard(keyboard).bindMouse(mouse);
+    screen = new ScreenManager(engine, hud, { fullscreen: true }); // or { width: 640, height: 480 }
     // ...
+}
+
+function animate(timestamp) {
+    engine.calculateDeltaTime(timestamp);
+    world.update(engine.getDeltaTime(), keyboard, mouse);
+    engine.displayWorld(world);
+    screen.update(); // updates HUD overlay
+    requestAnimationFrame(animate);
 }
 ```
 
