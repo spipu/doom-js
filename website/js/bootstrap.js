@@ -2,7 +2,7 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Bootstrap {
     constructor() {
-        this._version = '1.362';
+        this._version = '1.363';
     }
 
     getVersion() {
@@ -31,39 +31,39 @@ class Bootstrap {
 
     init() {
         [
-            '/js/entity/abstractLoadedEntity.js',
-            '/js/entity/instance.js',
-            '/js/entity/interaction.js',
-            '/js/entity/face.js',
-            '/js/entity/light.js',
-            '/js/entity/object3d.js',
-            '/js/entity/texture.js',
-            '/js/entity/user.js',
-            '/js/entity/world.js',
-            '/js/interaction/abstractInteraction.js',
-            '/js/interaction/switchInteraction.js',
-            '/js/loader/abstractLoader.js',
-            '/js/loader/instanceLoader.js',
-            '/js/loader/interactionLoader.js',
-            '/js/loader/object3dLoader.js',
-            '/js/loader/textureLoader.js',
-            '/js/loader/worldLoader.js',
-            '/js/loader.js',
-            '/js/matrix.js',
-            '/js/zBuffer.js',
-            '/js/renderer/object3dRendererBase.js',
-            '/js/renderer/object3dRendererFast.js',
-            '/js/renderer/object3dRendererFull.js',
-            '/js/renderer/object3dRendererFlat.js',
-            '/js/renderer/object3dRendererWebGL.js',
-            '/js/renderer/object3dRendererList.js',
-            '/js/engine3d.js',
-            '/js/collision.js',
-            '/js/inputKeyboard.js',
-            '/js/inputMouse.js',
-            '/js/hud/abstractHud.js',
-            '/js/hud/hudDebug.js',
-            '/js/screenManager.js',
+            '/js/engine/entity/abstractLoadedEntity.js',
+            '/js/engine/entity/instance.js',
+            '/js/engine/entity/interaction.js',
+            '/js/engine/entity/face.js',
+            '/js/engine/entity/light.js',
+            '/js/engine/entity/object3d.js',
+            '/js/engine/entity/texture.js',
+            '/js/engine/entity/user.js',
+            '/js/engine/entity/world.js',
+            '/js/engine/interaction/abstractInteraction.js',
+            '/js/engine/interaction/switchInteraction.js',
+            '/js/engine/loader/abstractLoader.js',
+            '/js/engine/loader/instanceLoader.js',
+            '/js/engine/loader/interactionLoader.js',
+            '/js/engine/loader/object3dLoader.js',
+            '/js/engine/loader/textureLoader.js',
+            '/js/engine/loader/worldLoader.js',
+            '/js/engine/loader.js',
+            '/js/engine/matrix.js',
+            '/js/engine/zBuffer.js',
+            '/js/engine/renderer/object3dRendererBase.js',
+            '/js/engine/renderer/object3dRendererFast.js',
+            '/js/engine/renderer/object3dRendererFull.js',
+            '/js/engine/renderer/object3dRendererFlat.js',
+            '/js/engine/renderer/object3dRendererWebGL.js',
+            '/js/engine/renderer/object3dRendererList.js',
+            '/js/engine/engine3d.js',
+            '/js/engine/collision.js',
+            '/js/engine/inputKeyboard.js',
+            '/js/engine/inputMouse.js',
+            '/js/engine/hud/abstractHud.js',
+            '/js/engine/hud/hudDebug.js',
+            '/js/engine/screenManager.js',
         ].forEach(url => this.loadJs(url));
     }
 }
