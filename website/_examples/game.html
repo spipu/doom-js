@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Proto3d - lights</title>
+        <title>Proto3d - game</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta name="Title"              content="mini 3D engine in javascript" />
         <meta name="Description"        content="3D engine, javascript" />
@@ -16,24 +16,27 @@ div.copy a:hover { color: #ddd; text-decoration: underline; }
         </style>
     </head>
     <body>
-        <i>use the keyboard to move the lights</i><br />
+        <i>use the keyboard to move the car</i><br />
         <br />
         <canvas id="canvasElem"></canvas><br />
         <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <script src="js/bootstrap.js" ></script>
+        <script src="../js/bootstrap.js" ></script>
         <script>
 
 let engine   = null;
 let screen   = null;
 let hudDebug = null;
 
-let obj_z = 25.;
-let obj_r = 5.;
+let obj_x =-5.;
+let obj_y = 0.;
+let obj_z =-10.;
+let obj_a = -0.;
 const obj_dv = 0.015;
+const obj_da = 0.1;
 
-const light1 = new Light([255., 0., 0.], 30, [0, 0, 0]);
-const light2 = new Light([0., 255., 0.], 30, [0, 0, 0]);
-const light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
+const light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
+const light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
+const light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 
 const keyboard = new InputKeyboard();
 
@@ -42,12 +45,12 @@ function init()
     engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
     engine.setFov(45.0);
     engine.setZBuffer(1, 100);
-    engine.setBackground(10, 10, 10);
+    engine.setBackground(35, 35, 35);
 
     hudDebug = new HudDebug(engine).bindKeyboard(keyboard);
     screen   = new ScreenManager(engine, hudDebug, { width: 640, height: 480 });
 
-    engine.lightAmbient([20., 20., 20.]);
+    engine.lightAmbient([40., 40., 40.]);
     engine.lightAdd(light1);
     engine.lightAdd(light2);
     engine.lightAdd(light3);
@@ -60,45 +63,40 @@ function animate(timestamp)
     engine.calculateDeltaTime(timestamp);
     const t_d = engine.getDeltaTime();
 
-    if (keyboard.readKeyUp())    { obj_z += t_d * obj_dv; }
-    if (keyboard.readKeyDown())  { obj_z -= t_d * obj_dv; }
-    if (keyboard.readKeyLeft())  { obj_r -= t_d * obj_dv; }
-    if (keyboard.readKeyRight()) { obj_r += t_d * obj_dv; }
+    if (keyboard.readKeyUp())
+    {
+        if (keyboard.readKeyLeft())  { obj_a -= t_d * obj_da; }
+        if (keyboard.readKeyRight()) { obj_a += t_d * obj_da; }
+        obj_x += t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
+        obj_z -= t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
+    }
+    if (keyboard.readKeyDown())
+    {
+        if (keyboard.readKeyLeft())  { obj_a += t_d * obj_da; }
+        if (keyboard.readKeyRight()) { obj_a -= t_d * obj_da; }
+        obj_x -= t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
+        obj_z += t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
+    }
 
-    if (obj_z < 0)  { obj_z = 0; }
-    if (obj_z > 30) { obj_z = 30; }
-    if (obj_r < 0)  { obj_r = 0; }
-    if (obj_r > 30) { obj_r = 30; }
-
-    const p1 = [obj_r, obj_z, 0.];
-    const p2 = [-0.5 * obj_r, obj_z,  0.866 * obj_r];
-    const p3 = [-0.5 * obj_r, obj_z, -0.866 * obj_r];
-    light1.setPosition(p1);
-    light2.setPosition(p2);
-    light3.setPosition(p3);
+    if (obj_x < -25.) { obj_x = -25.; }
+    if (obj_x >  25.) { obj_x =  25.; }
+    if (obj_z < -15.) { obj_z = -15.; }
+    if (obj_z >  15.) { obj_z =  15.; }
 
     engine.drawInit();
 
     engine.matrixIdentity();
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
-    engine.matrixTranslate(0, -5, -35);
-    engine.matrixRotateX(45);
-    engine.lightsCalculatePosition();
+    engine.matrixTranslate(0, -10, -35);
+    engine.lightCalculatePosition(light1);
 
     engine.matrixPush();
-    engine.matrixTranslate(p1[0], p1[1], p1[2]);
-    engine.drawObject(loader.objects().getByCode('light'));
-    engine.matrixPop();
-
-    engine.matrixPush();
-    engine.matrixTranslate(p2[0], p2[1], p2[2]);
-    engine.drawObject(loader.objects().getByCode('light'));
-    engine.matrixPop();
-
-    engine.matrixPush();
-    engine.matrixTranslate(p3[0], p3[1], p3[2]);
-    engine.drawObject(loader.objects().getByCode('light'));
+    engine.matrixTranslate(obj_x, obj_y, obj_z);
+    engine.matrixRotateY(obj_a);
+    engine.lightCalculatePosition(light2);
+    engine.lightCalculatePosition(light3);
+    engine.drawObject(loader.objects().getByCode('van'));
     engine.matrixPop();
 
     engine.drawObject(loader.objects().getByCode('ground'));
@@ -107,8 +105,8 @@ function animate(timestamp)
     requestAnimationFrame(animate);
 }
 
-loader.objects().loadByCode('ground', 'assets/objects/ground.obj.json');
-loader.objects().loadByCode('light',  'assets/objects/light.obj.json');
+loader.objects().loadByCode('ground', './assets/objects/ground.obj.json');
+loader.objects().loadByCode('van', './assets/objects/van.obj.json');
 loader.setCallback(init);
         </script>
     </body>
