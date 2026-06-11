@@ -1,7 +1,7 @@
 function loadApp()
 {
-    const game = new DoomGame();
-    game.start();
+    const menu = new MenuNavigator();
+    menu.start();
 }
 
 appBootstrap.setReadyCallback(loadApp);

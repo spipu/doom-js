@@ -1,10 +1,23 @@
 {
-    "version": "v1.008",
+    "version": "v1.010",
     "files": {
         "assets": [],
-        "css": [],
+        "css": [
+            "/css/doomMenu.css"
+        ],
         "js": [
             "/js/webapp/screenWakeLock.js",
+            "/js/webapp/appDatabase.js",
+            "/js/doom/wad/wadError.js",
+            "/js/doom/wad/wadFile.js",
+            "/js/doom/wad/wadStorage.js",
+            "/js/doom/wad/wadRegistry.js",
+            "/js/doom/menu/menuDisplay.js",
+            "/js/doom/menu/menuModal.js",
+            "/js/doom/menu/abstractMenuScreen.js",
+            "/js/doom/menu/wadListScreen.js",
+            "/js/doom/menu/levelListScreen.js",
+            "/js/doom/menu/menuNavigator.js",
             "/js/doom/doomGame.js",
             "/js/doom/main.js"
         ]
