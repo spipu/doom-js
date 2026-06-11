@@ -12,6 +12,7 @@ class DoomGame {
     start() {
         loader.world().load('./assets/doom/definition.json');
         loader.setCallback(() => {
+            appBootstrap.askStats();
             this._init();
         });
     }
@@ -33,9 +34,8 @@ class DoomGame {
         this._engine.setZBuffer(0.1, 100);
 
         this._hud = new HudDebug(this._engine)
-            .bindKeyboard(this._keyboard)
-            .bindMouse(this._mouse)
             .bindUser(this._world.getUser())
+            .addDescription(() => appBootstrap.getStatsText())
             .addDescription('(c)2026 Spipu')
         ;
 

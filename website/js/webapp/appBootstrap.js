@@ -10,11 +10,13 @@ class AppBootstrap {
     /** @type {boolean}  */ pwaDisabled;
     /** @type {string[]} */ definitionUrls;
     /** @type {Function} */ readyCallback;
+    /** @type {Object}   */ stats;
 
     constructor() {
         this.pwaDisabled = false;
         this.definitionUrls = [];
         this.readyCallback = null;
+        this.stats = null;
     }
 
     disablePwaMode() {
@@ -106,7 +108,7 @@ class AppBootstrap {
                 break;
 
             case 'statsAsked':
-                this.displayStats(eventContext);
+                this.refreshStats(eventContext);
                 break;
 
             default:
@@ -114,12 +116,32 @@ class AppBootstrap {
         }
     }
 
-    displayStats(stats) {
-        console.log(stats);
-        let debug = document.getElementById('appDebug');
-        if (debug) {
-            debug.innerText = '(Queries: ' + stats.fetchTotal + ' | Server: ' + stats.fetchServer + ' | Cache: ' + stats.fetchCache + ')';
+    askStats() {
+        if (this.pwaMode) {
+            this.serviceWorker.active.postMessage("askStats");
         }
+    }
+
+    refreshStats(stats) {
+        this.stats = stats;
+    }
+
+    getStats() {
+        return this.stats;
+    }
+
+    getStatsText() {
+        const mode = ((this.pwaMode) ? 'PWA' : 'Classic') + ((this.offline) ? ' Offline' : '');
+
+        if (!this.pwaMode) {
+            return '[' + mode + ']';
+        }
+
+        if (this.stats === null) {
+            return '[' + mode + '] no stats';
+        }
+
+        return '[' + mode + '] queries: ' + this.stats.fetchTotal + ' | server: ' + this.stats.fetchServer + ' | cache: ' + this.stats.fetchCache;
     }
 
     async checkVersion() {
@@ -340,11 +362,11 @@ class AppBootstrap {
             this.logError("No ready callback set - use appBootstrap.setReadyCallback(callback)");
             return;
         }
-        this.readyCallback();
 
-        if (this.pwaMode) {
-            this.serviceWorker.active.postMessage("askStats");
-        }
+        this.askStats();
+
+
+        this.readyCallback();
     }
 
     async resourceLoad(url) {

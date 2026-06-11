@@ -46,7 +46,7 @@ class HudDebug extends AbstractHud {
             lines.push(this._buildMouse());
         }
         for (const message of this._descriptions) {
-            lines.push(message);
+            lines.push(((typeof message === 'function') ? message() : message));
         }
         this._el.innerText = lines.join('\n');
     }
