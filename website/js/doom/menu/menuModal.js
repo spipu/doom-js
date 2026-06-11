@@ -53,28 +53,23 @@ class MenuModal {
     }
 
     /**
-     * Loading modal: same box as confirm(), without buttons and not closable
-     * by clicking. Closed programmatically via close().
+     * Loading modal: pulsing message, without buttons and not closable by
+     * clicking. Closed programmatically via close().
      *
      * @param {string} message
      */
     showLoading(message) {
-        this.close();
+        return this._showText(message, true);
+    }
 
-        this._overlay = document.createElement('div');
-        this._overlay.className = 'doom-menu-overlay';
-        this._display.getContainer().appendChild(this._overlay);
-
-        const modal = document.createElement('div');
-        modal.className = 'doom-menu-modal';
-        this._overlay.appendChild(modal);
-
-        const messageEl = document.createElement('div');
-        messageEl.className = 'doom-menu-modal-message doom-menu-modal-loading';
-        messageEl.textContent = message;
-        modal.appendChild(messageEl);
-
-        return this;
+    /**
+     * Simple message modal: without buttons and not closable by clicking.
+     * Closed programmatically via close().
+     *
+     * @param {string} message
+     */
+    showMessage(message) {
+        return this._showText(message, false);
     }
 
     close() {
@@ -87,6 +82,26 @@ class MenuModal {
     }
 
     // --- Internal ---
+
+    _showText(message, pulsing) {
+        this.close();
+
+        this._overlay = document.createElement('div');
+        this._overlay.className = 'doom-menu-overlay';
+        this._display.getContainer().appendChild(this._overlay);
+
+        const modal = document.createElement('div');
+        modal.className = 'doom-menu-modal';
+        this._overlay.appendChild(modal);
+
+        const messageEl = document.createElement('div');
+        messageEl.className = 'doom-menu-modal-message '
+            + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static');
+        messageEl.textContent = message;
+        modal.appendChild(messageEl);
+
+        return this;
+    }
 
     _addButton(parent, label, className, onClick) {
         const button = document.createElement('button');

@@ -14,7 +14,8 @@ class DoomSwitchInteraction extends SwitchInteraction {
     constructor(code, targets, mode, minOnTime, minOffTime) {
         super(code);
 
-        this._targets = targets;
+        this._targets      = targets;
+        this._exitCallback = null;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -25,12 +26,21 @@ class DoomSwitchInteraction extends SwitchInteraction {
         }
     }
 
+    setExitCallback(callback) {
+        this._exitCallback = callback;
+        return this;
+    }
+
     _triggerOn(instance) {
         const obj = instance.getObject();
         obj.faceList.forEach(fc => { fc.textureId = obj.getTextureId(2); });
 
         for (const code of this._targets) {
             loader.instances().getByCode(code).start();
+        }
+
+        if (this._exitCallback !== null) {
+            this._exitCallback();
         }
     }
 
