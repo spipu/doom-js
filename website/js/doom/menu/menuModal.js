@@ -52,6 +52,31 @@ class MenuModal {
         return this;
     }
 
+    /**
+     * Loading modal: same box as confirm(), without buttons and not closable
+     * by clicking. Closed programmatically via close().
+     *
+     * @param {string} message
+     */
+    showLoading(message) {
+        this.close();
+
+        this._overlay = document.createElement('div');
+        this._overlay.className = 'doom-menu-overlay';
+        this._display.getContainer().appendChild(this._overlay);
+
+        const modal = document.createElement('div');
+        modal.className = 'doom-menu-modal';
+        this._overlay.appendChild(modal);
+
+        const messageEl = document.createElement('div');
+        messageEl.className = 'doom-menu-modal-message doom-menu-modal-loading';
+        messageEl.textContent = message;
+        modal.appendChild(messageEl);
+
+        return this;
+    }
+
     close() {
         if (this._overlay !== null) {
             this._overlay.remove();

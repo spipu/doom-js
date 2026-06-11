@@ -36,4 +36,8 @@ class TextureLoader extends AbstractLoader {
 
         img.src = appBootstrap.buildUrl(entity.getUrl());
     }
+
+    _populateFromData(entity, imageData) {
+        entity._imageData = imageData;
+    }
 }

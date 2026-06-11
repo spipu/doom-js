@@ -228,6 +228,20 @@
     margin-bottom: 1.4em;
 }
 
+.doom-menu-modal-loading {
+    margin-bottom: 0;
+    animation: doomMenuPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes doomMenuPulse {
+    0%, 100% {
+        opacity: 0.45;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
 .doom-menu-modal-actions {
     display: flex;
     justify-content: center;

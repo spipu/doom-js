@@ -10,12 +10,16 @@ class DoomGame {
         this._animateCallback = this._animate.bind(this);
     }
 
-    start() {
-        loader.world().load('./assets/doom/definition.json');
+    // Convert a WAD level on the fly and start the game on it (no URL, no fetch)
+    async startFromWad(wadFile, levelName) {
+        loader.reset();
+        loader.beginBatch();
+        await new WadWorldBuilder(wadFile, levelName).build();
         loader.setCallback(() => {
             appBootstrap.askStats();
             this._init();
         });
+        loader.endBatch();
     }
 
     _init() {

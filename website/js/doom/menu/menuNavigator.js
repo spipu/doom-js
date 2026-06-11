@@ -42,9 +42,7 @@ class MenuNavigator {
     }
 
     /**
-     * Phase 1: the selected WAD/level are only memorized - the current
-     * static doom game is launched. Phase 2 will use them to convert the
-     * level dynamically.
+     * Convert the selected level on the fly and start the game on it.
      *
      * @param {object} meta
      * @param {string} levelName
@@ -53,7 +51,7 @@ class MenuNavigator {
         this._selectedWad   = meta;
         this._selectedLevel = levelName;
 
-        this._launchGame();
+        this._launchFromWad(meta, levelName);
     }
 
     getSelectedWad() {
@@ -74,19 +72,37 @@ class MenuNavigator {
         screen.show();
     }
 
-    _launchGame() {
+    async _launchFromWad(meta, levelName) {
+        const modal = new MenuModal(this._display)
+            .showLoading('Chargement du niveau ' + levelName + ' de ' + meta.name);
+
+        try {
+            const wadFile = await this._registry.getWadFile(meta.id);
+            const game = new DoomGame();
+            await game.startFromWad(wadFile, levelName);
+            modal.close();
+            this._closeMenus();
+        } catch (error) {
+            console.error(error);
+            loader.reset();
+            modal.close();
+            if (this._currentScreen !== null) {
+                this._currentScreen.showError(error);
+            }
+        }
+    }
+
+    _closeMenus() {
         if (this._currentScreen !== null) {
             this._currentScreen.hide();
             this._currentScreen = null;
         }
         this._display.destroy();
-
-        const game = new DoomGame();
-        game.start();
     }
 
     /**
-     * Degraded screen when IndexedDB is not available: the game stays playable.
+     * Degraded screen when IndexedDB is not available: no WAD can be stored,
+     * the game cannot run.
      */
     _showFallback() {
         const container = document.createElement('div');
@@ -102,15 +118,5 @@ class MenuNavigator {
         message.className = 'doom-menu-status doom-menu-error';
         message.textContent = 'Stockage navigateur indisponible — impossible de gérer les WADs.';
         container.appendChild(message);
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'doom-menu-button';
-        button.textContent = 'Lancer la démo E1M1';
-        button.addEventListener('click', () => {
-            container.remove();
-            this._launchGame();
-        });
-        container.appendChild(button);
     }
 }

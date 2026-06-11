@@ -1,0 +1,320 @@
+/**
+ * Static map geometry builder (transposition of the wall and flat generation
+ * phases of convert_wad.py main()).
+ */
+class WadStaticMapBuilder {
+    /**
+     * @param {object}           level    - output of WadLevelParser.parse() (already patched by the analyzer)
+     * @param {object}           analysis - output of WadMapAnalyzer.analyze()
+     * @param {WadTextureBank}   bank
+     * @param {WadAnimationBank} animBank
+     */
+    constructor(level, analysis, bank, animBank) {
+        this._level    = level;
+        this._analysis = analysis;
+        this._bank     = bank;
+        this._animBank = animBank;
+    }
+
+    /**
+     * @returns {{textures: int[], mesh: object}} textures as bank indices (0-based)
+     */
+    build() {
+        const mesh = WadMeshBuilder.newMesh();
+
+        this._buildWalls(mesh);
+        this._buildFlats(mesh);
+
+        // The map references the whole bank as built so far (like the Python
+        // tex_paths snapshot); faces already hold global 1-based indices.
+        const allIndices = [];
+        for (let i = 0; i < this._bank.count(); i++) {
+            allIndices.push(i);
+        }
+
+        const groups = this._animBank.buildAnimGroups(allIndices);
+        WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
+
+        return {textures: groups.newList, mesh: mesh};
+    }
+
+    // --- Walls ---
+
+    _buildWalls(mesh) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {doorSectorIds, doorHeights, switchLinedefIds} = this._analysis;
+        const SCALE = WadConstants.SCALE;
+
+        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
+            const ld = linedefs[ldIdx];
+            const [dx1, dy1] = vertexes[ld.v1];
+            const [dx2, dy2] = vertexes[ld.v2];
+            const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
+            const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
+            const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
+
+            if (ld.right < 0) {
+                continue;
+            }
+
+            const rSd  = sidedefs[ld.right];
+            const rSec = sectors[rSd.sector];
+            const rIsDoor = doorSectorIds.has(rSd.sector);
+
+            if (ld.left < 0) {
+                if (switchLinedefIds.has(ldIdx)) {
+                    continue;
+                }
+                if (rIsDoor) {
+                    // One-sided lateral wall of a door sector (DOORTRAK)
+                    if (doorHeights[rSd.sector] === undefined) {
+                        continue;
+                    }
+                    const {floorH, ceilH} = doorHeights[rSd.sector];
+                    const texName = rSd.middle;
+                    if (!texName || texName === '-') {
+                        continue;
+                    }
+                    const ti = this._bank.ensureWallTex(texName);
+                    if (ti < 0) {
+                        continue;
+                    }
+                    const {width: tw, height: th} = this._bank.getDims(ti);
+                    const lowerUnpegLd = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+                    const yo = rSd.yo + ((lowerUnpegLd) ? ((th - (ceilH - floorH) % th) % th) : 0);
+                    WadMeshBuilder.addWallQuad(mesh, ti,
+                        wx1, wz1, wx2, wz2,
+                        floorH * SCALE, ceilH * SCALE,
+                        wallLen, tw, th,
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                    continue;
+                }
+                // One-sided linedef → solid wall
+                const texName = rSd.middle;
+                const ti = this._bank.ensureWallTex(texName);
+                if (ti >= 0) {
+                    const {width: tw, height: th} = this._bank.getDims(ti);
+                    const hDoom = rSec.ch - rSec.fh;
+                    // ML_DONTPEGBOTTOM: texture bottom at floor instead of texture top at ceiling
+                    const yo = rSd.yo + (((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0) ? (th - hDoom) : 0);
+                    WadMeshBuilder.addWallQuad(mesh, ti,
+                        wx1, wz1, wx2, wz2,
+                        rSec.fh * SCALE, rSec.ch * SCALE,
+                        wallLen, tw, th,
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                }
+                continue;
+            }
+
+            // --- Two-sided linedef ---
+            const lSd  = sidedefs[ld.left];
+            const lSec = sectors[lSd.sector];
+            const lIsDoor = doorSectorIds.has(lSd.sector);
+
+            const rFh = rSec.fh;
+            const rCh = rSec.ch;
+            const lFh = lSec.fh;
+            const lCh = lSec.ch;
+
+            const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
+            const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+
+            // Lower wall: step up from right sector floor to left sector floor
+            if (lFh > rFh && !rIsDoor && !lIsDoor) {
+                const ti = this._bank.ensureWallTex(rSd.lower);
+                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
+                // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
+                const yo = rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0);
+                WadMeshBuilder.addWallQuad(mesh, ti,
+                    wx1, wz1, wx2, wz2,
+                    rFh * SCALE, lFh * SCALE,
+                    wallLen, tw, th,
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+            }
+
+            // Lower wall from left side
+            if (rFh > lFh && !lIsDoor && !rIsDoor) {
+                const ti = this._bank.ensureWallTex(lSd.lower);
+                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
+                const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
+                WadMeshBuilder.addWallQuad(mesh, ti,
+                    wx1, wz1, wx2, wz2,
+                    lFh * SCALE, rFh * SCALE,
+                    wallLen, tw, th,
+                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
+            }
+
+            // Upper wall: ceiling step down from right sector to left sector
+            if (lCh < rCh && !rIsDoor && !lIsDoor) {
+                const ti = this._bank.ensureWallTex(rSd.upper);
+                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
+                // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
+                const yo = rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh)));
+                WadMeshBuilder.addWallQuad(mesh, ti,
+                    wx1, wz1, wx2, wz2,
+                    lCh * SCALE, rCh * SCALE,
+                    wallLen, tw, th,
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+            }
+
+            // Upper wall from left side
+            if (rCh < lCh && !lIsDoor && !rIsDoor) {
+                const ti = this._bank.ensureWallTex(lSd.upper);
+                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
+                const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh)));
+                WadMeshBuilder.addWallQuad(mesh, ti,
+                    wx1, wz1, wx2, wz2,
+                    rCh * SCALE, lCh * SCALE,
+                    wallLen, tw, th,
+                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
+            }
+
+            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen);
+        }
+    }
+
+    // Middle textures: transparent fence/grating, rendered from both sides,
+    // shown exactly once (no vertical tiling). Without ML_BLOCKING it is a
+    // "false wall": visible but passable.
+    _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen) {
+        const {doorSectorIds} = this._analysis;
+        const SCALE = WadConstants.SCALE;
+
+        const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+        const midPassableUser  = ((ld.flags & WadConstants.ML_BLOCKING) === 0);
+        const midPassableEnemy = (midPassableUser && ((ld.flags & WadConstants.ML_BLOCKMONSTERS) === 0));
+
+        const rFh = rSec.fh;
+        const rCh = rSec.ch;
+        const lFh = lSec.fh;
+        const lCh = lSec.ch;
+
+        for (const [mSd, mSec, otherSec] of [[rSd, rSec, lSec], [lSd, lSec, rSec]]) {
+            if (!(mSd.middle && mSd.middle !== '-')) {
+                continue;
+            }
+            if (doorSectorIds.has(mSd.sector)) {
+                continue;
+            }
+            const ti = this._bank.ensureWallTex(mSd.middle);
+            if (ti < 0) {
+                continue;
+            }
+            const {width: tw, height: th} = this._bank.getDims(ti);
+            const botDu = Math.max(rFh, lFh);
+            const topDu = Math.min(rCh, lCh);
+            if (topDu <= botDu) {
+                continue;
+            }
+
+            let ybot;
+            let ytop;
+            let yo;
+            if (lowerUnpeg) {
+                // DONTPEGBOTTOM: texture bottom anchored at floor, extends upward once
+                ybot = botDu;
+                ytop = Math.min(topDu, botDu + th);
+                yo = mSd.yo + (th - (ytop - ybot));
+            } else {
+                // Default: texture top anchored at ceiling, hangs down once
+                ytop = topDu;
+                ybot = Math.max(botDu, topDu - th);
+                yo = mSd.yo;
+            }
+            if (ytop <= ybot) {
+                continue;
+            }
+
+            WadMeshBuilder.addWallQuad(mesh, ti,
+                wx1, wz1, wx2, wz2,
+                ybot * SCALE, ytop * SCALE,
+                wallLen, tw, th,
+                {xOff: mSd.xo, yOff: yo, flip: true, light: mSec.light, clampV: true,
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy});
+            WadMeshBuilder.addWallQuad(mesh, ti,
+                wx1, wz1, wx2, wz2,
+                ybot * SCALE, ytop * SCALE,
+                wallLen, tw, th,
+                {xOff: mSd.xo, yOff: yo, flip: false, light: otherSec.light, clampV: true,
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy});
+            break;   // both sides already covered by the flip pair above
+        }
+    }
+
+    // --- Flats ---
+
+    _buildFlats(mesh) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {doorSectorIds, movingFloorDownIds} = this._analysis;
+
+        for (let si = 0; si < sectors.length; si++) {
+            const sec = sectors[si];
+            const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
+            if (chains.length === 0) {
+                continue;
+            }
+
+            if (doorSectorIds.has(si)) {
+                this._buildDoorSectorFlat(mesh, si, sec, chains);
+                continue;
+            }
+
+            const ft = this._bank.ensureFlatTex(sec.ft);
+            const hasSky = sec.ct.startsWith('F_SKY');
+            const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
+
+            const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
+            for (const polyDoom of outers) {
+                const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
+                const usedHoles = ((ownHoles.length > 0) ? ownHoles : null);
+                if (ft >= 0 && !movingFloorDownIds.has(si)) {
+                    WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, sec.fh, true, sec.light, usedHoles);
+                }
+                // Sky flats skipped — outdoor areas have no ceiling geometry
+                if (ct >= 0) {
+                    WadMeshBuilder.addFlatQuad(mesh, ct, polyDoom, sec.ch, false, sec.light, usedHoles);
+                }
+            }
+        }
+    }
+
+    // Door sector: floor only, at the lowest adjacent floor height.
+    // The ceiling is omitted — the door instance covers it.
+    _buildDoorSectorFlat(mesh, si, sec, chains) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {doorSectorIds} = this._analysis;
+
+        const adjSectors = [];
+        for (const ld of linedefs) {
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            if (sidedefs[ld.right].sector === si) {
+                const other = sidedefs[ld.left].sector;
+                if (!doorSectorIds.has(other)) {
+                    adjSectors.push(sectors[other]);
+                }
+            } else if (sidedefs[ld.left].sector === si) {
+                const other = sidedefs[ld.right].sector;
+                if (!doorSectorIds.has(other)) {
+                    adjSectors.push(sectors[other]);
+                }
+            }
+        }
+        if (adjSectors.length === 0) {
+            return;
+        }
+
+        const floorH = Math.min(...adjSectors.map((s) => s.fh));
+        const ft = this._bank.ensureFlatTex(sec.ft);
+
+        const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
+        for (const polyDoom of outers) {
+            const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
+            if (ft >= 0) {
+                WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, floorH, true, sec.light,
+                    ((ownHoles.length > 0) ? ownHoles : null));
+            }
+        }
+    }
+}
