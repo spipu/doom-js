@@ -93,7 +93,7 @@ class WadConstants {
     // --- Switches ---
 
     static SWITCH_SPECIALS = new Set([
-        11, 23, 62,
+        11, 23, 51, 62,
         7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113
     ]);
 
@@ -101,8 +101,12 @@ class WadConstants {
     static SWITCH_INTERACTION_BY_SPECIAL = {
         11: ['once', null, null],
         23: ['once', null, null],
+        51: ['once', null, null],
         62: ['timed', 1000, 1000]
     };
+
+    // S-type specials that end the level (11 = S1 Exit, 51 = S1 Secret Exit)
+    static SWITCH_EXIT_SPECIALS = new Set([11, 51]);
 
     // --- Linedef flags ---
 

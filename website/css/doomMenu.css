@@ -233,6 +233,10 @@
     animation: doomMenuPulse 1.2s ease-in-out infinite;
 }
 
+.doom-menu-modal-static {
+    margin-bottom: 0;
+}
+
 @keyframes doomMenuPulse {
     0%, 100% {
         opacity: 0.45;

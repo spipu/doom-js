@@ -11,10 +11,14 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelName
+     * @param {object}  options - {onLevelExit: function} callback wired on the exit switches
      */
-    constructor(wadFile, levelName) {
-        this._wadFile   = wadFile;
-        this._levelName = levelName;
+    constructor(wadFile, levelName, options = null) {
+        options = options ?? {};
+
+        this._wadFile     = wadFile;
+        this._levelName   = levelName;
+        this._onLevelExit = options.onLevelExit ?? null;
     }
 
     /**
@@ -55,9 +59,11 @@ class WadWorldBuilder {
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             const spec = sw.interactionSpec;
-            loader.interactions().loadFromData(
-                new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff)
-            );
+            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff);
+            if (spec.isExit && this._onLevelExit !== null) {
+                interaction.setExitCallback(this._onLevelExit);
+            }
+            loader.interactions().loadFromData(interaction);
         }
         await this._yield();
 

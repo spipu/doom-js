@@ -13,7 +13,7 @@ class MenuDisplay {
         this._screen       = document.getElementById(screenId);
         this._width        = 1920;
         this._height       = 1080;
-        this._baseFontSize = 30.;
+        this._baseFontSize = 33.;
         this._ratio        = 1.;
         this._container    = null;
         this._resizeProxy  = this._resizeWait.bind(this);

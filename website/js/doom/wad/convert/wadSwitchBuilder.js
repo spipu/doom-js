@@ -113,7 +113,8 @@ class WadSwitchBuilder {
                 mode:    interactionConfig[0],
                 tOn:     interactionConfig[1],
                 tOff:    interactionConfig[2],
-                targets: targets
+                targets: targets,
+                isExit:  WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special)
             }
         };
     }
