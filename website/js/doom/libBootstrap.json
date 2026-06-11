@@ -1,9 +1,10 @@
 {
-    "version": "v1.007",
+    "version": "v1.008",
     "files": {
         "assets": [],
         "css": [],
         "js": [
+            "/js/webapp/screenWakeLock.js",
             "/js/doom/doomGame.js",
             "/js/doom/main.js"
         ]
