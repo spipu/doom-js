@@ -1,0 +1,11 @@
+{
+    "version": "v1.0",
+    "files": {
+        "assets": [
+            "./assets/objects/ground.obj.json",
+            "./assets/objects/light.obj.json"
+        ],
+        "css": [],
+        "js": []
+    }
+}

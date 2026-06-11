@@ -1,4 +1,14 @@
 class HudDebug extends AbstractHud {
+    constructor(engine) {
+        super(engine);
+        this._descriptions = [];
+    }
+
+    addDescription(message) {
+        this._descriptions.push(message);
+        return this;
+    }
+
     init(container) {
         super.init(container);
 
@@ -35,11 +45,14 @@ class HudDebug extends AbstractHud {
         if (this._mouse) {
             lines.push(this._buildMouse());
         }
+        for (const message of this._descriptions) {
+            lines.push(message);
+        }
         this._el.innerText = lines.join('\n');
     }
 
     _buildEngine() {
-        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode() + ' | v' + bootstrap.getVersion();
+        return '[ENGINE] ' + this._engine.getFps() + ' fps | renderer: ' + this._engine.getRendererCode() + ' | ' + appBootstrap.getVersion();
     }
 
     _buildUser() {
