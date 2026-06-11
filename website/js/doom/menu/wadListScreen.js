@@ -23,7 +23,7 @@ class WadListScreen extends AbstractMenuScreen {
         this._fileInput = null;
         this._buttons   = [];
 
-        this._addTitle('SpipuDoom');
+        this._addTitle('Spipu-Doom');
 
         const panel = this._addElement('div', 'doom-menu-panel');
 
