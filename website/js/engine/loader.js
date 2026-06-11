@@ -2,6 +2,7 @@ class Loader {
     constructor() {
         this._callback = null;
         this._loaded   = false;
+        this._batching = false;
         this._textureLoader      = new TextureLoader(() => {this._checkFullyLoaded(); });
         this._object3dLoader     = new Object3dLoader(() => {this._checkFullyLoaded(); });
         this._instanceLoader     = new InstanceLoader(() => {this._checkFullyLoaded(); });
@@ -12,11 +13,23 @@ class Loader {
     reset() {
         this._loaded   = false;
         this._callback = null;
+        this._batching = false;
         this._worldLoader.reset();
         this._interactionLoader.reset();
         this._instanceLoader.reset();
         this._object3dLoader.reset();
         this._textureLoader.reset();
+    }
+
+    // Suspend the global check during a synchronous in-memory build:
+    // without it, each loadFromData would trigger finalizeInit on everything
+    beginBatch() {
+        this._batching = true;
+    }
+
+    endBatch() {
+        this._batching = false;
+        this._checkFullyLoaded();
     }
 
     setCallback(callback) {
@@ -47,6 +60,9 @@ class Loader {
     }
 
     _checkFullyLoaded() {
+        if (this._batching) {
+            return false;
+        }
         if (!this._instanceLoader.isLoaded()) {
             return false;
         }

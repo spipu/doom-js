@@ -27,6 +27,11 @@ class Object3d extends AbstractLoadedEntity {
         return this;
     }
 
+    textureAddById(textureId) {
+        this._textureIds.push(textureId);
+        return this;
+    }
+
     fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false, animTextures = null) {
         if (!color) {
             color = [255., 255., 255.];

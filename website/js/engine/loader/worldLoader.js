@@ -23,6 +23,24 @@ class WorldLoader {
         this._initialiseEntityFromUrl(this._world);
     }
 
+    // Create the World from in-memory data. The map object, the instances and
+    // the interactions must have been registered in their loaders beforehand
+    // (World.getMap() and World.getInstances() read them from the loaders).
+    loadFromData(data) {
+        if (this._world !== null) {
+            throw new Error('World is already loaded');
+        }
+
+        this._loaded = false;
+        this._world = new World(0, null, () => {this._checkFullyLoaded(); });
+
+        this._world._user         = this._initUser(data.user);
+        this._world._background   = data.background || [0, 0, 0];
+        this._world._lightAmbient = data.lights.ambient;
+        this._world._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
+        this._world.setLoaded();
+    }
+
     _initialiseEntityFromUrl(entity) {
         appBootstrap.fetchJson(entity.getUrl(), data => {
 

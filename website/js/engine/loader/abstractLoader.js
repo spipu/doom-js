@@ -57,6 +57,32 @@ class AbstractLoader {
         return entity.getId();
     }
 
+    // Create an entity directly from in-memory data, without any URL or fetch.
+    // Does not touch _loadedFiles (no URL to deduplicate).
+    loadFromData(code, data) {
+        if (code !== null && this._codeRegistry[code] !== undefined) {
+            throw this._generateException('Code [' + code + '] is already registered');
+        }
+
+        this._loaded = false;
+        const entity = this._create(
+            this._entities.length,
+            null,
+            () => {this._checkFullyLoaded(); }
+        );
+
+        this._entities[entity.getId()] = entity;
+        if (code !== null) {
+            this._codeRegistry[code] = entity.getId();
+            entity._code = code;
+        }
+
+        this._populateFromData(entity, data);
+        entity.setLoaded();
+
+        return entity.getId();
+    }
+
     get(id) {
         if (!this._loaded) {
             throw this._generateException('Loader is not ready');
@@ -77,6 +103,10 @@ class AbstractLoader {
     }
 
     _initialiseEntityFromUrl(entity) {
+        throw this._generateException('Not implemented');
+    }
+
+    _populateFromData(entity, data) {
         throw this._generateException('Not implemented');
     }
 

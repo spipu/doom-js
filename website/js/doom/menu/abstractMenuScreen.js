@@ -101,6 +101,10 @@ class AbstractMenuScreen {
         this._setStatus('');
     }
 
+    showError(error) {
+        this._showError(error);
+    }
+
     _showError(error) {
         const messages = {
             'fetch-failed':        'Téléchargement impossible (réseau ou CORS)',
