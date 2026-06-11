@@ -100,7 +100,9 @@ class WadSwitchBuilder {
                 trigger:     'action',
                 loop:        false,
                 onlyOnce:    false,
-                collidable:  false,
+                // A one-sided switch wall always blocks in Doom; its face is
+                // removed from the static map, so the instance must collide
+                collidable:  true,
                 radius:      1.0,
                 damage:      null,
                 interaction: switchName,
