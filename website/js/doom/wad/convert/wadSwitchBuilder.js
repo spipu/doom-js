@@ -76,6 +76,18 @@ class WadSwitchBuilder {
         const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
 
+        // Action radius: half of the 3D bounding diagonal + margin. The trigger
+        // distance is 3D and the wall center is at mid-height, so the wall
+        // height must be included — a small fixed radius would force the
+        // player to hug the panel
+        const xs = mesh.points.map((p) => p[0]);
+        const ys = mesh.points.map((p) => p[1]);
+        const zs = mesh.points.map((p) => p[2]);
+        const dx = Math.max(...xs) - Math.min(...xs);
+        const dy = Math.max(...ys) - Math.min(...ys);
+        const dz = Math.max(...zs) - Math.min(...zs);
+        const radius = Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
+
         const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? ['once', null, null];
 
         // Resolve tag → target lift/floor instances
@@ -103,7 +115,7 @@ class WadSwitchBuilder {
                 // A one-sided switch wall always blocks in Doom; its face is
                 // removed from the static map, so the instance must collide
                 collidable:  true,
-                radius:      1.0,
+                radius:      radius,
                 damage:      null,
                 interaction: switchName,
                 keyframes:   []
