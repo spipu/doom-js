@@ -24,7 +24,7 @@ class LevelListScreen extends AbstractMenuScreen {
     }
 
     _build() {
-        this._addTitle('SpipuDoom');
+        this._addTitle('Spipu-Doom');
 
         const panel = this._addElement('div', 'doom-menu-panel');
 

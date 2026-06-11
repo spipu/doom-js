@@ -37,7 +37,7 @@
 /* --- Central panel --- */
 
 .doom-menu-panel {
-    width: 62%;
+    width: 78%;
     max-height: 70%;
     display: flex;
     flex-direction: column;
@@ -50,7 +50,7 @@
 
 .doom-menu-subtitle {
     color: rgba(255, 255, 255, 0.75);
-    font-size: 0.8em;
+    font-size: 1.05em;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     padding-bottom: 0.7em;
@@ -97,13 +97,13 @@
 
 .doom-menu-item-label {
     flex: 1;
-    font-size: 0.75em;
+    font-size: 1em;
     letter-spacing: 0.08em;
 }
 
 .doom-menu-item-infos {
     color: rgba(255, 255, 255, 0.28);
-    font-size: 0.55em;
+    font-size: 0.75em;
     letter-spacing: 0.1em;
 }
 
@@ -118,7 +118,7 @@
     border: 0.06em solid rgba(192, 57, 43, 0.4);
     border-radius: 0.2em;
     color: #C0392B;
-    font-size: 0.65em;
+    font-size: 0.85em;
     cursor: pointer;
 }
 
@@ -128,7 +128,7 @@
 
 .doom-menu-empty {
     color: rgba(255, 255, 255, 0.28);
-    font-size: 0.65em;
+    font-size: 0.85em;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     text-align: center;
@@ -149,7 +149,7 @@
     border: 0.06em solid rgba(255, 255, 255, 0.15);
     border-radius: 0.25em;
     color: #FFF;
-    font-size: 0.65em;
+    font-size: 0.85em;
     padding: 0.5em 0.7em;
     outline: none;
     -webkit-user-select: text;
@@ -178,7 +178,7 @@
     border-radius: 0.25em;
     color: #FFF;
     font-weight: bold;
-    font-size: 0.6em;
+    font-size: 0.8em;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     padding: 0.8em 1.4em;
@@ -212,7 +212,7 @@
 }
 
 .doom-menu-modal {
-    width: 38%;
+    width: 48%;
     background: rgba(20, 8, 6, 0.95);
     border: 0.06em solid rgba(192, 57, 43, 0.5);
     border-radius: 0.3em;
@@ -222,7 +222,7 @@
 
 .doom-menu-modal-message {
     color: rgba(255, 255, 255, 0.85);
-    font-size: 0.75em;
+    font-size: 0.95em;
     letter-spacing: 0.1em;
     text-align: center;
     margin-bottom: 1.4em;
@@ -267,7 +267,7 @@
 .doom-menu-status {
     min-height: 1.4em;
     color: rgba(255, 255, 255, 0.45);
-    font-size: 0.6em;
+    font-size: 0.8em;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }

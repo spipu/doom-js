@@ -1,5 +1,5 @@
 /**
- * Confirmation modal displayed above the menu screens, in the SpipuDoom style.
+ * Confirmation modal displayed above the menu screens, in the Spipu-Doom style.
  */
 class MenuModal {
     /**

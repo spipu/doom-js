@@ -111,7 +111,7 @@ class MenuNavigator {
 
         const title = document.createElement('div');
         title.className = 'doom-menu-title';
-        title.textContent = 'SpipuDoom';
+        title.textContent = 'Spipu-Doom';
         container.appendChild(title);
 
         const message = document.createElement('div');
