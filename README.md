@@ -4,12 +4,13 @@ A pure-JavaScript 3D rendering engine — no external dependency, just for fun.
 
 Renders 3D objects with lights, textures, and projection entirely in the browser using the HTML5 `<canvas>` API. Includes a full FPS physics engine with collision detection, gravity, jumping, crouching, and animated objects.
 
-The main demo (SpipuDoom, `index.html`) ships as a PWA: a generic webapp bootstrap layer (`js/webapp/`) loads everything from versioned definition files, and a Service Worker provides cache-first delivery and offline support.
+The main demo (Spipu-Doom, `index.html`) ships as a PWA and converts **any Doom WAD on the fly, entirely in the browser**: WAD files are stored in IndexedDB, parsed in JS (geometry, textures, doors, lifts, switches), and turned directly into in-memory engine objects — no server-side conversion, no generated files.
 
 ## Requirements
 
 - A modern browser (Chrome, Firefox, Edge)
 - Any static HTTP server (Apache, Nginx, or `python3 -m http.server`)
+- A Doom WAD file (e.g. [Freedoom](https://freedoom.github.io/), BSD licensed)
 
 ## Getting started
 
@@ -20,13 +21,20 @@ cd website
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080` in a browser.
+Then open `http://localhost:8080` in a browser, add a WAD file (local file or URL), pick a level and play.
+
+## Spipu-Doom (`index.html`)
+
+- **WAD menu** (1920×1080 letterboxed virtual screen): list of stored WADs, add by URL or local file, delete with confirmation. Binary files persist in IndexedDB (`spipudoom` database) across sessions and app updates.
+- **Level list**: the WAD directory is parsed (`WadFile`) and every map marker (ExMy / MAPxx) is listed.
+- **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
+- **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
 
 ## Demo pages
 
 | Page | Description |
 |---|---|
-| `index.html` | SpipuDoom — first-person navigation in Freedoom E1M1 (WIP), PWA, 1920×1080 virtual screen |
+| `index.html` | Spipu-Doom — WAD menu + on-the-fly level conversion, PWA, 1920×1080 virtual screen |
 | `_examples/index.html` | Home page — links to all demos |
 | `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
 | `_examples/example.html` | Static render of the Lotus F1 |
@@ -42,7 +50,7 @@ Then open `http://localhost:8080` in a browser.
 | Alt | Walk slowly |
 | Ctrl | Crouch |
 | Shift | Jump |
-| E | Interact (open door, trigger lift) |
+| E | Interact (open door, trigger lift or switch) |
 | Mouse (click canvas first) | Look around |
 | IJKL | Rotate (keyboard fallback if no Pointer Lock) |
 | ESC | Release mouse |
@@ -58,36 +66,64 @@ Four rendering modes are available via the **Renderer** selector on `objects.htm
 | `flat` | Painter's algorithm with flat shading (one colour per face) |
 | `fast` | Wireframe — no lighting, canvas 2D paths only |
 
-## Objects
-
-Thirteen 3D objects are included in `website/assets/objects/`:
-`cube`, `sphere`, `torus`, `lotus`, `helico_military`, `helico_civil`, `tank`, `car`, `van`, `dyno`, `head`, `plane`, `ship`, `teddy`
-
 ## Architecture
 
 ```
 website/
-├── index.html                   SpipuDoom — empty shell (div#screen + progress bar)
+├── index.html                   Spipu-Doom — empty shell (div#screen + progress bar)
 ├── appServiceWorker.js          Service Worker — cache-first, offline (must stay at webroot: SW scope)
 ├── manifest.webmanifest         PWA manifest
-├── css/main.css                 Shell styles (fullscreen layout, loading bar)
+├── css/
+│   ├── main.css                 Shell styles (fullscreen layout, loading bar)
+│   └── doomMenu.css             WAD menu styles (em-based, scaled by the virtual screen ratio)
 ├── _examples/                   Simple demos (example, objects, lights, game, world)
 │   └── assets/                  Demo assets + one bootstrap definition JSON per demo
 ├── js/
-│   ├── webapp/
-│   │   └── appBootstrap.js      Generic webapp loader: stacked definitions, aggregate versioning,
-│   │                            PWA/classic modes, buildUrl, fetchJson — reusable in any project
+│   ├── webapp/                  Generic webapp layer — reusable in any project
+│   │   ├── appBootstrap.js      Stacked definitions, aggregate versioning, PWA/classic modes
+│   │   ├── appDatabase.js       Generic IndexedDB wrapper (stores, atomic multi-writes)
+│   │   └── screenWakeLock.js    Screen wake lock helper
 │   ├── doom/
-│   │   ├── libBootstrap.json    Doom bootstrap definition (version + js list)
-│   │   ├── doomGame.js          DoomGame class (screen, engine, HUD, game loop)
-│   │   └── main.js              Entry point: loadApp() + appBootstrap.setReadyCallback(loadApp)
+│   │   ├── libBootstrap.json    Doom bootstrap definition (version + css/js lists)
+│   │   ├── doomGame.js          DoomGame: level lifecycle, game loop, level chaining on exit
+│   │   ├── main.js              Entry point: loadApp() → MenuNavigator
+│   │   ├── menu/
+│   │   │   ├── menuDisplay.js   1920×1080 letterboxed virtual screen for DOM menus
+│   │   │   ├── menuModal.js     Confirm / loading / message modals
+│   │   │   ├── abstractMenuScreen.js  Base menu screen (DOM helpers, status, errors)
+│   │   │   ├── wadListScreen.js       WAD list + add (URL / local file) + delete
+│   │   │   ├── levelListScreen.js     Levels of a WAD
+│   │   │   └── menuNavigator.js       Screen navigation, launches DoomGame
+│   │   └── wad/
+│   │       ├── wadError.js      Typed errors (storage, fetch, format, quota)
+│   │       ├── wadFile.js       Binary WAD reader (header, directory, lumps, level names)
+│   │       ├── wadStorage.js    WAD persistence on IndexedDB (meta + binary stores)
+│   │       ├── wadRegistry.js   Business facade used by the menu screens
+│   │       └── convert/         WAD level → in-memory engine objects
+│   │           ├── wadConstants.js        Doom specials tables, flags, player defaults
+│   │           ├── wadLevelParser.js      VERTEXES / LINEDEFS / SIDEDEFS / SECTORS / THINGS
+│   │           ├── wadPalette.js          PLAYPAL palette
+│   │           ├── wadPicture.js          Doom picture / flat decoding → ImageData
+│   │           ├── wadTextureBank.js      TEXTURE1/2 composition, flats, switch pairs, registry
+│   │           ├── wadAnimationBank.js    ANIMATED lump + vanilla fallback, per-object groups
+│   │           ├── wadGeometry.js         Doom→world conversion, 2D geometry helpers
+│   │           ├── wadTriangulator.js     Ear-clipping + hole merging (bridge cuts)
+│   │           ├── wadSectorPolygons.js   Sector boundary chains, outers/holes split
+│   │           ├── wadMeshBuilder.js      Wall/flat quads, UV pegging, texture remapping
+│   │           ├── wadMapAnalyzer.js      Door/lift/switch identification, heights
+│   │           ├── wadStaticMapBuilder.js Static map mesh (walls + flats)
+│   │           ├── wadDoorBuilder.js      Door meshes + instances (keyframes)
+│   │           ├── wadLiftBuilder.js      Lift meshes + instances (keyframes)
+│   │           ├── wadSwitchBuilder.js    Switch meshes + instances + interaction specs
+│   │           ├── doomSwitchInteraction.js  Runtime switch (SW1↔SW2 swap, targets, exit)
+│   │           └── wadWorldBuilder.js     Orchestrator: WadFile + level → loaded world
 │   └── engine/
 │       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
 │       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, DEG_TO_RAD)
 │       ├── collision.js         FPS physics: floor/ceiling/wall detection, platform riding
-│       ├── inputKeyboard.js     Keyboard input (e.code, Set-based)
+│       ├── inputKeyboard.js     Keyboard input (e.code, Set-based, strict singleton)
 │       ├── inputMouse.js        Mouse input via Pointer Lock API
-│       ├── loader.js            Global Loader — synchronises all sub-loaders, fires app callback
+│       ├── loader.js            Global Loader — synchronises all sub-loaders, batch mode
 │       ├── matrix.js            4×4 transformation matrices
 │       ├── screenManager.js     Creates canvas + HUD overlay in #screen (fullscreen, fixed or virtual size)
 │       ├── zBuffer.js           Z-buffer
@@ -106,14 +142,14 @@ website/
 │       │   └── hudDebug.js      Debug HUD: fps, position, energy, keyboard, mouse, damage flash
 │       ├── interaction/
 │       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
-│       │   └── switchInteraction.js    Switch modes: once / timed / toggle, SW1↔SW2 texture swap
+│       │   └── switchInteraction.js    Switch modes: once / timed / toggle
 │       ├── loader/
-│       │   ├── abstractLoader.js    Base loader: load/loadByCode/get/getByCode, registry, callbacks
-│       │   ├── textureLoader.js     Loads images, deduplicates by URL
-│       │   ├── object3dLoader.js    Parses .obj.json, feeds geometry to Object3d
-│       │   ├── instanceLoader.js    Parses .instance.json, self-registers code, links to Object3d
-│       │   ├── interactionLoader.js Loads interaction JS files async, FIFO queue, register()
-│       │   └── worldLoader.js       Parses definition.json, creates User + lights + instances + interactions
+│       │   ├── abstractLoader.js    Base loader: load/loadByCode/loadFromData, registry, callbacks
+│       │   ├── textureLoader.js     Loads images by URL or accepts ImageData directly
+│       │   ├── object3dLoader.js    Parses .obj.json or in-memory data, feeds geometry to Object3d
+│       │   ├── instanceLoader.js    Parses .instance.json or in-memory data, links to Object3d
+│       │   ├── interactionLoader.js Loads interaction JS files async, or registers instances directly
+│       │   └── worldLoader.js       Parses definition.json or in-memory data, creates User + lights
 │       └── renderer/
 │           ├── object3dRendererBase.js   Shared renderer utilities
 │           ├── object3dRendererList.js   Selects and instantiates the right renderer
@@ -121,15 +157,24 @@ website/
 │           ├── object3dRendererFlat.js   Flat shading + Painter's algorithm
 │           ├── object3dRendererFast.js   Wireframe (canvas 2D)
 │           └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer)
-└── assets/
-    ├── objects/                 Generic 3D objects (.obj.json)
-    ├── texture/                 Generic textures
-    ├── world/                   FPS world map + instances + textures
-    └── doom/                    Freedoom E1M1 — all files generated by convert_wad.py
-        ├── objects/             Map geometry + door/lift/switch meshes
-        ├── instances/           Animated instances (doors, lifts, switches)
-        ├── interactions/        JS interaction subclasses (generated per switch)
-        └── textures/            Freedoom textures (JPEG + PNG)
+```
+
+Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
+
+## In-memory loading
+
+The engine loaders accept either URLs (classic flow, used by the demo pages) or in-memory data (used by the WAD converter):
+
+```javascript
+loader.reset();
+loader.beginBatch();                                    // suspends the global finalize check
+const texId = loader.textures().loadFromData(null, imageData);          // ImageData
+const objId = loader.objects().loadFromData('map', {textures, points, faces});
+loader.instances().loadFromData(null, {...instanceData, object: objId});
+loader.interactions().loadFromData(new DoomSwitchInteraction(...));
+loader.world().loadFromData(definition);                // user, background, lights
+loader.setCallback(init);
+loader.endBatch();                                      // finalizes everything once, fires init
 ```
 
 ## Webapp bootstrap
@@ -153,7 +198,7 @@ appBootstrap.setReadyCallback(loadApp);
 </script>
 ```
 
-Versions are aggregated (`v1.383|v1.0`): a change in any stacked definition triggers a full update — in PWA mode the Service Worker clears its cache and re-downloads everything; in classic mode the page reloads with `?v=` cache-busted URLs (`appBootstrap.buildUrl`).
+Versions are aggregated (`v2.001|v1.018`): a change in any stacked definition triggers a full update — in PWA mode the Service Worker clears its cache and re-downloads everything; in classic mode the page reloads with `?v=` cache-busted URLs (`appBootstrap.buildUrl`).
 
 ## Page pattern
 
