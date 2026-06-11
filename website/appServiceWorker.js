@@ -101,6 +101,11 @@ class AppServiceWorker {
     }
 
     fetch(event) {
+        if (event.request.url.indexOf('swBypass=1') !== -1) {
+            event.respondWith(fetch(event.request));
+            return;
+        }
+
         event.respondWith(
             caches
                 .match(event.request)
