@@ -4,6 +4,8 @@ A pure-JavaScript 3D rendering engine — no external dependency, just for fun.
 
 Renders 3D objects with lights, textures, and projection entirely in the browser using the HTML5 `<canvas>` API. Includes a full FPS physics engine with collision detection, gravity, jumping, crouching, and animated objects.
 
+The main demo (SpipuDoom, `index.html`) ships as a PWA: a generic webapp bootstrap layer (`js/webapp/`) loads everything from versioned definition files, and a Service Worker provides cache-first delivery and offline support.
+
 ## Requirements
 
 - A modern browser (Chrome, Firefox, Edge)
@@ -24,7 +26,7 @@ Then open `http://localhost:8080` in a browser.
 
 | Page | Description |
 |---|---|
-| `index.html` | First-person navigation in Freedoom E1M1 (WIP) — fullscreen |
+| `index.html` | SpipuDoom — first-person navigation in Freedoom E1M1 (WIP), PWA, 1920×1080 virtual screen |
 | `_examples/index.html` | Home page — links to all demos |
 | `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
 | `_examples/example.html` | Static render of the Lotus F1 |
@@ -65,19 +67,29 @@ Thirteen 3D objects are included in `website/assets/objects/`:
 
 ```
 website/
-├── index.html                   Freedoom E1M1 — fullscreen FPS (WIP)
+├── index.html                   SpipuDoom — empty shell (div#screen + progress bar)
+├── appServiceWorker.js          Service Worker — cache-first, offline (must stay at webroot: SW scope)
+├── manifest.webmanifest         PWA manifest
+├── css/main.css                 Shell styles (fullscreen layout, loading bar)
 ├── _examples/                   Simple demos (example, objects, lights, game, world)
-│   └── assets/                  Demo-specific 3D objects and textures
+│   └── assets/                  Demo assets + one bootstrap definition JSON per demo
 ├── js/
-│   ├── bootstrap.js             First script loaded; loads all engine scripts, buildUrl, fetchJson, DEG_TO_RAD
+│   ├── webapp/
+│   │   └── appBootstrap.js      Generic webapp loader: stacked definitions, aggregate versioning,
+│   │                            PWA/classic modes, buildUrl, fetchJson — reusable in any project
+│   ├── doom/
+│   │   ├── libBootstrap.json    Doom bootstrap definition (version + js list)
+│   │   ├── doomGame.js          DoomGame class (screen, engine, HUD, game loop)
+│   │   └── main.js              Entry point: loadApp() + appBootstrap.setReadyCallback(loadApp)
 │   └── engine/
-│       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop)
+│       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
+│       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, DEG_TO_RAD)
 │       ├── collision.js         FPS physics: floor/ceiling/wall detection, platform riding
 │       ├── inputKeyboard.js     Keyboard input (e.code, Set-based)
 │       ├── inputMouse.js        Mouse input via Pointer Lock API
 │       ├── loader.js            Global Loader — synchronises all sub-loaders, fires app callback
 │       ├── matrix.js            4×4 transformation matrices
-│       ├── screenManager.js     Canvas container + HUD overlay (fullscreen or fixed size)
+│       ├── screenManager.js     Creates canvas + HUD overlay in #screen (fullscreen, fixed or virtual size)
 │       ├── zBuffer.js           Z-buffer
 │       ├── entity/
 │       │   ├── abstractLoadedEntity.js  Base class: id, url, setLoaded(), finalizeInit()
@@ -120,25 +132,45 @@ website/
         └── textures/            Freedoom textures (JPEG + PNG)
 ```
 
-## Loading pattern
+## Webapp bootstrap
 
-All asset loading is coordinated by the global `loader` object:
+Every page is loaded by the generic `appBootstrap` (global instance). Each library declares its files in a `libBootstrap.json` definition (`{version, files: {assets, css, js}}`); pages stack the definitions they need and register their entry point:
+
+```html
+<div id="screen"></div>
+<script src="/js/webapp/appBootstrap.js"></script>
+<script>
+function loadApp()
+{
+    loader.world().load('./assets/world/definition.json');
+    loader.setCallback(init);
+}
+
+appBootstrap.disablePwaMode();                                       // demos only — doom keeps PWA mode
+appBootstrap.addBootstrapDefinition('/js/engine/libBootstrap.json');
+appBootstrap.addBootstrapDefinition('./assets/world.json');
+appBootstrap.setReadyCallback(loadApp);
+</script>
+```
+
+Versions are aggregated (`v1.383|v1.0`): a change in any stacked definition triggers a full update — in PWA mode the Service Worker clears its cache and re-downloads everything; in classic mode the page reloads with `?v=` cache-busted URLs (`appBootstrap.buildUrl`).
+
+## Page pattern
 
 ```javascript
-// Pages without a world (example, game, lights)
-loader.objects().loadByCode('van', 'assets/objects/van.obj.json');
-loader.setCallback(init);
-
-// FPS pages (world, doom)
-loader.world().load('./assets/world/definition.json');
-loader.setCallback(init);
-
 function init() {
     const world = loader.world().get();
-    engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
-    const hud = new HudDebug(engine).bindUser(world.getUser()).bindKeyboard(keyboard).bindMouse(mouse);
-    screen = new ScreenManager(engine, hud, { fullscreen: true }); // or { width: 640, height: 480 }
-    // ...
+    screen = new ScreenManager('screen', { fullscreen: true });  // or { width, height }
+                                                                 // or { fullscreen: true, virtualWidth: 1920, virtualHeight: 1080 }
+    mouse  = new InputMouse(screen.getCanvas());
+    engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));  // binds itself to the screen
+    const hud = new HudDebug(engine)
+        .bindUser(world.getUser()).bindKeyboard(keyboard).bindMouse(mouse)
+        .addDescription('(c)2026 Spipu')
+    ;
+    screen.bindHud(hud);
+    engine.initFromWorld(world);
+    requestAnimationFrame(animate);
 }
 
 function animate(timestamp) {
@@ -150,9 +182,9 @@ function animate(timestamp) {
 }
 ```
 
-## Cache busting
+## Versioning
 
-All asset URLs go through `bootstrap.buildUrl(url)`, appending `?v=<version>`. Increment `this._version` in `bootstrap.js` after any file change to force a browser cache refresh.
+After any file change, increment the `version` field of the `libBootstrap.json` of the modified library (engine, doom, or the demo's definition JSON). This drives both the PWA cache refresh and the classic-mode cache busting.
 
 ## License
 

@@ -6,46 +6,46 @@
         <meta name="Title"              content="mini 3D engine in javascript" />
         <meta name="Description"        content="3D engine, javascript" />
         <meta name="Author"             content="Spipu" />
-        <meta name="Reply-to"           content="webmaster@spipu.net" />
         <meta name="Copyright"          content="(c)2026 Spipu" />
-        <style>
-body             { background: #000; color: #EEE; padding: 0; margin: 20px; font-size: 12px; font-family: verdana; text-align: center }
-div.copy         { text-align: center;color: #ccc;}
-div.copy a       { color: #bbb; text-decoration: none;}
-div.copy a:hover { color: #ddd; text-decoration: underline; }
-        </style>
+        <link rel="stylesheet" href="/css/main.css" />
     </head>
     <body>
-        <i>use the keyboard to move the lights</i><br />
-        <br />
-        <canvas id="canvasElem"></canvas><br />
-        <div class="copy">&copy;2026 <a href="http://spipu.net/">Spipu</a></div>
-        <script src="../js/bootstrap.js" ></script>
+        <div id="screen"></div>
+        <script src="/js/webapp/appBootstrap.js"></script>
         <script>
 
 let engine   = null;
 let screen   = null;
 let hudDebug = null;
+let keyboard = null;
+let light1   = null;
+let light2   = null;
+let light3   = null;
 
 let obj_z = 25.;
 let obj_r = 5.;
 const obj_dv = 0.015;
 
-const light1 = new Light([255., 0., 0.], 30, [0, 0, 0]);
-const light2 = new Light([0., 255., 0.], 30, [0, 0, 0]);
-const light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
-
-const keyboard = new InputKeyboard();
-
 function init()
 {
-    engine = new Engine3d('canvasElem', new Object3dRendererList().getRenderer('webgl'));
+    keyboard = new InputKeyboard();
+    light1   = new Light([255., 0., 0.], 30, [0, 0, 0]);
+    light2   = new Light([0., 255., 0.], 30, [0, 0, 0]);
+    light3   = new Light([0., 0., 255.], 30, [0, 0, 0]);
+
+    screen = new ScreenManager('screen', { fullscreen: true });
+
+    engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));
     engine.setFov(45.0);
     engine.setZBuffer(1, 100);
     engine.setBackground(10, 10, 10);
 
-    hudDebug = new HudDebug(engine).bindKeyboard(keyboard);
-    screen   = new ScreenManager(engine, hudDebug, { width: 640, height: 480 });
+    hudDebug = new HudDebug(engine)
+        .bindKeyboard(keyboard)
+        .addDescription('Use the keyboard to move the lights')
+        .addDescription('(c)2026 Spipu')
+    ;
+    screen.bindHud(hudDebug);
 
     engine.lightAmbient([20., 20., 20.]);
     engine.lightAdd(light1);
@@ -82,7 +82,7 @@ function animate(timestamp)
     engine.matrixIdentity();
     engine.matrixRotateZ(180);
     engine.matrixRotateX(180);
-    engine.matrixTranslate(0, -5, -35);
+    engine.matrixTranslate(0, -5, -60);
     engine.matrixRotateX(45);
     engine.lightsCalculatePosition();
 
@@ -107,9 +107,17 @@ function animate(timestamp)
     requestAnimationFrame(animate);
 }
 
-loader.objects().loadByCode('ground', './assets/objects/ground.obj.json');
-loader.objects().loadByCode('light',  './assets/objects/light.obj.json');
-loader.setCallback(init);
+function loadApp()
+{
+    loader.objects().loadByCode('ground', './assets/objects/ground.obj.json');
+    loader.objects().loadByCode('light',  './assets/objects/light.obj.json');
+    loader.setCallback(init);
+}
+
+appBootstrap.disablePwaMode();
+appBootstrap.addBootstrapDefinition('/js/engine/libBootstrap.json');
+appBootstrap.addBootstrapDefinition('./assets/lights.json');
+appBootstrap.setReadyCallback(loadApp);
         </script>
     </body>
 </html>

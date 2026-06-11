@@ -34,6 +34,6 @@ class TextureLoader extends AbstractLoader {
             entity.setLoaded();
         };
 
-        img.src = bootstrap.buildUrl(entity.getUrl());
+        img.src = appBootstrap.buildUrl(entity.getUrl());
     }
 }

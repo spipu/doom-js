@@ -20,7 +20,7 @@ class InteractionLoader extends AbstractLoader {
         this._pendingEntities.push(entity);
 
         const script   = document.createElement('script');
-        script.src     = bootstrap.buildUrl(entity.getUrl());
+        script.src     = appBootstrap.buildUrl(entity.getUrl());
         script.onerror = () => { console.error('Failed to load JS: ' + entity.getUrl()); };
 
         document.head.appendChild(script);

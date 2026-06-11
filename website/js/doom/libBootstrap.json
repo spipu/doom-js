@@ -1,0 +1,11 @@
+{
+    "version": "v1.376",
+    "files": {
+        "assets": [],
+        "css": [],
+        "js": [
+            "/js/doom/doomGame.js",
+            "/js/doom/main.js"
+        ]
+    }
+}

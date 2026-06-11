@@ -12,7 +12,7 @@ class Object3dLoader extends AbstractLoader {
     }
 
     _initialiseEntityFromUrl(entity) {
-        bootstrap.fetchJson(
+        appBootstrap.fetchJson(
             entity.getUrl(),
             data => {
                 (data.textures || []).forEach(t => entity.textureAdd(t));

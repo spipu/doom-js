@@ -1,5 +1,7 @@
+const DEG_TO_RAD = Math.PI / 180;
+
 class Engine3d {
-    constructor(canvasId, renderer) {
+    constructor(screenManager, renderer) {
         this.scrWidth  = 0;
         this.scrHeight = 0;
         this.background = [0, 0, 0];
@@ -24,7 +26,7 @@ class Engine3d {
 
         this.viewMatrix.identity();
 
-        this.scrCanvas = document.getElementById(canvasId);
+        this.scrCanvas = screenManager.getCanvas();
         if (!this.scrCanvas || !this.scrCanvas.getContext) {
             return;
         }
@@ -34,6 +36,8 @@ class Engine3d {
         this.setScreen(320, 240);
         this.setView(-32., 32., -24., 24.);
         this.setFov(45.);
+
+        screenManager.bindEngine(this);
     }
 
     destroy() {

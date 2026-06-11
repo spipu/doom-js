@@ -24,7 +24,7 @@ class WorldLoader {
     }
 
     _initialiseEntityFromUrl(entity) {
-        bootstrap.fetchJson(entity.getUrl(), data => {
+        appBootstrap.fetchJson(entity.getUrl(), data => {
 
             loader.objects().loadByCode('map', data.map);
             (data.instances || []).forEach(url => loader.instances().load(url));

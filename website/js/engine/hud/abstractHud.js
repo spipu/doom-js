@@ -4,6 +4,12 @@ class AbstractHud {
         this._user     = null;
         this._keyboard = null;
         this._mouse    = null;
+        this._ratio    = 1;
+    }
+
+    setRatio(ratio) {
+        this._ratio = ratio;
+        return this;
     }
 
     bindUser(user) {

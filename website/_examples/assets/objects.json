@@ -1,0 +1,22 @@
+{
+    "version": "v1.0",
+    "files": {
+        "assets": [
+            "./assets/objects/cube.obj.json",
+            "./assets/objects/helico_military.obj.json",
+            "./assets/objects/helico_civil.obj.json",
+            "./assets/objects/lotus.obj.json",
+            "./assets/objects/sphere.obj.json",
+            "./assets/objects/tank.obj.json",
+            "./assets/objects/torus.obj.json",
+            "./assets/objects/car.obj.json",
+            "./assets/objects/dyno.obj.json",
+            "./assets/objects/head.obj.json",
+            "./assets/objects/plane.obj.json",
+            "./assets/objects/ship.obj.json",
+            "./assets/objects/teddy.obj.json"
+        ],
+        "css": [],
+        "js": []
+    }
+}
