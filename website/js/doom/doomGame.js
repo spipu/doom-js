@@ -6,6 +6,7 @@ class DoomGame {
         this._hud      = null;
         this._mouse    = null;
         this._keyboard = null;
+        this._wakeLock = null;
         this._animateCallback = this._animate.bind(this);
     }
 
@@ -19,6 +20,9 @@ class DoomGame {
 
     _init() {
         this._world = loader.world().get();
+
+        this._wakeLock = new ScreenWakeLock();
+        this._wakeLock.init();
 
         this._screen = new ScreenManager('screen', {
             fullscreen: true,
