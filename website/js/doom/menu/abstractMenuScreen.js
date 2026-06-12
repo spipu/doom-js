@@ -1,6 +1,11 @@
 /**
  * Base class of the menu screens, displayed inside the MenuDisplay virtual screen.
  */
+
+// The footer (version + webapp stats) is only relevant on the startup screen:
+// the stats are reset afterwards, so it is dropped on the first navigation
+let AbstractMenuScreen_footerAllowed = true;
+
 class AbstractMenuScreen {
     /**
      * @param {MenuNavigator} navigator
@@ -25,7 +30,9 @@ class AbstractMenuScreen {
         this._display.getContainer().appendChild(this._container);
 
         this._build();
-        this._addFooter();
+        if (AbstractMenuScreen_footerAllowed) {
+            this._addFooter();
+        }
 
         return this;
     }
@@ -35,11 +42,14 @@ class AbstractMenuScreen {
             clearInterval(this._footerTimer);
             this._footerTimer = null;
         }
+        if (this._footerEl !== null) {
+            AbstractMenuScreen_footerAllowed = false;
+            this._footerEl = null;
+        }
         if (this._container !== null) {
             this._container.remove();
             this._container = null;
             this._statusEl = null;
-            this._footerEl = null;
         }
 
         return this;
