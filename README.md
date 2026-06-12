@@ -29,6 +29,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Level list**: the WAD directory is parsed (`WadFile`) and every map marker (ExMy / MAPxx) is listed.
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
+- **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
 
 ## Demo pages
 
@@ -44,16 +45,20 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 
 ## Controls (index.html / _examples/world.html)
 
-| Input | Action |
-|---|---|
-| Arrow keys / ZQSD | Move forward / backward / strafe |
-| Alt | Walk slowly |
-| Ctrl | Crouch |
-| Shift | Jump |
-| E | Interact (open door, trigger lift or switch) |
-| Mouse (click canvas first) | Look around |
-| IJKL | Rotate (keyboard fallback if no Pointer Lock) |
-| ESC | Release mouse |
+| Keyboard / mouse | Gamepad | Action |
+|---|---|---|
+| Arrow keys / ZQSD | Left stick | Move / strafe (analog on the stick) |
+| Mouse (click canvas first) | Right stick | Look around |
+| Shift | Button 2 | Jump |
+| Ctrl | Button 1 | Crouch |
+| E | Button 3 | Interact (open door, trigger lift or switch) |
+| Left click | Button 4 / right trigger | Fire (reserved — no weapons yet) |
+| P | Button 9 | Quit the level, back to the level list |
+| Alt | — | Walk slowly (sticks do it through partial deflection) |
+| IJKL | — | Rotate (keyboard fallback if no Pointer Lock) |
+| ESC | — | Release mouse |
+
+The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices (phones, tablets) select the virtual gamepad mode — its touch UI is not implemented yet.
 
 ## Renderer modes
 
@@ -85,7 +90,7 @@ website/
 │   │   └── screenWakeLock.js    Screen wake lock helper
 │   ├── doom/
 │   │   ├── libBootstrap.json    Doom bootstrap definition (version + css/js lists)
-│   │   ├── doomGame.js          DoomGame: level lifecycle, game loop, level chaining on exit
+│   │   ├── doomGame.js          DoomGame: level lifecycle, game loop, level chaining on exit, pause back to the level list
 │   │   ├── main.js              Entry point: loadApp() → MenuNavigator
 │   │   ├── menu/
 │   │   │   ├── menuDisplay.js   1920×1080 letterboxed virtual screen for DOM menus
@@ -121,8 +126,6 @@ website/
 │       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
 │       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, DEG_TO_RAD)
 │       ├── collision.js         FPS physics: floor/ceiling/wall detection, platform riding
-│       ├── inputKeyboard.js     Keyboard input (e.code, Set-based, strict singleton)
-│       ├── inputMouse.js        Mouse input via Pointer Lock API
 │       ├── loader.js            Global Loader — synchronises all sub-loaders, batch mode
 │       ├── matrix.js            4×4 transformation matrices
 │       ├── screenManager.js     Creates canvas + HUD overlay in #screen (fullscreen, fixed or virtual size)
@@ -139,7 +142,13 @@ website/
 │       │   └── world.js         FPS scene (user, lights, collision, update loop)
 │       ├── hud/
 │       │   ├── abstractHud.js   Base HUD overlay: init(container), update(), bind helpers
-│       │   └── hudDebug.js      Debug HUD: fps, position, energy, keyboard, mouse, damage flash
+│       │   └── hudDebug.js      Debug HUD: fps, position, energy, inputs (mode, axes, buttons), damage flash
+│       ├── input/
+│       │   ├── inputs.js        Inputs coordinator: device selection (gamepad > virtual gamepad > keyboard+mouse), unified analog axes + semantic buttons API
+│       │   ├── inputKeyboard.js Keyboard input (e.code, Set-based, strict singleton)
+│       │   ├── inputMouse.js    Mouse input via Pointer Lock API (rebound to the canvas on each level)
+│       │   ├── inputGamepad.js  Physical gamepad: standard mapping preferred, rest-pose axis detection on non-standard pads, dead zone
+│       │   └── inputVirtualGamepad.js  Virtual touch gamepad (API-compatible skeleton, touch UI to come)
 │       ├── interaction/
 │       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
 │       │   └── switchInteraction.js    Switch modes: once / timed / toggle
@@ -207,10 +216,10 @@ function init() {
     const world = loader.world().get();
     screen = new ScreenManager('screen', { fullscreen: true });  // or { width, height }
                                                                  // or { fullscreen: true, virtualWidth: 1920, virtualHeight: 1080 }
-    mouse  = new InputMouse(screen.getCanvas());
+    inputs = new Inputs().bindScreen(screen);  // one single instance per page, rebound on each level
     engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));  // binds itself to the screen
     const hud = new HudDebug(engine)
-        .bindUser(world.getUser()).bindKeyboard(keyboard).bindMouse(mouse)
+        .bindUser(world.getUser()).bindInputs(inputs)
         .addDescription('(c)2026 Spipu')
     ;
     screen.bindHud(hud);
@@ -220,7 +229,7 @@ function init() {
 
 function animate(timestamp) {
     engine.calculateDeltaTime(timestamp);
-    world.update(engine.getDeltaTime(), keyboard, mouse);
+    world.update(engine.getDeltaTime(), inputs);
     engine.displayWorld(world);
     screen.update(); // updates HUD overlay
     requestAnimationFrame(animate);
