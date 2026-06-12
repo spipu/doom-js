@@ -71,21 +71,19 @@ class InputGamepad {
     }
 
     readButtonCrouch() {
-        return this._button(1);
+        return this._button(0);
     }
 
     readButtonJump() {
-        return this._button(2);
+        return this._button(1);
     }
 
     readButtonAction() {
         return this._button(3);
     }
 
-    // Button 4 or the RT trigger. RT is analog: an explicit threshold on
-    // .value is more deterministic across browsers than the UA-defined .pressed
     readButtonFire() {
-        return this._button(0) || (this._buttonValue(7) > 0.5);
+        return this._button(2) || (this._buttonValue(7) > 0.5);
     }
 
     readButtonPause() {
@@ -95,15 +93,26 @@ class InputGamepad {
     // --- Internal ---
 
     // The standard mapping guarantees the sticks on axes 0-3. On non-standard
-    // pads, the triggers are often exposed as axes resting at ±1 (DualSense:
-    // L2/R2 → rest pose [0,0,0,-1,-1,0]): keep the first 4 axes resting near
-    // 0 as [joy1X, joy1Y, joy2X, joy2Y]. Computed when the active pad changes,
-    // so a stick held during the scan cannot corrupt a later rescan.
+    // pads, the triggers are exposed as axes mixed with the sticks; a known
+    // layout matched on the pad id is used first, then a rest-pose heuristic.
+    // The heuristic alone is not reliable: trigger axes often report 0 until
+    // they are first touched (they only fall to their -1 rest value after),
+    // which hides them from the rest pose captured at connection time.
     _buildAxisMap(pad) {
         this._axisMap = [0, 1, 2, 3];
         if (pad.mapping === 'standard') {
             return;
         }
+
+        // Sony pads (DualShock/DualSense, vendor 054c) raw layout:
+        // [LX, LY, RX, L2, R2, RY] → right stick Y on axis 5
+        const id = pad.id.toLowerCase();
+        if (((id.indexOf('054c') !== -1) || (id.indexOf('dualsense') !== -1) || (id.indexOf('dualshock') !== -1)) && (pad.axes.length >= 6)) {
+            this._axisMap = [0, 1, 2, 5];
+            return;
+        }
+
+        // Fallback: first 4 axes resting near 0 as [joy1X, joy1Y, joy2X, joy2Y]
         const map = [];
         for (let i = 0; (i < pad.axes.length) && (map.length < 4); i++) {
             if (Math.abs(pad.axes[i]) < 0.5) {
