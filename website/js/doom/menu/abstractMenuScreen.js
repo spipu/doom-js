@@ -11,6 +11,8 @@ class AbstractMenuScreen {
         this._display   = display;
         this._container = null;
         this._statusEl  = null;
+        this._footerEl    = null;
+        this._footerTimer = null;
     }
 
     show() {
@@ -23,15 +25,21 @@ class AbstractMenuScreen {
         this._display.getContainer().appendChild(this._container);
 
         this._build();
+        this._addFooter();
 
         return this;
     }
 
     hide() {
+        if (this._footerTimer !== null) {
+            clearInterval(this._footerTimer);
+            this._footerTimer = null;
+        }
         if (this._container !== null) {
             this._container.remove();
             this._container = null;
             this._statusEl = null;
+            this._footerEl = null;
         }
 
         return this;
@@ -43,6 +51,22 @@ class AbstractMenuScreen {
 
     _build() {
         throw new Error('AbstractMenuScreen._build must be implemented');
+    }
+
+    // --- Footer (version + webapp stats, same live line as the debug HUD) ---
+
+    _addFooter() {
+        this._footerEl = this._addElement('div', 'doom-menu-footer');
+        this._refreshFooter();
+        appBootstrap.askStats();
+        this._footerTimer = setInterval(() => {this._refreshFooter(); }, 1000);
+    }
+
+    _refreshFooter() {
+        if (this._footerEl === null) {
+            return;
+        }
+        this._footerEl.textContent = appBootstrap.getVersion() + ' — ' + appBootstrap.getStatsText();
     }
 
     // --- DOM helpers ---

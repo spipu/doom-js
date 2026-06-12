@@ -19,7 +19,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 1.5em;
+    /* bigger bottom padding: raises the centered block slightly */
+    padding: 1.5em 1.5em 3em;
 }
 
 /* --- Title (same identity as the loading screen) --- */
@@ -38,7 +39,7 @@
 
 .doom-menu-panel {
     width: 78%;
-    max-height: 70%;
+    max-height: 74%;
     display: flex;
     flex-direction: column;
     background: rgba(20, 8, 6, 0.55);
@@ -198,6 +199,16 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5em;
+}
+
+/* --- Footer (version + webapp stats) --- */
+
+.doom-menu-footer {
+    margin-top: 1.2em;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.65em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
 
 /* --- Modal --- */
