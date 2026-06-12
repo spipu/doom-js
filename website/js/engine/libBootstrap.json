@@ -1,5 +1,5 @@
 {
-    "version": "v2.001",
+    "version": "v2.014",
     "files": {
         "assets": [],
         "css": [],
@@ -32,8 +32,11 @@
             "/js/engine/renderer/object3dRendererList.js",
             "/js/engine/engine3d.js",
             "/js/engine/collision.js",
-            "/js/engine/inputKeyboard.js",
-            "/js/engine/inputMouse.js",
+            "/js/engine/input/inputKeyboard.js",
+            "/js/engine/input/inputMouse.js",
+            "/js/engine/input/inputGamepad.js",
+            "/js/engine/input/inputVirtualGamepad.js",
+            "/js/engine/input/inputs.js",
             "/js/engine/hud/abstractHud.js",
             "/js/engine/hud/hudDebug.js",
             "/js/engine/screenManager.js"

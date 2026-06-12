@@ -17,7 +17,7 @@
 let engine   = null;
 let screen   = null;
 let hudDebug = null;
-let keyboard = null;
+let inputs   = null;
 let light1   = null;
 let light2   = null;
 let light3   = null;
@@ -31,10 +31,10 @@ const obj_da = 0.1;
 
 function init()
 {
-    keyboard = new InputKeyboard();
-    light1   = new Light([255., 255., 255.], 30, [0., 25., 0.]);
-    light2   = new Light([0., 200., 0.], 5, [9, 2., 0.]);
-    light3   = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
+    inputs = new Inputs();
+    light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
+    light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
+    light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 
     screen = new ScreenManager('screen', { fullscreen: true });
 
@@ -44,7 +44,7 @@ function init()
     engine.setBackground(20, 20, 20);
 
     hudDebug = new HudDebug(engine)
-        .bindKeyboard(keyboard)
+        .bindInputs(inputs)
         .addDescription('Use the keyboard to move the car')
         .addDescription('(c)2026 Spipu')
     ;
@@ -63,19 +63,13 @@ function animate(timestamp)
     engine.calculateDeltaTime(timestamp);
     const t_d = engine.getDeltaTime();
 
-    if (keyboard.readKeyUp())
+    const joyX = inputs.readJoy1X();
+    const joyY = inputs.readJoy1Y();
+    if (joyY !== 0)
     {
-        if (keyboard.readKeyLeft())  { obj_a -= t_d * obj_da; }
-        if (keyboard.readKeyRight()) { obj_a += t_d * obj_da; }
-        obj_x += t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
-        obj_z -= t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
-    }
-    if (keyboard.readKeyDown())
-    {
-        if (keyboard.readKeyLeft())  { obj_a += t_d * obj_da; }
-        if (keyboard.readKeyRight()) { obj_a -= t_d * obj_da; }
-        obj_x -= t_d * obj_dv * Math.cos(DEG_TO_RAD * obj_a);
-        obj_z += t_d * obj_dv * Math.sin(DEG_TO_RAD * obj_a);
+        obj_a += t_d * obj_da * joyX * ((joyY > 0) ? 1 : -1);
+        obj_x += t_d * obj_dv * joyY * Math.cos(DEG_TO_RAD * obj_a);
+        obj_z -= t_d * obj_dv * joyY * Math.sin(DEG_TO_RAD * obj_a);
     }
 
     if (obj_x < -25.) { obj_x = -25.; }

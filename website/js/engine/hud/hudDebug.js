@@ -39,11 +39,8 @@ class HudDebug extends AbstractHud {
         if (this._user) {
             lines.push(this._buildUser());
         }
-        if (this._keyboard) {
-            lines.push(this._buildKeyboard());
-        }
-        if (this._mouse) {
-            lines.push(this._buildMouse());
+        if (this._inputs) {
+            lines.push(this._buildInputs());
         }
         for (const message of this._descriptions) {
             lines.push(((typeof message === 'function') ? message() : message));
@@ -63,16 +60,24 @@ class HudDebug extends AbstractHud {
             + ' | energy: ' + Math.ceil(u.getEnergy()) + '/' + u.getMaxEnergy();
     }
 
-    _buildKeyboard() {
-        const keys = this._keyboard.getKeys();
-        return '[KEYBOARD] ' + (keys.length ? keys.join(' ') : '...');
-    }
-
-    _buildMouse() {
-        const m = this._mouse;
-        return '[MOUSE]'
-            + ' locked=' + m.isLocked()
-            + ' | L=' + m.isLeftClickDown() + ' | R=' + m.isRightClickDown()
-            + ' | dx=' + m.getLastDx() + ' dy=' + m.getLastDy();
+    _buildInputs() {
+        const i = this._inputs;
+        const buttons = [];
+        if (i.readButtonJump()) {
+            buttons.push('jump');
+        }
+        if (i.readButtonAction()) {
+            buttons.push('action');
+        }
+        if (i.readButtonCrouch()) {
+            buttons.push('crouch');
+        }
+        if (i.readButtonFire()) {
+            buttons.push('fire');
+        }
+        return '[INPUTS] ' + i.getMode()
+            + ' | joy1: ' + i.readJoy1X().toFixed(2) + ',' + i.readJoy1Y().toFixed(2)
+            + ' | joy2: ' + i.getLastJoy2DeltaX().toFixed(1) + ',' + i.getLastJoy2DeltaY().toFixed(1)
+            + ' | btn: ' + ((buttons.length > 0) ? buttons.join(' ') : '...');
     }
 }

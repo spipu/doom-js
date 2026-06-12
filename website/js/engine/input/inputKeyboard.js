@@ -7,40 +7,16 @@ class InputKeyboard {
         }
         InputKeyboard_private = this;
         this._keys = new Set();
-        this.onJumpPress   = null;
-        this.onJumpRelease = null;
 
         document.addEventListener('keydown', (e) => {
             this._keys.add(e.code);
             if (e.ctrlKey && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
                 e.preventDefault();
             }
-            if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.onJumpPress) {
-                this.onJumpPress();
-            }
         });
         document.addEventListener('keyup', (e) => {
             this._keys.delete(e.code);
-            if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.onJumpRelease) {
-                this.onJumpRelease();
-            }
         });
-    }
-
-    readKeyUp() {
-        return this._keys.has('ArrowUp');
-    }
-
-    readKeyDown() {
-        return this._keys.has('ArrowDown');
-    }
-
-    readKeyLeft() {
-        return this._keys.has('ArrowLeft');
-    }
-
-    readKeyRight() {
-        return this._keys.has('ArrowRight');
     }
 
     // FPS movement — arrows + WASD physical position (= ZQSD on AZERTY, WASD on QWERTY)
@@ -74,9 +50,5 @@ class InputKeyboard {
 
     readKeyAction() {
         return this._keys.has('KeyE');
-    }
-
-    getKeys() {
-        return [...this._keys];
     }
 }

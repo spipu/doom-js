@@ -18,24 +18,21 @@ let engine   = null;
 let world    = null;
 let screen   = null;
 let hudDebug = null;
-let keyboard = null;
-let mouse    = null;
+let inputs   = null;
 
 function init()
 {
     world = loader.world().get();
 
-    screen   = new ScreenManager('screen', { fullscreen: true });
-    keyboard = new InputKeyboard();
-    mouse    = new InputMouse(screen.getCanvas());
+    screen = new ScreenManager('screen', { fullscreen: true });
+    inputs = new Inputs().bindScreen(screen);
 
     engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));
     engine.setFov(45.0);
     engine.setZBuffer(0.1, 100);
 
     hudDebug = new HudDebug(engine)
-        .bindKeyboard(keyboard)
-        .bindMouse(mouse)
+        .bindInputs(inputs)
         .bindUser(world.getUser())
         .addDescription('Use the keyboard and the mouse to move')
         .addDescription('(c)2026 Spipu')
@@ -50,7 +47,7 @@ function init()
 function animate(timestamp)
 {
     engine.calculateDeltaTime(timestamp);
-    world.update(engine.getDeltaTime(), keyboard, mouse);
+    world.update(engine.getDeltaTime(), inputs);
     engine.displayWorld(world);
     screen.update();
 
