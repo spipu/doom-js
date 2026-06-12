@@ -17,7 +17,7 @@
 let engine   = null;
 let screen   = null;
 let hudDebug = null;
-let keyboard = null;
+let inputs   = null;
 let light1   = null;
 let light2   = null;
 let light3   = null;
@@ -28,10 +28,10 @@ const obj_dv = 0.015;
 
 function init()
 {
-    keyboard = new InputKeyboard();
-    light1   = new Light([255., 0., 0.], 30, [0, 0, 0]);
-    light2   = new Light([0., 255., 0.], 30, [0, 0, 0]);
-    light3   = new Light([0., 0., 255.], 30, [0, 0, 0]);
+    inputs = new Inputs();
+    light1 = new Light([255., 0., 0.], 30, [0, 0, 0]);
+    light2 = new Light([0., 255., 0.], 30, [0, 0, 0]);
+    light3 = new Light([0., 0., 255.], 30, [0, 0, 0]);
 
     screen = new ScreenManager('screen', { fullscreen: true });
 
@@ -41,7 +41,7 @@ function init()
     engine.setBackground(10, 10, 10);
 
     hudDebug = new HudDebug(engine)
-        .bindKeyboard(keyboard)
+        .bindInputs(inputs)
         .addDescription('Use the keyboard to move the lights')
         .addDescription('(c)2026 Spipu')
     ;
@@ -60,10 +60,8 @@ function animate(timestamp)
     engine.calculateDeltaTime(timestamp);
     const t_d = engine.getDeltaTime();
 
-    if (keyboard.readKeyUp())    { obj_z += t_d * obj_dv; }
-    if (keyboard.readKeyDown())  { obj_z -= t_d * obj_dv; }
-    if (keyboard.readKeyLeft())  { obj_r -= t_d * obj_dv; }
-    if (keyboard.readKeyRight()) { obj_r += t_d * obj_dv; }
+    obj_z += t_d * obj_dv * inputs.readJoy1Y();
+    obj_r += t_d * obj_dv * inputs.readJoy1X();
 
     if (obj_z < 0)  { obj_z = 0; }
     if (obj_z > 30) { obj_z = 30; }

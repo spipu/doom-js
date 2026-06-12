@@ -215,41 +215,25 @@ class User {
         this._strafeDir = 0;
     }
 
-    moveForward() {
-        if (this.isDead()) {
+    // scale: signed -1..+1 — keyboard gives ±1, sticks their analog deflection.
+    // +1 = forward, -1 = backward
+    move(scale) {
+        if (this.isDead() || (scale === 0)) {
             return;
         }
-        this._inputX += Math.sin(DEG_TO_RAD * this.yaw);
-        this._inputZ += Math.cos(DEG_TO_RAD * this.yaw);
+        this._inputX += scale * Math.sin(DEG_TO_RAD * this.yaw);
+        this._inputZ += scale * Math.cos(DEG_TO_RAD * this.yaw);
         this._walking = true;
     }
 
-    moveBackward() {
-        if (this.isDead()) {
+    // +1 = right, -1 = left
+    strafe(scale) {
+        if (this.isDead() || (scale === 0)) {
             return;
         }
-        this._inputX -= Math.sin(DEG_TO_RAD * this.yaw);
-        this._inputZ -= Math.cos(DEG_TO_RAD * this.yaw);
-        this._walking = true;
-    }
-
-    strafeLeft() {
-        if (this.isDead()) {
-            return;
-        }
-        this._inputX -= Math.cos(DEG_TO_RAD * this.yaw);
-        this._inputZ += Math.sin(DEG_TO_RAD * this.yaw);
-        this._strafeDir = -1;
-        this._walking = true;
-    }
-
-    strafeRight() {
-        if (this.isDead()) {
-            return;
-        }
-        this._inputX += Math.cos(DEG_TO_RAD * this.yaw);
-        this._inputZ -= Math.sin(DEG_TO_RAD * this.yaw);
-        this._strafeDir = 1;
+        this._inputX += scale * Math.cos(DEG_TO_RAD * this.yaw);
+        this._inputZ -= scale * Math.sin(DEG_TO_RAD * this.yaw);
+        this._strafeDir = ((scale < 0) ? -1 : 1);
         this._walking = true;
     }
 
@@ -351,23 +335,25 @@ class User {
         if (!this.isDead()) {
             if (this._onGround) {
                 if (inputLen > 1e-10) {
-                    const ndx = this._inputX / inputLen, ndz = this._inputZ / inputLen;
+                    // Clamp to 1 instead of normalizing: keyboard diagonals stay
+                    // capped, analog partial deflections keep their magnitude
+                    const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
                     let speed = this.moveSpeed;
                     if (this._walkSlow) speed *= 0.5;
                     if (this._strafeDir !== 0) speed *= 0.7;
                     speed *= (1 - this._crouchProgress * 0.4);
-                    this._vx = ndx * speed;
-                    this._vz = ndz * speed;
+                    this._vx = this._inputX * norm * speed;
+                    this._vz = this._inputZ * norm * speed;
                 } else {
                     this._vx = 0;
                     this._vz = 0;
                 }
             } else if (inputLen > 1e-10) {
                 // Air steering: nudge velocity toward desired direction
-                const ndx = this._inputX / inputLen, ndz = this._inputZ / inputLen;
+                const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
                 const nudge = this.moveSpeed * this._airControl;
-                this._vx += ndx * nudge * dt_s;
-                this._vz += ndz * nudge * dt_s;
+                this._vx += this._inputX * norm * nudge * dt_s;
+                this._vz += this._inputZ * norm * nudge * dt_s;
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
                 if (vLen > this.moveSpeed) {
                     this._vx = this._vx / vLen * this.moveSpeed;

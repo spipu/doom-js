@@ -4,8 +4,7 @@ class DoomGame {
         this._world    = null;
         this._screen   = null;
         this._hud      = null;
-        this._mouse    = null;
-        this._keyboard = null;
+        this._inputs   = null;
         this._wakeLock = null;
         this._wadFile   = null;
         this._levelName = null;
@@ -48,11 +47,12 @@ class DoomGame {
             virtualHeight: 1080
         });
 
-        // InputKeyboard is a strict singleton — created once, reused across levels
-        if (this._keyboard === null) {
-            this._keyboard = new InputKeyboard();
+        // Inputs owns the keyboard singleton — created once, reused across levels
+        if (this._inputs === null) {
+            this._inputs = new Inputs();
         }
-        this._mouse = new InputMouse(this._screen.getCanvas());
+        // The devices are re-bound to the new screen on each level
+        this._inputs.bindScreen(this._screen);
 
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._engine.setFov(45.0);
@@ -60,6 +60,7 @@ class DoomGame {
 
         this._hud = new HudDebug(this._engine)
             .bindUser(this._world.getUser())
+            .bindInputs(this._inputs)
             .addDescription(() => appBootstrap.getStatsText())
             .addDescription('(c)2026 Spipu')
         ;
@@ -78,7 +79,7 @@ class DoomGame {
         }
 
         this._engine.calculateDeltaTime(timestamp);
-        this._world.update(this._engine.getDeltaTime(), this._keyboard, this._mouse);
+        this._world.update(this._engine.getDeltaTime(), this._inputs);
         this._engine.displayWorld(this._world);
         this._screen.update();
 

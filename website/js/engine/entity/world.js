@@ -7,7 +7,7 @@ class World extends AbstractLoadedEntity {
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
-        this._keyboardBound = false;
+        this._jumpWasDown   = false;
 
     }
 
@@ -23,16 +23,9 @@ class World extends AbstractLoadedEntity {
         }
     }
 
-    update(dt, keyboard, mouse) {
-        // Bind jump callbacks once
-        if (!this._keyboardBound) {
-            keyboard.onJumpPress  = () => this._user.pressJump();
-            keyboard.onJumpRelease = () => this._user.releaseJump();
-            this._keyboardBound = true;
-        }
-
+    update(dt, inputs) {
         const user   = this._user;
-        const action = keyboard.readKeyAction();
+        const action = inputs.readButtonAction();
 
         // 1. Save instance transforms (needed for platform riding + blocking)
         this.getInstances().filter(i => i.isCollidable())
@@ -40,26 +33,23 @@ class World extends AbstractLoadedEntity {
 
         // 2. Player input
         user.beginFrame(dt);
-        user.setWalkSlow(keyboard.readKey('AltLeft') || keyboard.readKey('AltRight'));
-        user.setCrouch(keyboard.readKeyCtrl());
-        if (keyboard.readKeyForward()) {
-            user.moveForward();
+        user.setWalkSlow(inputs.readButtonWalkSlow());
+        user.setCrouch(inputs.readButtonCrouch());
+        // Jump press/release edges, interpreted from the unified button state
+        const jumpDown = inputs.readButtonJump();
+        if (jumpDown && !this._jumpWasDown) {
+            user.pressJump();
         }
-        if (keyboard.readKeyBackward()) {
-            user.moveBackward();
+        if (!jumpDown && this._jumpWasDown) {
+            user.releaseJump();
         }
-        if (keyboard.readKeyStrafeLeft()) {
-            user.strafeLeft();
-        }
-        if (keyboard.readKeyStrafeRight()) {
-            user.strafeRight();
-        }
+        this._jumpWasDown = jumpDown;
+        // The axis magnitude is applied proportionally: keyboard gives ±1
+        // (binary), the sticks give their analog deflection
+        user.move(inputs.readJoy1Y());
+        user.strafe(inputs.readJoy1X());
 
-        const lookDelta = dt * 1.5;
-        user.lookMouse(
-            mouse.readDeltaX() + (keyboard.readKey('KeyJ') ? -lookDelta : 0) + (keyboard.readKey('KeyL') ? lookDelta : 0),
-            mouse.readDeltaY() + (keyboard.readKey('KeyI') ? -lookDelta : 0) + (keyboard.readKey('KeyK') ? lookDelta : 0)
-        );
+        user.lookMouse(inputs.readJoy2DeltaX(dt), inputs.readJoy2DeltaY(dt));
 
         // 3. Animate instances
         this.getInstances().forEach(inst => inst.update(dt, user, action));
