@@ -75,6 +75,9 @@ class HudDebug extends AbstractHud {
         if (i.readButtonFire()) {
             buttons.push('fire');
         }
+        if (i.readButtonPause()) {
+            buttons.push('pause');
+        }
         return '[INPUTS] ' + i.getMode()
             + ' | joy1: ' + i.readJoy1X().toFixed(2) + ',' + i.readJoy1Y().toFixed(2)
             + ' | joy2: ' + i.getLastJoy2DeltaX().toFixed(1) + ',' + i.getLastJoy2DeltaY().toFixed(1)
