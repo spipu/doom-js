@@ -21,7 +21,7 @@ class Inputs {
         this._gamepad        = new InputGamepad();
         this._virtualGamepad = new InputVirtualGamepad();
         this._mode           = 'keyboardMouse';
-        this._stickLookSpeed = 0.6;
+        this._stickLookSpeed = 1.2;
         this._keyLookSpeed   = 1.5;
         this._lastJoy2Dx     = 0;
         this._lastJoy2Dy     = 0;
