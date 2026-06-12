@@ -30,7 +30,7 @@ class AppServiceWorker {
     }
 
     install(event) {
-        event.waitUntil(this.loadNewVersion.bind(this));
+        event.waitUntil(this.loadNewVersion());
     }
 
     activate(event) {
