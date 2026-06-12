@@ -4,7 +4,8 @@
  *   - joy 1 axes  : movement, -1..+1 (+X = strafe right, +Y = forward)
  *   - joy 2 deltas: look, pixel-equivalent (mouse delta passthrough, stick
  *                   position converted with the look speed and the given dt)
- *   - 4 buttons   : jump, action, crouch, fire
+ *   - buttons     : jump, action, crouch, fire, pause + the keyboard-only
+ *                   walk-slow modifier
  * Device priority: gamepad > virtual gamepad (touch-only device) > keyboard+mouse.
  * Gamepad presence is re-evaluated every 5 seconds on the wall clock (the
  * browser only exposes a gamepad after a button has been pressed on it).

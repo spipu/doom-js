@@ -1,5 +1,7 @@
 /**
- * Physical gamepad input (Gamepad API, W3C "standard" mapping).
+ * Physical gamepad input (Gamepad API). The W3C "standard" mapping is
+ * preferred; on non-standard pads the stick axes are found by their rest
+ * pose (see _buildAxisMap).
  * The browser only exposes a gamepad after a button has been pressed on it
  * (anti-fingerprinting), so isAvailable() stays false until then.
  * Gamepad objects are snapshots: a fresh getGamepads() call is needed on
@@ -83,7 +85,7 @@ class InputGamepad {
     // Button 4 or the RT trigger. RT is analog: an explicit threshold on
     // .value is more deterministic across browsers than the UA-defined .pressed
     readButtonFire() {
-        return this._button(4) || (this._buttonValue(7) > 0.5);
+        return this._button(0) || (this._buttonValue(7) > 0.5);
     }
 
     readButtonPause() {
