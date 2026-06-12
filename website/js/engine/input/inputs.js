@@ -10,13 +10,21 @@
  * Gamepad presence is re-evaluated every 5 seconds on the wall clock (the
  * browser only exposes a gamepad after a button has been pressed on it).
  */
+let Inputs_private = null;
+
 class Inputs {
     /**
-     * Creates and owns all the concrete input devices. InputKeyboard is a
-     * strict singleton, so only ONE Inputs instance must be created per page
-     * (create it once and keep it across levels).
+     * Creates and owns all the concrete input devices. Soft singleton:
+     * InputKeyboard can only exist once per page, so new Inputs() returns
+     * the already existing instance instead of creating a second one
+     * (the menu creates a new DoomGame on each level launch).
      */
     constructor() {
+        if (Inputs_private) {
+            return Inputs_private;
+        }
+        Inputs_private = this;
+
         this._keyboard       = new InputKeyboard();
         this._mouse          = new InputMouse();
         this._gamepad        = new InputGamepad();
