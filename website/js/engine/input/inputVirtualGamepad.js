@@ -47,4 +47,8 @@ class InputVirtualGamepad {
     readButtonFire() {
         return false;
     }
+
+    readButtonPause() {
+        return false;
+    }
 }

@@ -30,6 +30,25 @@ class MenuNavigator {
         return this;
     }
 
+    /**
+     * Starts the menu directly on the level list of the given WAD
+     * (used when leaving a level with the pause button).
+     * @param {object} meta
+     */
+    startAtLevels(meta) {
+        this._display.init();
+
+        this._registry.init()
+            .then(() => {
+                this.openWad(meta);
+            })
+            .catch(() => {
+                this._showFallback();
+            });
+
+        return this;
+    }
+
     showWadList() {
         this._switchTo(this._wadListScreen);
     }
@@ -79,7 +98,7 @@ class MenuNavigator {
         try {
             const wadFile = await this._registry.getWadFile(meta.id);
             const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName);
+            await game.startFromWad(wadFile, levelName, meta);
             modal.close();
             this._closeMenus();
         } catch (error) {

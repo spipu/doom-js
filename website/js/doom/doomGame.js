@@ -7,16 +7,23 @@ class DoomGame {
         this._inputs   = null;
         this._wakeLock = null;
         this._wadFile   = null;
+        this._wadMeta   = null;
         this._levelName = null;
+        this._pauseWasDown = true;
         this._running       = false;
         this._transitioning = false;
         this._animateCallback = this._animate.bind(this);
     }
 
-    // Convert a WAD level on the fly and start the game on it (no URL, no fetch)
-    async startFromWad(wadFile, levelName) {
+    // Convert a WAD level on the fly and start the game on it (no URL, no fetch).
+    // wadMeta is given on the first launch by the menu and kept across levels —
+    // it allows the pause button to go back to the level list of the WAD.
+    async startFromWad(wadFile, levelName, wadMeta = null) {
         this._wadFile   = wadFile;
         this._levelName = levelName;
+        if (wadMeta !== null) {
+            this._wadMeta = wadMeta;
+        }
 
         this._stopLevel();
         loader.reset();
@@ -69,6 +76,10 @@ class DoomGame {
 
         this._engine.initFromWorld(this._world);
 
+        // Require a release before the first press (a button held during the
+        // level start must not immediately quit it)
+        this._pauseWasDown = true;
+
         this._running = true;
         requestAnimationFrame(this._animateCallback);
     }
@@ -78,12 +89,33 @@ class DoomGame {
             return;
         }
 
+        // Pause button (press edge): leave the level, back to the level list
+        const pauseDown = this._inputs.readButtonPause();
+        if (pauseDown && !this._pauseWasDown && !this._transitioning) {
+            this._pauseWasDown = pauseDown;
+            this._quitToLevelList();
+            return;
+        }
+        this._pauseWasDown = pauseDown;
+
         this._engine.calculateDeltaTime(timestamp);
         this._world.update(this._engine.getDeltaTime(), this._inputs);
         this._engine.displayWorld(this._world);
         this._screen.update();
 
         requestAnimationFrame(this._animateCallback);
+    }
+
+    // Leave the current level and go back to the level list of the WAD
+    _quitToLevelList() {
+        this._stopLevel();
+        loader.reset();
+        const navigator = new MenuNavigator();
+        if (this._wadMeta !== null) {
+            navigator.startAtLevels(this._wadMeta);
+            return;
+        }
+        navigator.start();
     }
 
     // --- Level transition ---
