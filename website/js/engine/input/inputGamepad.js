@@ -68,22 +68,26 @@ class InputGamepad {
         return this._axis(3);
     }
 
-    readButtonJump() {
-        return this._button(0);
-    }
-
     readButtonCrouch() {
         return this._button(1);
     }
 
-    readButtonAction() {
+    readButtonJump() {
         return this._button(2);
     }
 
-    // RT is an analog trigger: an explicit threshold on .value is more
-    // deterministic across browsers than the UA-defined .pressed
+    readButtonAction() {
+        return this._button(3);
+    }
+
+    // Button 4 or the RT trigger. RT is analog: an explicit threshold on
+    // .value is more deterministic across browsers than the UA-defined .pressed
     readButtonFire() {
-        return (this._buttonValue(7) > 0.5);
+        return this._button(4) || (this._buttonValue(7) > 0.5);
+    }
+
+    readButtonPause() {
+        return this._button(9);
     }
 
     // --- Internal ---

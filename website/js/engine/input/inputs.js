@@ -120,6 +120,14 @@ class Inputs {
         return this._mouse.isLeftClickDown();
     }
 
+    readButtonPause() {
+        const pad = this._pad();
+        if (pad !== null) {
+            return pad.readButtonPause();
+        }
+        return this._keyboard.readKey('KeyP');
+    }
+
     // Keyboard-only modifier: the analog sticks already give slow walking
     // through partial deflection, so the pad modes return false
     readButtonWalkSlow() {
