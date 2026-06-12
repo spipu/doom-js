@@ -10,34 +10,43 @@ class InputGamepad {
     constructor() {
         this._index    = null;
         this._deadZone = 0.15;
+        this._axisMap  = [0, 1, 2, 3];
     }
 
     /**
      * Scans the connected gamepads and keeps one as active, preferring the
-     * W3C "standard" mapping (the whole class assumes that layout), with a
-     * fallback on the first connected pad.
+     * W3C "standard" mapping, with a fallback on the first connected pad.
+     * The axis map is rebuilt whenever the active pad changes.
      * @returns {boolean}
      */
     isAvailable() {
-        this._index = null;
         if (!navigator.getGamepads) {
+            this._index = null;
             return false;
         }
+        const previousIndex = this._index;
         const pads = navigator.getGamepads();
+        let index    = null;
         let fallback = null;
         for (let i = 0; i < pads.length; i++) {
             if ((pads[i] === null) || !pads[i].connected) {
                 continue;
             }
             if (pads[i].mapping === 'standard') {
-                this._index = i;
-                return true;
+                index = i;
+                break;
             }
             if (fallback === null) {
                 fallback = i;
             }
         }
-        this._index = fallback;
+        if (index === null) {
+            index = fallback;
+        }
+        this._index = index;
+        if ((index !== null) && (index !== previousIndex)) {
+            this._buildAxisMap(pads[index]);
+        }
         return (this._index !== null);
     }
 
@@ -79,6 +88,27 @@ class InputGamepad {
 
     // --- Internal ---
 
+    // The standard mapping guarantees the sticks on axes 0-3. On non-standard
+    // pads, the triggers are often exposed as axes resting at ±1 (DualSense:
+    // L2/R2 → rest pose [0,0,0,-1,-1,0]): keep the first 4 axes resting near
+    // 0 as [joy1X, joy1Y, joy2X, joy2Y]. Computed when the active pad changes,
+    // so a stick held during the scan cannot corrupt a later rescan.
+    _buildAxisMap(pad) {
+        this._axisMap = [0, 1, 2, 3];
+        if (pad.mapping === 'standard') {
+            return;
+        }
+        const map = [];
+        for (let i = 0; (i < pad.axes.length) && (map.length < 4); i++) {
+            if (Math.abs(pad.axes[i]) < 0.5) {
+                map.push(i);
+            }
+        }
+        if (map.length === 4) {
+            this._axisMap = map;
+        }
+    }
+
     _getPad() {
         if ((this._index === null) || !navigator.getGamepads) {
             return null;
@@ -91,9 +121,11 @@ class InputGamepad {
     }
 
     // Dead zone with rescale: the value restarts at 0 on the dead zone edge
-    // and still reaches 1 at full deflection
-    _axis(index) {
-        const pad = this._getPad();
+    // and still reaches 1 at full deflection. The slot (0-3) goes through the
+    // axis map to reach the real hardware axis.
+    _axis(slot) {
+        const pad   = this._getPad();
+        const index = this._axisMap[slot];
         if ((pad === null) || (pad.axes.length <= index)) {
             return 0;
         }
