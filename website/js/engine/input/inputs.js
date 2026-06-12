@@ -7,8 +7,8 @@
  *   - buttons     : jump, action, crouch, fire, pause + the keyboard-only
  *                   walk-slow modifier
  * Device priority: gamepad > virtual gamepad (touch-only device) > keyboard+mouse.
- * Gamepad presence is re-evaluated every 5 seconds on the wall clock (the
- * browser only exposes a gamepad after a button has been pressed on it).
+ * Gamepad presence is event-driven (gamepadconnected / gamepaddisconnected —
+ * the browser only exposes a gamepad after a button has been pressed on it).
  */
 let Inputs_private = null;
 
@@ -36,8 +36,11 @@ class Inputs {
         this._lastJoy2Dy     = 0;
 
         this._selectMode();
-        // Never cleared: the single Inputs instance lives as long as the page
-        setInterval(() => {this._selectMode(); }, 5000);
+        // gamepadconnected fires on the first button press of the pad
+        // (anti-fingerprinting), gamepaddisconnected on unplug / BT sleep.
+        // Never removed: the single Inputs instance lives as long as the page
+        window.addEventListener('gamepadconnected', () => {this._selectMode(); });
+        window.addEventListener('gamepaddisconnected', () => {this._selectMode(); });
     }
 
     /**
