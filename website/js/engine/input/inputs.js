@@ -197,6 +197,8 @@ class Inputs {
             mode = 'gamepad';
         }
         this._mode = mode;
+        // Only the active virtualGamepad mode shows its on-screen controls
+        this._virtualGamepad.setVisible((mode === 'virtualGamepad'));
     }
 
     // No fine pointer at all (mouse, trackpad, stylus) but a touch screen:
