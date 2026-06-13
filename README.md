@@ -30,6 +30,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
+- **Touch controls**: touch-only devices get an on-screen virtual gamepad — two fixed, always-visible analog sticks (left = move, right = look) plus the four action buttons laid out around the right stick like a DualSense face cluster (△ action on top, ○ jump right, □ fire left, ✕ crouch bottom) and a pause button in the top-right corner.
 - **Startup footer**: the first menu screen shows the aggregated version and the webapp stats (PWA/classic mode, offline, request counters) below the panel.
 
 ## Demo pages
@@ -59,7 +60,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 | IJKL | — | Rotate (keyboard fallback if no Pointer Lock) |
 | ESC | — | Release mouse |
 
-The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices (phones, tablets) select the virtual gamepad mode — its touch UI is not implemented yet.
+The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices (phones, tablets) select the virtual gamepad mode: two fixed, always-visible analog sticks (left = move, right = look) with the action buttons arranged around the right stick at the DualSense face-button positions, plus a pause button in the top-right corner.
 
 ## Renderer modes
 
@@ -149,7 +150,7 @@ website/
 │       │   ├── inputKeyboard.js Keyboard input (e.code, Set-based, strict singleton)
 │       │   ├── inputMouse.js    Mouse input via Pointer Lock API (rebound to the canvas on each level)
 │       │   ├── inputGamepad.js  Physical gamepad: standard mapping preferred, known Sony layout by pad id or rest-pose axis detection on non-standard pads, dead zone
-│       │   └── inputVirtualGamepad.js  Virtual touch gamepad (API-compatible skeleton, touch UI to come)
+│       │   └── inputVirtualGamepad.js  Virtual touch gamepad: two fixed always-visible sticks + action buttons ringed around the look stick (DualSense positions), shown on touch-only devices
 │       ├── interaction/
 │       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
 │       │   └── switchInteraction.js    Switch modes: once / timed / toggle
