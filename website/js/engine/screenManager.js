@@ -100,6 +100,12 @@ class ScreenManager {
         return this._canvas;
     }
 
+    // Letterboxed display area (virtual ratio). The virtual gamepad injects
+    // its touch overlay here so it follows the same letterbox as the canvas.
+    getDisplay() {
+        return this._display;
+    }
+
     getRatio() {
         return this._ratio;
     }
