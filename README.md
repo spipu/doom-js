@@ -30,6 +30,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
+- **Startup footer**: the first menu screen shows the aggregated version and the webapp stats (PWA/classic mode, offline, request counters) below the panel.
 
 ## Demo pages
 
@@ -49,10 +50,10 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 |---|---|---|
 | Arrow keys / ZQSD | Left stick | Move / strafe (analog on the stick) |
 | Mouse (click canvas first) | Right stick | Look around |
-| Shift | Button 2 | Jump |
-| Ctrl | Button 1 | Crouch |
+| Shift | Button 1 | Jump |
+| Ctrl | Button 0 | Crouch |
 | E | Button 3 | Interact (open door, trigger lift or switch) |
-| Left click | Button 4 / right trigger | Fire (reserved — no weapons yet) |
+| Left click | Button 2 / right trigger | Fire (reserved — no weapons yet) |
 | P | Button 9 | Quit the level, back to the level list |
 | Alt | — | Walk slowly (sticks do it through partial deflection) |
 | IJKL | — | Rotate (keyboard fallback if no Pointer Lock) |
@@ -147,7 +148,7 @@ website/
 │       │   ├── inputs.js        Inputs coordinator: device selection (gamepad > virtual gamepad > keyboard+mouse), unified analog axes + semantic buttons API
 │       │   ├── inputKeyboard.js Keyboard input (e.code, Set-based, strict singleton)
 │       │   ├── inputMouse.js    Mouse input via Pointer Lock API (rebound to the canvas on each level)
-│       │   ├── inputGamepad.js  Physical gamepad: standard mapping preferred, rest-pose axis detection on non-standard pads, dead zone
+│       │   ├── inputGamepad.js  Physical gamepad: standard mapping preferred, known Sony layout by pad id or rest-pose axis detection on non-standard pads, dead zone
 │       │   └── inputVirtualGamepad.js  Virtual touch gamepad (API-compatible skeleton, touch UI to come)
 │       ├── interaction/
 │       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
