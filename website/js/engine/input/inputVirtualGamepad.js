@@ -1,24 +1,24 @@
 /**
  * Virtual on-screen gamepad input (touch-only devices).
  *
- * Two floating analog sticks and five buttons are drawn over the screen and
- * read through the same API as InputGamepad, so the game code never knows
- * which device it talks to.
+ * Two analog sticks and five buttons are drawn over the screen and read
+ * through the same API as InputGamepad, so the game code never knows which
+ * device it talks to.
  *
- *   - left half  : movement stick (joy1) - trailing origin: the base follows
- *                  the thumb past the max radius, so a long move keeps full
- *                  deflection and direction control.
- *   - right half : look stick     (joy2) - floating origin, re-centered on
- *                  each touch (a rate stick: Inputs turns the held position
- *                  into a per-frame delta).
- *   - buttons    : crouch / jump / action / fire (bottom-right cluster) and
- *                  pause (top-right corner).
+ *   - both sticks behave identically: a static, always-visible base at a fixed
+ *     position. The knob deflects from that fixed center while the finger
+ *     drags and snaps back to the center on release - the base never moves and
+ *     never re-centers on the touch point.
+ *   - move stick (joy1, left) : strafe / forward, signed -1..+1.
+ *   - look stick (joy2, right): a rate stick - Inputs turns the held position
+ *     into a per-frame delta.
+ *   - buttons : fire / jump / action / crouch (right cluster) and pause
+ *     (top-right corner).
  *
  * Each finger is tracked by its touch identifier, so moving, looking and
  * pressing buttons at the same time stay independent. Touches are captured on
- * the overlay itself and hit-tested by coordinates (priority: pause, buttons,
- * then the left/right stick zones) - the sticks are floating, so there is no
- * element to land on before the finger touches down.
+ * the overlay and hit-tested by coordinates (priority: buttons, then each
+ * stick's fixed base zone).
  */
 class InputVirtualGamepad {
     constructor() {
@@ -28,6 +28,29 @@ class InputVirtualGamepad {
         this._visible     = false;
         this._deadZone    = 0.15;
         this._radiusRatio = 0.12;   // stick radius as a fraction of the display height
+
+        // --- On-screen layout (fractions of the 16:9 letterboxed display) ---
+        // Action-button radius and the ring the four buttons sit on around the
+        // look stick. ringX uses the 16:9 ratio so the ring is round in pixels.
+        const btnR  = 0.060;
+        const ringY = 0.20;
+        const ringX = ((ringY * 9) / 16);
+
+        // Sticks are symmetric (mirrored, same height). The look stick is placed
+        // so its cluster keeps an EQUAL pixel margin to the right and bottom
+        // edges: the USE button (right of the stick) and the crouch button
+        // (below it) end the same distance from their screen edge.
+        const lookX    = 0.83;
+        const gapRight = (((1 - lookX - ringX - ((btnR * 9) / 16)) * 16) / 9);
+        const lookY    = (1 - btnR - ringY - gapRight);
+
+        // Fixed, always-visible stick centers. Both sticks share the same
+        // behaviour: static base, knob deflects from the fixed center, snaps
+        // back on release.
+        this._stickLayout = {
+            move: { x: (1 - lookX), y: lookY },
+            look: { x: lookX,       y: lookY }
+        };
 
         this._joy1    = { x: 0, y: 0 };
         this._joy2    = { x: 0, y: 0 };
@@ -44,12 +67,18 @@ class InputVirtualGamepad {
 
         // Button layout in fractions of the display (center x, center y, radius).
         // Radius is a fraction of the height so every button stays a circle.
+        // The four action buttons ring the look stick in a cross, built from
+        // its center so moving the stick moves its buttons with it. Positions
+        // match the DualSense face buttons (standard mapping): action b3=△ top,
+        // jump b1=○ right, fire b2=□ left, crouch b0=✕ bottom. Pause keeps the
+        // top-right corner.
+        const look = this._stickLayout.look;
         this._buttonLayout = {
-            pause:  { x: 0.94, y: 0.09, r: 0.045, label: '||' },
-            action: { x: 0.85, y: 0.58, r: 0.060, label: 'E' },
-            crouch: { x: 0.76, y: 0.74, r: 0.060, label: 'C' },
-            jump:   { x: 0.94, y: 0.74, r: 0.060, label: '▲' },
-            fire:   { x: 0.85, y: 0.90, r: 0.060, label: '●' }
+            pause:  { x: (look.x + ringX), y: (gapRight + btnR), r: btnR, label: '≡' },
+            action: { x: look.x, y: (look.y - ringY), r: btnR, label: '☝︎' }, // ☝ up hand; FE0E forces monochrome (no emoji)
+            jump:   { x: (look.x + ringX), y: look.y, r: btnR, label: '↑' },
+            fire:   { x: (look.x - ringX), y: look.y, r: btnR, label: '⊕' },
+            crouch: { x: look.x, y: (look.y + ringY), r: btnR, label: '↓' }
         };
 
         this._onTouchStart = this._handleTouchStart.bind(this);
@@ -131,12 +160,15 @@ class InputVirtualGamepad {
         overlay.style.width       = '100%';
         overlay.style.height      = '100%';
         overlay.style.zIndex      = '10';
-        overlay.style.touchAction = 'none';
-        overlay.style.userSelect  = 'none';
+        overlay.style.touchAction   = 'none';
+        overlay.style.userSelect    = 'none';
+        // Container reference so the buttons can size their font against the
+        // display height (cqh), keeping size and font coherent in letterbox.
+        overlay.style.containerType  = 'size';
 
         this._stickEls = {
-            move: this._createStick(overlay),
-            look: this._createStick(overlay)
+            move: this._createStick(overlay, this._stickLayout.move),
+            look: this._createStick(overlay, this._stickLayout.look)
         };
 
         for (const name in this._buttonLayout) {
@@ -152,36 +184,52 @@ class InputVirtualGamepad {
         this._overlay = overlay;
     }
 
-    // Floating stick: base ring + thumb knob, both hidden until touched and
-    // positioned in pixels on each move (pointer-events none - the overlay
-    // owns the touch handling).
-    _createStick(overlay) {
+    // Static stick: a base ring at a fixed position with a thumb knob centered
+    // inside it. Both are sized in % of the overlay (responsive) and always
+    // visible; the knob is a child of the base so its deflection is expressed
+    // in % of the base - no pixel math to render (pointer-events none, the
+    // overlay owns the touch handling).
+    _createStick(overlay, layout) {
+        const diameterPct = (this._radiusRatio * 2 * 100);
+
         const base = document.createElement('div');
         base.style.position      = 'absolute';
+        base.style.height        = diameterPct + '%';
+        base.style.aspectRatio   = '1 / 1';
+        base.style.left          = (layout.x * 100) + '%';
+        base.style.top           = (layout.y * 100) + '%';
+        base.style.transform     = 'translate(-50%, -50%)';
         base.style.borderRadius  = '50%';
         base.style.border        = '2px solid rgba(220, 60, 50, 0.7)';
         base.style.background    = 'rgba(220, 60, 50, 0.12)';
         base.style.boxSizing     = 'border-box';
         base.style.pointerEvents = 'none';
-        base.style.display       = 'none';
 
         const knob = document.createElement('div');
         knob.style.position      = 'absolute';
+        knob.style.height        = '45%';
+        knob.style.aspectRatio   = '1 / 1';
+        knob.style.left          = '50%';
+        knob.style.top           = '50%';
+        knob.style.transform     = 'translate(-50%, -50%)';
         knob.style.borderRadius  = '50%';
         knob.style.background    = 'rgba(220, 60, 50, 0.55)';
         knob.style.boxSizing     = 'border-box';
         knob.style.pointerEvents = 'none';
-        knob.style.display       = 'none';
 
+        base.appendChild(knob);
         overlay.appendChild(base);
-        overlay.appendChild(knob);
         return { base: base, knob: knob };
     }
 
     _createButton(overlay, layout) {
+        // Diameter as a fraction of the display height; the font is derived
+        // from the same value so a button and its label always scale together.
+        const diameterPct = (layout.r * 2 * 100);
+
         const el = document.createElement('div');
         el.style.position       = 'absolute';
-        el.style.height         = (layout.r * 2 * 100) + '%';
+        el.style.height         = diameterPct + '%';
         el.style.aspectRatio    = '1 / 1';
         el.style.left           = (layout.x * 100) + '%';
         el.style.top            = (layout.y * 100) + '%';
@@ -194,7 +242,7 @@ class InputVirtualGamepad {
         el.style.alignItems     = 'center';
         el.style.justifyContent = 'center';
         el.style.fontFamily     = 'monospace';
-        el.style.fontSize       = '3.5vh';
+        el.style.fontSize       = (diameterPct * 0.63) + 'cqh';
         el.style.boxSizing      = 'border-box';
         el.style.pointerEvents  = 'none';
         el.textContent          = layout.label;
@@ -222,10 +270,7 @@ class InputVirtualGamepad {
             }
             const px = touch.clientX - rect.left;
             const py = touch.clientY - rect.top;
-            if (owned.kind === 'move') {
-                this._trailOrigin(owned, px, py, rect.width, rect.height);
-            }
-            this._updateStick(owned, px, py);
+            this._updateStick(owned, px, py, rect);
         }
     }
 
@@ -241,11 +286,13 @@ class InputVirtualGamepad {
                 this._buttons[owned.button] = false;
                 continue;
             }
-            this._releaseStick(owned);
+            this._releaseStick(owned.kind);
         }
     }
 
-    // Assigns a new finger to a control, hit-tested by priority.
+    // Assigns a new finger to a control, hit-tested by priority: buttons
+    // first, then each stick's fixed base zone. Touches that fall outside
+    // everything are ignored (the sticks no longer float to the finger).
     _assignTouch(touch, rect) {
         const w  = rect.width;
         const h  = rect.height;
@@ -259,13 +306,12 @@ class InputVirtualGamepad {
             return;
         }
 
-        const radius = h * this._radiusRatio;
-        const origin = this._clampOrigin(px, py, w, h, radius);
-        const kind   = ((px < (w * 0.5)) ? 'move' : 'look');
-        const owned  = { kind: kind, origin: origin, radius: radius };
-        this._touches.set(touch.identifier, owned);
-        this._showStick(kind);
-        this._updateStick(owned, px, py);
+        const stick = this._hitStick(px, py, w, h);
+        if (stick !== null) {
+            const owned = { kind: stick };
+            this._touches.set(touch.identifier, owned);
+            this._updateStick(owned, px, py, rect);
+        }
     }
 
     // Returns the button name under the point, or null.
@@ -282,43 +328,36 @@ class InputVirtualGamepad {
         return null;
     }
 
-    // Keeps a floating stick base fully on screen.
-    _clampOrigin(px, py, w, h, radius) {
-        const x = Math.min(Math.max(px, radius), w - radius);
-        const y = Math.min(Math.max(py, radius), h - radius);
-        return { x: x, y: y };
-    }
-
-    // Trailing origin (move stick): once the finger goes past the max radius,
-    // the base follows it so the deflection stays saturated and steerable.
-    _trailOrigin(owned, px, py, w, h) {
-        const dx   = px - owned.origin.x;
-        const dy   = py - owned.origin.y;
-        const dist = Math.sqrt((dx * dx) + (dy * dy));
-        if (dist <= owned.radius) {
-            return;
+    // Returns the stick whose fixed base the point falls in (with a forgiving
+    // grab margin), or null. The two bases are far apart, so no ambiguity.
+    _hitStick(px, py, w, h) {
+        const grab = ((h * this._radiusRatio) * 1.4);
+        for (const kind in this._stickLayout) {
+            const c  = this._stickLayout[kind];
+            const dx = px - (c.x * w);
+            const dy = py - (c.y * h);
+            if (((dx * dx) + (dy * dy)) <= (grab * grab)) {
+                return kind;
+            }
         }
-        const excess = dist - owned.radius;
-        const nx = owned.origin.x + ((dx / dist) * excess);
-        const ny = owned.origin.y + ((dy / dist) * excess);
-        owned.origin = this._clampOrigin(nx, ny, w, h, owned.radius);
+        return null;
     }
 
-    // Computes the deflection, moves the visual elements, stores the axes
-    // with the engine sign convention (joy1Y forward = up, joy2Y down = down).
-    _updateStick(owned, px, py) {
-        const radius = owned.radius;
-        let nx = (px - owned.origin.x) / radius;
-        let ny = (py - owned.origin.y) / radius;
+    // Computes the deflection from the fixed center, moves the knob and stores
+    // the axes with the engine sign convention (joy1Y forward = up, joy2Y
+    // down = down).
+    _updateStick(owned, px, py, rect) {
+        const c      = this._stickLayout[owned.kind];
+        const radius = (rect.height * this._radiusRatio);
+        let nx = ((px - (c.x * rect.width)) / radius);
+        let ny = ((py - (c.y * rect.height)) / radius);
         const mag = Math.sqrt((nx * nx) + (ny * ny));
         if (mag > 1) {
             nx = nx / mag;
             ny = ny / mag;
         }
 
-        const knobX = owned.origin.x + (nx * radius);
-        const knobY = owned.origin.y + (ny * radius);
-        this._positionStick(owned.kind, owned.origin, radius, knobX, knobY);
+        this._setKnob(owned.kind, nx, ny);
 
         const out = this._applyDeadZone(nx, ny);
         const joy = ((owned.kind === 'move') ? this._joy1 : this._joy2);
@@ -339,36 +378,23 @@ class InputVirtualGamepad {
         return { x: nx * factor, y: ny * factor };
     }
 
-    _positionStick(kind, origin, radius, knobX, knobY) {
-        const els      = this._stickEls[kind];
-        const diameter = radius * 2;
-        els.base.style.width  = diameter + 'px';
-        els.base.style.height = diameter + 'px';
-        els.base.style.left   = (origin.x - radius) + 'px';
-        els.base.style.top    = (origin.y - radius) + 'px';
-
-        const knobR = radius * 0.45;
-        els.knob.style.width  = (knobR * 2) + 'px';
-        els.knob.style.height = (knobR * 2) + 'px';
-        els.knob.style.left   = (knobX - knobR) + 'px';
-        els.knob.style.top    = (knobY - knobR) + 'px';
+    // Moves the knob to a normalized deflection (-1..+1 on each axis). The knob
+    // is a child of the base, so the offset is expressed in % of the knob size:
+    // one base radius equals 1 / 0.45 = 111.11 % of the knob.
+    _setKnob(kind, dx, dy) {
+        const offset = 111.11;
+        const tx = (-50 + (dx * offset));
+        const ty = (-50 + (dy * offset));
+        this._stickEls[kind].knob.style.transform = ('translate(' + tx + '%, ' + ty + '%)');
     }
 
-    _showStick(kind) {
-        this._stickEls[kind].base.style.display = 'block';
-        this._stickEls[kind].knob.style.display = 'block';
-    }
-
-    _hideStick(kind) {
-        this._stickEls[kind].base.style.display = 'none';
-        this._stickEls[kind].knob.style.display = 'none';
-    }
-
-    _releaseStick(owned) {
-        const joy = ((owned.kind === 'move') ? this._joy1 : this._joy2);
+    // Releases a stick: axes back to neutral, knob snapped back to the center.
+    // The base stays visible (the sticks are permanent).
+    _releaseStick(kind) {
+        const joy = ((kind === 'move') ? this._joy1 : this._joy2);
         joy.x = 0;
         joy.y = 0;
-        this._hideStick(owned.kind);
+        this._setKnob(kind, 0, 0);
     }
 
     // Neutralizes every input (used on rebuild and when the overlay is hidden,
@@ -384,5 +410,9 @@ class InputVirtualGamepad {
         this._buttons.action = false;
         this._buttons.fire   = false;
         this._buttons.pause  = false;
+        if (this._stickEls !== null) {
+            this._setKnob('move', 0, 0);
+            this._setKnob('look', 0, 0);
+        }
     }
 }
