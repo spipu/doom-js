@@ -30,6 +30,18 @@ class InputVirtualGamepad {
         this._deadZone    = 0.15;
         this._radiusRatio = 0.12;   // stick radius as a fraction of the display height
 
+        // Single source for the red control palette (sticks and buttons).
+        this._color = {
+            stickRing:  'rgba(220, 60, 50, 0.7)',   // stick base outline
+            stickFill:  'rgba(220, 60, 50, 0.12)',  // stick base background
+            stickKnob:  'rgba(220, 60, 50, 0.55)',  // stick thumb knob
+            btnBorder:  'rgba(220, 60, 50, 0.8)',   // button outline, idle
+            btnFill:    'rgba(220, 60, 50, 0.18)',  // button background, idle
+            btnLabel:   'rgba(255, 220, 210, 0.9)', // button glyph
+            btnDownBorder: 'rgba(255, 130, 120, 1)', // button outline, pressed
+            btnDownFill:   'rgba(220, 60, 50, 0.6)'  // button background, pressed
+        };
+
         // --- On-screen layout (fractions of the 16:9 letterboxed display) ---
         // Action-button radius and the ring the four buttons sit on around the
         // look stick. ringX uses the 16:9 ratio so the ring is round in pixels.
@@ -186,38 +198,39 @@ class InputVirtualGamepad {
         this._overlay = overlay;
     }
 
+    // A round, absolutely positioned, non-interactive element - the common base
+    // of the stick rings, the knob and the action buttons (the overlay owns the
+    // touch handling, so every control is pointer-events none).
+    _createCircle() {
+        const el = document.createElement('div');
+        el.style.position      = 'absolute';
+        el.style.aspectRatio   = '1 / 1';
+        el.style.transform     = 'translate(-50%, -50%)';
+        el.style.borderRadius  = '50%';
+        el.style.boxSizing     = 'border-box';
+        el.style.pointerEvents = 'none';
+        return el;
+    }
+
     // Static stick: a base ring at a fixed position with a thumb knob centered
     // inside it. Both are sized in % of the overlay (responsive) and always
     // visible; the knob is a child of the base so its deflection is expressed
-    // in % of the base - no pixel math to render (pointer-events none, the
-    // overlay owns the touch handling).
+    // in % of the base - no pixel math to render.
     _createStick(overlay, layout) {
         const diameterPct = (this._radiusRatio * 2 * 100);
 
-        const base = document.createElement('div');
-        base.style.position      = 'absolute';
-        base.style.height        = diameterPct + '%';
-        base.style.aspectRatio   = '1 / 1';
-        base.style.left          = (layout.x * 100) + '%';
-        base.style.top           = (layout.y * 100) + '%';
-        base.style.transform     = 'translate(-50%, -50%)';
-        base.style.borderRadius  = '50%';
-        base.style.border        = '2px solid rgba(220, 60, 50, 0.7)';
-        base.style.background    = 'rgba(220, 60, 50, 0.12)';
-        base.style.boxSizing     = 'border-box';
-        base.style.pointerEvents = 'none';
+        const base = this._createCircle();
+        base.style.height     = diameterPct + '%';
+        base.style.left       = (layout.x * 100) + '%';
+        base.style.top        = (layout.y * 100) + '%';
+        base.style.border     = '2px solid ' + this._color.stickRing;
+        base.style.background = this._color.stickFill;
 
-        const knob = document.createElement('div');
-        knob.style.position      = 'absolute';
-        knob.style.height        = '45%';
-        knob.style.aspectRatio   = '1 / 1';
-        knob.style.left          = '50%';
-        knob.style.top           = '50%';
-        knob.style.transform     = 'translate(-50%, -50%)';
-        knob.style.borderRadius  = '50%';
-        knob.style.background    = 'rgba(220, 60, 50, 0.55)';
-        knob.style.boxSizing     = 'border-box';
-        knob.style.pointerEvents = 'none';
+        const knob = this._createCircle();
+        knob.style.height     = '45%';
+        knob.style.left       = '50%';
+        knob.style.top        = '50%';
+        knob.style.background = this._color.stickKnob;
 
         base.appendChild(knob);
         overlay.appendChild(base);
@@ -229,24 +242,18 @@ class InputVirtualGamepad {
         // from the same value so a button and its label always scale together.
         const diameterPct = (layout.r * 2 * 100);
 
-        const el = document.createElement('div');
-        el.style.position       = 'absolute';
+        const el = this._createCircle();
         el.style.height         = diameterPct + '%';
-        el.style.aspectRatio    = '1 / 1';
         el.style.left           = (layout.x * 100) + '%';
         el.style.top            = (layout.y * 100) + '%';
-        el.style.transform      = 'translate(-50%, -50%)';
-        el.style.borderRadius   = '50%';
-        el.style.border         = '2px solid rgba(220, 60, 50, 0.8)';
-        el.style.background      = 'rgba(220, 60, 50, 0.18)';
-        el.style.color          = 'rgba(255, 220, 210, 0.9)';
+        el.style.border         = '2px solid ' + this._color.btnBorder;
+        el.style.background      = this._color.btnFill;
+        el.style.color          = this._color.btnLabel;
         el.style.display        = 'flex';
         el.style.alignItems     = 'center';
         el.style.justifyContent = 'center';
         el.style.fontFamily     = 'monospace';
         el.style.fontSize       = (diameterPct * 0.63) + 'cqh';
-        el.style.boxSizing      = 'border-box';
-        el.style.pointerEvents  = 'none';
         el.textContent          = layout.label;
         overlay.appendChild(el);
         return el;
@@ -259,8 +266,8 @@ class InputVirtualGamepad {
             return;
         }
         const el = this._buttonEls[name];
-        el.style.background  = ((pressed) ? 'rgba(220, 60, 50, 0.6)'  : 'rgba(220, 60, 50, 0.18)');
-        el.style.borderColor = ((pressed) ? 'rgba(255, 130, 120, 1)' : 'rgba(220, 60, 50, 0.8)');
+        el.style.background  = ((pressed) ? this._color.btnDownFill   : this._color.btnFill);
+        el.style.borderColor = ((pressed) ? this._color.btnDownBorder : this._color.btnBorder);
     }
 
     // --- Touch handling ---
@@ -276,8 +283,8 @@ class InputVirtualGamepad {
     _overlayRect() {
         const r  = this._overlay.getBoundingClientRect();
         const vv = window.visualViewport;
-        const offX = ((vv !== null && vv !== undefined) ? vv.offsetLeft : 0);
-        const offY = ((vv !== null && vv !== undefined) ? vv.offsetTop  : 0);
+        const offX = ((vv) ? vv.offsetLeft : 0);
+        const offY = ((vv) ? vv.offsetTop  : 0);
         return { left: (r.left + offX), top: (r.top + offY), width: r.width, height: r.height };
     }
 
