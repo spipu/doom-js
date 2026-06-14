@@ -26,6 +26,8 @@ class InputVirtualGamepad {
         this._overlay     = null;
         this._stickEls    = null;
         this._buttonEls   = null;
+        this._diagMarker  = null;   // --- TEMP DIAG ---
+        this._diagText    = null;   // --- TEMP DIAG ---
         this._visible     = false;
         this._deadZone    = 0.15;
         this._radiusRatio = 0.12;   // stick radius as a fraction of the display height
@@ -184,6 +186,64 @@ class InputVirtualGamepad {
 
         display.appendChild(overlay);
         this._overlay = overlay;
+
+        this._buildDiag(overlay);
+    }
+
+    // --- TEMP DIAG --- on-device probe for the iOS rotation touch offset.
+    // Draws a marker at the code-computed touch position and a live readout of
+    // the viewport/rect metrics. Remove this whole block once the cause is found.
+    _buildDiag(overlay) {
+        const marker = document.createElement('div');
+        marker.style.position      = 'absolute';
+        marker.style.width         = '16px';
+        marker.style.height        = '16px';
+        marker.style.borderRadius  = '50%';
+        marker.style.background     = 'rgba(0, 255, 0, 0.9)';
+        marker.style.border        = '1px solid #000';
+        marker.style.transform     = 'translate(-50%, -50%)';
+        marker.style.pointerEvents = 'none';
+        marker.style.zIndex        = '20';
+        marker.style.display       = 'none';
+        overlay.appendChild(marker);
+        this._diagMarker = marker;
+
+        const text = document.createElement('div');
+        text.style.position      = 'absolute';
+        text.style.top           = '4px';
+        text.style.left          = '4px';
+        text.style.color         = '#0f0';
+        text.style.background     = 'rgba(0, 0, 0, 0.6)';
+        text.style.fontFamily    = 'monospace';
+        text.style.fontSize      = '16px';
+        text.style.whiteSpace    = 'pre';
+        text.style.padding       = '4px 6px';
+        text.style.pointerEvents = 'none';
+        text.style.zIndex        = '20';
+        overlay.appendChild(text);
+        this._diagText = text;
+    }
+
+    // --- TEMP DIAG --- updates the marker + readout for one touch.
+    _updateDiag(touch, rect) {
+        if (this._diagMarker === null) {
+            return;
+        }
+        const px = touch.clientX - rect.left;
+        const py = touch.clientY - rect.top;
+        this._diagMarker.style.left    = px + 'px';
+        this._diagMarker.style.top     = py + 'px';
+        this._diagMarker.style.display = 'block';
+
+        const vv = window.visualViewport;
+        this._diagText.textContent =
+            'rect.top=' + rect.top.toFixed(1) + ' h=' + rect.height.toFixed(1) + '\n'
+            + 'clientY=' + touch.clientY.toFixed(1) + ' py=' + py.toFixed(1) + '\n'
+            + 'vv.offsetTop=' + ((vv) ? vv.offsetTop.toFixed(1) : 'n/a') + '\n'
+            + 'vv.pageTop=' + ((vv) ? vv.pageTop.toFixed(1) : 'n/a') + '\n'
+            + 'vv.height=' + ((vv) ? vv.height.toFixed(1) : 'n/a') + '\n'
+            + 'innerH=' + window.innerHeight + '\n'
+            + 'scrollTop=' + document.scrollingElement.scrollTop;
     }
 
     // Static stick: a base ring at a fixed position with a thumb knob centered
@@ -269,6 +329,7 @@ class InputVirtualGamepad {
         event.preventDefault();
         const rect = this._overlay.getBoundingClientRect();
         for (const touch of event.changedTouches) {
+            this._updateDiag(touch, rect);   // --- TEMP DIAG ---
             this._assignTouch(touch, rect);
         }
     }
@@ -277,6 +338,7 @@ class InputVirtualGamepad {
         event.preventDefault();
         const rect = this._overlay.getBoundingClientRect();
         for (const touch of event.changedTouches) {
+            this._updateDiag(touch, rect);   // --- TEMP DIAG ---
             const owned = this._touches.get(touch.identifier);
             if ((owned === undefined) || (owned.kind === 'button')) {
                 continue;
