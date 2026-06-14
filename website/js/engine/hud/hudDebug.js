@@ -43,7 +43,7 @@ class HudDebug extends AbstractHud {
             lines.push(this._buildInputs());
         }
         for (const message of this._descriptions) {
-            lines.push(((typeof message === 'function') ? message() : message));
+            lines.push(message);
         }
         this._el.innerText = lines.join('\n');
     }
