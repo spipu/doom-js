@@ -15,6 +15,8 @@ class ScreenManager {
         this._ratio          = 1;
         this._canvasId       = screenId + '_canvas';
 
+        this._onOrientationChange = this._handleOrientationChange.bind(this);
+
         this._initContainer();
         this._initDisplay();
         this._initCanvas();
@@ -25,6 +27,28 @@ class ScreenManager {
                 this._triggerResize();
             });
             this._resizeObserver.observe(this._container);
+
+            // The ResizeObserver above already catches the container resize on a
+            // rotation, but iOS Safari does not always settle the viewport on
+            // that first pass (the fixed container is painted at a position the
+            // pass measures wrong). These events trigger a deferred re-measure so
+            // the touch overlay (which reads getBoundingClientRect on each touch)
+            // stays aligned once the layout has settled.
+            this._addOrientationListeners();
+        }
+    }
+
+    _addOrientationListeners() {
+        window.addEventListener('orientationchange', this._onOrientationChange);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', this._onOrientationChange);
+        }
+    }
+
+    _removeOrientationListeners() {
+        window.removeEventListener('orientationchange', this._onOrientationChange);
+        if (window.visualViewport) {
+            window.visualViewport.removeEventListener('resize', this._onOrientationChange);
         }
     }
 
@@ -37,7 +61,13 @@ class ScreenManager {
             this._container.style.top    = '0';
             this._container.style.left   = '0';
             this._container.style.width  = '100vw';
+            // Dynamic viewport height (dvh) tracks the actually visible area on
+            // iOS Safari, where 100vh is the "large viewport" (behind the
+            // toolbars) and leaves the fixed container offset after a rotation.
+            // Only the height matters (toolbars are horizontal); 100vh stays as a
+            // fallback for browsers without dvh. Mirrors #screen in main.css.
             this._container.style.height = '100vh';
+            this._container.style.height = '100dvh';
         }
 
         this._screen.appendChild(this._container);
@@ -119,7 +149,26 @@ class ScreenManager {
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
         }
+        if (this._fullscreen) {
+            this._removeOrientationListeners();
+        }
         this._screen.removeChild(this._container);
+    }
+
+    // Re-measures after a rotation. iOS often reports intermediate dimensions on
+    // the first event, so we re-run on the next frames (double rAF) and again on
+    // a fallback timeout once the layout has settled. _triggerResize reads fresh
+    // client sizes and ignores zero, so repeated calls are harmless.
+    _handleOrientationChange() {
+        this._triggerResize();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this._triggerResize();
+            });
+        });
+        setTimeout(() => {
+            this._triggerResize();
+        }, 250);
     }
 
     _triggerResize() {
