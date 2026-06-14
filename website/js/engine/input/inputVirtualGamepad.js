@@ -224,7 +224,8 @@ class InputVirtualGamepad {
         this._diagText = text;
     }
 
-    // --- TEMP DIAG --- updates the marker + readout for one touch.
+    // --- TEMP DIAG --- updates the marker + readout for one touch. rect is the
+    // vv-corrected rect, so the marker should now sit right under the finger.
     _updateDiag(touch, rect) {
         if (this._diagMarker === null) {
             return;
@@ -235,12 +236,12 @@ class InputVirtualGamepad {
         this._diagMarker.style.top     = py + 'px';
         this._diagMarker.style.display = 'block';
 
-        const vv = window.visualViewport;
+        const raw = this._overlay.getBoundingClientRect();
+        const vv  = window.visualViewport;
         this._diagText.textContent =
-            'rect.top=' + rect.top.toFixed(1) + ' h=' + rect.height.toFixed(1) + '\n'
+            'rawTop=' + raw.top.toFixed(1) + ' corrTop=' + rect.top.toFixed(1) + '\n'
             + 'clientY=' + touch.clientY.toFixed(1) + ' py=' + py.toFixed(1) + '\n'
             + 'vv.offsetTop=' + ((vv) ? vv.offsetTop.toFixed(1) : 'n/a') + '\n'
-            + 'vv.pageTop=' + ((vv) ? vv.pageTop.toFixed(1) : 'n/a') + '\n'
             + 'vv.height=' + ((vv) ? vv.height.toFixed(1) : 'n/a') + '\n'
             + 'innerH=' + window.innerHeight + '\n'
             + 'scrollTop=' + document.scrollingElement.scrollTop;
@@ -325,9 +326,25 @@ class InputVirtualGamepad {
 
     // --- Touch handling ---
 
+    // Overlay geometry in the same coordinate space as touch clientX/clientY,
+    // corrected for the iOS visual-viewport offset. After a rotation into
+    // landscape the Safari toolbar collapses: the visual viewport shifts up by
+    // its height (visualViewport.offsetTop becomes negative) but
+    // getBoundingClientRect still reports the fixed overlay at its old top, so
+    // raw "clientY - rect.top" lands too high. Folding offsetLeft/offsetTop into
+    // the rect realigns both; it is a no-op when the offset is 0 (portrait,
+    // landscape at launch, desktop).
+    _overlayRect() {
+        const r  = this._overlay.getBoundingClientRect();
+        const vv = window.visualViewport;
+        const offX = ((vv !== null && vv !== undefined) ? vv.offsetLeft : 0);
+        const offY = ((vv !== null && vv !== undefined) ? vv.offsetTop  : 0);
+        return { left: (r.left + offX), top: (r.top + offY), width: r.width, height: r.height };
+    }
+
     _handleTouchStart(event) {
         event.preventDefault();
-        const rect = this._overlay.getBoundingClientRect();
+        const rect = this._overlayRect();
         for (const touch of event.changedTouches) {
             this._updateDiag(touch, rect);   // --- TEMP DIAG ---
             this._assignTouch(touch, rect);
@@ -336,7 +353,7 @@ class InputVirtualGamepad {
 
     _handleTouchMove(event) {
         event.preventDefault();
-        const rect = this._overlay.getBoundingClientRect();
+        const rect = this._overlayRect();
         for (const touch of event.changedTouches) {
             this._updateDiag(touch, rect);   // --- TEMP DIAG ---
             const owned = this._touches.get(touch.identifier);
