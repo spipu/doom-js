@@ -25,6 +25,7 @@ class InputVirtualGamepad {
         this._screen      = null;
         this._overlay     = null;
         this._stickEls    = null;
+        this._buttonEls   = null;
         this._visible     = false;
         this._deadZone    = 0.15;
         this._radiusRatio = 0.12;   // stick radius as a fraction of the display height
@@ -171,8 +172,9 @@ class InputVirtualGamepad {
             look: this._createStick(overlay, this._stickLayout.look)
         };
 
+        this._buttonEls = {};
         for (const name in this._buttonLayout) {
-            this._createButton(overlay, this._buttonLayout[name]);
+            this._buttonEls[name] = this._createButton(overlay, this._buttonLayout[name]);
         }
 
         overlay.addEventListener('touchstart',  this._onTouchStart, { passive: false });
@@ -250,6 +252,17 @@ class InputVirtualGamepad {
         return el;
     }
 
+    // Lights the button up while it is held so the press is visible, and
+    // restores the idle look on release. No-op before the overlay is built.
+    _setButtonPressed(name, pressed) {
+        if (this._buttonEls === null) {
+            return;
+        }
+        const el = this._buttonEls[name];
+        el.style.background  = ((pressed) ? 'rgba(220, 60, 50, 0.6)'  : 'rgba(220, 60, 50, 0.18)');
+        el.style.borderColor = ((pressed) ? 'rgba(255, 130, 120, 1)' : 'rgba(220, 60, 50, 0.8)');
+    }
+
     // --- Touch handling ---
 
     _handleTouchStart(event) {
@@ -284,6 +297,7 @@ class InputVirtualGamepad {
             this._touches.delete(touch.identifier);
             if (owned.kind === 'button') {
                 this._buttons[owned.button] = false;
+                this._setButtonPressed(owned.button, false);
                 continue;
             }
             this._releaseStick(owned.kind);
@@ -302,6 +316,7 @@ class InputVirtualGamepad {
         const button = this._hitButton(px, py, w, h);
         if (button !== null) {
             this._buttons[button] = true;
+            this._setButtonPressed(button, true);
             this._touches.set(touch.identifier, { kind: 'button', button: button });
             return;
         }
@@ -410,6 +425,11 @@ class InputVirtualGamepad {
         this._buttons.action = false;
         this._buttons.fire   = false;
         this._buttons.pause  = false;
+        if (this._buttonEls !== null) {
+            for (const name in this._buttonEls) {
+                this._setButtonPressed(name, false);
+            }
+        }
         if (this._stickEls !== null) {
             this._setKnob('move', 0, 0);
             this._setKnob('look', 0, 0);
