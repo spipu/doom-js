@@ -34,7 +34,6 @@ class DoomGame {
             }
         }).build();
         loader.setCallback(() => {
-            appBootstrap.askStats();
             this._init();
         });
         loader.endBatch();
@@ -68,7 +67,6 @@ class DoomGame {
         this._hud = new HudDebug(this._engine)
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
-            .addDescription(() => appBootstrap.getStatsText())
             .addDescription('(c)2026 Spipu')
         ;
 
