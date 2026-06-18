@@ -1,5 +1,5 @@
 {
-    "version": "v2.050",
+    "version": "v2.056",
     "files": {
         "assets": [],
         "css": [],
@@ -10,6 +10,7 @@
             "/js/engine/entity/face.js",
             "/js/engine/entity/light.js",
             "/js/engine/entity/object3d.js",
+            "/js/engine/entity/billboard.js",
             "/js/engine/entity/texture.js",
             "/js/engine/entity/user.js",
             "/js/engine/entity/world.js",

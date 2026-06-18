@@ -5,6 +5,10 @@ class WadConstants {
     // 64 Doom units = 1 metre
     static SCALE = 1.0 / 64.0;
 
+    // Max distance (Doom units) a thing may be from the nearest sector polygon
+    // when no sector strictly contains it; beyond this the thing is dropped.
+    static THING_SECTOR_MAX_DIST = 64;
+
     // --- Doors ---
 
     // Linedef types that trigger door-open actions

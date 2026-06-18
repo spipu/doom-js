@@ -26,7 +26,23 @@ class HudDebug extends AbstractHud {
         container.appendChild(this._el);
     }
 
+    // Scale the font (and offset) to the rendered display height so the overlay
+    // stays proportional on any screen size — engine.scrHeight is the actual
+    // pixel height of the (letterboxed) display, updated on every resize.
+    _applyFontScale() {
+        if (!this._engine || !this._engine.scrHeight) {
+            return;
+        }
+        const fontPx = Math.max(10, Math.min(24, Math.round(this._engine.scrHeight * 0.028)));
+        const pad    = Math.max(2, Math.round(fontPx * 0.4));
+        this._el.style.fontSize = fontPx + 'px';
+        this._el.style.bottom   = pad + 'px';
+        this._el.style.left     = pad + 'px';
+    }
+
     update() {
+        this._applyFontScale();
+
         if (this._user) {
             const alpha = ((this._user.isDead()) ? 0.5 : Math.min(0.6, this._user.getEnergyFlash()));
             this._container.style.backgroundColor = 'rgba(255, 0, 0, ' + alpha + ')';

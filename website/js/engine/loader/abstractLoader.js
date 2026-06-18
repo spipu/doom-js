@@ -6,7 +6,6 @@ class AbstractLoader {
     }
 
     reset() {
-        this._debug('reset');
         this._loaded       = true;
         this._entities     = [];
         this._codeRegistry = {};
@@ -116,7 +115,6 @@ class AbstractLoader {
 
     _checkFullyLoaded() {
         if (this._entities.every(e => e.isLoaded())) {
-            this._debug('loaded');
             this._loaded = true;
             this._loadedCallback();
         }
@@ -134,9 +132,5 @@ class AbstractLoader {
 
     _generateException(message) {
         return new Error(this._factoryName + ' - ' + message);
-    }
-
-    _debug(message) {
-        console.log(this._factoryName + ' - ' + message);
     }
 }

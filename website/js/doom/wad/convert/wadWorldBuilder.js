@@ -11,14 +11,17 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelName
-     * @param {object}  options - {onLevelExit: function} callback wired on the exit switches
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object}
+     *                  onLevelExit is wired on the exit switches; thingCatalog
+     *                  (DoomGame) maps THING types to world sprites/pickups.
      */
     constructor(wadFile, levelName, options = null) {
         options = options ?? {};
 
-        this._wadFile     = wadFile;
-        this._levelName   = levelName;
-        this._onLevelExit = options.onLevelExit ?? null;
+        this._wadFile      = wadFile;
+        this._levelName    = levelName;
+        this._onLevelExit  = options.onLevelExit ?? null;
+        this._thingCatalog = options.thingCatalog ?? null;
     }
 
     /**
@@ -32,6 +35,8 @@ class WadWorldBuilder {
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
         const analysis = new WadMapAnalyzer(level).analyze();
+        // Sector polygons computed once (reused by the spawn + every thing)
+        this._sectorPolys = this._buildSectorPolyCache(level);
         await this._yield();
 
         // Static map
@@ -67,15 +72,73 @@ class WadWorldBuilder {
         }
         await this._yield();
 
+        // Things (decorations + pickups) as billboard sprites
+        const thingCount = this._registerThings(level, palette);
+        await this._yield();
+
         // World + user
         loader.world().loadFromData(this._buildDefinition(level));
 
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
-            + lifts.length + ' lifts, ' + switches.length + ' switches');
+            + lifts.length + ' lifts, ' + switches.length + ' switches, '
+            + thingCount + ' things');
     }
 
     // --- Internal ---
+
+    // Build the world things from the THINGS lump: one shared Billboard Object3d
+    // per sprite (deduplicated), one Instance per occurrence. No-op without a
+    // thing catalog. Phase 1: display only (collidable false, no interaction).
+    _registerThings(level, palette) {
+        if (this._thingCatalog === null) {
+            return 0;
+        }
+
+        const spriteBank = new WadSpriteBank(this._wadFile, palette).init();
+        const things = new WadThingBuilder(
+            level,
+            this._thingCatalog,
+            spriteBank,
+            (x, y) => this._findSector(x, y)
+        ).buildAll();
+
+        const billboardIds = {};
+        for (let i = 0; i < things.length; i++) {
+            const t = things[i];
+            // Dedup the shared Object3d per (sprite, sector light): the sector
+            // brightness is baked into the billboard colour, so the same sprite
+            // in differently-lit sectors needs distinct objects.
+            const objKey = t.key + '|' + t.light;
+            if (billboardIds[objKey] === undefined) {
+                billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
+                    billboard:     true,
+                    textures:      t.texIds,
+                    animDuration:  t.animDuration,
+                    halfWidth:     t.halfWidth,
+                    height:        t.height,
+                    anchorOffsetX: t.anchorOffsetX,
+                    anchorOffsetY: t.anchorOffsetY,
+                    anchorTop:     t.anchorTop,
+                    light:         t.light
+                });
+            }
+            loader.instances().loadFromData(null, {
+                code:       'thing_' + i,
+                object:     billboardIds[objKey],
+                position:   t.position,
+                rotation:   [0, 0, 0],
+                trigger:    'none',
+                loop:       false,
+                onlyOnce:   false,
+                collidable: false,
+                radius:     null,
+                keyframes:  []
+            });
+        }
+
+        return things.length;
+    }
 
     _registerInstance(built, bank) {
         const objectId = loader.objects().loadFromData(
@@ -124,7 +187,8 @@ class WadWorldBuilder {
             return {x: -6.5, y: 0.3, z: 4.0, yaw: 90};
         }
 
-        const floorFh = this._findSpawnFloorHeight(level, player1.x, player1.y);
+        const sect    = this._findSector(player1.x, player1.y);
+        const floorFh = ((sect !== null) ? sect.fh : 0);
 
         return {
             x:   player1.x * WadConstants.SCALE,
@@ -134,32 +198,88 @@ class WadWorldBuilder {
         };
     }
 
-    // Find the sector containing the spawn point: smallest containing outer
-    // polygon (nested sectors), tested in Doom coordinates.
-    _findSpawnFloorHeight(level, doomX, doomY) {
+    // Precompute every sector's outer polygons + floor/ceiling/light once, so
+    // _findSector is a cheap point test per thing instead of rebuilding polygons.
+    _buildSectorPolyCache(level) {
         const {vertexes, linedefs, sidedefs, sectors} = level;
-        let bestArea = null;
-        let bestFh   = 0;
-
+        const cache = [];
         for (let si = 0; si < sectors.length; si++) {
             const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
             if (chains.length === 0) {
                 continue;
             }
             const {outers} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
-            for (const outer of outers) {
+            if (outers.length === 0) {
+                continue;
+            }
+            cache.push({fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, outers: outers});
+        }
+        return cache;
+    }
+
+    // Find the sector at a point: smallest containing outer polygon (nested
+    // sectors). If none contains it (point on a boundary / imperfect polygon),
+    // fall back to the nearest sector within THING_SECTOR_MAX_DIST; beyond that
+    // return null so the caller drops the thing rather than mis-placing it.
+    // Returns {fh, ch, light} (Doom units) or null.
+    _findSector(doomX, doomY) {
+        let bestArea  = null;
+        let contained = null;
+        for (const sec of this._sectorPolys) {
+            for (const outer of sec.outers) {
                 if (!WadGeometry.pointInPolygon2d(doomX, doomY, outer)) {
                     continue;
                 }
                 const area = Math.abs(WadGeometry.polygonAreaSign(outer));
                 if (bestArea === null || area < bestArea) {
-                    bestArea = area;
-                    bestFh   = sectors[si].fh;
+                    bestArea  = area;
+                    contained = sec;
                 }
             }
         }
+        if (contained !== null) {
+            return {fh: contained.fh, ch: contained.ch, light: contained.light};
+        }
 
-        return bestFh;
+        let nearestDist = Infinity;
+        let nearest     = null;
+        for (const sec of this._sectorPolys) {
+            for (const outer of sec.outers) {
+                const d = this._distanceToPolygon(doomX, doomY, outer);
+                if (d < nearestDist) {
+                    nearestDist = d;
+                    nearest     = sec;
+                }
+            }
+        }
+        if ((nearest !== null) && (nearestDist <= WadConstants.THING_SECTOR_MAX_DIST)) {
+            return {fh: nearest.fh, ch: nearest.ch, light: nearest.light};
+        }
+        return null;
+    }
+
+    _distanceToPolygon(px, py, poly) {
+        let min = Infinity;
+        for (let i = 0; i < poly.length; i++) {
+            const a = poly[i];
+            const b = poly[(i + 1) % poly.length];
+            const d = this._distanceToSegment(px, py, a[0], a[1], b[0], b[1]);
+            if (d < min) {
+                min = d;
+            }
+        }
+        return min;
+    }
+
+    _distanceToSegment(px, py, ax, ay, bx, by) {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len2 = dx * dx + dy * dy;
+        let t = ((len2 > 0) ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0);
+        t = Math.max(0, Math.min(1, t));
+        const cx = ax + t * dx;
+        const cy = ay + t * dy;
+        return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
     }
 
     _yield() {
