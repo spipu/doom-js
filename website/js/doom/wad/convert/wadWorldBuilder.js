@@ -36,6 +36,7 @@ class WadWorldBuilder {
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
         const analysis = new WadMapAnalyzer(level).analyze();
         // Sector polygons computed once (reused by the spawn + every thing)
+        this._level       = level;
         this._sectorPolys = this._buildSectorPolyCache(level);
         await this._yield();
 
@@ -73,7 +74,7 @@ class WadWorldBuilder {
         await this._yield();
 
         // Things (decorations + pickups) as billboard sprites
-        const thingCount = this._registerThings(level, palette);
+        const things = this._registerThings(level, palette);
         await this._yield();
 
         // World + user
@@ -82,7 +83,7 @@ class WadWorldBuilder {
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
             + lifts.length + ' lifts, ' + switches.length + ' switches, '
-            + thingCount + ' things');
+            + things.count + ' things (' + things.skipped + ' skipped)');
     }
 
     // --- Internal ---
@@ -92,16 +93,17 @@ class WadWorldBuilder {
     // thing catalog. Phase 1: display only (collidable false, no interaction).
     _registerThings(level, palette) {
         if (this._thingCatalog === null) {
-            return 0;
+            return {count: 0, skipped: 0};
         }
 
         const spriteBank = new WadSpriteBank(this._wadFile, palette).init();
-        const things = new WadThingBuilder(
+        const builder = new WadThingBuilder(
             level,
             this._thingCatalog,
             spriteBank,
             (x, y) => this._findSector(x, y)
-        ).buildAll();
+        );
+        const things = builder.buildAll();
 
         const billboardIds = {};
         for (let i = 0; i < things.length; i++) {
@@ -137,7 +139,7 @@ class WadWorldBuilder {
             });
         }
 
-        return things.length;
+        return {count: things.length, skipped: builder.getSkipped()};
     }
 
     _registerInstance(built, bank) {
@@ -241,45 +243,42 @@ class WadWorldBuilder {
             return {fh: contained.fh, ch: contained.ch, light: contained.light};
         }
 
-        let nearestDist = Infinity;
-        let nearest     = null;
-        for (const sec of this._sectorPolys) {
-            for (const outer of sec.outers) {
-                const d = this._distanceToPolygon(doomX, doomY, outer);
-                if (d < nearestDist) {
-                    nearestDist = d;
-                    nearest     = sec;
-                }
-            }
-        }
-        if ((nearest !== null) && (nearestDist <= WadConstants.THING_SECTOR_MAX_DIST)) {
-            return {fh: nearest.fh, ch: nearest.ch, light: nearest.light};
-        }
-        return null;
+        return this._nearestSideSector(doomX, doomY);
     }
 
-    _distanceToPolygon(px, py, poly) {
-        let min = Infinity;
-        for (let i = 0; i < poly.length; i++) {
-            const a = poly[i];
-            const b = poly[(i + 1) % poly.length];
-            const d = this._distanceToSegment(px, py, a[0], a[1], b[0], b[1]);
-            if (d < min) {
-                min = d;
+    // Fallback when no polygon contains the point: nearest linedef, then the
+    // sector on the side the point lies (front/back sidedef per cross product).
+    // Beyond THING_SECTOR_MAX_DIST, or with no facing sector → null.
+    _nearestSideSector(doomX, doomY) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        let bestDist = Infinity;
+        let bestLd   = null;
+        for (const ld of linedefs) {
+            const a = vertexes[ld.v1];
+            const b = vertexes[ld.v2];
+            const d = WadGeometry.distanceToSegment(doomX, doomY, a[0], a[1], b[0], b[1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestLd   = ld;
             }
         }
-        return min;
-    }
+        if ((bestLd === null) || (bestDist > WadConstants.THING_SECTOR_MAX_DIST)) {
+            return null;
+        }
 
-    _distanceToSegment(px, py, ax, ay, bx, by) {
-        const dx = bx - ax;
-        const dy = by - ay;
-        const len2 = dx * dx + dy * dy;
-        let t = ((len2 > 0) ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0);
-        t = Math.max(0, Math.min(1, t));
-        const cx = ax + t * dx;
-        const cy = ay + t * dy;
-        return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+        const a = vertexes[bestLd.v1];
+        const b = vertexes[bestLd.v2];
+        // cross < 0 → point on the right side of v1→v2 (Doom front/right sidedef).
+        const side = WadGeometry.cross2d(a, b, [doomX, doomY]);
+        let sdIdx = ((side < 0) ? bestLd.right : bestLd.left);
+        if (sdIdx < 0) {
+            sdIdx = ((side < 0) ? bestLd.left : bestLd.right);
+        }
+        if (sdIdx < 0) {
+            return null;
+        }
+        const sec = sectors[sidedefs[sdIdx].sector];
+        return {fh: sec.fh, ch: sec.ch, light: sec.light};
     }
 
     _yield() {

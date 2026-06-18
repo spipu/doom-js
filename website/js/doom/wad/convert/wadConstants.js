@@ -9,6 +9,9 @@ class WadConstants {
     // when no sector strictly contains it; beyond this the thing is dropped.
     static THING_SECTOR_MAX_DIST = 64;
 
+    // Doom game tic = 1/35 s (animation/timing unit).
+    static SECONDS_PER_TIC = 1 / 35;
+
     // --- Doors ---
 
     // Linedef types that trigger door-open actions
