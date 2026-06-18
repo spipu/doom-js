@@ -1,7 +1,6 @@
 class Object3dLoader extends AbstractLoader {
     constructor(loadedCallback) {
         super('object3d', loadedCallback);
-        this._creatingBillboard = false;
     }
 
     _alreadyLoaded(url) {
@@ -9,20 +8,19 @@ class Object3dLoader extends AbstractLoader {
     }
 
     _create(id, url, callback) {
-        return ((this._creatingBillboard) ? new Billboard(id, url, callback) : new Object3d(id, url, callback));
+        return new Object3d(id, url, callback);
     }
 
-    // In-memory billboard: reuses loadFromData's bookkeeping, _create picks the
-    // Billboard class via the flag. data = {billboard, texture, halfWidth, height, anchorOffsetX?}.
+    // In-memory camera-facing sprite. Creates a Billboard explicitly (it shares
+    // the Object3d id space so Instances can resolve it), reusing the base
+    // registration. data = {textures, halfWidth, height, anchorOffsetX?, anchorOffsetY?, anchorTop?, light?, animDuration?}.
     loadBillboardFromData(code, data) {
-        this._creatingBillboard = true;
-        let id;
-        try {
-            id = this.loadFromData(code, data);
-        } finally {
-            this._creatingBillboard = false;
-        }
-        return id;
+        const entity = new Billboard(this._entities.length, null, () => { this._checkFullyLoaded(); });
+        this._registerNewEntity(code, entity);
+        entity.configure(data);
+        entity.setLoaded();
+
+        return entity.getId();
     }
 
     _initialiseEntityFromUrl(entity) {
@@ -37,11 +35,6 @@ class Object3dLoader extends AbstractLoader {
 
     // Texture entries: url string (loaded via TextureLoader) or number (already loaded texture id)
     _populateFromData(entity, data) {
-        if (data.billboard === true) {
-            entity.setBillboardSize(data.halfWidth, data.height, (data.anchorOffsetX ?? 0), (data.anchorOffsetY ?? 0), (data.anchorTop === true));
-            entity.setupQuad(data.textures, (data.animDuration ?? 0), (data.light ?? 255));
-            return;
-        }
         (data.textures || []).forEach(t => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
         data.points.forEach(p => entity.ptAdd(p[0], p[1], p[2]));
         data.faces.forEach(f => entity.fcAdd(

@@ -59,27 +59,28 @@ class AbstractLoader {
     // Create an entity directly from in-memory data, without any URL or fetch.
     // Does not touch _loadedFiles (no URL to deduplicate).
     loadFromData(code, data) {
-        if (code !== null && this._codeRegistry[code] !== undefined) {
+        const entity = this._create(this._entities.length, null, () => { this._checkFullyLoaded(); });
+        this._registerNewEntity(code, entity);
+        this._populateFromData(entity, data);
+        entity.setLoaded();
+
+        return entity.getId();
+    }
+
+    // Register an already-created entity: assigns the id slot, the code (if any)
+    // and clears the loaded flag. Shared by loadFromData and the specialised
+    // in-memory loaders (e.g. billboards) so they don't duplicate this bookkeeping.
+    _registerNewEntity(code, entity) {
+        if ((code !== null) && (this._codeRegistry[code] !== undefined)) {
             throw this._generateException('Code [' + code + '] is already registered');
         }
-
         this._loaded = false;
-        const entity = this._create(
-            this._entities.length,
-            null,
-            () => {this._checkFullyLoaded(); }
-        );
-
         this._entities[entity.getId()] = entity;
         if (code !== null) {
             this._codeRegistry[code] = entity.getId();
             entity._code = code;
         }
-
-        this._populateFromData(entity, data);
-        entity.setLoaded();
-
-        return entity.getId();
+        return entity;
     }
 
     get(id) {

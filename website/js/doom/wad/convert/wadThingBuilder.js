@@ -28,6 +28,7 @@ class WadThingBuilder {
     buildAll() {
         const scale  = WadConstants.SCALE;
         const result = [];
+        this._skipped = 0;
 
         for (const thing of this._level.things) {
             const desc = this._catalog.getThingForType(thing.type);
@@ -39,6 +40,7 @@ class WadThingBuilder {
             // mis-placing it at height 0.
             const sect = this._sectorFinder(thing.x, thing.y);
             if (sect === null) {
+                this._skipped++;
                 continue;
             }
 
@@ -74,5 +76,10 @@ class WadThingBuilder {
         }
 
         return result;
+    }
+
+    // Number of mapped things dropped because no sector was found (call after buildAll).
+    getSkipped() {
+        return this._skipped;
     }
 }

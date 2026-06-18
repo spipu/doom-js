@@ -22,23 +22,22 @@ class Billboard extends Object3d {
         this._anchorTop     = false;
     }
 
-    // anchorTop: anchor the sprite's TOP at the origin (hanging from the ceiling)
-    // instead of its foot at the origin (standing on the floor).
-    setBillboardSize(halfWidth, height, anchorOffsetX, anchorOffsetY, anchorTop) {
-        this._halfWidth     = halfWidth;
-        this._height        = height;
-        this._anchorOffsetX = anchorOffsetX;
-        this._anchorOffsetY = anchorOffsetY;
-        this._anchorTop     = (anchorTop === true);
-        return this;
-    }
+    // Configure the billboard from a descriptor and build its quad in one call.
+    // data = {textures:[id…], halfWidth, height, anchorOffsetX?, anchorOffsetY?,
+    //         anchorTop?, light?, animDuration?}. anchorTop anchors the TOP at the
+    //         origin (ceiling/hanging) instead of the foot (floor). light (0-255)
+    //         is the sector brightness baked into the face colour. The four corner
+    //         slots are overwritten each frame by ptTransform; UVs account for the
+    //         v-flip applied by fcAdd (corners: 0 BL, 1 BR, 2 TR, 3 TL).
+    configure(data) {
+        this._halfWidth     = data.halfWidth;
+        this._height        = data.height;
+        this._anchorOffsetX = (data.anchorOffsetX ?? 0);
+        this._anchorOffsetY = (data.anchorOffsetY ?? 0);
+        this._anchorTop     = (data.anchorTop === true);
 
-    // Build the quad: four corner slots (overwritten each frame by ptTransform)
-    // and two triangles. Corner order: 0 bottom-left, 1 bottom-right, 2 top-right,
-    // 3 top-left. UVs account for the v-flip applied by fcAdd. textureIds holds one
-    // id (static sprite) or several (animated sprite cycled via animTextures).
-    // light (0-255) is the sector brightness baked into the face colour.
-    setupQuad(textureIds, animDuration, light) {
+        const light      = (data.light ?? 255);
+        const textureIds = data.textures;
         for (const tid of textureIds) {
             this.textureAddById(tid);
         }
@@ -46,10 +45,18 @@ class Billboard extends Object3d {
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
-        const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: animDuration} : null);
+        const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (data.animDuration ?? 0)} : null);
         this.fcAdd(1, 2, 3, [light, light, light], 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim);
         this.fcAdd(1, 3, 4, [light, light, light], 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim);
         return this;
+    }
+
+    // The body centre (local), so Instance worldCenter sits at the sprite's
+    // middle (used by collision/pickup later) rather than at the anchor.
+    getCenter() {
+        const halfH = this._height / 2;
+        const cy = ((this._anchorTop) ? (this._anchorOffsetY - halfH) : (this._anchorOffsetY + halfH));
+        return [this._anchorOffsetX, cy, 0];
     }
 
     // Override: place a screen-aligned quad in camera space. The entity origin
