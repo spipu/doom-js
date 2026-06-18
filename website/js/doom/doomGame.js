@@ -21,6 +21,9 @@ class DoomGame {
         this._ammoTypes  = {};
         this._items      = {};
         this._buildCatalogs();
+
+        // World things catalog (sprites placed from the WAD THINGS lump)
+        this._thingCatalog = new DoomThingCatalog();
     }
 
     // --- Catalogs of definitions ---
@@ -134,7 +137,8 @@ class DoomGame {
         await new WadWorldBuilder(wadFile, levelName, {
             onLevelExit: () => {
                 this._onLevelExit();
-            }
+            },
+            thingCatalog: this._thingCatalog
         }).build();
         loader.setCallback(() => {
             this._init();
