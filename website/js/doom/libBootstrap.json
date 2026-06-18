@@ -1,5 +1,5 @@
 {
-    "version": "v1.030",
+    "version": "v1.036",
     "files": {
         "assets": [],
         "css": [
@@ -29,6 +29,12 @@
             "/js/doom/wad/convert/wadSwitchBuilder.js",
             "/js/doom/wad/convert/doomSwitchInteraction.js",
             "/js/doom/wad/convert/wadWorldBuilder.js",
+            "/js/doom/object/abstractDoomObject.js",
+            "/js/doom/object/doomWeapon.js",
+            "/js/doom/object/doomAmmo.js",
+            "/js/doom/object/doomItem.js",
+            "/js/doom/doomUser.js",
+            "/js/doom/hud/hudDoom.js",
             "/js/doom/menu/menuDisplay.js",
             "/js/doom/menu/menuModal.js",
             "/js/doom/menu/abstractMenuScreen.js",

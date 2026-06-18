@@ -58,6 +58,11 @@ class User {
         this._deathRoll      = 0;
         this._deathEyeRatio  = 1.0;
 
+        // Armor (defensive stat: absorbs a fraction of incoming damage)
+        this._armor       = 0;
+        this._maxArmor    = 0;
+        this._armorAbsorb = 0;
+
         // Walk animation
         this._walkAngle = 0;
         this._walking   = false;
@@ -156,6 +161,11 @@ class User {
         return this;
     }
 
+    setEnergy(v) {
+        this._energy = Math.max(0, Math.min(v, this._maxEnergy));
+        return this;
+    }
+
     setMoveSpeed(v) {
         this.moveSpeed = v;
         return this;
@@ -166,6 +176,22 @@ class User {
         return this;
     }
 
+    setArmor(v) {
+        this._armor = Math.max(0, Math.min(v, this._maxArmor));
+        return this;
+    }
+
+    setMaxArmor(v) {
+        this._maxArmor = v;
+        this._armor = Math.min(this._armor, v);
+        return this;
+    }
+
+    setArmorAbsorb(v) {
+        this._armorAbsorb = v;
+        return this;
+    }
+
     // --- Getters ---
     getEnergy() {
         return this._energy;
@@ -173,6 +199,18 @@ class User {
 
     getMaxEnergy() {
         return this._maxEnergy;
+    }
+
+    getArmor() {
+        return this._armor;
+    }
+
+    getMaxArmor() {
+        return this._maxArmor;
+    }
+
+    getArmorAbsorb() {
+        return this._armorAbsorb;
     }
 
     getRadius() {
@@ -198,6 +236,17 @@ class User {
 
     // --- Energy ---
     takeDamage(delta) {
+        // Armor absorbs a fraction of the hit and is consumed point per point
+        // of the amount it absorbs; the rest goes to energy.
+        if ((this._armor > 0) && (this._armorAbsorb > 0)) {
+            const absorbed = Math.min(this._armor, delta * this._armorAbsorb);
+            this._armor -= absorbed;
+            delta       -= absorbed;
+            if (this._armor <= 0) {
+                this._armorAbsorb = 0;
+            }
+        }
+
         this._energy = Math.max(0, this._energy - delta);
         if (this._energy <= 0) {
             this._dead = true;

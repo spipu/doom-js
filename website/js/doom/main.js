@@ -29,8 +29,12 @@ function loadApp()
 {
     installViewportStabilizer();
 
+    // Every Doom level builds a DoomUser (player + equipment) instead of the
+    // generic engine User.
+    loader.world().setUserClass(DoomUser);
+
     const menu = new MenuNavigator();
-    menu.start();
+    menu.start('freedoom1', 'E1M1');
 }
 
 appBootstrap.setReadyCallback(loadApp);

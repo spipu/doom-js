@@ -1,7 +1,15 @@
 class WorldLoader {
     constructor(loadedCallback) {
         this._loadedCallback = loadedCallback;
+        this._userClass      = User;
         this.reset();
+    }
+
+    // The player class is injectable so a game can supply its own User subclass
+    // without the engine knowing about it (kept generic).
+    setUserClass(userClass) {
+        this._userClass = userClass;
+        return this;
     }
 
     reset() {
@@ -57,7 +65,8 @@ class WorldLoader {
     }
     
     _initUser(dataUser) {
-        const user = new User(dataUser.position[0], dataUser.position[1], dataUser.position[2], dataUser.yaw, dataUser.pitch, dataUser.maxEnergy)
+        const UserClass = this._userClass;
+        const user = new UserClass(dataUser.position[0], dataUser.position[1], dataUser.position[2], dataUser.yaw, dataUser.pitch, dataUser.maxEnergy)
             .setHeight(dataUser.height)
             .setEyeRatio(dataUser.eyeRatio);
         
