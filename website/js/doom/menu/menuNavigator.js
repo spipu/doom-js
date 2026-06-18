@@ -16,11 +16,29 @@ class MenuNavigator {
         this._selectedLevel = null;
     }
 
-    start() {
+    /**
+     * Opens the menu on the WAD list, or — for a faster test loop — launches a
+     * level directly. All three arguments are optional and nested:
+     *   - wadName alone: load that WAD on its first level.
+     *   - wadName + levelCode: load that level; if it does not exist in the WAD,
+     *     fall back to the first level.
+     *   - wadName + levelCode + spawnOverride: same, and force the player to the
+     *     given location instead of the WAD spawn.
+     * An unknown WAD falls back to the normal WAD list.
+     *
+     * @param {string|null} wadName       WAD name or id (case-insensitive, with or without ".wad")
+     * @param {string|null} levelCode     level name, e.g. "E1M1" (case-insensitive)
+     * @param {{position: number[], yaw: number, pitch: number}|null} spawnOverride
+     */
+    start(wadName = null, levelCode = null, spawnOverride = null) {
         this._display.init();
 
         this._registry.init()
             .then(() => {
+                if (wadName !== null) {
+                    this._startDirect(wadName, levelCode, spawnOverride);
+                    return;
+                }
                 this.showWadList();
             })
             .catch(() => {
@@ -91,14 +109,14 @@ class MenuNavigator {
         screen.show();
     }
 
-    async _launchFromWad(meta, levelName) {
+    async _launchFromWad(meta, levelName, spawnOverride = null) {
         const modal = new MenuModal(this._display)
             .showLoading('Chargement du niveau ' + levelName + ' de ' + meta.name);
 
         try {
             const wadFile = await this._registry.getWadFile(meta.id);
             const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName, meta);
+            await game.startFromWad(wadFile, levelName, meta, spawnOverride);
             modal.close();
             this._closeMenus();
         } catch (error) {
@@ -109,6 +127,78 @@ class MenuNavigator {
                 this._currentScreen.showError(error);
             }
         }
+    }
+
+    /**
+     * Test shortcut: resolve the WAD and level from start()'s arguments and
+     * launch straight into the game. An unknown WAD drops back to the WAD list;
+     * the level falls back to the first one of the WAD when levelCode is unknown.
+     *
+     * @param {string} wadName
+     * @param {string|null} levelCode
+     * @param {object|null} spawnOverride
+     */
+    async _startDirect(wadName, levelCode, spawnOverride) {
+        const list = await this._registry.getList();
+        const meta = this._findWad(list, wadName);
+        if (meta === null) {
+            console.warn('Spipu-Doom: unknown WAD "' + wadName + '", showing the WAD list.');
+            this.showWadList();
+            return;
+        }
+
+        const modal = new MenuModal(this._display)
+            .showLoading('Chargement de ' + meta.name);
+
+        try {
+            const wadFile   = await this._registry.getWadFile(meta.id);
+            const levelName = this._resolveLevel(wadFile, levelCode);
+
+            this._selectedWad   = meta;
+            this._selectedLevel = levelName;
+
+            const game = new DoomGame();
+            await game.startFromWad(wadFile, levelName, meta, spawnOverride);
+            modal.close();
+            this._closeMenus();
+        } catch (error) {
+            console.error(error);
+            loader.reset();
+            modal.close();
+            this.showWadList();
+        }
+    }
+
+    /**
+     * @param {object[]} list metadata list
+     * @param {string} wadName
+     * @returns {object|null} the matching metadata, or null
+     */
+    _findWad(list, wadName) {
+        const target = wadName.toLowerCase().replace(/\.wad$/, '');
+        for (const meta of list) {
+            if ((meta.id === target) || (meta.name.toLowerCase() === wadName.toLowerCase())) {
+                return meta;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param {WadFile} wadFile
+     * @param {string|null} levelCode
+     * @returns {string} the requested level if it exists, otherwise the first one
+     */
+    _resolveLevel(wadFile, levelCode) {
+        const levels = wadFile.getLevelNames();
+        if (levelCode !== null) {
+            for (const name of levels) {
+                if (name.toLowerCase() === levelCode.toLowerCase()) {
+                    return name;
+                }
+            }
+        }
+        return levels[0];
     }
 
     _closeMenus() {
