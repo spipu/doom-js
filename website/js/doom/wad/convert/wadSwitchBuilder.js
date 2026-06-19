@@ -106,19 +106,19 @@ class WadSwitchBuilder {
             textures: localIndices,
             mesh:     mesh,
             instanceData: {
-                code:        switchName,
-                position:    [0, 0, 0],
-                rotation:    [0, 0, 0],
-                trigger:     'action',
-                loop:        false,
-                onlyOnce:    false,
+                code:              switchName,
+                position:          [0, 0, 0],
+                rotation:          [0, 0, 0],
+                trigger:           'action',
+                loop:              false,
+                onlyOnce:          false,
                 // A one-sided switch wall always blocks in Doom; its face is
                 // removed from the static map, so the instance must collide
-                collidable:  true,
-                radius:      radius,
-                damage:      null,
-                interaction: switchName,
-                keyframes:   []
+                collisionShape:    'faces',
+                interactionRadius: radius,
+                damage:            null,
+                interaction:       switchName,
+                keyframes:         []
             },
             interactionSpec: {
                 code:    switchName,

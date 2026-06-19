@@ -93,7 +93,8 @@ class WadWorldBuilder {
 
     // Build the world things from the THINGS lump: one shared Billboard Object3d
     // per sprite (deduplicated), one Instance per occurrence. No-op without a
-    // thing catalog. Phase 1: display only (collidable false, no interaction).
+    // thing catalog. Solid decorations get a Doom-style square 'box' collider;
+    // the rest (pickups, gore, pools…) are non-blocking ('none'). No interaction yet.
     _registerThings(level, palette) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0};
@@ -130,16 +131,16 @@ class WadWorldBuilder {
                 });
             }
             loader.instances().loadFromData(null, {
-                code:       'thing_' + i,
-                object:     billboardIds[objKey],
-                position:   t.position,
-                rotation:   [0, 0, 0],
-                trigger:    'none',
-                loop:       false,
-                onlyOnce:   false,
-                collidable: false,
-                radius:     null,
-                keyframes:  []
+                code:            'thing_' + i,
+                object:          billboardIds[objKey],
+                position:        t.position,
+                rotation:        [0, 0, 0],
+                trigger:         'none',
+                loop:            false,
+                onlyOnce:        false,
+                collisionShape:  ((t.solid) ? 'box' : 'none'),
+                collisionRadius: t.radius,
+                keyframes:       []
             });
         }
 

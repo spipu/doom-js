@@ -5,8 +5,8 @@
   "rotation": [0, 0, 0],
   "trigger": "action",
   "loop":    false,
-  "collidable": true,
-  "radius": 2.8,
+  "collisionShape": "faces",
+  "interactionRadius": 2.8,
   "damage": null,
   "keyframes": [
     {"t":  0.0, "translate": [0,  0,  0], "rotate": [0,    0, 0]},

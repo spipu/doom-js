@@ -53,6 +53,12 @@ class Billboard extends Object3d {
         return this;
     }
 
+    // Sprite height (world units). Used by Collision to derive the box collider's
+    // vertical interval from the body, so no separate collision height is stored.
+    getHeight() {
+        return this._height;
+    }
+
     // The body centre (local), so Instance worldCenter sits at the sprite's
     // middle (used by collision/pickup later) rather than at the anchor.
     getCenter() {

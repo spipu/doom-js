@@ -5,8 +5,8 @@
   "rotation": [0, 0, 0],
   "trigger": "proximity",
   "loop":    true,
-  "collidable": false,
-  "radius": 1,
+  "collisionShape": "none",
+  "interactionRadius": 1,
   "damage": {"radius": 0.2, "delta": 5, "type": "continuous"},
   "keyframes": [
     {"t": 0.0, "translate": [0, 0, 0], "rotate": [0, 0, 0]},

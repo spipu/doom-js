@@ -200,16 +200,16 @@ class WadDoorBuilder {
         }
 
         return {
-            code:       doorName,
-            position:   [0, 0, 0],
-            rotation:   [0, 0, 0],
-            trigger:    props.trigger,
-            loop:       props.loop,
-            onlyOnce:   props.onlyOnce,
-            collidable: true,
-            radius:     radius,
-            damage:     null,
-            keyframes:  keyframes
+            code:              doorName,
+            position:          [0, 0, 0],
+            rotation:          [0, 0, 0],
+            trigger:           props.trigger,
+            loop:              props.loop,
+            onlyOnce:          props.onlyOnce,
+            collisionShape:    'faces',
+            interactionRadius: radius,
+            damage:            null,
+            keyframes:         keyframes
         };
     }
 }
