@@ -55,16 +55,23 @@ class WadThingBuilder {
             // Hanging things anchor their top to the ceiling; the rest stand on the floor.
             const baseH = ((desc.ceiling) ? sect.ch : sect.fh);
 
+            // Doom places the sprite top at floor+topoffset, so the foot lands at
+            // topoffset-height — often a few px below the floor. Vanilla never
+            // clips this vertically (no free look); like modern ports we floor-clip
+            // floor things so feet never sink below the sector floor. Hanging things
+            // keep their (negative) offset so they stay below the ceiling.
+            const sink = first.topoffset - first.height;
+
             result.push({
                 key:           desc.frames.join('|'),
                 texIds:        sprites.map(s => s.loaderId),
                 animDuration:  desc.animDuration,
                 halfWidth:     (first.width * scale) / 2,
                 height:        first.height * scale,
-                // Doom leftoffset/topoffset position the sprite relative to the
-                // thing point (screen-aligned quad → camera-space X/Y offsets).
+                // leftoffset centres the sprite horizontally; the vertical offset is
+                // floor-clipped for floor things (see `sink` above).
                 anchorOffsetX: ((first.width / 2) - first.leftoffset) * scale,
-                anchorOffsetY: (first.topoffset - first.height) * scale,
+                anchorOffsetY: ((desc.ceiling) ? sink : Math.max(0, sink)) * scale,
                 anchorTop:     desc.ceiling,
                 light:         sect.light,
                 position:      [thing.x * scale, baseH * scale, thing.y * scale],
