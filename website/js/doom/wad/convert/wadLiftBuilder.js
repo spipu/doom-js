@@ -188,16 +188,16 @@ class WadLiftBuilder {
         }
 
         return {
-            code:       liftName,
-            position:   [0, 0, 0],
-            rotation:   [0, 0, 0],
-            trigger:    trigger,
-            loop:       loop,
-            onlyOnce:   onlyOnce,
-            collidable: true,
-            radius:     ((trigger === 'none') ? null : radius),
-            damage:     null,
-            keyframes:  keyframes
+            code:              liftName,
+            position:          [0, 0, 0],
+            rotation:          [0, 0, 0],
+            trigger:           trigger,
+            loop:              loop,
+            onlyOnce:          onlyOnce,
+            collisionShape:    'faces',
+            interactionRadius: ((trigger === 'none') ? null : radius),
+            damage:            null,
+            keyframes:         keyframes
         };
     }
 }

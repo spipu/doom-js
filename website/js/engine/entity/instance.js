@@ -2,26 +2,27 @@ class Instance extends AbstractLoadedEntity {
     constructor(id, url, callback) {
         super(id, url, callback);
 
-        this._objectId  = null;
-        this._object    = null;
-        this._position  = [0, 0, 0];
-        this._rotation  = [0, 0, 0];
-        this._trigger          = 'none';
-        this._loop             = false;
-        this._onlyOnce         = false;
-        this._done             = false;
-        this._collidable       = false;
-        this._radius           = null;
-        this._interaction      = null;
-        this._keyframes        = [];
-        this._maxTime          = 0;
-        this._time             = 0;
-        this._playing          = false;
-        this._worldCenter      = [0, 0, 0];
-        this._delta            = { translate: [0, 0, 0], rotate: [0, 0, 0] };
-        this._damage           = null;
-        this._wasInDamageRange = false;
-        this._prevTransform    = null;
+        this._objectId          = null;
+        this._object            = null;
+        this._position          = [0, 0, 0];
+        this._rotation          = [0, 0, 0];
+        this._trigger           = 'none';
+        this._loop              = false;
+        this._onlyOnce          = false;
+        this._done              = false;
+        this._collisionShape    = 'none';
+        this._collisionRadius   = null;
+        this._interactionRadius = null;
+        this._interaction       = null;
+        this._keyframes         = [];
+        this._maxTime           = 0;
+        this._time              = 0;
+        this._playing           = false;
+        this._worldCenter       = [0, 0, 0];
+        this._delta             = { translate: [0, 0, 0], rotate: [0, 0, 0] };
+        this._damage            = null;
+        this._wasInDamageRange  = false;
+        this._prevTransform     = null;
     }
 
     finalizeInit() {
@@ -81,7 +82,15 @@ class Instance extends AbstractLoadedEntity {
     }
 
     isCollidable() {
-        return this._collidable;
+        return (this._collisionShape !== 'none');
+    }
+
+    getCollisionShape() {
+        return this._collisionShape;
+    }
+
+    getCollisionRadius() {
+        return this._collisionRadius;
     }
 
     getDamage() {
@@ -90,6 +99,14 @@ class Instance extends AbstractLoadedEntity {
 
     getObject() {
         return this._object;
+    }
+
+    getPosition() {
+        return this._position;
+    }
+
+    getWorldCenter() {
+        return this._worldCenter;
     }
 
     savePreviousTransform() {
@@ -174,12 +191,12 @@ class Instance extends AbstractLoadedEntity {
         }
 
         const inRange = (
-            (this._radius !== null) &&
+            (this._interactionRadius !== null) &&
             (Math.sqrt(
                 (user.getCenterX() - this._worldCenter[0]) ** 2 +
                 (user.getCenterY() - this._worldCenter[1]) ** 2 +
                 (user.getCenterZ() - this._worldCenter[2]) ** 2
-            ) <= this._radius)
+            ) <= this._interactionRadius)
         );
 
         const wasPlaying = this._playing;

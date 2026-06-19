@@ -2,6 +2,7 @@ class Collision {
     constructor() {
         this._static  = []; // [{floors, ceilings, walls}]
         this._dynamic = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, _platformDeltaApplied}]
+        this._boxes   = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
     }
 
     // --- Public setup ---
@@ -14,6 +15,25 @@ class Collision {
         if (!instance.isCollidable()) {
             return;
         }
+
+        // Doom-style square blocker (decorations): a static axis-aligned box
+        // centred on the thing point, with a vertical interval derived from the
+        // sprite body. No per-frame update (decorations don't move).
+        if (instance.getCollisionShape() === 'box') {
+            const pos  = instance.getPosition();
+            const half = instance.getCollisionRadius();
+            const cyW  = instance.getWorldCenter()[1];
+            const h    = instance.getObject().getHeight();
+            this._boxes.push({
+                cx:      pos[0],
+                cz:      pos[2],
+                half:    half,
+                yBottom: cyW - h / 2,
+                yTop:    cyW + h / 2,
+            });
+            return;
+        }
+
         const obj = instance.getObject();
         const localTris = [];
         for (const fc of obj.faceList) {
@@ -125,7 +145,43 @@ class Collision {
             ...this._static.map(sc => sc.walls),
             ...this._dynamic.map(dc => dc.walls),
         ];
-        return this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
+        const res = this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
+        return this._resolveBoxes(res.x, res.z, r, feetY, h);
+    }
+
+    // Doom-style square blockers: push the player cylinder out of any overlapping
+    // decoration box along the axis of least penetration (which preserves the
+    // tangential motion → sliding along faces). Purely 2D + a vertical gate
+    // (feet/head vs box bottom/top), no sqrt. A few passes settle corners/multi-box.
+    _resolveBoxes(x, z, r, feetY, h) {
+        if (this._boxes.length === 0) {
+            return { x, z };
+        }
+        const headY = feetY + h;
+        for (let pass = 0; pass < 3; pass++) {
+            let moved = false;
+            for (const b of this._boxes) {
+                if (feetY >= b.yTop || headY <= b.yBottom) {
+                    continue;
+                }
+                const sum = b.half + r;
+                const ox  = sum - Math.abs(x - b.cx);
+                const oz  = sum - Math.abs(z - b.cz);
+                if (ox <= 0 || oz <= 0) {
+                    continue;
+                }
+                moved = true;
+                if (ox < oz) {
+                    x += ((x >= b.cx) ? ox : -ox);
+                    continue;
+                }
+                z += ((z >= b.cz) ? oz : -oz);
+            }
+            if (!moved) {
+                break;
+            }
+        }
+        return { x, z };
     }
 
     // --- Platform riding & object blocking ---
