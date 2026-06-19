@@ -1,9 +1,11 @@
 /**
  * A camera-facing sprite quad. Generic engine entity (no game knowledge): it is
- * an Object3d whose four corners are rebuilt every frame, screen-aligned in
- * camera space, instead of having its local geometry transformed by the view
- * matrix. This is the classic Doom-style billboard — it stays upright on screen
- * and does not tilt with the camera pitch.
+ * an Object3d whose four corners are rebuilt every frame in camera space,
+ * instead of having its local geometry transformed by the view matrix. It is a
+ * cylindrical (Y-axis) billboard: the vertical edge stays aligned with world up
+ * (m.v[1] expressed in camera space) and the quad only yaws around that axis to
+ * face the viewer, so the sprite leans naturally in perspective when the camera
+ * pitches up or down.
  *
  * The quad is anchored at its foot (floor) or top (ceiling, hanging things):
  * the entity origin is that anchor, placed by the world at the sector floor or
@@ -59,32 +61,84 @@ class Billboard extends Object3d {
         return [this._anchorOffsetX, cy, 0];
     }
 
-    // Override: place a screen-aligned quad in camera space. The entity origin
-    // (0,0,0) transformed by the view matrix is the matrix translation column —
-    // that is the anchor (sprite foot, or top for hanging things) in camera space.
+    // Override: place a cylindrical (Y-axis) billboard in camera space. The
+    // entity origin (0,0,0) transformed by the view matrix is the matrix
+    // translation column — the anchor (sprite foot, or top for hanging things)
+    // in camera space. The vertical edge follows world up in camera space
+    // (m.v[1], the camera-space image of the local Y axis); the right edge is
+    // cross(up, anchorDir), horizontal and facing the camera. The face normal is
+    // set toward the camera so back-face culling keeps the quad (cull test is
+    // normal·pt >= 0).
     ptTransform(m) {
-        const cx = m.v[3][0];
-        const cy = m.v[3][1];
-        const cz = m.v[3][2];
+        const px = m.v[3][0];
+        const py = m.v[3][1];
+        const pz = m.v[3][2];
+
+        // World up in camera space (normalised).
+        let ux = m.v[1][0];
+        let uy = m.v[1][1];
+        let uz = m.v[1][2];
+        const ul = (Math.sqrt(ux * ux + uy * uy + uz * uz) || 1);
+        ux /= ul;
+        uy /= ul;
+        uz /= ul;
+
+        // Right edge = cross(up, anchorDir): horizontal in world, perpendicular
+        // to the viewing direction so the quad faces the camera in yaw. Falls
+        // back to the camera X axis in the degenerate case (sprite seen straight
+        // along world up).
+        let rx = uy * pz - uz * py;
+        let ry = uz * px - ux * pz;
+        let rz = ux * py - uy * px;
+        let rl = Math.sqrt(rx * rx + ry * ry + rz * rz);
+        if (rl < 1e-6) {
+            rx = 1;
+            ry = 0;
+            rz = 0;
+            rl = 1;
+        }
+        rx /= rl;
+        ry /= rl;
+        rz /= rl;
+
         const hw = this._halfWidth;
         const h  = this._height;
         const ox = this._anchorOffsetX;
-        const base = cy + this._anchorOffsetY;
-        const yb = ((this._anchorTop) ? base - h : base);
-        const yt = yb + h;
+        const oy = this._anchorOffsetY;
 
-        this._setPt(0, cx - hw + ox, yb, cz);
-        this._setPt(1, cx + hw + ox, yb, cz);
-        this._setPt(2, cx + hw + ox, yt, cz);
-        this._setPt(3, cx - hw + ox, yt, cz);
+        // Anchor shifted by the Doom leftoffset/topoffset along the quad basis.
+        const ax = px + ox * rx + oy * ux;
+        const ay = py + ox * ry + oy * uy;
+        const az = pz + ox * rz + oy * uz;
 
-        // Always face the viewer so back-face culling keeps the quad (cull test
-        // is normal·pt >= 0, and pt.z = cz > 0 in front of the camera).
+        // Foot of the sprite (top anchor subtracts a full height).
+        const fx = ((this._anchorTop) ? ax - h * ux : ax);
+        const fy = ((this._anchorTop) ? ay - h * uy : ay);
+        const fz = ((this._anchorTop) ? az - h * uz : az);
+        const tx = fx + h * ux;
+        const ty = fy + h * uy;
+        const tz = fz + h * uz;
+
+        this._setPt(0, fx - hw * rx, fy - hw * ry, fz - hw * rz);
+        this._setPt(1, fx + hw * rx, fy + hw * ry, fz + hw * rz);
+        this._setPt(2, tx + hw * rx, ty + hw * ry, tz + hw * rz);
+        this._setPt(3, tx - hw * rx, ty - hw * ry, tz - hw * rz);
+
+        // Face normal = cross(right, up), flipped to point toward the camera
+        // (anchor in front of the camera ⇒ n·anchor < 0 keeps the quad).
+        let nx = ry * uz - rz * uy;
+        let ny = rz * ux - rx * uz;
+        let nz = rx * uy - ry * ux;
+        if (nx * px + ny * py + nz * pz > 0) {
+            nx = -nx;
+            ny = -ny;
+            nz = -nz;
+        }
         for (let k = 0; k < this.faceCount; k++) {
             const n = this.faceList[k].normal;
-            n[0] = 0;
-            n[1] = 0;
-            n[2] = -1;
+            n[0] = nx;
+            n[1] = ny;
+            n[2] = nz;
         }
         return this;
     }
