@@ -21,14 +21,16 @@ cd website
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080` in a browser, add a WAD file (local file or URL), pick a level and play.
+Then open `http://localhost:8080` in a browser, add a WAD file (local file or URL), pick a difficulty and a level, and play.
 
 ## Spipu-Doom (`index.html`)
 
 - **WAD menu** (1920×1080 letterboxed virtual screen): list of stored WADs, add by URL or local file, delete with confirmation. Binary files persist in IndexedDB (`spipudoom` database) across sessions and app updates.
+- **Difficulty selection**: after picking a WAD, a difficulty screen offers the five canonical Doom skills (*I'm too young to die* … *Nightmare!*); the chosen skill drives the single-player thing filtering below and is kept across the level chain.
 - **Level list**: the WAD directory is parsed (`WadFile`) and every map marker (ExMy / MAPxx) is listed.
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
-- **World things as sprites**: every non-enemy THING (decorations, obstacles, gore, corpses, pools, animated torches/lamps, ceiling-hung gore, and pickups — weapons, ammo, health/armor, power-ups, keys) is read from the THINGS lump and drawn as a generic camera-facing **billboard** (`Billboard extends Object3d`), lit by its sector brightness, anchored to the floor or ceiling, with animated frames where Doom animates them. Mapping lives in `DoomThingCatalog`.
+- **World things as sprites**: every non-enemy THING (decorations, obstacles, gore, corpses, pools, animated torches/lamps, ceiling-hung gore, and pickups — weapons, ammo, health/armor, power-ups, keys) is read from the THINGS lump and drawn as a generic **billboard** (`Billboard extends Object3d`) — a cylindrical (Y-axis) sprite that faces the camera and leans naturally in perspective when you look up or down. Lit by its sector brightness, anchored to the floor or ceiling (with the foot floor-clipped so sprites never sink below the floor), with animated frames where Doom animates them. Mapping lives in `DoomThingCatalog`.
+- **Single-player thing filtering**: like the real game (`P_SpawnMapThing`), each THING is gated by its `flags` — multiplayer-only things (`0x10`) are dropped, and a thing only appears if the chosen skill's bit is set (skill 1-2 → `0x01`, 3 → `0x02`, 4-5 → `0x04`). This matches what vanilla single-player shows (no co-op/deathmatch-only weapons).
 - **Player equipment model**: the `DoomUser` carries weapons / ammo (shared pool) / keys / power-up effects and armor; weapons, ammo and armor persist between levels while keys and timed effects reset (data-driven via `resetOnNewLevel`). Pickup *effects* are defined in the catalog (the collection logic itself is a later brick).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
@@ -111,8 +113,9 @@ website/
 │   │   │   ├── menuModal.js     Confirm / loading / message modals
 │   │   │   ├── abstractMenuScreen.js  Base menu screen (DOM helpers, status, errors)
 │   │   │   ├── wadListScreen.js       WAD list + add (URL / local file) + delete
+│   │   │   ├── difficultyScreen.js    Skill (1-5) selection between WAD and levels
 │   │   │   ├── levelListScreen.js     Levels of a WAD
-│   │   │   └── menuNavigator.js       Screen navigation, launches DoomGame
+│   │   │   └── menuNavigator.js       Screen navigation (WAD → difficulty → level), launches DoomGame
 │   │   └── wad/
 │   │       ├── wadError.js      Typed errors (storage, fetch, format, quota)
 │   │       ├── wadFile.js       Binary WAD reader (header, directory, lumps, level names)
@@ -136,7 +139,7 @@ website/
 │   │           ├── wadLiftBuilder.js      Lift meshes + instances (keyframes)
 │   │           ├── wadSwitchBuilder.js    Switch meshes + instances + interaction specs
 │   │           ├── doomSwitchInteraction.js  Runtime switch (SW1↔SW2 swap, targets, exit)
-│   │           ├── wadThingBuilder.js     THINGS lump → billboard sprites (decorations + pickups)
+│   │           ├── wadThingBuilder.js     THINGS lump → billboard sprites (decorations + pickups), skill/multiplayer flag filtering
 │   │           └── wadWorldBuilder.js     Orchestrator: WadFile + level → loaded world, sector lookup for things
 │   └── engine/
 │       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
@@ -153,7 +156,7 @@ website/
 │       │   ├── light.js         Point light source
 │       │   ├── texture.js       Texture image data + alpha detection
 │       │   ├── object3d.js      3D geometry (vertices, faces, normals, projection)
-│       │   ├── billboard.js     Camera-facing sprite quad (Object3d subclass: screen-aligned, sector-lit, floor/ceiling anchored)
+│       │   ├── billboard.js     Camera-facing sprite quad (Object3d subclass: cylindrical Y-axis, leans with pitch, sector-lit, floor/ceiling anchored)
 │       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage)
 │       │   ├── user.js          FPS player (physics, gravity, jump, crouch, energy, armor)
 │       │   └── world.js         FPS scene (user, lights, collision, update loop)

@@ -10,6 +10,7 @@ class DoomGame {
         this._wadMeta   = null;
         this._levelName = null;
         this._spawnOverride = null;
+        this._skill         = 3;
         this._carriedState  = null;
         this._pauseWasDown = true;
         this._running       = false;
@@ -116,12 +117,17 @@ class DoomGame {
     // spawnOverride is a debug helper: when set ({position, yaw, pitch}) the
     // player is forced to that location after the world is built, instead of the
     // WAD spawn (see _applySpawnOverride).
-    async startFromWad(wadFile, levelName, wadMeta = null, spawnOverride = null) {
+    async startFromWad(wadFile, levelName, wadMeta = null, spawnOverride = null, skill = null) {
         this._wadFile   = wadFile;
         this._levelName = levelName;
         this._spawnOverride = spawnOverride;
         if (wadMeta !== null) {
             this._wadMeta = wadMeta;
+        }
+        // Skill is given on the first launch by the menu and kept across the
+        // level chain (the exit-switch transition calls startFromWad without it).
+        if (skill !== null) {
+            this._skill = skill;
         }
 
         // Snapshot the player equipment BEFORE loader.reset() destroys the world.
@@ -138,7 +144,8 @@ class DoomGame {
             onLevelExit: () => {
                 this._onLevelExit();
             },
-            thingCatalog: this._thingCatalog
+            thingCatalog: this._thingCatalog,
+            skill: this._skill
         }).build();
         loader.setCallback(() => {
             this._init();
@@ -185,7 +192,7 @@ class DoomGame {
         this._hud = new HudDoom(this._engine)
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName)
+            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill)
             .addDescription('(c)2026 Spipu')
         ;
 

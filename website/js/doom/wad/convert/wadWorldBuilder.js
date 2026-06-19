@@ -11,9 +11,10 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelName
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number}
      *                  onLevelExit is wired on the exit switches; thingCatalog
-     *                  (DoomGame) maps THING types to world sprites/pickups.
+     *                  (DoomGame) maps THING types to world sprites/pickups; skill
+     *                  (1..5, default 3) drives the single-player thing filtering.
      */
     constructor(wadFile, levelName, options = null) {
         options = options ?? {};
@@ -22,6 +23,7 @@ class WadWorldBuilder {
         this._levelName    = levelName;
         this._onLevelExit  = options.onLevelExit ?? null;
         this._thingCatalog = options.thingCatalog ?? null;
+        this._skill        = options.skill ?? 3;
     }
 
     /**
@@ -83,7 +85,8 @@ class WadWorldBuilder {
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
             + lifts.length + ' lifts, ' + switches.length + ' switches, '
-            + things.count + ' things (' + things.skipped + ' skipped)');
+            + things.count + ' things (' + things.skipped + ' skipped, '
+            + things.filtered + ' filtered, skill ' + this._skill + ')');
     }
 
     // --- Internal ---
@@ -93,7 +96,7 @@ class WadWorldBuilder {
     // thing catalog. Phase 1: display only (collidable false, no interaction).
     _registerThings(level, palette) {
         if (this._thingCatalog === null) {
-            return {count: 0, skipped: 0};
+            return {count: 0, skipped: 0, filtered: 0};
         }
 
         const spriteBank = new WadSpriteBank(this._wadFile, palette).init();
@@ -101,7 +104,8 @@ class WadWorldBuilder {
             level,
             this._thingCatalog,
             spriteBank,
-            (x, y) => this._findSector(x, y)
+            (x, y) => this._findSector(x, y),
+            this._skill
         );
         const things = builder.buildAll();
 
@@ -139,7 +143,7 @@ class WadWorldBuilder {
             });
         }
 
-        return {count: things.length, skipped: builder.getSkipped()};
+        return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered()};
     }
 
     _registerInstance(built, bank) {

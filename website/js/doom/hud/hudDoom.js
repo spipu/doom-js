@@ -11,9 +11,10 @@ class HudDoom extends HudDebug {
     // The [LEVEL] line is rendered in the exact form expected by
     // MenuNavigator.start(wadName, levelCode, ...) so a spawn can be reproduced
     // straight from a screenshot.
-    setLevelInfo(wadId, levelCode) {
+    setLevelInfo(wadId, levelCode, skill) {
         this._wadId     = wadId;
         this._levelCode = levelCode;
+        this._skill     = skill;
         return this;
     }
 
@@ -28,7 +29,8 @@ class HudDoom extends HudDebug {
         const u = this._user;
         const lines = [];
 
-        lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?'));
+        lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?')
+            + ' / ' + (this._skill ?? '?'));
 
         lines.push('[ARMOR] ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor()
             + ' (' + Math.round(u.getArmorAbsorb() * 100) + '%)');
