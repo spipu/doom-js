@@ -158,7 +158,7 @@ class DoomUser extends User {
     resetForNewLevel(lookup) {
         for (const code of Array.from(this._items)) {
             const def = lookup.getItem(code);
-            if ((def !== null) && (def !== undefined) && (def.isResetOnNewLevel() === true)) {
+            if ((def != null) && (def.isResetOnNewLevel() === true)) {
                 this._items.delete(code);
             }
         }

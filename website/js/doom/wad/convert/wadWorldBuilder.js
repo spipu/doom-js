@@ -274,11 +274,11 @@ class WadWorldBuilder {
         const a = vertexes[bestLd.v1];
         const b = vertexes[bestLd.v2];
         // cross < 0 → point on the right side of v1→v2 (Doom front/right sidedef).
+        // Prefer the sidedef facing the point; fall back to the other side.
         const side = WadGeometry.cross2d(a, b, [doomX, doomY]);
-        let sdIdx = ((side < 0) ? bestLd.right : bestLd.left);
-        if (sdIdx < 0) {
-            sdIdx = ((side < 0) ? bestLd.left : bestLd.right);
-        }
+        const near = ((side < 0) ? bestLd.right : bestLd.left);
+        const far  = ((side < 0) ? bestLd.left : bestLd.right);
+        const sdIdx = ((near >= 0) ? near : far);
         if (sdIdx < 0) {
             return null;
         }

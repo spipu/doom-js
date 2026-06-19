@@ -68,9 +68,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const groups = new Map();
             for (const k of faceIndices) {
                 const fc     = obj.faceList[k];
-                const n      = fc.normal;
-                const p      = obj.pt3d[fc.pts[0]];
-                if (n[0]*p[0] + n[1]*p[1] + n[2]*p[2] >= 0) {
+                if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
                     continue;
                 }
                 const clampV   = fc.clampV || false;
