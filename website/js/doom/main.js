@@ -34,7 +34,7 @@ function loadApp()
     loader.world().setUserClass(DoomUser);
 
     const menu = new MenuNavigator();
-    menu.start();
+    menu.start('freedoom1', 'E1M1');
 }
 
 appBootstrap.setReadyCallback(loadApp);
