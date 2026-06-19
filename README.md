@@ -29,7 +29,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Difficulty selection**: after picking a WAD, a difficulty screen offers the five canonical Doom skills (*I'm too young to die* … *Nightmare!*); the chosen skill drives the single-player thing filtering below and is kept across the level chain.
 - **Level list**: the WAD directory is parsed (`WadFile`) and every map marker (ExMy / MAPxx) is listed.
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
-- **World things as sprites**: every non-enemy THING (decorations, obstacles, gore, corpses, pools, animated torches/lamps, ceiling-hung gore, and pickups — weapons, ammo, health/armor, power-ups, keys) is read from the THINGS lump and drawn as a generic **billboard** (`Billboard extends Object3d`) — a cylindrical (Y-axis) sprite that faces the camera and leans naturally in perspective when you look up or down. Lit by its sector brightness, anchored to the floor or ceiling (with the foot floor-clipped so sprites never sink below the floor), with animated frames where Doom animates them. Mapping lives in `DoomThingCatalog`.
+- **World things as sprites**: every non-enemy THING (decorations, obstacles, gore, corpses, pools, animated torches/lamps, ceiling-hung gore, and pickups — weapons, ammo, health/armor, power-ups, keys) is read from the THINGS lump and drawn as a generic **billboard** (`Billboard extends Object3d`) — a cylindrical (Y-axis) sprite that faces the camera and leans naturally in perspective when you look up or down. Lit by its sector brightness, anchored to the floor or ceiling (with the foot floor-clipped so sprites never sink below the floor), with animated frames where Doom animates them. Mapping lives in `DoomThingCatalog`. **Solid** decorations (barrels, pillars, trees, torches…) block the player with a Doom-style **square hitbox** (axis-of-least-penetration slide, height-gated so you can pass under ceiling-hung things); pickups and non-solid props stay walk-through.
 - **Single-player thing filtering**: like the real game (`P_SpawnMapThing`), each THING is gated by its `flags` — multiplayer-only things (`0x10`) are dropped, and a thing only appears if the chosen skill's bit is set (skill 1-2 → `0x01`, 3 → `0x02`, 4-5 → `0x04`). This matches what vanilla single-player shows (no co-op/deathmatch-only weapons).
 - **Player equipment model**: the `DoomUser` carries weapons / ammo (shared pool) / keys / power-up effects and armor; weapons, ammo and armor persist between levels while keys and timed effects reset (data-driven via `resetOnNewLevel`). Pickup *effects* are defined in the catalog (the collection logic itself is a later brick).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
@@ -144,7 +144,7 @@ website/
 │   └── engine/
 │       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
 │       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, DEG_TO_RAD)
-│       ├── collision.js         FPS physics: floor/ceiling/wall detection, platform riding
+│       ├── collision.js         FPS physics: floor/ceiling/wall detection (triangles), platform riding, square decoration blockers (Doom box hitbox)
 │       ├── loader.js            Global Loader — synchronises all sub-loaders, batch mode
 │       ├── matrix.js            4×4 transformation matrices
 │       ├── screenManager.js     Creates canvas + HUD overlay in #screen (fullscreen, fixed or virtual size)
@@ -157,7 +157,7 @@ website/
 │       │   ├── texture.js       Texture image data + alpha detection
 │       │   ├── object3d.js      3D geometry (vertices, faces, normals, projection)
 │       │   ├── billboard.js     Camera-facing sprite quad (Object3d subclass: cylindrical Y-axis, leans with pitch, sector-lit, floor/ceiling anchored)
-│       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage)
+│       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage, collisionShape none/faces/box)
 │       │   ├── user.js          FPS player (physics, gravity, jump, crouch, energy, armor)
 │       │   └── world.js         FPS scene (user, lights, collision, update loop)
 │       ├── hud/

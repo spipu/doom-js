@@ -28,16 +28,16 @@ class InstanceLoader extends AbstractLoader {
         entity._position         = data.position;
         entity._rotation         = data.rotation;
         entity._trigger          = data.trigger;
-        entity._loop             = (data.loop === true);
-        entity._onlyOnce         = (data.onlyOnce === true);
+        entity._animLoop         = (data.loop === true);
+        entity._animOnlyOnce     = (data.onlyOnce === true);
         entity._collisionShape   = (data.collisionShape ?? 'none');
         entity._collisionRadius  = (data.collisionRadius ?? null);
         entity._interactionRadius = (data.interactionRadius ?? null);
         entity._damage           = data.damage || null;
         entity._interaction      = data.interaction || null;
-        entity._keyframes        = data.keyframes || [];
-        entity._maxTime          = ((entity._keyframes.length > 0) ? entity._keyframes[entity._keyframes.length - 1].t : 0);
-        entity._time             = ((entity._keyframes.length > 0) ? entity._keyframes[0].t : 0);
+        entity._animKeyframes    = data.keyframes || [];
+        entity._animMaxTime      = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[entity._animKeyframes.length - 1].t : 0);
+        entity._animTime         = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[0].t : 0);
 
         this._codeRegistry[entity.getCode()] = entity.getId();
     }
