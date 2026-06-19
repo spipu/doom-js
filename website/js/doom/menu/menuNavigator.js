@@ -8,12 +8,14 @@ class MenuNavigator {
         this._storage  = new WadStorage();
         this._registry = new WadRegistry(this._storage);
 
-        this._wadListScreen   = new WadListScreen(this, this._display, this._registry);
-        this._levelListScreen = new LevelListScreen(this, this._display, this._registry);
+        this._wadListScreen    = new WadListScreen(this, this._display, this._registry);
+        this._difficultyScreen = new DifficultyScreen(this, this._display);
+        this._levelListScreen  = new LevelListScreen(this, this._display, this._registry);
 
-        this._currentScreen = null;
-        this._selectedWad   = null;
-        this._selectedLevel = null;
+        this._currentScreen     = null;
+        this._selectedWad       = null;
+        this._selectedLevel     = null;
+        this._selectedDifficulty = 3;
     }
 
     /**
@@ -29,14 +31,15 @@ class MenuNavigator {
      * @param {string|null} wadName       WAD name or id (case-insensitive, with or without ".wad")
      * @param {string|null} levelCode     level name, e.g. "E1M1" (case-insensitive)
      * @param {{position: number[], yaw: number, pitch: number}|null} spawnOverride
+     * @param {number} skill   difficulty 1..5 for the direct shortcut (default 3)
      */
-    start(wadName = null, levelCode = null, spawnOverride = null) {
+    start(wadName = null, levelCode = null, spawnOverride = null, skill = 3) {
         this._display.init();
 
         this._registry.init()
             .then(() => {
                 if (wadName !== null) {
-                    this._startDirect(wadName, levelCode, spawnOverride);
+                    this._startDirect(wadName, levelCode, spawnOverride, skill);
                     return;
                 }
                 this.showWadList();
@@ -50,7 +53,8 @@ class MenuNavigator {
 
     /**
      * Starts the menu directly on the level list of the given WAD
-     * (used when leaving a level with the pause button).
+     * (used when leaving a level with the pause button). The difficulty already
+     * chosen for this session is kept, so this skips the difficulty screen.
      * @param {object} meta
      */
     startAtLevels(meta) {
@@ -58,7 +62,7 @@ class MenuNavigator {
 
         this._registry.init()
             .then(() => {
-                this.openWad(meta);
+                this._switchTo(this._levelListScreen.setWad(meta));
             })
             .catch(() => {
                 this._showFallback();
@@ -72,9 +76,20 @@ class MenuNavigator {
     }
 
     /**
+     * WAD selected → pick the difficulty before the level list.
      * @param {object} meta
      */
     openWad(meta) {
+        this._switchTo(this._difficultyScreen.setWad(meta));
+    }
+
+    /**
+     * Difficulty selected → go to the level list (keeps the chosen skill).
+     * @param {object} meta
+     * @param {number} skill
+     */
+    openLevels(meta, skill) {
+        this._selectedDifficulty = skill;
         this._switchTo(this._levelListScreen.setWad(meta));
     }
 
@@ -116,7 +131,7 @@ class MenuNavigator {
         try {
             const wadFile = await this._registry.getWadFile(meta.id);
             const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName, meta, spawnOverride);
+            await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
             this._closeMenus();
         } catch (error) {
@@ -137,8 +152,11 @@ class MenuNavigator {
      * @param {string} wadName
      * @param {string|null} levelCode
      * @param {object|null} spawnOverride
+     * @param {number} skill   difficulty 1..5 (default 3)
      */
-    async _startDirect(wadName, levelCode, spawnOverride) {
+    async _startDirect(wadName, levelCode, spawnOverride, skill = 3) {
+        this._selectedDifficulty = skill;
+
         const list = await this._registry.getList();
         const meta = this._findWad(list, wadName);
         if (meta === null) {
@@ -158,7 +176,7 @@ class MenuNavigator {
             this._selectedLevel = levelName;
 
             const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName, meta, spawnOverride);
+            await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
             this._closeMenus();
         } catch (error) {

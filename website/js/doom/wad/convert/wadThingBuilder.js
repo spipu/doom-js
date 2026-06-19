@@ -13,12 +13,14 @@ class WadThingBuilder {
      * @param {object}        catalog       thing catalog exposing getThingForType(type)
      * @param {WadSpriteBank} spriteBank    decodes sprite lumps to engine textures
      * @param {function}      sectorFinder  (doomX, doomY) → {fh, ch} in Doom units
+     * @param {number}        skill         difficulty 1..5 (defaults to 3, HMP)
      */
-    constructor(level, catalog, spriteBank, sectorFinder) {
+    constructor(level, catalog, spriteBank, sectorFinder, skill = 3) {
         this._level        = level;
         this._catalog      = catalog;
         this._spriteBank   = spriteBank;
         this._sectorFinder = sectorFinder;
+        this._skill        = skill;
     }
 
     /**
@@ -28,11 +30,27 @@ class WadThingBuilder {
     buildAll() {
         const scale  = WadConstants.SCALE;
         const result = [];
-        this._skipped = 0;
+        this._skipped  = 0;
+        this._filtered = 0;
+
+        // Skill bit for the chosen difficulty (Doom P_SpawnMapThing): a thing is
+        // present only if its flags carry this bit. 1-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
+        const skillBit = ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04));
 
         for (const thing of this._level.things) {
             const desc = this._catalog.getThingForType(thing.type);
             if (desc === null) {
+                continue;
+            }
+
+            // Single-player filtering, like the real game: skip multiplayer-only
+            // things and things absent at the chosen difficulty.
+            if ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0) {
+                this._filtered++;
+                continue;
+            }
+            if ((thing.flags & skillBit) === 0) {
+                this._filtered++;
                 continue;
             }
 
@@ -88,5 +106,10 @@ class WadThingBuilder {
     // Number of mapped things dropped because no sector was found (call after buildAll).
     getSkipped() {
         return this._skipped;
+    }
+
+    // Number of mapped things filtered out by skill / multiplayer flag (call after buildAll).
+    getFiltered() {
+        return this._filtered;
     }
 }

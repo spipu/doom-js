@@ -37,7 +37,7 @@ class LevelListScreen extends AbstractMenuScreen {
 
         const actions = this._addElement('div', 'doom-menu-actions', panel);
         this._addButton('Retour', () => {
-            this._navigator.showWadList();
+            this._navigator.openWad(this._wadMeta);
         }, actions);
 
         this._loadLevels(listEl);

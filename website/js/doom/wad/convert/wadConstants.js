@@ -9,6 +9,11 @@ class WadConstants {
     // when no sector strictly contains it; beyond this the thing is dropped.
     static THING_SECTOR_MAX_DIST = 64;
 
+    // THING flags (entry byte 8). Skill bits gate a thing per difficulty
+    // (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04); 0x10 means "not in single-player"
+    // (multiplayer/co-op/DM only). 0x08 is "ambush" (deaf), irrelevant to display.
+    static MTF_NOT_SINGLE = 0x10;
+
     // Doom game tic = 1/35 s (animation/timing unit).
     static SECONDS_PER_TIC = 1 / 35;
 

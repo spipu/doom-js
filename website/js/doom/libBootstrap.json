@@ -1,5 +1,5 @@
 {
-    "version": "v1.045",
+    "version": "v1.047",
     "files": {
         "assets": [],
         "css": [
@@ -43,6 +43,7 @@
             "/js/doom/menu/menuModal.js",
             "/js/doom/menu/abstractMenuScreen.js",
             "/js/doom/menu/wadListScreen.js",
+            "/js/doom/menu/difficultyScreen.js",
             "/js/doom/menu/levelListScreen.js",
             "/js/doom/menu/menuNavigator.js",
             "/js/doom/doomGame.js",
