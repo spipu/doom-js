@@ -192,8 +192,11 @@ class Object3d extends AbstractLoadedEntity {
     ptProjection(engine) {
         for (let k = 0; k < this.ptCount; k++) {
             const p = this.pt2d[k];
-            p[0] = Math.trunc(engine.projScaleX * this.pt3d[k][0] / this.pt3d[k][2] - engine.projOffsetX);
-            p[1] = Math.trunc(-engine.projScaleY * this.pt3d[k][1] / this.pt3d[k][2] - engine.projOffsetY);
+            // Guard against division by a null/negative depth: the full/webgl
+            // renderers near-clip upstream so z > 0 there, but flat/fast do not.
+            const z = ((this.pt3d[k][2] > 1e-5) ? this.pt3d[k][2] : 1e-5);
+            p[0] = Math.trunc(engine.projScaleX * this.pt3d[k][0] / z - engine.projOffsetX);
+            p[1] = Math.trunc(-engine.projScaleY * this.pt3d[k][1] / z - engine.projOffsetY);
             p[2] = this.pt3d[k][2];
         }
         return this;

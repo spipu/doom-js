@@ -12,6 +12,13 @@ class Object3dRendererBase {
         return canvas.getContext('2d');
     }
 
+    // Back-face culling: a face whose normal points away from the camera is
+    // skipped. Vertices are in camera space, so the test is normal·firstVertex
+    // (>= 0 means the face turns away from the eye at the origin).
+    _isBackFace(normal, pt) {
+        return ((normal[0] * pt[0] + normal[1] * pt[1] + normal[2] * pt[2]) >= 0);
+    }
+
     _resolveTexId(fc, sceneMs) {
         if (fc.animTextures === null) {
             return fc.textureId;

@@ -62,7 +62,10 @@ class WadAnimationBank {
             }
             const ids = sequence.frames.filter((f) => nameToIdx[f] !== undefined).map((f) => nameToIdx[f]);
             if (ids.length > 1) {
-                animMap[ids[0]] = {ids: ids, duration: sequence.speedTics / 35};
+                // Guard a malformed/zero speed (would give a 0/NaN frame duration);
+                // fall back to the vanilla default of 8 tics.
+                const tics = ((sequence.speedTics > 0) ? sequence.speedTics : 8);
+                animMap[ids[0]] = {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
             }
         }
 
