@@ -50,8 +50,10 @@ class WadWorldBuilder {
 
         // Doors
         const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
+        const builtDoorCodes = new Set();
         for (const door of doors) {
             this._registerInstance(door, bank);
+            builtDoorCodes.add(door.code);
             // Locked doors only open if the player holds the key. The engine
             // calls this opaque predicate before firing the trigger; the Doom
             // key check lives here (the runtime user is a DoomUser).
@@ -70,8 +72,16 @@ class WadWorldBuilder {
             builtLiftCodes.add(lift.code);
         }
 
+        // Rising floors (walk-over floor raises, e.g. special 58)
+        const risingFloors = new WadRisingFloorBuilder(level, analysis, bank, animBank).buildAll();
+        const builtRisingCodes = new Set();
+        for (const floor of risingFloors) {
+            this._registerInstance(floor, bank);
+            builtRisingCodes.add(floor.code);
+        }
+
         // Switches + interactions
-        const switches = new WadSwitchBuilder(level, analysis, bank, builtLiftCodes).buildAll();
+        const switches = new WadSwitchBuilder(level, analysis, bank, builtLiftCodes, builtDoorCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             const spec = sw.interactionSpec;
@@ -80,6 +90,26 @@ class WadWorldBuilder {
                 interaction.setExitCallback(this._onLevelExit);
             }
             loader.interactions().loadFromData(interaction);
+        }
+        await this._yield();
+
+        // Walk triggers (W1/WR lines that activate a remote tagged element by
+        // being crossed — invisible proximity zones that start() their targets)
+        const walkTriggers = new WadWalkTriggerBuilder(
+            level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes).buildAll();
+        for (const wt of walkTriggers) {
+            this._registerInstance(wt, bank);
+            loader.interactions().loadFromData(
+                new DoomWalkTriggerInteraction(wt.interactionSpec.code, wt.interactionSpec.targets));
+        }
+
+        // Teleporters (walk-over → landing thing type 14 of the same tag)
+        const landings = this._buildTeleportLandings(level);
+        const teleporters = new WadTeleportBuilder(level, analysis, bank, landings).buildAll();
+        for (const tp of teleporters) {
+            this._registerInstance(tp, bank);
+            loader.interactions().loadFromData(
+                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination));
         }
         await this._yield();
 
@@ -92,7 +122,9 @@ class WadWorldBuilder {
 
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
-            + lifts.length + ' lifts, ' + switches.length + ' switches, '
+            + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
+            + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
+            + teleporters.length + ' teleporters, '
             + things.count + ' things (' + things.skipped + ' skipped, '
             + things.filtered + ' filtered, skill ' + this._skill + ')');
     }
@@ -228,6 +260,30 @@ class WadWorldBuilder {
         };
     }
 
+    // Teleport landings: every thing type 14, mapped by the tag of the sector
+    // that contains it, to a world-space destination {x, y, z, yaw}. The y is
+    // the landing floor + a snap margin (the interaction snaps to the floor).
+    _buildTeleportLandings(level) {
+        const SCALE = WadConstants.SCALE;
+        const landings = {};
+        for (const t of level.things) {
+            if (t.type !== WadConstants.TELEPORT_LANDING_THING) {
+                continue;
+            }
+            const sec = this._findSector(t.x, t.y);
+            if ((sec === null) || (sec.tag === 0)) {
+                continue;
+            }
+            landings[sec.tag] = {
+                x:   t.x * SCALE,
+                y:   sec.fh * SCALE + 0.3,
+                z:   t.y * SCALE,
+                yaw: ((90 - t.angle) % 360 + 360) % 360
+            };
+        }
+        return landings;
+    }
+
     // Precompute every sector's outer polygons + floor/ceiling/light once, so
     // _findSector is a cheap point test per thing instead of rebuilding polygons.
     _buildSectorPolyCache(level) {
@@ -242,7 +298,7 @@ class WadWorldBuilder {
             if (outers.length === 0) {
                 continue;
             }
-            cache.push({fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, outers: outers});
+            cache.push({fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, tag: sectors[si].tag, outers: outers});
         }
         return cache;
     }
@@ -268,7 +324,7 @@ class WadWorldBuilder {
             }
         }
         if (contained !== null) {
-            return {fh: contained.fh, ch: contained.ch, light: contained.light};
+            return {fh: contained.fh, ch: contained.ch, light: contained.light, tag: contained.tag};
         }
 
         return this._nearestSideSector(doomX, doomY);
@@ -306,7 +362,7 @@ class WadWorldBuilder {
             return null;
         }
         const sec = sectors[sidedefs[sdIdx].sector];
-        return {fh: sec.fh, ch: sec.ch, light: sec.light};
+        return {fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
     }
 
     _yield() {

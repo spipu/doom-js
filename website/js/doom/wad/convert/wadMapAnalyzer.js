@@ -17,8 +17,11 @@ class WadMapAnalyzer {
         const doors = this._identifyDoors();
         const lifts = this._identifyLifts(doors.doorSectorIds);
         this._patchLiftFloors(lifts);
+        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds);
         const switchLinedefIds = this._identifySwitches();
+        const teleporterLinedefs = this._identifyTeleporters();
+        const walkTriggerLinedefs = this._identifyWalkTriggers();
 
         return {
             doorSectorIds:        doors.doorSectorIds,
@@ -28,8 +31,43 @@ class WadMapAnalyzer {
             liftSectorSpecial:    lifts.liftSectorSpecial,
             liftOriginalFh:       lifts.liftOriginalFh,
             liftMinAdjFh:         lifts.liftMinAdjFh,
-            switchLinedefIds:     switchLinedefIds
+            risingFloorIds:       rising.risingFloorIds,
+            risingFloorSpecial:   rising.risingFloorSpecial,
+            switchLinedefIds:     switchLinedefIds,
+            teleporterLinedefs:   teleporterLinedefs,
+            walkTriggerLinedefs:  walkTriggerLinedefs
         };
+    }
+
+    // Walk-over linedefs (W1/WR) that activate a remote tagged element by being
+    // crossed. Each becomes an invisible proximity zone that start()s the tagged
+    // lift/floor/door instances (resolved in WadWalkTriggerBuilder), like a
+    // switch but proximity-activated.
+    _identifyWalkTriggers() {
+        const {linedefs} = this._level;
+        const walkTriggers = [];
+        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
+            const ld = linedefs[ldIdx];
+            if (WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special) && ld.tag !== 0) {
+                walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
+            }
+        }
+        return walkTriggers;
+    }
+
+    // Walk-over teleport linedefs (39 W1 / 97 WR). The destination is the thing
+    // type 14 in the sector of the same tag (resolved later in WadWorldBuilder,
+    // which has the thing list + sector lookup).
+    _identifyTeleporters() {
+        const {linedefs} = this._level;
+        const teleporters = [];
+        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
+            const ld = linedefs[ldIdx];
+            if (WadConstants.TELEPORT_SPECIALS.has(ld.special) && ld.tag !== 0) {
+                teleporters.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
+            }
+        }
+        return teleporters;
     }
 
     // --- Doors ---
@@ -145,7 +183,22 @@ class WadMapAnalyzer {
                 }
             }
             liftOriginalFh[si] = sectors[si].fh;
-            liftMinAdjFh[si]   = ((adjFh.length > 0) ? Math.min(...adjFh) : sectors[si].fh);
+            // Target floor height: classic lifts lower to the LOWEST adjacent
+            // floor; 102 lowers to the HIGHEST, 71 to the highest + 8. Clamped
+            // so a remote floor-lower never raises the floor (guards the
+            // origFh <= target → no lift case in the builder).
+            const rule = WadConstants.LIFT_TARGET_BY_SPECIAL[liftSectorSpecial[si]] ?? 'lowest';
+            let target;
+            if (adjFh.length === 0) {
+                target = sectors[si].fh;
+            } else if (rule === 'highest') {
+                target = Math.max(...adjFh);
+            } else if (rule === 'highest+8') {
+                target = Math.max(...adjFh) + 8;
+            } else {
+                target = Math.min(...adjFh);
+            }
+            liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
         }
 
         return {
@@ -161,6 +214,30 @@ class WadMapAnalyzer {
         for (const si of lifts.movingFloorDownIds) {
             this._level.sectors[si].fh = lifts.liftMinAdjFh[si];
         }
+    }
+
+    // Rising floors (special 58 etc.): the floor moves UP a fixed delta when
+    // walked over. Unlike lifts, fh is NOT patched — the static floor stays at
+    // its WAD height and the moving top-flat (built by WadRisingFloorBuilder)
+    // sits there and rises. Exclude sectors already claimed as doors or lifts.
+    _identifyRisingFloors(doorSectorIds, movingFloorDownIds) {
+        const {linedefs, sectors} = this._level;
+        const risingFloorIds     = new Set();
+        const risingFloorSpecial = {};
+
+        for (const ld of linedefs) {
+            if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && ld.tag !== 0) {
+                for (let si = 0; si < sectors.length; si++) {
+                    if (sectors[si].tag === ld.tag
+                        && !doorSectorIds.has(si) && !movingFloorDownIds.has(si)) {
+                        risingFloorIds.add(si);
+                        risingFloorSpecial[si] = ld.special;
+                    }
+                }
+            }
+        }
+
+        return {risingFloorIds: risingFloorIds, risingFloorSpecial: risingFloorSpecial};
     }
 
     // --- Switches ---
