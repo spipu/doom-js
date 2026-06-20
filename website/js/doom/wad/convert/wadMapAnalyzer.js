@@ -39,16 +39,17 @@ class WadMapAnalyzer {
     _identifyDoors() {
         const {linedefs, sidedefs, sectors} = this._level;
         const doorSectorIds = new Set();
-        const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim}
+        const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
 
         const registerDoor = (si, sp) => {
             doorSectorIds.add(si);
             doorProps[si] = {
-                speed:    WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
-                trigger:  WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action',
-                loop:     WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
-                onlyOnce: WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
-                anim:     WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip'
+                speed:       WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
+                trigger:     WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action',
+                loop:        WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
+                onlyOnce:    WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
+                anim:        WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
+                keyRequired: WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null
             };
         };
 

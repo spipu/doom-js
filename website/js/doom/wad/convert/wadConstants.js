@@ -60,6 +60,13 @@ class WadConstants {
     // Action radius in metres (xz_diagonal/2 + this margin)
     static DOOR_ACTION_RADIUS = 0.5;
 
+    // Key item required to open a locked door, by linedef special (Doom canon:
+    // DR variants 26/27/28, D1 variants 32/33/34). Doors absent here open freely.
+    static DOOR_KEY_BY_SPECIAL = {
+        26: 'blueKey', 27: 'yellowKey', 28: 'redKey',
+        32: 'blueKey', 33: 'redKey', 34: 'yellowKey'
+    };
+
     // Doom units left at the top of a door panel for the ceiling track mechanism
     static DOOR_TRACK_OFFSET = 4;
 
@@ -129,6 +136,13 @@ class WadConstants {
 
     // Doom picture-column format sentinel
     static PATCH_END_COLUMN = 0xFF;
+
+    // --- Pickups ---
+
+    // Proximity radius (metres) at which a pickup is collected. The sprite's
+    // half-width is added on top per thing; this base covers the player radius
+    // plus the vertical gap between the player centre and a floor sprite centre.
+    static PICKUP_RADIUS = 0.6;
 
     // --- Player / world defaults ---
 

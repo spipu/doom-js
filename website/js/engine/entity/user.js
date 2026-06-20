@@ -166,6 +166,18 @@ class User {
         return this;
     }
 
+    // Heal by amount, clamped to cap (defaults to the normal max). cap may exceed
+    // _maxEnergy for over-heal pickups (soul sphere → 200) and never lowers a
+    // value already above it. Returns true only if energy actually rose (drives
+    // the Doom "don't consume the pickup when already full" rule).
+    addEnergy(amount, cap = this._maxEnergy) {
+        const ceiling = Math.max(cap, this._energy);
+        const next    = Math.min(this._energy + amount, ceiling);
+        const raised  = (next > this._energy);
+        this._energy = next;
+        return raised;
+    }
+
     setMoveSpeed(v) {
         this.moveSpeed = v;
         return this;

@@ -85,6 +85,17 @@ class DoomUser extends User {
         return this;
     }
 
+    // Invulnerability fully blocks damage while active. The other timed effects
+    // are state-only for now: radiation (anti-sludge) waits on sector damage,
+    // invisibility on enemy targeting, light on a full-bright render hook —
+    // none of those systems exist yet (see .source/next-steps.md).
+    takeDamage(delta) {
+        if (this.hasEffect('invulnerability')) {
+            return;
+        }
+        super.takeDamage(delta);
+    }
+
     hasEffect(code) {
         return (this._effects[code] !== undefined);
     }

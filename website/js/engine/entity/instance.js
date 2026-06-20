@@ -26,6 +26,7 @@ class Instance extends AbstractLoadedEntity {
         this._trigger           = 'none';
         this._interactionRadius = null;
         this._interaction       = null;
+        this._triggerCondition  = null;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -90,6 +91,18 @@ class Instance extends AbstractLoadedEntity {
         }
         const p = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         this._worldCenter = [p[0], p[1], p[2]];
+    }
+
+    // Opaque gate evaluated before a proximity/action trigger may fire (e.g. a
+    // locked door checking the player holds the key). The predicate is supplied
+    // by the game layer; the engine stays generic and only calls it.
+    setTriggerCondition(fn) {
+        this._triggerCondition = fn;
+        return this;
+    }
+
+    _conditionMet(user) {
+        return ((this._triggerCondition === null) || (this._triggerCondition(user) === true));
     }
 
     isCollidable() {
@@ -217,12 +230,12 @@ class Instance extends AbstractLoadedEntity {
                 this.start();
                 break;
             case 'proximity':
-                if (inRange) {
+                if (inRange && this._conditionMet(user)) {
                     this.start();
                 }
                 break;
             case 'action':
-                if (inRange && action) {
+                if (inRange && action && this._conditionMet(user)) {
                     this.start();
                 }
                 break;

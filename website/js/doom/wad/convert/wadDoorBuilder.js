@@ -209,6 +209,7 @@ class WadDoorBuilder {
             collisionShape:    'faces',
             interactionRadius: radius,
             damage:            null,
+            keyRequired:       props.keyRequired,
             keyframes:         keyframes
         };
     }

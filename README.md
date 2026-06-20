@@ -31,7 +31,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **On-the-fly conversion** (`js/doom/wad/convert/`): full JS port of the historical Python converter — level lumps, PLAYPAL palette, picture/flat decoding, TEXTURE1/2 composition, ANIMATED sequences, ear-clipping triangulation with hole bridge cuts, Doom-accurate doors/lifts/switches with keyframes. Everything is instantiated directly in the engine loaders (textures as `ImageData`, no URL, no fetch).
 - **World things as sprites**: every non-enemy THING (decorations, obstacles, gore, corpses, pools, animated torches/lamps, ceiling-hung gore, and pickups — weapons, ammo, health/armor, power-ups, keys) is read from the THINGS lump and drawn as a generic **billboard** (`Billboard extends Object3d`) — a cylindrical (Y-axis) sprite that faces the camera and leans naturally in perspective when you look up or down. Lit by its sector brightness, anchored to the floor or ceiling (with the foot floor-clipped so sprites never sink below the floor), with animated frames where Doom animates them. Mapping lives in `DoomThingCatalog`. **Solid** decorations (barrels, pillars, trees, torches…) block the player with a Doom-style **square hitbox** (axis-of-least-penetration slide, height-gated so you can pass under ceiling-hung things); pickups and non-solid props stay walk-through.
 - **Single-player thing filtering**: like the real game (`P_SpawnMapThing`), each THING is gated by its `flags` — multiplayer-only things (`0x10`) are dropped, and a thing only appears if the chosen skill's bit is set (skill 1-2 → `0x01`, 3 → `0x02`, 4-5 → `0x04`). This matches what vanilla single-player shows (no co-op/deathmatch-only weapons).
-- **Player equipment model**: the `DoomUser` carries weapons / ammo (shared pool) / keys / power-up effects and armor; weapons, ammo and armor persist between levels while keys and timed effects reset (data-driven via `resetOnNewLevel`). Pickup *effects* are defined in the catalog (the collection logic itself is a later brick).
+- **Player equipment & pickups**: the `DoomUser` carries weapons / ammo (shared pool) / keys / power-up effects and armor; weapons, ammo and armor persist between levels while keys and timed effects reset (data-driven via `resetOnNewLevel`). Walking over a pickup applies its catalog effect through `DoomGame.applyPickup` and despawns the sprite — Doom-faithfully: picking up a weapon also hands out ammo (2× the type's clip, doubled on skill 1/5), an item already full (health/armor/ammo) or a key already held is left on the ground, and armor is a single 0→200 counter whose type only sets the absorption (green 100/⅓, blue 200/½). **Locked doors** (blue/red/yellow key specials) only open if you hold the matching key. **Invulnerability** blocks all damage while active; the other timed power-ups (radiation suit, invisibility, light visor) are carried as state pending their target systems (sector damage, enemies, full-bright rendering).
 - **Level chaining**: triggering an exit switch shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
 - **Touch controls**: touch-only devices get an on-screen virtual gamepad — two fixed, always-visible analog sticks (left = move, right = look) plus the four action buttons laid out around the right stick like a DualSense face cluster (△ action on top, ○ jump right, □ fire left, ✕ crouch bottom) and a pause button in the top-right corner.
@@ -96,13 +96,13 @@ website/
 │   │   └── screenWakeLock.js    Screen wake lock helper
 │   ├── doom/
 │   │   ├── libBootstrap.json    Doom bootstrap definition (version + css/js lists)
-│   │   ├── doomGame.js          DoomGame: level lifecycle, game loop, level chaining, equipment catalogs + loadout + inter-level persistence
+│   │   ├── doomGame.js          DoomGame: level lifecycle, game loop, level chaining, equipment catalogs + loadout + inter-level persistence + pickup application (applyPickup)
 │   │   ├── doomUser.js          DoomUser extends User: equipment state (owned weapons, shared ammo pool, keys, timed effects)
 │   │   ├── main.js              Entry point: loadApp() → MenuNavigator
 │   │   ├── object/             Immutable Doom definitions (shared; never per-player state)
 │   │   │   ├── abstractDoomObject.js  Base definition: code, name, sprite, resetOnNewLevel
 │   │   │   ├── doomWeapon.js          Weapon definition (ammoType, damage, fire placeholders)
-│   │   │   ├── doomAmmo.js            Ammo type definition (normal / backpack caps)
+│   │   │   ├── doomAmmo.js            Ammo type definition (clip unit, normal / backpack caps)
 │   │   │   ├── doomItem.js            Item definition (key / permanent / timed power-up)
 │   │   │   ├── doomDecoration.js      Scenery definition (sprite, solid, radius, ceiling)
 │   │   │   └── doomThingCatalog.js    THING type → world descriptor (decorations + pickups)
@@ -139,6 +139,7 @@ website/
 │   │           ├── wadLiftBuilder.js      Lift meshes + instances (keyframes)
 │   │           ├── wadSwitchBuilder.js    Switch meshes + instances + interaction specs
 │   │           ├── doomSwitchInteraction.js  Runtime switch (SW1↔SW2 swap, targets, exit)
+│   │           ├── doomPickupInteraction.js  Runtime pickup (proximity → applyPickup → despawn)
 │   │           ├── wadThingBuilder.js     THINGS lump → billboard sprites (decorations + pickups), skill/multiplayer flag filtering
 │   │           └── wadWorldBuilder.js     Orchestrator: WadFile + level → loaded world, sector lookup for things
 │   └── engine/
@@ -157,12 +158,12 @@ website/
 │       │   ├── texture.js       Texture image data + alpha detection
 │       │   ├── object3d.js      3D geometry (vertices, faces, normals, projection)
 │       │   ├── billboard.js     Camera-facing sprite quad (Object3d subclass: cylindrical Y-axis, leans with pitch, sector-lit, floor/ceiling anchored)
-│       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage, collisionShape none/faces/box)
+│       │   ├── instance.js      Animated 3D object (keyframes, triggers, start/stop, damage, collisionShape none/faces/box, opaque triggerCondition gate)
 │       │   ├── user.js          FPS player (physics, gravity, jump, crouch, energy, armor)
 │       │   └── world.js         FPS scene (user, lights, collision, update loop)
 │       ├── hud/
 │       │   ├── abstractHud.js   Base HUD overlay: init(container), update(), bind helpers
-│       │   └── hudDebug.js      Debug HUD: fps, position, energy, inputs (mode, axes, buttons), damage flash, font scaled to the display
+│       │   └── hudDebug.js      Debug HUD: fps, position, energy + shield, inputs (mode, axes, buttons), damage flash, font scaled to the display
 │       ├── input/
 │       │   ├── inputs.js        Inputs coordinator: device selection (gamepad > virtual gamepad > keyboard+mouse), unified analog axes + semantic buttons API
 │       │   ├── inputKeyboard.js Keyboard input (e.code, Set-based, strict singleton)
@@ -176,7 +177,7 @@ website/
 │       │   ├── abstractLoader.js    Base loader: load/loadByCode/loadFromData, registry, callbacks
 │       │   ├── textureLoader.js     Loads images by URL or accepts ImageData directly
 │       │   ├── object3dLoader.js    Parses .obj.json or in-memory data into Object3d, or builds in-memory Billboards
-│       │   ├── instanceLoader.js    Parses .instance.json or in-memory data, links to Object3d
+│       │   ├── instanceLoader.js    Parses .instance.json or in-memory data, links to Object3d, deferred removal (scheduleRemoval/flushRemovals)
 │       │   ├── interactionLoader.js Loads interaction JS files async, or registers instances directly
 │       │   └── worldLoader.js       Parses definition.json or in-memory data, creates User + lights
 │       └── renderer/
