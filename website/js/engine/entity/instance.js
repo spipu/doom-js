@@ -25,6 +25,7 @@ class Instance extends AbstractLoadedEntity {
         // Trigger / interaction (how the animation is activated)
         this._trigger           = 'none';
         this._interactionRadius = null;
+        this._triggerPlanar     = false;   // true = proximity tested on XZ only (walk-over lines)
         this._interaction       = null;
         this._triggerCondition  = null;
 
@@ -214,13 +215,15 @@ class Instance extends AbstractLoadedEntity {
             return false;
         }
 
+        // Planar triggers (walk-over lines) ignore Y: crossing the line fires it
+        // regardless of the player's height — they may stand on a raised lift or
+        // down in the pit. Other triggers (switches, doors) keep the 3D sphere.
+        const dx = user.getCenterX() - this._worldCenter[0];
+        const dy = (this._triggerPlanar ? 0 : (user.getCenterY() - this._worldCenter[1]));
+        const dz = user.getCenterZ() - this._worldCenter[2];
         const inRange = (
             (this._interactionRadius !== null) &&
-            (Math.sqrt(
-                (user.getCenterX() - this._worldCenter[0]) ** 2 +
-                (user.getCenterY() - this._worldCenter[1]) ** 2 +
-                (user.getCenterZ() - this._worldCenter[2]) ** 2
-            ) <= this._interactionRadius)
+            (Math.sqrt(dx * dx + dy * dy + dz * dz) <= this._interactionRadius)
         );
 
         const wasPlaying = this._animPlaying;

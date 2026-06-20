@@ -82,12 +82,27 @@ class WadLiftBuilder {
         }
     }
 
-    // Side walls: riser from minFh to origFh, moves with the platform.
-    // Same convention as the doors: corridor sidedef + matching flip.
+    // Side walls: a riser (minFh → origFh) on EVERY two-sided perimeter edge of
+    // the lift, moving with the platform — the lift is a self-contained box, not
+    // dependent on its neighbours. Texture priority per edge: the neighbour
+    // sidedef's lower (preserves the shaft look, no regression), else the lift's
+    // own sidedef lower, else a sibling edge's texture (so a bare shared edge
+    // between two lifts still gets a wall). Two passes: resolve, then emit with
+    // the fallback filled in. One-sided edges stay handled by the static map.
     _buildRisers(mesh, si, origFh, minFh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds, movingFloorDownIds} = this._analysis;
         const SCALE = WadConstants.SCALE;
+
+        // A usable lower texture name on a sidedef, or null.
+        const validLower = (sd) => {
+            if (!sd || !sd.lower || sd.lower === '-') {
+                return null;
+            }
+            return ((this._bank.ensureWallTex(sd.lower) >= 0) ? sd.lower : null);
+        };
+
+        const edges = [];
+        let fallbackTex = null;
 
         for (const ld of linedefs) {
             if (ld.right < 0 || ld.left < 0) {
@@ -95,59 +110,59 @@ class WadLiftBuilder {
             }
             const rSi2 = sidedefs[ld.right].sector;
             const lSi2 = sidedefs[ld.left].sector;
-            if (rSi2 !== si && lSi2 !== si) {
+            const liftOnRight = (rSi2 === si);
+            const liftOnLeft  = (lSi2 === si);
+            if (!liftOnRight && !liftOnLeft) {
                 continue;
             }
-            if (movingFloorDownIds.has(rSi2) && movingFloorDownIds.has(lSi2)) {
-                continue;
+
+            const ownSd      = sidedefs[liftOnRight ? ld.right : ld.left];
+            const neighborSd  = sidedefs[liftOnRight ? ld.left : ld.right];
+            const neighborSec = sectors[liftOnRight ? lSi2 : rSi2];
+
+            // Texture: neighbour lower first, then own lower. Record the source
+            // sidedef (for xo/yo) and its sector (for light/ch). null = bare edge.
+            let tex = validLower(neighborSd);
+            let srcSd = neighborSd;
+            let srcSec = neighborSec;
+            if (tex === null) {
+                tex = validLower(ownSd);
+                srcSd = ownSd;
+                srcSec = sectors[si];
+            }
+            if ((tex !== null) && (fallbackTex === null)) {
+                fallbackTex = tex;
             }
 
             const [dx1, dy1] = vertexes[ld.v1];
             const [dx2, dy2] = vertexes[ld.v2];
             const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
             const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
-            const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
-            const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+            edges.push({
+                tex, srcSd, srcSec,
+                wx1, wz1, wx2, wz2,
+                wallLen: WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2),
+                lowerUnpeg: ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0),
+                flip: !liftOnRight   // lift on right → flip=false, on left → true
+            });
+        }
 
-            if (rSi2 === si && !doorSectorIds.has(lSi2)) {
-                // Lift on right, corridor on left — l_sd + flip=false
-                const lSd2  = sidedefs[ld.left];
-                const lSec2 = sectors[lSi2];
-                const tex = lSd2.lower;
-                if (!tex || tex === '-') {
-                    continue;
-                }
-                const ti = this._bank.ensureWallTex(tex);
-                if (ti < 0) {
-                    continue;
-                }
-                const {width: tw, height: th} = this._bank.getDims(ti);
-                const yo = lSd2.yo + ((lowerUnpeg) ? (lSec2.ch - origFh) : 0);
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    minFh * SCALE, origFh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: lSd2.xo, yOff: yo, flip: false, light: lSec2.light});
-            } else if (lSi2 === si && !doorSectorIds.has(rSi2)) {
-                // Lift on left, corridor on right — r_sd + flip=true
-                const rSd2  = sidedefs[ld.right];
-                const rSec2 = sectors[rSi2];
-                const tex = rSd2.lower;
-                if (!tex || tex === '-') {
-                    continue;
-                }
-                const ti = this._bank.ensureWallTex(tex);
-                if (ti < 0) {
-                    continue;
-                }
-                const {width: tw, height: th} = this._bank.getDims(ti);
-                const yo = rSd2.yo + ((lowerUnpeg) ? (rSec2.ch - origFh) : 0);
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    minFh * SCALE, origFh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: rSd2.xo, yOff: yo, flip: true, light: rSec2.light});
+        for (const e of edges) {
+            const tex = (e.tex !== null) ? e.tex : fallbackTex;
+            if (tex === null) {
+                continue;   // no texture anywhere on this lift — skip (very rare)
             }
+            const ti = this._bank.ensureWallTex(tex);
+            if (ti < 0) {
+                continue;
+            }
+            const {width: tw, height: th} = this._bank.getDims(ti);
+            const yo = e.srcSd.yo + ((e.lowerUnpeg) ? (e.srcSec.ch - origFh) : 0);
+            WadMeshBuilder.addWallQuad(mesh, ti,
+                e.wx1, e.wz1, e.wx2, e.wz2,
+                minFh * SCALE, origFh * SCALE,
+                e.wallLen, tw, th,
+                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light});
         }
     }
 
