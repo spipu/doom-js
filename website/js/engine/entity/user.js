@@ -55,6 +55,7 @@ class User {
         this._dead           = false;
         this._fallPeakY      = null;
         this._energyFlash    = 0;
+        this._pickupFlash    = 0;
         this._deathRoll      = 0;
         this._deathEyeRatio  = 1.0;
 
@@ -235,6 +236,17 @@ class User {
 
     getEnergyFlash() {
         return this._energyFlash;
+    }
+
+    getPickupFlash() {
+        return this._pickupFlash;
+    }
+
+    // Brief golden screen pulse on item pickup (Doom bonuscount). Decays in
+    // updateMove like the damage flash; the HUD renders it under the red one.
+    flashPickup() {
+        this._pickupFlash = Math.max(this._pickupFlash, 0.5);
+        return this;
     }
 
     isDead() {
@@ -569,9 +581,12 @@ class User {
         // 15. Reset one-frame flags
         this._jumpPressed = false;
 
-        // 16. Energy flash fade
+        // 16. Energy / pickup flash fade
         if (this._energyFlash > 0) {
             this._energyFlash = Math.max(0, this._energyFlash - dt_s);
+        }
+        if (this._pickupFlash > 0) {
+            this._pickupFlash = Math.max(0, this._pickupFlash - dt_s);
         }
 
         // 17. Death animation — roll camera sideways and lower eye height
