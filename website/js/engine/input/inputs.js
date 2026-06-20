@@ -149,6 +149,11 @@ class Inputs {
         return this._keyboard.readKey('AltLeft') || this._keyboard.readKey('AltRight');
     }
 
+    // Keyboard-only debug cheat (the 'o' key): grant the full Doom test kit.
+    readButtonCheatFullKit() {
+        return this._keyboard.readKey('KeyO');
+    }
+
     // --- Internal ---
 
     // Active pad-like device (gamepad and virtual gamepad share the same API),
