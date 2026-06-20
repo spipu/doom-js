@@ -24,6 +24,7 @@ class WadWorldBuilder {
         this._onLevelExit  = options.onLevelExit ?? null;
         this._thingCatalog = options.thingCatalog ?? null;
         this._skill        = options.skill ?? 3;
+        this._game         = options.game ?? null;
     }
 
     /**
@@ -51,6 +52,13 @@ class WadWorldBuilder {
         const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
         for (const door of doors) {
             this._registerInstance(door, bank);
+            // Locked doors only open if the player holds the key. The engine
+            // calls this opaque predicate before firing the trigger; the Doom
+            // key check lives here (the runtime user is a DoomUser).
+            const keyCode = door.instanceData.keyRequired;
+            if (keyCode) {
+                loader.instances().getByCode(door.code).setTriggerCondition(user => user.hasItem(keyCode));
+            }
         }
         await this._yield();
 
@@ -94,7 +102,9 @@ class WadWorldBuilder {
     // Build the world things from the THINGS lump: one shared Billboard Object3d
     // per sprite (deduplicated), one Instance per occurrence. No-op without a
     // thing catalog. Solid decorations get a Doom-style square 'box' collider;
-    // the rest (pickups, gore, pools…) are non-blocking ('none'). No interaction yet.
+    // the rest (pickups, gore, pools…) are non-blocking ('none'). Pickups get a
+    // proximity trigger + a DoomPickupInteraction that applies the effect and
+    // despawns the sprite when picked up.
     _registerThings(level, palette) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0};
@@ -130,18 +140,31 @@ class WadWorldBuilder {
                     light:         t.light
                 });
             }
+            const isPickup = (t.kind === 'pickup');
+            const code     = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
             loader.instances().loadFromData(null, {
-                code:            'thing_' + i,
-                object:          billboardIds[objKey],
-                position:        t.position,
-                rotation:        [0, 0, 0],
-                trigger:         'none',
-                loop:            false,
-                onlyOnce:        false,
-                collisionShape:  ((t.solid) ? 'box' : 'none'),
-                collisionRadius: t.radius,
-                keyframes:       []
+                code:              code,
+                object:            billboardIds[objKey],
+                position:          t.position,
+                rotation:          [0, 0, 0],
+                trigger:           ((isPickup) ? 'proximity' : 'none'),
+                loop:              false,
+                // Not onlyOnce: an un-consumed pickup (full health, owned weapon)
+                // must stay grabbable when the player returns — it re-tests every
+                // frame it is overlapped (like Doom's P_TouchSpecialThing) and is
+                // despawned only once actually consumed.
+                onlyOnce:          false,
+                collisionShape:    ((t.solid) ? 'box' : 'none'),
+                collisionRadius:   t.radius,
+                interactionRadius: ((isPickup) ? (WadConstants.PICKUP_RADIUS + t.halfWidth) : null),
+                interaction:       ((isPickup) ? code : null),
+                keyframes:         []
             });
+            // A pickup with no game (catalog-less build) keeps the sprite but
+            // never fires — harmless. With a game, wire its effect interaction.
+            if (isPickup && (this._game !== null)) {
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, t.effect, this._game));
+            }
         }
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered()};

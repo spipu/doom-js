@@ -73,7 +73,8 @@ class HudDebug extends AbstractHud {
         return '[USER]'
             + ' x=' + u.x.toFixed(2) + ' y=' + u.y.toFixed(2) + ' z=' + u.z.toFixed(2)
             + ' | yaw=' + u.yaw.toFixed(1) + '° pitch=' + u.pitch.toFixed(1) + '°'
-            + ' | energy: ' + Math.ceil(u.getEnergy()) + '/' + u.getMaxEnergy();
+            + ' | energy: ' + Math.ceil(u.getEnergy()) + '/' + u.getMaxEnergy()
+            + ' | shield: ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor();
     }
 
     _buildInputs() {

@@ -30,20 +30,22 @@ class DoomGame {
     // --- Catalogs of definitions ---
     _buildCatalogs() {
         this._ammoTypes = {
-            bullets: new DoomAmmo({code: 'bullets', name: 'Bullets', maxNormal: 200, maxPack: 400}),
-            shells:  new DoomAmmo({code: 'shells',  name: 'Shells',  maxNormal: 50,  maxPack: 100}),
-            rockets: new DoomAmmo({code: 'rockets', name: 'Rockets', maxNormal: 50,  maxPack: 100}),
-            cells:   new DoomAmmo({code: 'cells',   name: 'Cells',   maxNormal: 300, maxPack: 600})
+            bullets: new DoomAmmo({code: 'bullets', name: 'Bullets', maxNormal: 200, maxPack: 400, clip: 10}),
+            shells:  new DoomAmmo({code: 'shells',  name: 'Shells',  maxNormal: 50,  maxPack: 100, clip: 4}),
+            rockets: new DoomAmmo({code: 'rockets', name: 'Rockets', maxNormal: 50,  maxPack: 100, clip: 1}),
+            cells:   new DoomAmmo({code: 'cells',   name: 'Cells',   maxNormal: 300, maxPack: 600, clip: 20})
         };
 
         this._weapons = {
-            fist:     new DoomWeapon({code: 'fist',     name: 'Fist',           ammoType: null,      perShot: 0,  damage: 10}),
-            pistol:   new DoomWeapon({code: 'pistol',   name: 'Pistol',         ammoType: 'bullets', perShot: 1,  damage: 10}),
-            shotgun:  new DoomWeapon({code: 'shotgun',  name: 'Shotgun',        ammoType: 'shells',  perShot: 1,  damage: 70}),
-            chaingun: new DoomWeapon({code: 'chaingun', name: 'Chaingun',       ammoType: 'bullets', perShot: 1,  damage: 10}),
-            rocket:   new DoomWeapon({code: 'rocket',   name: 'Rocket Launcher',ammoType: 'rockets', perShot: 1,  damage: 100}),
-            plasma:   new DoomWeapon({code: 'plasma',   name: 'Plasma Rifle',   ammoType: 'cells',   perShot: 1,  damage: 20}),
-            bfg:      new DoomWeapon({code: 'bfg',      name: 'BFG9000',        ammoType: 'cells',   perShot: 40, damage: 500})
+            fist:         new DoomWeapon({code: 'fist',         name: 'Fist',            ammoType: null,      perShot: 0,  damage: 10}),
+            chainsaw:     new DoomWeapon({code: 'chainsaw',     name: 'Chainsaw',        ammoType: null,      perShot: 0,  damage: 20}),
+            pistol:       new DoomWeapon({code: 'pistol',       name: 'Pistol',          ammoType: 'bullets', perShot: 1,  damage: 10}),
+            shotgun:      new DoomWeapon({code: 'shotgun',      name: 'Shotgun',         ammoType: 'shells',  perShot: 1,  damage: 70}),
+            supershotgun: new DoomWeapon({code: 'supershotgun', name: 'Super Shotgun',   ammoType: 'shells',  perShot: 2,  damage: 70}),
+            chaingun:     new DoomWeapon({code: 'chaingun',     name: 'Chaingun',        ammoType: 'bullets', perShot: 1,  damage: 10}),
+            rocket:       new DoomWeapon({code: 'rocket',       name: 'Rocket Launcher', ammoType: 'rockets', perShot: 1,  damage: 100}),
+            plasma:       new DoomWeapon({code: 'plasma',       name: 'Plasma Rifle',    ammoType: 'cells',   perShot: 1,  damage: 20}),
+            bfg:          new DoomWeapon({code: 'bfg',          name: 'BFG9000',         ammoType: 'cells',   perShot: 40, damage: 500})
         };
 
         this._items = {
@@ -71,6 +73,144 @@ class DoomGame {
         return (this._items[code] ?? null);
     }
 
+    // --- Pickups (phase 3) ---
+
+    // Apply a picked-up thing's effect descriptor to the player. Returns true
+    // when something was actually consumed — false leaves the sprite on the
+    // ground (Doom does not pick up health/armor/ammo already full, nor a
+    // weapon/key already held). Effect shapes come from DoomThingCatalog.
+    applyPickup(user, effect) {
+        if ((effect === null) || (effect === undefined)) {
+            return false;
+        }
+        if (effect.weapon !== undefined) {
+            return this._pickupWeapon(user, effect.weapon);
+        }
+        if (effect.ammo !== undefined) {
+            return this._pickupAmmo(user, effect.ammo, effect.amount);
+        }
+        if (effect.backpack === true) {
+            return this._pickupBackpack(user);
+        }
+        if (effect.health !== undefined) {
+            return user.addEnergy(effect.health, ((effect.overheal === true) ? 200 : 100));
+        }
+        if (effect.armor !== undefined) {
+            return this._pickupArmor(user, effect.armor);
+        }
+        if (effect.armorBonus !== undefined) {
+            return this._pickupArmorBonus(user, effect.armorBonus);
+        }
+        if (effect.item !== undefined) {
+            return this._pickupItem(user, effect.item);
+        }
+        if (effect.mega === true) {
+            const healed  = user.addEnergy(100, 200);
+            const armored = this._pickupArmor(user, 'blue');
+            return (healed || armored);
+        }
+        return false;
+    }
+
+    // Double ammo on the easiest and hardest skills, like Doom (ITYTD / Nightmare).
+    _ammoMultiplier() {
+        return (((this._skill === 1) || (this._skill === 5)) ? 2 : 1);
+    }
+
+    // Give ammo and report whether the counter actually rose (it stays put when
+    // already at the cap). Centralises the clamp-and-detect used by every path.
+    _grantAmmo(user, type, amount) {
+        const before = user.getAmmo(type);
+        user.giveAmmo(type, amount);
+        return (user.getAmmo(type) > before);
+    }
+
+    _pickupWeapon(user, code) {
+        const def = this.getWeapon(code);
+        // Weapons absent from the catalog in Doom 1 (supershotgun, chainsaw…)
+        // are silently ignored rather than handed out.
+        if (def === null) {
+            return false;
+        }
+        let gaveWeapon = false;
+        if (!user.hasWeapon(code)) {
+            user.giveWeapon(code);
+            user.setActiveWeapon(code);
+            gaveWeapon = true;
+        }
+        // Doom hands out 2 × the ammo clip with the weapon (further doubled on
+        // skill 1/5). An already-owned weapon is still collected as long as it
+        // tops up ammo; it only stays on the ground when ammo is already full.
+        let gaveAmmo = false;
+        const ammoType = def.getAmmoType();
+        if (ammoType !== null) {
+            const amount = this.getAmmo(ammoType).getClip() * 2 * this._ammoMultiplier();
+            gaveAmmo = this._grantAmmo(user, ammoType, amount);
+        }
+        return (gaveWeapon || gaveAmmo);
+    }
+
+    _pickupAmmo(user, type, amount) {
+        if (this.getAmmo(type) === null) {
+            return false;
+        }
+        return this._grantAmmo(user, type, amount * this._ammoMultiplier());
+    }
+
+    _pickupBackpack(user) {
+        for (const code of Object.keys(this._ammoTypes)) {
+            user.setAmmoMax(code, this._ammoTypes[code].getMaxPack());
+            // Doom's backpack also grants one base clip of each ammo type.
+            this._grantAmmo(user, code, this._ammoTypes[code].getClip() * this._ammoMultiplier());
+        }
+        return true;
+    }
+
+    _pickupArmor(user, kind) {
+        const target = ((kind === 'blue') ? 200 : 100);
+        const absorb = ((kind === 'blue') ? 0.5 : (1 / 3));
+        if (user.getArmor() >= target) {
+            return false;
+        }
+        // The 0→200 ceiling is fixed (set in the loadout); a pickup only sets the
+        // armour points and the absorption fraction of its type.
+        user.setArmor(target);
+        user.setArmorAbsorb(absorb);
+        return true;
+    }
+
+    _pickupArmorBonus(user, amount) {
+        if (user.getArmor() >= 200) {
+            return false;
+        }
+        // A bonus on top of no armor still grants the green absorption fraction.
+        if ((user.getArmor() <= 0) && (user.getArmorAbsorb() <= 0)) {
+            user.setArmorAbsorb(1 / 3);
+        }
+        user.setArmor(Math.min(user.getArmor() + amount, 200));
+        return true;
+    }
+
+    _pickupItem(user, code) {
+        const def = this.getItem(code);
+        if (def === null) {
+            return false;
+        }
+        if (def.getType() === 'powerupTimed') {
+            user.addEffect(def.getEffect(), def.getDuration());
+            return true;
+        }
+        // Key or permanent power-up: a key already held leaves the sprite.
+        if (user.hasItem(code)) {
+            return false;
+        }
+        user.giveItem(code);
+        if (code === 'berserk') {
+            user.addEnergy(100, 100);
+        }
+        return true;
+    }
+
     // Pour the canonical Doom starting loadout on the freshly built DoomUser:
     // all weapon slots declared, Fist + Pistol owned (Pistol active), the four
     // ammo counters initialised to their normal cap with 50 bullets.
@@ -86,6 +226,11 @@ class DoomGame {
             user.setAmmoMax(code, this._ammoTypes[code].getMaxNormal());
         }
         user.giveAmmo('bullets', 50);
+
+        // Doom armour is a single 0→200 counter; the type (green/blue) only sets
+        // the absorption fraction. The player starts at 0 with the 200 ceiling.
+        user.setMaxArmor(200);
+        user.setArmor(0);
     }
 
     // Debug helper: force the player to a chosen location instead of the WAD
@@ -145,7 +290,8 @@ class DoomGame {
                 this._onLevelExit();
             },
             thingCatalog: this._thingCatalog,
-            skill: this._skill
+            skill: this._skill,
+            game: this
         }).build();
         loader.setCallback(() => {
             this._init();

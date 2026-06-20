@@ -71,6 +71,11 @@ class World extends AbstractLoadedEntity {
 
         // 9. Damage
         this.getInstances().forEach(inst => inst.checkDamage(user, dt));
+
+        // 10. Despawn instances flagged for removal this frame (e.g. picked-up
+        // items) — done after all the per-frame loops so the list is never
+        // mutated mid-iteration.
+        loader.instances().flushRemovals();
     }
 
     getUser() {
