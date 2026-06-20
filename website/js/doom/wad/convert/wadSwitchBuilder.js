@@ -9,12 +9,14 @@ class WadSwitchBuilder {
      * @param {object}         analysis
      * @param {WadTextureBank} bank
      * @param {Set<string>}    builtLiftCodes - codes of the lift instances actually built
+     * @param {Set<string>}    builtDoorCodes - codes of the door instances actually built
      */
-    constructor(level, analysis, bank, builtLiftCodes) {
+    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes) {
         this._level          = level;
         this._analysis       = analysis;
         this._bank           = bank;
         this._builtLiftCodes = builtLiftCodes;
+        this._builtDoorCodes = builtDoorCodes ?? new Set();
     }
 
     /**
@@ -90,13 +92,21 @@ class WadSwitchBuilder {
 
         const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? ['once', null, null];
 
-        // Resolve tag → target lift/floor instances
+        // Resolve tag → target lift/floor AND door instances of the same tag.
+        // start() is type-agnostic, so a remote door (trigger 'none') opens
+        // exactly like a switch-driven lift.
         const targets = [];
         if (ld.tag !== 0) {
             for (const liftSi of this._analysis.movingFloorDownIds) {
                 const liftCode = 'lift_' + liftSi;
                 if (sectors[liftSi].tag === ld.tag && this._builtLiftCodes.has(liftCode)) {
                     targets.push(liftCode);
+                }
+            }
+            for (const doorSi of this._analysis.doorSectorIds) {
+                const doorCode = 'door_' + doorSi;
+                if (sectors[doorSi].tag === ld.tag && this._builtDoorCodes.has(doorCode)) {
+                    targets.push(doorCode);
                 }
             }
         }

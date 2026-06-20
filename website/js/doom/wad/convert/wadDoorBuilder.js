@@ -207,7 +207,9 @@ class WadDoorBuilder {
             loop:              props.loop,
             onlyOnce:          props.onlyOnce,
             collisionShape:    'faces',
-            interactionRadius: radius,
+            // Remote doors (trigger 'none') are opened only by their switch, so
+            // they carry no proximity radius — same convention as switch-driven lifts.
+            interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
             keyRequired:       props.keyRequired,
             keyframes:         keyframes
