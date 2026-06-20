@@ -10,9 +10,7 @@ class HudDebug extends AbstractHud {
     }
 
     init(container) {
-        super.init(container);
-
-        this._container = container;
+        super.init(container);   // stores this._container
 
         this._el = document.createElement('div');
         this._el.style.position   = 'absolute';
@@ -42,11 +40,7 @@ class HudDebug extends AbstractHud {
 
     update() {
         this._applyFontScale();
-
-        if (this._user) {
-            const alpha = ((this._user.isDead()) ? 0.5 : Math.min(0.6, this._user.getEnergyFlash()));
-            this._container.style.backgroundColor = 'rgba(255, 0, 0, ' + alpha + ')';
-        }
+        this._applyScreenFlash();
 
         const lines = [];
         if (this._engine) {

@@ -26,6 +26,7 @@ class DoomPickupInteraction extends AbstractInteraction {
     triggered(instance) {
         const user = loader.world().get().getUser();
         if (this._game.applyPickup(user, this._effect)) {
+            user.flashPickup();
             loader.instances().scheduleRemoval(instance);
         }
     }
