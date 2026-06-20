@@ -13,6 +13,7 @@ class DoomGame {
         this._skill         = 3;
         this._carriedState  = null;
         this._pauseWasDown = true;
+        this._cheatWasDown = false;
         this._running       = false;
         this._transitioning = false;
         this._animateCallback = this._animate.bind(this);
@@ -233,6 +234,34 @@ class DoomGame {
         user.setArmor(0);
     }
 
+    // Debug/test cheat (the 'o' key): hand the player the full Doom kit — every
+    // weapon, every ammo type topped to its current max, all three keys, full
+    // energy and a full 200 blue armour. Reuses the existing DoomUser grant
+    // paths so it stays consistent with the pickup system (same ammo caps, same
+    // fixed 0→200 armour ceiling and blue-armour absorption).
+    _applyCheatFullKit() {
+        const user = this._world.getUser();
+
+        for (const code of Object.keys(this._weapons)) {
+            user.giveWeapon(code);
+        }
+
+        for (const code of Object.keys(this._ammoTypes)) {
+            user.giveAmmo(code, user.getAmmoMax(code));
+        }
+
+        for (const code of Object.keys(this._items)) {
+            if (this._items[code].getType() === 'key') {
+                user.giveItem(code);
+            }
+        }
+
+        user.setEnergy(user.getMaxEnergy());
+        user.setMaxArmor(200);
+        user.setArmor(200);
+        user.setArmorAbsorb(0.5);
+    }
+
     // Debug helper: force the player to a chosen location instead of the WAD
     // spawn. The given Y is used as the floor-search ceiling (exactly like the
     // initial snap in World.finalizeInit), so the player is dropped onto the
@@ -367,6 +396,13 @@ class DoomGame {
             return;
         }
         this._pauseWasDown = pauseDown;
+
+        // Cheat key (press edge): hand the player the full test kit
+        const cheatDown = this._inputs.readButtonCheatFullKit();
+        if (cheatDown && !this._cheatWasDown) {
+            this._applyCheatFullKit();
+        }
+        this._cheatWasDown = cheatDown;
 
         this._engine.calculateDeltaTime(timestamp);
         const dt = this._engine.getDeltaTime();
