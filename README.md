@@ -61,8 +61,9 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 | Left click | Button 2 / right trigger | Fire (reserved — no weapons yet) |
 | P | Button 9 | Quit the level, back to the level list |
 | Alt | — | Walk slowly (sticks do it through partial deflection) |
-| IJKL | — | Rotate (keyboard fallback if no Pointer Lock) |
+| IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | ESC | — | Release mouse |
+| O | — | Spipu-Doom debug cheat: grant the full kit (every weapon, all ammo at max, the three keys, full energy and full 200 blue armour) |
 
 The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices (phones, tablets) select the virtual gamepad mode: two fixed, always-visible analog sticks (left = move, right = look) with the action buttons arranged around the right stick at the DualSense face-button positions, plus a pause button in the top-right corner. Each button lights up while it is held. On iOS the touch mapping and the menus stay aligned with the display across device rotation (the residual viewport scroll Safari leaves on rotation is reset to the top).
 
