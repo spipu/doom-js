@@ -13,3 +13,6 @@ Charger et appliquer automatiquement à chaque session :
 Si le MCP Chrome n'est pas disponible, l'indiquer, et arrêter là.
 
 Puis lancer le serveur python et lancer doom dans chrome.
+
+Enfin analyse les commits des 3 derniers jours, et lis ./.source/next-steps.md
+
