@@ -253,15 +253,20 @@ class WadMapAnalyzer {
 
     // --- Switches ---
 
-    // One-sided linedefs with a S-type special — the wall face IS the switch
-    // A switch linedef carries a SWxxx graphic in one wall slot (right/left ×
-    // upper/middle/lower). One-sided switches use the right middle (the historic
-    // case). Two-sided ones put the graphic on a step riser (lower) or header
-    // (upper) — so the detection scans every slot for an SW1/SW2 texture and
-    // records WHICH slot, so the static builder can drop that exact face and the
-    // switch builder can rebuild it at the right vertical band.
+    // A switch linedef (S-type special) is a USE-activation point. Two shapes:
+    //  - **panel** ({side, slot, texName}): the wall carries a SWxxx graphic
+    //    (one-sided middle — historic case — or, on a two-sided line, a step
+    //    riser `lower` / header `upper`, either side). The static builder drops
+    //    that exact face and the switch builder rebuilds an interactive quad that
+    //    swaps SW1↔SW2 at the right vertical band.
+    //  - **invisible** ({invisible:true}): a two-sided activation line with NO
+    //    SWxxx graphic (e.g. an SR lift edge, special 62 textured PLAT1) — there
+    //    is no panel to draw/swap, and its wall (the lift riser) is already built
+    //    elsewhere. It becomes an invisible USE zone that start()s the tagged
+    //    targets, the press analog of a walk-trigger zone — so pressing the edge
+    //    actually fires the lift even when no walk line backs it up.
     //
-    // @returns {{ids: Set<number>, walls: Map<number, {side, slot, texName}>}}
+    // @returns {{ids: Set<number>, walls: Map<number, object>}}
     _identifySwitches() {
         const {linedefs, sidedefs} = this._level;
         const ids = new Set();
@@ -287,12 +292,10 @@ class WadMapAnalyzer {
                 continue;
             }
 
-            // Two-sided: only a switch if a slot actually carries an SW graphic.
-            const found = this._findSwitchSlot(rSd, sidedefs[ld.left]);
-            if (found !== null) {
-                ids.add(ldIdx);
-                walls.set(ldIdx, found);
-            }
+            // Two-sided: a SWxxx slot → visible panel; otherwise → invisible USE
+            // zone (the line still activates its target, e.g. an SR lift edge).
+            ids.add(ldIdx);
+            walls.set(ldIdx, this._findSwitchSlot(rSd, sidedefs[ld.left]) ?? {invisible: true});
         }
 
         return {ids: ids, walls: walls};
