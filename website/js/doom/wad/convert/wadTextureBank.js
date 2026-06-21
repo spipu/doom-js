@@ -115,6 +115,9 @@ class WadTextureBank {
         if (name.startsWith('SW1')) {
             return 'SW2' + name.substring(3);
         }
+        if (name.startsWith('SW2')) {
+            return 'SW1' + name.substring(3);
+        }
 
         return null;
     }
