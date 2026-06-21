@@ -135,13 +135,25 @@ class MenuNavigator {
             modal.close();
             this._closeMenus();
         } catch (error) {
-            console.error(error);
-            loader.reset();
-            modal.close();
-            if (this._currentScreen !== null) {
-                this._currentScreen.showError(error);
-            }
+            this._showBuildError(error, modal);
         }
+    }
+
+    // Surface a level-launch failure as a centred modal (on top of the console
+    // log) so the cause is immediately visible, then drop back to the WAD list.
+    _showBuildError(error, modal) {
+        console.error(error);
+        loader.reset();
+        modal.close();
+
+        const message = ((error && error.message) ? error.message : String(error));
+        const detail = ((error && error.stack)
+            ? error.stack.split('\n').slice(0, 4).join('\n')
+            : null);
+
+        new MenuModal(this._display).showError(message, detail, () => {
+            this.showWadList();
+        });
     }
 
     /**
@@ -180,10 +192,7 @@ class MenuNavigator {
             modal.close();
             this._closeMenus();
         } catch (error) {
-            console.error(error);
-            loader.reset();
-            modal.close();
-            this.showWadList();
+            this._showBuildError(error, modal);
         }
     }
 

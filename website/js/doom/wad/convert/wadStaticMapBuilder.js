@@ -42,7 +42,7 @@ class WadStaticMapBuilder {
 
     _buildWalls(mesh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds, doorHeights, switchLinedefIds} = this._analysis;
+        const {doorSectorIds, doorHeights, switchLinedefIds, switchWalls} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
@@ -111,6 +111,12 @@ class WadStaticMapBuilder {
             const lSec = sectors[lSd.sector];
             const lIsDoor = doorSectorIds.has(lSd.sector);
 
+            // A two-sided switch graphic (on a lower/upper) is rebuilt as an
+            // interactive instance, so drop that exact face here to avoid a
+            // double draw / z-fighting (mirrors the one-sided skip above).
+            const swWall = switchWalls.get(ldIdx) ?? null;
+            const isSwitchFace = (side, slot) => ((swWall !== null) && (swWall.side === side) && (swWall.slot === slot));
+
             const rFh = rSec.fh;
             const rCh = rSec.ch;
             const lFh = lSec.fh;
@@ -120,7 +126,7 @@ class WadStaticMapBuilder {
             const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
 
             // Lower wall: step up from right sector floor to left sector floor
-            if (lFh > rFh && !rIsDoor && !lIsDoor) {
+            if (lFh > rFh && !rIsDoor && !lIsDoor && !isSwitchFace('right', 'lower')) {
                 const ti = this._bank.ensureWallTex(rSd.lower);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
@@ -133,7 +139,7 @@ class WadStaticMapBuilder {
             }
 
             // Lower wall from left side
-            if (rFh > lFh && !lIsDoor && !rIsDoor) {
+            if (rFh > lFh && !lIsDoor && !rIsDoor && !isSwitchFace('left', 'lower')) {
                 const ti = this._bank.ensureWallTex(lSd.lower);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
@@ -145,7 +151,7 @@ class WadStaticMapBuilder {
             }
 
             // Upper wall: ceiling step down from right sector to left sector
-            if (lCh < rCh && !rIsDoor && !lIsDoor) {
+            if (lCh < rCh && !rIsDoor && !lIsDoor && !isSwitchFace('right', 'upper')) {
                 const ti = this._bank.ensureWallTex(rSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
@@ -158,7 +164,7 @@ class WadStaticMapBuilder {
             }
 
             // Upper wall from left side
-            if (rCh < lCh && !lIsDoor && !rIsDoor) {
+            if (rCh < lCh && !lIsDoor && !rIsDoor && !isSwitchFace('left', 'upper')) {
                 const ti = this._bank.ensureWallTex(lSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh)));
@@ -169,14 +175,14 @@ class WadStaticMapBuilder {
                     {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
             }
 
-            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen);
+            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
         }
     }
 
     // Middle textures: transparent fence/grating, rendered from both sides,
     // shown exactly once (no vertical tiling). Without ML_BLOCKING it is a
     // "false wall": visible but passable.
-    _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen) {
+    _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall) {
         const {doorSectorIds} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
@@ -189,7 +195,10 @@ class WadStaticMapBuilder {
         const lFh = lSec.fh;
         const lCh = lSec.ch;
 
-        for (const [mSd, mSec, otherSec] of [[rSd, rSec, lSec], [lSd, lSec, rSec]]) {
+        for (const [mSd, mSec, otherSec, side] of [[rSd, rSec, lSec, 'right'], [lSd, lSec, rSec, 'left']]) {
+            if ((swWall ?? null) !== null && swWall.side === side && swWall.slot === 'middle') {
+                continue;
+            }
             if (!(mSd.middle && mSd.middle !== '-')) {
                 continue;
             }

@@ -248,6 +248,30 @@
     margin-bottom: 0;
 }
 
+.doom-menu-modal-wide {
+    width: 75%;
+}
+
+.doom-menu-modal-error {
+    color: rgba(231, 76, 60, 0.95);
+}
+
+.doom-menu-modal-detail {
+    font-family: monospace;
+    font-size: 0.7em;
+    line-height: 1.4;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 9em;
+    overflow-y: auto;
+    margin-bottom: 1.4em;
+    padding: 0.6em 0.8em;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 0.2em;
+}
+
 @keyframes doomMenuPulse {
     0%, 100% {
         opacity: 0.45;

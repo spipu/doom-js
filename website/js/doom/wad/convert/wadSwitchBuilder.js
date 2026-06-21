@@ -38,16 +38,18 @@ class WadSwitchBuilder {
     // --- Internal ---
 
     _buildSwitch(ldIdx) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {vertexes, linedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
-        const ld  = linedefs[ldIdx];
-        const sd  = sidedefs[ld.right];
-        const sec = sectors[sd.sector];
+        const slotInfo = this._analysis.switchWalls.get(ldIdx);
+        if (slotInfo === undefined) {
+            return null;
+        }
 
+        const ld = linedefs[ldIdx];
         const switchName = 'switch_' + ldIdx;
 
-        const ti = this._bank.ensureWallTex(sd.middle);
+        const ti = this._bank.ensureWallTex(slotInfo.texName);
         if (ti < 0) {
             return null;
         }
@@ -59,20 +61,18 @@ class WadSwitchBuilder {
         const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
         const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
 
-        const hDoom = sec.ch - sec.fh;
-        const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
-        const yo = sd.yo + ((lowerUnpeg) ? (th - hDoom) : 0);
+        const band = this._switchBand(ld, slotInfo, th);
 
         // SW2 partner for the runtime texture swap
-        const partnerName = this._bank.getSwitchPartner(sd.middle);
+        const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
         const ti2 = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
 
         const mesh = WadMeshBuilder.newMesh();
         WadMeshBuilder.addWallQuad(mesh, ti,
             wx1, wz1, wx2, wz2,
-            sec.fh * SCALE, sec.ch * SCALE,
+            band.yBotDu * SCALE, band.yTopDu * SCALE,
             wallLen, tw, th,
-            {xOff: sd.xo, yOff: yo, flip: true, light: sec.light});
+            {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light});
 
         // SW1 = local index 1 (referenced by the faces), SW2 = local index 2
         const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
@@ -122,8 +122,11 @@ class WadSwitchBuilder {
                 trigger:           'action',
                 loop:              false,
                 onlyOnce:          false,
-                // A one-sided switch wall always blocks in Doom; its face is
-                // removed from the static map, so the instance must collide
+                // The switch face is removed from the static map, so the
+                // instance carries its collision. 'faces' replicates the
+                // original wall: a one-sided panel blocks; a two-sided step
+                // riser is stepped over or blocks per its height, exactly as
+                // resolveWall already treats static wall faces.
                 collisionShape:    'faces',
                 interactionRadius: radius,
                 damage:            null,
@@ -139,5 +142,51 @@ class WadSwitchBuilder {
                 isExit:  WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special)
             }
         };
+    }
+
+    /**
+     * Vertical band, pegging and winding of the switch quad — replicates exactly
+     * the static wall section the SW graphic sits on, so the swapped texture
+     * stays aligned: a one-sided full-height middle, or the lower (step riser) /
+     * upper (ceiling header) of a two-sided line, from either side.
+     *
+     * @returns {{sd, yBotDu, yTopDu, yo, flip, light}} heights in Doom units
+     */
+    _switchBand(ld, slotInfo, th) {
+        const {sidedefs, sectors} = this._level;
+        const rSd  = sidedefs[ld.right];
+        const rSec = sectors[rSd.sector];
+        const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+        const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
+
+        if (slotInfo.slot === 'middle') {
+            const hDoom = rSec.ch - rSec.fh;
+            return {sd: rSd, yBotDu: rSec.fh, yTopDu: rSec.ch,
+                yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light};
+        }
+
+        const lSd  = sidedefs[ld.left];
+        const lSec = sectors[lSd.sector];
+        const rFh = rSec.fh;
+        const rCh = rSec.ch;
+        const lFh = lSec.fh;
+        const lCh = lSec.ch;
+
+        if (slotInfo.slot === 'lower') {
+            if (slotInfo.side === 'right') {
+                return {sd: rSd, yBotDu: rFh, yTopDu: lFh,
+                    yo: rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0), flip: true, light: rSec.light};
+            }
+            return {sd: lSd, yBotDu: lFh, yTopDu: rFh,
+                yo: lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0), flip: false, light: lSec.light};
+        }
+
+        // upper
+        if (slotInfo.side === 'right') {
+            return {sd: rSd, yBotDu: lCh, yTopDu: rCh,
+                yo: rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh))), flip: true, light: rSec.light};
+        }
+        return {sd: lSd, yBotDu: rCh, yTopDu: lCh,
+            yo: lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh))), flip: false, light: lSec.light};
     }
 }

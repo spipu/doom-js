@@ -72,6 +72,51 @@ class MenuModal {
         return this._showText(message, false);
     }
 
+    /**
+     * Error modal: a prominent centred message plus an optional technical detail
+     * (e.g. the top of a stack trace) and a single dismiss button. Used when
+     * level generation fails, so the cause is visible on screen and not only in
+     * the console.
+     *
+     * @param {string}      message
+     * @param {string|null} detail
+     * @param {function}    onClose
+     */
+    showError(message, detail, onClose) {
+        this.close();
+
+        this._overlay = document.createElement('div');
+        this._overlay.className = 'doom-menu-overlay';
+        this._display.getContainer().appendChild(this._overlay);
+
+        const modal = document.createElement('div');
+        modal.className = 'doom-menu-modal doom-menu-modal-wide';
+        this._overlay.appendChild(modal);
+
+        const messageEl = document.createElement('div');
+        messageEl.className = 'doom-menu-modal-message doom-menu-modal-error';
+        messageEl.textContent = message;
+        modal.appendChild(messageEl);
+
+        if (detail) {
+            const detailEl = document.createElement('div');
+            detailEl.className = 'doom-menu-modal-detail';
+            detailEl.textContent = detail;
+            modal.appendChild(detailEl);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'doom-menu-modal-actions';
+        modal.appendChild(actions);
+
+        this._addButton(actions, 'Fermer', 'doom-menu-button', () => {
+            this.close();
+            onClose();
+        });
+
+        return this;
+    }
+
     close() {
         if (this._overlay !== null) {
             this._overlay.remove();
