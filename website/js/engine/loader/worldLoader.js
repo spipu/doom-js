@@ -44,6 +44,7 @@ class WorldLoader {
 
         this._world._user         = this._initUser(data.user);
         this._world._background   = data.background || [0, 0, 0];
+        this._world._sky          = data.sky || null;
         this._world._lightAmbient = data.lights.ambient;
         this._world._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
         this._world.setLoaded();
@@ -58,6 +59,7 @@ class WorldLoader {
 
             entity._user         = this._initUser(data.user);
             entity._background   = data.background || [0, 0, 0];
+            entity._sky          = data.sky || null;
             entity._lightAmbient = data.lights.ambient;
             entity._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
             entity.setLoaded();

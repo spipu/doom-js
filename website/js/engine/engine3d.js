@@ -5,6 +5,9 @@ class Engine3d {
         this.scrWidth  = 0;
         this.scrHeight = 0;
         this.background = [0, 0, 0];
+        this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
+        this._viewYaw   = 0;          // cached in setCamera for the sky pass
+        this._viewPitch = 0;
         this.viewMatrix     = new Matrix();
         this.fov        = 0.0;
         this.viewXMin = 0.0;
@@ -61,6 +64,11 @@ class Engine3d {
         this.background[1] = g;
         this.background[2] = b;
         this.scrCanvas.style.background = 'RGB(' + r + ', ' + g + ', ' + b + ')';
+        return this;
+    }
+
+    setSky(sky) {
+        this.sky = sky;
         return this;
     }
 
@@ -122,6 +130,7 @@ class Engine3d {
     initFromWorld(world) {
         const bg = world.getBackground();
         this.setBackground(bg[0], bg[1], bg[2]);
+        this.setSky(world.getSky());
         this.lightAmbient(world.getLightAmbient());
         world.getLights().forEach(l => this.lightAdd(l));
         return this;
@@ -198,6 +207,8 @@ class Engine3d {
     }
 
     setCamera(user) {
+        this._viewYaw   = user.yaw;
+        this._viewPitch = user.pitch;
         this.matrixIdentity();
         this.matrixRotateX(user.pitch);
         this.matrixRotateZ(user.getStrafeLean());

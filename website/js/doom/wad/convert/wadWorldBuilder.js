@@ -118,7 +118,7 @@ class WadWorldBuilder {
         await this._yield();
 
         // World + user
-        loader.world().loadFromData(this._buildDefinition(level));
+        loader.world().loadFromData(this._buildDefinition(level, bank));
 
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
@@ -210,9 +210,25 @@ class WadWorldBuilder {
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
-    _buildDefinition(level) {
+    _buildDefinition(level, bank) {
         const spawn = this._computeSpawn(level);
         const defaults = WadConstants.USER_DEFAULTS;
+
+        // Sky texture (SKYx by episode/map). Decoded as a wall texture; null if
+        // the WAD lacks it → renderer falls back to the solid background.
+        // The sky's "cap" colour (average of its top row) doubles as the scene
+        // background: in WebGL the sky quad draws only the textured band and
+        // discards above/below (the clear colour shows through); in the CPU full
+        // renderer the sky holes already show the background — so a sky-coloured
+        // background gives a solid sky there for free, without a sky pass.
+        const skyIdx = bank.ensureWallTex(WadConstants.skyNameForLevel(this._levelName));
+        let sky = null;
+        let background = WadConstants.DEFAULT_BACKGROUND;
+        if (skyIdx >= 0) {
+            const loaderId = bank.getLoaderId(skyIdx);
+            sky = {loaderId: loaderId, wrap: WadConstants.SKY_WRAP};
+            background = this._skyCapColor(loaderId);
+        }
 
         return {
             user: {
@@ -229,12 +245,34 @@ class WadWorldBuilder {
                 moveSpeed:       defaults.moveSpeed,
                 stepHeight:      defaults.stepHeight
             },
-            background: WadConstants.DEFAULT_BACKGROUND,
+            background: background,
+            sky: sky,
             lights: {
                 ambient: WadConstants.DEFAULT_AMBIENT,
                 sources: []
             }
         };
+    }
+
+    // Solid "cap" colour used as the scene background (shows above/below the sky
+    // band and in the CPU full renderer's sky holes). Vanilla Doom has no such
+    // field — derive it like modern ports from the average of the sky texture's
+    // top row, so the seam with the sky top is smooth.
+    _skyCapColor(loaderId) {
+        const tex = loader.textures().get(loaderId);
+        const d = tex.data;
+        const w = tex.width;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (let x = 0; x < w; x++) {
+            const p = 4 * x;   // row 0 (top of the image)
+            r += d[p];
+            g += d[p + 1];
+            b += d[p + 2];
+        }
+
+        return [Math.round(r / w), Math.round(g / w), Math.round(b / w)];
     }
 
     /**

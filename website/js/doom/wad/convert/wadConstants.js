@@ -259,4 +259,31 @@ class WadConstants {
 
     static DEFAULT_BACKGROUND = [200, 200, 200];
     static DEFAULT_AMBIENT    = [235, 235, 235];
+
+    // Horizontal sky repeat factor: vanilla Doom wraps the 256-px sky ~4× per
+    // 360°. Carried in the sky descriptor so the (generic) engine never hardcodes
+    // this Doom-specific value.
+    static SKY_WRAP = 4;
+
+    // Vanilla sky texture by level: E<m>M<n> → SKY<m> (m clamped 1..4) ;
+    // MAP<nn> → SKY1 (1-11) / SKY2 (12-20) / SKY3 (21+). Fallback SKY1.
+    static skyNameForLevel(levelName) {
+        const ep = (/^E(\d)M\d/i).exec(levelName);
+        if (ep !== null) {
+            return 'SKY' + Math.min(4, Math.max(1, parseInt(ep[1], 10)));
+        }
+        const mp = (/^MAP(\d+)/i).exec(levelName);
+        if (mp !== null) {
+            const n = parseInt(mp[1], 10);
+            if (n <= 11) {
+                return 'SKY1';
+            }
+            if (n <= 20) {
+                return 'SKY2';
+            }
+            return 'SKY3';
+        }
+
+        return 'SKY1';
+    }
 }
