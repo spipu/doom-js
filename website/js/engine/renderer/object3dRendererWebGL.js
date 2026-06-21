@@ -6,6 +6,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._vbo      = null;
         this._texCache = new WeakMap();
         this._loc      = {};
+        this._skyProgram = null;   // dedicated full-screen sky program (lazy)
+        this._skyVbo     = null;
+        this._skyLoc     = {};
     }
 
     get code() {
@@ -37,11 +40,110 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         if (!this._program) {
             this._setup(gl);
         }
-        gl.useProgram(this._program);
         gl.viewport(0, 0, engine.scrWidth, engine.scrHeight);
         const bg = engine.background;
         gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        if (engine.sky !== null) {
+            this._drawSky(gl, engine);
+        }
+        gl.useProgram(this._program);
+    }
+
+    // Cylindrical-sky pre-pass: a full-screen quad sampling the sky texture by
+    // view angle. Drawn first with depth test OFF (no depth write), so geometry
+    // overwrites it wherever it draws — only the un-drawn sky holes keep it.
+    _drawSky(gl, engine) {
+        const tex = loader.textures().get(engine.sky.loaderId);
+        if (!tex) {
+            return;
+        }
+        if (!this._skyProgram) {
+            this._setupSky(gl);
+        }
+        const loc = this._skyLoc;
+        const DEG = Math.PI / 180;
+
+        gl.useProgram(this._skyProgram);
+        gl.disable(gl.DEPTH_TEST);
+
+        gl.uniform1f(loc.w,      engine.scrWidth);
+        gl.uniform1f(loc.h,      engine.scrHeight);
+        gl.uniform1f(loc.yaw,    engine._viewYaw * DEG);
+        gl.uniform1f(loc.pitch,  engine._viewPitch * DEG);
+        gl.uniform1f(loc.fov,    engine.fov);
+        gl.uniform1f(loc.wrap,   engine.sky.wrap);
+        const cap = engine.background;   // sky "cap" colour (= scene background)
+        gl.uniform3f(loc.cap, cap[0] / 255, cap[1] / 255, cap[2] / 255);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, tex));
+        gl.uniform1i(loc.sky, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._skyVbo);
+        gl.enableVertexAttribArray(loc.aPos);
+        gl.vertexAttribPointer(loc.aPos, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        gl.enable(gl.DEPTH_TEST);
+    }
+
+    _setupSky(gl) {
+        const vs = this._compile(gl, gl.VERTEX_SHADER, `
+            attribute vec2 a_pos;
+            void main() {
+                gl_Position = vec4(a_pos, 0.0, 1.0);
+            }
+        `);
+        const fs = this._compile(gl, gl.FRAGMENT_SHADER, `
+            precision mediump float;
+            uniform sampler2D u_sky;
+            uniform vec3  u_cap;
+            uniform float u_w, u_h, u_yaw, u_pitch, u_fov, u_wrap;
+            const float PI = 3.14159265;
+            const float EL_MAX = 0.6;   // elevation (rad) the texture spans above the horizon
+            void main() {
+                // Per-pixel 3D view ray → spherical (azimuth, elevation): the
+                // perspective curves the sky like a dome and converges looking up.
+                float nx = 2.0 * gl_FragCoord.x / u_w - 1.0;
+                float ny = 2.0 * gl_FragCoord.y / u_h - 1.0;             // bottom-up
+                float t  = tan(u_fov);                                    // half horizontal FOV
+                vec3 r = normalize(vec3(nx * t, ny * t * (u_h / u_w), 1.0));
+                float cp = cos(u_pitch), sp = sin(u_pitch);              // pitch rotation (X)
+                vec3 rp = vec3(r.x, r.y * cp + r.z * sp, -r.y * sp + r.z * cp);
+                float az = atan(rp.x, rp.z) + u_yaw;
+                float el = asin(clamp(rp.y, -1.0, 1.0));                 // 0 = horizon
+                float u  = fract(az * u_wrap / (2.0 * PI));
+                float vv = el / EL_MAX;                                   // 0 horizon → 1 texture top
+                vec3 col = texture2D(u_sky, vec2(u, 1.0 - clamp(vv, 0.0, 1.0))).rgb;
+                col = mix(col, u_cap, smoothstep(0.7, 1.0, vv));         // smooth fade to cap (no hard cut)
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `);
+
+        this._skyProgram = gl.createProgram();
+        gl.attachShader(this._skyProgram, vs);
+        gl.attachShader(this._skyProgram, fs);
+        gl.linkProgram(this._skyProgram);
+
+        this._skyLoc = {
+            aPos:   gl.getAttribLocation( this._skyProgram, 'a_pos'),
+            sky:    gl.getUniformLocation(this._skyProgram, 'u_sky'),
+            cap:    gl.getUniformLocation(this._skyProgram, 'u_cap'),
+            w:      gl.getUniformLocation(this._skyProgram, 'u_w'),
+            h:      gl.getUniformLocation(this._skyProgram, 'u_h'),
+            yaw:    gl.getUniformLocation(this._skyProgram, 'u_yaw'),
+            pitch:  gl.getUniformLocation(this._skyProgram, 'u_pitch'),
+            fov:    gl.getUniformLocation(this._skyProgram, 'u_fov'),
+            wrap:   gl.getUniformLocation(this._skyProgram, 'u_wrap'),
+        };
+
+        this._skyVbo = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._skyVbo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,   1, -1,   1, 1,
+            -1, -1,   1,  1,  -1, 1
+        ]), gl.STATIC_DRAW);
     }
 
     end(engine) {

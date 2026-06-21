@@ -4,6 +4,7 @@ class World extends AbstractLoadedEntity {
 
         this._user          = null;
         this._background    = [0, 0, 0];
+        this._sky           = null;
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
@@ -84,6 +85,10 @@ class World extends AbstractLoadedEntity {
 
     getBackground() {
         return this._background;
+    }
+
+    getSky() {
+        return this._sky;
     }
 
     getLightAmbient() {
