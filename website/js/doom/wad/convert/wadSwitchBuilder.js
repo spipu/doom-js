@@ -38,16 +38,65 @@ class WadSwitchBuilder {
     // --- Internal ---
 
     _buildSwitch(ldIdx) {
-        const {vertexes, linedefs, sectors} = this._level;
-        const SCALE = WadConstants.SCALE;
-
         const slotInfo = this._analysis.switchWalls.get(ldIdx);
         if (slotInfo === undefined) {
             return null;
         }
 
-        const ld = linedefs[ldIdx];
+        const ld = this._level.linedefs[ldIdx];
         const switchName = 'switch_' + ldIdx;
+        const isExit = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
+        const targets = this._resolveTargets(ld);
+
+        const geom = ((slotInfo.invisible === true)
+            ? this._buildUseZoneGeometry(ld)
+            : this._buildPanelGeometry(ld, slotInfo));
+        if (geom === null) {
+            return null;
+        }
+        // An invisible USE zone with nothing to fire is dead weight (a visible
+        // panel is always kept — it may be an exit or just cosmetic).
+        if ((slotInfo.invisible === true) && (targets.length === 0) && !isExit) {
+            return null;
+        }
+
+        const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? ['once', null, null];
+
+        return {
+            code:     switchName,
+            textures: geom.textures,
+            mesh:     geom.mesh,
+            instanceData: {
+                code:              switchName,
+                position:          [0, 0, 0],
+                rotation:          [0, 0, 0],
+                trigger:           'action',
+                loop:              false,
+                onlyOnce:          false,
+                collisionShape:    geom.collisionShape,
+                interactionRadius: geom.radius,
+                damage:            null,
+                interaction:       switchName,
+                keyframes:         []
+            },
+            interactionSpec: {
+                code:    switchName,
+                mode:    interactionConfig[0],
+                tOn:     interactionConfig[1],
+                tOff:    interactionConfig[2],
+                targets: targets,
+                isExit:  isExit
+            }
+        };
+    }
+
+    // Visible switch panel: a textured quad swapping SW1↔SW2 on trigger. Its
+    // face is removed from the static map, so the instance carries the wall
+    // ('faces' collision: a one-sided panel blocks; a two-sided step riser is
+    // stepped over or blocks per its height, like any static wall face).
+    _buildPanelGeometry(ld, slotInfo) {
+        const SCALE = WadConstants.SCALE;
+        const {vertexes} = this._level;
 
         const ti = this._bank.ensureWallTex(slotInfo.texName);
         if (ti < 0) {
@@ -63,7 +112,9 @@ class WadSwitchBuilder {
 
         const band = this._switchBand(ld, slotInfo, th);
 
-        // SW2 partner for the runtime texture swap
+        // SW2 partner (local index 2, swapped at runtime). A non-SW switch wall
+        // has no partner → no index 2; DoomSwitchInteraction then simply does not
+        // swap (it guards on an undefined index 2) instead of going black.
         const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
         const ti2 = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
 
@@ -78,70 +129,67 @@ class WadSwitchBuilder {
         const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
 
-        // Action radius: half of the 3D bounding diagonal + margin. The trigger
-        // distance is 3D and the wall center is at mid-height, so the wall
-        // height must be included — a small fixed radius would force the
-        // player to hug the panel
+        return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces'};
+    }
+
+    // Invisible USE zone: a switch-special line with no SWxxx graphic (e.g. an
+    // SR lift edge). One point, no faces, no collision — the wall it sits on (a
+    // lift riser, a step) is already drawn elsewhere; pressing within the radius
+    // fires the targets. The USE analog of a walk-trigger zone.
+    _buildUseZoneGeometry(ld) {
+        const SCALE = WadConstants.SCALE;
+        const {vertexes, sidedefs, sectors} = this._level;
+
+        const [dx1, dy1] = vertexes[ld.v1];
+        const [dx2, dy2] = vertexes[ld.v2];
+        const fh = ((ld.right >= 0) ? sectors[sidedefs[ld.right].sector].fh : 0);
+        const [cwx, cwz] = WadGeometry.doomToWorld((dx1 + dx2) / 2, (dy1 + dy2) / 2);
+        const cwy = fh * SCALE + (WadConstants.PLAYER_HEIGHT / 2);
+        const lenWorld = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2) * SCALE;
+
+        const mesh = WadMeshBuilder.newMesh();
+        mesh.points.push([cwx, cwy, cwz]);
+
+        return {textures: [], mesh: mesh, radius: (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS, collisionShape: 'none'};
+    }
+
+    // Action radius: half the 3D bounding diagonal + margin. The trigger is 3D
+    // and the wall centre is at mid-height, so the height must be included — a
+    // small fixed radius would force the player to hug the panel.
+    _meshRadius(mesh) {
         const xs = mesh.points.map((p) => p[0]);
         const ys = mesh.points.map((p) => p[1]);
         const zs = mesh.points.map((p) => p[2]);
         const dx = Math.max(...xs) - Math.min(...xs);
         const dy = Math.max(...ys) - Math.min(...ys);
         const dz = Math.max(...zs) - Math.min(...zs);
-        const radius = Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
 
-        const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? ['once', null, null];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
+    }
 
-        // Resolve tag → target lift/floor AND door instances of the same tag.
-        // start() is type-agnostic, so a remote door (trigger 'none') opens
-        // exactly like a switch-driven lift.
+    // Tagged lift/floor + door instances of the same tag. start() is
+    // type-agnostic, so a remote door (trigger 'none') opens exactly like a
+    // switch-driven lift.
+    _resolveTargets(ld) {
+        const {sectors} = this._level;
         const targets = [];
-        if (ld.tag !== 0) {
-            for (const liftSi of this._analysis.movingFloorDownIds) {
-                const liftCode = 'lift_' + liftSi;
-                if (sectors[liftSi].tag === ld.tag && this._builtLiftCodes.has(liftCode)) {
-                    targets.push(liftCode);
-                }
+        if (ld.tag === 0) {
+            return targets;
+        }
+        for (const liftSi of this._analysis.movingFloorDownIds) {
+            const liftCode = 'lift_' + liftSi;
+            if (sectors[liftSi].tag === ld.tag && this._builtLiftCodes.has(liftCode)) {
+                targets.push(liftCode);
             }
-            for (const doorSi of this._analysis.doorSectorIds) {
-                const doorCode = 'door_' + doorSi;
-                if (sectors[doorSi].tag === ld.tag && this._builtDoorCodes.has(doorCode)) {
-                    targets.push(doorCode);
-                }
+        }
+        for (const doorSi of this._analysis.doorSectorIds) {
+            const doorCode = 'door_' + doorSi;
+            if (sectors[doorSi].tag === ld.tag && this._builtDoorCodes.has(doorCode)) {
+                targets.push(doorCode);
             }
         }
 
-        return {
-            code:     switchName,
-            textures: localIndices,
-            mesh:     mesh,
-            instanceData: {
-                code:              switchName,
-                position:          [0, 0, 0],
-                rotation:          [0, 0, 0],
-                trigger:           'action',
-                loop:              false,
-                onlyOnce:          false,
-                // The switch face is removed from the static map, so the
-                // instance carries its collision. 'faces' replicates the
-                // original wall: a one-sided panel blocks; a two-sided step
-                // riser is stepped over or blocks per its height, exactly as
-                // resolveWall already treats static wall faces.
-                collisionShape:    'faces',
-                interactionRadius: radius,
-                damage:            null,
-                interaction:       switchName,
-                keyframes:         []
-            },
-            interactionSpec: {
-                code:    switchName,
-                mode:    interactionConfig[0],
-                tOn:     interactionConfig[1],
-                tOff:    interactionConfig[2],
-                targets: targets,
-                isExit:  WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special)
-            }
-        };
+        return targets;
     }
 
     /**

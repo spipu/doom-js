@@ -253,7 +253,7 @@ class WadConstants {
         gravity:         9.81,
         maxJumpVelocity: 3.5,
         maxSlopeAngle:   50,
-        moveSpeed:       0.0036,
+        moveSpeed:       0.0045,
         stepHeight:      0.375
     };
 
