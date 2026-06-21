@@ -200,7 +200,7 @@ class WadStaticMapBuilder {
         const lCh = lSec.ch;
 
         for (const [mSd, mSec, otherSec, side] of [[rSd, rSec, lSec, 'right'], [lSd, lSec, rSec, 'left']]) {
-            if ((swWall ?? null) !== null && swWall.side === side && swWall.slot === 'middle') {
+            if ((swWall !== null) && (swWall.side === side) && (swWall.slot === 'middle')) {
                 continue;
             }
             if (!(mSd.middle && mSd.middle !== '-')) {

@@ -144,14 +144,15 @@ class MenuNavigator {
     _showBuildError(error, modal) {
         console.error(error);
         loader.reset();
-        modal.close();
 
         const message = ((error && error.message) ? error.message : String(error));
         const detail = ((error && error.stack)
             ? error.stack.split('\n').slice(0, 4).join('\n')
             : null);
 
-        new MenuModal(this._display).showError(message, detail, () => {
+        // Reuse the loading modal instance (showError() closes its own overlay
+        // first) instead of closing it and spawning a second one.
+        modal.showError(message, detail, () => {
             this.showWadList();
         });
     }

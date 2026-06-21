@@ -35,9 +35,10 @@ class DoomSwitchInteraction extends SwitchInteraction {
         // Swap to SW2 only if it exists: a non-SW switch wall (or an invisible
         // USE zone with no faces) has no index-2 texture — leave the face as is
         // instead of blanking it to a null textureId.
-        const swapTo = instance.getObject().getTextureId(2);
+        const obj = instance.getObject();
+        const swapTo = obj.getTextureId(2);
         if (swapTo !== undefined) {
-            instance.getObject().faceList.forEach(fc => { fc.textureId = swapTo; });
+            obj.faceList.forEach(fc => { fc.textureId = swapTo; });
         }
 
         for (const code of this._targets) {
@@ -50,9 +51,10 @@ class DoomSwitchInteraction extends SwitchInteraction {
     }
 
     _triggerOff(instance) {
-        const swapTo = instance.getObject().getTextureId(1);
+        const obj = instance.getObject();
+        const swapTo = obj.getTextureId(1);
         if (swapTo !== undefined) {
-            instance.getObject().faceList.forEach(fc => { fc.textureId = swapTo; });
+            obj.faceList.forEach(fc => { fc.textureId = swapTo; });
         }
     }
 }
