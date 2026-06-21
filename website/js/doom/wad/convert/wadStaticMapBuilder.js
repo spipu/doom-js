@@ -125,6 +125,10 @@ class WadStaticMapBuilder {
             const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
             const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
 
+            // Doom sky rule: when BOTH ceilings are sky, the upper between them
+            // is not drawn — the sky is continuous (no band above the opening).
+            const ceilSky = (rSec.ct.startsWith('F_SKY') && lSec.ct.startsWith('F_SKY'));
+
             // Lower wall: step up from right sector floor to left sector floor
             if (lFh > rFh && !rIsDoor && !lIsDoor && !isSwitchFace('right', 'lower')) {
                 const ti = this._bank.ensureWallTex(rSd.lower);
@@ -151,7 +155,7 @@ class WadStaticMapBuilder {
             }
 
             // Upper wall: ceiling step down from right sector to left sector
-            if (lCh < rCh && !rIsDoor && !lIsDoor && !isSwitchFace('right', 'upper')) {
+            if (lCh < rCh && !rIsDoor && !lIsDoor && !ceilSky && !isSwitchFace('right', 'upper')) {
                 const ti = this._bank.ensureWallTex(rSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
@@ -164,7 +168,7 @@ class WadStaticMapBuilder {
             }
 
             // Upper wall from left side
-            if (rCh < lCh && !lIsDoor && !rIsDoor && !isSwitchFace('left', 'upper')) {
+            if (rCh < lCh && !lIsDoor && !rIsDoor && !ceilSky && !isSwitchFace('left', 'upper')) {
                 const ti = this._bank.ensureWallTex(lSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh)));
