@@ -167,29 +167,14 @@ class WadSwitchBuilder {
         return Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
     }
 
-    // Tagged lift/floor + door instances of the same tag. start() is
+    // Tagged lift + door instances of the same tag (shared resolver). start() is
     // type-agnostic, so a remote door (trigger 'none') opens exactly like a
     // switch-driven lift.
     _resolveTargets(ld) {
-        const {sectors} = this._level;
-        const targets = [];
-        if (ld.tag === 0) {
-            return targets;
-        }
-        for (const liftSi of this._analysis.movingFloorDownIds) {
-            const liftCode = 'lift_' + liftSi;
-            if (sectors[liftSi].tag === ld.tag && this._builtLiftCodes.has(liftCode)) {
-                targets.push(liftCode);
-            }
-        }
-        for (const doorSi of this._analysis.doorSectorIds) {
-            const doorCode = 'door_' + doorSi;
-            if (sectors[doorSi].tag === ld.tag && this._builtDoorCodes.has(doorCode)) {
-                targets.push(doorCode);
-            }
-        }
-
-        return targets;
+        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
+            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_', built: this._builtLiftCodes},
+            {ids: this._analysis.doorSectorIds,      prefix: 'door_', built: this._builtDoorCodes}
+        ]);
     }
 
     /**

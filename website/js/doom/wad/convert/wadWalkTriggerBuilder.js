@@ -96,29 +96,13 @@ class WadWalkTriggerBuilder {
         };
     }
 
-    // Tagged lift/rising-floor/door instances of the same tag — same resolution
-    // as WadSwitchBuilder, extended with rising floors.
+    // Tagged lift + rising-floor + door instances of the same tag (shared
+    // resolver — same logic as the switch builder, extended with rising floors).
     _resolveTargets(tag) {
-        const {sectors} = this._level;
-        const targets = [];
-        for (const si of this._analysis.movingFloorDownIds) {
-            const code = 'lift_' + si;
-            if (sectors[si].tag === tag && this._builtLiftCodes.has(code)) {
-                targets.push(code);
-            }
-        }
-        for (const si of this._analysis.risingFloorIds) {
-            const code = 'risingfloor_' + si;
-            if (sectors[si].tag === tag && this._builtRisingCodes.has(code)) {
-                targets.push(code);
-            }
-        }
-        for (const si of this._analysis.doorSectorIds) {
-            const code = 'door_' + si;
-            if (sectors[si].tag === tag && this._builtDoorCodes.has(code)) {
-                targets.push(code);
-            }
-        }
-        return targets;
+        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, tag, [
+            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
+            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes},
+            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes}
+        ]);
     }
 }

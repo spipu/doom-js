@@ -104,12 +104,15 @@ class WadMapAnalyzer {
                 continue;
             }
             if (ld.tag !== 0) {
-                // A tagged door is remote: never self-activated, always driven by
-                // an external trigger (a switch or, for walk specials, the
-                // walk-trigger zone built at the linedef). Force trigger 'none'.
+                // A tagged door driven REMOTELY (walk 'proximity' or switch 'none')
+                // must not self-activate → force 'none', the external trigger
+                // (switch / walk-zone) drives it. A manual 'action' door carrying a
+                // tag (unusual) keeps its natural press trigger so it stays usable.
+                const natural = WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] ?? 'action';
+                const forced = ((natural === 'action') ? null : 'none');
                 for (let si = 0; si < sectors.length; si++) {
                     if (sectors[si].tag === ld.tag) {
-                        registerDoor(si, ld.special, 'none');
+                        registerDoor(si, ld.special, forced);
                     }
                 }
             } else if (ld.left >= 0) {
@@ -317,5 +320,26 @@ class WadMapAnalyzer {
         }
 
         return null;
+    }
+
+    // Codes of the built target instances of a given tag, shared by every
+    // "trigger → targets" builder (switch, walk-zone). `families` is a list of
+    // {ids: Set<sectorId>, prefix, built: Set<code>}; the switch passes lifts +
+    // doors, the walk-trigger zone passes lifts + rising floors + doors.
+    static resolveTaggedTargets(sectors, tag, families) {
+        const targets = [];
+        if (tag === 0) {
+            return targets;
+        }
+        for (const fam of families) {
+            for (const si of fam.ids) {
+                const code = fam.prefix + si;
+                if (sectors[si].tag === tag && fam.built.has(code)) {
+                    targets.push(code);
+                }
+            }
+        }
+
+        return targets;
     }
 }
