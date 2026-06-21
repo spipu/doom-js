@@ -19,7 +19,7 @@ class WadMapAnalyzer {
         this._patchLiftFloors(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds);
-        const switchLinedefIds = this._identifySwitches();
+        const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
 
@@ -33,7 +33,8 @@ class WadMapAnalyzer {
             liftMinAdjFh:         lifts.liftMinAdjFh,
             risingFloorIds:       rising.risingFloorIds,
             risingFloorSpecial:   rising.risingFloorSpecial,
-            switchLinedefIds:     switchLinedefIds,
+            switchLinedefIds:     switches.ids,
+            switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
             walkTriggerLinedefs:  walkTriggerLinedefs
         };
@@ -243,25 +244,65 @@ class WadMapAnalyzer {
     // --- Switches ---
 
     // One-sided linedefs with a S-type special — the wall face IS the switch
+    // A switch linedef carries a SWxxx graphic in one wall slot (right/left ×
+    // upper/middle/lower). One-sided switches use the right middle (the historic
+    // case). Two-sided ones put the graphic on a step riser (lower) or header
+    // (upper) — so the detection scans every slot for an SW1/SW2 texture and
+    // records WHICH slot, so the static builder can drop that exact face and the
+    // switch builder can rebuild it at the right vertical band.
+    //
+    // @returns {{ids: Set<number>, walls: Map<number, {side, slot, texName}>}}
     _identifySwitches() {
         const {linedefs, sidedefs} = this._level;
-        const switchLinedefIds = new Set();
+        const ids = new Set();
+        const walls = new Map();
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
             if (!WadConstants.SWITCH_SPECIALS.has(ld.special)) {
                 continue;
             }
-            if (ld.right < 0 || ld.left >= 0) {
+            if (ld.right < 0) {
                 continue;
             }
-            const sd = sidedefs[ld.right];
-            if (!sd.middle || sd.middle === '-') {
+            const rSd = sidedefs[ld.right];
+
+            if (ld.left < 0) {
+                // One-sided: switch graphic on the right middle (unchanged).
+                if (!rSd.middle || rSd.middle === '-') {
+                    continue;
+                }
+                ids.add(ldIdx);
+                walls.set(ldIdx, {side: 'right', slot: 'middle', texName: rSd.middle});
                 continue;
             }
-            switchLinedefIds.add(ldIdx);
+
+            // Two-sided: only a switch if a slot actually carries an SW graphic.
+            const found = this._findSwitchSlot(rSd, sidedefs[ld.left]);
+            if (found !== null) {
+                ids.add(ldIdx);
+                walls.set(ldIdx, found);
+            }
         }
 
-        return switchLinedefIds;
+        return {ids: ids, walls: walls};
+    }
+
+    _findSwitchSlot(rSd, lSd) {
+        const candidates = [
+            {side: 'right', slot: 'lower',  texName: rSd.lower},
+            {side: 'right', slot: 'upper',  texName: rSd.upper},
+            {side: 'right', slot: 'middle', texName: rSd.middle},
+            {side: 'left',  slot: 'lower',  texName: lSd.lower},
+            {side: 'left',  slot: 'upper',  texName: lSd.upper},
+            {side: 'left',  slot: 'middle', texName: lSd.middle}
+        ];
+        for (const c of candidates) {
+            if (c.texName && (/^SW[12]/).test(c.texName)) {
+                return c;
+            }
+        }
+
+        return null;
     }
 }
