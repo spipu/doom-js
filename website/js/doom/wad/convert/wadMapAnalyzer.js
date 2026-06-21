@@ -49,7 +49,14 @@ class WadMapAnalyzer {
         const walkTriggers = [];
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            if (WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special) && ld.tag !== 0) {
+            // Walk lifts/floors, plus tagged WALK-triggered doors (specials 2/86/
+            // 90/109, marked 'proximity' in DOOR_TRIGGER_BY_SPECIAL): a remote
+            // door tagged T opens when its trigger line is crossed, not by
+            // approaching the door — e.g. grabbing a key on a pedestal ringed by
+            // such lines opens the doors tagged T elsewhere.
+            const isWalkLift = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
+            const isWalkDoor = (WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] === 'proximity');
+            if ((isWalkLift || isWalkDoor) && ld.tag !== 0) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
         }
@@ -80,11 +87,11 @@ class WadMapAnalyzer {
         const doorSectorIds = new Set();
         const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
 
-        const registerDoor = (si, sp) => {
+        const registerDoor = (si, sp, forceTrigger) => {
             doorSectorIds.add(si);
             doorProps[si] = {
                 speed:       WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
-                trigger:     WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action',
+                trigger:     forceTrigger ?? (WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action'),
                 loop:        WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
                 onlyOnce:    WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
                 anim:        WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
@@ -97,13 +104,16 @@ class WadMapAnalyzer {
                 continue;
             }
             if (ld.tag !== 0) {
+                // A tagged door is remote: never self-activated, always driven by
+                // an external trigger (a switch or, for walk specials, the
+                // walk-trigger zone built at the linedef). Force trigger 'none'.
                 for (let si = 0; si < sectors.length; si++) {
                     if (sectors[si].tag === ld.tag) {
-                        registerDoor(si, ld.special);
+                        registerDoor(si, ld.special, 'none');
                     }
                 }
             } else if (ld.left >= 0) {
-                registerDoor(sidedefs[ld.left].sector, ld.special);
+                registerDoor(sidedefs[ld.left].sector, ld.special, null);
             }
         }
 

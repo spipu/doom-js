@@ -215,11 +215,14 @@ class WadConstants {
     static WALK_TRIGGER_SPECIALS = new Set([19, 36, 37, 38, 82, 83, 84, 88, 120, 121]);
 
     // W1 (once) vs WR (repeatable) — carried by the zone instance's onlyOnce.
+    // Includes the tagged WALK door specials (2/109 = W1, 86/90 = WR) routed
+    // through the same zone mechanism (see _identifyWalkTriggers).
     static WALK_TRIGGER_ONCE_BY_SPECIAL = {
         88: false, 120: false,
         121: true,
         19: true, 36: true, 37: true, 38: true,
-        82: false, 83: false, 84: false
+        82: false, 83: false, 84: false,
+        2: true, 109: true, 86: false, 90: false
     };
 
     // --- Linedef flags ---
