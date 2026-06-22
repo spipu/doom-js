@@ -179,40 +179,65 @@ class WadMapAnalyzer {
             }
         }
 
-        // Save original fh and min adjacent fh before patching
+        // Save original fh and min adjacent fh before patching.
         const liftOriginalFh = {};
         const liftMinAdjFh   = {};
-        for (const si of movingFloorDownIds) {
-            const adjFh = [];
-            for (const ld of linedefs) {
-                if (ld.right < 0 || ld.left < 0) {
-                    continue;
+        const computeTargets = () => {
+            for (const si of movingFloorDownIds) {
+                const adjFh = [];
+                for (const ld of linedefs) {
+                    if (ld.right < 0 || ld.left < 0) {
+                        continue;
+                    }
+                    const rSi = sidedefs[ld.right].sector;
+                    const lSi = sidedefs[ld.left].sector;
+                    if (rSi === si && !movingFloorDownIds.has(lSi)) {
+                        adjFh.push(sectors[lSi].fh);
+                    } else if (lSi === si && !movingFloorDownIds.has(rSi)) {
+                        adjFh.push(sectors[rSi].fh);
+                    }
                 }
-                const rSi = sidedefs[ld.right].sector;
-                const lSi = sidedefs[ld.left].sector;
-                if (rSi === si && !movingFloorDownIds.has(lSi)) {
-                    adjFh.push(sectors[lSi].fh);
-                } else if (lSi === si && !movingFloorDownIds.has(rSi)) {
-                    adjFh.push(sectors[rSi].fh);
+                liftOriginalFh[si] = sectors[si].fh;
+                // Target floor height: classic lifts lower to the LOWEST adjacent
+                // floor; 102 lowers to the HIGHEST, 71 to the highest + 8. Clamped
+                // so a remote floor-lower never raises the floor.
+                const rule = WadConstants.LIFT_TARGET_BY_SPECIAL[liftSectorSpecial[si]] ?? 'lowest';
+                let target;
+                if (adjFh.length === 0) {
+                    target = sectors[si].fh;
+                } else if (rule === 'highest') {
+                    target = Math.max(...adjFh);
+                } else if (rule === 'highest+8') {
+                    target = Math.max(...adjFh) + 8;
+                } else {
+                    target = Math.min(...adjFh);
                 }
+                liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
             }
-            liftOriginalFh[si] = sectors[si].fh;
-            // Target floor height: classic lifts lower to the LOWEST adjacent
-            // floor; 102 lowers to the HIGHEST, 71 to the highest + 8. Clamped
-            // so a remote floor-lower never raises the floor (guards the
-            // origFh <= target → no lift case in the builder).
-            const rule = WadConstants.LIFT_TARGET_BY_SPECIAL[liftSectorSpecial[si]] ?? 'lowest';
-            let target;
-            if (adjFh.length === 0) {
-                target = sectors[si].fh;
-            } else if (rule === 'highest') {
-                target = Math.max(...adjFh);
-            } else if (rule === 'highest+8') {
-                target = Math.max(...adjFh) + 8;
-            } else {
-                target = Math.min(...adjFh);
+        };
+
+        // A lift only exists where the floor can actually descend (some adjacent
+        // non-lift floor is lower). A sector that shares a lift tag but has no
+        // lower neighbour — e.g. a large platform tagged alongside the real lift —
+        // is NOT a lift: the builder skips it (origFh <= target → null), but its
+        // static floor was already dropped, leaving a hole. Drop such dead lifts
+        // here so their floor is rendered. Remove them ONE AT A TIME: a dead lift
+        // turns into a normal neighbour once dropped, which can lower a survivor's
+        // target and revive it (its only lower neighbour may itself be a dead lift
+        // still masking it). Dropping a whole batch at once would demote such a
+        // survivor by mistake, so recompute after every single removal.
+        while (true) {
+            for (const k of Object.keys(liftOriginalFh)) {
+                delete liftOriginalFh[k];
+                delete liftMinAdjFh[k];
             }
-            liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
+            computeTargets();
+            const dead = [...movingFloorDownIds].find((si) => (liftOriginalFh[si] <= liftMinAdjFh[si]));
+            if (dead === undefined) {
+                break;
+            }
+            movingFloorDownIds.delete(dead);
+            delete liftSectorSpecial[dead];
         }
 
         return {
