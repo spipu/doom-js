@@ -129,8 +129,12 @@ class WadStaticMapBuilder {
             // is not drawn — the sky is continuous (no band above the opening).
             const ceilSky = (rSec.ct.startsWith('F_SKY') && lSec.ct.startsWith('F_SKY'));
 
-            // Lower wall: step up from right sector floor to left sector floor
-            if (lFh > rFh && !rIsDoor && !lIsDoor && !isSwitchFace('right', 'lower')) {
+            // Lower wall: step up from right sector floor to left sector floor.
+            // Door sectors are allowed here (no !isDoor guard): a door on a step
+            // up (own fh patched above its lowest neighbour) needs this riser on
+            // the door line — flush doors give lFh == rFh and build nothing. The
+            // upper walls below stay door-guarded (the door panel covers them).
+            if (lFh > rFh && !isSwitchFace('right', 'lower')) {
                 const ti = this._bank.ensureWallTex(rSd.lower);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
@@ -142,8 +146,8 @@ class WadStaticMapBuilder {
                     {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
             }
 
-            // Lower wall from left side
-            if (rFh > lFh && !lIsDoor && !rIsDoor && !isSwitchFace('left', 'lower')) {
+            // Lower wall from left side (door sectors allowed, see above)
+            if (rFh > lFh && !isSwitchFace('left', 'lower')) {
                 const ti = this._bank.ensureWallTex(lSd.lower);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
@@ -293,43 +297,24 @@ class WadStaticMapBuilder {
         }
     }
 
-    // Door sector: floor only, at the lowest adjacent floor height.
-    // The ceiling is omitted — the door instance covers it.
+    // Door sector: floor only. sec.fh was already patched by the analyzer to the
+    // door's effective floor (max of own fh and the lowest walkable neighbour),
+    // so the threshold sits at its real height and the step up to it is rendered
+    // as a riser on the door line. The ceiling is omitted — the door instance
+    // covers it.
     _buildDoorSectorFlat(mesh, si, sec, chains) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds} = this._analysis;
+        const {vertexes} = this._level;
 
-        const adjSectors = [];
-        for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
-                continue;
-            }
-            if (sidedefs[ld.right].sector === si) {
-                const other = sidedefs[ld.left].sector;
-                if (!doorSectorIds.has(other)) {
-                    adjSectors.push(sectors[other]);
-                }
-            } else if (sidedefs[ld.left].sector === si) {
-                const other = sidedefs[ld.right].sector;
-                if (!doorSectorIds.has(other)) {
-                    adjSectors.push(sectors[other]);
-                }
-            }
-        }
-        if (adjSectors.length === 0) {
+        const ft = this._bank.ensureFlatTex(sec.ft);
+        if (ft < 0) {
             return;
         }
-
-        const floorH = Math.min(...adjSectors.map((s) => s.fh));
-        const ft = this._bank.ensureFlatTex(sec.ft);
 
         const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
         for (const polyDoom of outers) {
             const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
-            if (ft >= 0) {
-                WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, floorH, true, sec.light,
-                    ((ownHoles.length > 0) ? ownHoles : null));
-            }
+            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, sec.fh, true, sec.light,
+                ((ownHoles.length > 0) ? ownHoles : null));
         }
     }
 }
