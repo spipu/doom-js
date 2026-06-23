@@ -123,8 +123,15 @@ class WadMapAnalyzer {
         return {doorSectorIds: doorSectorIds, doorProps: doorProps};
     }
 
-    // floor_h = min adjacent fh, ceil_h = min adjacent non-sky ch - DOOR_TRACK_OFFSET.
-    // Computed AFTER the lift floor patch (same order as the Python script).
+    // floor_h = max(own fh, min adjacent fh), ceil_h = min adjacent non-sky ch -
+    // DOOR_TRACK_OFFSET. Computed AFTER the lift floor patch (same order as the
+    // Python script). A door's floor never moves (only the ceiling rises), so it
+    // sits at the door's own fh — kept whenever it is at or above the lowest
+    // walkable neighbour (door on a step up: the step belongs on the door line,
+    // not min'd away). Clamped UP to the lowest neighbour for "squished closed"
+    // underground doors (fh=-128) whose own floor is below the walkable level.
+    // The result is patched into sectors[si].fh so the walls (riser steps), the
+    // static flat, the panel and the DOORTRAK all read one consistent floor.
     _computeDoorHeights(doorSectorIds) {
         const {linedefs, sidedefs, sectors} = this._level;
         const doorHeights = {};
@@ -150,12 +157,13 @@ class WadMapAnalyzer {
             if (adj.length === 0) {
                 continue;
             }
-            const floorH = Math.min(...adj.map((s) => s.fh));
+            const floorH = Math.max(sectors[si].fh, Math.min(...adj.map((s) => s.fh)));
             const nonSky = adj.filter((s) => !s.ct.startsWith('F_SKY'));
             const ceilH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
                 : floorH + 128);
             doorHeights[si] = {floorH: floorH, ceilH: ceilH};
+            sectors[si].fh = floorH;
         }
 
         return doorHeights;

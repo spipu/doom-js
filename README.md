@@ -137,7 +137,7 @@ website/
 │   │           ├── wadTriangulator.js     Ear-clipping + hole merging (bridge cuts)
 │   │           ├── wadSectorPolygons.js   Sector boundary chains, outers/holes split
 │   │           ├── wadMeshBuilder.js      Wall/flat quads, UV pegging, texture remapping
-│   │           ├── wadMapAnalyzer.js      Door/lift/rising-floor/switch/teleport/walk-trigger identification, heights, floor targets (only sectors that can actually descend stay lifts — a tag-shared platform with no lower neighbour keeps its static floor instead of leaving a hole)
+│   │           ├── wadMapAnalyzer.js      Door/lift/rising-floor/switch/teleport/walk-trigger identification, heights, floor targets (only sectors that can actually descend stay lifts — a tag-shared platform with no lower neighbour keeps its static floor instead of leaving a hole; a door floor is max(own fh, lowest neighbour) so a door on a step keeps its raised threshold — the step's riser is drawn on the door line — while a squished underground door stays clamped up to the walkable level)
 │   │           ├── wadStaticMapBuilder.js Static map mesh (walls + flats)
 │   │           ├── wadDoorBuilder.js      Door meshes + instances (keyframes)
 │   │           ├── wadLiftBuilder.js      Lift meshes + instances (self-contained risers, keyframes)
