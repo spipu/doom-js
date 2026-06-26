@@ -82,6 +82,37 @@ class WadTextureBank {
         return this._register(key, name, WadPicture.flatToImageData(dv, this._palette));
     }
 
+    /**
+     * Sky texture: composed like a wall, then prepared by _prepareSky — the dead
+     * bottom rows (Doom sky textures pad the bottom with transparent or pure-black
+     * rows, e.g. doom1 SKY1 = 8 empty rows) are cropped so the texture stops at
+     * its real content, and any stray transparent pixels are filled horizontally
+     * so it is fully OPAQUE. Otherwise Texture.isAlpha() flags it → the WebGL
+     * renderer falls back to NEAREST (pixelated) and the dead area shows as black
+     * streaks. Cached under a dedicated 'SKY_' key so a same-named wall texture
+     * keeps its own (alpha-preserving) entry.
+     *
+     * @param {string} name
+     * @returns {int} 0-based texture index, or -1 if absent
+     */
+    ensureSkyTex(name) {
+        if (!name || name === '-') {
+            return -1;
+        }
+        const key = 'SKY_' + name;
+        if (this._texIndex[key] !== undefined) {
+            return this._texIndex[key];
+        }
+
+        const raw = this._buildWallTexture(name);
+        if (raw === null) {
+            console.warn('WadTextureBank - sky texture "' + name + '" not found');
+            return -1;
+        }
+
+        return this._register(key, name, WadTextureBank._prepareSky(raw));
+    }
+
     count() {
         return this._texList.length;
     }
@@ -238,6 +269,92 @@ class WadTextureBank {
             this._switchPairs[n1] = n2;
             this._switchPairs[n2] = n1;
             i += 20;
+        }
+    }
+
+    /**
+     * Prepare a sky texture: crop the contiguous dead bottom rows (every pixel
+     * transparent or near-black — the padding Doom adds below the sky image) so
+     * the texture stops exactly at its real content, then fill any stray
+     * transparent pixels horizontally so it is fully opaque (→ LINEAR filtering).
+     * Never stretches vertically: the texture ends sharp, the background shows
+     * below the horizon (the sky shader does the cut).
+     *
+     * @returns {ImageData}
+     */
+    static _prepareSky(image) {
+        const w = image.width;
+        const d = image.data;
+        let h = image.height;
+        while (h > 1 && WadTextureBank._isDeadRow(d, w, h - 1)) {
+            h--;
+        }
+        const out = new ImageData(w, h);
+        out.data.set(d.subarray(0, w * h * 4));   // dead rows are at the bottom → keep the top h rows
+        WadTextureBank._fillTransparentHorizontally(out);
+
+        return out;
+    }
+
+    /**
+     * A row is "dead" when no pixel is real (each is transparent or near-black).
+     */
+    static _isDeadRow(d, w, y) {
+        const row = y * w * 4;
+        for (let x = 0; x < w; x++) {
+            const p = row + x * 4;
+            if (d[p + 3] >= 255 && (d[p] + d[p + 1] + d[p + 2]) > 6) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Fill transparent pixels from the nearest opaque pixel on the same row
+     * (forward then backward pass) — closes any column gaps without ever
+     * stretching vertically. Leaves a fully-transparent row untouched.
+     */
+    static _fillTransparentHorizontally(image) {
+        const w = image.width;
+        const h = image.height;
+        const d = image.data;
+        for (let y = 0; y < h; y++) {
+            const row = y * w * 4;
+            let lr = 0;
+            let lg = 0;
+            let lb = 0;
+            let have = false;
+            for (let x = 0; x < w; x++) {
+                const p = row + x * 4;
+                if (d[p + 3] >= 255) {
+                    lr = d[p];
+                    lg = d[p + 1];
+                    lb = d[p + 2];
+                    have = true;
+                } else if (have) {
+                    d[p]     = lr;
+                    d[p + 1] = lg;
+                    d[p + 2] = lb;
+                    d[p + 3] = 255;
+                }
+            }
+            have = false;
+            for (let x = w - 1; x >= 0; x--) {
+                const p = row + x * 4;
+                if (d[p + 3] >= 255) {
+                    lr = d[p];
+                    lg = d[p + 1];
+                    lb = d[p + 2];
+                    have = true;
+                } else if (have) {
+                    d[p]     = lr;
+                    d[p + 1] = lg;
+                    d[p + 2] = lb;
+                    d[p + 3] = 255;
+                }
+            }
         }
     }
 

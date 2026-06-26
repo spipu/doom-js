@@ -221,7 +221,7 @@ class WadWorldBuilder {
         // discards above/below (the clear colour shows through); in the CPU full
         // renderer the sky holes already show the background — so a sky-coloured
         // background gives a solid sky there for free, without a sky pass.
-        const skyIdx = bank.ensureWallTex(WadConstants.skyNameForLevel(this._levelName));
+        const skyIdx = bank.ensureSkyTex(WadConstants.skyNameForLevel(this._levelName));
         let sky = null;
         let background = WadConstants.DEFAULT_BACKGROUND;
         if (skyIdx >= 0) {
