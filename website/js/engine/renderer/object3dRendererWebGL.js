@@ -73,7 +73,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.pitch,  engine._viewPitch * DEG);
         gl.uniform1f(loc.fov,    engine.fov);
         gl.uniform1f(loc.wrap,   engine.sky.wrap);
-        const cap = engine.background;   // sky "cap" colour (= scene background)
+        const cap = engine.background;   // sky cap colour (= scene background), above and below the band
         gl.uniform3f(loc.cap, cap[0] / 255, cap[1] / 255, cap[2] / 255);
 
         gl.activeTexture(gl.TEXTURE0);
@@ -101,7 +101,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform vec3  u_cap;
             uniform float u_w, u_h, u_yaw, u_pitch, u_fov, u_wrap;
             const float PI = 3.14159265;
-            const float EL_MAX = 0.6;   // elevation (rad) the texture spans above the horizon
+            const float EL_MAX  = 0.6;    // elevation (rad) the texture spans
+            const float EL_DOWN = 0.12;   // shift the whole sky down a touch so its bottom dips just below the walls
             void main() {
                 // Per-pixel 3D view ray → spherical (azimuth, elevation): the
                 // perspective curves the sky like a dome and converges looking up.
@@ -114,9 +115,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 float az = atan(rp.x, rp.z) + u_yaw;
                 float el = asin(clamp(rp.y, -1.0, 1.0));                 // 0 = horizon
                 float u  = fract(az * u_wrap / (2.0 * PI));
-                float vv = el / EL_MAX;                                   // 0 horizon → 1 texture top
+                float vv = (el + EL_DOWN) / EL_MAX;                       // texture bottom sits EL_DOWN below the horizon → 1 texture top
                 vec3 col = texture2D(u_sky, vec2(u, 1.0 - clamp(vv, 0.0, 1.0))).rgb;
-                col = mix(col, u_cap, smoothstep(0.7, 1.0, vv));         // smooth fade to cap (no hard cut)
+                col = mix(col, u_cap, smoothstep(0.7, 1.0, vv));         // fade up into the cap (top)
+                col = ((vv < 0.0) ? u_cap : col);                        // below the lowered texture bottom: background, sharp (like GZDoom)
                 gl_FragColor = vec4(col, 1.0);
             }
         `);
