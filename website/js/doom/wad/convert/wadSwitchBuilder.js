@@ -46,7 +46,9 @@ class WadSwitchBuilder {
         const ld = this._level.linedefs[ldIdx];
         const switchName = 'switch_' + ldIdx;
         const isExit = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
-        const targets = this._resolveTargets(ld);
+        // An exit special ends the level and ignores its tag (vanilla Doom): it
+        // must not also start tag-matching elements (e.g. a neighbouring lift).
+        const targets = ((isExit) ? [] : this._resolveTargets(ld));
 
         const geom = ((slotInfo.invisible === true)
             ? this._buildUseZoneGeometry(ld)
