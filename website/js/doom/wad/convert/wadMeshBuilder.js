@@ -103,11 +103,16 @@ class WadMeshBuilder {
         const c = Math.trunc(light);
 
         let xz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
-
-        // Merge holes via bridge cuts before triangulating; fallback to the
-        // outer alone if the merged polygon fails to produce enough triangles.
         let polyLocal = [...polyVerts2d];
         let preTris   = null;
+
+        // Holes: merge via bridge cuts then ear-clip. The legacy ear-clipping is
+        // kept whenever it triangulates the merged polygon COMPLETELY (true
+        // count = merged.length - 2), so those sectors keep a byte-identical
+        // mesh. When it leaves the flat incomplete (complex donuts with many
+        // holes whose bridges tangle), fall back to the robust earcut path with
+        // native hole support — otherwise the missing triangles show as holes in
+        // both the floor and the ceiling (same merged polygon feeds both).
         if (holes && holes.length > 0) {
             let merged   = WadTriangulator.mergeHolesIntoPolygon(polyLocal, holes);
             let xzMerged = merged.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
@@ -115,18 +120,42 @@ class WadMeshBuilder {
                 xzMerged = [...xzMerged].reverse();
                 merged   = [...merged].reverse();
             }
-            const tris = WadTriangulator.triangulate(xzMerged);
-            if (tris.length >= merged.length - 2 - holes.length) {
+            const legacyTris = WadTriangulator.triangulate(xzMerged);
+            if (legacyTris.length >= xzMerged.length - 2) {
                 polyLocal = merged;
                 xz        = xzMerged;
-                preTris   = tris;
+                preTris   = legacyTris;
+            } else {
+                const outerXz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
+                const holesXz = holes.map((h) => h.map((v) => WadGeometry.doomToWorld(v[0], v[1])));
+                const ec = WadTriangulator.triangulateWithHoles(outerXz, holesXz);
+                const holeVertsDoom = [];
+                for (const h of holes) {
+                    for (const v of h) {
+                        holeVertsDoom.push(v);
+                    }
+                }
+                polyLocal = [...polyVerts2d, ...holeVertsDoom];
+                xz        = ec.vertices;
+                preTris   = ec.tris;
             }
         }
 
-        // triangulate() requires CCW winding; reverse CW polygons
-        if (WadGeometry.polygonAreaSign(xz) > 0) {
-            xz        = [...xz].reverse();
-            polyLocal = [...polyLocal].reverse();
+        // Simple polygon path: triangulate() requires CCW winding, reverse CW
+        // polygons. Skipped when the holes path above already produced preTris.
+        if (preTris === null) {
+            if (WadGeometry.polygonAreaSign(xz) > 0) {
+                xz        = [...xz].reverse();
+                polyLocal = [...polyLocal].reverse();
+            }
+            const legacyTris = WadTriangulator.triangulate(xz);
+            if (legacyTris.length >= xz.length - 2) {
+                preTris = legacyTris;
+            } else {
+                const ec = WadTriangulator.triangulateWithHoles(xz, null);
+                xz      = ec.vertices;
+                preTris = ec.tris;
+            }
         }
 
         const base = mesh.points.length;
@@ -134,7 +163,7 @@ class WadMeshBuilder {
             mesh.points.push([x, yHeight * WadConstants.SCALE, z]);
         }
 
-        const tris = ((preTris !== null) ? preTris : WadTriangulator.triangulate(xz));
+        const tris = preTris;
 
         const flatUv = (idx) => [polyLocal[idx][0] / 64.0, -polyLocal[idx][1] / 64.0];
 
