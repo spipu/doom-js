@@ -10,13 +10,15 @@ class WadSwitchBuilder {
      * @param {WadTextureBank} bank
      * @param {Set<string>}    builtLiftCodes - codes of the lift instances actually built
      * @param {Set<string>}    builtDoorCodes - codes of the door instances actually built
+     * @param {Set<string>}    builtStairCodes - codes of the stair-step instances actually built
      */
-    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes) {
-        this._level          = level;
-        this._analysis       = analysis;
-        this._bank           = bank;
-        this._builtLiftCodes = builtLiftCodes;
-        this._builtDoorCodes = builtDoorCodes ?? new Set();
+    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes) {
+        this._level           = level;
+        this._analysis        = analysis;
+        this._bank            = bank;
+        this._builtLiftCodes  = builtLiftCodes;
+        this._builtDoorCodes  = builtDoorCodes ?? new Set();
+        this._builtStairCodes = builtStairCodes ?? new Set();
     }
 
     /**
@@ -175,7 +177,11 @@ class WadSwitchBuilder {
     _resolveTargets(ld) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
             {ids: this._analysis.movingFloorDownIds, prefix: 'lift_', built: this._builtLiftCodes},
-            {ids: this._analysis.doorSectorIds,      prefix: 'door_', built: this._builtDoorCodes}
+            {ids: this._analysis.doorSectorIds,      prefix: 'door_', built: this._builtDoorCodes},
+            // Stairs: only the base step carries the trigger tag, so match every
+            // step of the staircase by its stored stairStepTag instead.
+            {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,
+                tagOf: (si) => this._analysis.stairStepTag[si]}
         ]);
     }
 

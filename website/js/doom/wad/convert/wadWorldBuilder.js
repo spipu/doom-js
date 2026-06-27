@@ -80,8 +80,18 @@ class WadWorldBuilder {
             builtRisingCodes.add(floor.code);
         }
 
+        // Stairs (build-stairs 7/8/100/127): one one-way rising step per sector,
+        // start()ed together by their switch (7/127) or walk-zone (8/100)
+        const stairs = new WadStairBuilder(level, analysis, bank, animBank).buildAll();
+        const builtStairCodes = new Set();
+        for (const step of stairs) {
+            this._registerInstance(step, bank);
+            builtStairCodes.add(step.code);
+        }
+
         // Switches + interactions
-        const switches = new WadSwitchBuilder(level, analysis, bank, builtLiftCodes, builtDoorCodes).buildAll();
+        const switches = new WadSwitchBuilder(
+            level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             const spec = sw.interactionSpec;
@@ -96,7 +106,7 @@ class WadWorldBuilder {
         // Walk triggers (W1/WR lines that activate a remote tagged element by
         // being crossed — invisible proximity zones that start() their targets)
         const walkTriggers = new WadWalkTriggerBuilder(
-            level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes).buildAll();
+            level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
             loader.interactions().loadFromData(
@@ -123,6 +133,7 @@ class WadWorldBuilder {
         console.log('WadWorldBuilder - ' + this._levelName + ': '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
             + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
+            + stairs.length + ' stairs, '
             + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
             + teleporters.length + ' teleporters, '
             + things.count + ' things (' + things.skipped + ' skipped, '

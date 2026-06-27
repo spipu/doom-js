@@ -169,11 +169,32 @@ class WadConstants {
         58: 2
     };
 
+    // --- Stairs (build stairs, EV_BuildStairs) ---
+
+    // A stair special raises a CHAIN of sectors: the tagged base sector rises by
+    // one step, then each adjacent sector sharing a two-sided line AND the same
+    // floor flat rises to the running cumulated height (base_fh + i*step). Each
+    // step is modelled as an independent one-way rising floor (WadStairBuilder);
+    // they all start() together — the staggered arrival (different travel) gives
+    // the staircase ripple, no native animation loop needed.
+    // 7 = S1 +8, 8 = W1 +8, 100 = W1 +16 turbo, 127 = S1 +16 turbo.
+    static STAIR_SPECIALS        = new Set([7, 8, 100, 127]);
+    static STAIR_SWITCH_SPECIALS = new Set([7, 127]);   // S1 → driven by a switch
+    static STAIR_WALK_SPECIALS   = new Set([8, 100]);   // W1 → driven by a walk-zone
+
+    // Step height (Doom units) added per stair sector.
+    static STAIR_STEP_BY_SPECIAL  = {7: 8, 8: 8, 100: 16, 127: 16};
+
+    // Speed in Doom units/tic. Vanilla build-stairs is FLOORSPEED (1 u/tic) for
+    // the slow 7/8 and ×4 for the turbo 100/127.
+    static STAIR_SPEED_BY_SPECIAL = {7: 1, 8: 1, 100: 4, 127: 4};
+
     // --- Switches ---
 
     static SWITCH_SPECIALS = new Set([
         11, 23, 51, 61, 62, 122, 123,
-        7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113
+        7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
+        127
     ]);
 
     // mode, minOnTime (ms), minOffTime (ms)

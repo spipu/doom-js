@@ -262,7 +262,7 @@ class WadStaticMapBuilder {
 
     _buildFlats(mesh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds, movingFloorDownIds, risingFloorIds} = this._analysis;
+        const {doorSectorIds, movingFloorDownIds, risingFloorIds, stairIds} = this._analysis;
 
         for (let si = 0; si < sectors.length; si++) {
             const sec = sectors[si];
@@ -284,9 +284,9 @@ class WadStaticMapBuilder {
             for (const polyDoom of outers) {
                 const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
                 const usedHoles = ((ownHoles.length > 0) ? ownHoles : null);
-                // Skip the static floor for lifts AND rising floors — in both
-                // cases a moving top-flat covers it (otherwise z-fighting).
-                if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si)) {
+                // Skip the static floor for lifts, rising floors AND stairs — in
+                // every case a moving top-flat covers it (otherwise z-fighting).
+                if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
                     WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, sec.fh, true, sec.light, usedHoles);
                 }
                 // Sky flats skipped — outdoor areas have no ceiling geometry
