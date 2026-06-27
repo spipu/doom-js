@@ -17,13 +17,14 @@ class WadWalkTriggerBuilder {
      * @param {Set<string>}    builtRisingCodes
      * @param {Set<string>}    builtDoorCodes
      */
-    constructor(level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes) {
+    constructor(level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
         this._level            = level;
         this._analysis         = analysis;
         this._bank             = bank;
         this._builtLiftCodes   = builtLiftCodes ?? new Set();
         this._builtRisingCodes = builtRisingCodes ?? new Set();
         this._builtDoorCodes   = builtDoorCodes ?? new Set();
+        this._builtStairCodes  = builtStairCodes ?? new Set();
     }
 
     /**
@@ -102,7 +103,10 @@ class WadWalkTriggerBuilder {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, tag, [
             {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
             {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes},
-            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes}
+            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
+            // Stairs: chained steps resolve by the trigger tag stored per step.
+            {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,
+                tagOf: (si) => this._analysis.stairStepTag[si]}
         ]);
     }
 }

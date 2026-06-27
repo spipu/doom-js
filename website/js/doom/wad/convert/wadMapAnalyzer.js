@@ -18,6 +18,7 @@ class WadMapAnalyzer {
         const lifts = this._identifyLifts(doors.doorSectorIds);
         this._patchLiftFloors(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
+        const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds);
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
@@ -33,6 +34,9 @@ class WadMapAnalyzer {
             liftMinAdjFh:         lifts.liftMinAdjFh,
             risingFloorIds:       rising.risingFloorIds,
             risingFloorSpecial:   rising.risingFloorSpecial,
+            stairIds:             stairs.stairIds,
+            stairInfo:            stairs.stairInfo,
+            stairStepTag:         stairs.stairStepTag,
             switchLinedefIds:     switches.ids,
             switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
@@ -54,9 +58,10 @@ class WadMapAnalyzer {
             // door tagged T opens when its trigger line is crossed, not by
             // approaching the door — e.g. grabbing a key on a pedestal ringed by
             // such lines opens the doors tagged T elsewhere.
-            const isWalkLift = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
-            const isWalkDoor = (WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] === 'proximity');
-            if ((isWalkLift || isWalkDoor) && ld.tag !== 0) {
+            const isWalkLift  = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
+            const isWalkDoor  = (WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] === 'proximity');
+            const isWalkStair = WadConstants.STAIR_WALK_SPECIALS.has(ld.special);
+            if ((isWalkLift || isWalkDoor || isWalkStair) && ld.tag !== 0) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
         }
@@ -287,6 +292,74 @@ class WadMapAnalyzer {
         return {risingFloorIds: risingFloorIds, risingFloorSpecial: risingFloorSpecial};
     }
 
+    // --- Stairs (build stairs) ---
+
+    // EV_BuildStairs: a stair special raises a CHAIN of sectors. From each tagged
+    // base sector, raise it by one step, then walk to the adjacent sector that
+    // shares a two-sided line whose FRONT (right) side is the current step AND
+    // whose floor flat matches the base flat; that sector becomes the next step
+    // at the running cumulated height. Like rising floors, fh is NOT patched —
+    // each step's moving top-flat (WadStairBuilder) sits at its WAD height and
+    // rises to its target. Sectors already claimed (doors/lifts/rising) are out.
+    //
+    // @returns {{stairIds: Set<number>, stairInfo: object, stairStepTag: object}}
+    _identifyStairs(doorSectorIds, movingFloorDownIds, risingFloorIds) {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const stairIds     = new Set();
+        const stairInfo    = {};   // si → {targetFh, special}
+        const stairStepTag = {};   // si → trigger tag (the base sector's tag)
+
+        const claimed = (si) => (doorSectorIds.has(si) || movingFloorDownIds.has(si)
+            || risingFloorIds.has(si) || stairIds.has(si));
+
+        const registerStep = (si, targetFh, special, tag) => {
+            stairIds.add(si);
+            stairInfo[si]    = {targetFh: targetFh, special: special};
+            stairStepTag[si] = tag;
+        };
+
+        // Next step: first two-sided line whose right-side sector is `current`
+        // and whose left-side sector is an unclaimed same-flat sector.
+        const nextStep = (current, texture) => {
+            for (const ld of linedefs) {
+                if (ld.right < 0 || ld.left < 0) {
+                    continue;
+                }
+                if (sidedefs[ld.right].sector !== current) {
+                    continue;
+                }
+                const cand = sidedefs[ld.left].sector;
+                if (!claimed(cand) && sectors[cand].ft === texture) {
+                    return cand;
+                }
+            }
+
+            return -1;
+        };
+
+        for (const ld of linedefs) {
+            if (!WadConstants.STAIR_SPECIALS.has(ld.special) || ld.tag === 0) {
+                continue;
+            }
+            const step = WadConstants.STAIR_STEP_BY_SPECIAL[ld.special] ?? 8;
+            for (let base = 0; base < sectors.length; base++) {
+                if (sectors[base].tag !== ld.tag || claimed(base)) {
+                    continue;
+                }
+                const texture = sectors[base].ft;
+                let height  = sectors[base].fh;
+                let current = base;
+                while (current !== -1) {
+                    height += step;
+                    registerStep(current, height, ld.special, ld.tag);
+                    current = nextStep(current, texture);
+                }
+            }
+        }
+
+        return {stairIds: stairIds, stairInfo: stairInfo, stairStepTag: stairStepTag};
+    }
+
     // --- Switches ---
 
     // A switch linedef (S-type special) is a USE-activation point. Two shapes:
@@ -367,7 +440,11 @@ class WadMapAnalyzer {
         for (const fam of families) {
             for (const si of fam.ids) {
                 const code = fam.prefix + si;
-                if (sectors[si].tag === tag && fam.built.has(code)) {
+                // Default: match the sector's own tag. A family may override with
+                // tagOf(si) — e.g. stairs, where only the base step carries the
+                // trigger tag and the chained steps must resolve by it too.
+                const t = ((fam.tagOf !== undefined) ? fam.tagOf(si) : sectors[si].tag);
+                if (t === tag && fam.built.has(code)) {
                     targets.push(code);
                 }
             }

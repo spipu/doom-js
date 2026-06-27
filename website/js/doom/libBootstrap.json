@@ -1,5 +1,5 @@
 {
-    "version": "v1.105",
+    "version": "v1.109",
     "files": {
         "assets": [],
         "css": [
@@ -28,6 +28,7 @@
             "/js/doom/wad/convert/wadDoorBuilder.js",
             "/js/doom/wad/convert/wadLiftBuilder.js",
             "/js/doom/wad/convert/wadRisingFloorBuilder.js",
+            "/js/doom/wad/convert/wadStairBuilder.js",
             "/js/doom/wad/convert/wadSwitchBuilder.js",
             "/js/doom/wad/convert/wadTeleportBuilder.js",
             "/js/doom/wad/convert/wadWalkTriggerBuilder.js",
