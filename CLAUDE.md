@@ -10,9 +10,7 @@ Charger et appliquer automatiquement à chaque session :
 3. Puis tous les autres fichiers MD dans le répertoire `~/git/claude/memory/projects/test/lib3d_js/`
 
 
-Si le MCP Chrome n'est pas disponible, l'indiquer, et arrêter là.
-
-Puis lancer le serveur python et lancer doom dans chrome.
+Puis lancer le serveur python et lancer doom dans firefox via playwright.
 
 Enfin analyse les commits des 3 derniers jours, et lis ./.source/next-steps.md
 

@@ -2,3 +2,4 @@
 /.claude
 /.source
 __pycache__/
+.tmp.claude/
