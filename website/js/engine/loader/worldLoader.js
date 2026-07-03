@@ -90,6 +90,9 @@ class WorldLoader {
         if (dataUser.stepHeight      !== undefined) {
             user.setStepHeight(dataUser.stepHeight);
         }
+        if (dataUser.voidKillY       !== undefined) {
+            user.setVoidKillY(dataUser.voidKillY);
+        }
 
         return user;
     }

@@ -258,7 +258,8 @@ class WadWorldBuilder {
                 maxJumpVelocity: defaults.maxJumpVelocity,
                 maxSlopeAngle:   defaults.maxSlopeAngle,
                 moveSpeed:       defaults.moveSpeed,
-                stepHeight:      defaults.stepHeight
+                stepHeight:      defaults.stepHeight,
+                voidKillY:       defaults.voidKillY
             },
             background: background,
             sky: sky,
