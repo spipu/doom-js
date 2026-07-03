@@ -315,8 +315,8 @@ class DoomGame {
         loader.reset();
         loader.beginBatch();
         await new WadWorldBuilder(wadFile, levelName, {
-            onLevelExit: () => {
-                this._onLevelExit();
+            onLevelExit: (secret) => {
+                this._onLevelExit(secret);
             },
             thingCatalog: this._thingCatalog,
             skill: this._skill,
@@ -439,19 +439,20 @@ class DoomGame {
     }
 
     /**
-     * Called by the exit switch interaction: level finished modal, then after
-     * 2 seconds, loading modal + next level (or back to the menu after the
-     * last level of the WAD).
+     * Called by an exit interaction (switch 11/51 or walk-over 52/124): level
+     * finished modal, then after 2 seconds, loading modal + next level (or back
+     * to the menu after the last level of the WAD). The secret flag routes to
+     * the secret level instead of the sequential one.
      */
-    _onLevelExit() {
+    _onLevelExit(secret = false) {
         if (this._transitioning) {
             return;
         }
         this._transitioning = true;
 
-        const levels = this._wadFile.getLevelNames();
-        const index = levels.indexOf(this._levelName);
-        const nextLevel = ((index >= 0 && index + 1 < levels.length) ? levels[index + 1] : null);
+        // Vanilla progression rules on the WAD level names (see WadConstants).
+        const nextLevel = WadConstants.nextLevelName(
+            this._wadFile.getLevelNames(), this._levelName, secret === true);
 
         const display = new MenuDisplay('screen').init();
         const modal = new MenuModal(display);

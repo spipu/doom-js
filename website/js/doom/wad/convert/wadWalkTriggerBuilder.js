@@ -7,6 +7,9 @@
  *
  * Targets are the lift/rising-floor/door instances of the same tag, resolved
  * from the built-code sets (so a tag with no built element yields no target).
+ *
+ * Walk-over exits (52 normal / 124 secret) reuse the same zone with no targets:
+ * crossing the line fires the exit callback (level end) instead.
  */
 class WadWalkTriggerBuilder {
     /**
@@ -47,8 +50,11 @@ class WadWalkTriggerBuilder {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
-        const targets = this._resolveTargets(wt.tag);
-        if (targets.length === 0) {
+        // An exit line ends the level and ignores its tag (vanilla Doom): no
+        // targets, and the zone is kept even though nothing is tag-resolved.
+        const isExit  = (wt.isExit === true);
+        const targets = ((isExit) ? [] : this._resolveTargets(wt.tag));
+        if (targets.length === 0 && !isExit) {
             return null;
         }
 
@@ -70,7 +76,8 @@ class WadWalkTriggerBuilder {
         mesh.points.push([cwx, cwy, cwz]);
 
         const walkName = 'walk_' + wt.ldIdx;
-        const onlyOnce = WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] ?? false;
+        // Exits are all W1 (once); other specials carry their own W1/WR flag.
+        const onlyOnce = ((isExit) ? true : (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] ?? false));
 
         return {
             code:     walkName,
@@ -92,7 +99,9 @@ class WadWalkTriggerBuilder {
             },
             interactionSpec: {
                 code:    walkName,
-                targets: targets
+                targets: targets,
+                isExit:  isExit,
+                secret:  WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }
         };
     }
