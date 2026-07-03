@@ -58,6 +58,9 @@ class User {
         this._pickupFlash    = 0;
         this._deathRoll      = 0;
         this._deathEyeRatio  = 1.0;
+        // Kill plane: falling below this y (out of the map) kills the player.
+        // null = disabled.
+        this._voidKillY      = null;
 
         // Armor (defensive stat: absorbs a fraction of incoming damage)
         this._armor       = 0;
@@ -78,6 +81,11 @@ class User {
 
     setEyeRatio(v) {
         this._eyeRatio = v;
+        return this;
+    }
+
+    setVoidKillY(v) {
+        this._voidKillY = v;
         return this;
     }
 
@@ -259,6 +267,14 @@ class User {
     }
 
     // --- Energy ---
+
+    // Immediate death, bypassing the armor (void fall, kill plane).
+    kill() {
+        this._energy      = 0;
+        this._dead        = true;
+        this._energyFlash = Math.max(this._energyFlash, 1);
+    }
+
     takeDamage(delta) {
         // Armor absorbs a fraction of the hit and is consumed point per point
         // of the amount it absorbs; the rest goes to energy.
@@ -515,6 +531,16 @@ class User {
                 this._coyoteTimer = this._coyoteTime;
             }
             this._onGround = false;
+        }
+
+        // Kill plane: fell out of the map (below every floor) → the body rests
+        // clamped on the plane and the player dies (death animation).
+        if (this._voidKillY !== null && this.y < this._voidKillY) {
+            this.y   = this._voidKillY;
+            this._vy = 0;
+            if (!this._dead) {
+                this.kill();
+            }
         }
 
         // Track fall peak while airborne

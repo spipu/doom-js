@@ -387,7 +387,10 @@ class WadConstants {
         maxJumpVelocity: 3.5,
         maxSlopeAngle:   50,
         moveSpeed:       0.0045,
-        stepHeight:      0.375
+        stepHeight:      0.375,
+        // Kill plane: below every real map floor — falling out of the map
+        // (through a geometry hole) kills the player instead of falling forever.
+        voidKillY:       -100
     };
 
     static DEFAULT_BACKGROUND = [200, 200, 200];
