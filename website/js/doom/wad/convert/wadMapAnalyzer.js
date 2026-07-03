@@ -64,6 +64,12 @@ class WadMapAnalyzer {
             if ((isWalkLift || isWalkDoor || isWalkStair) && ld.tag !== 0) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
+            // Walk-over exits (52 normal / 124 secret): the level ends when the
+            // line is crossed. No tag requirement — an exit ignores its tag
+            // (vanilla Doom, same rule as the exit switches).
+            if (WadConstants.WALK_EXIT_SPECIALS.has(ld.special)) {
+                walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special, isExit: true});
+            }
         }
         return walkTriggers;
     }

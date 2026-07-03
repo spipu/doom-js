@@ -16,6 +16,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
 
         this._targets      = targets;
         this._exitCallback = null;
+        this._exitSecret   = false;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -26,8 +27,11 @@ class DoomSwitchInteraction extends SwitchInteraction {
         }
     }
 
-    setExitCallback(callback) {
+    // Exit switch (11/51): the callback receives the secret flag so the game
+    // can route to the secret level (51) instead of the next sequential one.
+    setExitCallback(callback, secret) {
         this._exitCallback = callback;
+        this._exitSecret   = (secret === true);
         return this;
     }
 
@@ -46,7 +50,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         }
 
         if (this._exitCallback !== null) {
-            this._exitCallback();
+            this._exitCallback(this._exitSecret);
         }
     }
 

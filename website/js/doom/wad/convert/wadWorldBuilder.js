@@ -97,7 +97,7 @@ class WadWorldBuilder {
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff);
             if (spec.isExit && this._onLevelExit !== null) {
-                interaction.setExitCallback(this._onLevelExit);
+                interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
             loader.interactions().loadFromData(interaction);
         }
@@ -109,8 +109,12 @@ class WadWorldBuilder {
             level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
-            loader.interactions().loadFromData(
-                new DoomWalkTriggerInteraction(wt.interactionSpec.code, wt.interactionSpec.targets));
+            const spec = wt.interactionSpec;
+            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets);
+            if (spec.isExit && this._onLevelExit !== null) {
+                interaction.setExitCallback(this._onLevelExit, spec.secret === true);
+            }
+            loader.interactions().loadFromData(interaction);
         }
 
         // Teleporters (walk-over → landing thing type 14 of the same tag)
