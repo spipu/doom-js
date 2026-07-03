@@ -21,17 +21,19 @@ class WadConstants {
 
     // Linedef types that trigger door-OPEN actions. Includes the tag-targeted
     // remote doors (29, 61, 103) opened by their switch, and the walk-open doors
-    // (86/90 WR, 109 W1 fast). Only OPEN-type doors (the builder raises a panel);
-    // CLOSE-type doors (3, 16, 42, 50, 75, 76, 107, 110…) are out of scope until
-    // a descending-panel build exists.
-    static DOOR_SPECIALS = new Set([1, 2, 26, 27, 28, 29, 31, 32, 33, 34, 61, 63, 86, 90, 103, 109, 117, 118]);
+    // (4 W1 / 86, 90 WR, 109 W1 fast). Only OPEN-type doors (the builder raises
+    // a panel); CLOSE-type doors (3, 16, 42, 50, 75, 76, 107, 110…) are out of
+    // scope until a descending-panel build exists.
+    static DOOR_SPECIALS = new Set([1, 2, 4, 26, 27, 28, 29, 31, 32, 33, 34, 61, 63, 86, 90, 103, 109, 117, 118]);
 
-    // Speed in Doom units/tic for each door special type (35 tics/s)
+    // Speed in Doom units/tic (vanilla p_doors.c): VDOORSPEED = 2 for every
+    // door — including the manual open-stay 31-34 and the SR 63 — except the
+    // blazing ones (109, 117, 118) at VDOORSPEED*4 = 8.
     static DOOR_SPEED_BY_SPECIAL = {
         1: 2, 2: 2, 3: 2, 4: 2, 26: 2, 27: 2, 28: 2, 29: 2,
         42: 2, 50: 2, 61: 2, 86: 2, 90: 2, 103: 2,
-        31: 8, 32: 8, 33: 8, 34: 8, 63: 8, 109: 8,
-        117: 12, 118: 12
+        31: 2, 32: 2, 33: 2, 34: 2, 63: 2,
+        109: 8, 117: 8, 118: 8
     };
 
     // Tics before auto-close (~4.3 s)
@@ -43,7 +45,7 @@ class WadConstants {
         1: 'action', 26: 'action', 27: 'action', 28: 'action',
         31: 'action', 32: 'action', 33: 'action', 34: 'action',
         63: 'action', 117: 'action', 118: 'action',
-        2: 'proximity', 86: 'proximity', 90: 'proximity',
+        2: 'proximity', 4: 'proximity', 86: 'proximity', 90: 'proximity',
         109: 'proximity',
         29: 'none', 61: 'none', 103: 'none'
     };
@@ -53,19 +55,27 @@ class WadConstants {
         2: false, 31: false, 32: false, 33: false, 34: false, 118: false
     };
 
+    // One-way open-stay doors are ALWAYS onlyOnce, even with a repeatable
+    // trigger (SR 61, WR 86): a finished one-way anim restarted would snap the
+    // door shut and replay the opening — in vanilla re-triggering an open door
+    // is a visual no-op. The repeatable part lives on the switch/zone.
     static DOOR_ONLY_ONCE_BY_SPECIAL = {
         2: true, 31: true, 32: true, 33: true, 34: true, 118: true,
         1: false, 26: false, 27: false, 28: false, 63: false, 117: false,
         103: true, 29: true, 109: true,
-        61: false, 86: false, 90: false
+        4: true,
+        61: true, 86: true, 90: false
     };
 
+    // 4 (W1) and 90 (WR) = EV_DoDoor(normal): open-wait-CLOSE (round-trip),
+    // unlike the open-stay 86 (EV_DoDoor(open), one-way).
     static DOOR_ANIM_BY_SPECIAL = {
         2: 'one-way', 31: 'one-way', 32: 'one-way', 33: 'one-way', 34: 'one-way', 118: 'one-way',
         1: 'round-trip', 26: 'round-trip', 27: 'round-trip', 28: 'round-trip',
         63: 'round-trip', 117: 'round-trip',
         29: 'round-trip',
-        61: 'one-way', 103: 'one-way', 86: 'one-way', 90: 'one-way',
+        61: 'one-way', 103: 'one-way', 86: 'one-way',
+        4: 'round-trip', 90: 'round-trip',
         109: 'one-way'
     };
 
@@ -90,12 +100,15 @@ class WadConstants {
     // elsewhere — not a down-floor.)
     static FLOOR_MOVE_DOWN_SPECIALS = new Set([19, 23, 36, 37, 38, 62, 71, 82, 83, 84, 88, 102, 120, 121, 122, 123]);
 
+    // Vanilla speeds: plats (62/88 = PLATSPEED*4, blaze 120-123 = PLATSPEED*8),
+    // floor lowers = FLOORSPEED = 1 (p_floor.c), turboLower (36/71) =
+    // FLOORSPEED*4 = 4.
     static LIFT_SPEED_BY_SPECIAL = {
         62: 4, 88: 4,
-        19: 2, 23: 2, 38: 2, 82: 2, 83: 2,
-        36: 8, 37: 2, 84: 2,
+        19: 1, 23: 1, 38: 1, 82: 1, 83: 1,
+        36: 4, 37: 1, 84: 1,
         120: 8, 121: 8, 122: 8, 123: 8,
-        71: 8, 102: 2
+        71: 4, 102: 1
     };
 
     static LIFT_ANIM_BY_SPECIAL = {
@@ -153,21 +166,44 @@ class WadConstants {
 
     // --- Rising floors ---
 
-    // Floors that move UP a fixed delta when walked over (one-way). Unlike the
-    // lifts above, the static floor is NOT patched down: the moving top-flat
-    // sits at the WAD floor height and rises. 'raise to next/highest' variants
-    // (5, 24, 91...) need an adjacent-target computation and are out of scope.
-    static FLOOR_MOVE_UP_SPECIALS = new Set([58]);
+    // Floors that move UP once toward a target (one-way). Unlike the lifts
+    // above, the static floor is NOT patched down: the moving top-flat sits at
+    // the WAD floor height and rises. All are driven by a walk-trigger zone or
+    // a switch (trigger 'none' on the instance). G1/GR gun variants (24, 47)
+    // are not handled (they need weapon fire).
+    static FLOOR_MOVE_UP_SPECIALS = new Set([
+        5, 18, 20, 22, 56, 58, 59, 64, 65, 66, 67, 68, 69,
+        91, 92, 93, 101, 119, 128, 129, 130, 131
+    ]);
 
-    // Delta in Doom units for each fixed-delta rising floor.
-    static FLOOR_UP_DELTA_BY_SPECIAL = {
-        58: 24
+    // Target rule per special (vanilla p_floor.c EV_DoFloor / p_plats.c
+    // EV_DoPlat). A number = fixed delta in Doom units above the current floor;
+    // 'lowestCeiling' = P_FindLowestCeilingSurrounding clamped to the sector's
+    // own ceiling ('lowestCeilingCrush' = same minus 8, raiseFloorCrush);
+    // 'nextHigher' = P_FindNextHighestFloor (smallest neighbour floor strictly
+    // above the current one; no candidate = no movement).
+    static FLOOR_UP_TARGET_BY_SPECIAL = {
+        5: 'lowestCeiling', 91: 'lowestCeiling', 101: 'lowestCeiling', 64: 'lowestCeiling',
+        56: 'lowestCeilingCrush', 65: 'lowestCeilingCrush',
+        119: 'nextHigher', 18: 'nextHigher', 69: 'nextHigher', 128: 'nextHigher',
+        130: 'nextHigher', 131: 'nextHigher', 129: 'nextHigher',
+        20: 'nextHigher', 22: 'nextHigher', 68: 'nextHigher',
+        58: 24, 92: 24, 59: 24, 93: 24, 66: 24,
+        67: 32
     };
 
-    // Speed in Doom units/tic for rising floors (slow floor = 2).
+    // Speed in Doom units/tic (vanilla): FLOORSPEED = 1, raiseFloorTurbo = 4,
+    // the EV_DoPlat raise-and-change variants = PLATSPEED/2 = 0.5.
     static FLOOR_UP_SPEED_BY_SPECIAL = {
-        58: 2
+        129: 4, 130: 4, 131: 4,
+        20: 0.5, 22: 0.5, 66: 0.5, 67: 0.5, 68: 0.5
     };
+    static FLOOR_UP_DEFAULT_SPEED = 1;
+
+    // Deliberate deviation from vanilla (which starts the raise instantly):
+    // a rising floor waits this long before moving, so a player who fired the
+    // trigger next to the platform has time to step onto it and ride up.
+    static FLOOR_UP_START_DELAY_S = 1.0;
 
     // --- Stairs (build stairs, EV_BuildStairs) ---
 
@@ -185,26 +221,35 @@ class WadConstants {
     // Step height (Doom units) added per stair sector.
     static STAIR_STEP_BY_SPECIAL  = {7: 8, 8: 8, 100: 16, 127: 16};
 
-    // Speed in Doom units/tic. Vanilla build-stairs is FLOORSPEED (1 u/tic) for
-    // the slow 7/8 and ×4 for the turbo 100/127.
-    static STAIR_SPEED_BY_SPECIAL = {7: 1, 8: 1, 100: 4, 127: 4};
+    // Speed in Doom units/tic (vanilla EV_BuildStairs): build8 (7/8) =
+    // FLOORSPEED/4 = 0.25, turbo16 (100/127) = FLOORSPEED*4 = 4.
+    static STAIR_SPEED_BY_SPECIAL = {7: 0.25, 8: 0.25, 100: 4, 127: 4};
 
     // --- Switches ---
 
+    // NB: 22 is W1 (raiseToNearestAndChange, P_CrossSpecialLine) — a walk
+    // trigger, NOT a switch (it must not appear here).
     static SWITCH_SPECIALS = new Set([
         11, 23, 51, 61, 62, 122, 123,
-        7, 9, 21, 22, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
-        127
+        7, 9, 21, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
+        127,
+        18, 20, 131
     ]);
 
-    // mode, minOnTime (ms), minOffTime (ms)
+    // mode, minOnTime (ms), minOffTime (ms). S1 = 'once' (default), SR = 'timed'
+    // (vanilla P_ChangeSwitchTexture(line, 1) = re-usable button).
     static SWITCH_INTERACTION_BY_SPECIAL = {
         11: ['once', null, null],
         23: ['once', null, null],
         51: ['once', null, null],
         62: ['timed', 1000, 1000],
         122: ['once', null, null],
-        123: ['timed', 1000, 1000]
+        123: ['timed', 1000, 1000],
+        61: ['timed', 1000, 1000], 63: ['timed', 1000, 1000],
+        70: ['timed', 1000, 1000],
+        64: ['timed', 1000, 1000], 65: ['timed', 1000, 1000],
+        66: ['timed', 1000, 1000], 67: ['timed', 1000, 1000],
+        68: ['timed', 1000, 1000], 69: ['timed', 1000, 1000]
     };
 
     // S-type specials that end the level (11 = S1 Exit, 51 = S1 Secret Exit)
@@ -287,8 +332,12 @@ class WadConstants {
     // *_TRIGGER_BY_SPECIAL so the zone drives them (not self-proximity).
     // Walk lifts: 88 (WR), 120 (WR fast), 121 (W1 fast). 122 is S1 fast = a
     // SWITCH lift, not walk (see SWITCH_SPECIALS). Walk floor-lowers: 19/36/37/38
-    // (W1), 82/83/84 (WR).
-    static WALK_TRIGGER_SPECIALS = new Set([19, 36, 37, 38, 82, 83, 84, 88, 120, 121]);
+    // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/56/58/59/119/130 (W1),
+    // 91/92/93/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
+    static WALK_TRIGGER_SPECIALS = new Set([
+        19, 36, 37, 38, 82, 83, 84, 88, 120, 121,
+        5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129
+    ]);
 
     // W1 (once) vs WR (repeatable) — carried by the zone instance's onlyOnce.
     // Includes the tagged WALK door specials (2/109 = W1, 86/90 = WR) routed
@@ -298,7 +347,9 @@ class WadConstants {
         121: true,
         19: true, 36: true, 37: true, 38: true,
         82: false, 83: false, 84: false,
-        2: true, 109: true, 86: false, 90: false
+        2: true, 4: true, 109: true, 86: false, 90: false,
+        5: true, 22: true, 56: true, 58: true, 59: true, 119: true, 130: true,
+        91: false, 92: false, 93: false, 128: false, 129: false
     };
 
     // --- Linedef flags ---
@@ -320,11 +371,17 @@ class WadConstants {
 
     // --- Player / world defaults ---
 
-    static PLAYER_HEIGHT = 0.875;
+    // Doom player = 56 units (0.875), shaved by ~1% on purpose: vanilla lets a
+    // player through an opening of EXACTLY 56 (strict < in p_map.c) — common
+    // in level design (e.g. E1M4 raised floor, gap 160-104=56). Our engine's
+    // vertical clearance is stricter, so the margin restores those passages.
+    static PLAYER_HEIGHT = 0.866;
 
     static USER_DEFAULTS = {
         maxEnergy:       100,
-        eyeRatio:        0.73,
+        // Eyes kept at the vanilla VIEWHEIGHT (41 units = 0.640625) despite
+        // the height shave: 0.640625 / 0.866 ≈ 0.740.
+        eyeRatio:        0.740,
         radius:          0.275,
         gravity:         9.81,
         maxJumpVelocity: 3.5,

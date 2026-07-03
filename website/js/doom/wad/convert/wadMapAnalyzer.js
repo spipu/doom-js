@@ -34,6 +34,7 @@ class WadMapAnalyzer {
             liftMinAdjFh:         lifts.liftMinAdjFh,
             risingFloorIds:       rising.risingFloorIds,
             risingFloorSpecial:   rising.risingFloorSpecial,
+            risingFloorTargetFh:  rising.risingFloorTargetFh,
             stairIds:             stairs.stairIds,
             stairInfo:            stairs.stairInfo,
             stairStepTag:         stairs.stairStepTag,
@@ -274,28 +275,87 @@ class WadMapAnalyzer {
         }
     }
 
-    // Rising floors (special 58 etc.): the floor moves UP a fixed delta when
-    // walked over. Unlike lifts, fh is NOT patched — the static floor stays at
-    // its WAD height and the moving top-flat (built by WadRisingFloorBuilder)
-    // sits there and rises. Exclude sectors already claimed as doors or lifts.
+    // Rising floors: the floor moves UP once toward a target when its trigger
+    // fires (walk-zone or switch). Unlike lifts, fh is NOT patched — the static
+    // floor stays at its WAD height and the moving top-flat (built by
+    // WadRisingFloorBuilder) sits there and rises. Exclude sectors already
+    // claimed as doors or lifts. The target height follows the vanilla rules
+    // (FLOOR_UP_TARGET_BY_SPECIAL): fixed delta, lowest surrounding ceiling
+    // (clamped to the own ceiling, -8 for crush) or next-higher neighbour
+    // floor. A sector whose target does not rise above its floor is dropped
+    // (no movement in vanilla): its static floor is kept, no dead instance.
     _identifyRisingFloors(doorSectorIds, movingFloorDownIds) {
         const {linedefs, sectors} = this._level;
-        const risingFloorIds     = new Set();
-        const risingFloorSpecial = {};
+        const risingFloorIds      = new Set();
+        const risingFloorSpecial  = {};
+        const risingFloorTargetFh = {};
 
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && ld.tag !== 0) {
                 for (let si = 0; si < sectors.length; si++) {
                     if (sectors[si].tag === ld.tag
                         && !doorSectorIds.has(si) && !movingFloorDownIds.has(si)) {
-                        risingFloorIds.add(si);
-                        risingFloorSpecial[si] = ld.special;
+                        const target = this._risingFloorTarget(si, ld.special);
+                        if (target > sectors[si].fh) {
+                            risingFloorIds.add(si);
+                            risingFloorSpecial[si]  = ld.special;
+                            risingFloorTargetFh[si] = target;
+                        }
                     }
                 }
             }
         }
 
-        return {risingFloorIds: risingFloorIds, risingFloorSpecial: risingFloorSpecial};
+        return {
+            risingFloorIds:      risingFloorIds,
+            risingFloorSpecial:  risingFloorSpecial,
+            risingFloorTargetFh: risingFloorTargetFh
+        };
+    }
+
+    // Target floor height of a rising sector (vanilla p_floor.c / p_plats.c).
+    // Neighbours are the sectors sharing a two-sided linedef with si.
+    _risingFloorTarget(si, special) {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const sec  = sectors[si];
+        const rule = WadConstants.FLOOR_UP_TARGET_BY_SPECIAL[special] ?? 24;
+
+        // Fixed delta above the current floor (raiseFloor24/32...)
+        if (typeof rule === 'number') {
+            return sec.fh + rule;
+        }
+
+        const neighbours = [];
+        for (const ld of linedefs) {
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            if (rSi === si) {
+                neighbours.push(sectors[lSi]);
+            } else if (lSi === si) {
+                neighbours.push(sectors[rSi]);
+            }
+        }
+
+        if (rule === 'nextHigher') {
+            // P_FindNextHighestFloor: smallest neighbour floor strictly above
+            // the current one; none = current floor (no movement).
+            const higher = neighbours.map(s => s.fh).filter(fh => fh > sec.fh);
+            return ((higher.length > 0) ? Math.min(...higher) : sec.fh);
+        }
+
+        // 'lowestCeiling' / 'lowestCeilingCrush' — P_FindLowestCeilingSurrounding
+        // clamped to the sector's own ceiling, minus 8 for the crush variant.
+        let target = ((neighbours.length > 0)
+            ? Math.min(...neighbours.map(s => s.ch))
+            : sec.ch);
+        target = Math.min(target, sec.ch);
+        if (rule === 'lowestCeilingCrush') {
+            target -= 8;
+        }
+        return target;
     }
 
     // --- Stairs (build stairs) ---

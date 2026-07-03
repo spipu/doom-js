@@ -1,10 +1,13 @@
 /**
- * Rising floor instances builder (special 58 etc.): a floor that moves UP a
- * fixed delta when walked over (one-way). Mirrors WadLiftBuilder, but the
- * static floor is NOT patched down — the moving top-flat sits at the WAD floor
- * height (origFh) and rises by +delta. The riser is built as a "skirt" from
- * origFh-delta to origFh: hidden below the adjacent corridor floor at rest, it
- * emerges as the origFh→origFh+delta step once the floor has risen.
+ * Rising floor instances builder: a floor that moves UP once toward its target
+ * (one-way) when its walk-trigger zone or switch fires. Mirrors WadLiftBuilder,
+ * but the static floor is NOT patched down — the moving top-flat sits at the
+ * WAD floor height (origFh) and rises by +delta, where delta comes from the
+ * target computed in the analysis (fixed +24/+32, lowest surrounding ceiling,
+ * or next-higher floor — vanilla rules, see FLOOR_UP_TARGET_BY_SPECIAL). The
+ * riser is built as a "skirt" from origFh-delta to origFh: hidden below the
+ * adjacent corridor floor at rest, it emerges as the origFh→origFh+delta step
+ * once the floor has risen.
  */
 class WadRisingFloorBuilder {
     /**
@@ -41,8 +44,10 @@ class WadRisingFloorBuilder {
     _buildRisingFloor(si) {
         const sec     = this._level.sectors[si];
         const special = this._analysis.risingFloorSpecial[si] ?? 58;
-        const delta   = WadConstants.FLOOR_UP_DELTA_BY_SPECIAL[special] ?? 24;
         const origFh  = sec.fh;
+        // Travel toward the target computed in the analysis (vanilla rules).
+        const targetFh = this._analysis.risingFloorTargetFh[si] ?? (origFh + 24);
+        const delta    = targetFh - origFh;
         // Skirt base: where the riser starts so that, once raised, it covers
         // exactly the origFh → origFh+delta step.
         const baseFh  = origFh - delta;
@@ -155,29 +160,38 @@ class WadRisingFloorBuilder {
     }
 
     _buildInstanceData(floorName, special, delta, mesh) {
-        const speed   = WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[special] ?? 2;
+        const speed   = WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[special]
+            ?? WadConstants.FLOOR_UP_DEFAULT_SPEED;
         const travelY = delta * WadConstants.SCALE;
         const moveS   = delta / (speed * 35.0);
 
-        // Walk-over approximated by a proximity radius (like the W1 doors and
-        // the WR lift 88): half of the XZ bounding diagonal + margin.
+        // Radius kept for consistency (unused with trigger 'none'): half of
+        // the XZ bounding diagonal + margin.
         const xs = mesh.points.map((p) => p[0]);
         const zs = mesh.points.map((p) => p[2]);
         const dx = Math.max(...xs) - Math.min(...xs);
         const dz = Math.max(...zs) - Math.min(...zs);
         const radius = Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
 
-        // One-way, upward. Walk-triggered (W1), plays once.
+        // One-way, upward. Driven externally (walk-trigger zone or switch),
+        // never by self-proximity. onlyOnce stays true even for WR/SR specials:
+        // a one-way floor that reached its target must not replay from the
+        // start (vanilla: re-triggering a raised floor does nothing); the
+        // repeatable part lives on the zone/switch, whose extra start() calls
+        // are harmless (idempotent). A static pre-frame delays the raise so the
+        // player can step onto the platform (FLOOR_UP_START_DELAY_S).
+        const delayS = WadConstants.FLOOR_UP_START_DELAY_S;
         const keyframes = [
-            {t: 0.0,   translate: [0, 0, 0],       rotate: [0, 0, 0]},
-            {t: moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            {t: 0.0,            translate: [0, 0, 0],       rotate: [0, 0, 0]},
+            {t: delayS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
+            {t: delayS + moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
         ];
 
         return {
             code:              floorName,
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
-            trigger:           'proximity',
+            trigger:           'none',
             loop:              false,
             onlyOnce:          true,
             collisionShape:    'faces',
