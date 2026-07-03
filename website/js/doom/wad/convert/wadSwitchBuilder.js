@@ -11,14 +11,16 @@ class WadSwitchBuilder {
      * @param {Set<string>}    builtLiftCodes - codes of the lift instances actually built
      * @param {Set<string>}    builtDoorCodes - codes of the door instances actually built
      * @param {Set<string>}    builtStairCodes - codes of the stair-step instances actually built
+     * @param {Set<string>}    builtRisingCodes - codes of the rising-floor instances actually built
      */
-    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes) {
-        this._level           = level;
-        this._analysis        = analysis;
-        this._bank            = bank;
-        this._builtLiftCodes  = builtLiftCodes;
-        this._builtDoorCodes  = builtDoorCodes ?? new Set();
-        this._builtStairCodes = builtStairCodes ?? new Set();
+    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes) {
+        this._level            = level;
+        this._analysis         = analysis;
+        this._bank             = bank;
+        this._builtLiftCodes   = builtLiftCodes;
+        this._builtDoorCodes   = builtDoorCodes ?? new Set();
+        this._builtStairCodes  = builtStairCodes ?? new Set();
+        this._builtRisingCodes = builtRisingCodes ?? new Set();
     }
 
     /**
@@ -172,13 +174,14 @@ class WadSwitchBuilder {
         return Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
     }
 
-    // Tagged lift + door instances of the same tag (shared resolver). start() is
-    // type-agnostic, so a remote door (trigger 'none') opens exactly like a
-    // switch-driven lift.
+    // Tagged lift + rising-floor + door instances of the same tag (shared
+    // resolver). start() is type-agnostic, so a remote door (trigger 'none')
+    // opens exactly like a switch-driven lift or rising floor.
     _resolveTargets(ld) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
-            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_', built: this._builtLiftCodes},
-            {ids: this._analysis.doorSectorIds,      prefix: 'door_', built: this._builtDoorCodes},
+            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
+            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes},
+            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
             // Stairs: only the base step carries the trigger tag, so match every
             // step of the staircase by its stored stairStepTag instead.
             {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,

@@ -91,7 +91,7 @@ class WadWorldBuilder {
 
         // Switches + interactions
         const switches = new WadSwitchBuilder(
-            level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes).buildAll();
+            level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             const spec = sw.interactionSpec;
