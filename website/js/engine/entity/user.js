@@ -62,6 +62,13 @@ class User {
         // null = disabled.
         this._voidKillY      = null;
 
+        // Smooth step up: when the body is snapped onto a step, the eye keeps
+        // its world height (negative offset) and catches up with the body in
+        // a gravity-driven free rise (vel += g·dt), re-latching on the real
+        // height once the gap is crossed — frame-rate independent.
+        this._stepViewOffset = 0;   // metres, <= 0
+        this._stepViewVel    = 0;   // m/s catch-up speed
+
         // Armor (defensive stat: absorbs a fraction of incoming damage)
         this._armor       = 0;
         this._maxArmor    = 0;
@@ -510,6 +517,13 @@ class User {
             // Too steep — no snapping
             this._onGround = false;
         } else if (floorY !== -Infinity && this.y <= floorY && floorY <= yBeforeVertical + this._stepHeight) {
+            // Walking up a step: the lift is smoothed on the camera, not the
+            // body (vanilla smooth step up). Measured from the pre-gravity y —
+            // the per-frame gravity dip below the floor must NOT feed the
+            // smoother (it fires every frame and makes the view oscillate).
+            if (this._wasOnGround) {
+                this._smoothStepUp(floorY - yBeforeVertical);
+            }
             this.y = floorY;
             if (this._vy < 0) {
                 this._vy = 0;
@@ -526,6 +540,17 @@ class User {
                 this._jumpBuffer = 0;
                 this._startFall();
             }
+        } else if (this._wasOnGround && this._vy <= 0 && floorY !== -Infinity
+            && (yBeforeVertical - floorY) > 0 && (yBeforeVertical - floorY) <= this._stepHeight) {
+            // Walking down a step (drop within stepHeight, not jumping): the
+            // body stays grounded on the lower floor, and the camera keeps its
+            // height then falls back at 0.6×g (symmetric smooth step, down).
+            this._smoothStepDown(yBeforeVertical - floorY);
+            this.y = floorY;
+            this._vy       = 0;
+            this._onGround = true;
+            this._canJump  = true;
+            this._jumpHeld = false;
         } else {
             if (this._wasOnGround && !this._jumpPressed) {
                 this._coyoteTimer = this._coyoteTime;
@@ -615,6 +640,19 @@ class User {
             this._pickupFlash = Math.max(0, this._pickupFlash - dt_s);
         }
 
+        // 16b. Smooth step recovery: the camera moves toward the body at 0.6×
+        // the world gravity (up after a step up, down after a step down) and
+        // re-latches on the real height when the gap is crossed.
+        if (this._stepViewOffset !== 0) {
+            const dir = ((this._stepViewOffset < 0) ? 1 : -1);
+            this._stepViewVel    += 0.6 * this._gravity * dt_s;
+            this._stepViewOffset += dir * this._stepViewVel * dt_s;
+            if (dir * this._stepViewOffset >= 0) {
+                this._stepViewOffset = 0;
+                this._stepViewVel    = 0;
+            }
+        }
+
         // 17. Death animation — roll camera sideways and lower eye height
         if (this._dead) {
             if (this._deathRoll < 30) {
@@ -641,8 +679,33 @@ class User {
         }
         this.x = res.x;
         this.z = res.z;
+        this._smoothStepUp(newFloor - this.y);
         this.y = newFloor;
         return true;
+    }
+
+    // Smooth step up: keep the eye at its pre-step world height and let the
+    // recovery pass (16b) catch up gravity-style. The offset is floored at
+    // half the eye height (vanilla clamps viewheight at VIEWHEIGHT/2). Rises
+    // below 3 cm (~2 doom units) are ignored: they are frame noise (gravity
+    // dip, slow platform ride), not steps — smoothing them wobbles the view.
+    // The catch-up speed is kept across chained steps (stairs feel continuous).
+    _smoothStepUp(rise) {
+        if (rise < 0.03) {
+            return;
+        }
+        const maxDrop = this.getCurrentHeight() * this._eyeRatio * 0.5;
+        this._stepViewOffset = Math.max(this._stepViewOffset - rise, -maxDrop);
+    }
+
+    // Symmetric: walking down a step, the camera keeps its height (positive
+    // offset) and the recovery pass brings it down at 0.6×g.
+    _smoothStepDown(drop) {
+        if (drop < 0.03) {
+            return;
+        }
+        const maxLift = this.getCurrentHeight() * this._eyeRatio * 0.5;
+        this._stepViewOffset = Math.min(this._stepViewOffset + drop, maxLift);
     }
 
     // --- Geometry ---
@@ -671,7 +734,7 @@ class User {
         const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
         const bob   = ((!this._dead && this._onGround && this._realVelocityXZ > 0.01)
             ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0);
-        return this.y + eyeH * (1 + bob);
+        return this.y + eyeH * (1 + bob) + this._stepViewOffset;
     }
     getCameraZ() {
         return this.z;
