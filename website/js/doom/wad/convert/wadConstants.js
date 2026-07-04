@@ -383,8 +383,12 @@ class WadConstants {
         // the height shave: 0.640625 / 0.866 ≈ 0.740.
         eyeRatio:        0.740,
         radius:          0.275,
-        gravity:         9.81,
-        maxJumpVelocity: 3.5,
+        // Vanilla Doom gravity: GRAVITY = 1 unit/tic² (p_local.h) = 35²/64 =
+        // 19.141 m/s² — about twice Earth's, the snappy Doom fall.
+        gravity:         19.141,
+        // Jump height matched to GZDoom (JumpZ 8 → effective peak 36 units =
+        // 0.5625 m) at the vanilla gravity: v = sqrt(2 * 19.141 * 0.5625).
+        maxJumpVelocity: 4.640,
         maxSlopeAngle:   50,
         moveSpeed:       0.0045,
         stepHeight:      0.375,
