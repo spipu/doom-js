@@ -1,9 +1,10 @@
 /**
- * Walk-trigger builder (linedef specials 88/120/121/122 — WR/W1 lifts and, in
- * the future, remote floors/doors). A walk-over line is modelled as an invisible
- * proximity Instance at the middle of the linedef (one point, no faces) whose
- * DoomWalkTriggerInteraction start()s the tagged target instances when crossed —
- * the same "trigger → targets" pattern as a switch, but proximity-activated.
+ * Walk-trigger builder (W1/WR lines driving lifts, floors, doors, ceilings,
+ * stairs — see WALK_TRIGGER_SPECIALS). A walk-over line is modelled as an
+ * invisible proximity Instance at the middle of the linedef (one point, no
+ * faces) whose DoomWalkTriggerInteraction start()s (or pause()s, for the stop
+ * lines) the tagged target instances when crossed — the same "trigger →
+ * targets" pattern as a switch, but proximity-activated.
  *
  * Targets are the lift/rising-floor/door instances of the same tag, resolved
  * from the built-code sets (so a tag with no built element yields no target).

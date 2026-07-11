@@ -23,12 +23,23 @@ class WadConstants {
     // remote doors (29, 61, 103 + the blaze 111/112/114/115 and locked-blaze
     // 99/133-137) opened by their switch, and the walk-open doors (4 W1 / 86,
     // 90 WR, 105/106/108/109 blaze). Only OPEN-type doors (the builder raises
-    // a panel); CLOSE-type doors (3, 16, 42, 50, 75, 76, 107, 110…) are out of
-    // scope until a descending-panel build exists.
+    // a panel); the CLOSE-type doors and moving ceilings live in
+    // DOOR_CLOSE_SPECIALS below (descending panel parked above the ceiling).
     static DOOR_SPECIALS = new Set([
         1, 2, 4, 26, 27, 28, 29, 31, 32, 33, 34, 61, 63, 86, 90, 103, 109, 117, 118,
-        99, 105, 106, 108, 111, 112, 114, 115, 133, 134, 135, 136, 137
+        99, 105, 106, 108, 111, 112, 114, 115, 133, 134, 135, 136, 137,
+        40
     ]);
+
+    // Moving ceilings that RAISE, door variant (p_spec.c case 40 = W1
+    // RaiseCeilingLowerFloor → EV_DoCeiling(raiseToHighest)): the target is
+    // P_FindHighestCeilingSurrounding (HIGHEST adjacent ceiling, no door track
+    // offset) and the panel rest position is the sector's own ceiling (a
+    // partially open sector keeps its slit at rest, unlike a door closed at its
+    // floor). Vanilla also fires EV_DoFloor(lowerFloorToLowest) on the same tag
+    // — the floor half is routed through the floor-down family (see
+    // FLOOR_MOVE_DOWN_SPECIALS).
+    static DOOR_CEILING_RAISE_SPECIALS = new Set([40]);
 
     // Closing doors (panel parked open above the ceiling, descends to the
     // floor): walk 3 (W1) / 75 (WR) close-stay, 16 (W1) / 76 (WR)
@@ -36,7 +47,26 @@ class WadConstants {
     // 110 (W1) / 113 (S1) / 116 (SR). p_doors.c EV_DoDoor(close /
     // close30ThenOpen / blazeClose). A tagged sector ALREADY registered as an
     // opening door keeps its panel (the close lines walk it back down).
-    static DOOR_CLOSE_SPECIALS = new Set([3, 16, 42, 50, 75, 76, 107, 110, 113, 116]);
+    // The ceiling lowers reuse the same descending-panel machinery at CEILSPEED:
+    // 41 (S1) / 43 (SR) = EV_DoCeiling(lowerToFloor), 44 (W1) / 72 (WR) =
+    // EV_DoCeiling(lowerAndCrush), stopping 8 above the floor (p_ceilng.c —
+    // crush contact damage not implemented, like the crush floors 56/65).
+    // The crushers 6 (W1 fast) / 77 (WR fast) / 25 (W1) / 49 (S1) / 73 (WR) /
+    // 141 (W1 silent) oscillate between the sector's own ceiling and floor + 8
+    // with no wait at either end (T_MoveCeiling crushAndRaise): 'crusher' anim,
+    // native loop, paused in place by the stop lines 57 (W1) / 74 (WR)
+    // (EV_CeilingCrushStop stasis, resumed exactly by the next start).
+    static DOOR_CLOSE_SPECIALS = new Set([
+        3, 16, 42, 50, 75, 76, 107, 110, 113, 116, 41, 43, 44, 72,
+        6, 25, 49, 73, 77, 141
+    ]);
+
+    // Doom units left between the panel and the floor at the end of a close
+    // (EV_DoCeiling lowerAndCrush / crushAndRaise: bottomheight = floor + 8).
+    static DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL = {
+        44: 8, 72: 8,
+        6: 8, 25: 8, 49: 8, 73: 8, 77: 8, 141: 8
+    };
 
     // Close variants that reopen after 30 s (close30ThenOpen).
     static DOOR_CLOSE_REOPEN_SPECIALS  = new Set([16, 76]);
@@ -54,7 +84,12 @@ class WadConstants {
         109: 8, 117: 8, 118: 8,
         99: 8, 105: 8, 106: 8, 108: 8, 111: 8, 112: 8, 114: 8, 115: 8,
         133: 8, 134: 8, 135: 8, 136: 8, 137: 8,
-        107: 8, 110: 8, 113: 8, 116: 8
+        107: 8, 110: 8, 113: 8, 116: 8,
+        // Moving ceilings: CEILSPEED = 1, fast crushers CEILSPEED*2
+        // (p_ceilng.c EV_DoCeiling / T_MoveCeiling)
+        40: 1, 41: 1, 43: 1, 44: 1, 72: 1,
+        25: 1, 49: 1, 73: 1, 141: 1,
+        6: 2, 77: 2
     };
 
     // Tics before auto-close (~4.3 s)
@@ -73,7 +108,12 @@ class WadConstants {
         111: 'none', 112: 'none', 114: 'none', 115: 'none',
         99: 'none', 133: 'none', 134: 'none', 135: 'none', 136: 'none', 137: 'none',
         42: 'none', 50: 'none', 113: 'none', 116: 'none',
-        16: 'proximity'
+        16: 'proximity',
+        40: 'proximity', 44: 'proximity', 72: 'proximity',
+        41: 'none', 43: 'none',
+        25: 'proximity', 73: 'proximity', 77: 'proximity', 141: 'proximity',
+        49: 'none',
+        6: 'proximity'
     };
 
     static DOOR_LOOP_BY_SPECIAL = {
@@ -83,7 +123,10 @@ class WadConstants {
         114: false, 115: false, 133: false, 134: false, 135: false, 136: false, 137: false,
         3: false, 42: false, 50: false, 75: false, 76: false,
         107: false, 110: false, 113: false, 116: false,
-        16: false
+        16: false,
+        40: false, 41: false, 43: false, 44: false, 72: false,
+        // Crushers loop natively (perpetual oscillation until a stop line).
+        6: true, 25: true, 49: true, 73: true, 77: true, 141: true
     };
 
     // One-way open-stay doors are ALWAYS onlyOnce, even with a repeatable
@@ -104,7 +147,13 @@ class WadConstants {
         // vanilla). Close-wait-reopen : le cycle revient au repos → rejouable
         // en WR (76), once en W1 (16).
         3: true, 42: true, 50: true, 75: true, 107: true, 110: true, 113: true, 116: true,
-        16: true, 76: false
+        16: true, 76: false,
+        // Ceilings: 40 one-way W1 (stays open); the lowers 41/43/44/72 are
+        // close-stay, onlyOnce like every close (re-firing a done one-way would
+        // snap the panel back up — a vanilla no-op). Crushers are never
+        // onlyOnce: a stopped crusher must resume on the next start line.
+        40: true, 41: true, 43: true, 44: true, 72: true,
+        6: false, 25: false, 49: false, 73: false, 77: false, 141: false
     };
 
     // 4 (W1) and 90 (WR) = EV_DoDoor(normal): open-wait-CLOSE (round-trip),
@@ -124,7 +173,13 @@ class WadConstants {
         99: 'one-way', 133: 'one-way', 134: 'one-way', 135: 'one-way', 136: 'one-way', 137: 'one-way',
         3: 'close-stay', 42: 'close-stay', 50: 'close-stay', 75: 'close-stay',
         107: 'close-stay', 110: 'close-stay', 113: 'close-stay', 116: 'close-stay',
-        16: 'close-wait-open', 76: 'close-wait-open'
+        16: 'close-wait-open', 76: 'close-wait-open',
+        // Ceilings: 40 raiseToHighest = single upward move; the lowers
+        // 41/43/44/72 descend like a closing door (44/72 stop at floor + 8,
+        // see DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL); the crushers oscillate.
+        40: 'one-way',
+        41: 'close-stay', 43: 'close-stay', 44: 'close-stay', 72: 'close-stay',
+        6: 'crusher', 25: 'crusher', 49: 'crusher', 73: 'crusher', 77: 'crusher', 141: 'crusher'
     };
 
     // Action radius in metres (xz_diagonal/2 + this margin)
@@ -155,7 +210,13 @@ class WadConstants {
     // floor-lowers 36/37/38/82/83/84 and the SR floor-lowers 60 (to lowest) /
     // 70 (8 above highest, turbo). (56 is a RAISE-crush, handled elsewhere —
     // not a down-floor.)
-    static FLOOR_MOVE_DOWN_SPECIALS = new Set([10, 19, 21, 23, 36, 37, 38, 53, 60, 62, 70, 71, 82, 83, 84, 87, 88, 102, 120, 121, 122, 123]);
+    // 40 is the floor half of W1 RaiseCeilingLowerFloor (EV_DoFloor
+    // lowerFloorToLowest fired alongside the ceiling raise on the same tag —
+    // the only special allowed to overlap a door-registered sector).
+    // 9 is the hole half of the S1 donut (EV_DoDonut: the tagged sector lowers
+    // to the floor of the sector beyond the ring at FLOORSPEED/2, while the
+    // ring rises to it — see the donut identification in WadMapAnalyzer).
+    static FLOOR_MOVE_DOWN_SPECIALS = new Set([9, 10, 19, 21, 23, 36, 37, 38, 40, 53, 60, 62, 70, 71, 82, 83, 84, 87, 88, 102, 120, 121, 122, 123]);
 
     // Perpetual plats (vanilla p_plats.c perpetualRaise): oscillate between the
     // lowest and highest surrounding floors (both clamped to the sector's own
@@ -173,7 +234,9 @@ class WadConstants {
         120: 8, 121: 8, 122: 8, 123: 8,
         71: 4, 102: 1,
         60: 1, 70: 4,
-        53: 1, 87: 1
+        53: 1, 87: 1,
+        40: 1,
+        9: 0.5
     };
 
     static LIFT_ANIM_BY_SPECIAL = {
@@ -183,7 +246,9 @@ class WadConstants {
         120: 'round-trip', 121: 'round-trip', 122: 'round-trip', 123: 'round-trip',
         71: 'one-way', 102: 'one-way',
         60: 'one-way', 70: 'one-way',
-        53: 'perpetual', 87: 'perpetual'
+        53: 'perpetual', 87: 'perpetual',
+        40: 'one-way',
+        9: 'one-way'
     };
 
     // 'none' = driven externally (switch or walk-trigger zone). The WR/W1 walk
@@ -205,7 +270,9 @@ class WadConstants {
         120: 'none', 121: 'none', 122: 'none', 123: 'none',
         71: 'none', 102: 'none',
         60: 'none', 70: 'none',
-        53: 'none', 87: 'none'
+        53: 'none', 87: 'none',
+        40: 'none',
+        9: 'none'
     };
 
     static LIFT_LOOP_BY_SPECIAL = {
@@ -215,7 +282,9 @@ class WadConstants {
         120: false, 121: false, 122: false, 123: false,
         71: false, 102: false,
         60: false, 70: false,
-        53: true, 87: true
+        53: true, 87: true,
+        40: false,
+        9: false
     };
 
     static LIFT_ONLY_ONCE_BY_SPECIAL = {
@@ -225,7 +294,9 @@ class WadConstants {
         120: false, 121: true, 122: true, 123: false,
         71: true, 102: true,
         60: true, 70: true,
-        53: false, 87: false
+        53: false, 87: false,
+        40: true,
+        9: true
     };
 
     // Target floor height rule per special: 'lowest' (default) = min adjacent
@@ -270,7 +341,9 @@ class WadConstants {
     // the EV_DoPlat raise-and-change variants = PLATSPEED/2 = 0.5.
     static FLOOR_UP_SPEED_BY_SPECIAL = {
         129: 4, 130: 4, 131: 4,
-        20: 0.5, 22: 0.5, 66: 0.5, 67: 0.5, 68: 0.5
+        20: 0.5, 22: 0.5, 66: 0.5, 67: 0.5, 68: 0.5,
+        // Donut ring (EV_DoDonut donutRaise): FLOORSPEED/2
+        9: 0.5
     };
     static FLOOR_UP_DEFAULT_SPEED = 1;
 
@@ -305,7 +378,7 @@ class WadConstants {
     // trigger, NOT a switch (it must not appear here).
     static SWITCH_SPECIALS = new Set([
         11, 23, 45, 51, 60, 61, 62, 122, 123,
-        7, 9, 21, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
+        7, 9, 21, 29, 41, 43, 49, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
         127,
         18, 20, 131,
         114, 115, 99, 133, 134, 135, 136, 137,
@@ -336,7 +409,8 @@ class WadConstants {
         70: ['timed', 1000, 1000],
         64: ['timed', 1000, 1000], 65: ['timed', 1000, 1000],
         66: ['timed', 1000, 1000], 67: ['timed', 1000, 1000],
-        68: ['timed', 1000, 1000], 69: ['timed', 1000, 1000]
+        68: ['timed', 1000, 1000], 69: ['timed', 1000, 1000],
+        43: ['timed', 1000, 1000]
     };
 
     // S-type specials that end the level (11 = S1 Exit, 51 = S1 Secret Exit)
@@ -424,13 +498,15 @@ class WadConstants {
     static WALK_TRIGGER_SPECIALS = new Set([
         10, 19, 36, 37, 38, 82, 83, 84, 88, 120, 121,
         5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129,
-        53, 87, 54, 89
+        53, 87, 54, 89,
+        57, 74
     ]);
 
     // Walk lines that STOP their tagged targets in place instead of starting
-    // them (vanilla EV_StopPlat stasis): 54 = W1, 89 = WR. A later start line
-    // (53/87) resumes the plat exactly where it froze.
-    static WALK_STOP_SPECIALS = new Set([54, 89]);
+    // them: plats 54 (W1) / 89 (WR) (EV_StopPlat) and crushers 57 (W1) /
+    // 74 (WR) (EV_CeilingCrushStop). A later start line resumes the target
+    // exactly where it froze.
+    static WALK_STOP_SPECIALS = new Set([54, 89, 57, 74]);
 
     // W1 (once) vs WR (repeatable) — carried by the zone instance's onlyOnce.
     // Includes the tagged WALK door specials (2/109 = W1, 86/90 = WR) routed
@@ -445,7 +521,10 @@ class WadConstants {
         3: true, 16: true, 75: false, 76: false, 107: false, 110: true,
         5: true, 22: true, 56: true, 58: true, 59: true, 119: true, 130: true,
         91: false, 92: false, 93: false, 128: false, 129: false,
-        53: true, 87: false, 54: true, 89: false
+        53: true, 87: false, 54: true, 89: false,
+        40: true, 44: true, 72: false,
+        6: true, 25: true, 141: true, 73: false, 77: false,
+        57: true, 74: false
     };
 
     // --- Linedef flags ---
@@ -460,10 +539,11 @@ class WadConstants {
 
     // --- Pickups ---
 
-    // Proximity radius (metres) at which a pickup is collected. The sprite's
-    // half-width is added on top per thing; this base covers the player radius
-    // plus the vertical gap between the player centre and a floor sprite centre.
-    static PICKUP_RADIUS = 0.6;
+    // Proximity radius (metres) at which a pickup is collected — vanilla exact:
+    // every pickup has a logical radius of 20 units and touches at item radius
+    // + player radius = 36 units (p_map.c PIT_CheckThing → P_TouchSpecialThing),
+    // regardless of the sprite's visual width. Fixed for all pickups.
+    static PICKUP_RADIUS = 36 / 64;
 
     // --- Player / world defaults ---
 

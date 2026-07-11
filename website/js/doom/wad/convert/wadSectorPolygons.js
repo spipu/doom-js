@@ -108,4 +108,25 @@ class WadSectorPolygons {
     static assignHoles(outer, holes) {
         return holes.filter((h) => WadGeometry.pointInPolygon2d(h[0][0], h[0][1], outer));
     }
+
+    /**
+     * Outer polygons of a sector with their assigned holes — the shared shape
+     * every flat builder needs (static map, moving lift/rising-floor tops,
+     * door bottoms). Without the holes, a ring sector (donut) would get a
+     * solid disc overlapping the inner sector. Polygons as [x, y] Doom coords.
+     *
+     * @returns {{outer: number[][], holes: number[][][]|null}[]}
+     */
+    static outersWithHoles(si, linedefs, sidedefs, vertexes) {
+        const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
+        if (chains.length === 0) {
+            return [];
+        }
+        const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
+
+        return outers.map((outer) => {
+            const own = WadSectorPolygons.assignHoles(outer, holes);
+            return {outer: outer, holes: ((own.length > 0) ? own : null)};
+        });
+    }
 }

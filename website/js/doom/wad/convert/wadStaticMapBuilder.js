@@ -158,8 +158,13 @@ class WadStaticMapBuilder {
                     {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
             }
 
-            // Upper wall: ceiling step down from right sector to left sector
-            if (lCh < rCh && !rIsDoor && !lIsDoor && !ceilSky && !isSwitchFace('right', 'upper')) {
+            // Upper wall: ceiling step down from right sector to left sector.
+            // Skipped only when the LOWER-ceiling side is a door — its panel
+            // covers the band. When the door side has the HIGHER ceiling (a
+            // crusher next to a closed spacer sector), the band between the
+            // neighbour's ceiling and the door's open ceiling is a static wall
+            // (DOORTRAK precedent: the descending panel occludes it).
+            if (lCh < rCh && !lIsDoor && !ceilSky && !isSwitchFace('right', 'upper')) {
                 const ti = this._bank.ensureWallTex(rSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
@@ -171,8 +176,8 @@ class WadStaticMapBuilder {
                     {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
             }
 
-            // Upper wall from left side
-            if (rCh < lCh && !lIsDoor && !rIsDoor && !ceilSky && !isSwitchFace('left', 'upper')) {
+            // Upper wall from left side (same door rule, mirrored)
+            if (rCh < lCh && !rIsDoor && !ceilSky && !isSwitchFace('left', 'upper')) {
                 const ti = this._bank.ensureWallTex(lSd.upper);
                 const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
                 const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh)));
@@ -266,13 +271,18 @@ class WadStaticMapBuilder {
 
         for (let si = 0; si < sectors.length; si++) {
             const sec = sectors[si];
-            const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
-            if (chains.length === 0) {
+            const polys = WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes);
+            if (polys.length === 0) {
                 continue;
             }
 
             if (doorSectorIds.has(si)) {
-                this._buildDoorSectorFlat(mesh, si, sec, chains);
+                // Ceiling-raiser also claimed as a moving floor (40): the lift's
+                // moving top-flat covers the floor — only the ceiling side is
+                // door-handled, so skip the static floor flat (z-fighting).
+                if (!movingFloorDownIds.has(si)) {
+                    this._buildDoorSectorFlat(mesh, si, sec, polys);
+                }
                 continue;
             }
 
@@ -280,18 +290,15 @@ class WadStaticMapBuilder {
             const hasSky = sec.ct.startsWith('F_SKY');
             const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
-            const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
-            for (const polyDoom of outers) {
-                const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
-                const usedHoles = ((ownHoles.length > 0) ? ownHoles : null);
+            for (const p of polys) {
                 // Skip the static floor for lifts, rising floors AND stairs — in
                 // every case a moving top-flat covers it (otherwise z-fighting).
                 if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
-                    WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, sec.fh, true, sec.light, usedHoles);
+                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes);
                 }
                 // Sky flats skipped — outdoor areas have no ceiling geometry
                 if (ct >= 0) {
-                    WadMeshBuilder.addFlatQuad(mesh, ct, polyDoom, sec.ch, false, sec.light, usedHoles);
+                    WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, sec.ch, false, sec.light, p.holes);
                 }
             }
         }
@@ -302,19 +309,14 @@ class WadStaticMapBuilder {
     // so the threshold sits at its real height and the step up to it is rendered
     // as a riser on the door line. The ceiling is omitted — the door instance
     // covers it.
-    _buildDoorSectorFlat(mesh, si, sec, chains) {
-        const {vertexes} = this._level;
-
+    _buildDoorSectorFlat(mesh, si, sec, polys) {
         const ft = this._bank.ensureFlatTex(sec.ft);
         if (ft < 0) {
             return;
         }
 
-        const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
-        for (const polyDoom of outers) {
-            const ownHoles = WadSectorPolygons.assignHoles(polyDoom, holes);
-            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, sec.fh, true, sec.light,
-                ((ownHoles.length > 0) ? ownHoles : null));
+        for (const p of polys) {
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes);
         }
     }
 }

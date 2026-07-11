@@ -14,10 +14,12 @@ class WadMapAnalyzer {
     }
 
     analyze() {
+        const donuts = this._identifyDonuts();
         const doors = this._identifyDoors();
-        const lifts = this._identifyLifts(doors.doorSectorIds);
+        const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
+        this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const switches = this._identifySwitches();
@@ -39,6 +41,7 @@ class WadMapAnalyzer {
             stairIds:             stairs.stairIds,
             stairInfo:            stairs.stairInfo,
             stairStepTag:         stairs.stairStepTag,
+            donutRingTag:         donuts.ringTag,
             switchLinedefIds:     switches.ids,
             switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
@@ -91,6 +94,86 @@ class WadMapAnalyzer {
         return teleporters;
     }
 
+    // --- Donuts (special 9, S1 — vanilla EV_DoDonut) ---
+
+    // The tagged sector s1 (the "hole"/pillar) LOWERS to the floor of s3 while
+    // the untagged ring s2 around it RISES to the same height, both at
+    // FLOORSPEED/2 (the ring's floor texture change is cosmetic, not applied).
+    // s2 = the sector across s1's first linedef; s3 = the sector across s2's
+    // first two-sided linedef whose far side is not s1. The hole rides the
+    // floor-down family with a forced target (holeTargetFh); the ring joins
+    // the rising floors (ringTag lets the switch resolve it — a ring carries
+    // no tag of its own).
+    //
+    // @returns {{holeTargetFh: object, rings: object, ringTag: object}}
+    _identifyDonuts() {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const holeTargetFh = {};
+        const rings        = {};   // ring si → target fh
+        const ringTag      = {};   // ring si → trigger tag
+
+        const otherSide = (ld, si) => {
+            const r = ((ld.right >= 0) ? sidedefs[ld.right].sector : -1);
+            const l = ((ld.left >= 0) ? sidedefs[ld.left].sector : -1);
+            if (r === si) {
+                return l;
+            }
+            return ((l === si) ? r : -1);
+        };
+
+        for (const ld of linedefs) {
+            if (ld.special !== 9 || ld.tag === 0) {
+                continue;
+            }
+            for (let s1 = 0; s1 < sectors.length; s1++) {
+                if (sectors[s1].tag !== ld.tag) {
+                    continue;
+                }
+                const firstLd = linedefs.find((l2) => (otherSide(l2, s1) !== -1));
+                if (firstLd === undefined) {
+                    continue;
+                }
+                const s2 = otherSide(firstLd, s1);
+                let s3 = -1;
+                for (const l2 of linedefs) {
+                    const far = otherSide(l2, s2);
+                    if (far !== -1 && far !== s1) {
+                        s3 = far;
+                        break;
+                    }
+                }
+                if (s3 < 0) {
+                    continue;
+                }
+                holeTargetFh[s1] = sectors[s3].fh;
+                rings[s2]        = sectors[s3].fh;
+                ringTag[s2]      = ld.tag;
+            }
+        }
+
+        return {holeTargetFh: holeTargetFh, rings: rings, ringTag: ringTag};
+    }
+
+    // Ring half of the donuts: joins the rising floors (fh not patched, moving
+    // top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
+    // does not rise above its own floor is dropped (no movement in vanilla).
+    _mergeDonutRings(donuts, doorSectorIds, movingFloorDownIds, rising) {
+        const {sectors} = this._level;
+        for (const key of Object.keys(donuts.rings)) {
+            const si = parseInt(key, 10);
+            const targetFh = donuts.rings[key];
+            if (doorSectorIds.has(si) || movingFloorDownIds.has(si) || rising.risingFloorIds.has(si)) {
+                continue;
+            }
+            if (targetFh <= sectors[si].fh) {
+                continue;
+            }
+            rising.risingFloorIds.add(si);
+            rising.risingFloorSpecial[si]  = 9;
+            rising.risingFloorTargetFh[si] = targetFh;
+        }
+    }
+
     // --- Doors ---
 
     // A linedef with a door special controls the sector referenced by its tag
@@ -103,13 +186,17 @@ class WadMapAnalyzer {
         const registerDoor = (si, sp, forceTrigger) => {
             doorSectorIds.add(si);
             doorProps[si] = {
-                speed:       WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
-                trigger:     forceTrigger ?? (WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action'),
-                loop:        WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
-                onlyOnce:    WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
-                anim:        WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
-                keyRequired: WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null,
-                close:       false
+                speed:        WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
+                trigger:      forceTrigger ?? (WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action'),
+                loop:         WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
+                onlyOnce:     WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
+                anim:         WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
+                keyRequired:  WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null,
+                close:        false,
+                ceilingRaise: WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(sp),
+                // Doom units left above the floor at the end of a close
+                // (crush ceilings 44/72 stop at floor + 8).
+                closeMargin:  WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[sp] ?? 0
             };
         };
 
@@ -142,8 +229,11 @@ class WadMapAnalyzer {
             if (!WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) || ld.tag === 0) {
                 continue;
             }
+            // No registration when the panel has no travel (already at its close
+            // target — e.g. a crush ceiling resting at floor + 8 or below).
+            const margin = WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[ld.special] ?? 0;
             for (let si = 0; si < sectors.length; si++) {
-                if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh) {
+                if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh + margin) {
                     registerDoor(si, ld.special, 'none');
                     doorProps[si].close = true;
                 }
@@ -194,6 +284,14 @@ class WadMapAnalyzer {
                 continue;
             }
             const floorH = Math.max(sectors[si].fh, Math.min(...adj.map((s) => s.fh)));
+            // Ceiling-raise variant (40): target = P_FindHighestCeilingSurrounding
+            // (every neighbour, sky included, no door track offset — p_ceilng.c
+            // raiseToHighest). The floor is never re-patched up: its own half is
+            // handled by the floor-down family (lowerFloorToLowest companion).
+            if (doorProps[si].ceilingRaise === true) {
+                doorHeights[si] = {floorH: sectors[si].fh, ceilH: Math.max(...adj.map((s) => s.ch))};
+                continue;
+            }
             const nonSky = adj.filter((s) => !s.ct.startsWith('F_SKY'));
             const ceilH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
@@ -207,15 +305,19 @@ class WadMapAnalyzer {
 
     // --- Lifts / moving floors ---
 
-    _identifyLifts(doorSectorIds) {
+    _identifyLifts(doorSectorIds, donutHoleTargetFh = {}) {
         const {linedefs, sidedefs, sectors} = this._level;
         const movingFloorDownIds = new Set();
         const liftSectorSpecial  = {};
 
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(ld.special) && ld.tag !== 0) {
+                // A door-claimed sector normally has no moving floor; the ceiling
+                // raisers (40) are the exception — vanilla fires their ceiling AND
+                // floor on the same tag, so the overlap is legitimate there.
+                const allowDoorOverlap = WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(ld.special);
                 for (let si = 0; si < sectors.length; si++) {
-                    if (sectors[si].tag === ld.tag && !doorSectorIds.has(si)) {
+                    if (sectors[si].tag === ld.tag && (allowDoorOverlap || !doorSectorIds.has(si))) {
                         movingFloorDownIds.add(si);
                         liftSectorSpecial[si] = ld.special;
                     }
@@ -248,7 +350,11 @@ class WadMapAnalyzer {
                 // so a remote floor-lower never raises the floor.
                 const rule = WadConstants.LIFT_TARGET_BY_SPECIAL[liftSectorSpecial[si]] ?? 'lowest';
                 let target;
-                if (adjFh.length === 0) {
+                if (donutHoleTargetFh[si] !== undefined) {
+                    // Donut hole: the target is the floor of the sector beyond
+                    // the ring (EV_DoDonut), not an adjacent-floor rule.
+                    target = donutHoleTargetFh[si];
+                } else if (adjFh.length === 0) {
                     target = sectors[si].fh;
                 } else if (rule === 'highest') {
                     target = Math.max(...adjFh);
