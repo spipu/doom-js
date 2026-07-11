@@ -149,6 +149,22 @@ class WadWorldBuilder {
             loader.interactions().loadFromData(new DoomSectorLightInteraction(analysis.lightSectors));
         }
 
+        // Secret sectors (special 9): the level total is a game stat, each
+        // secret is credited once when the player stands on its floor.
+        const secretZones = this._sectorPolys
+            .filter((s) => (s.special === WadConstants.SECTOR_SECRET_SPECIAL))
+            .map((s) => ({
+                si:     s.si,
+                outers: s.outers,
+                floorY: (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE
+            }));
+        if (this._game !== null) {
+            this._game.setSecretsTotal(secretZones.length);
+            if (secretZones.length > 0) {
+                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
+            }
+        }
+
         // "+change" floors: swap the moving top-flat texture (and the sector's
         // damage special) when the movement starts or completes.
         this._wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction);

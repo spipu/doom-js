@@ -18,6 +18,12 @@ class HudDoom extends HudDebug {
         return this;
     }
 
+    // Live level stats (secrets found/total) are read off the game each frame
+    bindGame(game) {
+        this._game = game;
+        return this;
+    }
+
     update() {
         super.update();
         if (this._user) {
@@ -31,6 +37,10 @@ class HudDoom extends HudDebug {
 
         lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?')
             + ' / ' + (this._skill ?? '?'));
+
+        if (this._game) {
+            lines.push('[SECRETS] ' + this._game.getSecretsFound() + '/' + this._game.getSecretsTotal());
+        }
 
         lines.push('[ARMOR] ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor()
             + ' (' + Math.round(u.getArmorAbsorb() * 100) + '%)');

@@ -12,6 +12,8 @@ class DoomGame {
         this._spawnOverride = null;
         this._skill         = 3;
         this._carriedState  = null;
+        this._secretsFound  = 0;
+        this._secretsTotal  = 0;
         this._pauseWasDown = true;
         this._cheatWasDown = false;
         this._running       = false;
@@ -293,6 +295,24 @@ class DoomGame {
     // Convert a WAD level on the fly and start the game on it (no URL, no fetch).
     // wadMeta is given on the first launch by the menu and kept across levels —
     // it allows the pause button to go back to the level list of the WAD.
+    // --- Level secrets (sector special 9) ---
+
+    setSecretsTotal(total) {
+        this._secretsTotal = total;
+    }
+
+    addSecretFound() {
+        this._secretsFound++;
+    }
+
+    getSecretsFound() {
+        return this._secretsFound;
+    }
+
+    getSecretsTotal() {
+        return this._secretsTotal;
+    }
+
     // spawnOverride is a debug helper: when set ({position, yaw, pitch}) the
     // player is forced to that location after the world is built, instead of the
     // WAD spawn (see _applySpawnOverride).
@@ -315,6 +335,11 @@ class DoomGame {
         if (this._world !== null) {
             this._carriedState = this._world.getUser().exportState();
         }
+
+        // Secrets are level stats (vanilla totalsecret / player->secretcount):
+        // reset on every level, the total is pushed back by the world builder.
+        this._secretsFound = 0;
+        this._secretsTotal = 0;
 
         this._stopLevel();
         loader.reset();
@@ -372,6 +397,7 @@ class DoomGame {
         this._hud = new HudDoom(this._engine)
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
+            .bindGame(this)
             .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill)
             .addDescription('(c)2026 Spipu')
         ;
