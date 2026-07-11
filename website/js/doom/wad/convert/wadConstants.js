@@ -20,20 +20,41 @@ class WadConstants {
     // --- Doors ---
 
     // Linedef types that trigger door-OPEN actions. Includes the tag-targeted
-    // remote doors (29, 61, 103) opened by their switch, and the walk-open doors
-    // (4 W1 / 86, 90 WR, 109 W1 fast). Only OPEN-type doors (the builder raises
+    // remote doors (29, 61, 103 + the blaze 111/112/114/115 and locked-blaze
+    // 99/133-137) opened by their switch, and the walk-open doors (4 W1 / 86,
+    // 90 WR, 105/106/108/109 blaze). Only OPEN-type doors (the builder raises
     // a panel); CLOSE-type doors (3, 16, 42, 50, 75, 76, 107, 110…) are out of
     // scope until a descending-panel build exists.
-    static DOOR_SPECIALS = new Set([1, 2, 4, 26, 27, 28, 29, 31, 32, 33, 34, 61, 63, 86, 90, 103, 109, 117, 118]);
+    static DOOR_SPECIALS = new Set([
+        1, 2, 4, 26, 27, 28, 29, 31, 32, 33, 34, 61, 63, 86, 90, 103, 109, 117, 118,
+        99, 105, 106, 108, 111, 112, 114, 115, 133, 134, 135, 136, 137
+    ]);
+
+    // Closing doors (panel parked open above the ceiling, descends to the
+    // floor): walk 3 (W1) / 75 (WR) close-stay, 16 (W1) / 76 (WR)
+    // close-wait-reopen (30 s), switch 42 (SR) / 50 (S1), blaze 107 (WR) /
+    // 110 (W1) / 113 (S1) / 116 (SR). p_doors.c EV_DoDoor(close /
+    // close30ThenOpen / blazeClose). A tagged sector ALREADY registered as an
+    // opening door keeps its panel (the close lines walk it back down).
+    static DOOR_CLOSE_SPECIALS = new Set([3, 16, 42, 50, 75, 76, 107, 110, 113, 116]);
+
+    // Close variants that reopen after 30 s (close30ThenOpen).
+    static DOOR_CLOSE_REOPEN_SPECIALS  = new Set([16, 76]);
+    static DOOR_CLOSE_REOPEN_WAIT_TICS = 30 * 35;
 
     // Speed in Doom units/tic (vanilla p_doors.c): VDOORSPEED = 2 for every
-    // door — including the manual open-stay 31-34 and the SR 63 — except the
-    // blazing ones (109, 117, 118) at VDOORSPEED*4 = 8.
+    // door — including the manual open-stay 31-34, the SR 63 and the closers
+    // 3/16/42/50/75/76 — except the blazing ones (105-118 fast, closers
+    // 107/110/113/116, locked-blaze 99/133-137) at VDOORSPEED*4 = 8.
     static DOOR_SPEED_BY_SPECIAL = {
         1: 2, 2: 2, 3: 2, 4: 2, 26: 2, 27: 2, 28: 2, 29: 2,
         42: 2, 50: 2, 61: 2, 86: 2, 90: 2, 103: 2,
         31: 2, 32: 2, 33: 2, 34: 2, 63: 2,
-        109: 8, 117: 8, 118: 8
+        16: 2, 75: 2, 76: 2,
+        109: 8, 117: 8, 118: 8,
+        99: 8, 105: 8, 106: 8, 108: 8, 111: 8, 112: 8, 114: 8, 115: 8,
+        133: 8, 134: 8, 135: 8, 136: 8, 137: 8,
+        107: 8, 110: 8, 113: 8, 116: 8
     };
 
     // Tics before auto-close (~4.3 s)
@@ -46,13 +67,23 @@ class WadConstants {
         31: 'action', 32: 'action', 33: 'action', 34: 'action',
         63: 'action', 117: 'action', 118: 'action',
         2: 'proximity', 4: 'proximity', 86: 'proximity', 90: 'proximity',
-        109: 'proximity',
-        29: 'none', 61: 'none', 103: 'none'
+        109: 'proximity', 105: 'proximity', 106: 'proximity', 108: 'proximity',
+        3: 'proximity', 75: 'proximity', 76: 'proximity', 107: 'proximity', 110: 'proximity',
+        29: 'none', 61: 'none', 103: 'none',
+        111: 'none', 112: 'none', 114: 'none', 115: 'none',
+        99: 'none', 133: 'none', 134: 'none', 135: 'none', 136: 'none', 137: 'none',
+        42: 'none', 50: 'none', 113: 'none', 116: 'none',
+        16: 'proximity'
     };
 
     static DOOR_LOOP_BY_SPECIAL = {
         1: false, 26: false, 27: false, 28: false, 63: false, 117: false,
-        2: false, 31: false, 32: false, 33: false, 34: false, 118: false
+        2: false, 31: false, 32: false, 33: false, 34: false, 118: false,
+        99: false, 105: false, 106: false, 108: false, 111: false, 112: false,
+        114: false, 115: false, 133: false, 134: false, 135: false, 136: false, 137: false,
+        3: false, 42: false, 50: false, 75: false, 76: false,
+        107: false, 110: false, 113: false, 116: false,
+        16: false
     };
 
     // One-way open-stay doors are ALWAYS onlyOnce, even with a repeatable
@@ -64,11 +95,22 @@ class WadConstants {
         1: false, 26: false, 27: false, 28: false, 63: false, 117: false,
         103: true, 29: true, 109: true,
         4: true,
-        61: true, 86: true, 90: false
+        61: true, 86: true, 90: false,
+        105: false, 108: true, 111: true, 114: false,
+        106: true, 112: true, 115: true,
+        99: true, 133: true, 134: true, 135: true, 136: true, 137: true,
+        // Close-stay: onlyOnce même en WR/SR (rejouer une anim finie rouvrirait
+        // brutalement le panneau — re-fermer une porte fermée est un no-op
+        // vanilla). Close-wait-reopen : le cycle revient au repos → rejouable
+        // en WR (76), once en W1 (16).
+        3: true, 42: true, 50: true, 75: true, 107: true, 110: true, 113: true, 116: true,
+        16: true, 76: false
     };
 
     // 4 (W1) and 90 (WR) = EV_DoDoor(normal): open-wait-CLOSE (round-trip),
-    // unlike the open-stay 86 (EV_DoDoor(open), one-way).
+    // unlike the open-stay 86 (EV_DoDoor(open), one-way). Blaze raise
+    // (105/108/111/114) = round-trip; blaze open (106/112/115) and locked
+    // blaze open (99/133-137) = one-way (p_doors.c EV_DoDoor / EV_DoLockedDoor).
     static DOOR_ANIM_BY_SPECIAL = {
         2: 'one-way', 31: 'one-way', 32: 'one-way', 33: 'one-way', 34: 'one-way', 118: 'one-way',
         1: 'round-trip', 26: 'round-trip', 27: 'round-trip', 28: 'round-trip',
@@ -76,17 +118,30 @@ class WadConstants {
         29: 'round-trip',
         61: 'one-way', 103: 'one-way', 86: 'one-way',
         4: 'round-trip', 90: 'round-trip',
-        109: 'one-way'
+        109: 'one-way',
+        105: 'round-trip', 108: 'round-trip', 111: 'round-trip', 114: 'round-trip',
+        106: 'one-way', 112: 'one-way', 115: 'one-way',
+        99: 'one-way', 133: 'one-way', 134: 'one-way', 135: 'one-way', 136: 'one-way', 137: 'one-way',
+        3: 'close-stay', 42: 'close-stay', 50: 'close-stay', 75: 'close-stay',
+        107: 'close-stay', 110: 'close-stay', 113: 'close-stay', 116: 'close-stay',
+        16: 'close-wait-open', 76: 'close-wait-open'
     };
 
     // Action radius in metres (xz_diagonal/2 + this margin)
     static DOOR_ACTION_RADIUS = 0.5;
 
     // Key item required to open a locked door, by linedef special (Doom canon:
-    // DR variants 26/27/28, D1 variants 32/33/34). Doors absent here open freely.
+    // DR variants 26/27/28, D1 variants 32/33/34, locked-blaze switch variants
+    // 99/133 blue, 134/135 red, 136/137 yellow). Doors absent here open freely.
+    // For the manual DR/D1 doors the guard sits on the door instance; for the
+    // switch variants it sits on the USE zone / switch panel (EV_DoLockedDoor
+    // checks the keys at USE time).
     static DOOR_KEY_BY_SPECIAL = {
         26: 'blueKey', 27: 'yellowKey', 28: 'redKey',
-        32: 'blueKey', 33: 'redKey', 34: 'yellowKey'
+        32: 'blueKey', 33: 'redKey', 34: 'yellowKey',
+        99: 'blueKey', 133: 'blueKey',
+        134: 'redKey', 135: 'redKey',
+        136: 'yellowKey', 137: 'yellowKey'
     };
 
     // Doom units left at the top of a door panel for the ceiling track mechanism
@@ -94,29 +149,41 @@ class WadConstants {
 
     // --- Lifts / moving floors ---
 
-    // Lifts 62/88 (SR/WR) + fast 120/121/122/123 (WR/W1/S1/SR), remote
-    // floor-lowers 71 (8 above highest) / 102 (to highest) / 19 (to highest, W1),
-    // and the walk floor-lowers 36/37/38/82/83/84. (56 is a RAISE-crush, handled
-    // elsewhere — not a down-floor.)
-    static FLOOR_MOVE_DOWN_SPECIALS = new Set([19, 23, 36, 37, 38, 62, 71, 82, 83, 84, 88, 102, 120, 121, 122, 123]);
+    // Lifts 62/88 (SR/WR), one-shot 10/21 (W1/S1) + fast 120/121/122/123
+    // (WR/W1/S1/SR), perpetual plats 53/87 (W1/WR), remote floor-lowers 71
+    // (8 above highest) / 102 (to highest) / 19 (to highest, W1), the walk
+    // floor-lowers 36/37/38/82/83/84 and the SR floor-lowers 60 (to lowest) /
+    // 70 (8 above highest, turbo). (56 is a RAISE-crush, handled elsewhere —
+    // not a down-floor.)
+    static FLOOR_MOVE_DOWN_SPECIALS = new Set([10, 19, 21, 23, 36, 37, 38, 53, 60, 62, 70, 71, 82, 83, 84, 87, 88, 102, 120, 121, 122, 123]);
+
+    // Perpetual plats (vanilla p_plats.c perpetualRaise): oscillate between the
+    // lowest and highest surrounding floors (both clamped to the sector's own
+    // floor) at PLATSPEED, waiting PLATWAIT at each end. The static floor is
+    // patched to the LOW position like any down-floor; the instance loops.
+    static FLOOR_PERPETUAL_SPECIALS = new Set([53, 87]);
 
     // Vanilla speeds: plats (62/88 = PLATSPEED*4, blaze 120-123 = PLATSPEED*8),
     // floor lowers = FLOORSPEED = 1 (p_floor.c), turboLower (36/71) =
     // FLOORSPEED*4 = 4.
     static LIFT_SPEED_BY_SPECIAL = {
-        62: 4, 88: 4,
+        62: 4, 88: 4, 10: 4, 21: 4,
         19: 1, 23: 1, 38: 1, 82: 1, 83: 1,
         36: 4, 37: 1, 84: 1,
         120: 8, 121: 8, 122: 8, 123: 8,
-        71: 4, 102: 1
+        71: 4, 102: 1,
+        60: 1, 70: 4,
+        53: 1, 87: 1
     };
 
     static LIFT_ANIM_BY_SPECIAL = {
-        62: 'round-trip', 88: 'round-trip',
+        62: 'round-trip', 88: 'round-trip', 10: 'round-trip', 21: 'round-trip',
         19: 'one-way', 23: 'one-way', 36: 'one-way', 37: 'one-way', 38: 'one-way',
         82: 'one-way', 83: 'one-way', 84: 'one-way',
         120: 'round-trip', 121: 'round-trip', 122: 'round-trip', 123: 'round-trip',
-        71: 'one-way', 102: 'one-way'
+        71: 'one-way', 102: 'one-way',
+        60: 'one-way', 70: 'one-way',
+        53: 'perpetual', 87: 'perpetual'
     };
 
     // 'none' = driven externally (switch or walk-trigger zone). The WR/W1 walk
@@ -131,34 +198,41 @@ class WadConstants {
     static LIFT_TRIGGER_BY_SPECIAL = {
         62: 'none',
         88: 'none',
+        10: 'none', 21: 'none',
         23: 'none',
         19: 'none', 36: 'none', 37: 'none', 38: 'none',
         82: 'none', 83: 'none', 84: 'none',
         120: 'none', 121: 'none', 122: 'none', 123: 'none',
-        71: 'none', 102: 'none'
+        71: 'none', 102: 'none',
+        60: 'none', 70: 'none',
+        53: 'none', 87: 'none'
     };
 
     static LIFT_LOOP_BY_SPECIAL = {
-        62: false, 88: false,
+        62: false, 88: false, 10: false, 21: false,
         19: false, 23: false, 36: false, 37: false, 38: false,
         82: false, 83: false, 84: false,
         120: false, 121: false, 122: false, 123: false,
-        71: false, 102: false
+        71: false, 102: false,
+        60: false, 70: false,
+        53: true, 87: true
     };
 
     static LIFT_ONLY_ONCE_BY_SPECIAL = {
-        62: false, 88: false,
+        62: false, 88: false, 10: true, 21: true,
         19: true, 23: true, 36: true, 37: true, 38: true,
         82: true, 83: true, 84: true,
         120: false, 121: true, 122: true, 123: false,
-        71: true, 102: true
+        71: true, 102: true,
+        60: true, 70: true,
+        53: false, 87: false
     };
 
     // Target floor height rule per special: 'lowest' (default) = min adjacent
     // floor (classic lower lift), 'highest' = max adjacent floor (19/83/102),
     // 'highest+8' = max adjacent floor + 8 (36/71). Consumed by _identifyLifts.
     static LIFT_TARGET_BY_SPECIAL = {
-        71: 'highest+8', 36: 'highest+8', 102: 'highest', 19: 'highest', 83: 'highest'
+        71: 'highest+8', 36: 'highest+8', 70: 'highest+8', 102: 'highest', 19: 'highest', 83: 'highest'
     };
 
     // Tics at bottom before rising (Lower Lift)
@@ -230,11 +304,19 @@ class WadConstants {
     // NB: 22 is W1 (raiseToNearestAndChange, P_CrossSpecialLine) — a walk
     // trigger, NOT a switch (it must not appear here).
     static SWITCH_SPECIALS = new Set([
-        11, 23, 51, 61, 62, 122, 123,
+        11, 23, 45, 51, 60, 61, 62, 122, 123,
         7, 9, 21, 29, 41, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
         127,
-        18, 20, 131
+        18, 20, 131,
+        114, 115, 99, 133, 134, 135, 136, 137,
+        42, 50, 113, 116
     ]);
+
+    // Switches that start their targets BACKWARD (startReverse): 45 = SR lower
+    // floor to highest — walks a raised rising-floor back down to its origin
+    // (vanilla pairs it with raise specials 5/64/91 on the same tag; both use
+    // FLOORSPEED, so reversed playback keeps the exact vanilla speed).
+    static SWITCH_REVERSE_SPECIALS = new Set([45]);
 
     // mode, minOnTime (ms), minOffTime (ms). S1 = 'once' (default), SR = 'timed'
     // (vanilla P_ChangeSwitchTexture(line, 1) = re-usable button).
@@ -245,6 +327,11 @@ class WadConstants {
         62: ['timed', 1000, 1000],
         122: ['once', null, null],
         123: ['timed', 1000, 1000],
+        45: ['timed', 1000, 1000],
+        60: ['timed', 1000, 1000],
+        114: ['timed', 1000, 1000], 115: ['timed', 1000, 1000],
+        99: ['timed', 1000, 1000], 134: ['timed', 1000, 1000], 136: ['timed', 1000, 1000],
+        42: ['timed', 1000, 1000], 116: ['timed', 1000, 1000],
         61: ['timed', 1000, 1000], 63: ['timed', 1000, 1000],
         70: ['timed', 1000, 1000],
         64: ['timed', 1000, 1000], 65: ['timed', 1000, 1000],
@@ -335,21 +422,30 @@ class WadConstants {
     // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/56/58/59/119/130 (W1),
     // 91/92/93/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
     static WALK_TRIGGER_SPECIALS = new Set([
-        19, 36, 37, 38, 82, 83, 84, 88, 120, 121,
-        5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129
+        10, 19, 36, 37, 38, 82, 83, 84, 88, 120, 121,
+        5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129,
+        53, 87, 54, 89
     ]);
+
+    // Walk lines that STOP their tagged targets in place instead of starting
+    // them (vanilla EV_StopPlat stasis): 54 = W1, 89 = WR. A later start line
+    // (53/87) resumes the plat exactly where it froze.
+    static WALK_STOP_SPECIALS = new Set([54, 89]);
 
     // W1 (once) vs WR (repeatable) — carried by the zone instance's onlyOnce.
     // Includes the tagged WALK door specials (2/109 = W1, 86/90 = WR) routed
     // through the same zone mechanism (see _identifyWalkTriggers).
     static WALK_TRIGGER_ONCE_BY_SPECIAL = {
         88: false, 120: false,
-        121: true,
+        121: true, 10: true,
         19: true, 36: true, 37: true, 38: true,
         82: false, 83: false, 84: false,
         2: true, 4: true, 109: true, 86: false, 90: false,
+        105: false, 106: false, 108: true,
+        3: true, 16: true, 75: false, 76: false, 107: false, 110: true,
         5: true, 22: true, 56: true, 58: true, 59: true, 119: true, 130: true,
-        91: false, 92: false, 93: false, 128: false, 129: false
+        91: false, 92: false, 93: false, 128: false, 129: false,
+        53: true, 87: false, 54: true, 89: false
     };
 
     // --- Linedef flags ---

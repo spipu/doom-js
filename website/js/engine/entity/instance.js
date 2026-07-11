@@ -18,6 +18,7 @@ class Instance extends AbstractLoadedEntity {
         this._animTime          = 0;
         this._animMaxTime       = 0;
         this._animPlaying       = false;
+        this._animReverse       = false;   // true = keyframes played backward (time decreasing)
         this._animLoop          = false;
         this._animOnlyOnce      = false;
         this._animDone          = false;
@@ -142,6 +143,7 @@ class Instance extends AbstractLoadedEntity {
             deltaRotate:    [...this._delta.rotate],
             time:           this._animTime,
             playing:        this._animPlaying,
+            reverse:        this._animReverse,
             done:           this._animDone,
         };
     }
@@ -157,6 +159,7 @@ class Instance extends AbstractLoadedEntity {
         this._delta.rotate    = [...prev.deltaRotate];
         this._animTime    = prev.time;
         this._animPlaying = prev.playing;
+        this._animReverse = prev.reverse;
         this._animDone    = prev.done;
         this._computeWorldCenter();
     }
@@ -198,12 +201,22 @@ class Instance extends AbstractLoadedEntity {
             return;
         }
 
-        this._animTime += dt / 1000;
-        if (this._animTime >= this._animMaxTime) {
-            if (this._animLoop) {
-                this._animTime = this._animTime % this._animMaxTime;
-            } else {
-                this.stop();
+        if (this._animReverse) {
+            this._animTime -= dt / 1000;
+            if (this._animTime <= this._animKeyframes[0].t) {
+                this._animTime    = this._animKeyframes[0].t;
+                this._animPlaying = false;
+                this._animReverse = false;
+                this._animDone    = false;
+            }
+        } else {
+            this._animTime += dt / 1000;
+            if (this._animTime >= this._animMaxTime) {
+                if (this._animLoop) {
+                    this._animTime = this._animTime % this._animMaxTime;
+                } else {
+                    this.stop();
+                }
             }
         }
 
@@ -266,6 +279,29 @@ class Instance extends AbstractLoadedEntity {
         if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {
             this._animTime = this._animKeyframes[0].t;
         }
+    }
+
+    // Freezes the animation in place (Doom EV_StopPlat stasis): keeps the
+    // current time and direction so a later start() resumes exactly where it
+    // stopped. Harmless on an instance that is not playing.
+    pause() {
+        this._animPlaying = false;
+    }
+
+    // Plays the keyframes backward from the current position (same speeds).
+    // No-op while playing or when already back at the first keyframe. Clears
+    // _animDone so a finished one-way animation can be walked back; reaching
+    // the origin re-arms start() (the element is genuinely at rest again).
+    startReverse() {
+        if (this._animPlaying || this._animKeyframes.length === 0) {
+            return;
+        }
+        if (this._animTime <= this._animKeyframes[0].t) {
+            return;
+        }
+        this._animReverse = true;
+        this._animDone    = false;
+        this._animPlaying = true;
     }
 
     stop() {

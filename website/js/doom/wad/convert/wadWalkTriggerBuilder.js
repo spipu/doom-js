@@ -57,6 +57,7 @@ class WadWalkTriggerBuilder {
         if (targets.length === 0 && !isExit) {
             return null;
         }
+        const split = WadMapAnalyzer.splitReverseTargets(this._analysis, wt.special, targets);
 
         const ld = linedefs[wt.ldIdx];
         const [dx1, dy1] = vertexes[ld.v1];
@@ -98,10 +99,12 @@ class WadWalkTriggerBuilder {
                 keyframes:         []
             },
             interactionSpec: {
-                code:    walkName,
-                targets: targets,
-                isExit:  isExit,
-                secret:  WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
+                code:           walkName,
+                targets:        split.start,
+                reverseTargets: split.reverse,
+                stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
+                isExit:         isExit,
+                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }
         };
     }

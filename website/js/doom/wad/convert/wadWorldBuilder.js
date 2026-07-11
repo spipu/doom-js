@@ -54,13 +54,7 @@ class WadWorldBuilder {
         for (const door of doors) {
             this._registerInstance(door, bank);
             builtDoorCodes.add(door.code);
-            // Locked doors only open if the player holds the key. The engine
-            // calls this opaque predicate before firing the trigger; the Doom
-            // key check lives here (the runtime user is a DoomUser).
-            const keyCode = door.instanceData.keyRequired;
-            if (keyCode) {
-                loader.instances().getByCode(door.code).setTriggerCondition(user => user.hasItem(keyCode));
-            }
+            this._applyKeyGuard(door);
         }
         await this._yield();
 
@@ -94,8 +88,9 @@ class WadWorldBuilder {
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
+            this._applyKeyGuard(sw);
             const spec = sw.interactionSpec;
-            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff);
+            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -110,7 +105,7 @@ class WadWorldBuilder {
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
             const spec = wt.interactionSpec;
-            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets);
+            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -223,6 +218,17 @@ class WadWorldBuilder {
             WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank)
         );
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
+    }
+
+    // Locked elements (DR/D1 key doors, locked-blaze switches 99/133-137) only
+    // fire if the player holds the key: the engine calls this opaque predicate
+    // before the trigger (the runtime user is a DoomUser), like vanilla
+    // EV_DoLockedDoor checking the keys at USE time.
+    _applyKeyGuard(built) {
+        const keyCode = built.instanceData.keyRequired;
+        if (keyCode) {
+            loader.instances().getByCode(built.code).setTriggerCondition(user => user.hasItem(keyCode));
+        }
     }
 
     _buildDefinition(level, bank) {
