@@ -112,16 +112,18 @@ class MenuNavigator {
     async _launchFromWad(meta, levelName, spawnOverride = null) {
         const modal = new MenuModal(this._display)
             .showLoading('Chargement du niveau ' + levelName + ' de ' + meta.name);
-        await this._launchGame(meta, levelName, spawnOverride, modal);
+        await this._launchGame(meta, levelName, spawnOverride, modal, false);
     }
 
-    // Shared tail of both launch paths (menu click and direct test shortcut):
-    // fetch the WAD, resolve the level (unknown/null falls back to the first
-    // one) and start the game, with the same failure modal on any error.
-    async _launchGame(meta, levelCode, spawnOverride, modal) {
+    // Shared tail of both launch paths, with the same failure modal on any
+    // error. fallbackToFirst is the direct test shortcut's behaviour (unknown
+    // or null level → first one of the WAD); the menu path stays strict — a
+    // stale registry name surfaces as an error instead of silently launching
+    // the wrong level.
+    async _launchGame(meta, levelCode, spawnOverride, modal, fallbackToFirst) {
         try {
             const wadFile   = await this._registry.getWadFile(meta.id);
-            const levelName = this._resolveLevel(wadFile, levelCode);
+            const levelName = ((fallbackToFirst) ? this._resolveLevel(wadFile, levelCode) : levelCode);
             const game = new DoomGame();
             await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
@@ -172,7 +174,7 @@ class MenuNavigator {
 
         const modal = new MenuModal(this._display)
             .showLoading('Chargement de ' + meta.name);
-        await this._launchGame(meta, levelCode, spawnOverride, modal);
+        await this._launchGame(meta, levelCode, spawnOverride, modal, true);
     }
 
     /**
