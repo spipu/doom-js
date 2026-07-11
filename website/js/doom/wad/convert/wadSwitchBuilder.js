@@ -53,6 +53,7 @@ class WadSwitchBuilder {
         // An exit special ends the level and ignores its tag (vanilla Doom): it
         // must not also start tag-matching elements (e.g. a neighbouring lift).
         const targets = ((isExit) ? [] : this._resolveTargets(ld));
+        const split   = WadMapAnalyzer.splitReverseTargets(this._analysis, ld.special, targets);
 
         const geom = ((slotInfo.invisible === true)
             ? this._buildUseZoneGeometry(ld)
@@ -83,16 +84,20 @@ class WadSwitchBuilder {
                 interactionRadius: geom.radius,
                 damage:            null,
                 interaction:       switchName,
+                // Locked-door switch (99/133-137): the key is checked at USE
+                // time on the trigger, like vanilla EV_DoLockedDoor.
+                keyRequired:       WadConstants.DOOR_KEY_BY_SPECIAL[ld.special] ?? null,
                 keyframes:         []
             },
             interactionSpec: {
-                code:    switchName,
-                mode:    interactionConfig[0],
-                tOn:     interactionConfig[1],
-                tOff:    interactionConfig[2],
-                targets: targets,
-                isExit:  isExit,
-                secret:  WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
+                code:           switchName,
+                mode:           interactionConfig[0],
+                tOn:            interactionConfig[1],
+                tOff:           interactionConfig[2],
+                targets:        split.start,
+                reverseTargets: split.reverse,
+                isExit:         isExit,
+                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
             }
         };
     }

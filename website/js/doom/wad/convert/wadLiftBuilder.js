@@ -35,12 +35,18 @@ class WadLiftBuilder {
     // --- Internal ---
 
     _buildLift(si) {
-        const {liftOriginalFh, liftMinAdjFh} = this._analysis;
+        const {liftOriginalFh, liftMinAdjFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
         const sec    = this._level.sectors[si];
         const origFh = liftOriginalFh[si];
         const minFh  = liftMinAdjFh[si];
 
-        if (origFh <= minFh) {
+        // High end of the travel: origFh for ordinary lifts (they never rise
+        // above their rest position), highest surrounding floor for perpetual
+        // plats (which may start at their LOW end and travel upward).
+        const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si]);
+        const maxFh = ((isPerpetual) ? liftMaxAdjFh[si] : origFh);
+
+        if (maxFh <= minFh) {
             return null;
         }
 
@@ -48,7 +54,9 @@ class WadLiftBuilder {
         const mesh = WadMeshBuilder.newMesh();
 
         this._buildTopFlat(mesh, si, sec, origFh);
-        this._buildRisers(mesh, si, origFh, minFh);
+        // The riser band must span the full travel amplitude: when the plat
+        // sits at maxFh, its skirt still has to reach down to minFh.
+        this._buildRisers(mesh, si, origFh, origFh - (maxFh - minFh));
 
         if (mesh.points.length === 0) {
             return null;
@@ -62,7 +70,7 @@ class WadLiftBuilder {
             code:         liftName,
             textures:     groups.newList,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(liftName, si, origFh, minFh, mesh)
+            instanceData: this._buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh)
         };
     }
 
@@ -89,7 +97,7 @@ class WadLiftBuilder {
     // own sidedef lower, else a sibling edge's texture (so a bare shared edge
     // between two lifts still gets a wall). Two passes: resolve, then emit with
     // the fallback filled in. One-sided edges stay handled by the static map.
-    _buildRisers(mesh, si, origFh, minFh) {
+    _buildRisers(mesh, si, origFh, riserBaseFh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
@@ -160,13 +168,13 @@ class WadLiftBuilder {
             const yo = e.srcSd.yo + ((e.lowerUnpeg) ? (e.srcSec.ch - origFh) : 0);
             WadMeshBuilder.addWallQuad(mesh, ti,
                 e.wx1, e.wz1, e.wx2, e.wz2,
-                minFh * SCALE, origFh * SCALE,
+                riserBaseFh * SCALE, origFh * SCALE,
                 e.wallLen, tw, th,
                 {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light});
         }
     }
 
-    _buildInstanceData(liftName, si, origFh, minFh, mesh) {
+    _buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh) {
         const special = this._analysis.liftSectorSpecial[si] ?? 88;
         const speed   = WadConstants.LIFT_SPEED_BY_SPECIAL[special] ?? 4;
 
@@ -191,6 +199,32 @@ class WadLiftBuilder {
                 {t: 0.0,   translate: [0, 0, 0],        rotate: [0, 0, 0]},
                 {t: moveS, translate: [0, -travelY, 0], rotate: [0, 0, 0]}
             ];
+        } else if (anim === 'perpetual') {
+            // Looping cycle through the full low↔high amplitude, starting at
+            // the rest position (down first, like most vanilla plats). Zero-
+            // length segments (rest position AT an end of the travel) are
+            // skipped to keep the keyframes strictly increasing.
+            const relLow  = -(origFh - minFh) * WadConstants.SCALE;
+            const relHigh = (maxFh - origFh) * WadConstants.SCALE;
+            const downS   = (origFh - minFh) / (speed * 35.0);
+            const fullS   = (maxFh - minFh) / (speed * 35.0);
+            const topS    = (maxFh - origFh) / (speed * 35.0);
+            let t = 0.0;
+            keyframes = [{t: t, translate: [0, 0, 0], rotate: [0, 0, 0]}];
+            if (downS > 0) {
+                t += downS;
+                keyframes.push({t: t, translate: [0, relLow, 0], rotate: [0, 0, 0]});
+            }
+            t += waitS;
+            keyframes.push({t: t, translate: [0, relLow, 0], rotate: [0, 0, 0]});
+            t += fullS;
+            keyframes.push({t: t, translate: [0, relHigh, 0], rotate: [0, 0, 0]});
+            t += waitS;
+            keyframes.push({t: t, translate: [0, relHigh, 0], rotate: [0, 0, 0]});
+            if (topS > 0) {
+                t += topS;
+                keyframes.push({t: t, translate: [0, 0, 0], rotate: [0, 0, 0]});
+            }
         } else {
             const tRest = moveS + waitS + moveS;
             keyframes = [

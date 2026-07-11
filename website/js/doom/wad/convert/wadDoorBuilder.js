@@ -188,6 +188,23 @@ class WadDoorBuilder {
                 {t: 0.0,   translate: [0, 0, 0],       rotate: [0, 0, 0]},
                 {t: openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
+        } else if (props.anim === 'close-stay') {
+            // Closing door: rest = panel parked open above the ceiling
+            // (keyframe 0 at +travelY, applied from finalizeInit), descends
+            // to the floor and stays there.
+            keyframes = [
+                {t: 0.0,   translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: openS, translate: [0, 0, 0],       rotate: [0, 0, 0]}
+            ];
+        } else if (props.anim === 'close-wait-open') {
+            // Close, wait 30 s (close30ThenOpen), reopen to the parked rest.
+            const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS / 35.0;
+            keyframes = [
+                {t: 0.0,                         translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: openS,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS + reopenWaitS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS + reopenWaitS + openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
         } else {
             const tRest = openS + waitS + openS;
             keyframes = [

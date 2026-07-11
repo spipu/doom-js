@@ -10,15 +10,22 @@
  */
 class DoomWalkTriggerInteraction extends AbstractInteraction {
     /**
-     * @param {string}   code    - unique interaction code, shared with the Instance
-     * @param {string[]} targets - codes of the instances to start on cross
+     * @param {string}   code           - unique interaction code, shared with the Instance
+     * @param {string[]} targets        - codes of the instances to start on cross
+     * @param {string[]} reverseTargets - codes of the instances started BACKWARD
+     *                                    (close lines shutting an opening door)
+     * @param {boolean}  stop           - true = crossing PAUSES the targets in place
+     *                                    (vanilla EV_StopPlat stasis) instead of
+     *                                    starting them (specials 54/89)
      */
-    constructor(code, targets) {
+    constructor(code, targets, reverseTargets, stop) {
         super();
-        this._code         = code;
-        this._targets      = targets;
-        this._exitCallback = null;
-        this._exitSecret   = false;
+        this._code           = code;
+        this._targets        = targets;
+        this._reverseTargets = (reverseTargets ?? []);
+        this._stop           = (stop === true);
+        this._exitCallback   = null;
+        this._exitSecret     = false;
     }
 
     get code() {
@@ -37,7 +44,17 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
         for (const code of this._targets) {
             const target = loader.instances().getByCode(code);
             if (target) {
-                target.start();
+                if (this._stop) {
+                    target.pause();
+                } else {
+                    target.start();
+                }
+            }
+        }
+        for (const code of this._reverseTargets) {
+            const target = loader.instances().getByCode(code);
+            if (target) {
+                target.startReverse();
             }
         }
 

@@ -6,17 +6,21 @@
 class DoomSwitchInteraction extends SwitchInteraction {
     /**
      * @param {string}      code
-     * @param {string[]}    targets - codes of the instances to start on trigger ON
-     * @param {string}      mode    - 'once' | 'timed' | 'toggle'
+     * @param {string[]}    targets        - codes of the instances to start on trigger ON
+     * @param {string}      mode           - 'once' | 'timed' | 'toggle'
      * @param {number|null} minOnTime
      * @param {number|null} minOffTime
+     * @param {string[]}    reverseTargets - codes of the instances started BACKWARD
+     *                                       (lower-back 45, close lines shutting an
+     *                                       opening door)
      */
-    constructor(code, targets, mode, minOnTime, minOffTime) {
+    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets) {
         super(code);
 
-        this._targets      = targets;
-        this._exitCallback = null;
-        this._exitSecret   = false;
+        this._targets        = targets;
+        this._reverseTargets = (reverseTargets ?? []);
+        this._exitCallback   = null;
+        this._exitSecret     = false;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -47,6 +51,9 @@ class DoomSwitchInteraction extends SwitchInteraction {
 
         for (const code of this._targets) {
             loader.instances().getByCode(code).start();
+        }
+        for (const code of this._reverseTargets) {
+            loader.instances().getByCode(code).startReverse();
         }
 
         if (this._exitCallback !== null) {

@@ -19,7 +19,7 @@ class WadMapAnalyzer {
         this._patchLiftFloors(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
-        const doorHeights = this._computeDoorHeights(doors.doorSectorIds);
+        const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
@@ -32,6 +32,7 @@ class WadMapAnalyzer {
             liftSectorSpecial:    lifts.liftSectorSpecial,
             liftOriginalFh:       lifts.liftOriginalFh,
             liftMinAdjFh:         lifts.liftMinAdjFh,
+            liftMaxAdjFh:         lifts.liftMaxAdjFh,
             risingFloorIds:       rising.risingFloorIds,
             risingFloorSpecial:   rising.risingFloorSpecial,
             risingFloorTargetFh:  rising.risingFloorTargetFh,
@@ -107,7 +108,8 @@ class WadMapAnalyzer {
                 loop:        WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
                 onlyOnce:    WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
                 anim:        WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
-                keyRequired: WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null
+                keyRequired: WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null,
+                close:       false
             };
         };
 
@@ -132,6 +134,22 @@ class WadMapAnalyzer {
             }
         }
 
+        // Closing doors: tagged sectors, statically OPEN (ch > fh), shut by a
+        // panel parked above the ceiling that descends. A sector already
+        // registered as an (opening) door keeps its opening panel — the close
+        // lines will walk it back down (startReverse) instead.
+        for (const ld of linedefs) {
+            if (!WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) || ld.tag === 0) {
+                continue;
+            }
+            for (let si = 0; si < sectors.length; si++) {
+                if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh) {
+                    registerDoor(si, ld.special, 'none');
+                    doorProps[si].close = true;
+                }
+            }
+        }
+
         return {doorSectorIds: doorSectorIds, doorProps: doorProps};
     }
 
@@ -144,11 +162,17 @@ class WadMapAnalyzer {
     // underground doors (fh=-128) whose own floor is below the walkable level.
     // The result is patched into sectors[si].fh so the walls (riser steps), the
     // static flat, the panel and the DOORTRAK all read one consistent floor.
-    _computeDoorHeights(doorSectorIds) {
+    _computeDoorHeights(doorSectorIds, doorProps) {
         const {linedefs, sidedefs, sectors} = this._level;
         const doorHeights = {};
 
         for (const si of doorSectorIds) {
+            // Closing door: the sector is statically OPEN at its own heights —
+            // the panel travel is simply fh → ch, nothing to patch or clamp.
+            if (doorProps[si].close === true) {
+                doorHeights[si] = {floorH: sectors[si].fh, ceilH: sectors[si].ch};
+                continue;
+            }
             const adj = [];
             for (const ld of linedefs) {
                 if (ld.right < 0 || ld.left < 0) {
@@ -202,6 +226,7 @@ class WadMapAnalyzer {
         // Save original fh and min adjacent fh before patching.
         const liftOriginalFh = {};
         const liftMinAdjFh   = {};
+        const liftMaxAdjFh   = {};
         const computeTargets = () => {
             for (const si of movingFloorDownIds) {
                 const adjFh = [];
@@ -233,6 +258,11 @@ class WadMapAnalyzer {
                     target = Math.min(...adjFh);
                 }
                 liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
+                // High end of a perpetual plat: highest adjacent floor, clamped
+                // so it never sits below the sector's own floor (p_plats.c).
+                liftMaxAdjFh[si] = ((adjFh.length === 0)
+                    ? sectors[si].fh
+                    : Math.max(Math.max(...adjFh), sectors[si].fh));
             }
         };
 
@@ -250,9 +280,18 @@ class WadMapAnalyzer {
             for (const k of Object.keys(liftOriginalFh)) {
                 delete liftOriginalFh[k];
                 delete liftMinAdjFh[k];
+                delete liftMaxAdjFh[k];
             }
             computeTargets();
-            const dead = [...movingFloorDownIds].find((si) => (liftOriginalFh[si] <= liftMinAdjFh[si]));
+            // A perpetual plat is dead only when its full amplitude is nil
+            // (low == high): it may legitimately start AT its low end and only
+            // travel upward, unlike a one-way/round-trip lower.
+            const dead = [...movingFloorDownIds].find((si) => {
+                if (WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si])) {
+                    return (liftMaxAdjFh[si] <= liftMinAdjFh[si]);
+                }
+                return (liftOriginalFh[si] <= liftMinAdjFh[si]);
+            });
             if (dead === undefined) {
                 break;
             }
@@ -264,7 +303,8 @@ class WadMapAnalyzer {
             movingFloorDownIds: movingFloorDownIds,
             liftSectorSpecial:  liftSectorSpecial,
             liftOriginalFh:     liftOriginalFh,
-            liftMinAdjFh:       liftMinAdjFh
+            liftMinAdjFh:       liftMinAdjFh,
+            liftMaxAdjFh:       liftMaxAdjFh
         };
     }
 
@@ -517,5 +557,39 @@ class WadMapAnalyzer {
         }
 
         return targets;
+    }
+
+    // Splits resolved target codes into {start, reverse} — reverse = played
+    // backward via startReverse(). Shared by the switch and walk builders:
+    // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
+    //   targets back down;
+    // - a close-door line (DOOR_CLOSE_SPECIALS) closes an OPENING door caught
+    //   by the tag in reverse (vanilla: the ceiling simply descends), while the
+    //   dedicated close-door panels (doorProps.close) start forward — their
+    //   keyframes natively descend from the parked-open rest.
+    static splitReverseTargets(analysis, special, targets) {
+        if (WadConstants.SWITCH_REVERSE_SPECIALS.has(special)) {
+            return {start: [], reverse: targets};
+        }
+        if (!WadConstants.DOOR_CLOSE_SPECIALS.has(special)) {
+            return {start: targets, reverse: []};
+        }
+        const start = [];
+        const reverse = [];
+        for (const code of targets) {
+            const si = ((code.startsWith('door_')) ? parseInt(code.slice(5), 10) : null);
+            const isOpeningDoor = (
+                (si !== null) &&
+                (analysis.doorProps[si] !== undefined) &&
+                (analysis.doorProps[si].close !== true)
+            );
+            if (isOpeningDoor) {
+                reverse.push(code);
+            } else {
+                start.push(code);
+            }
+        }
+
+        return {start: start, reverse: reverse};
     }
 }
