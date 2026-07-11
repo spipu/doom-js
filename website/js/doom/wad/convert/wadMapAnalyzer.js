@@ -669,33 +669,76 @@ class WadMapAnalyzer {
     // backward via startReverse(). Shared by the switch and walk builders:
     // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
     //   targets back down;
+    // - a RAISE special (FLOOR_MOVE_UP) whose tag lands on a LIFT walks the
+    //   lowered platform back up (E1M5/E1M7 bidirectional plats: 70/98 lower
+    //   it, the 91 ring raises it back) instead of re-lowering it;
     // - a close-door line (DOOR_CLOSE_SPECIALS) closes an OPENING door caught
     //   by the tag in reverse (vanilla: the ceiling simply descends), while the
     //   dedicated close-door panels (doorProps.close) start forward — their
     //   keyframes natively descend from the parked-open rest.
+    // Each reverse entry carries a timeScale so the backward playback runs at
+    // the VANILLA speed of the reversing special, not at the speed baked into
+    // the target's keyframes (a turbo-lowered plat rises back at FLOORSPEED).
     static splitReverseTargets(analysis, special, targets) {
+        const rev = (code) => ({
+            code:      code,
+            timeScale: WadMapAnalyzer._specialSpeed(special) / WadMapAnalyzer._targetSpeed(analysis, code)
+        });
+
         if (WadConstants.SWITCH_REVERSE_SPECIALS.has(special)) {
-            return {start: [], reverse: targets};
+            return {start: [], reverse: targets.map(rev)};
         }
-        if (!WadConstants.DOOR_CLOSE_SPECIALS.has(special)) {
-            return {start: targets, reverse: []};
-        }
+        const isRaise = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
+        const isClose = WadConstants.DOOR_CLOSE_SPECIALS.has(special);
         const start = [];
         const reverse = [];
         for (const code of targets) {
-            const si = ((code.startsWith('door_')) ? parseInt(code.slice(5), 10) : null);
+            if (isRaise && code.startsWith('lift_')) {
+                reverse.push(rev(code));
+                continue;
+            }
+            const si = ((isClose && code.startsWith('door_')) ? parseInt(code.slice(5), 10) : null);
             const isOpeningDoor = (
                 (si !== null) &&
                 (analysis.doorProps[si] !== undefined) &&
                 (analysis.doorProps[si].close !== true)
             );
             if (isOpeningDoor) {
-                reverse.push(code);
+                reverse.push(rev(code));
             } else {
                 start.push(code);
             }
         }
 
         return {start: start, reverse: reverse};
+    }
+
+    // Forward speed (u/tic) of the special firing a reverse — raise floors,
+    // plats, doors; FLOORSPEED = 1 for everything else (e.g. 45 lowerFloor).
+    static _specialSpeed(special) {
+        return WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[special]
+            ?? WadConstants.LIFT_SPEED_BY_SPECIAL[special]
+            ?? WadConstants.DOOR_SPEED_BY_SPECIAL[special]
+            ?? 1;
+    }
+
+    // Forward speed (u/tic) baked into a target instance's own keyframes
+    // (from the special it was built with).
+    static _targetSpeed(analysis, code) {
+        if (code.startsWith('lift_')) {
+            const si = parseInt(code.slice(5), 10);
+            return WadConstants.LIFT_SPEED_BY_SPECIAL[analysis.liftSectorSpecial[si]] ?? 1;
+        }
+        if (code.startsWith('risingfloor_')) {
+            const si = parseInt(code.slice(12), 10);
+            return WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[analysis.risingFloorSpecial[si]]
+                ?? WadConstants.FLOOR_UP_DEFAULT_SPEED;
+        }
+        if (code.startsWith('door_')) {
+            const si = parseInt(code.slice(5), 10);
+            return ((analysis.doorProps[si] !== undefined) ? analysis.doorProps[si].speed : 2);
+        }
+
+        return 1;
     }
 }

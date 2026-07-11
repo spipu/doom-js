@@ -10,9 +10,10 @@ class DoomSwitchInteraction extends SwitchInteraction {
      * @param {string}      mode           - 'once' | 'timed' | 'toggle'
      * @param {number|null} minOnTime
      * @param {number|null} minOffTime
-     * @param {string[]}    reverseTargets - codes of the instances started BACKWARD
-     *                                       (lower-back 45, close lines shutting an
-     *                                       opening door)
+     * @param {object[]}    reverseTargets - {code, timeScale} of the instances started
+     *                                       BACKWARD (lower-back 45, close lines shutting
+     *                                       an opening door, raise lines lifting a lowered
+     *                                       plat) — timeScale keeps the vanilla reverse speed
      */
     constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets) {
         super(code);
@@ -52,8 +53,8 @@ class DoomSwitchInteraction extends SwitchInteraction {
         for (const code of this._targets) {
             loader.instances().getByCode(code).start();
         }
-        for (const code of this._reverseTargets) {
-            loader.instances().getByCode(code).startReverse();
+        for (const entry of this._reverseTargets) {
+            loader.instances().getByCode(entry.code).startReverse(entry.timeScale);
         }
 
         if (this._exitCallback !== null) {
