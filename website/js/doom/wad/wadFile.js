@@ -41,8 +41,10 @@ class WadFile {
                 offset: this._view.getUint32(entryOffset, true),
                 size:   this._view.getUint32(entryOffset + 4, true)
             });
+            // Only lumps with content: markers (size 0) may carry an arbitrary
+            // filepos that vanilla never reads — no reason to reject the WAD.
             const lump = this._lumps[this._lumps.length - 1];
-            if (lump.offset + lump.size > this._buffer.byteLength) {
+            if (lump.size > 0 && lump.offset + lump.size > this._buffer.byteLength) {
                 throw new WadError('invalid-format', 'Lump [' + lump.name + '] exceeds the file size');
             }
         }

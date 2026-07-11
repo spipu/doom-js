@@ -589,16 +589,12 @@ class User {
             }
         }
 
-        // 10. Ceiling check — queried from the FEET (getCeiling only returns
-        // surfaces strictly above the given Y; asking from the head would make
-        // the clamp below unreachable by construction).
-        const ceilY = collision.getCeiling(this.x, this.z, this._radius, this.y);
-        if (this.y + this.getCurrentHeight() > ceilY) {
-            this.y = ceilY - this.getCurrentHeight();
-            if (this._vy > 0) {
-                this._vy = 0;
-            }
-        }
+        // 10. No ceiling re-check after the ground snap: a mover pressing down
+        // on the player is resolved by rolling the mover back
+        // (resolveObjectPlayerBlockage), NOT by clamping the player under it —
+        // a feet-level clamp would push the player through the floor before
+        // the rollback runs. Upward clearance during a move is checked before
+        // displacing (step 3) and by the jump path (step 7).
 
         // 11. Crouch animation
         const crouchDelta = this._crouchSpeed * dt_s;
@@ -673,10 +669,10 @@ class User {
     }
 
     _tryStepUp(collision, vx, vz) {
+        // No ceiling guard here (validated in-game behaviour): a local check
+        // would refuse legal steps in any low corridor, and a destination
+        // clearance check remains to be designed (see next-steps).
         const testY = this.y + this._stepHeight;
-        if (collision.getCeiling(this.x, this.z, this._radius, this.y) < testY + this.getCurrentHeight()) {
-            return false;
-        }
         const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());
         if (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8) {
             return false;
