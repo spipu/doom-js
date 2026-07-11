@@ -202,6 +202,16 @@ class WadConstants {
     // Doom units left at the top of a door panel for the ceiling track mechanism
     static DOOR_TRACK_OFFSET = 4;
 
+    // Timer doors (SECTOR specials, no linedef — P_SpawnSpecials arms a
+    // countdown at level load): 10 = the statically open sector close-stays
+    // after 30 s (P_SpawnDoorCloseIn30); 14 = the closed door runs ONE
+    // open-wait-close cycle after 5 minutes (P_SpawnDoorRaiseIn5Mins → type
+    // normal). Both at VDOORSPEED.
+    static SECTOR_DOOR_CLOSE_SPECIAL    = 10;
+    static SECTOR_DOOR_OPEN_SPECIAL     = 14;
+    static SECTOR_DOOR_CLOSE_DELAY_TICS = 30 * 35;
+    static SECTOR_DOOR_OPEN_DELAY_TICS  = 5 * 60 * 35;
+
     // --- Lifts / moving floors ---
 
     // Lifts 62/88 (SR/WR), one-shot 10/21 (W1/S1) + fast 120/121/122/123
