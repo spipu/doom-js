@@ -90,7 +90,7 @@ class WadWorldBuilder {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
             const spec = sw.interactionSpec;
-            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets);
+            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.doorVariant);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -105,7 +105,7 @@ class WadWorldBuilder {
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
             const spec = wt.interactionSpec;
-            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop);
+            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.doorVariant);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
