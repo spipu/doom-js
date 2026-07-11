@@ -212,6 +212,14 @@ class WadConstants {
     static SECTOR_DOOR_CLOSE_DELAY_TICS = 30 * 35;
     static SECTOR_DOOR_OPEN_DELAY_TICS  = 5 * 60 * 35;
 
+    // --- Scrolling walls ---
+
+    // Linedef 48 (p_spec.c P_SpawnSpecials → linespeciallist, P_UpdateSpecials):
+    // the FRONT sidedef's textureoffset advances FRACUNIT (1 texel) per tic,
+    // forever — no tag, no trigger. 1 texel/tic × 35 tics/s = 35 texels/s.
+    static SCROLL_WALL_SPECIALS       = new Set([48]);
+    static SCROLL_WALL_TEXELS_PER_SEC = 35;
+
     // --- Lifts / moving floors ---
 
     // Lifts 62/88 (SR/WR), one-shot 10/21 (W1/S1) + fast 120/121/122/123

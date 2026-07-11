@@ -18,7 +18,7 @@ class WadMeshBuilder {
      *
      * @param {object} mesh
      * @param {int}    texIdx - GLOBAL 0-based bank index, or -1 (face without texture)
-     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy}
+     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, uScrollTexelsPerSec}
      */
     static addWallQuad(mesh, texIdx, x1, z1, x2, z2, yBot, yTop, wallLenDoom, texW, texH, options) {
         options = options ?? {};
@@ -29,6 +29,7 @@ class WadMeshBuilder {
         const clampV        = (options.clampV === true);
         const passableUser  = (options.passableUser === true);
         const passableEnemy = (options.passableEnemy === true);
+        const uScrollTexels = options.uScrollTexelsPerSec ?? 0;
 
         if (yBot >= yTop) {
             return;
@@ -68,6 +69,10 @@ class WadMeshBuilder {
             }
             if (passableEnemy) {
                 face.passableEnemy = true;
+            }
+            if (uScrollTexels !== 0 && texIdx >= 0) {
+                // Texel rate → UV fraction per second (the texture width lives here)
+                face.uvScroll = {u: uScrollTexels / texW, v: 0};
             }
 
             return face;

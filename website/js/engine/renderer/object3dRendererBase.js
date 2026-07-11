@@ -2,6 +2,7 @@ class Object3dRendererBase {
     constructor() {
         this._col       = [0, 0, 0];
         this._lightTemp = [0, 0, 0];
+        this._uvOff     = [0, 0];
     }
 
     isAvailable() {
@@ -25,6 +26,22 @@ class Object3dRendererBase {
         }
         const frameIdx = Math.floor(sceneMs / fc.animTextures.durationMs) % fc.animTextures.ids.length;
         return fc.animTextures.ids[frameIdx];
+    }
+
+    // Current UV offset of a scrolling face (uvScroll = UV fraction per second),
+    // wrapped to [0,1) so the texture-repeat wrap downstream keeps full float
+    // precision even after hours of scene time. Shared array, consume immediately.
+    _uvScrollOffset(fc, sceneMs) {
+        const off = this._uvOff;
+        if (!fc.uvScroll) {
+            off[0] = 0;
+            off[1] = 0;
+            return off;
+        }
+        const t = sceneMs / 1000;
+        off[0] = (t * fc.uvScroll.u) % 1;
+        off[1] = (t * fc.uvScroll.v) % 1;
+        return off;
     }
 
     _pointColor(engine, color, pt, normal) {
