@@ -43,6 +43,24 @@ class WadMeshBuilder {
         return {mesh: mesh, radius: (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS};
     }
 
+    // Moving top flat of a sector (floor surface at origFh, normal up): one
+    // quad per outer polygon, holes preserved (a ring-shaped platform must not
+    // cover the inner sector). Shared by the lift and rising-floor builders;
+    // the stair builder keeps its own raw-chains variant (see there).
+    static addSectorTopFlat(mesh, level, bank, analysis, si, origFh) {
+        const {vertexes, linedefs, sidedefs, sectors} = level;
+
+        const sec = sectors[si];
+        const ft = bank.ensureFlatTex(sec.ft);
+        if (ft < 0) {
+            return;
+        }
+
+        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(analysis, si));
+        }
+    }
+
     /**
      * Append a textured wall quad (two triangles) to the mesh.
      * flip=false → front face (normal on the right-hand side of v1→v2).

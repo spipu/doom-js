@@ -36,7 +36,6 @@ class WadLiftBuilder {
 
     _buildLift(si) {
         const {liftOriginalFh, liftMinAdjFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
-        const sec    = this._level.sectors[si];
         const origFh = liftOriginalFh[si];
         const minFh  = liftMinAdjFh[si];
 
@@ -53,7 +52,7 @@ class WadLiftBuilder {
         const liftName = 'lift_' + si;
         const mesh = WadMeshBuilder.newMesh();
 
-        this._buildTopFlat(mesh, si, sec, origFh);
+        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         // The riser band must span the full travel amplitude: when the plat
         // sits at maxFh, its skirt still has to reach down to minFh.
         this._buildRisers(mesh, si, origFh, origFh - (maxFh - minFh));
@@ -72,21 +71,6 @@ class WadLiftBuilder {
             mesh:         mesh,
             instanceData: this._buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh)
         };
-    }
-
-    // Top flat: floor surface of the platform at its original height.
-    // Holes preserved (a ring-shaped platform must not cover the inner sector).
-    _buildTopFlat(mesh, si, sec, origFh) {
-        const {vertexes, linedefs, sidedefs} = this._level;
-
-        const ft = this._bank.ensureFlatTex(sec.ft);
-        if (ft < 0) {
-            return;
-        }
-
-        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
-        }
     }
 
     // Side walls: a riser (minFh → origFh) on EVERY two-sided perimeter edge of
