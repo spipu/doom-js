@@ -72,6 +72,30 @@ class WadAnimationBank {
         return {newList: newList, animMap: animMap};
     }
 
+    /**
+     * Loader ids of the full animation sequence a flat belongs to (single
+     * entry when the flat is static), plus the frame duration. Runtime flat
+     * swaps ("+change" floors) need them: the old faces may carry ANY frame
+     * of an animated flat, and the destination must stay animated when it is
+     * one (e.g. a change to FWATER).
+     *
+     * @returns {{ids: int[], duration: number}} ids = engine loader ids
+     */
+    flatSequenceLoaderIds(flatName) {
+        const seq = this._sequences.find((s) => s.isFlat && s.frames.includes(flatName));
+        const frames = ((seq !== undefined) ? seq.frames : [flatName]);
+        const ids = [];
+        for (const name of frames) {
+            const idx = this._bank.ensureFlatTex(name);
+            if (idx >= 0) {
+                ids.push(this._bank.getLoaderId(idx));
+            }
+        }
+        const tics = ((seq !== undefined && seq.speedTics > 0) ? seq.speedTics : 8);
+
+        return {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
+    }
+
     // --- Internal ---
 
     /**

@@ -44,6 +44,19 @@ class Instance extends AbstractLoadedEntity {
         this._rideOn            = null;
         this._rideBaseY         = 0;
         this._rideLastDy        = 0;
+
+        // Lifecycle hooks: fired when the animation actually starts / reaches
+        // its final keyframe (game-layer effects like floor texture changes)
+        this._onStart           = null;
+        this._onComplete        = null;
+    }
+
+    setOnStart(fn) {
+        this._onStart = fn;
+    }
+
+    setOnComplete(fn) {
+        this._onComplete = fn;
     }
 
     finalizeInit() {
@@ -321,6 +334,9 @@ class Instance extends AbstractLoadedEntity {
         if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {
             this._animTime = this._animKeyframes[0].t;
         }
+        if (this._onStart !== null) {
+            this._onStart();
+        }
     }
 
     // Freezes the animation in place (Doom EV_StopPlat stasis): keeps the
@@ -358,6 +374,9 @@ class Instance extends AbstractLoadedEntity {
         this._animPlaying = false;
         if (this._animOnlyOnce) {
             this._animDone = true;
+        }
+        if (this._onComplete !== null) {
+            this._onComplete();
         }
     }
 

@@ -548,6 +548,40 @@ class WadConstants {
     // Doom picture-column format sentinel
     static PATCH_END_COLUMN = 0xFF;
 
+    // --- Floor texture/type change (the "+change" specials) ---
+
+    // The moving floor also changes its flat texture and/or sector special.
+    // source 'front' = the trigger line's FRONT sector, applied at trigger
+    // time (p_floor.c raiseFloor24AndChange 59/93 copies floorpic + special;
+    // p_plats.c raiseToNearestAndChange 20/22/68 copies the floorpic and
+    // ZEROES the special — "no more damage"; raiseAndChange 66/67 copies the
+    // floorpic only). source 'dest' = the neighbour sitting at the destination
+    // height, applied at ARRIVAL (lowerAndChange 37/84).
+    static FLOOR_CHANGE_BY_SPECIAL = {
+        59: {source: 'front', special: 'copy', at: 'start'},
+        93: {source: 'front', special: 'copy', at: 'start'},
+        20: {source: 'front', special: 'zero', at: 'start'},
+        22: {source: 'front', special: 'zero', at: 'start'},
+        68: {source: 'front', special: 'zero', at: 'start'},
+        66: {source: 'front', special: 'keep', at: 'start'},
+        67: {source: 'front', special: 'keep', at: 'start'},
+        37: {source: 'dest',  special: 'copy', at: 'complete'},
+        84: {source: 'dest',  special: 'copy', at: 'complete'}
+    };
+
+    // --- Sector damage (P_PlayerInSpecialSector) ---
+
+    // Damage applied every 32-tic window to a player standing on the floor of
+    // a sector carrying these SECTOR specials. 11 = E1M8 finale (unprotected
+    // damage + normal exit at ≤ 10 health).
+    static SECTOR_DAMAGE_BY_SPECIAL = {7: 5, 5: 10, 4: 20, 16: 20, 11: 20};
+
+    // The radiation suit fully cancels 5/7 but leaks with a 5/256 chance per
+    // window on the super-damage specials.
+    static SECTOR_DAMAGE_LEAK_SPECIALS = new Set([4, 16]);
+
+    static SECTOR_DAMAGE_WINDOW_TICS = 32;
+
     // --- Pickups ---
 
     // Proximity radius (metres) at which a pickup is collected — vanilla exact:
