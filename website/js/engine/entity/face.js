@@ -1,5 +1,5 @@
 class Face {
-    constructor(pt0, pt1, pt2, color, textureId, map, alpha, clampV, passableUser, passableEnemy, animTextures, uvScroll) {
+    constructor(pt0, pt1, pt2, color, textureId, map, alpha, clampV, passableUser, passableEnemy, animTextures, uvScroll, lightGroup) {
         this.pts          = [pt0, pt1, pt2];
         this.color        = color;
         this.textureId    = textureId;
@@ -11,6 +11,7 @@ class Face {
         this.passableEnemy = passableEnemy;
         this.animTextures = animTextures;
         this.uvScroll     = uvScroll;
+        this.lightGroup   = lightGroup;
         this.normal       = [0, 0, 0];
     }
 }

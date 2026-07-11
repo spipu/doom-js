@@ -142,6 +142,13 @@ class WadWorldBuilder {
             loader.interactions().loadFromData(damageInteraction);
         }
 
+        // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
+        // per-level interaction stepping the vanilla p_lights.c thinkers and
+        // driving the lightGroup factors of the static map faces.
+        if (analysis.lightSectors.length > 0) {
+            loader.interactions().loadFromData(new DoomSectorLightInteraction(analysis.lightSectors));
+        }
+
         // "+change" floors: swap the moving top-flat texture (and the sector's
         // damage special) when the movement starts or completes.
         this._wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction);

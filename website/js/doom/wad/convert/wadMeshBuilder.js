@@ -18,7 +18,7 @@ class WadMeshBuilder {
      *
      * @param {object} mesh
      * @param {int}    texIdx - GLOBAL 0-based bank index, or -1 (face without texture)
-     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, uScrollTexelsPerSec}
+     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, uScrollTexelsPerSec, lightGroup}
      */
     static addWallQuad(mesh, texIdx, x1, z1, x2, z2, yBot, yTop, wallLenDoom, texW, texH, options) {
         options = options ?? {};
@@ -30,6 +30,7 @@ class WadMeshBuilder {
         const passableUser  = (options.passableUser === true);
         const passableEnemy = (options.passableEnemy === true);
         const uScrollTexels = options.uScrollTexelsPerSec ?? 0;
+        const lightGroup    = options.lightGroup ?? null;
 
         if (yBot >= yTop) {
             return;
@@ -74,6 +75,9 @@ class WadMeshBuilder {
                 // Texel rate → UV fraction per second (the texture width lives here)
                 face.uvScroll = {u: uScrollTexels / texW, v: 0};
             }
+            if (lightGroup !== null) {
+                face.lightGroup = lightGroup;
+            }
 
             return face;
         };
@@ -99,8 +103,9 @@ class WadMeshBuilder {
      * @param {boolean}    isFloor
      * @param {number}     light
      * @param {number[][][]|null} holes
+     * @param {int|null}   lightGroup
      */
-    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null) {
+    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null) {
         if (polyVerts2d.length < 3) {
             return;
         }
@@ -173,22 +178,27 @@ class WadMeshBuilder {
         const flatUv = (idx) => [polyLocal[idx][0] / 64.0, -polyLocal[idx][1] / 64.0];
 
         for (const [a, b, cIdx] of tris) {
+            let face;
             if (isFloor) {
                 // CCW polygon → swap [a,b,c] to [a,c,b] for an upward-facing normal
-                mesh.faces.push({
+                face = {
                     pts:     [base + a + 1, base + cIdx + 1, base + b + 1],
                     color:   [c, c, c],
                     texture: texIdx + 1,
                     map:     [flatUv(a), flatUv(cIdx), flatUv(b)]
-                });
+                };
             } else {
-                mesh.faces.push({
+                face = {
                     pts:     [base + a + 1, base + b + 1, base + cIdx + 1],
                     color:   [c, c, c],
                     texture: texIdx + 1,
                     map:     [flatUv(a), flatUv(b), flatUv(cIdx)]
-                });
+                };
             }
+            if (lightGroup !== null) {
+                face.lightGroup = lightGroup;
+            }
+            mesh.faces.push(face);
         }
     }
 
