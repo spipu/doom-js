@@ -39,9 +39,6 @@ class InstanceLoader extends AbstractLoader {
         delete this._entities[id];
     }
 
-    _alreadyLoaded(url) {
-        return (this._loadedFiles[url] !== undefined ? this._loadedFiles[url] : null);
-    }
 
     _create(id, url, callback) {
         return new Instance(id, url, callback);
@@ -50,7 +47,7 @@ class InstanceLoader extends AbstractLoader {
     _initialiseEntityFromUrl(entity) {
         appBootstrap.fetchJson(
             entity.getUrl(),
-            data => {
+            (data) => {
                 this._populateFromData(entity, data);
                 entity.setLoaded();
             }

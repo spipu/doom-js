@@ -2,20 +2,20 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
     constructor(screenManager, renderer) {
-        this.scrWidth  = 0;
-        this.scrHeight = 0;
+        this.scrWidth   = 0;
+        this.scrHeight  = 0;
         this.background = [0, 0, 0];
         this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
         this._viewYaw   = 0;          // cached in setCamera for the sky pass
         this._viewPitch = 0;
-        this.viewMatrix     = new Matrix();
+        this.viewMatrix = new Matrix();
         this.fov        = 0.0;
-        this.viewXMin = 0.0;
-        this.viewXMax = 0.0;
-        this.viewYMin = 0.0;
-        this.viewYMax = 0.0;
-        this.lightList = [];
-        this.zBuffer   = new ZBuffer();
+        this.viewXMin   = 0.0;
+        this.viewXMax   = 0.0;
+        this.viewYMin   = 0.0;
+        this.viewYMax   = 0.0;
+        this.lightList  = [];
+        this.zBuffer    = new ZBuffer();
 
         this._renderer = renderer;
 
@@ -132,7 +132,7 @@ class Engine3d {
         this.setBackground(bg[0], bg[1], bg[2]);
         this.setSky(world.getSky());
         this.lightAmbient(world.getLightAmbient());
-        world.getLights().forEach(l => this.lightAdd(l));
+        world.getLights().forEach((l) => this.lightAdd(l));
         return this;
     }
 
@@ -147,7 +147,7 @@ class Engine3d {
     }
 
     lightsCalculatePosition() {
-        this.lightList.forEach(l => this.lightCalculatePosition(l));
+        this.lightList.forEach((l) => this.lightCalculatePosition(l));
         return this;
     }
 
@@ -199,12 +199,6 @@ class Engine3d {
         return this;
     }
 
-    matrixScale(sx, sy, sz) {
-        const m = new Matrix();
-        m.scale(sx, sy, sz);
-        this.viewMatrix.multiply(m);
-        return this;
-    }
 
     setCamera(user) {
         this._viewYaw   = user.yaw;
@@ -218,34 +212,8 @@ class Engine3d {
     }
 
     drawInstance(instance) {
-        const tf              = instance.getTransform();
-        const [px, py, pz]    = tf.position;
-        const [irx, iry, irz] = tf.rotation;
-        const [dtx, dty, dtz] = tf.deltaTranslate;
-        const [drx, dry, drz] = tf.deltaRotate;
         this.matrixPush();
-        this.matrixTranslate(px, py, pz);
-        if (irx) {
-            this.matrixRotateX(irx);
-        }
-        if (irz) {
-            this.matrixRotateZ(irz);
-        }
-        if (iry) {
-            this.matrixRotateY(iry);
-        }
-        if (dtx || dty || dtz) {
-            this.matrixTranslate(dtx, dty, dtz);
-        }
-        if (drx) {
-            this.matrixRotateX(drx);
-        }
-        if (drz) {
-            this.matrixRotateZ(drz);
-        }
-        if (dry) {
-            this.matrixRotateY(dry);
-        }
+        this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getTransform()));
         this.drawObject(instance.getObject());
         this.matrixPop();
         return this;
@@ -276,7 +244,7 @@ class Engine3d {
         this.lightsCalculatePosition();
         this.drawInit();
         this.drawObject(world.getMap());
-        world.getInstances().forEach(inst => this.drawInstance(inst));
+        world.getInstances().forEach((inst) => this.drawInstance(inst));
         this.drawFinish();
         return this;
     }

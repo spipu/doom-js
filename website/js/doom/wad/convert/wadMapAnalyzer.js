@@ -112,12 +112,12 @@ class WadMapAnalyzer {
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
             // Walk lifts/floors, plus tagged WALK-triggered doors (specials 2/86/
-            // 90/109, marked 'proximity' in DOOR_TRIGGER_BY_SPECIAL): a remote
+            // 90/109, trigger 'proximity' in DOOR_BY_SPECIAL): a remote
             // door tagged T opens when its trigger line is crossed, not by
             // approaching the door — e.g. grabbing a key on a pedestal ringed by
             // such lines opens the doors tagged T elsewhere.
             const isWalkLift  = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
-            const isWalkDoor  = (WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] === 'proximity');
+            const isWalkDoor  = (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'proximity');
             const isWalkStair = WadConstants.STAIR_WALK_SPECIALS.has(ld.special);
             if ((isWalkLift || isWalkDoor || isWalkStair) && ld.tag !== 0) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
@@ -236,20 +236,20 @@ class WadMapAnalyzer {
         const doorSectorIds = new Set();
         const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
 
-        const registerDoor = (si, sp, forceTrigger) => {
+        const registerDoor = (si, door, forceTrigger) => {
             doorSectorIds.add(si);
             doorProps[si] = {
-                speed:        WadConstants.DOOR_SPEED_BY_SPECIAL[sp] ?? 2,
-                trigger:      forceTrigger ?? (WadConstants.DOOR_TRIGGER_BY_SPECIAL[sp] ?? 'action'),
-                loop:         WadConstants.DOOR_LOOP_BY_SPECIAL[sp] ?? false,
-                onlyOnce:     WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[sp] ?? false,
-                anim:         WadConstants.DOOR_ANIM_BY_SPECIAL[sp] ?? 'round-trip',
-                keyRequired:  WadConstants.DOOR_KEY_BY_SPECIAL[sp] ?? null,
-                close:        false,
-                ceilingRaise: WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(sp),
+                speed:        door.speed,
+                trigger:      forceTrigger ?? door.trigger,
+                loop:         door.loop,
+                onlyOnce:     door.onlyOnce,
+                anim:         door.anim,
+                keyRequired:  door.key,
+                close:        (door.kind === 'close'),
+                ceilingRaise: (door.kind === 'ceilingRaise'),
                 // Doom units left above the floor at the end of a close
                 // (crush ceilings 44/72 stop at floor + 8).
-                closeMargin:  WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[sp] ?? 0,
+                closeMargin:  (door.closeMargin ?? 0),
                 // Level-load countdown (s) held before the cycle starts
                 // (timer doors, sector specials 10/14).
                 timerDelayS:  0,
@@ -264,20 +264,20 @@ class WadMapAnalyzer {
             if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
                 continue;
             }
+            const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             if (ld.tag !== 0) {
                 // A tagged door driven REMOTELY (walk 'proximity' or switch 'none')
                 // must not self-activate → force 'none', the external trigger
                 // (switch / walk-zone) drives it. A manual 'action' door carrying a
                 // tag (unusual) keeps its natural press trigger so it stays usable.
-                const natural = WadConstants.DOOR_TRIGGER_BY_SPECIAL[ld.special] ?? 'action';
-                const forced = ((natural === 'action') ? null : 'none');
+                const forced = ((door.trigger === 'action') ? null : 'none');
                 for (let si = 0; si < sectors.length; si++) {
                     if (sectors[si].tag === ld.tag) {
-                        registerDoor(si, ld.special, forced);
+                        registerDoor(si, door, forced);
                     }
                 }
             } else if (ld.left >= 0) {
-                registerDoor(sidedefs[ld.left].sector, ld.special, null);
+                registerDoor(sidedefs[ld.left].sector, door, null);
             }
         }
 
@@ -291,11 +291,11 @@ class WadMapAnalyzer {
             }
             // No registration when the panel has no travel (already at its close
             // target — e.g. a crush ceiling resting at floor + 8 or below).
-            const margin = WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[ld.special] ?? 0;
+            const door   = WadConstants.DOOR_BY_SPECIAL[ld.special];
+            const margin = (door.closeMargin ?? 0);
             for (let si = 0; si < sectors.length; si++) {
                 if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh + margin) {
-                    registerDoor(si, ld.special, 'none');
-                    doorProps[si].close = true;
+                    registerDoor(si, door, 'none');
                 }
             }
         }
@@ -309,7 +309,7 @@ class WadMapAnalyzer {
             if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
                 continue;
             }
-            const anim = WadConstants.DOOR_ANIM_BY_SPECIAL[ld.special] ?? 'round-trip';
+            const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             const targets = [];
             if (ld.tag !== 0) {
                 for (let si = 0; si < sectors.length; si++) {
@@ -324,9 +324,12 @@ class WadMapAnalyzer {
                 if (doorProps[si] === undefined || doorProps[si].close === true) {
                     continue;
                 }
-                doorProps[si].variants[anim] = {
-                    speed:    WadConstants.DOOR_SPEED_BY_SPECIAL[ld.special] ?? 2,
-                    onlyOnce: WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[ld.special] ?? false
+                // Keyed by anim AND speed: two specials sharing the anim but
+                // not the speed (e.g. 4 at 2 and 105 at 8) must stay distinct.
+                doorProps[si].variants[door.anim + '@' + door.speed] = {
+                    anim:     door.anim,
+                    speed:    door.speed,
+                    onlyOnce: door.onlyOnce
                 };
             }
         }
@@ -343,14 +346,14 @@ class WadMapAnalyzer {
                 // reopen — no softlock. Approximation: the reopened door holds
                 // the full countdown again instead of the 150-tic DR wait
                 // (one keyframe set per door).
-                registerDoor(si, -1, null);
+                registerDoor(si, WadConstants.DOOR_TIMER_DEFAULTS, null);
                 doorProps[si].anim        = 'trap-close';
                 doorProps[si].onlyOnce    = false;
                 doorProps[si].autoStart   = true;
                 doorProps[si].timerDelayS = WadConstants.SECTOR_DOOR_CLOSE_DELAY_TICS / 35;
             } else if (sp === WadConstants.SECTOR_DOOR_OPEN_SPECIAL && !doorSectorIds.has(si)) {
                 // Closed door running ONE open-wait-close cycle 5 min after load.
-                registerDoor(si, -1, 'none');
+                registerDoor(si, WadConstants.DOOR_TIMER_DEFAULTS, 'none');
                 doorProps[si].onlyOnce    = true;
                 doorProps[si].autoStart   = true;
                 doorProps[si].timerDelayS = WadConstants.SECTOR_DOOR_OPEN_DELAY_TICS / 35;
@@ -465,7 +468,7 @@ class WadMapAnalyzer {
                 // Target floor height: classic lifts lower to the LOWEST adjacent
                 // floor; 102 lowers to the HIGHEST, 71 to the highest + 8. Clamped
                 // so a remote floor-lower never raises the floor.
-                const rule = WadConstants.LIFT_TARGET_BY_SPECIAL[liftSectorSpecial[si]] ?? 'lowest';
+                const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
                 let target;
                 if (donutHoleTargetFh[si] !== undefined) {
                     // Donut hole: the target is the floor of the sector beyond
@@ -543,7 +546,7 @@ class WadMapAnalyzer {
     // floor stays at its WAD height and the moving top-flat (built by
     // WadRisingFloorBuilder) sits there and rises. Exclude sectors already
     // claimed as doors or lifts. The target height follows the vanilla rules
-    // (FLOOR_UP_TARGET_BY_SPECIAL): fixed delta, lowest surrounding ceiling
+    // (FLOOR_UP_BY_SPECIAL targets): fixed delta, lowest surrounding ceiling
     // (clamped to the own ceiling, -8 for crush) or next-higher neighbour
     // floor. A sector whose target does not rise above its floor is dropped
     // (no movement in vanilla): its static floor is kept, no dead instance.
@@ -581,7 +584,7 @@ class WadMapAnalyzer {
     _risingFloorTarget(si, special) {
         const {linedefs, sidedefs, sectors} = this._level;
         const sec  = sectors[si];
-        const rule = WadConstants.FLOOR_UP_TARGET_BY_SPECIAL[special] ?? 24;
+        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special].target;
 
         // Fixed delta above the current floor (raiseFloor24/32...)
         if (typeof rule === 'number') {
@@ -605,14 +608,14 @@ class WadMapAnalyzer {
         if (rule === 'nextHigher') {
             // P_FindNextHighestFloor: smallest neighbour floor strictly above
             // the current one; none = current floor (no movement).
-            const higher = neighbours.map(s => s.fh).filter(fh => fh > sec.fh);
+            const higher = neighbours.map((s) => s.fh).filter((fh) => fh > sec.fh);
             return ((higher.length > 0) ? Math.min(...higher) : sec.fh);
         }
 
         // 'lowestCeiling' / 'lowestCeilingCrush' — P_FindLowestCeilingSurrounding
         // clamped to the sector's own ceiling, minus 8 for the crush variant.
         let target = ((neighbours.length > 0)
-            ? Math.min(...neighbours.map(s => s.ch))
+            ? Math.min(...neighbours.map((s) => s.ch))
             : sec.ch);
         target = Math.min(target, sec.ch);
         if (rule === 'lowestCeilingCrush') {
@@ -637,8 +640,8 @@ class WadMapAnalyzer {
         const floorChange = {};
 
         for (const ld of linedefs) {
-            const rule = WadConstants.FLOOR_CHANGE_BY_SPECIAL[ld.special];
-            if (rule === undefined || ld.tag === 0 || ld.right < 0) {
+            const rule = WadConstants.floorChangeForSpecial(ld.special);
+            if (rule === null || ld.tag === 0 || ld.right < 0) {
                 continue;
             }
             const front = sectors[sidedefs[ld.right].sector];
@@ -736,7 +739,7 @@ class WadMapAnalyzer {
             if (!WadConstants.STAIR_SPECIALS.has(ld.special) || ld.tag === 0) {
                 continue;
             }
-            const step = WadConstants.STAIR_STEP_BY_SPECIAL[ld.special] ?? 8;
+            const step = WadConstants.STAIR_BY_SPECIAL[ld.special].step;
             for (let base = 0; base < sectors.length; base++) {
                 if (sectors[base].tag !== ld.tag || claimed(base)) {
                     continue;
@@ -899,9 +902,9 @@ class WadMapAnalyzer {
     // Forward speed (u/tic) of the special firing a reverse — raise floors,
     // plats, doors; FLOORSPEED = 1 for everything else (e.g. 45 lowerFloor).
     static _specialSpeed(special) {
-        return WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[special]
-            ?? WadConstants.LIFT_SPEED_BY_SPECIAL[special]
-            ?? WadConstants.DOOR_SPEED_BY_SPECIAL[special]
+        return WadConstants.FLOOR_UP_BY_SPECIAL[special]?.speed
+            ?? WadConstants.FLOOR_DOWN_BY_SPECIAL[special]?.speed
+            ?? WadConstants.DOOR_BY_SPECIAL[special]?.speed
             ?? 1;
     }
 
@@ -910,12 +913,11 @@ class WadMapAnalyzer {
     static _targetSpeed(analysis, code) {
         if (code.startsWith('lift_')) {
             const si = parseInt(code.slice(5), 10);
-            return WadConstants.LIFT_SPEED_BY_SPECIAL[analysis.liftSectorSpecial[si]] ?? 1;
+            return WadConstants.FLOOR_DOWN_BY_SPECIAL[analysis.liftSectorSpecial[si]]?.speed ?? 1;
         }
         if (code.startsWith('risingfloor_')) {
             const si = parseInt(code.slice(12), 10);
-            return WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[analysis.risingFloorSpecial[si]]
-                ?? WadConstants.FLOOR_UP_DEFAULT_SPEED;
+            return WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed ?? 1;
         }
         if (code.startsWith('door_')) {
             const si = parseInt(code.slice(5), 10);

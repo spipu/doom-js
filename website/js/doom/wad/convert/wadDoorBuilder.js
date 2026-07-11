@@ -35,7 +35,7 @@ class WadDoorBuilder {
     // --- Internal ---
 
     _buildDoor(si) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {linedefs, sidedefs, sectors} = this._level;
         const {doorHeights} = this._analysis;
         const sec = sectors[si];
 
@@ -183,15 +183,9 @@ class WadDoorBuilder {
         const travelY   = (ceilH - floorH) * WadConstants.SCALE;
         const speedTics = props.speed;
 
-        // Radius: half of the XZ bounding diagonal + margin
-        let radius = WadConstants.DOOR_ACTION_RADIUS;
-        if (mesh.points.length > 0) {
-            const xs = mesh.points.map((p) => p[0]);
-            const zs = mesh.points.map((p) => p[2]);
-            const dx = Math.max(...xs) - Math.min(...xs);
-            const dz = Math.max(...zs) - Math.min(...zs);
-            radius = Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
-        }
+        const radius = ((mesh.points.length > 0)
+            ? WadMeshBuilder.xzActionRadius(mesh)
+            : WadConstants.DOOR_ACTION_RADIUS);
 
         const openS = (ceilH - floorH - restDu) / speedTics / 35.0;
         const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
@@ -244,14 +238,8 @@ class WadDoorBuilder {
                 {t: openS + reopenWaitS + openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
         } else {
-            const tRest = openS + waitS + openS;
-            keyframes = [
-                {t: 0.0,           translate: [0, restY, 0],   rotate: [0, 0, 0]},
-                {t: openS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: openS + waitS, translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: tRest,         translate: [0, restY, 0],   rotate: [0, 0, 0]},
-                {t: tRest + 1.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]}
-            ];
+            // Unknown anim (never produced by the tables): plain round-trip.
+            keyframes = this._openCycleKeyframes('round-trip', speedTics, floorH, ceilH, restDu);
         }
 
         // Timer door 14: hold the (closed) rest position for the level-load
@@ -270,10 +258,10 @@ class WadDoorBuilder {
         const variantNames = Object.keys(props.variants ?? {});
         if (!props.close && (props.anim === 'one-way' || props.anim === 'round-trip') && variantNames.length > 1) {
             keyframeVariants = {};
-            for (const name of variantNames) {
-                const v = props.variants[name];
-                keyframeVariants[name] = {
-                    keyframes: this._openCycleKeyframes(name, v.speed, floorH, ceilH, restDu),
+            for (const key of variantNames) {
+                const v = props.variants[key];
+                keyframeVariants[key] = {
+                    keyframes: this._openCycleKeyframes(v.anim, v.speed, floorH, ceilH, restDu),
                     onlyOnce:  v.onlyOnce
                 };
             }

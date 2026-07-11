@@ -3,19 +3,6 @@ class TextureLoader extends AbstractLoader {
         super('texture', loadedCallback);
     }
 
-    _alreadyLoaded(url) {
-        if (url === null) {
-            return null;
-        }
-
-        for (let i = 0; i < this._entities.length; i++) {
-            if (this._entities[i].getUrl() === url) {
-                return i;
-            }
-        }
-
-        return null;
-    }
 
     _create(id, url, callback) {
         return new Texture(id, url, callback);

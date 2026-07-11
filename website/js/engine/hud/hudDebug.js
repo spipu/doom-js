@@ -2,6 +2,7 @@ class HudDebug extends AbstractHud {
     constructor(engine) {
         super(engine);
         this._descriptions = [];
+        this._el           = null;
     }
 
     addDescription(message) {
@@ -10,7 +11,7 @@ class HudDebug extends AbstractHud {
     }
 
     init(container) {
-        super.init(container);   // stores this._container
+        super.init(container);
 
         this._el = document.createElement('div');
         this._el.style.position   = 'absolute';

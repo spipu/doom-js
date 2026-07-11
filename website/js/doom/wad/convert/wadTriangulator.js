@@ -42,7 +42,7 @@ class WadTriangulator {
     static triangulate(polygon) {
         const poly = [...polygon];
         const tris = [];
-        const indices = poly.map((p, i) => i);
+        const indices = [...poly.keys()];
 
         while (indices.length > 3) {
             let progress = false;
@@ -124,7 +124,11 @@ class WadTriangulator {
                 continue;
             }
 
-            // Refinement (Eberly): outer vertex inside triangle (M, I, P) minimising the angle from M
+            // Refinement (Eberly variant): among outer vertices inside the
+            // triangle (M, I, P), keep the initial angle and only swap on a
+            // quasi-equal angle for the rightmost vertex (tie-break) — the
+            // incomplete legacy triangulations this can leave are caught by
+            // the earcut fallback in addFlatQuad.
             let px = result[bestVi][0];
             let pz = result[bestVi][1];
             let bestAngle = Math.atan2(pz - mz, px - mx);
@@ -148,7 +152,7 @@ class WadTriangulator {
             }
 
             // Merge with both bridge endpoints duplicated
-            const holeVerts = hole.map((v, j) => hole[(m + j) % hole.length]);
+            const holeVerts = hole.map((vertex, j) => hole[(m + j) % hole.length]);
             result = [
                 ...result.slice(0, bestVi + 1),
                 ...holeVerts,
@@ -361,9 +365,9 @@ class WadTriangulator {
     }
 
     static _ecPointInTriangle(ax, ay, bx, by, cx, cy, px, py) {
-        return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0
+        return ((cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0
             && (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0
-            && (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0;
+            && (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0);
     }
 
     static _ecCureLocalIntersections(start, tris) {
@@ -405,10 +409,10 @@ class WadTriangulator {
     }
 
     static _ecIsValidDiagonal(a, b) {
-        return a.next.i !== b.i && a.prev.i !== b.i && !WadTriangulator._ecIntersectsPolygon(a, b)
+        return (a.next.i !== b.i && a.prev.i !== b.i && !WadTriangulator._ecIntersectsPolygon(a, b)
             && ((WadTriangulator._ecLocallyInside(a, b) && WadTriangulator._ecLocallyInside(b, a) && WadTriangulator._ecMiddleInside(a, b)
                 && (WadTriangulator._ecArea(a.prev, a, b.prev) !== 0 || WadTriangulator._ecArea(a, b.prev, b) !== 0))
-                || (WadTriangulator._ecEquals(a, b) && WadTriangulator._ecArea(a.prev, a, a.next) > 0 && WadTriangulator._ecArea(b.prev, b, b.next) > 0));
+                || (WadTriangulator._ecEquals(a, b) && WadTriangulator._ecArea(a.prev, a, a.next) > 0 && WadTriangulator._ecArea(b.prev, b, b.next) > 0)));
     }
 
     static _ecIntersects(p1, q1, p2, q2) {
@@ -447,8 +451,8 @@ class WadTriangulator {
     }
 
     static _ecOnSegment(p, q, r) {
-        return q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x)
-            && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
+        return (q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x)
+            && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y));
     }
 
     static _ecIntersectsPolygon(a, b) {
@@ -466,10 +470,10 @@ class WadTriangulator {
 
     static _ecLocallyInside(a, b) {
         if (WadTriangulator._ecArea(a.prev, a, a.next) < 0) {
-            return WadTriangulator._ecArea(a, b, a.next) >= 0 && WadTriangulator._ecArea(a, a.prev, b) >= 0;
+            return (WadTriangulator._ecArea(a, b, a.next) >= 0 && WadTriangulator._ecArea(a, a.prev, b) >= 0);
         }
 
-        return WadTriangulator._ecArea(a, b, a.prev) < 0 || WadTriangulator._ecArea(a, a.next, b) < 0;
+        return (WadTriangulator._ecArea(a, b, a.prev) < 0 || WadTriangulator._ecArea(a, a.next, b) < 0);
     }
 
     static _ecMiddleInside(a, b) {

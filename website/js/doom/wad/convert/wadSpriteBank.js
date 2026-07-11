@@ -8,7 +8,7 @@
  * world sprite is the rotation-0 lump (…A0); that full lump name is what a Doom
  * definition stores in its `sprite` field. Results are cached by name.
  *
- * The patch header is: width@0, height@2, leftoffset@4, topoffset@6 (both signed),
+ * The patch header is: width@0, height@2, leftOffset@4, topOffset@6 (both signed),
  * then the column offset table @8. The offsets are read here for anchoring.
  */
 class WadSpriteBank {
@@ -21,7 +21,7 @@ class WadSpriteBank {
         this._palette = palette;
 
         this._sprites = {};   // name → DataView
-        this._cache   = {};   // name → {loaderId, width, height, leftoffset, topoffset}
+        this._cache   = {};   // name → {loaderId, width, height, leftOffset, topOffset}
     }
 
     init() {
@@ -55,8 +55,8 @@ class WadSpriteBank {
             loaderId:   loader.textures().loadFromData(null, WadPicture.patchToImageData(dv, this._palette)),
             width:      dv.getUint16(0, true),
             height:     dv.getUint16(2, true),
-            leftoffset: dv.getInt16(4, true),
-            topoffset:  dv.getInt16(6, true)
+            leftOffset: dv.getInt16(4, true),
+            topOffset:  dv.getInt16(6, true)
         };
         this._cache[name] = entry;
 

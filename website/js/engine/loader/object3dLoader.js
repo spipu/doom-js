@@ -15,7 +15,7 @@ class Object3dLoader extends AbstractLoader {
     // the Object3d id space so Instances can resolve it), reusing the base
     // registration. data = {textures, halfWidth, height, anchorOffsetX?, anchorOffsetY?, anchorTop?, light?, animDuration?}.
     loadBillboardFromData(code, data) {
-        const entity = new Billboard(this._entities.length, null, () => { this._checkFullyLoaded(); });
+        const entity = new Billboard(this._entities.length, null, () => this._checkFullyLoaded());
         this._registerNewEntity(code, entity);
         entity.configure(data);
         entity.setLoaded();
@@ -26,7 +26,7 @@ class Object3dLoader extends AbstractLoader {
     _initialiseEntityFromUrl(entity) {
         appBootstrap.fetchJson(
             entity.getUrl(),
-            data => {
+            (data) => {
                 this._populateFromData(entity, data);
                 entity.setLoaded();
             }
@@ -35,21 +35,21 @@ class Object3dLoader extends AbstractLoader {
 
     // Texture entries: url string (loaded via TextureLoader) or number (already loaded texture id)
     _populateFromData(entity, data) {
-        (data.textures || []).forEach(t => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
-        data.points.forEach(p => entity.ptAdd(p[0], p[1], p[2]));
-        data.faces.forEach(f => entity.fcAdd(
+        (data.textures || []).forEach((t) => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
+        data.points.forEach((p) => entity.ptAdd(p[0], p[1], p[2]));
+        data.faces.forEach((f) => entity.fcAdd(
             f.pts[0],
             f.pts[1],
             f.pts[2],
-            (f.color          !== undefined) ? f.color          : null,
-            (f.texture        !== undefined) ? f.texture        : null,
-            (f.map            !== undefined) ? f.map            : null,
-            (f.clampV         !== undefined) ? f.clampV         : false,
-            (f.passableUser   !== undefined) ? f.passableUser   : false,
-            (f.passableEnemy  !== undefined) ? f.passableEnemy  : false,
-            (f.textures       !== undefined) ? f.textures       : null,
-            (f.uvScroll       !== undefined) ? f.uvScroll       : null,
-            (f.lightGroup     !== undefined) ? f.lightGroup     : null
+            ((f.color          !== undefined) ? f.color          : null),
+            ((f.texture        !== undefined) ? f.texture        : null),
+            ((f.map            !== undefined) ? f.map            : null),
+            ((f.clampV         !== undefined) ? f.clampV         : false),
+            ((f.passableUser   !== undefined) ? f.passableUser   : false),
+            ((f.passableEnemy  !== undefined) ? f.passableEnemy  : false),
+            ((f.textures       !== undefined) ? f.textures       : null),
+            ((f.uvScroll       !== undefined) ? f.uvScroll       : null),
+            ((f.lightGroup     !== undefined) ? f.lightGroup     : null)
         ));
     }
 }

@@ -4,7 +4,7 @@
  * but the static floor is NOT patched down — the moving top-flat sits at the
  * WAD floor height (origFh) and rises by +delta, where delta comes from the
  * target computed in the analysis (fixed +24/+32, lowest surrounding ceiling,
- * or next-higher floor — vanilla rules, see FLOOR_UP_TARGET_BY_SPECIAL). The
+ * or next-higher floor — vanilla rules, see FLOOR_UP_BY_SPECIAL). The
  * riser is built as a "skirt" from origFh-delta to origFh: hidden below the
  * adjacent corridor floor at rest, it emerges as the origFh→origFh+delta step
  * once the floor has risen.
@@ -159,18 +159,12 @@ class WadRisingFloorBuilder {
     }
 
     _buildInstanceData(floorName, special, delta, mesh) {
-        const speed   = WadConstants.FLOOR_UP_SPEED_BY_SPECIAL[special]
-            ?? WadConstants.FLOOR_UP_DEFAULT_SPEED;
+        const speed   = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
         const travelY = delta * WadConstants.SCALE;
         const moveS   = delta / (speed * 35.0);
 
-        // Radius kept for consistency (unused with trigger 'none'): half of
-        // the XZ bounding diagonal + margin.
-        const xs = mesh.points.map((p) => p[0]);
-        const zs = mesh.points.map((p) => p[2]);
-        const dx = Math.max(...xs) - Math.min(...xs);
-        const dz = Math.max(...zs) - Math.min(...zs);
-        const radius = Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
+        // Radius kept for consistency (unused with trigger 'none').
+        const radius = WadMeshBuilder.xzActionRadius(mesh);
 
         // One-way, upward. Driven externally (walk-trigger zone or switch),
         // never by self-proximity. onlyOnce stays true even for WR/SR specials:

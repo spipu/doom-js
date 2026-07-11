@@ -6,6 +6,14 @@
  * bar later; the text rendered here is throwaway.
  */
 class HudDoom extends HudDebug {
+    constructor(engine) {
+        super(engine);
+        this._wadId     = null;
+        this._levelCode = null;
+        this._skill     = null;
+        this._game      = null;
+    }
+
     // The WAD id and level code are not player state — they belong to the
     // running level (DoomGame owns them) and are pushed in here only for display.
     // The [LEVEL] line is rendered in the exact form expected by
@@ -45,17 +53,17 @@ class HudDoom extends HudDebug {
         lines.push('[ARMOR] ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor()
             + ' (' + Math.round(u.getArmorAbsorb() * 100) + '%)');
 
-        const owned = Object.keys(u._weapons).filter(code => u.hasWeapon(code));
+        const owned = u.getOwnedWeaponCodes();
         lines.push('[WEAPON] active=' + u.getActiveWeapon()
             + ' | owned: ' + ((owned.length > 0) ? owned.join(' ') : '-'));
 
         const ammo = ['bullets', 'shells', 'rockets', 'cells']
-            .map(type => type + ':' + u.getAmmo(type) + '/' + u.getAmmoMax(type));
+            .map((type) => type + ':' + u.getAmmo(type) + '/' + u.getAmmoMax(type));
         lines.push('[AMMO] ' + ammo.join(' '));
 
-        const items = Array.from(u._items);
-        const effects = Object.keys(u._effects)
-            .map(code => code + '(' + Math.ceil(u._effects[code] / 1000) + 's)');
+        const items   = u.getItemCodes();
+        const effects = Object.entries(u.getEffects())
+            .map(([code, ms]) => code + '(' + Math.ceil(ms / 1000) + 's)');
         lines.push('[ITEMS] ' + ((items.length > 0) ? items.join(' ') : '-')
             + ' | fx: ' + ((effects.length > 0) ? effects.join(' ') : '-'));
 

@@ -13,6 +13,16 @@
 let Inputs_private = null;
 
 class Inputs {
+    // Dead-zone rescale shared by the physical and virtual gamepads: the
+    // value restarts at 0 on the dead-zone edge and still reaches 1 at full
+    // deflection. Returns 0 below the dead zone.
+    static rescaleDeadZone(magnitude, deadZone) {
+        if (magnitude < deadZone) {
+            return 0;
+        }
+        return (magnitude - deadZone) / (1 - deadZone);
+    }
+
     /**
      * Creates and owns all the concrete input devices. Soft singleton:
      * InputKeyboard can only exist once per page, so new Inputs() returns
@@ -146,7 +156,7 @@ class Inputs {
         if (this._pad() !== null) {
             return false;
         }
-        return this._keyboard.readKey('AltLeft') || this._keyboard.readKey('AltRight');
+        return (this._keyboard.readKey('AltLeft') || this._keyboard.readKey('AltRight'));
     }
 
     // Keyboard-only debug cheat (the 'o' key): grant the full Doom test kit.

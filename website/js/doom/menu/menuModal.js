@@ -15,20 +15,7 @@ class MenuModal {
      * @param {function} onConfirm
      */
     confirm(message, onConfirm) {
-        this.close();
-
-        this._overlay = document.createElement('div');
-        this._overlay.className = 'doom-menu-overlay';
-        this._display.getContainer().appendChild(this._overlay);
-
-        const modal = document.createElement('div');
-        modal.className = 'doom-menu-modal';
-        this._overlay.appendChild(modal);
-
-        const messageEl = document.createElement('div');
-        messageEl.className = 'doom-menu-modal-message';
-        messageEl.textContent = message;
-        modal.appendChild(messageEl);
+        const {modal} = this._createShell(message, 'doom-menu-modal', 'doom-menu-modal-message');
 
         const actions = document.createElement('div');
         actions.className = 'doom-menu-modal-actions';
@@ -83,20 +70,7 @@ class MenuModal {
      * @param {function}    onClose
      */
     showError(message, detail, onClose) {
-        this.close();
-
-        this._overlay = document.createElement('div');
-        this._overlay.className = 'doom-menu-overlay';
-        this._display.getContainer().appendChild(this._overlay);
-
-        const modal = document.createElement('div');
-        modal.className = 'doom-menu-modal doom-menu-modal-wide';
-        this._overlay.appendChild(modal);
-
-        const messageEl = document.createElement('div');
-        messageEl.className = 'doom-menu-modal-message doom-menu-modal-error';
-        messageEl.textContent = message;
-        modal.appendChild(messageEl);
+        const {modal} = this._createShell(message, 'doom-menu-modal doom-menu-modal-wide', 'doom-menu-modal-message doom-menu-modal-error');
 
         if (detail) {
             const detailEl = document.createElement('div');
@@ -129,6 +103,14 @@ class MenuModal {
     // --- Internal ---
 
     _showText(message, pulsing) {
+        this._createShell(message, 'doom-menu-modal',
+            'doom-menu-modal-message ' + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static'));
+
+        return this;
+    }
+
+    // Fresh overlay + modal + message shell, shared by every modal flavour.
+    _createShell(message, modalClass, messageClass) {
         this.close();
 
         this._overlay = document.createElement('div');
@@ -136,16 +118,15 @@ class MenuModal {
         this._display.getContainer().appendChild(this._overlay);
 
         const modal = document.createElement('div');
-        modal.className = 'doom-menu-modal';
+        modal.className = modalClass;
         this._overlay.appendChild(modal);
 
         const messageEl = document.createElement('div');
-        messageEl.className = 'doom-menu-modal-message '
-            + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static');
+        messageEl.className = messageClass;
         messageEl.textContent = message;
         modal.appendChild(messageEl);
 
-        return this;
+        return {modal: modal, messageEl: messageEl};
     }
 
     _addButton(parent, label, className, onClick) {

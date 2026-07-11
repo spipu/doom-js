@@ -1,29 +1,29 @@
 class DoomGame {
     constructor() {
-        this._engine   = null;
-        this._world    = null;
-        this._screen   = null;
-        this._hud      = null;
-        this._inputs   = null;
-        this._wakeLock = null;
-        this._wadFile   = null;
-        this._wadMeta   = null;
-        this._levelName = null;
-        this._spawnOverride = null;
-        this._skill         = 3;
-        this._carriedState  = null;
-        this._secretsFound  = 0;
-        this._secretsTotal  = 0;
-        this._pauseWasDown = true;
-        this._cheatWasDown = false;
-        this._running       = false;
-        this._transitioning = false;
+        this._engine          = null;
+        this._world           = null;
+        this._screen          = null;
+        this._hud             = null;
+        this._inputs          = null;
+        this._wakeLock        = null;
+        this._wadFile         = null;
+        this._wadMeta         = null;
+        this._levelName       = null;
+        this._spawnOverride   = null;
+        this._skill           = 3;
+        this._carriedState    = null;
+        this._secretsFound    = 0;
+        this._secretsTotal    = 0;
+        this._pauseWasDown    = true;
+        this._cheatWasDown    = false;
+        this._running         = false;
+        this._transitioning   = false;
         this._animateCallback = this._animate.bind(this);
 
         // Shared, immutable definitions (the per-player state lives on DoomUser)
-        this._weapons    = {};
-        this._ammoTypes  = {};
-        this._items      = {};
+        this._weapons   = {};
+        this._ammoTypes = {};
+        this._items     = {};
         this._buildCatalogs();
 
         // World things catalog (sprites placed from the WAD THINGS lump)
@@ -108,7 +108,8 @@ class DoomGame {
             return this._pickupItem(user, effect.item);
         }
         if (effect.mega === true) {
-            const healed  = user.addEnergy(100, 200);
+            // Vanilla megasphere SETS health to 200 (p_inter.c), it does not add
+            const healed  = user.addEnergy(200, 200);
             const armored = this._pickupArmor(user, 'blue');
             return (healed || armored);
         }
@@ -292,9 +293,6 @@ class DoomGame {
         }
     }
 
-    // Convert a WAD level on the fly and start the game on it (no URL, no fetch).
-    // wadMeta is given on the first launch by the menu and kept across levels —
-    // it allows the pause button to go back to the level list of the WAD.
     // --- Level secrets (sector special 9) ---
 
     setSecretsTotal(total) {
@@ -341,8 +339,7 @@ class DoomGame {
         this._secretsFound = 0;
         this._secretsTotal = 0;
 
-        this._stopLevel();
-        loader.reset();
+        this._teardownLevel();
         loader.beginBatch();
         await new WadWorldBuilder(wadFile, levelName, {
             onLevelExit: (secret) => {
@@ -422,7 +419,6 @@ class DoomGame {
         // Pause button (press edge): leave the level, back to the level list
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning) {
-            this._pauseWasDown = pauseDown;
             this._quitToLevelList();
             return;
         }
@@ -445,10 +441,16 @@ class DoomGame {
         requestAnimationFrame(this._animateCallback);
     }
 
-    // Leave the current level and go back to the level list of the WAD
-    _quitToLevelList() {
+    // Stop the running level and wipe every loader (rAF first: World.update
+    // reads the loaders each frame).
+    _teardownLevel() {
         this._stopLevel();
         loader.reset();
+    }
+
+    // Leave the current level and go back to the level list of the WAD
+    _quitToLevelList() {
+        this._teardownLevel();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
             navigator.startAtLevels(this._wadMeta);
@@ -497,8 +499,7 @@ class DoomGame {
     async _startNextLevel(display, modal, nextLevel) {
         if (nextLevel === null) {
             // Last level of the WAD → back to the menu
-            this._stopLevel();
-            loader.reset();
+            this._teardownLevel();
             modal.close();
             display.destroy();
             this._transitioning = false;
@@ -507,9 +508,20 @@ class DoomGame {
         }
 
         modal.showLoading('Chargement du niveau ' + nextLevel);
-        await this.startFromWad(this._wadFile, nextLevel);
-        modal.close();
-        display.destroy();
-        this._transitioning = false;
+        try {
+            await this.startFromWad(this._wadFile, nextLevel);
+            modal.close();
+            display.destroy();
+            this._transitioning = false;
+        } catch (error) {
+            // Conversion failure mid-chain: clean up and fall back to the menu
+            // (same recovery as a failed launch from the level list).
+            console.error(error);
+            loader.reset();
+            modal.close();
+            display.destroy();
+            this._transitioning = false;
+            new MenuNavigator().start();
+        }
     }
 }

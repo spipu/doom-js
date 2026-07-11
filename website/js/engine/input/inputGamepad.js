@@ -83,7 +83,7 @@ class InputGamepad {
     }
 
     readButtonFire() {
-        return this._button(2) || (this._buttonValue(7) > 0.5);
+        return (this._button(2) || (this._buttonValue(7) > 0.5));
     }
 
     readButtonPause() {
@@ -144,12 +144,8 @@ class InputGamepad {
         if ((pad === null) || (pad.axes.length <= index)) {
             return 0;
         }
-        const value = pad.axes[index];
-        const abs   = Math.abs(value);
-        if (abs < this._deadZone) {
-            return 0;
-        }
-        const scaled = (abs - this._deadZone) / (1 - this._deadZone);
+        const value  = pad.axes[index];
+        const scaled = Inputs.rescaleDeadZone(Math.abs(value), this._deadZone);
         return ((value < 0) ? -scaled : scaled);
     }
 

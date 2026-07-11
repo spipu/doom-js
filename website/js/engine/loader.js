@@ -3,11 +3,11 @@ class Loader {
         this._callback = null;
         this._loaded   = false;
         this._batching = false;
-        this._textureLoader      = new TextureLoader(() => {this._checkFullyLoaded(); });
-        this._object3dLoader     = new Object3dLoader(() => {this._checkFullyLoaded(); });
-        this._instanceLoader     = new InstanceLoader(() => {this._checkFullyLoaded(); });
-        this._interactionLoader  = new InteractionLoader(() => {this._checkFullyLoaded(); });
-        this._worldLoader        = new WorldLoader(() => {this._checkFullyLoaded(); });
+        this._textureLoader      = new TextureLoader(() => this._checkFullyLoaded());
+        this._object3dLoader     = new Object3dLoader(() => this._checkFullyLoaded());
+        this._instanceLoader     = new InstanceLoader(() => this._checkFullyLoaded());
+        this._interactionLoader  = new InteractionLoader(() => this._checkFullyLoaded());
+        this._worldLoader        = new WorldLoader(() => this._checkFullyLoaded());
     }
 
     reset() {

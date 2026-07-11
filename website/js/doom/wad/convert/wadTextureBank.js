@@ -129,9 +129,6 @@ class WadTextureBank {
         return {width: this._texList[index].width, height: this._texList[index].height};
     }
 
-    hasFlat(name) {
-        return (this._flats[name] !== undefined);
-    }
 
     /**
      * SW1 ↔ SW2 partner of a switch texture (SWITCHES lump, or name substitution).

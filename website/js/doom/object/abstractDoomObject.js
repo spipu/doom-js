@@ -12,10 +12,9 @@
  */
 class AbstractDoomObject {
     constructor(data, defaultResetOnNewLevel) {
-        this._code     = data.code;
-        this._name     = data.name;
-        this._hudImage = data.hudImage ?? null;
-        this._sprite   = data.sprite ?? null;
+        this._code   = data.code;
+        this._name   = data.name;
+        this._sprite = data.sprite ?? null;
         this._resetOnNewLevel = ((data.resetOnNewLevel !== undefined) ? (data.resetOnNewLevel === true) : defaultResetOnNewLevel);
     }
 
@@ -25,10 +24,6 @@ class AbstractDoomObject {
 
     getName() {
         return this._name;
-    }
-
-    getHudImage() {
-        return this._hudImage;
     }
 
     getSprite() {

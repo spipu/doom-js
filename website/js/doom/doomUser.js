@@ -162,6 +162,20 @@ class DoomUser extends User {
         return this;
     }
 
+    // --- Read accessors for the HUD (no direct private-field access) ---
+
+    getOwnedWeaponCodes() {
+        return Object.keys(this._weapons).filter((code) => this.hasWeapon(code));
+    }
+
+    getItemCodes() {
+        return Array.from(this._items);
+    }
+
+    getEffects() {
+        return this._effects;
+    }
+
     // --- Inter-level reset ---
     // Data-driven: drop every held item whose definition is flagged
     // resetOnNewLevel, and clear all timed effects (level-scoped). Weapons,
@@ -169,7 +183,7 @@ class DoomUser extends User {
     resetForNewLevel(lookup) {
         for (const code of Array.from(this._items)) {
             const def = lookup.getItem(code);
-            if ((def != null) && (def.isResetOnNewLevel() === true)) {
+            if ((def !== null) && (def !== undefined) && (def.isResetOnNewLevel() === true)) {
                 this._items.delete(code);
             }
         }

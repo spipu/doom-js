@@ -7,14 +7,9 @@
 class DoomItem extends AbstractDoomObject {
     constructor(data) {
         super(data, true);
-        this._hudPos   = data.hudPos ?? null;
         this._type     = data.type;
         this._effect   = data.effect ?? null;
         this._duration = data.duration ?? 0;
-    }
-
-    getHudPos() {
-        return this._hudPos;
     }
 
     getType() {

@@ -90,7 +90,7 @@ class WadWorldBuilder {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
             const spec = sw.interactionSpec;
-            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.doorVariant);
+            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.doorVariant, spec.restIndex, spec.swapIndex);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -101,7 +101,7 @@ class WadWorldBuilder {
         // Walk triggers (W1/WR lines that activate a remote tagged element by
         // being crossed — invisible proximity zones that start() their targets)
         const walkTriggers = new WadWalkTriggerBuilder(
-            level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
+            level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
             const spec = wt.interactionSpec;
@@ -114,7 +114,7 @@ class WadWorldBuilder {
 
         // Teleporters (walk-over → landing thing type 14 of the same tag)
         const landings = this._buildTeleportLandings(level);
-        const teleporters = new WadTeleportBuilder(level, analysis, bank, landings).buildAll();
+        const teleporters = new WadTeleportBuilder(level, analysis, landings).buildAll();
         for (const tp of teleporters) {
             this._registerInstance(tp, bank);
             loader.interactions().loadFromData(
@@ -360,7 +360,7 @@ class WadWorldBuilder {
     _applyKeyGuard(built) {
         const keyCode = built.instanceData.keyRequired;
         if (keyCode) {
-            loader.instances().getByCode(built.code).setTriggerCondition(user => user.hasItem(keyCode));
+            loader.instances().getByCode(built.code).setTriggerCondition((user) => user.hasItem(keyCode));
         }
     }
 
@@ -500,7 +500,7 @@ class WadWorldBuilder {
     // sectors). If none contains it (point on a boundary / imperfect polygon),
     // fall back to the nearest sector within THING_SECTOR_MAX_DIST; beyond that
     // return null so the caller drops the thing rather than mis-placing it.
-    // Returns {fh, ch, light} (Doom units) or null.
+    // Returns {si, fh, ch, light, tag} (Doom units) or null.
     _findSector(doomX, doomY) {
         let bestArea  = null;
         let contained = null;

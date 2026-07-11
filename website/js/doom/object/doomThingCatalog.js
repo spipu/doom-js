@@ -110,8 +110,8 @@ class DoomThingCatalog {
             13:   {kind: 'pickup', sprite: 'RKEYA0', frames: this._animFrames('RKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
             6:    {kind: 'pickup', sprite: 'YKEYA0', frames: this._animFrames('YKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
             40:   {kind: 'pickup', sprite: 'BSKUA0', frames: this._animFrames('BSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}},
-            39:   {kind: 'pickup', sprite: 'RSKUA0', frames: this._animFrames('RSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
-            38:   {kind: 'pickup', sprite: 'YSKUA0', frames: this._animFrames('YSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
+            38:   {kind: 'pickup', sprite: 'RSKUA0', frames: this._animFrames('RSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
+            39:   {kind: 'pickup', sprite: 'YSKUA0', frames: this._animFrames('YSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
             // --- Static floor decorations ---
             2035: {kind: 'decoration', code: 'barrel'},
             2028: {kind: 'decoration', code: 'floorLamp'},
@@ -186,9 +186,6 @@ class DoomThingCatalog {
         return result;
     }
 
-    getDecoration(code) {
-        return (this._decorations[code] ?? null);
-    }
 
     // Resolve a Doom THING type to a uniform world descriptor, or null if the
     // type is not a displayed thing (enemy, start, teleport landing, unknown).

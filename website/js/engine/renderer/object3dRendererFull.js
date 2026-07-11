@@ -43,7 +43,11 @@ class Object3dRendererFull extends Object3dRendererBase {
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
                     const p1 = this._p1, p2 = this._p2, p3 = this._p3;
-                    for (let i = 0; i < 10; i++) { p1[i] = s0[i]; p2[i] = s1[i]; p3[i] = s2[i]; }
+                    for (let i = 0; i < 10; i++) {
+                        p1[i] = s0[i];
+                        p2[i] = s1[i];
+                        p3[i] = s2[i];
+                    }
                     this._sortVertices();
                     this._rasterize(engine, alpha, texture, clampV);
                 }

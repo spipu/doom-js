@@ -3,10 +3,10 @@ class Texture extends AbstractLoadedEntity {
         super(id, url, callback);
 
         this._imageData = null;
+        this._alpha     = false;
     }
 
     finalizeInit() {
-        this._alpha     = false;
         const d = this._imageData.data;
         for (let i = 3; i < d.length; i += 4) {
             if (d[i] !== 255) {
