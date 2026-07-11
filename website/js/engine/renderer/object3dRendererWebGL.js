@@ -202,6 +202,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             let di = 0;
             for (const k of group.faces) {
                 const fc  = obj.faceList[k];
+                // Scroll baked into the per-frame VBO: the fract() wrap in the
+                // fragment shader absorbs the (already wrapped) offset.
+                const scroll = this._uvScrollOffset(fc, engine._sceneMs);
                 for (let v = 0; v < 3; v++) {
                     const ptIdx = fc.pts[v];
                     const pt  = obj.pt3d[ptIdx];
@@ -209,7 +212,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     const uv  = ((fc.map) ? fc.map[v] : [0, 0]);
                     data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
                     data[di++] = col[0]; data[di++] = col[1]; data[di++] = col[2];
-                    data[di++] = uv[0];  data[di++] = uv[1];
+                    data[di++] = uv[0] + scroll[0];  data[di++] = uv[1] + scroll[1];
                 }
             }
 

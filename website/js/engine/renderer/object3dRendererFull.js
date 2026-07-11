@@ -58,9 +58,10 @@ class Object3dRendererFull extends Object3dRendererBase {
         const col  = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
         const pt3d = obj.pt3d[ptIdx];
         const pt2d = obj.pt2d[ptIdx];
+        const scroll = this._uvScrollOffset(fc, engine._sceneMs);
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
         out[3] = col[0];  out[4] = col[1];  out[5] = col[2];
-        out[6] = fc.map[idx][0]; out[7] = fc.map[idx][1];
+        out[6] = fc.map[idx][0] + scroll[0]; out[7] = fc.map[idx][1] + scroll[1];
         out[8] = pt3d[0]; out[9] = pt3d[1];
     }
 

@@ -47,7 +47,8 @@ class Object3dLoader extends AbstractLoader {
             (f.clampV         !== undefined) ? f.clampV         : false,
             (f.passableUser   !== undefined) ? f.passableUser   : false,
             (f.passableEnemy  !== undefined) ? f.passableEnemy  : false,
-            (f.textures       !== undefined) ? f.textures       : null
+            (f.textures       !== undefined) ? f.textures       : null,
+            (f.uvScroll       !== undefined) ? f.uvScroll       : null
         ));
     }
 }

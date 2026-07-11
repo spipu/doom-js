@@ -61,6 +61,10 @@ class WadStaticMapBuilder {
             const rSec = sectors[rSd.sector];
             const rIsDoor = doorSectorIds.has(rSd.sector);
 
+            // Scrolling wall (48): vanilla animates the FRONT sidedef's texture
+            // offset only, so the scroll rate applies to right-side faces alone
+            const uScroll = ((WadConstants.SCROLL_WALL_SPECIALS.has(ld.special)) ? WadConstants.SCROLL_WALL_TEXELS_PER_SEC : 0);
+
             if (ld.left < 0) {
                 if (switchLinedefIds.has(ldIdx)) {
                     continue;
@@ -86,7 +90,7 @@ class WadStaticMapBuilder {
                         wx1, wz1, wx2, wz2,
                         floorH * SCALE, ceilH * SCALE,
                         wallLen, tw, th,
-                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
                     continue;
                 }
                 // One-sided linedef → solid wall
@@ -101,7 +105,7 @@ class WadStaticMapBuilder {
                         wx1, wz1, wx2, wz2,
                         rSec.fh * SCALE, rSec.ch * SCALE,
                         wallLen, tw, th,
-                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
                 }
                 continue;
             }
@@ -143,7 +147,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     rFh * SCALE, lFh * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
             }
 
             // Lower wall from left side (door sectors allowed, see above)
@@ -173,7 +177,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     lCh * SCALE, rCh * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light});
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
             }
 
             // Upper wall from left side (same door rule, mirrored)
@@ -247,18 +251,22 @@ class WadStaticMapBuilder {
                 continue;
             }
 
+            // Scrolling wall (48): only the FRONT (right) sidedef's offset is
+            // animated in vanilla — both flip quads show that same texture
+            const uScroll = ((WadConstants.SCROLL_WALL_SPECIALS.has(ld.special) && side === 'right') ? WadConstants.SCROLL_WALL_TEXELS_PER_SEC : 0);
+
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
                 wallLen, tw, th,
                 {xOff: mSd.xo, yOff: yo, flip: true, light: mSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy});
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, uScrollTexelsPerSec: uScroll});
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
                 wallLen, tw, th,
                 {xOff: mSd.xo, yOff: yo, flip: false, light: otherSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy});
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, uScrollTexelsPerSec: uScroll});
             break;   // both sides already covered by the flip pair above
         }
     }
