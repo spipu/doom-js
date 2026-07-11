@@ -615,6 +615,10 @@ class WadConstants {
 
     static SECTOR_DAMAGE_WINDOW_TICS = 32;
 
+    // Secret sector (P_SpawnSpecials counts it in totalsecret, then
+    // P_PlayerInSpecialSector credits it once and clears the special)
+    static SECTOR_SECRET_SPECIAL = 9;
+
     // --- Pickups ---
 
     // Proximity radius (metres) at which a pickup is collected — vanilla exact:
