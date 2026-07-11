@@ -85,7 +85,7 @@ class WadRisingFloorBuilder {
         }
 
         for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes);
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
         }
     }
 
@@ -134,7 +134,7 @@ class WadRisingFloorBuilder {
                     wx1, wz1, wx2, wz2,
                     baseFh * SCALE, origFh * SCALE,
                     wallLen, tw, th,
-                    {xOff: lSd2.xo, yOff: yo, flip: false, light: lSec2.light});
+                    {xOff: lSd2.xo, yOff: yo, flip: false, light: lSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, lSi2)});
             } else if (lSi2 === si && !risingFloorIds.has(rSi2)) {
                 // Floor on left, corridor on right — r_sd + flip=true
                 const rSd2  = sidedefs[ld.right];
@@ -153,7 +153,7 @@ class WadRisingFloorBuilder {
                     wx1, wz1, wx2, wz2,
                     baseFh * SCALE, origFh * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd2.xo, yOff: yo, flip: true, light: rSec2.light});
+                    {xOff: rSd2.xo, yOff: yo, flip: true, light: rSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, rSi2)});
             }
         }
     }

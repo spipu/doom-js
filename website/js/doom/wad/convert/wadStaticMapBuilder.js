@@ -14,13 +14,10 @@ class WadStaticMapBuilder {
         this._analysis = analysis;
         this._bank     = bank;
         this._animBank = animBank;
-        this._lightSectorIds = new Set(analysis.lightSectors.map((s) => s.si));
     }
 
-    // Faces lit by a light-effect sector carry its index as lightGroup, so the
-    // per-level light interaction can drive their brightness at runtime.
     _lightGroupOf(si) {
-        return ((this._lightSectorIds.has(si)) ? si : null);
+        return WadMapAnalyzer.lightGroupOf(this._analysis, si);
     }
 
     /**

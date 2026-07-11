@@ -49,8 +49,17 @@ class WadMapAnalyzer {
             switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
             walkTriggerLinedefs:  walkTriggerLinedefs,
-            lightSectors:         lightSectors
+            lightSectors:         lightSectors,
+            lightSectorIds:       new Set(lightSectors.map((s) => s.si))
         };
+    }
+
+    // Light group of a face baked with the given sector's brightness: the sector
+    // index when it carries a light effect (so the per-level light interaction
+    // drives the face at runtime), null otherwise. Shared by the static map
+    // builder, the instance mesh builders and the thing registration.
+    static lightGroupOf(analysis, si) {
+        return ((analysis.lightSectorIds.has(si)) ? si : null);
     }
 
     // Sector light effects (p_spec.c P_SpawnSpecials → p_lights.c): flicker (1),

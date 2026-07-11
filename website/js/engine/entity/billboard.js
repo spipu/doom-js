@@ -26,11 +26,12 @@ class Billboard extends Object3d {
 
     // Configure the billboard from a descriptor and build its quad in one call.
     // data = {textures:[id…], halfWidth, height, anchorOffsetX?, anchorOffsetY?,
-    //         anchorTop?, light?, animDuration?}. anchorTop anchors the TOP at the
-    //         origin (ceiling/hanging) instead of the foot (floor). light (0-255)
-    //         is the sector brightness baked into the face colour. The four corner
-    //         slots are overwritten each frame by ptTransform; UVs account for the
-    //         v-flip applied by fcAdd (corners: 0 BL, 1 BR, 2 TR, 3 TL).
+    //         anchorTop?, light?, animDuration?, lightGroup?}. anchorTop anchors
+    //         the TOP at the origin (ceiling/hanging) instead of the foot (floor).
+    //         light (0-255) is the sector brightness baked into the face colour;
+    //         lightGroup tags the faces for dynamic group light factors. The four
+    //         corner slots are overwritten each frame by ptTransform; UVs account
+    //         for the v-flip applied by fcAdd (corners: 0 BL, 1 BR, 2 TR, 3 TL).
     configure(data) {
         this._halfWidth     = data.halfWidth;
         this._height        = data.height;
@@ -39,6 +40,7 @@ class Billboard extends Object3d {
         this._anchorTop     = (data.anchorTop === true);
 
         const light      = (data.light ?? 255);
+        const lightGroup = (data.lightGroup ?? null);
         const textureIds = data.textures;
         for (const tid of textureIds) {
             this.textureAddById(tid);
@@ -48,8 +50,8 @@ class Billboard extends Object3d {
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
         const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (data.animDuration ?? 0)} : null);
-        this.fcAdd(1, 2, 3, [light, light, light], 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim);
-        this.fcAdd(1, 3, 4, [light, light, light], 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim);
+        this.fcAdd(1, 2, 3, [light, light, light], 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim, null, lightGroup);
+        this.fcAdd(1, 3, 4, [light, light, light], 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim, null, lightGroup);
         return this;
     }
 

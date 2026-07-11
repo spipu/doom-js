@@ -148,7 +148,7 @@ class WadSwitchBuilder {
             wx1, wz1, wx2, wz2,
             band.yBotDu * SCALE, band.yTopDu * SCALE,
             wallLen, tw, th,
-            {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light});
+            {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, band.lightSi)});
 
         // remapLocalTextures orders the LOCAL indices by ascending bank index:
         // when the SW2 texture entered the bank before the SW1 (e.g. used as a
@@ -212,7 +212,7 @@ class WadSwitchBuilder {
      * stays aligned: a one-sided full-height middle, or the lower (step riser) /
      * upper (ceiling header) of a two-sided line, from either side.
      *
-     * @returns {{sd, yBotDu, yTopDu, yo, flip, light}} heights in Doom units
+     * @returns {{sd, yBotDu, yTopDu, yo, flip, light, lightSi}} heights in Doom units
      */
     _switchBand(ld, slotInfo, th) {
         const {sidedefs, sectors} = this._level;
@@ -224,7 +224,7 @@ class WadSwitchBuilder {
         if (slotInfo.slot === 'middle') {
             const hDoom = rSec.ch - rSec.fh;
             return {sd: rSd, yBotDu: rSec.fh, yTopDu: rSec.ch,
-                yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light};
+                yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
         }
 
         const lSd  = sidedefs[ld.left];
@@ -237,18 +237,18 @@ class WadSwitchBuilder {
         if (slotInfo.slot === 'lower') {
             if (slotInfo.side === 'right') {
                 return {sd: rSd, yBotDu: rFh, yTopDu: lFh,
-                    yo: rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0), flip: true, light: rSec.light};
+                    yo: rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
             }
             return {sd: lSd, yBotDu: lFh, yTopDu: rFh,
-                yo: lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0), flip: false, light: lSec.light};
+                yo: lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0), flip: false, light: lSec.light, lightSi: lSd.sector};
         }
 
         // upper
         if (slotInfo.side === 'right') {
             return {sd: rSd, yBotDu: lCh, yTopDu: rCh,
-                yo: rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh))), flip: true, light: rSec.light};
+                yo: rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh))), flip: true, light: rSec.light, lightSi: rSd.sector};
         }
         return {sd: lSd, yBotDu: rCh, yTopDu: lCh,
-            yo: lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh))), flip: false, light: lSec.light};
+            yo: lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh))), flip: false, light: lSec.light, lightSi: lSd.sector};
     }
 }

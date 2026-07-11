@@ -91,7 +91,7 @@ class WadStairBuilder {
         const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
         for (const chain of chains) {
             const polyDoom = chain.map((vi) => vertexes[vi]);
-            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, origFh, true, sec.light);
+            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, origFh, true, sec.light, null, WadMapAnalyzer.lightGroupOf(this._analysis, si));
         }
     }
 
@@ -168,7 +168,7 @@ class WadStairBuilder {
                 wx1, wz1, wx2, wz2,
                 botDu * SCALE, topDu * SCALE,
                 wallLen, tw, th,
-                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light});
+                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighborSi)});
         }
     }
 
