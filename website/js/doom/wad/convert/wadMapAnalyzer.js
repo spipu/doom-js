@@ -26,6 +26,7 @@ class WadMapAnalyzer {
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
+        const lightSectors = this._identifyLightSectors();
 
         return {
             doorSectorIds:        doors.doorSectorIds,
@@ -47,8 +48,58 @@ class WadMapAnalyzer {
             switchLinedefIds:     switches.ids,
             switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
-            walkTriggerLinedefs:  walkTriggerLinedefs
+            walkTriggerLinedefs:  walkTriggerLinedefs,
+            lightSectors:         lightSectors
         };
+    }
+
+    // Sector light effects (p_spec.c P_SpawnSpecials → p_lights.c): flicker (1),
+    // strobes (2/3/4 async, 12/13 sync), glow (8), fire flicker (17). maxLight =
+    // the sector's own level; minLight = P_FindMinSurroundingLight (darkest
+    // neighbour across two-sided lines, capped at the sector's own level) —
+    // strobes fall back to 0 when no neighbour is darker, fire flicker adds +16.
+    _identifyLightSectors() {
+        const {linedefs, sidedefs, sectors} = this._level;
+
+        const minNeighbour = {};
+        for (const ld of linedefs) {
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            if (rSi === lSi) {
+                continue;
+            }
+            minNeighbour[rSi] = Math.min(minNeighbour[rSi] ?? 255, sectors[lSi].light);
+            minNeighbour[lSi] = Math.min(minNeighbour[lSi] ?? 255, sectors[rSi].light);
+        }
+
+        const lightSectors = [];
+        for (let si = 0; si < sectors.length; si++) {
+            const effect = WadConstants.LIGHT_EFFECT_BY_SPECIAL[sectors[si].special];
+            if (effect === undefined) {
+                continue;
+            }
+            const maxLight = sectors[si].light;
+            let minLight = Math.min(maxLight, minNeighbour[si] ?? maxLight);
+            if (effect.type === 'strobe' && minLight === maxLight) {
+                minLight = 0;
+            }
+            if (effect.type === 'fire') {
+                minLight = minLight + WadConstants.LIGHT_FIRE_MIN_OFFSET;
+            }
+            lightSectors.push({
+                si:       si,
+                type:     effect.type,
+                darkTics: (effect.darkTics ?? 0),
+                sync:     (effect.sync === true),
+                maxLight: maxLight,
+                minLight: minLight
+            });
+        }
+
+        return lightSectors;
     }
 
     // Walk-over linedefs (W1/WR) that activate a remote tagged element by being

@@ -14,6 +14,13 @@ class WadStaticMapBuilder {
         this._analysis = analysis;
         this._bank     = bank;
         this._animBank = animBank;
+        this._lightSectorIds = new Set(analysis.lightSectors.map((s) => s.si));
+    }
+
+    // Faces lit by a light-effect sector carry its index as lightGroup, so the
+    // per-level light interaction can drive their brightness at runtime.
+    _lightGroupOf(si) {
+        return ((this._lightSectorIds.has(si)) ? si : null);
     }
 
     /**
@@ -90,7 +97,7 @@ class WadStaticMapBuilder {
                         wx1, wz1, wx2, wz2,
                         floorH * SCALE, ceilH * SCALE,
                         wallLen, tw, th,
-                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
                     continue;
                 }
                 // One-sided linedef → solid wall
@@ -105,7 +112,7 @@ class WadStaticMapBuilder {
                         wx1, wz1, wx2, wz2,
                         rSec.fh * SCALE, rSec.ch * SCALE,
                         wallLen, tw, th,
-                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
                 }
                 continue;
             }
@@ -147,7 +154,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     rFh * SCALE, lFh * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
             }
 
             // Lower wall from left side (door sectors allowed, see above)
@@ -159,7 +166,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     lFh * SCALE, rFh * SCALE,
                     wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
+                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
             }
 
             // Upper wall: ceiling step down from right sector to left sector.
@@ -177,7 +184,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     lCh * SCALE, rCh * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll});
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
             }
 
             // Upper wall from left side (same door rule, mirrored)
@@ -189,7 +196,7 @@ class WadStaticMapBuilder {
                     wx1, wz1, wx2, wz2,
                     rCh * SCALE, lCh * SCALE,
                     wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light});
+                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
             }
 
             this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
@@ -302,11 +309,11 @@ class WadStaticMapBuilder {
                 // Skip the static floor for lifts, rising floors AND stairs — in
                 // every case a moving top-flat covers it (otherwise z-fighting).
                 if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
-                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes);
+                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si));
                 }
                 // Sky flats skipped — outdoor areas have no ceiling geometry
                 if (ct >= 0) {
-                    WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, sec.ch, false, sec.light, p.holes);
+                    WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, sec.ch, false, sec.light, p.holes, this._lightGroupOf(si));
                 }
             }
         }
@@ -324,7 +331,7 @@ class WadStaticMapBuilder {
         }
 
         for (const p of polys) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes);
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si));
         }
     }
 }

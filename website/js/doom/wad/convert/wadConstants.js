@@ -212,6 +212,31 @@ class WadConstants {
     static SECTOR_DOOR_CLOSE_DELAY_TICS = 30 * 35;
     static SECTOR_DOOR_OPEN_DELAY_TICS  = 5 * 60 * 35;
 
+    // --- Sector light effects ---
+
+    // p_spec.c P_SpawnSpecials → p_lights.c thinkers (one step per tic):
+    // 1 = flicker (T_LightFlash), 2/3 = strobe fast/slow async, 4 = strobe fast
+    // (the damage half lives in SECTOR_DAMAGE_BY_SPECIAL), 8 = glow (T_Glow),
+    // 12/13 = strobe slow/fast in sync, 17 = fire flicker (T_FireFlicker).
+    // strobe: STROBEBRIGHT=5 tics at max, FASTDARK=15 / SLOWDARK=35 at min.
+    static LIGHT_EFFECT_BY_SPECIAL = {
+        1:  {type: 'flicker'},
+        2:  {type: 'strobe', darkTics: 15, sync: false},
+        3:  {type: 'strobe', darkTics: 35, sync: false},
+        4:  {type: 'strobe', darkTics: 15, sync: false},
+        8:  {type: 'glow'},
+        12: {type: 'strobe', darkTics: 35, sync: true},
+        13: {type: 'strobe', darkTics: 15, sync: true},
+        17: {type: 'fire'},
+    };
+    static LIGHT_STROBE_BRIGHT_TICS = 5;    // STROBEBRIGHT (p_spec.h)
+    static LIGHT_GLOW_SPEED         = 8;    // GLOWSPEED, per tic
+    static LIGHT_FLASH_MAX_MASK     = 64;   // T_LightFlash: (P_Random()&64)+1 tics at max
+    static LIGHT_FLASH_MIN_MASK     = 7;    // T_LightFlash: (P_Random()&7)+1 tics at min
+    static LIGHT_FIRE_PERIOD_TICS   = 4;    // T_FireFlicker steps every 4 tics
+    static LIGHT_FIRE_STEP          = 16;   // amount = (P_Random()&3)*16
+    static LIGHT_FIRE_MIN_OFFSET    = 16;   // minlight = min surrounding + 16
+
     // --- Scrolling walls ---
 
     // Linedef 48 (p_spec.c P_SpawnSpecials → linespeciallist, P_UpdateSpecials):
