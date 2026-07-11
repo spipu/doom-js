@@ -104,6 +104,9 @@ class WadWalkTriggerBuilder {
                 targets:        split.start,
                 reverseTargets: split.reverse,
                 stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
+                // Per-trigger door cycle (OWC vs open-stay on the same tag);
+                // null for non-door specials, ignored by variant-less targets.
+                doorVariant:    WadConstants.DOOR_ANIM_BY_SPECIAL[wt.special] ?? null,
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }

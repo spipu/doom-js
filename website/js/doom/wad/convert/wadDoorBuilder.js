@@ -197,11 +197,8 @@ class WadDoorBuilder {
         const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
 
         let keyframes;
-        if (props.anim === 'one-way') {
-            keyframes = [
-                {t: 0.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]},
-                {t: openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-            ];
+        if (props.anim === 'one-way' || props.anim === 'round-trip') {
+            keyframes = this._openCycleKeyframes(props.anim, speedTics, floorH, ceilH, restDu);
         } else if (props.anim === 'close-stay') {
             // Closing door: rest = panel parked open above the ceiling
             // (keyframe 0 at +travelY, applied from finalizeInit), descends to
@@ -264,6 +261,24 @@ class WadDoorBuilder {
             keyframes = [keyframes[0], ...keyframes.map((k) => ({...k, t: k.t + props.timerDelayS}))];
         }
 
+        // Per-trigger keyframe variants: when several open-door anims target
+        // this door (E1M4 tag 1: 12× 90 OWC + 4× 86 open-stay), the crossed
+        // line's special picks its cycle at start() time. Only for plain open
+        // doors — the close/crusher/trap cycles are structural (parked panel)
+        // and never mix.
+        let keyframeVariants = null;
+        const variantNames = Object.keys(props.variants ?? {});
+        if (!props.close && (props.anim === 'one-way' || props.anim === 'round-trip') && variantNames.length > 1) {
+            keyframeVariants = {};
+            for (const name of variantNames) {
+                const v = props.variants[name];
+                keyframeVariants[name] = {
+                    keyframes: this._openCycleKeyframes(name, v.speed, floorH, ceilH, restDu),
+                    onlyOnce:  v.onlyOnce
+                };
+            }
+        }
+
         return {
             code:              doorName,
             position:          [0, 0, 0],
@@ -278,7 +293,34 @@ class WadDoorBuilder {
             interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
             keyRequired:       props.keyRequired,
-            keyframes:         keyframes
+            keyframes:         keyframes,
+            keyframeVariants:  keyframeVariants
         };
+    }
+
+    // Open-door cycle from the rest position (restDu — the sector's own
+    // ceiling for the ceiling raisers) up to ceilH at the given speed:
+    // 'one-way' = open-stay, 'round-trip' = open-wait-close + 1 s rest.
+    _openCycleKeyframes(anim, speedTics, floorH, ceilH, restDu) {
+        const restY   = restDu * WadConstants.SCALE;
+        const travelY = (ceilH - floorH) * WadConstants.SCALE;
+        const openS   = (ceilH - floorH - restDu) / speedTics / 35.0;
+
+        if (anim === 'one-way') {
+            return [
+                {t: 0.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]},
+                {t: openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
+        }
+        const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
+        const tRest = openS + waitS + openS;
+
+        return [
+            {t: 0.0,           translate: [0, restY, 0],   rotate: [0, 0, 0]},
+            {t: openS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
+            {t: openS + waitS, translate: [0, travelY, 0], rotate: [0, 0, 0]},
+            {t: tRest,         translate: [0, restY, 0],   rotate: [0, 0, 0]},
+            {t: tRest + 1.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]}
+        ];
     }
 }

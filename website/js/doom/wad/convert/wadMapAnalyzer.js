@@ -202,7 +202,10 @@ class WadMapAnalyzer {
                 // Level-load countdown (s) held before the cycle starts
                 // (timer doors, sector specials 10/14).
                 timerDelayS:  0,
-                autoStart:    false
+                autoStart:    false,
+                // Per-trigger anims aimed at this door (filled after the
+                // registration loops): anim name → {speed, onlyOnce}.
+                variants:     {}
             };
         };
 
@@ -243,6 +246,37 @@ class WadMapAnalyzer {
                     registerDoor(si, ld.special, 'none');
                     doorProps[si].close = true;
                 }
+            }
+        }
+
+        // Per-trigger behaviour: collect EVERY open-door anim aimed at each
+        // door, so the builder emits one keyframe variant per anim and the
+        // crossed line's special decides the cycle at start() time (vanilla —
+        // E1M4 tag 1 mixes 12× 90 OWC and 4× 86 open-stay on the same four
+        // doors). Close doors / crushers keep their single structural cycle.
+        for (const ld of linedefs) {
+            if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
+                continue;
+            }
+            const anim = WadConstants.DOOR_ANIM_BY_SPECIAL[ld.special] ?? 'round-trip';
+            const targets = [];
+            if (ld.tag !== 0) {
+                for (let si = 0; si < sectors.length; si++) {
+                    if (sectors[si].tag === ld.tag) {
+                        targets.push(si);
+                    }
+                }
+            } else if (ld.left >= 0) {
+                targets.push(sidedefs[ld.left].sector);
+            }
+            for (const si of targets) {
+                if (doorProps[si] === undefined || doorProps[si].close === true) {
+                    continue;
+                }
+                doorProps[si].variants[anim] = {
+                    speed:    WadConstants.DOOR_SPEED_BY_SPECIAL[ld.special] ?? 2,
+                    onlyOnce: WadConstants.DOOR_ONLY_ONCE_BY_SPECIAL[ld.special] ?? false
+                };
             }
         }
 
