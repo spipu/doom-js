@@ -15,6 +15,7 @@ class Instance extends AbstractLoadedEntity {
 
         // Animation playback (keyframes-driven)
         this._animKeyframes     = [];
+        this._animVariants      = null;   // name → {keyframes, onlyOnce}: per-trigger cycles (see start)
         this._animTime          = 0;
         this._animMaxTime       = 0;
         this._animPlaying       = false;
@@ -320,7 +321,14 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
-    start() {
+    /**
+     * variant: optional name of a keyframe variant (setKeyframeVariants) to
+     * play — per-trigger cycles (a Doom door tag mixing open-wait-close and
+     * open-stay lines: the crossed line's special decides the cycle). Only
+     * applied at rest: a playing or finished instance ignores the call, so
+     * the variant switch can never teleport a moving panel.
+     */
+    start(variant = null) {
         // A finished onlyOnce animation stays finished (re-triggering a done
         // one-way is a vanilla no-op) — without this, a repeatable trigger
         // re-firing start() would reset the time while _animDone still blocks
@@ -330,6 +338,13 @@ class Instance extends AbstractLoadedEntity {
         if (this._animPlaying || this._animDone) {
             return;
         }
+        if (variant !== null && this._animVariants !== null && this._animVariants[variant] !== undefined) {
+            const v = this._animVariants[variant];
+            this._animKeyframes = v.keyframes;
+            this._animMaxTime   = v.keyframes[v.keyframes.length - 1].t;
+            this._animOnlyOnce  = (v.onlyOnce === true);
+            this._animTime      = v.keyframes[0].t;
+        }
         this._animPlaying = true;
         if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {
             this._animTime = this._animKeyframes[0].t;
@@ -337,6 +352,10 @@ class Instance extends AbstractLoadedEntity {
         if (this._onStart !== null) {
             this._onStart();
         }
+    }
+
+    setKeyframeVariants(variants) {
+        this._animVariants = variants;
     }
 
     // Freezes the animation in place (Doom EV_StopPlat stasis): keeps the

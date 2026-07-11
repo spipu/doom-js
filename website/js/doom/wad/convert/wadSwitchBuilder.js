@@ -96,6 +96,9 @@ class WadSwitchBuilder {
                 tOff:           interactionConfig[2],
                 targets:        split.start,
                 reverseTargets: split.reverse,
+                // Per-trigger door cycle (OWC vs open-stay on the same tag);
+                // null for non-door specials, ignored by variant-less targets.
+                doorVariant:    WadConstants.DOOR_ANIM_BY_SPECIAL[ld.special] ?? null,
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
             }

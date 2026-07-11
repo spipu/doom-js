@@ -74,6 +74,7 @@ class InstanceLoader extends AbstractLoader {
         entity._damage           = data.damage || null;
         entity._interaction      = data.interaction || null;
         entity._animKeyframes    = data.keyframes || [];
+        entity._animVariants     = data.keyframeVariants || null;
         entity._animMaxTime      = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[entity._animKeyframes.length - 1].t : 0);
         entity._animTime         = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[0].t : 0);
 

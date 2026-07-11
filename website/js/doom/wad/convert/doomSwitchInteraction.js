@@ -15,11 +15,12 @@ class DoomSwitchInteraction extends SwitchInteraction {
      *                                       an opening door, raise lines lifting a lowered
      *                                       plat) — timeScale keeps the vanilla reverse speed
      */
-    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets) {
+    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets, doorVariant) {
         super(code);
 
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
+        this._doorVariant    = (doorVariant ?? null);
         this._exitCallback   = null;
         this._exitSecret     = false;
 
@@ -51,7 +52,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         }
 
         for (const code of this._targets) {
-            loader.instances().getByCode(code).start();
+            loader.instances().getByCode(code).start(this._doorVariant);
         }
         for (const entry of this._reverseTargets) {
             loader.instances().getByCode(entry.code).startReverse(entry.timeScale);

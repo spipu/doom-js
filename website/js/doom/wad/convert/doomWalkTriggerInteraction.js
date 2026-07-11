@@ -19,13 +19,18 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
      * @param {boolean}  stop           - true = crossing PAUSES the targets in place
      *                                    (vanilla EV_StopPlat stasis) instead of
      *                                    starting them (specials 54/89)
+     * @param {string|null} doorVariant  - keyframe variant selected on the targets
+     *                                    (per-trigger door cycles: OWC vs open-stay
+     *                                    on the same tag) — ignored by targets
+     *                                    without variants
      */
-    constructor(code, targets, reverseTargets, stop) {
+    constructor(code, targets, reverseTargets, stop, doorVariant) {
         super();
         this._code           = code;
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
         this._stop           = (stop === true);
+        this._doorVariant    = (doorVariant ?? null);
         this._exitCallback   = null;
         this._exitSecret     = false;
     }
@@ -49,7 +54,7 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
                 if (this._stop) {
                     target.pause();
                 } else {
-                    target.start();
+                    target.start(this._doorVariant);
                 }
             }
         }
