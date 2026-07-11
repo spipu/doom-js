@@ -216,7 +216,7 @@ class WadConstants {
     // 9 is the hole half of the S1 donut (EV_DoDonut: the tagged sector lowers
     // to the floor of the sector beyond the ring at FLOORSPEED/2, while the
     // ring rises to it — see the donut identification in WadMapAnalyzer).
-    static FLOOR_MOVE_DOWN_SPECIALS = new Set([9, 10, 19, 21, 23, 36, 37, 38, 40, 53, 60, 62, 70, 71, 82, 83, 84, 87, 88, 102, 120, 121, 122, 123]);
+    static FLOOR_MOVE_DOWN_SPECIALS = new Set([9, 10, 19, 21, 23, 36, 37, 38, 40, 53, 60, 62, 70, 71, 82, 83, 84, 87, 88, 98, 102, 120, 121, 122, 123]);
 
     // Perpetual plats (vanilla p_plats.c perpetualRaise): oscillate between the
     // lowest and highest surrounding floors (both clamped to the sector's own
@@ -230,7 +230,7 @@ class WadConstants {
     static LIFT_SPEED_BY_SPECIAL = {
         62: 4, 88: 4, 10: 4, 21: 4,
         19: 1, 23: 1, 38: 1, 82: 1, 83: 1,
-        36: 4, 37: 1, 84: 1,
+        36: 4, 37: 1, 84: 1, 98: 4,
         120: 8, 121: 8, 122: 8, 123: 8,
         71: 4, 102: 1,
         60: 1, 70: 4,
@@ -242,7 +242,7 @@ class WadConstants {
     static LIFT_ANIM_BY_SPECIAL = {
         62: 'round-trip', 88: 'round-trip', 10: 'round-trip', 21: 'round-trip',
         19: 'one-way', 23: 'one-way', 36: 'one-way', 37: 'one-way', 38: 'one-way',
-        82: 'one-way', 83: 'one-way', 84: 'one-way',
+        82: 'one-way', 83: 'one-way', 84: 'one-way', 98: 'one-way',
         120: 'round-trip', 121: 'round-trip', 122: 'round-trip', 123: 'round-trip',
         71: 'one-way', 102: 'one-way',
         60: 'one-way', 70: 'one-way',
@@ -266,7 +266,7 @@ class WadConstants {
         10: 'none', 21: 'none',
         23: 'none',
         19: 'none', 36: 'none', 37: 'none', 38: 'none',
-        82: 'none', 83: 'none', 84: 'none',
+        82: 'none', 83: 'none', 84: 'none', 98: 'none',
         120: 'none', 121: 'none', 122: 'none', 123: 'none',
         71: 'none', 102: 'none',
         60: 'none', 70: 'none',
@@ -278,7 +278,7 @@ class WadConstants {
     static LIFT_LOOP_BY_SPECIAL = {
         62: false, 88: false, 10: false, 21: false,
         19: false, 23: false, 36: false, 37: false, 38: false,
-        82: false, 83: false, 84: false,
+        82: false, 83: false, 84: false, 98: false,
         120: false, 121: false, 122: false, 123: false,
         71: false, 102: false,
         60: false, 70: false,
@@ -290,7 +290,7 @@ class WadConstants {
     static LIFT_ONLY_ONCE_BY_SPECIAL = {
         62: false, 88: false, 10: true, 21: true,
         19: true, 23: true, 36: true, 37: true, 38: true,
-        82: true, 83: true, 84: true,
+        82: true, 83: true, 84: true, 98: true,
         120: false, 121: true, 122: true, 123: false,
         71: true, 102: true,
         60: true, 70: true,
@@ -303,7 +303,8 @@ class WadConstants {
     // floor (classic lower lift), 'highest' = max adjacent floor (19/83/102),
     // 'highest+8' = max adjacent floor + 8 (36/71). Consumed by _identifyLifts.
     static LIFT_TARGET_BY_SPECIAL = {
-        71: 'highest+8', 36: 'highest+8', 70: 'highest+8', 102: 'highest', 19: 'highest', 83: 'highest'
+        71: 'highest+8', 36: 'highest+8', 70: 'highest+8', 98: 'highest+8',
+        102: 'highest', 19: 'highest', 83: 'highest'
     };
 
     // Tics at bottom before rising (Lower Lift)
@@ -496,7 +497,7 @@ class WadConstants {
     // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/56/58/59/119/130 (W1),
     // 91/92/93/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
     static WALK_TRIGGER_SPECIALS = new Set([
-        10, 19, 36, 37, 38, 82, 83, 84, 88, 120, 121,
+        10, 19, 36, 37, 38, 82, 83, 84, 88, 98, 120, 121,
         5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129,
         53, 87, 54, 89,
         57, 74
@@ -515,7 +516,7 @@ class WadConstants {
         88: false, 120: false,
         121: true, 10: true,
         19: true, 36: true, 37: true, 38: true,
-        82: false, 83: false, 84: false,
+        82: false, 83: false, 84: false, 98: false,
         2: true, 4: true, 109: true, 86: false, 90: false,
         105: false, 106: false, 108: true,
         3: true, 16: true, 75: false, 76: false, 107: false, 110: true,

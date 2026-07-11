@@ -19,6 +19,7 @@ class Instance extends AbstractLoadedEntity {
         this._animMaxTime       = 0;
         this._animPlaying       = false;
         this._animReverse       = false;   // true = keyframes played backward (time decreasing)
+        this._animReverseScale  = 1;       // reverse playback speed factor (see startReverse)
         this._animLoop          = false;
         this._animOnlyOnce      = false;
         this._animDone          = false;
@@ -231,7 +232,7 @@ class Instance extends AbstractLoadedEntity {
         }
 
         if (this._animReverse) {
-            this._animTime -= dt / 1000;
+            this._animTime -= (dt / 1000) * this._animReverseScale;
             if (this._animTime <= this._animKeyframes[0].t) {
                 this._animTime    = this._animKeyframes[0].t;
                 this._animPlaying = false;
@@ -301,7 +302,13 @@ class Instance extends AbstractLoadedEntity {
     }
 
     start() {
-        if (this._animPlaying) {
+        // A finished onlyOnce animation stays finished (re-triggering a done
+        // one-way is a vanilla no-op) — without this, a repeatable trigger
+        // re-firing start() would reset the time while _animDone still blocks
+        // update(), freezing the instance in a zombie state that also locks
+        // out startReverse() (its playing guard). startReverse() clears
+        // _animDone, re-arming start().
+        if (this._animPlaying || this._animDone) {
             return;
         }
         this._animPlaying = true;
@@ -321,16 +328,23 @@ class Instance extends AbstractLoadedEntity {
     // No-op while playing or when already back at the first keyframe. Clears
     // _animDone so a finished one-way animation can be walked back; reaching
     // the origin re-arms start() (the element is genuinely at rest again).
-    startReverse() {
+    /**
+     * Replay the keyframes backward from the current position. timeScale slows
+     * (< 1) or speeds up the reverse playback relative to the forward timeline —
+     * a floor lowered at turbo speed may legally rise back at the (slower)
+     * speed of the raise special that reverses it.
+     */
+    startReverse(timeScale = 1) {
         if (this._animPlaying || this._animKeyframes.length === 0) {
             return;
         }
         if (this._animTime <= this._animKeyframes[0].t) {
             return;
         }
-        this._animReverse = true;
-        this._animDone    = false;
-        this._animPlaying = true;
+        this._animReverse      = true;
+        this._animReverseScale = timeScale;
+        this._animDone         = false;
+        this._animPlaying      = true;
     }
 
     stop() {

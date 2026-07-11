@@ -12,8 +12,10 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
     /**
      * @param {string}   code           - unique interaction code, shared with the Instance
      * @param {string[]} targets        - codes of the instances to start on cross
-     * @param {string[]} reverseTargets - codes of the instances started BACKWARD
-     *                                    (close lines shutting an opening door)
+     * @param {object[]} reverseTargets - {code, timeScale} of the instances started
+     *                                    BACKWARD (close lines shutting an opening
+     *                                    door, raise lines lifting a lowered plat) —
+     *                                    timeScale keeps the vanilla reverse speed
      * @param {boolean}  stop           - true = crossing PAUSES the targets in place
      *                                    (vanilla EV_StopPlat stasis) instead of
      *                                    starting them (specials 54/89)
@@ -51,10 +53,10 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
                 }
             }
         }
-        for (const code of this._reverseTargets) {
-            const target = loader.instances().getByCode(code);
+        for (const entry of this._reverseTargets) {
+            const target = loader.instances().getByCode(entry.code);
             if (target) {
-                target.startReverse();
+                target.startReverse(entry.timeScale);
             }
         }
 
