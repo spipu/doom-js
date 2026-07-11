@@ -1,5 +1,5 @@
 {
-    "version": "v1.184",
+    "version": "v1.194",
     "files": {
         "assets": [],
         "css": [
@@ -37,6 +37,7 @@
             "/js/doom/wad/convert/doomPickupInteraction.js",
             "/js/doom/wad/convert/doomTeleportInteraction.js",
             "/js/doom/wad/convert/doomWalkTriggerInteraction.js",
+            "/js/doom/wad/convert/doomSectorDamageInteraction.js",
             "/js/doom/wad/convert/wadWorldBuilder.js",
             "/js/doom/object/abstractDoomObject.js",
             "/js/doom/object/doomWeapon.js",

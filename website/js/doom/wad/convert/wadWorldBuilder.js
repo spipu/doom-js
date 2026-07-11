@@ -122,6 +122,30 @@ class WadWorldBuilder {
         }
         await this._yield();
 
+        // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
+        // polling the player's sector every 32-tic window. The "+change" target
+        // sectors are included too (their special mutates at runtime); a lift's
+        // zone sits at the ORIGINAL floor (the platform rests up, the static fh
+        // is patched down).
+        const damageZones = this._sectorPolys
+            .filter((s) => (WadConstants.SECTOR_DAMAGE_BY_SPECIAL[s.special] !== undefined)
+                || (analysis.floorChange[s.si] !== undefined))
+            .map((s) => ({
+                si:      s.si,
+                outers:  s.outers,
+                floorY:  (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE,
+                special: s.special
+            }));
+        let damageInteraction = null;
+        if (damageZones.length > 0) {
+            damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit);
+            loader.interactions().loadFromData(damageInteraction);
+        }
+
+        // "+change" floors: swap the moving top-flat texture (and the sector's
+        // damage special) when the movement starts or completes.
+        this._wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction);
+
         // Things (decorations + pickups) as billboard sprites
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
@@ -247,6 +271,55 @@ class WadWorldBuilder {
         }
 
         return {floorCode: null, liftY: 0};
+    }
+
+    // Attach the "+change" effect to each moving floor instance: at start
+    // (raise variants) or at completion (lowerAndChange), the top-flat faces
+    // swap to the new flat and the sector's damage zone takes the new special
+    // at the destination height. Both flats are handled as full ANIMATION
+    // sequences: the old faces may carry any frame (and their animTextures
+    // override the texture id at render time), and the destination stays
+    // animated when it is a sequence itself. Riser faces are untouched (wall
+    // textures live in a different bank — their ids never match the flat's).
+    _wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction) {
+        const SCALE = WadConstants.SCALE;
+        for (const key of Object.keys(analysis.floorChange)) {
+            const si     = parseInt(key, 10);
+            const change = analysis.floorChange[key];
+            const code = ((builtRisingCodes.has('risingfloor_' + si)) ? ('risingfloor_' + si)
+                : ((builtLiftCodes.has('lift_' + si)) ? ('lift_' + si) : null));
+            if (code === null) {
+                continue;
+            }
+            const oldSeq = animBank.flatSequenceLoaderIds(this._level.sectors[si].ft);
+            const newSeq = animBank.flatSequenceLoaderIds(change.flatName);
+            if (oldSeq.ids.length === 0 || newSeq.ids.length === 0) {
+                continue;
+            }
+            const newAnim = ((newSeq.ids.length > 1)
+                ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
+                : null);
+            const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftMinAdjFh[si];
+            const inst  = loader.instances().getByCode(code);
+            const apply = () => {
+                inst.getObject().faceList.forEach((fc) => {
+                    const animated = (fc.animTextures !== null && fc.animTextures !== undefined
+                        && fc.animTextures.ids.some((id) => oldSeq.ids.includes(id)));
+                    if (animated || oldSeq.ids.includes(fc.textureId)) {
+                        fc.textureId    = newSeq.ids[0];
+                        fc.animTextures = newAnim;
+                    }
+                });
+                if ((change.special !== null) && (damageInteraction !== null)) {
+                    damageInteraction.setSectorSpecial(si, change.special, targetFh * SCALE);
+                }
+            };
+            if (change.at === 'complete') {
+                inst.setOnComplete(apply);
+            } else {
+                inst.setOnStart(apply);
+            }
+        }
     }
 
     _registerInstance(built, bank) {
@@ -395,7 +468,7 @@ class WadWorldBuilder {
             if (outers.length === 0) {
                 continue;
             }
-            cache.push({si: si, fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, tag: sectors[si].tag, outers: outers});
+            cache.push({si: si, fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, tag: sectors[si].tag, special: sectors[si].special, outers: outers});
         }
         return cache;
     }

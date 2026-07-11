@@ -201,14 +201,19 @@ class DoomGame {
             user.addEffect(def.getEffect(), def.getDuration());
             return true;
         }
+        // Berserk (vanilla P_GivePower pw_strength): the heal-to-100 happens
+        // BEFORE the already-owned check — every sphere re-heals and is
+        // consumed, even when the power is already held.
+        if (code === 'berserk') {
+            user.giveItem(code);
+            user.addEnergy(100, 100);
+            return true;
+        }
         // Key or permanent power-up: a key already held leaves the sprite.
         if (user.hasItem(code)) {
             return false;
         }
         user.giveItem(code);
-        if (code === 'berserk') {
-            user.addEnergy(100, 100);
-        }
         return true;
     }
 

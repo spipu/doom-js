@@ -22,6 +22,7 @@ class WadMapAnalyzer {
         this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
+        const floorChange = this._identifyFloorChanges(lifts, rising);
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
@@ -42,6 +43,7 @@ class WadMapAnalyzer {
             stairInfo:            stairs.stairInfo,
             stairStepTag:         stairs.stairStepTag,
             donutRingTag:         donuts.ringTag,
+            floorChange:          floorChange,
             switchLinedefIds:     switches.ids,
             switchWalls:          switches.walls,
             teleporterLinedefs:   teleporterLinedefs,
@@ -532,6 +534,72 @@ class WadMapAnalyzer {
             target -= 8;
         }
         return target;
+    }
+
+    // --- Floor texture/type changes (the "+change" specials) ---
+
+    // Resolve, at build time, what each "+change" target sector will become:
+    // the new flat name and (unless 'keep') the new sector special — taken from
+    // the trigger line's front sector, or, for the lowerAndChange 37/84, from
+    // the first neighbour sitting at the destination height (vanilla walks the
+    // sector lines in order). One change per sector: with several change lines
+    // on the same tag, the last one wins (same per-element limitation as the
+    // doors). Fired at 'start' or at 'complete' of the moving instance.
+    //
+    // @returns {object} si → {flatName, special (number|null), at}
+    _identifyFloorChanges(lifts, rising) {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const floorChange = {};
+
+        for (const ld of linedefs) {
+            const rule = WadConstants.FLOOR_CHANGE_BY_SPECIAL[ld.special];
+            if (rule === undefined || ld.tag === 0 || ld.right < 0) {
+                continue;
+            }
+            const front = sectors[sidedefs[ld.right].sector];
+            for (let si = 0; si < sectors.length; si++) {
+                if (sectors[si].tag !== ld.tag) {
+                    continue;
+                }
+                const moving = (rising.risingFloorIds.has(si) || lifts.movingFloorDownIds.has(si));
+                if (!moving) {
+                    continue;
+                }
+                let source = front;
+                if (rule.source === 'dest') {
+                    source = this._sectorAtHeight(si, lifts.liftMinAdjFh[si]);
+                    if (source === null) {
+                        continue;
+                    }
+                }
+                floorChange[si] = {
+                    flatName: source.ft,
+                    special:  ((rule.special === 'copy') ? source.special : ((rule.special === 'zero') ? 0 : null)),
+                    at:       rule.at
+                };
+            }
+        }
+
+        return floorChange;
+    }
+
+    // First two-sided neighbour of si whose floor sits at the given height
+    // (vanilla lowerAndChange line walk).
+    _sectorAtHeight(si, fh) {
+        const {linedefs, sidedefs, sectors} = this._level;
+        for (const ld of linedefs) {
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : -1));
+            if (other !== -1 && sectors[other].fh === fh) {
+                return sectors[other];
+            }
+        }
+
+        return null;
     }
 
     // --- Stairs (build stairs) ---
