@@ -37,6 +37,11 @@ class Instance extends AbstractLoadedEntity {
         // Damage dealt to the player on contact
         this._damage            = null;
         this._wasInDamageRange  = false;
+
+        // Moving floor this instance stands on (its Y follows that floor)
+        this._rideOn            = null;
+        this._rideBaseY         = 0;
+        this._rideLastDy        = 0;
     }
 
     finalizeInit() {
@@ -184,8 +189,32 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
+    /**
+     * Stand this instance on a moving floor instance: its Y (and derived world
+     * centre) follows the floor's animation delta each frame — a pickup on a
+     * lowering pillar rides down with it. Base Y = the position at call time.
+     */
+    setRideOn(floorInstance) {
+        this._rideOn     = floorInstance;
+        this._rideBaseY  = this._position[1];
+        this._rideLastDy = 0;
+    }
+
+    _syncRide() {
+        if (this._rideOn === null) {
+            return;
+        }
+        const dy = this._rideOn.getTransform().deltaTranslate[1];
+        if (dy !== this._rideLastDy) {
+            this._rideLastDy  = dy;
+            this._position[1] = this._rideBaseY + dy;
+            this._computeWorldCenter();
+        }
+    }
+
     // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
     update(dt, user, action) {
+        this._syncRide();
         if (this._animKeyframes.length === 0 && this._interaction === null) {
             return;
         }

@@ -104,6 +104,12 @@ class WadDoorBuilder {
                 // Door on right, corridor on left
                 const lSd   = sidedefs[ld.left];
                 const lSec2 = sectors[lSi2];
+                // Closed neighbour (e.g. the spacer block between two crusher
+                // rows): no opening ever sees this face — and it would z-fight
+                // the static riser drawn on the same edge.
+                if (lSec2.ch <= lSec2.fh) {
+                    continue;
+                }
                 const tex = lSd.upper;
                 if (!tex || tex === '-') {
                     continue;
@@ -124,6 +130,10 @@ class WadDoorBuilder {
                 // Door on left, corridor on right
                 const rSd   = sidedefs[ld.right];
                 const rSec2 = sectors[rSi2];
+                // Closed neighbour: same rule as the mirrored branch above.
+                if (rSec2.ch <= rSec2.fh) {
+                    continue;
+                }
                 const tex = rSd.upper;
                 if (!tex || tex === '-') {
                     continue;
@@ -145,7 +155,8 @@ class WadDoorBuilder {
     }
 
     // Bottom flat: ceiling flat of the door sector, visible from below when
-    // the panel rises. No top flat (z-fight with the static ceiling).
+    // the panel rises. No top flat (z-fight with the static ceiling). Holes
+    // preserved (a ring-shaped sector must not cover the inner one).
     _buildBottomFlat(mesh, si, sec, floorH) {
         const {vertexes, linedefs, sidedefs} = this._level;
 
@@ -157,15 +168,18 @@ class WadDoorBuilder {
             return;
         }
 
-        const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
-        for (const chain of chains) {
-            const polyDoom = chain.map((vi) => vertexes[vi]);
-            WadMeshBuilder.addFlatQuad(mesh, ct, polyDoom, floorH, false, sec.light);
+        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
+            WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, floorH, false, sec.light, p.holes);
         }
     }
 
     _buildInstanceData(doorName, si, floorH, ceilH, mesh) {
         const props = this._analysis.doorProps[si];
+        // Rest position of the panel: a door rests closed at its floor; a
+        // ceiling raiser (40) rests at the sector's OWN ceiling — a partially
+        // open sector keeps its slit — and travels up to ceilH from there.
+        const restDu    = ((props.ceilingRaise === true) ? (this._level.sectors[si].ch - floorH) : 0);
+        const restY     = restDu * WadConstants.SCALE;
         const travelY   = (ceilH - floorH) * WadConstants.SCALE;
         const speedTics = props.speed;
 
@@ -179,22 +193,38 @@ class WadDoorBuilder {
             radius = Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
         }
 
-        const openS = (ceilH - floorH) / speedTics / 35.0;
+        const openS = (ceilH - floorH - restDu) / speedTics / 35.0;
         const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
 
         let keyframes;
         if (props.anim === 'one-way') {
             keyframes = [
-                {t: 0.0,   translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: 0.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]},
                 {t: openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
         } else if (props.anim === 'close-stay') {
             // Closing door: rest = panel parked open above the ceiling
-            // (keyframe 0 at +travelY, applied from finalizeInit), descends
-            // to the floor and stays there.
+            // (keyframe 0 at +travelY, applied from finalizeInit), descends to
+            // the floor — or to floor + closeMargin for the crush ceilings
+            // 44/72 (lowerAndCrush stops 8 above the floor) — and stays there.
+            const marginY = props.closeMargin * WadConstants.SCALE;
+            const closeS  = (ceilH - floorH - props.closeMargin) / speedTics / 35.0;
             keyframes = [
-                {t: 0.0,   translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: openS, translate: [0, 0, 0],       rotate: [0, 0, 0]}
+                {t: 0.0,    translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: closeS, translate: [0, marginY, 0], rotate: [0, 0, 0]}
+            ];
+        } else if (props.anim === 'crusher') {
+            // Crusher (6/25/49/73/77/141): rests OPEN at the sector's own
+            // ceiling (parked keyframe 0, like a closing door) and oscillates
+            // down to floor + 8 and back with no wait at either end
+            // (p_ceilng.c T_MoveCeiling crushAndRaise). loop repeats the cycle;
+            // a stop line (57/74) pauses it in place, start() resumes.
+            const marginY = props.closeMargin * WadConstants.SCALE;
+            const moveS   = (ceilH - floorH - props.closeMargin) / speedTics / 35.0;
+            keyframes = [
+                {t: 0.0,       translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: moveS,     translate: [0, marginY, 0], rotate: [0, 0, 0]},
+                {t: 2 * moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
         } else if (props.anim === 'close-wait-open') {
             // Close, wait 30 s (close30ThenOpen), reopen to the parked rest.
@@ -208,11 +238,11 @@ class WadDoorBuilder {
         } else {
             const tRest = openS + waitS + openS;
             keyframes = [
-                {t: 0.0,           translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: 0.0,           translate: [0, restY, 0],   rotate: [0, 0, 0]},
                 {t: openS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
                 {t: openS + waitS, translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: tRest,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: tRest + 1.0,   translate: [0, 0, 0],       rotate: [0, 0, 0]}
+                {t: tRest,         translate: [0, restY, 0],   rotate: [0, 0, 0]},
+                {t: tRest + 1.0,   translate: [0, restY, 0],   rotate: [0, 0, 0]}
             ];
         }
 

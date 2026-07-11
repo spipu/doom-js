@@ -74,7 +74,8 @@ class WadLiftBuilder {
         };
     }
 
-    // Top flat: floor surface of the platform at its original height
+    // Top flat: floor surface of the platform at its original height.
+    // Holes preserved (a ring-shaped platform must not cover the inner sector).
     _buildTopFlat(mesh, si, sec, origFh) {
         const {vertexes, linedefs, sidedefs} = this._level;
 
@@ -83,10 +84,8 @@ class WadLiftBuilder {
             return;
         }
 
-        const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
-        for (const chain of chains) {
-            const polyDoom = chain.map((vi) => vertexes[vi]);
-            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, origFh, true, sec.light);
+        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes);
         }
     }
 

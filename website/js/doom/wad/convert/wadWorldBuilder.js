@@ -123,7 +123,8 @@ class WadWorldBuilder {
         await this._yield();
 
         // Things (decorations + pickups) as billboard sprites
-        const things = this._registerThings(level, palette);
+        const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
+        const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         await this._yield();
 
         // World + user
@@ -147,7 +148,7 @@ class WadWorldBuilder {
     // the rest (pickups, gore, pools…) are non-blocking ('none'). Pickups get a
     // proximity trigger + a DoomPickupInteraction that applies the effect and
     // despawns the sprite when picked up.
-    _registerThings(level, palette) {
+    _registerThings(level, palette, analysis, builtFloorCodes) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0};
         }
@@ -184,10 +185,16 @@ class WadWorldBuilder {
             }
             const isPickup = (t.kind === 'pickup');
             const code     = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
+            // A thing standing on a moving floor spawns at the floor's ORIGINAL
+            // height (the sector fh was patched to the low position for the
+            // static map) and rides the floor instance (vanilla: things follow
+            // their sector floor — a chainsaw on a donut pillar rides it down).
+            const ride = this._resolveThingFloor(t, analysis, builtFloorCodes);
+            const position = [t.position[0], t.position[1] + ride.liftY, t.position[2]];
             loader.instances().loadFromData(null, {
                 code:              code,
                 object:            billboardIds[objKey],
-                position:          t.position,
+                position:          position,
                 rotation:          [0, 0, 0],
                 trigger:           ((isPickup) ? 'proximity' : 'none'),
                 loop:              false,
@@ -198,10 +205,13 @@ class WadWorldBuilder {
                 onlyOnce:          false,
                 collisionShape:    ((t.solid) ? 'box' : 'none'),
                 collisionRadius:   t.radius,
-                interactionRadius: ((isPickup) ? (WadConstants.PICKUP_RADIUS + t.halfWidth) : null),
+                interactionRadius: ((isPickup) ? WadConstants.PICKUP_RADIUS : null),
                 interaction:       ((isPickup) ? code : null),
                 keyframes:         []
             });
+            if (ride.floorCode !== null) {
+                loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
+            }
             // A pickup with no game (catalog-less build) keeps the sprite but
             // never fires — harmless. With a game, wire its effect interaction.
             if (isPickup && (this._game !== null)) {
@@ -210,6 +220,33 @@ class WadWorldBuilder {
         }
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered()};
+    }
+
+    // Moving floor under a thing: the built lift / rising-floor / stair
+    // instance of the thing's sector, plus the Y shift back to the ORIGINAL
+    // floor height for the lowered lifts (their sector fh is patched down for
+    // the static map, but the platform RESTS at its original height). The
+    // thing then rides that instance (setRideOn). Static-box collisions of
+    // solid decorations do not follow (known limitation, pickups are 'none').
+    _resolveThingFloor(t, analysis, builtFloorCodes) {
+        const SCALE = WadConstants.SCALE;
+        const sec = this._findSector(t.position[0] / SCALE, t.position[2] / SCALE);
+        if (sec === null) {
+            return {floorCode: null, liftY: 0};
+        }
+        for (const prefix of ['lift_', 'risingfloor_', 'stair_']) {
+            const floorCode = prefix + sec.si;
+            if (!builtFloorCodes.has(floorCode)) {
+                continue;
+            }
+            const originalFh = analysis.liftOriginalFh[sec.si];
+            const liftY = ((originalFh !== undefined)
+                ? (originalFh - this._level.sectors[sec.si].fh) * SCALE
+                : 0);
+            return {floorCode: floorCode, liftY: liftY};
+        }
+
+        return {floorCode: null, liftY: 0};
     }
 
     _registerInstance(built, bank) {
@@ -358,7 +395,7 @@ class WadWorldBuilder {
             if (outers.length === 0) {
                 continue;
             }
-            cache.push({fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, tag: sectors[si].tag, outers: outers});
+            cache.push({si: si, fh: sectors[si].fh, ch: sectors[si].ch, light: sectors[si].light, tag: sectors[si].tag, outers: outers});
         }
         return cache;
     }
@@ -384,7 +421,7 @@ class WadWorldBuilder {
             }
         }
         if (contained !== null) {
-            return {fh: contained.fh, ch: contained.ch, light: contained.light, tag: contained.tag};
+            return {si: contained.si, fh: contained.fh, ch: contained.ch, light: contained.light, tag: contained.tag};
         }
 
         return this._nearestSideSector(doomX, doomY);
@@ -421,8 +458,9 @@ class WadWorldBuilder {
         if (sdIdx < 0) {
             return null;
         }
-        const sec = sectors[sidedefs[sdIdx].sector];
-        return {fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
+        const secIdx = sidedefs[sdIdx].sector;
+        const sec = sectors[secIdx];
+        return {si: secIdx, fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
     }
 
     _yield() {

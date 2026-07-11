@@ -185,7 +185,10 @@ class WadSwitchBuilder {
     _resolveTargets(ld) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
             {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
-            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes},
+            // Donut rings carry no tag of their own: match them by the trigger
+            // tag stored at identification (same pattern as the stairs below).
+            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes,
+                tagOf: (si) => this._analysis.donutRingTag[si] ?? this._level.sectors[si].tag},
             {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
             // Stairs: only the base step carries the trigger tag, so match every
             // step of the staircase by its stored stairStepTag instead.
