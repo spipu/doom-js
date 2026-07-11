@@ -55,7 +55,7 @@ class WadRisingFloorBuilder {
         const floorName = 'risingfloor_' + si;
         const mesh = WadMeshBuilder.newMesh();
 
-        this._buildTopFlat(mesh, si, sec, origFh);
+        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         this._buildRisers(mesh, si, origFh, baseFh);
 
         if (mesh.points.length === 0) {
@@ -72,21 +72,6 @@ class WadRisingFloorBuilder {
             mesh:         mesh,
             instanceData: this._buildInstanceData(floorName, special, delta, mesh)
         };
-    }
-
-    // Top flat: floor surface at the WAD floor height, normal up (isFloor=true).
-    // Holes preserved (a donut ring must not cover the inner sector).
-    _buildTopFlat(mesh, si, sec, origFh) {
-        const {vertexes, linedefs, sidedefs} = this._level;
-
-        const ft = this._bank.ensureFlatTex(sec.ft);
-        if (ft < 0) {
-            return;
-        }
-
-        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
-        }
     }
 
     // Side skirt: riser from baseFh to origFh, moves with the floor. Same

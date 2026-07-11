@@ -79,7 +79,9 @@ class WadStairBuilder {
     }
 
     // Top flat: floor surface at the WAD floor height, normal up (isFloor=true).
-    // Identical to the rising floor — the moving step top.
+    // Moving step top. Kept apart from WadMeshBuilder.addSectorTopFlat (lifts,
+    // rising floors): the raw chains loop preserves the historical step
+    // geometry — outersWithHoles would re-split/re-orient multi-chain sectors.
     _buildTopFlat(mesh, si, sec, origFh) {
         const {vertexes, linedefs, sidedefs} = this._level;
 
