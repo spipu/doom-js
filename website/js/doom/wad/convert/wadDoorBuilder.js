@@ -125,7 +125,7 @@ class WadDoorBuilder {
                     wx1, wz1, wx2, wz2,
                     floorH * SCALE, lSec2.ch * SCALE,
                     wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec2.light});
+                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, lSi2)});
             } else if (lSi2 === si && !doorSectorIds.has(rSi2)) {
                 // Door on left, corridor on right
                 const rSd   = sidedefs[ld.right];
@@ -149,7 +149,7 @@ class WadDoorBuilder {
                     wx1, wz1, wx2, wz2,
                     floorH * SCALE, rSec2.ch * SCALE,
                     wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec2.light});
+                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, rSi2)});
             }
         }
     }
@@ -169,7 +169,7 @@ class WadDoorBuilder {
         }
 
         for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, floorH, false, sec.light, p.holes);
+            WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, floorH, false, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
         }
     }
 

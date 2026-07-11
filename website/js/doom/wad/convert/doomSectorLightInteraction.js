@@ -2,9 +2,10 @@
  * Per-level dynamic sector lights (transposition of the p_lights.c thinkers,
  * one step per tic at 35 tics/s): flicker (T_LightFlash), strobe
  * (T_StrobeFlash), glow (T_Glow) and fire flicker (T_FireFlicker). Each light
- * sector drives the brightness factor (current level / baked level) of the
- * static map faces tagged with its lightGroup. Only the random source deviates
- * from vanilla (Math.random instead of the P_Random table).
+ * sector drives the brightness factor (current level / baked level) of every
+ * face tagged with its lightGroup — static map, instance meshes (doors, lifts,
+ * switches…) and sprite billboards. Only the random source deviates from
+ * vanilla (Math.random instead of the P_Random table).
  */
 class DoomSectorLightInteraction extends AbstractInteraction {
     /**
@@ -13,9 +14,9 @@ class DoomSectorLightInteraction extends AbstractInteraction {
      */
     constructor(lightSectors) {
         super();
-        this._states = lightSectors.map((s) => this._initState(s));
-        this._clockS = 0;
-        this._map    = null;
+        this._states  = lightSectors.map((s) => this._initState(s));
+        this._clockS  = 0;
+        this._targets = null;
     }
 
     get code() {
@@ -33,8 +34,12 @@ class DoomSectorLightInteraction extends AbstractInteraction {
         }
         this._clockS -= tics * WadConstants.SECONDS_PER_TIC;
 
-        if (this._map === null) {
-            this._map = loader.objects().getByCode('map');
+        // The factor registry lives per Object3d: push each group to every
+        // object carrying light-grouped faces. The object set is stable for the
+        // whole level (pickup removal despawns instances, never objects).
+        if (this._targets === null) {
+            this._targets = loader.objects().getAll()
+                .filter((obj) => obj.faceList.some((fc) => fc.lightGroup !== null));
         }
 
         for (const st of this._states) {
@@ -42,7 +47,9 @@ class DoomSectorLightInteraction extends AbstractInteraction {
                 this._stepTic(st);
             }
             const factor = ((st.maxLight > 0) ? (st.light / st.maxLight) : 1);
-            this._map.setGroupLightFactor(st.si, factor);
+            for (const obj of this._targets) {
+                obj.setGroupLightFactor(st.si, factor);
+            }
         }
     }
 

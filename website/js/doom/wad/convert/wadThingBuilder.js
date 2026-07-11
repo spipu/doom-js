@@ -27,7 +27,8 @@ class WadThingBuilder {
 
     /**
      * @returns {object[]} {key, texIds, animDuration, halfWidth, height,
-     *                      anchorOffsetX, anchorTop, position:[x,y,z], kind, solid, radius, effect}
+     *                      anchorOffsetX, anchorTop, si, light, position:[x,y,z],
+     *                      kind, solid, radius, effect}
      */
     buildAll() {
         const scale  = WadConstants.SCALE;
@@ -93,6 +94,7 @@ class WadThingBuilder {
                 anchorOffsetX: ((first.width / 2) - first.leftOffset) * scale,
                 anchorOffsetY: ((desc.ceiling) ? sink : Math.max(0, sink)) * scale,
                 anchorTop:     desc.ceiling,
+                si:            sect.si,
                 light:         sect.light,
                 position:      WadGeometry.doomToWorld(thing.x, thing.y, baseH),
                 kind:          desc.kind,

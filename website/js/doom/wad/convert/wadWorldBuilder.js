@@ -213,10 +213,13 @@ class WadWorldBuilder {
         const billboardIds = {};
         for (let i = 0; i < things.length; i++) {
             const t = things[i];
-            // Dedup the shared Object3d per (sprite, sector light): the sector
-            // brightness is baked into the billboard colour, so the same sprite
-            // in differently-lit sectors needs distinct objects.
-            const objKey = t.key + '|' + t.light;
+            // Dedup the shared Object3d per (sprite, sector light, light group):
+            // the sector brightness is baked into the billboard colour, so the
+            // same sprite in differently-lit sectors needs distinct objects — and
+            // a sprite in a light-effect sector needs its own object too, so the
+            // dynamic group factor does not spill onto its twins elsewhere.
+            const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
+            const objKey     = t.key + '|' + t.light + '|' + lightGroup;
             if (billboardIds[objKey] === undefined) {
                 billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
                     billboard:     true,
@@ -227,7 +230,8 @@ class WadWorldBuilder {
                     anchorOffsetX: t.anchorOffsetX,
                     anchorOffsetY: t.anchorOffsetY,
                     anchorTop:     t.anchorTop,
-                    light:         t.light
+                    light:         t.light,
+                    lightGroup:    lightGroup
                 });
             }
             const isPickup = (t.kind === 'pickup');

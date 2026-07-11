@@ -85,7 +85,7 @@ class WadLiftBuilder {
         }
 
         for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes);
+            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
         }
     }
 
@@ -132,10 +132,12 @@ class WadLiftBuilder {
             let tex = validLower(neighborSd);
             let srcSd = neighborSd;
             let srcSec = neighborSec;
+            let srcSi = ((liftOnRight) ? lSi2 : rSi2);
             if (tex === null) {
                 tex = validLower(ownSd);
                 srcSd = ownSd;
                 srcSec = sectors[si];
+                srcSi = si;
             }
             if ((tex !== null) && (fallbackTex === null)) {
                 fallbackTex = tex;
@@ -146,7 +148,7 @@ class WadLiftBuilder {
             const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
             const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
             edges.push({
-                tex, srcSd, srcSec,
+                tex, srcSd, srcSec, srcSi,
                 wx1, wz1, wx2, wz2,
                 wallLen: WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2),
                 lowerUnpeg: ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0),
@@ -169,7 +171,7 @@ class WadLiftBuilder {
                 e.wx1, e.wz1, e.wx2, e.wz2,
                 riserBaseFh * SCALE, origFh * SCALE,
                 e.wallLen, tw, th,
-                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light});
+                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi)});
         }
     }
 
