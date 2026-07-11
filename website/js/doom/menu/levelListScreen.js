@@ -24,14 +24,7 @@ class LevelListScreen extends AbstractMenuScreen {
     }
 
     _build() {
-        this._addTitle('Spipu-Doom');
-
-        const panel = this._addElement('div', 'doom-menu-panel');
-
-        const subTitle = this._addElement('div', 'doom-menu-subtitle', panel);
-        subTitle.textContent = this._wadMeta.name + ' — Niveaux';
-
-        const listEl = this._addList(panel);
+        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Niveaux');
 
         this._statusEl = this._addElement('div', 'doom-menu-status', panel);
 
@@ -66,13 +59,9 @@ class LevelListScreen extends AbstractMenuScreen {
         }
 
         for (const name of levels) {
-            const item = this._addElement('div', 'doom-menu-item', listEl);
-            item.addEventListener('click', () => {
+            this._addListItem(listEl, name, () => {
                 this._onSelectLevel(name);
             });
-
-            const label = this._addElement('div', 'doom-menu-item-label', item);
-            label.textContent = name;
         }
     }
 

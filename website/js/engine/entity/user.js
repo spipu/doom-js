@@ -25,8 +25,8 @@ class User {
         this._maxLean          = 0.8;
         this._leanSpeed        = 5.0;
         this._maxEnergy        = maxEnergy;
-        this.moveSpeed         = 0.003;
-        this.turnSpeed         = 0.1;
+        this._moveSpeed         = 0.003;
+        this._turnSpeed         = 0.1;
 
         // Physics state
         this._vy             = 0;
@@ -195,12 +195,12 @@ class User {
     }
 
     setMoveSpeed(v) {
-        this.moveSpeed = v;
+        this._moveSpeed = v;
         return this;
     }
 
     setTurnSpeed(v) {
-        this.turnSpeed = v;
+        this._turnSpeed = v;
         return this;
     }
 
@@ -337,8 +337,8 @@ class User {
         if (this.isDead()) {
             return;
         }
-        this.yaw   += dx * this.turnSpeed;
-        this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this.turnSpeed));
+        this.yaw   += dx * this._turnSpeed;
+        this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this._turnSpeed));
     }
 
     setWalkSlow(bool) {
@@ -434,9 +434,13 @@ class User {
                     // Clamp to 1 instead of normalizing: keyboard diagonals stay
                     // capped, analog partial deflections keep their magnitude
                     const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
-                    let speed = this.moveSpeed;
-                    if (this._walkSlow) speed *= 0.5;
-                    if (this._strafeDir !== 0) speed *= 0.7;
+                    let speed = this._moveSpeed;
+                    if (this._walkSlow) {
+                        speed *= 0.5;
+                    }
+                    if (this._strafeDir !== 0) {
+                        speed *= 0.7;
+                    }
                     speed *= (1 - this._crouchProgress * 0.4);
                     this._vx = this._inputX * norm * speed;
                     this._vz = this._inputZ * norm * speed;
@@ -447,22 +451,22 @@ class User {
             } else if (inputLen > 1e-10) {
                 // Air steering: nudge velocity toward desired direction
                 const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
-                const nudge = this.moveSpeed * this._airControl;
+                const nudge = this._moveSpeed * this._airControl;
                 this._vx += this._inputX * norm * nudge * dt_s;
                 this._vz += this._inputZ * norm * nudge * dt_s;
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
-                if (vLen > this.moveSpeed) {
-                    this._vx = this._vx / vLen * this.moveSpeed;
-                    this._vz = this._vz / vLen * this.moveSpeed;
+                if (vLen > this._moveSpeed) {
+                    this._vx = this._vx / vLen * this._moveSpeed;
+                    this._vz = this._vz / vLen * this._moveSpeed;
                 }
             }
             const vx = this._vx * dt_ms, vz = this._vz * dt_ms;
             if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
                 const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight);
-                const blocked = Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8;
+                const blocked = (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8);
                 if (!blocked) {
                     const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
-                    const destCeil  = collision.getCeiling(res.x, res.z, this._radius, destFloor !== -Infinity ? destFloor + this._stepHeight : this.y);
+                    const destCeil  = collision.getCeiling(res.x, res.z, this._radius, ((destFloor !== -Infinity) ? destFloor + this._stepHeight : this.y));
                     if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
                         this.x = res.x;
                         this.z = res.z;
@@ -482,8 +486,8 @@ class User {
 
         // 5. Jump trigger
         if ((this._jumpPressed || this._jumpBuffer > 0) && (this._canJump || this._coyoteTimer > 0)) {
-            this._vy         = this._maxJumpVelocity;
-            this._canJump    = false;
+            this._vy          = this._maxJumpVelocity;
+            this._canJump     = false;
             this._coyoteTimer = 0;
             this._jumpBuffer  = 0;
             this._startFall();
@@ -585,8 +589,10 @@ class User {
             }
         }
 
-        // 10. Ceiling check
-        const ceilY = collision.getCeiling(this.x, this.z, this._radius, this.y + this.getCurrentHeight());
+        // 10. Ceiling check — queried from the FEET (getCeiling only returns
+        // surfaces strictly above the given Y; asking from the head would make
+        // the clamp below unreachable by construction).
+        const ceilY = collision.getCeiling(this.x, this.z, this._radius, this.y);
         if (this.y + this.getCurrentHeight() > ceilY) {
             this.y = ceilY - this.getCurrentHeight();
             if (this._vy > 0) {
@@ -615,7 +621,9 @@ class User {
         // 13. Head bob
         if (this._onGround && this._realVelocityXZ > 0.01) {
             this._walkAngle += dt * 0.6;
-            if (this._walkAngle > 360) this._walkAngle -= 360;
+            if (this._walkAngle > 360) {
+                this._walkAngle -= 360;
+            }
         } else {
             this._walkAngle = 0;
         }
@@ -666,7 +674,7 @@ class User {
 
     _tryStepUp(collision, vx, vz) {
         const testY = this.y + this._stepHeight;
-        if (collision.getCeiling(this.x, this.z, this._radius, testY + this.getCurrentHeight()) < testY + this.getCurrentHeight()) {
+        if (collision.getCeiling(this.x, this.z, this._radius, this.y) < testY + this.getCurrentHeight()) {
             return false;
         }
         const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());

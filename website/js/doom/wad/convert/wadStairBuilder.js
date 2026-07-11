@@ -173,7 +173,7 @@ class WadStairBuilder {
     }
 
     _buildInstanceData(stairName, special, delta) {
-        const speed   = WadConstants.STAIR_SPEED_BY_SPECIAL[special] ?? 2;
+        const speed   = WadConstants.STAIR_BY_SPECIAL[special].speed;
         const travelY = delta * WadConstants.SCALE;
         const moveS   = delta / (speed * 35.0);
 

@@ -167,17 +167,17 @@ class InputVirtualGamepad {
         this._resetState();
 
         const overlay = document.createElement('div');
-        overlay.style.position    = 'absolute';
-        overlay.style.top         = '0';
-        overlay.style.left        = '0';
-        overlay.style.width       = '100%';
-        overlay.style.height      = '100%';
-        overlay.style.zIndex      = '10';
+        overlay.style.position      = 'absolute';
+        overlay.style.top           = '0';
+        overlay.style.left          = '0';
+        overlay.style.width         = '100%';
+        overlay.style.height        = '100%';
+        overlay.style.zIndex        = '10';
         overlay.style.touchAction   = 'none';
         overlay.style.userSelect    = 'none';
         // Container reference so the buttons can size their font against the
         // display height (cqh), keeping size and font coherent in letterbox.
-        overlay.style.containerType  = 'size';
+        overlay.style.containerType = 'size';
 
         this._stickEls = {
             move: this._createStick(overlay, this._stickLayout.move),
@@ -247,7 +247,7 @@ class InputVirtualGamepad {
         el.style.left           = (layout.x * 100) + '%';
         el.style.top            = (layout.y * 100) + '%';
         el.style.border         = '2px solid ' + this._color.btnBorder;
-        el.style.background      = this._color.btnFill;
+        el.style.background     = this._color.btnFill;
         el.style.color          = this._color.btnLabel;
         el.style.display        = 'flex';
         el.style.alignItems     = 'center';
@@ -408,12 +408,12 @@ class InputVirtualGamepad {
     // deflection.
     _applyDeadZone(nx, ny) {
         const mag = Math.min(Math.sqrt((nx * nx) + (ny * ny)), 1);
-        if (mag < this._deadZone) {
-            return { x: 0, y: 0 };
+        const scaled = Inputs.rescaleDeadZone(mag, this._deadZone);
+        if (scaled === 0) {
+            return {x: 0, y: 0};
         }
-        const scaled = (mag - this._deadZone) / (1 - this._deadZone);
         const factor = scaled / mag;
-        return { x: nx * factor, y: ny * factor };
+        return {x: nx * factor, y: ny * factor};
     }
 
     // Moves the knob to a normalized deflection (-1..+1 on each axis). The knob

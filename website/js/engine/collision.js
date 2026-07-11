@@ -65,85 +65,21 @@ class Collision {
     // --- Queries ---
 
     getFloor(px, pz, r, maxSearchY = Infinity) {
-        let maxY = -Infinity;
-        const check = (tri) => {
-            if (!this._aabbXZ(px, pz, r, tri)) {
-                return;
-            }
-            if (!this._circleIntersectsTri(px, pz, r, tri)) {
-                return;
-            }
-            const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY && y <= maxSearchY) {
-                maxY = y;
-            }
-        };
-        for (const sc of this._static) {
-            sc.floors.forEach(check);
-        }
-        for (const dc of this._dynamic) {
-            if (this._broadphaseXZ(px, pz, r, dc)) {
-                dc.floors.forEach(check);
-            }
-        }
-        return maxY;
+        return this._scanFloorLists(px, pz, r, maxSearchY, this._floorLists(px, pz, r)).y;
     }
 
     getFloorNormal(px, pz, r, maxSearchY = Infinity) {
-        let maxY = -Infinity, bestN = null;
-        const check = (tri) => {
-            if (!this._aabbXZ(px, pz, r, tri)) {
-                return;
-            }
-            if (!this._circleIntersectsTri(px, pz, r, tri)) {
-                return;
-            }
-            const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY && y <= maxSearchY) {
-                maxY = y;
-                bestN = tri.n;
-            }
-        };
-        for (const sc of this._static) {
-            sc.floors.forEach(check);
-        }
-        for (const dc of this._dynamic) {
-            if (this._broadphaseXZ(px, pz, r, dc)) {
-                dc.floors.forEach(check);
-            }
-        }
-        return bestN;
+        return this._scanFloorLists(px, pz, r, maxSearchY, this._floorLists(px, pz, r)).n;
     }
 
     getCeiling(px, pz, r, headY) {
-        let minY = Infinity;
-        const check = (tri) => {
-            if (!this._aabbXZ(px, pz, r, tri)) {
-                return;
-            }
-            if (!this._circleIntersectsTri(px, pz, r, tri)) {
-                return;
-            }
-            const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > headY && y < minY) {
-                minY = y;
-            }
-        };
-        for (const sc of this._static) {
-            sc.ceilings.forEach(check);
-        }
-        for (const dc of this._dynamic) {
-            if (this._broadphaseXZ(px, pz, r, dc)) {
-                dc.ceilings.forEach(check);
-            }
-        }
-        return minY;
+        return this._scanCeilingLists(px, pz, r, headY, this._ceilingLists(px, pz, r));
     }
 
     resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0) {
         const allWalls = [
-            ...this._static.map(sc => sc.walls),
-            ...this._dynamic.map(dc => dc.walls),
+            ...this._static.map((sc) => sc.walls),
+            ...this._dynamic.map((dc) => dc.walls),
         ];
         const res = this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
         return this._resolveBoxes(res.x, res.z, r, feetY, h);
@@ -208,25 +144,13 @@ class Collision {
             }
 
             // Is player standing on top of this instance?
-            let floorY = -Infinity;
-            for (const tri of dc.floors) {
-                if (!this._aabbXZ(user.x, user.z, user.getRadius(), tri)) {
-                    continue;
-                }
-                if (!this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
-                    continue;
-                }
-                const y = (tri.d - tri.n[0]*user.x - tri.n[2]*user.z) / tri.n[1];
-                if (y > floorY) {
-                    floorY = y;
-                }
-            }
+            const floorY = this._scanFloorLists(user.x, user.z, user.getRadius(), Infinity, [dc.floors]).y;
             if (floorY === -Infinity || Math.abs(user.y - floorY) > 0.15) {
                 continue;
             }
 
-            const origX = user.x, origZ = user.z;
-            const staticWalls = this._static.map(sc => sc.walls);
+            const origX = user.x, origY = user.y, origZ = user.z;
+            const staticWalls = this._static.map((sc) => sc.walls);
 
             // Step 1: polar rotation — orbit user around previous platform center by dRy
             const prevCx = prevTf.position[0] + prevTf.deltaTranslate[0];
@@ -260,7 +184,7 @@ class Collision {
             user.yaw += dRy;
             user.syncPositionTracking();
 
-            dc._platformDeltaApplied = { x: user.x - origX, y: dy, z: user.z - origZ, yaw: dRy };
+            dc._platformDeltaApplied = {x: user.x - origX, y: user.y - origY, z: user.z - origZ, yaw: dRy};
         }
     }
 
@@ -340,7 +264,7 @@ class Collision {
 
     _updateDynamicCollider(dc) {
         const tf  = dc.instance.getTransform();
-        const m   = this._buildInstanceMatrix(tf);
+        const m   = Matrix.composeInstanceTransform(tf);
         const floors = [], ceilings = [], walls = [];
         for (const [la, lb, lc] of dc.localTris) {
             const wa = m.multiplyPosition([...la, 1]);
@@ -366,37 +290,6 @@ class Collision {
         dc.centerWorld = [cw[0], cw[1], cw[2]];
     }
 
-    _buildInstanceMatrix(tf) {
-        const [px, py, pz]    = tf.position;
-        const [irx, iry, irz] = tf.rotation;
-        const [dtx, dty, dtz] = tf.deltaTranslate;
-        const [drx, dry, drz] = tf.deltaRotate;
-        const m = new Matrix(); m.identity();
-        const push = (fn, ...args) => { const r = new Matrix(); r[fn](...args); m.multiply(r); };
-        push('translation', px, py, pz);
-        if (irx) {
-            push('rotationX', irx * DEG_TO_RAD);
-        }
-        if (irz) {
-            push('rotationZ', irz * DEG_TO_RAD);
-        }
-        if (iry) {
-            push('rotationY', iry * DEG_TO_RAD);
-        }
-        if (dtx || dty || dtz) {
-            push('translation', dtx, dty, dtz);
-        }
-        if (drx) {
-            push('rotationX', drx * DEG_TO_RAD);
-        }
-        if (drz) {
-            push('rotationZ', drz * DEG_TO_RAD);
-        }
-        if (dry) {
-            push('rotationY', dry * DEG_TO_RAD);
-        }
-        return m;
-    }
 
     // --- Private: wall resolution ---
 
@@ -462,7 +355,9 @@ class Collision {
                     }
                 }
             };
-            for (const walls of wallLists) walls.forEach(check);
+            for (const walls of wallLists) {
+                walls.forEach(check);
+            }
 
             C[0] += (tMin - ((hit) ? EPSILON : 0)) * V[0];
             C[1] += (tMin - ((hit) ? EPSILON : 0)) * V[1];
@@ -514,7 +409,7 @@ class Collision {
     }
 
     _instanceCylinderIntersectsAtTransform(user, dc, tf) {
-        const m  = this._buildInstanceMatrix(tf);
+        const m  = Matrix.composeInstanceTransform(tf);
         const cw = m.multiplyPosition([dc.centerLocal[0], dc.centerLocal[1], dc.centerLocal[2], 1]);
         const bpDx = user.x - cw[0], bpDz = user.z - cw[2];
         if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > user.getRadius() + dc.bRadius) {
@@ -545,64 +440,99 @@ class Collision {
     // --- Private: static-only floor/ceiling (used by platform riding Y clamp) ---
 
     _getStaticFloor(px, pz, r) {
-        let maxY = -Infinity;
-        const check = (tri) => {
-            if (!this._aabbXZ(px, pz, r, tri)) {
-                return;
-            }
-            if (!this._circleIntersectsTri(px, pz, r, tri)) {
-                return;
-            }
-            const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY) {
-                maxY = y;
-            }
-        };
-        for (const sc of this._static) {
-            sc.floors.forEach(check);
-        }
-        return maxY;
+        return this._scanFloorLists(px, pz, r, Infinity, this._static.map((sc) => sc.floors)).y;
     }
 
     _getStaticCeiling(px, pz, r, headY) {
+        return this._scanCeilingLists(px, pz, r, headY, this._static.map((sc) => sc.ceilings));
+    }
+
+    // --- Private: floor/ceiling scans (single implementation behind every query) ---
+
+    // Highest floor triangle under the (px, pz, r) circle at or below
+    // maxSearchY, over the given triangle lists: {y, n} — n is null when
+    // nothing matched.
+    _scanFloorLists(px, pz, r, maxSearchY, lists) {
+        let maxY  = -Infinity;
+        let bestN = null;
+        for (const list of lists) {
+            for (const tri of list) {
+                if (!this._aabbXZ(px, pz, r, tri)) {
+                    continue;
+                }
+                if (!this._circleIntersectsTri(px, pz, r, tri)) {
+                    continue;
+                }
+                const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
+                if (y > maxY && y <= maxSearchY) {
+                    maxY  = y;
+                    bestN = tri.n;
+                }
+            }
+        }
+        return {y: maxY, n: bestN};
+    }
+
+    // Lowest ceiling triangle strictly above headY, over the given lists.
+    _scanCeilingLists(px, pz, r, headY, lists) {
         let minY = Infinity;
-        const check = (tri) => {
-            if (!this._aabbXZ(px, pz, r, tri)) {
-                return;
+        for (const list of lists) {
+            for (const tri of list) {
+                if (!this._aabbXZ(px, pz, r, tri)) {
+                    continue;
+                }
+                if (!this._circleIntersectsTri(px, pz, r, tri)) {
+                    continue;
+                }
+                const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
+                if (y > headY && y < minY) {
+                    minY = y;
+                }
             }
-            if (!this._circleIntersectsTri(px, pz, r, tri)) {
-                return;
-            }
-            const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > headY && y < minY) {
-                minY = y;
-            }
-        };
-        for (const sc of this._static) {
-            sc.ceilings.forEach(check);
         }
         return minY;
+    }
+
+    // Static + broadphase-filtered dynamic triangle lists for a query circle.
+    _floorLists(px, pz, r) {
+        const lists = this._static.map((sc) => sc.floors);
+        for (const dc of this._dynamic) {
+            if (this._broadphaseXZ(px, pz, r, dc)) {
+                lists.push(dc.floors);
+            }
+        }
+        return lists;
+    }
+
+    _ceilingLists(px, pz, r) {
+        const lists = this._static.map((sc) => sc.ceilings);
+        for (const dc of this._dynamic) {
+            if (this._broadphaseXZ(px, pz, r, dc)) {
+                lists.push(dc.ceilings);
+            }
+        }
+        return lists;
     }
 
     // --- Private: broadphase ---
 
     _broadphaseXZ(px, pz, r, dc) {
         const dx = px - dc.centerWorld[0], dz = pz - dc.centerWorld[2];
-        return Math.sqrt(dx*dx + dz*dz) <= r + dc.bRadius;
+        return (Math.sqrt(dx*dx + dz*dz) <= r + dc.bRadius);
     }
 
     // --- Private: 2D XZ geometry ---
 
     _aabbXZ(px, pz, r, tri) {
-        return px + r >= tri.xMin && px - r <= tri.xMax
-            && pz + r >= tri.zMin && pz - r <= tri.zMax;
+        return (px + r >= tri.xMin && px - r <= tri.xMax
+            && pz + r >= tri.zMin && pz - r <= tri.zMax);
     }
 
     _aabbXZSweep(cx, cz, vx, vz, r, tri) {
         const minX = Math.min(cx, cx+vx) - r, maxX = Math.max(cx, cx+vx) + r;
         const minZ = Math.min(cz, cz+vz) - r, maxZ = Math.max(cz, cz+vz) + r;
-        return maxX >= tri.xMin && minX <= tri.xMax
-            && maxZ >= tri.zMin && minZ <= tri.zMax;
+        return (maxX >= tri.xMin && minX <= tri.xMax
+            && maxZ >= tri.zMin && minZ <= tri.zMax);
     }
 
     _cross2D(ux, uz, vx, vz) {
@@ -627,9 +557,9 @@ class Collision {
         if ((d0>=0 && d1>=0 && d2>=0) || (d0<=0 && d1<=0 && d2<=0)) {
             return true;
         }
-        return this._distToSegment(px, pz, A[0],A[2], B[0],B[2]) < r
+        return (this._distToSegment(px, pz, A[0],A[2], B[0],B[2]) < r
             || this._distToSegment(px, pz, B[0],B[2], C[0],C[2]) < r
-            || this._distToSegment(px, pz, C[0],C[2], A[0],A[2]) < r;
+            || this._distToSegment(px, pz, C[0],C[2], A[0],A[2]) < r);
     }
 
     _sweptCircleVsSegment(cx, cz, vx, vz, ax, az, bx, bz, r) {

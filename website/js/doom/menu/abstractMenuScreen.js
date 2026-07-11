@@ -12,10 +12,10 @@ class AbstractMenuScreen {
      * @param {MenuDisplay}   display
      */
     constructor(navigator, display) {
-        this._navigator = navigator;
-        this._display   = display;
-        this._container = null;
-        this._statusEl  = null;
+        this._navigator   = navigator;
+        this._display     = display;
+        this._container   = null;
+        this._statusEl    = null;
         this._footerEl    = null;
         this._footerTimer = null;
     }
@@ -55,12 +55,33 @@ class AbstractMenuScreen {
         return this;
     }
 
-    isVisible() {
-        return (this._container !== null);
-    }
-
     _build() {
         throw new Error('AbstractMenuScreen._build must be implemented');
+    }
+
+    // Standard skeleton of the WAD sub-screens (difficulty, level list):
+    // title, panel and subtitle "<wad name> — <label>", plus the empty list.
+    _buildWadPanel(wadName, subtitleLabel) {
+        this._addTitle('Spipu-Doom');
+
+        const panel = this._addElement('div', 'doom-menu-panel');
+
+        const subTitle = this._addElement('div', 'doom-menu-subtitle', panel);
+        subTitle.textContent = wadName + ' — ' + subtitleLabel;
+
+        return {panel: panel, listEl: this._addList(panel)};
+    }
+
+    // Clickable list entry with its label; the returned item can carry extra
+    // children (e.g. a meta line).
+    _addListItem(listEl, labelText, onClick) {
+        const item = this._addElement('div', 'doom-menu-item', listEl);
+        item.addEventListener('click', onClick);
+
+        const label = this._addElement('div', 'doom-menu-item-label', item);
+        label.textContent = labelText;
+
+        return item;
     }
 
     // --- Footer (version + webapp stats, same live line as the debug HUD) ---

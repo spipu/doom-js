@@ -34,9 +34,6 @@ class MenuDisplay {
         return this._container;
     }
 
-    getRatio() {
-        return this._ratio;
-    }
 
     resize() {
         if (this._container === null) {

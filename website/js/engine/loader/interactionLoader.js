@@ -8,9 +8,6 @@ class InteractionLoader extends AbstractLoader {
         this._pendingEntities = [];
     }
 
-    _alreadyLoaded(url) {
-        return (this._loadedFiles[url] !== undefined ? this._loadedFiles[url] : null);
-    }
 
     _create(id, url, callback) {
         return new Interaction(id, url, callback);
@@ -32,7 +29,7 @@ class InteractionLoader extends AbstractLoader {
         const entity = this._create(
             this._entities.length,
             null,
-            () => {this._checkFullyLoaded(); }
+            () => this._checkFullyLoaded()
         );
 
         this._entities[entity.getId()] = entity;

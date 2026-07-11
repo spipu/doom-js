@@ -35,14 +35,7 @@ class DifficultyScreen extends AbstractMenuScreen {
     }
 
     _build() {
-        this._addTitle('Spipu-Doom');
-
-        const panel = this._addElement('div', 'doom-menu-panel');
-
-        const subTitle = this._addElement('div', 'doom-menu-subtitle', panel);
-        subTitle.textContent = this._wadMeta.name + ' — Difficulté';
-
-        const listEl = this._addList(panel);
+        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Difficulté');
 
         const actions = this._addElement('div', 'doom-menu-actions', panel);
         this._addButton('Retour', () => {
@@ -50,13 +43,9 @@ class DifficultyScreen extends AbstractMenuScreen {
         }, actions);
 
         for (const entry of this._skills) {
-            const item = this._addElement('div', 'doom-menu-item', listEl);
-            item.addEventListener('click', () => {
+            const item = this._addListItem(listEl, entry.name, () => {
                 this._onSelectSkill(entry.skill);
             });
-
-            const label = this._addElement('div', 'doom-menu-item-label', item);
-            label.textContent = entry.name;
 
             const meta = this._addElement('div', 'doom-menu-item-meta', item);
             meta.textContent = 'Niveau ' + entry.skill;

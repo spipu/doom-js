@@ -39,7 +39,7 @@ class SwitchInteraction extends AbstractInteraction {
             return;
         }
 
-        const minTime = (this._state ? this._minOnTime : this._minOffTime);
+        const minTime = ((this._state) ? this._minOnTime : this._minOffTime);
         if (this._mode !== 'once' && this._onTimer < minTime) {
             return;
         }
@@ -54,7 +54,11 @@ class SwitchInteraction extends AbstractInteraction {
             this._done = true;
         }
 
-        ((this._state) ? this._triggerOn(instance) : this._triggerOff(instance));
+        if (this._state) {
+            this._triggerOn(instance);
+        } else {
+            this._triggerOff(instance);
+        }
         this._lastInstance = instance;
     }
 

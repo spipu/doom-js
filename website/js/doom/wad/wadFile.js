@@ -41,28 +41,17 @@ class WadFile {
                 offset: this._view.getUint32(entryOffset, true),
                 size:   this._view.getUint32(entryOffset + 4, true)
             });
+            const lump = this._lumps[this._lumps.length - 1];
+            if (lump.offset + lump.size > this._buffer.byteLength) {
+                throw new WadError('invalid-format', 'Lump [' + lump.name + '] exceeds the file size');
+            }
         }
 
         return this;
     }
 
-    getType() {
-        this._requireParsed();
 
-        return this._type;
-    }
 
-    getLumpCount() {
-        this._requireParsed();
-
-        return this._lumps.length;
-    }
-
-    getLumps() {
-        this._requireParsed();
-
-        return this._lumps;
-    }
 
     /**
      * Return a DataView on the content of a lump (equiv. WAD.get).

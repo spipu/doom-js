@@ -14,13 +14,20 @@ class DoomSwitchInteraction extends SwitchInteraction {
      *                                       BACKWARD (lower-back 45, close lines shutting
      *                                       an opening door, raise lines lifting a lowered
      *                                       plat) — timeScale keeps the vanilla reverse speed
+     * @param {string|null} doorVariant    - per-trigger door cycle key (anim@speed)
+     * @param {int|null}    restIndex      - local texture index of the SW1 face
+     * @param {int|null}    swapIndex      - local texture index of the SW2 partner
      */
-    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets, doorVariant) {
+    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets, doorVariant, restIndex, swapIndex) {
         super(code);
 
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
         this._doorVariant    = (doorVariant ?? null);
+        // Actual local texture indices of the panel: rest = SW1 face, swap =
+        // SW2 partner (null on an invisible USE zone or a non-SW wall).
+        this._restIndex      = (restIndex ?? null);
+        this._swapIndex      = (swapIndex ?? null);
         this._exitCallback   = null;
         this._exitSecret     = false;
 
@@ -42,14 +49,10 @@ class DoomSwitchInteraction extends SwitchInteraction {
     }
 
     _triggerOn(instance) {
-        // Swap to SW2 only if it exists: a non-SW switch wall (or an invisible
-        // USE zone with no faces) has no index-2 texture — leave the face as is
-        // instead of blanking it to a null textureId.
-        const obj = instance.getObject();
-        const swapTo = obj.getTextureId(2);
-        if (swapTo !== undefined) {
-            obj.faceList.forEach(fc => { fc.textureId = swapTo; });
-        }
+        // Swap to SW2 only when the panel has a partner: a non-SW switch wall
+        // (or an invisible USE zone with no faces) keeps its face untouched
+        // instead of being blanked to a null textureId.
+        this._swapFaces(instance, this._swapIndex);
 
         for (const code of this._targets) {
             loader.instances().getByCode(code).start(this._doorVariant);
@@ -64,10 +67,19 @@ class DoomSwitchInteraction extends SwitchInteraction {
     }
 
     _triggerOff(instance) {
-        const obj = instance.getObject();
-        const swapTo = obj.getTextureId(1);
-        if (swapTo !== undefined) {
-            obj.faceList.forEach(fc => { fc.textureId = swapTo; });
+        this._swapFaces(instance, this._restIndex);
+    }
+
+    _swapFaces(instance, localIndex) {
+        if (localIndex === null) {
+            return;
         }
+        const swapTo = instance.getObject().getTextureId(localIndex);
+        if (swapTo === undefined) {
+            return;
+        }
+        instance.getObject().faceList.forEach((fc) => {
+            fc.textureId = swapTo;
+        });
     }
 }

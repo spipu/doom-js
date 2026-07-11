@@ -123,9 +123,9 @@ class WadLiftBuilder {
                 continue;
             }
 
-            const ownSd      = sidedefs[liftOnRight ? ld.right : ld.left];
-            const neighborSd  = sidedefs[liftOnRight ? ld.left : ld.right];
-            const neighborSec = sectors[liftOnRight ? lSi2 : rSi2];
+            const ownSd      = sidedefs[((liftOnRight) ? ld.right : ld.left)];
+            const neighborSd  = sidedefs[((liftOnRight) ? ld.left : ld.right)];
+            const neighborSec = sectors[((liftOnRight) ? lSi2 : rSi2)];
 
             // Texture: neighbour lower first, then own lower. Record the source
             // sidedef (for xo/yo) and its sector (for light/ch). null = bare edge.
@@ -155,7 +155,7 @@ class WadLiftBuilder {
         }
 
         for (const e of edges) {
-            const tex = (e.tex !== null) ? e.tex : fallbackTex;
+            const tex = ((e.tex !== null) ? e.tex : fallbackTex);
             if (tex === null) {
                 continue;   // no texture anywhere on this lift — skip (very rare)
             }
@@ -175,22 +175,21 @@ class WadLiftBuilder {
 
     _buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh) {
         const special = this._analysis.liftSectorSpecial[si] ?? 88;
-        const speed   = WadConstants.LIFT_SPEED_BY_SPECIAL[special] ?? 4;
+        const floor   = WadConstants.FLOOR_DOWN_BY_SPECIAL[special];
+        const speed   = floor.speed;
 
-        const xs = mesh.points.map((p) => p[0]);
-        const zs = mesh.points.map((p) => p[2]);
-        const dx = Math.max(...xs) - Math.min(...xs);
-        const dz = Math.max(...zs) - Math.min(...zs);
-        const radius = Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
+        const radius = WadMeshBuilder.xzActionRadius(mesh);
 
         const travelY = (origFh - minFh) * WadConstants.SCALE;
         const moveS   = (origFh - minFh) / (speed * 35.0);
         const waitS   = WadConstants.LIFT_WAIT_TICS / 35.0;
 
-        const anim     = WadConstants.LIFT_ANIM_BY_SPECIAL[special] ?? 'round-trip';
-        const trigger  = WadConstants.LIFT_TRIGGER_BY_SPECIAL[special] ?? 'action';
-        const loop     = WadConstants.LIFT_LOOP_BY_SPECIAL[special] ?? false;
-        const onlyOnce = WadConstants.LIFT_ONLY_ONCE_BY_SPECIAL[special] ?? false;
+        // Every floor-down element is driven externally (switch / walk zone),
+        // never by self-proximity — the instance trigger is always 'none'.
+        const anim     = floor.anim;
+        const trigger  = 'none';
+        const loop     = floor.loop;
+        const onlyOnce = floor.onlyOnce;
 
         let keyframes;
         if (anim === 'one-way') {

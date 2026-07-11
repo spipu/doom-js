@@ -301,7 +301,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                         uv = fract(v_uv);
                     }
                     vec4 t  = texture2D(u_tex, uv);
-                    if (t.a < 0.5) { discard; }
+                    if (t.a < 0.5) {
+                        discard;
+                    }
                     col = min(v_color * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
                 } else {

@@ -1,4 +1,45 @@
 class Matrix {
+    // Instance transform composition — the SINGLE source of truth shared by
+    // the render (Engine3d.drawInstance), the collision colliders and the
+    // world-center computation: position translation, base rotation X/Z/Y,
+    // then the animation delta translation and delta rotation X/Z/Y.
+    static composeInstanceTransform(tf) {
+        const [px, py, pz]    = tf.position;
+        const [irx, iry, irz] = tf.rotation;
+        const [dtx, dty, dtz] = tf.deltaTranslate;
+        const [drx, dry, drz] = tf.deltaRotate;
+        const m = new Matrix();
+        m.identity();
+        const apply = (fn, ...args) => {
+            const step = new Matrix();
+            step[fn](...args);
+            m.multiply(step);
+        };
+        apply('translation', px, py, pz);
+        if (irx) {
+            apply('rotationX', irx * DEG_TO_RAD);
+        }
+        if (irz) {
+            apply('rotationZ', irz * DEG_TO_RAD);
+        }
+        if (iry) {
+            apply('rotationY', iry * DEG_TO_RAD);
+        }
+        if (dtx || dty || dtz) {
+            apply('translation', dtx, dty, dtz);
+        }
+        if (drx) {
+            apply('rotationX', drx * DEG_TO_RAD);
+        }
+        if (drz) {
+            apply('rotationZ', drz * DEG_TO_RAD);
+        }
+        if (dry) {
+            apply('rotationY', dry * DEG_TO_RAD);
+        }
+        return m;
+    }
+
     constructor() {
         this.v    = [[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.]];
         this.stack = [];
@@ -34,15 +75,6 @@ class Matrix {
         return this;
     }
 
-    scale(sx, sy, sz) {
-        this.v = [
-            [sx,0.,0.,0.],
-            [0.,sy,0.,0.],
-            [0.,0.,sz,0.],
-            [0.,0.,0.,1.],
-        ];
-        return this;
-    }
 
     rotationX(rx) {
         const c = Math.cos(rx);
@@ -113,17 +145,4 @@ class Matrix {
         return this;
     }
 
-    draw() {
-        let txt = "----------------------\n";
-        for (let y = 0; y < 4; y++) {
-            txt += "[";
-            for (let x = 0; x < 4; x++) {
-                txt += this.v[x][y] + ' ';
-            }
-            txt += "]\n";
-        }
-        txt += "----------------------\n";
-        alert(txt);
-        return this;
-    }
 }

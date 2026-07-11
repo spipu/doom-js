@@ -15,7 +15,7 @@ class World extends AbstractLoadedEntity {
     finalizeInit() {
         this._collision = new Collision();
         this._collision.addMap(loader.objects().getByCode('map'));
-        loader.instances().getAll().forEach(inst => this._collision.addInstance(inst));
+        loader.instances().getAll().forEach((inst) => this._collision.addInstance(inst));
         // Snap player to floor on first load — maxSearchY caps to spawn Y to avoid snapping
         // onto overhead faces (arch tops, lift) that getFloor would otherwise pick as highest floor
         const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
@@ -29,8 +29,8 @@ class World extends AbstractLoadedEntity {
         const action = inputs.readButtonAction();
 
         // 1. Save instance transforms (needed for platform riding + blocking)
-        this.getInstances().filter(i => i.isCollidable())
-            .forEach(inst => inst.savePreviousTransform());
+        this.getInstances().filter((i) => i.isCollidable())
+            .forEach((inst) => inst.savePreviousTransform());
 
         // 2. Player input
         user.beginFrame(dt);
@@ -53,7 +53,7 @@ class World extends AbstractLoadedEntity {
         user.lookMouse(inputs.readJoy2DeltaX(dt), inputs.readJoy2DeltaY(dt));
 
         // 3. Animate instances
-        this.getInstances().forEach(inst => inst.update(dt, user, action));
+        this.getInstances().forEach((inst) => inst.update(dt, user, action));
 
         // 4. Update interactions
         loader.interactions().updateAll(dt);
@@ -71,7 +71,7 @@ class World extends AbstractLoadedEntity {
         this._collision.resolveObjectPlayerBlockage(user);
 
         // 9. Damage
-        this.getInstances().forEach(inst => inst.checkDamage(user, dt));
+        this.getInstances().forEach((inst) => inst.checkDamage(user, dt));
 
         // 10. Despawn instances flagged for removal this frame (e.g. picked-up
         // items) — done after all the per-frame loops so the list is never

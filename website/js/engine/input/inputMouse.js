@@ -15,6 +15,15 @@ class InputMouse {
             console.warn('InputMouse: pointer lock failed');
         });
 
+        // mouseup listened on the document, registered ONCE: with the
+        // pointer lock unavailable (some VMs) a release outside the canvas
+        // would never reach a canvas listener and the button would stay down.
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                this._leftClick = false;
+            }
+        });
+
         document.addEventListener('mousemove', (e) => {
             if (!this._locked) {
                 return;
@@ -34,18 +43,7 @@ class InputMouse {
 
         canvas.addEventListener('mousedown', (e) => {
             if (e.button === 0) {
-                this._leftClick  = true;
-            }
-            if (e.button === 2) {
-                this._rightClick = true;
-            }
-        });
-        canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 0) {
-                this._leftClick  = false;
-            }
-            if (e.button === 2) {
-                this._rightClick = false;
+                this._leftClick = true;
             }
         });
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -68,18 +66,13 @@ class InputMouse {
         return this._leftClick;
     }
 
-    isRightClickDown() {
-        return this._rightClick;
-    }
-
     // --- Internal ---
 
     _reset() {
-        this._dx         = 0;
-        this._dy         = 0;
-        this._locked     = false;
-        this._leftClick  = false;
-        this._rightClick = false;
+        this._dx        = 0;
+        this._dy        = 0;
+        this._locked    = false;
+        this._leftClick = false;
     }
 
     _requestLock() {

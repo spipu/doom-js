@@ -11,6 +11,38 @@ class WadMeshBuilder {
         return {points: [], faces: []};
     }
 
+    // USE-action radius of an instance mesh: half its XZ bounding diagonal
+    // plus the action margin (DOOR_ACTION_RADIUS).
+    static xzActionRadius(mesh) {
+        const xs = mesh.points.map((p) => p[0]);
+        const zs = mesh.points.map((p) => p[2]);
+        const dx = Math.max(...xs) - Math.min(...xs);
+        const dz = Math.max(...zs) - Math.min(...zs);
+
+        return Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
+    }
+
+    // Invisible trigger zone on a linedef, shared by the walk triggers, the
+    // teleporters and the invisible USE switches: a one-point mesh (getCenter =
+    // the zone centre) at the middle of the line, at player-centre height above
+    // the front sector floor, with a radius spanning the whole line + margin.
+    static buildLineZone(level, ld) {
+        const {vertexes, sidedefs, sectors} = level;
+        const SCALE = WadConstants.SCALE;
+
+        const [dx1, dy1] = vertexes[ld.v1];
+        const [dx2, dy2] = vertexes[ld.v2];
+        const fh = ((ld.right >= 0) ? sectors[sidedefs[ld.right].sector].fh : 0);
+        const [cwx, cwz] = WadGeometry.doomToWorld((dx1 + dx2) / 2, (dy1 + dy2) / 2);
+        const cwy = fh * SCALE + (WadConstants.PLAYER_HEIGHT / 2);
+        const lenWorld = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2) * SCALE;
+
+        const mesh = WadMeshBuilder.newMesh();
+        mesh.points.push([cwx, cwy, cwz]);
+
+        return {mesh: mesh, radius: (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS};
+    }
+
     /**
      * Append a textured wall quad (two triangles) to the mesh.
      * flip=false → front face (normal on the right-hand side of v1→v2).

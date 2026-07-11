@@ -2,18 +2,18 @@ class ScreenManager {
     constructor(screenId, options) {
         options = options ?? {};
 
-        this._screen     = document.getElementById(screenId);
-        this._engine     = null;
-        this._hud        = null;
-        this._fullscreen     = (options.fullscreen === true);
-        this._screenWidth    = options.width ?? null;
-        this._screenHeight   = options.height ?? null;
-        this._viewPortWidth  = options.viewPortWidth ?? 64;
-        this._virtualWidth   = options.virtualWidth ?? null;
-        this._virtualHeight  = options.virtualHeight ?? null;
+        this._screen            = document.getElementById(screenId);
+        this._engine            = null;
+        this._hud               = null;
+        this._fullscreen        = (options.fullscreen === true);
+        this._screenWidth       = options.width ?? null;
+        this._screenHeight      = options.height ?? null;
+        this._viewPortWidth     = options.viewPortWidth ?? 64;
+        this._virtualWidth      = options.virtualWidth ?? null;
+        this._virtualHeight     = options.virtualHeight ?? null;
         this._hasVirtualDisplay = (this._virtualWidth !== null && this._virtualHeight !== null);
-        this._ratio          = 1;
-        this._canvasId       = screenId + '_canvas';
+        this._ratio             = 1;
+        this._canvasId          = screenId + '_canvas';
 
         this._initContainer();
         this._initDisplay();

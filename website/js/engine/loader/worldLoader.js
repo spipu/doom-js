@@ -27,7 +27,7 @@ class WorldLoader {
         }
 
         this._loaded = false;
-        this._world = new World(0, url, () => {this._checkFullyLoaded(); });
+        this._world = new World(0, url, () => this._checkFullyLoaded());
         this._initialiseEntityFromUrl(this._world);
     }
 
@@ -40,38 +40,38 @@ class WorldLoader {
         }
 
         this._loaded = false;
-        this._world = new World(0, null, () => {this._checkFullyLoaded(); });
+        this._world = new World(0, null, () => this._checkFullyLoaded());
 
-        this._world._user         = this._initUser(data.user);
-        this._world._background   = data.background || [0, 0, 0];
-        this._world._sky          = data.sky || null;
-        this._world._lightAmbient = data.lights.ambient;
-        this._world._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
-        this._world.setLoaded();
+        this._populateWorld(this._world, data);
+    }
+
+    // Shared by the in-memory and the URL loading paths.
+    _populateWorld(world, data) {
+        world._user         = this._initUser(data.user);
+        world._background   = data.background || [0, 0, 0];
+        world._sky          = data.sky || null;
+        world._lightAmbient = data.lights.ambient;
+        world._lights       = data.lights.sources.map((s) => new Light(s.color, s.range, s.position));
+        world.setLoaded();
     }
 
     _initialiseEntityFromUrl(entity) {
-        appBootstrap.fetchJson(entity.getUrl(), data => {
+        appBootstrap.fetchJson(entity.getUrl(), (data) => {
 
             loader.objects().loadByCode('map', data.map);
-            (data.instances || []).forEach(url => loader.instances().load(url));
-            (data.interactions || []).forEach(url => loader.interactions().load(url));
+            (data.instances || []).forEach((url) => loader.instances().load(url));
+            (data.interactions || []).forEach((url) => loader.interactions().load(url));
 
-            entity._user         = this._initUser(data.user);
-            entity._background   = data.background || [0, 0, 0];
-            entity._sky          = data.sky || null;
-            entity._lightAmbient = data.lights.ambient;
-            entity._lights       = data.lights.sources.map(s => new Light(s.color, s.range, s.position));
-            entity.setLoaded();
+            this._populateWorld(entity, data);
         });
     }
-    
+
     _initUser(dataUser) {
         const UserClass = this._userClass;
         const user = new UserClass(dataUser.position[0], dataUser.position[1], dataUser.position[2], dataUser.yaw, dataUser.pitch, dataUser.maxEnergy)
             .setHeight(dataUser.height)
             .setEyeRatio(dataUser.eyeRatio);
-        
+
         if (dataUser.radius          !== undefined) {
             user.setRadius(dataUser.radius);
         }

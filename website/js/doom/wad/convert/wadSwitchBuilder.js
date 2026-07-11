@@ -18,9 +18,9 @@ class WadSwitchBuilder {
         this._analysis         = analysis;
         this._bank             = bank;
         this._builtLiftCodes   = builtLiftCodes;
-        this._builtDoorCodes   = builtDoorCodes ?? new Set();
-        this._builtStairCodes  = builtStairCodes ?? new Set();
-        this._builtRisingCodes = builtRisingCodes ?? new Set();
+        this._builtDoorCodes   = builtDoorCodes;
+        this._builtStairCodes  = builtStairCodes;
+        this._builtRisingCodes = builtRisingCodes;
     }
 
     /**
@@ -67,7 +67,7 @@ class WadSwitchBuilder {
             return null;
         }
 
-        const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? ['once', null, null];
+        const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? WadConstants.SWITCH_INTERACTION_DEFAULT;
 
         return {
             code:     switchName,
@@ -86,23 +86,33 @@ class WadSwitchBuilder {
                 interaction:       switchName,
                 // Locked-door switch (99/133-137): the key is checked at USE
                 // time on the trigger, like vanilla EV_DoLockedDoor.
-                keyRequired:       WadConstants.DOOR_KEY_BY_SPECIAL[ld.special] ?? null,
+                keyRequired:       WadConstants.DOOR_BY_SPECIAL[ld.special]?.key ?? null,
                 keyframes:         []
             },
             interactionSpec: {
                 code:           switchName,
-                mode:           interactionConfig[0],
-                tOn:            interactionConfig[1],
-                tOff:           interactionConfig[2],
+                mode:           interactionConfig.mode,
+                tOn:            interactionConfig.minOnMs,
+                tOff:           interactionConfig.minOffMs,
+                restIndex:      (geom.restIndex ?? null),
+                swapIndex:      (geom.swapIndex ?? null),
                 targets:        split.start,
                 reverseTargets: split.reverse,
                 // Per-trigger door cycle (OWC vs open-stay on the same tag);
                 // null for non-door specials, ignored by variant-less targets.
-                doorVariant:    WadConstants.DOOR_ANIM_BY_SPECIAL[ld.special] ?? null,
+                doorVariant:    WadSwitchBuilder.doorVariantKey(ld.special),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
             }
         };
+    }
+
+    // Per-trigger door cycle key (anim@speed, matching the variant keys of the
+    // door instances); null for non-door specials. Static: shared with the
+    // walk-trigger builder.
+    static doorVariantKey(special) {
+        const door = WadConstants.DOOR_BY_SPECIAL[special];
+        return ((door !== undefined) ? door.anim + '@' + door.speed : null);
     }
 
     // Visible switch panel: a textured quad swapping SW1↔SW2 on trigger. Its
@@ -140,11 +150,18 @@ class WadSwitchBuilder {
             wallLen, tw, th,
             {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light});
 
-        // SW1 = local index 1 (referenced by the faces), SW2 = local index 2
+        // remapLocalTextures orders the LOCAL indices by ascending bank index:
+        // when the SW2 texture entered the bank before the SW1 (e.g. used as a
+        // plain decoration elsewhere), local 1 is the SW2 — so the actual local
+        // positions are computed here and carried to the interaction instead of
+        // assuming the historic "SW1=1, SW2=2" contract.
         const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
+        const restIndex = localIndices.indexOf(ti) + 1;
+        const swapIndex = ((ti2 >= 0) ? localIndices.indexOf(ti2) + 1 : null);
 
-        return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces'};
+        return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
+            restIndex: restIndex, swapIndex: swapIndex};
     }
 
     // Invisible USE zone: a switch-special line with no SWxxx graphic (e.g. an
@@ -152,20 +169,9 @@ class WadSwitchBuilder {
     // lift riser, a step) is already drawn elsewhere; pressing within the radius
     // fires the targets. The USE analog of a walk-trigger zone.
     _buildUseZoneGeometry(ld) {
-        const SCALE = WadConstants.SCALE;
-        const {vertexes, sidedefs, sectors} = this._level;
+        const zone = WadMeshBuilder.buildLineZone(this._level, ld);
 
-        const [dx1, dy1] = vertexes[ld.v1];
-        const [dx2, dy2] = vertexes[ld.v2];
-        const fh = ((ld.right >= 0) ? sectors[sidedefs[ld.right].sector].fh : 0);
-        const [cwx, cwz] = WadGeometry.doomToWorld((dx1 + dx2) / 2, (dy1 + dy2) / 2);
-        const cwy = fh * SCALE + (WadConstants.PLAYER_HEIGHT / 2);
-        const lenWorld = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2) * SCALE;
-
-        const mesh = WadMeshBuilder.newMesh();
-        mesh.points.push([cwx, cwy, cwz]);
-
-        return {textures: [], mesh: mesh, radius: (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS, collisionShape: 'none'};
+        return {textures: [], mesh: zone.mesh, radius: zone.radius, collisionShape: 'none'};
     }
 
     // Action radius: half the 3D bounding diagonal + margin. The trigger is 3D

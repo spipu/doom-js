@@ -16,18 +16,17 @@ class WadWalkTriggerBuilder {
     /**
      * @param {object}         level
      * @param {object}         analysis
-     * @param {WadTextureBank} bank
      * @param {Set<string>}    builtLiftCodes
      * @param {Set<string>}    builtRisingCodes
      * @param {Set<string>}    builtDoorCodes
+     * @param {Set<string>}    builtStairCodes
      */
-    constructor(level, analysis, bank, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
+    constructor(level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
         this._level            = level;
         this._analysis         = analysis;
-        this._bank             = bank;
-        this._builtLiftCodes   = builtLiftCodes ?? new Set();
-        this._builtRisingCodes = builtRisingCodes ?? new Set();
-        this._builtDoorCodes   = builtDoorCodes ?? new Set();
+        this._builtLiftCodes   = builtLiftCodes;
+        this._builtRisingCodes = builtRisingCodes;
+        this._builtDoorCodes   = builtDoorCodes;
         this._builtStairCodes  = builtStairCodes ?? new Set();
     }
 
@@ -48,8 +47,7 @@ class WadWalkTriggerBuilder {
     // --- Internal ---
 
     _buildWalkTrigger(wt) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const SCALE = WadConstants.SCALE;
+        const {linedefs} = this._level;
 
         // An exit line ends the level and ignores its tag (vanilla Doom): no
         // targets, and the zone is kept even though nothing is tag-resolved.
@@ -60,22 +58,10 @@ class WadWalkTriggerBuilder {
         }
         const split = WadMapAnalyzer.splitReverseTargets(this._analysis, wt.special, targets);
 
+        // Zone at floor level on the linedef, so a player walking the line
+        // crosses it — unlike self-proximity on a raised lift.
         const ld = linedefs[wt.ldIdx];
-        const [dx1, dy1] = vertexes[ld.v1];
-        const [dx2, dy2] = vertexes[ld.v2];
-        // Zone centre = middle of the linedef, at player-centre height above the
-        // front sector floor (the proximity test is 3D). Floor level, so a player
-        // walking the line crosses it — unlike self-proximity on a raised lift.
-        const fh = ((ld.right >= 0) ? sectors[sidedefs[ld.right].sector].fh : 0);
-        const [cwx, cwz] = WadGeometry.doomToWorld((dx1 + dx2) / 2, (dy1 + dy2) / 2);
-        const cwy = fh * SCALE + (WadConstants.PLAYER_HEIGHT / 2);
-
-        const lenWorld = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2) * SCALE;
-        const radius   = (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS;
-
-        // Invisible object: one point (no faces) so getCenter = the zone centre.
-        const mesh = WadMeshBuilder.newMesh();
-        mesh.points.push([cwx, cwy, cwz]);
+        const {mesh, radius} = WadMeshBuilder.buildLineZone(this._level, ld);
 
         const walkName = 'walk_' + wt.ldIdx;
         // Exits are all W1 (once); other specials carry their own W1/WR flag.
@@ -106,7 +92,7 @@ class WadWalkTriggerBuilder {
                 stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
                 // Per-trigger door cycle (OWC vs open-stay on the same tag);
                 // null for non-door specials, ignored by variant-less targets.
-                doorVariant:    WadConstants.DOOR_ANIM_BY_SPECIAL[wt.special] ?? null,
+                doorVariant:    WadSwitchBuilder.doorVariantKey(wt.special),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }

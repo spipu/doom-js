@@ -12,9 +12,7 @@ class MenuNavigator {
         this._difficultyScreen = new DifficultyScreen(this, this._display);
         this._levelListScreen  = new LevelListScreen(this, this._display, this._registry);
 
-        this._currentScreen     = null;
-        this._selectedWad       = null;
-        this._selectedLevel     = null;
+        this._currentScreen      = null;
         this._selectedDifficulty = 3;
     }
 
@@ -34,21 +32,13 @@ class MenuNavigator {
      * @param {number} skill   difficulty 1..5 for the direct shortcut (default 3)
      */
     start(wadName = null, levelCode = null, spawnOverride = null, skill = 3) {
-        this._display.init();
-
-        this._registry.init()
-            .then(() => {
-                if (wadName !== null) {
-                    this._startDirect(wadName, levelCode, spawnOverride, skill);
-                    return;
-                }
-                this.showWadList();
-            })
-            .catch(() => {
-                this._showFallback();
-            });
-
-        return this;
+        return this._boot(() => {
+            if (wadName !== null) {
+                this._startDirect(wadName, levelCode, spawnOverride, skill);
+                return;
+            }
+            this.showWadList();
+        });
     }
 
     /**
@@ -58,12 +48,18 @@ class MenuNavigator {
      * @param {object} meta
      */
     startAtLevels(meta) {
+        return this._boot(() => {
+            this._switchTo(this._levelListScreen.setWad(meta));
+        });
+    }
+
+    // Shared boot: display + registry init, then the entry action; a storage
+    // failure falls back to the degraded screen.
+    _boot(onReady) {
         this._display.init();
 
         this._registry.init()
-            .then(() => {
-                this._switchTo(this._levelListScreen.setWad(meta));
-            })
+            .then(onReady)
             .catch(() => {
                 this._showFallback();
             });
@@ -100,18 +96,7 @@ class MenuNavigator {
      * @param {string} levelName
      */
     startGame(meta, levelName) {
-        this._selectedWad   = meta;
-        this._selectedLevel = levelName;
-
         this._launchFromWad(meta, levelName);
-    }
-
-    getSelectedWad() {
-        return this._selectedWad;
-    }
-
-    getSelectedLevel() {
-        return this._selectedLevel;
     }
 
     // --- Internal ---
@@ -127,9 +112,16 @@ class MenuNavigator {
     async _launchFromWad(meta, levelName, spawnOverride = null) {
         const modal = new MenuModal(this._display)
             .showLoading('Chargement du niveau ' + levelName + ' de ' + meta.name);
+        await this._launchGame(meta, levelName, spawnOverride, modal);
+    }
 
+    // Shared tail of both launch paths (menu click and direct test shortcut):
+    // fetch the WAD, resolve the level (unknown/null falls back to the first
+    // one) and start the game, with the same failure modal on any error.
+    async _launchGame(meta, levelCode, spawnOverride, modal) {
         try {
-            const wadFile = await this._registry.getWadFile(meta.id);
+            const wadFile   = await this._registry.getWadFile(meta.id);
+            const levelName = this._resolveLevel(wadFile, levelCode);
             const game = new DoomGame();
             await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
@@ -180,21 +172,7 @@ class MenuNavigator {
 
         const modal = new MenuModal(this._display)
             .showLoading('Chargement de ' + meta.name);
-
-        try {
-            const wadFile   = await this._registry.getWadFile(meta.id);
-            const levelName = this._resolveLevel(wadFile, levelCode);
-
-            this._selectedWad   = meta;
-            this._selectedLevel = levelName;
-
-            const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
-            modal.close();
-            this._closeMenus();
-        } catch (error) {
-            this._showBuildError(error, modal);
-        }
+        await this._launchGame(meta, levelCode, spawnOverride, modal);
     }
 
     /**

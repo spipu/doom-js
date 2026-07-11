@@ -22,6 +22,9 @@ class AbstractLoader {
         }
 
         const id = this.load(url);
+        if (this._entities[id]._code !== null && this._entities[id]._code !== code) {
+            throw this._generateException('Url [' + url + '] is already registered as [' + this._entities[id]._code + ']');
+        }
         this._codeRegistry[code] = id;
         this._entities[id]._code = code;
     }
@@ -44,7 +47,7 @@ class AbstractLoader {
         const entity = this._create(
             this._entities.length,
             url,
-            () => {this._checkFullyLoaded(); }
+            () => this._checkFullyLoaded()
         );
 
         if (url !== null) {
@@ -59,7 +62,7 @@ class AbstractLoader {
     // Create an entity directly from in-memory data, without any URL or fetch.
     // Does not touch _loadedFiles (no URL to deduplicate).
     loadFromData(code, data) {
-        const entity = this._create(this._entities.length, null, () => { this._checkFullyLoaded(); });
+        const entity = this._create(this._entities.length, null, () => this._checkFullyLoaded());
         this._registerNewEntity(code, entity);
         this._populateFromData(entity, data);
         entity.setLoaded();
@@ -110,12 +113,15 @@ class AbstractLoader {
         throw this._generateException('Not implemented');
     }
 
+    // URL → id dedup, default for every loader (load() feeds _loadedFiles).
+    // Object3dLoader overrides it to null: objects.html reloads the same URL
+    // into a fresh entity on purpose.
     _alreadyLoaded(url) {
-        throw this._generateException('Not implemented');
+        return ((url !== null && this._loadedFiles[url] !== undefined) ? this._loadedFiles[url] : null);
     }
 
     _checkFullyLoaded() {
-        if (this._entities.every(e => e.isLoaded())) {
+        if (this._entities.every((e) => e.isLoaded())) {
             this._loaded = true;
             this._loadedCallback();
         }

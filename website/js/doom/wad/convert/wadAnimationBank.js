@@ -64,7 +64,7 @@ class WadAnimationBank {
             if (ids.length > 1) {
                 // Guard a malformed/zero speed (would give a 0/NaN frame duration);
                 // fall back to the vanilla default of 8 tics.
-                const tics = ((sequence.speedTics > 0) ? sequence.speedTics : 8);
+                const tics = ((sequence.speedTics > 0) ? sequence.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
                 animMap[ids[0]] = {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
             }
         }
@@ -91,7 +91,7 @@ class WadAnimationBank {
                 ids.push(this._bank.getLoaderId(idx));
             }
         }
-        const tics = ((seq !== undefined && seq.speedTics > 0) ? seq.speedTics : 8);
+        const tics = ((seq !== undefined && seq.speedTics > 0) ? seq.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
 
         return {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
     }
