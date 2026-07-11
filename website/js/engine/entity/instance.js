@@ -28,6 +28,7 @@ class Instance extends AbstractLoadedEntity {
         this._trigger           = 'none';
         this._interactionRadius = null;
         this._triggerPlanar     = false;   // true = proximity tested on XZ only (walk-over lines)
+        this._autoStart         = false;   // true = start() once at load (timer-armed elements)
         this._interaction       = null;
         this._triggerCondition  = null;
 
@@ -48,6 +49,11 @@ class Instance extends AbstractLoadedEntity {
     finalizeInit() {
         this._object = loader.objects().get(this._objectId);
         this._computeWorldCenter();
+        // Timer-armed elements (e.g. Doom sector-special doors) play their
+        // cycle from level load, independently of the trigger.
+        if (this._autoStart) {
+            this.start();
+        }
     }
 
     _computeWorldCenter() {

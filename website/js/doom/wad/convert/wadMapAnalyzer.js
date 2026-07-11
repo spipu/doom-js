@@ -196,7 +196,11 @@ class WadMapAnalyzer {
                 ceilingRaise: WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(sp),
                 // Doom units left above the floor at the end of a close
                 // (crush ceilings 44/72 stop at floor + 8).
-                closeMargin:  WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[sp] ?? 0
+                closeMargin:  WadConstants.DOOR_CLOSE_FLOOR_MARGIN_BY_SPECIAL[sp] ?? 0,
+                // Level-load countdown (s) held before the cycle starts
+                // (timer doors, sector specials 10/14).
+                timerDelayS:  0,
+                autoStart:    false
             };
         };
 
@@ -237,6 +241,32 @@ class WadMapAnalyzer {
                     registerDoor(si, ld.special, 'none');
                     doorProps[si].close = true;
                 }
+            }
+        }
+
+        // Timer doors (SECTOR specials 10/14): armed at level load by a
+        // countdown, no linedef (P_SpawnSpecials). autoStart plays the cycle
+        // at load, independently of the trigger.
+        for (let si = 0; si < sectors.length; si++) {
+            const sp = sectors[si].special;
+            if (sp === WadConstants.SECTOR_DOOR_CLOSE_SPECIAL && sectors[si].ch > sectors[si].fh) {
+                // The sector may ALSO carry manual DR lines (MAP27): the trap
+                // keyframes own the panel (closed rest → open → hold up to the
+                // countdown → close) and a USE replays the same cycle to
+                // reopen — no softlock. Approximation: the reopened door holds
+                // the full countdown again instead of the 150-tic DR wait
+                // (one keyframe set per door).
+                registerDoor(si, -1, null);
+                doorProps[si].anim        = 'trap-close';
+                doorProps[si].onlyOnce    = false;
+                doorProps[si].autoStart   = true;
+                doorProps[si].timerDelayS = WadConstants.SECTOR_DOOR_CLOSE_DELAY_TICS / 35;
+            } else if (sp === WadConstants.SECTOR_DOOR_OPEN_SPECIAL && !doorSectorIds.has(si)) {
+                // Closed door running ONE open-wait-close cycle 5 min after load.
+                registerDoor(si, -1, 'none');
+                doorProps[si].onlyOnce    = true;
+                doorProps[si].autoStart   = true;
+                doorProps[si].timerDelayS = WadConstants.SECTOR_DOOR_OPEN_DELAY_TICS / 35;
             }
         }
 

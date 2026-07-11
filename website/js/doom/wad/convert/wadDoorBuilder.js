@@ -226,6 +226,17 @@ class WadDoorBuilder {
                 {t: moveS,     translate: [0, marginY, 0], rotate: [0, 0, 0]},
                 {t: 2 * moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
+        } else if (props.anim === 'trap-close') {
+            // Sector special 10: closed rest — the cycle opens the panel and
+            // holds it so the close STARTS exactly at the countdown (vanilla:
+            // 30 s after load), then shuts. autoStart plays it at level load;
+            // a USE (the sector's own DR lines) replays the cycle to reopen.
+            keyframes = [
+                {t: 0.0,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS,                     translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: props.timerDelayS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: props.timerDelayS + openS, translate: [0, 0, 0],       rotate: [0, 0, 0]}
+            ];
         } else if (props.anim === 'close-wait-open') {
             // Close, wait 30 s (close30ThenOpen), reopen to the parked rest.
             const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS / 35.0;
@@ -246,11 +257,19 @@ class WadDoorBuilder {
             ];
         }
 
+        // Timer door 14: hold the (closed) rest position for the level-load
+        // countdown, then run the normal open-wait-close cycle once. The trap
+        // shape (10) consumes its countdown inside its own keyframes above.
+        if (props.timerDelayS > 0 && props.anim !== 'trap-close') {
+            keyframes = [keyframes[0], ...keyframes.map((k) => ({...k, t: k.t + props.timerDelayS}))];
+        }
+
         return {
             code:              doorName,
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
             trigger:           props.trigger,
+            autoStart:         props.autoStart,
             loop:              props.loop,
             onlyOnce:          props.onlyOnce,
             collisionShape:    'faces',
