@@ -2,10 +2,10 @@ class AppBootstrap {
     /** @type {int}      */ currentFile;
     /** @type {Object}   */ version;
     /** @type {boolean}  */ offline;
-    /** @type int        */ loadingStepCurrent
-    /** @type int        */ loadingStepMax
-    /** @type int        */ loadingFileCurrent
-    /** @type int        */ loadingFileMax
+    /** @type {int}      */ loadingStepCurrent;
+    /** @type {int}      */ loadingStepMax;
+    /** @type {int}      */ loadingFileCurrent;
+    /** @type {int}      */ loadingFileMax;
     /** @type {boolean}  */ pwaMode;
     /** @type {boolean}  */ pwaDisabled;
     /** @type {string[]} */ definitionUrls;
@@ -349,7 +349,7 @@ class AppBootstrap {
     }
 
     jsFailed() {
-        this.resourceFailed(this.version.files['js'][this.currentFile])
+        this.resourceFailed(this.version.files['js'][this.currentFile]);
     }
 
     startApp() {
@@ -364,7 +364,6 @@ class AppBootstrap {
         }
 
         this.askStats();
-
 
         this.readyCallback();
     }
@@ -386,7 +385,7 @@ class AppBootstrap {
         this.logError('Error on loading file ' + url);
     }
 
-    async displayLoadingBar() {
+    displayLoadingBar() {
         let progressBar = document.getElementById('progressBar');
         if (!progressBar) {
             return;

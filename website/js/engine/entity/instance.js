@@ -373,15 +373,14 @@ class Instance extends AbstractLoadedEntity {
         this._animPlaying = false;
     }
 
-    // Plays the keyframes backward from the current position (same speeds).
-    // No-op while playing or when already back at the first keyframe. Clears
-    // _animDone so a finished one-way animation can be walked back; reaching
-    // the origin re-arms start() (the element is genuinely at rest again).
     /**
-     * Replay the keyframes backward from the current position. timeScale slows
-     * (< 1) or speeds up the reverse playback relative to the forward timeline —
-     * a floor lowered at turbo speed may legally rise back at the (slower)
-     * speed of the raise special that reverses it.
+     * Replay the keyframes backward from the current position. No-op while
+     * playing or when already back at the first keyframe. Clears _animDone so
+     * a finished one-way animation can be walked back; reaching the origin
+     * re-arms start() (the element is genuinely at rest again). timeScale
+     * slows (< 1) or speeds up the reverse playback relative to the forward
+     * timeline — a floor lowered at turbo speed may legally rise back at the
+     * (slower) speed of the raise special that reverses it.
      */
     startReverse(timeScale = 1) {
         if (this._animPlaying || this._animKeyframes.length === 0) {

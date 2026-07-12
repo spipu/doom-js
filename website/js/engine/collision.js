@@ -4,6 +4,7 @@ class Collision {
         this._dynamic     = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, _platformDeltaApplied}]
         this._boxes       = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
         this._prevUserPos = null; // player position at the end of the previous pressure pass
+        this._tfDelta     = {dx: 0, dy: 0, dz: 0, dRy: 0}; // scratch of _transformDelta
     }
 
     // --- Public setup ---
@@ -134,12 +135,7 @@ class Collision {
             if (!prevTf) {
                 continue;
             }
-            const curTf = dc.instance.getTransform();
-
-            const dx  = (curTf.position[0] + curTf.deltaTranslate[0]) - (prevTf.position[0] + prevTf.deltaTranslate[0]);
-            const dy  = (curTf.position[1] + curTf.deltaTranslate[1]) - (prevTf.position[1] + prevTf.deltaTranslate[1]);
-            const dz  = (curTf.position[2] + curTf.deltaTranslate[2]) - (prevTf.position[2] + prevTf.deltaTranslate[2]);
-            const dRy = (curTf.rotation[1] + curTf.deltaRotate[1]) - (prevTf.rotation[1] + prevTf.deltaRotate[1]);
+            const {dx, dy, dz, dRy} = this._transformDelta(dc.instance.getTransform(), prevTf);
 
             if (Math.abs(dx) < 1e-8 && Math.abs(dy) < 1e-8 && Math.abs(dz) < 1e-8 && Math.abs(dRy) < 1e-8) {
                 continue;
@@ -352,19 +348,23 @@ class Collision {
         return ((floorY !== -Infinity) && (Math.abs(user.y - floorY) <= 0.15));
     }
 
-    // Same frame-delta test as applyPlatformRiding
+    // Frame delta of a mover between two transforms (shared scratch object)
+    _transformDelta(cur, prev) {
+        const d = this._tfDelta;
+        d.dx  = (cur.position[0] + cur.deltaTranslate[0]) - (prev.position[0] + prev.deltaTranslate[0]);
+        d.dy  = (cur.position[1] + cur.deltaTranslate[1]) - (prev.position[1] + prev.deltaTranslate[1]);
+        d.dz  = (cur.position[2] + cur.deltaTranslate[2]) - (prev.position[2] + prev.deltaTranslate[2]);
+        d.dRy = (cur.rotation[1] + cur.deltaRotate[1]) - (prev.rotation[1] + prev.deltaRotate[1]);
+        return d;
+    }
+
     _moverMovedSince(dc, prev) {
-        const cur = dc.instance.getTransform();
-        const dx  = (cur.position[0] + cur.deltaTranslate[0]) - (prev.position[0] + prev.deltaTranslate[0]);
-        const dy  = (cur.position[1] + cur.deltaTranslate[1]) - (prev.position[1] + prev.deltaTranslate[1]);
-        const dz  = (cur.position[2] + cur.deltaTranslate[2]) - (prev.position[2] + prev.deltaTranslate[2]);
-        const dRy = (cur.rotation[1] + cur.deltaRotate[1]) - (prev.rotation[1] + prev.deltaRotate[1]);
-        return (Math.abs(dx) >= 1e-8 || Math.abs(dy) >= 1e-8 || Math.abs(dz) >= 1e-8 || Math.abs(dRy) >= 1e-8);
+        const d = this._transformDelta(dc.instance.getTransform(), prev);
+        return (Math.abs(d.dx) >= 1e-8 || Math.abs(d.dy) >= 1e-8 || Math.abs(d.dz) >= 1e-8 || Math.abs(d.dRy) >= 1e-8);
     }
 
     _moverFrameDeltaY(dc, prev) {
-        const cur = dc.instance.getTransform();
-        return (cur.position[1] + cur.deltaTranslate[1]) - (prev.position[1] + prev.deltaTranslate[1]);
+        return this._transformDelta(dc.instance.getTransform(), prev).dy;
     }
 
     // --- Private: collider builders ---
@@ -380,15 +380,19 @@ class Collision {
             if (!tri) {
                 continue;
             }
-            if (tri.n[1] > 0.7) {
-                floors.push(tri);
-            } else if (tri.n[1] < -0.7) {
-                ceilings.push(tri);
-            } else {
-                walls.push(tri);
-            }
+            this._classifyTri(tri, floors, ceilings, walls);
         }
         return { floors, ceilings, walls };
+    }
+
+    _classifyTri(tri, floors, ceilings, walls) {
+        if (tri.n[1] > 0.7) {
+            floors.push(tri);
+        } else if (tri.n[1] < -0.7) {
+            ceilings.push(tri);
+        } else {
+            walls.push(tri);
+        }
     }
 
     _makeTri(A, B, C) {
@@ -424,13 +428,7 @@ class Collision {
             if (!tri) {
                 continue;
             }
-            if (tri.n[1] > 0.7) {
-                floors.push(tri);
-            } else if (tri.n[1] < -0.7) {
-                ceilings.push(tri);
-            } else {
-                walls.push(tri);
-            }
+            this._classifyTri(tri, floors, ceilings, walls);
         }
         dc.floors   = floors;
         dc.ceilings = ceilings;
@@ -439,7 +437,6 @@ class Collision {
         const cw = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         dc.centerWorld = [cw[0], cw[1], cw[2]];
     }
-
 
     // --- Private: wall resolution ---
 

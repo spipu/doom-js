@@ -107,21 +107,21 @@ class WadLiftBuilder {
                 continue;
             }
 
-            const ownSd      = sidedefs[((liftOnRight) ? ld.right : ld.left)];
-            const neighborSd  = sidedefs[((liftOnRight) ? ld.left : ld.right)];
-            const neighborSec = sectors[((liftOnRight) ? lSi2 : rSi2)];
+            const ownSd        = sidedefs[((liftOnRight) ? ld.right : ld.left)];
+            const neighbourSd  = sidedefs[((liftOnRight) ? ld.left : ld.right)];
+            const neighbourSec = sectors[((liftOnRight) ? lSi2 : rSi2)];
 
             // Texture: neighbour lower first, then own lower. Record the source
             // sidedef (for xo/yo) and its sector (for light/ch). null = bare edge.
-            let tex = validLower(neighborSd);
-            let srcSd = neighborSd;
-            let srcSec = neighborSec;
-            let srcSi = ((liftOnRight) ? lSi2 : rSi2);
+            let tex    = validLower(neighbourSd);
+            let srcSd  = neighbourSd;
+            let srcSec = neighbourSec;
+            let srcSi  = ((liftOnRight) ? lSi2 : rSi2);
             if (tex === null) {
-                tex = validLower(ownSd);
-                srcSd = ownSd;
+                tex    = validLower(ownSd);
+                srcSd  = ownSd;
                 srcSec = sectors[si];
-                srcSi = si;
+                srcSi  = si;
             }
             if ((tex !== null) && (fallbackTex === null)) {
                 fallbackTex = tex;

@@ -36,10 +36,10 @@ class DoomThingCatalog {
             skullPile:     new DoomDecoration({code: 'skullPile',     name: 'Skulls and candles', sprite: 'POL3A0', solid: true,  radius: 16 * WadConstants.SCALE}),
             burningBarrel: new DoomDecoration({code: 'burningBarrel', name: 'Burning barrel',     sprite: 'FCANA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             tallBlueTorch: new DoomDecoration({code: 'tallBlueTorch', name: 'Tall blue torch',    sprite: 'TBLUA0', solid: true,  radius: 16 * WadConstants.SCALE}),
-            tallGreenTorch:new DoomDecoration({code: 'tallGreenTorch',name: 'Tall green torch',   sprite: 'TGRNA0', solid: true,  radius: 16 * WadConstants.SCALE}),
+            tallGreenTorch: new DoomDecoration({code: 'tallGreenTorch', name: 'Tall green torch',   sprite: 'TGRNA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             tallRedTorch:  new DoomDecoration({code: 'tallRedTorch',  name: 'Tall red torch',     sprite: 'TREDA0', solid: true,  radius: 16 * WadConstants.SCALE}),
-            shortBlueTorch:new DoomDecoration({code: 'shortBlueTorch',name: 'Short blue torch',   sprite: 'SMBTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
-            shortGreenTorch:new DoomDecoration({code: 'shortGreenTorch',name: 'Short green torch',sprite: 'SMGTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
+            shortBlueTorch: new DoomDecoration({code: 'shortBlueTorch', name: 'Short blue torch',   sprite: 'SMBTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
+            shortGreenTorch: new DoomDecoration({code: 'shortGreenTorch', name: 'Short green torch', sprite: 'SMGTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             shortRedTorch: new DoomDecoration({code: 'shortRedTorch', name: 'Short red torch',    sprite: 'SMRTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             tallTechLamp:  new DoomDecoration({code: 'tallTechLamp',  name: 'Tall techno lamp',   sprite: 'TLMPA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             shortTechLamp: new DoomDecoration({code: 'shortTechLamp', name: 'Short techno lamp',  sprite: 'TLP2A0', solid: true,  radius: 16 * WadConstants.SCALE}),
@@ -60,14 +60,14 @@ class DoomThingCatalog {
             hangTwitching: new DoomDecoration({code: 'hangTwitching', name: 'Hanging twitching',  sprite: 'GOR1A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangArmsOut:   new DoomDecoration({code: 'hangArmsOut',   name: 'Hanging arms out',   sprite: 'GOR2A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangOneLeg:    new DoomDecoration({code: 'hangOneLeg',    name: 'Hanging one-legged', sprite: 'GOR3A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangLegsPair:  new DoomDecoration({code: 'hangLegsPair',  name: 'Hanging pair of legs',sprite: 'GOR4A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
+            hangLegsPair:  new DoomDecoration({code: 'hangLegsPair',  name: 'Hanging pair of legs', sprite: 'GOR4A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangLeg:       new DoomDecoration({code: 'hangLeg',       name: 'Hanging leg',        sprite: 'GOR5A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangGuts1:     new DoomDecoration({code: 'hangGuts1',     name: 'Hanging victim guts',sprite: 'HDB1A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
+            hangGuts1:     new DoomDecoration({code: 'hangGuts1',     name: 'Hanging victim guts', sprite: 'HDB1A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangGuts2:     new DoomDecoration({code: 'hangGuts2',     name: 'Hanging guts/brain', sprite: 'HDB2A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangTorso1:    new DoomDecoration({code: 'hangTorso1',    name: 'Hanging torso down', sprite: 'HDB3A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangTorso2:    new DoomDecoration({code: 'hangTorso2',    name: 'Hanging torso open', sprite: 'HDB4A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
             hangTorso3:    new DoomDecoration({code: 'hangTorso3',    name: 'Hanging torso 1leg', sprite: 'HDB5A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangTorso4:    new DoomDecoration({code: 'hangTorso4',    name: 'Hanging torso noleg',sprite: 'HDB6A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true})
+            hangTorso4:    new DoomDecoration({code: 'hangTorso4',    name: 'Hanging torso noleg', sprite: 'HDB6A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true})
         };
 
         this._thingTypes = {

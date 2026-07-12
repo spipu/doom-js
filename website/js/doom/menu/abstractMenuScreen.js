@@ -90,7 +90,7 @@ class AbstractMenuScreen {
         this._footerEl = this._addElement('div', 'doom-menu-footer');
         this._refreshFooter();
         appBootstrap.askStats();
-        this._footerTimer = setInterval(() => {this._refreshFooter(); }, 1000);
+        this._footerTimer = setInterval(() => this._refreshFooter(), 1000);
     }
 
     _refreshFooter() {
@@ -154,10 +154,6 @@ class AbstractMenuScreen {
 
     _clearStatus() {
         this._setStatus('');
-    }
-
-    showError(error) {
-        this._showError(error);
     }
 
     _showError(error) {

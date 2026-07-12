@@ -11,10 +11,11 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelName
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, game: DoomGame}
      *                  onLevelExit is wired on the exit switches; thingCatalog
      *                  (DoomGame) maps THING types to world sprites/pickups; skill
-     *                  (1..5, default 3) drives the single-player thing filtering.
+     *                  (1..5, default 3) drives the single-player thing filtering;
+     *                  game receives the level stats (secrets) and pickups.
      */
     constructor(wadFile, levelName, options = null) {
         options = options ?? {};

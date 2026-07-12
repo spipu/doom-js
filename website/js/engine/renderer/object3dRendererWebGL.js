@@ -1,5 +1,4 @@
 class Object3dRendererWebGL extends Object3dRendererBase {
-
     constructor() {
         super();
         this._program  = null;
@@ -148,10 +147,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         ]), gl.STATIC_DRAW);
     }
 
-    end(engine) {
-        // no-op
-    }
-
     draw(obj, engine) {
         const gl  = engine.scrCtx;
         if (!gl) {
@@ -241,7 +236,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
             gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
-
     }
 
     _getTexture(gl, texture) {
@@ -251,7 +245,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
-        const filter = (texture.isAlpha() ? gl.NEAREST : gl.LINEAR);
+        const filter = ((texture.isAlpha()) ? gl.NEAREST : gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
         // Always CLAMP_TO_EDGE: repetition is handled by fract() in the fragment shader,

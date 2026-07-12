@@ -39,19 +39,8 @@ class InstanceLoader extends AbstractLoader {
         delete this._entities[id];
     }
 
-
     _create(id, url, callback) {
         return new Instance(id, url, callback);
-    }
-
-    _initialiseEntityFromUrl(entity) {
-        appBootstrap.fetchJson(
-            entity.getUrl(),
-            (data) => {
-                this._populateFromData(entity, data);
-                entity.setLoaded();
-            }
-        );
     }
 
     // data.object: url string (loaded via Object3dLoader) or number (already loaded object id)

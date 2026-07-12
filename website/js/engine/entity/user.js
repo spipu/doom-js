@@ -25,8 +25,8 @@ class User {
         this._maxLean          = 0.8;
         this._leanSpeed        = 5.0;
         this._maxEnergy        = maxEnergy;
-        this._moveSpeed         = 0.003;
-        this._turnSpeed         = 0.1;
+        this._moveSpeed        = 0.003;
+        this._turnSpeed        = 0.1;
 
         // Physics state
         this._vy             = 0;

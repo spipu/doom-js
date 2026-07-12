@@ -23,16 +23,6 @@ class Object3dLoader extends AbstractLoader {
         return entity.getId();
     }
 
-    _initialiseEntityFromUrl(entity) {
-        appBootstrap.fetchJson(
-            entity.getUrl(),
-            (data) => {
-                this._populateFromData(entity, data);
-                entity.setLoaded();
-            }
-        );
-    }
-
     // Texture entries: url string (loaded via TextureLoader) or number (already loaded texture id)
     _populateFromData(entity, data) {
         (data.textures || []).forEach((t) => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
