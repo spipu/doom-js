@@ -20,7 +20,7 @@
     align-items: center;
     justify-content: center;
     /* bigger bottom padding: raises the centered block slightly */
-    padding: 1.5em 1.5em 3em;
+    padding: 1.2em 1.5em 2em;
 }
 
 /* --- Title (same identity as the loading screen) --- */
@@ -31,7 +31,7 @@
     font-weight: bold;
     letter-spacing: 0.25em;
     text-transform: uppercase;
-    margin-bottom: 0.9em;
+    margin-bottom: 0.4em;
     text-shadow: 0 0 0.8em rgba(192, 57, 43, 0.45);
 }
 
@@ -39,7 +39,7 @@
 
 .doom-menu-panel {
     width: 78%;
-    max-height: 74%;
+    max-height: 82%;
     display: flex;
     flex-direction: column;
     background: rgba(20, 8, 6, 0.55);
@@ -50,6 +50,7 @@
 }
 
 .doom-menu-subtitle {
+    flex-shrink: 0;
     color: rgba(255, 255, 255, 0.75);
     font-size: 1.05em;
     letter-spacing: 0.25em;
@@ -61,8 +62,12 @@
 
 /* --- List --- */
 
+/* Sized on its content (basis auto, no grow): the panel wraps the list
+   exactly, and only when the panel hits its max-height does the list — the
+   only shrinkable child — compress and scroll. A 0-basis flex would size the
+   auto-height panel slightly under the real content (spurious mini-scroll). */
 .doom-menu-list {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 3em;
     overflow-y: auto;
     margin-bottom: 0.7em;
@@ -88,6 +93,10 @@
     border-radius: 0.2em;
     cursor: pointer;
     color: #FFF;
+}
+
+.doom-menu-item:last-child {
+    margin-bottom: 0;
 }
 
 .doom-menu-item:hover {
@@ -139,6 +148,7 @@
 /* --- Add form --- */
 
 .doom-menu-form {
+    flex-shrink: 0;
     display: flex;
     gap: 0.5em;
     margin-bottom: 0.6em;
@@ -196,6 +206,7 @@
 }
 
 .doom-menu-actions {
+    flex-shrink: 0;
     display: flex;
     justify-content: flex-end;
     gap: 0.5em;
@@ -204,7 +215,7 @@
 /* --- Footer (version + webapp stats) --- */
 
 .doom-menu-footer {
-    margin-top: 1.2em;
+    margin-top: 0.8em;
     color: rgba(255, 255, 255, 0.25);
     font-size: 0.65em;
     letter-spacing: 0.15em;
