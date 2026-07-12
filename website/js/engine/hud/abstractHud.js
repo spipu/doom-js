@@ -26,6 +26,11 @@ class AbstractHud {
         this._container = container;
     }
 
+    // Show/hide the HUD (used by the Doom HUD coordinator to toggle views).
+    // No-op by default; concrete HUDs that own a root element override it.
+    setVisible(visible) {
+    }
+
     update() {
     }
 

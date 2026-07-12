@@ -26,6 +26,7 @@ class InputVirtualGamepad {
         this._overlay     = null;
         this._stickEls    = null;
         this._buttonEls   = null;
+        this._weaponEl    = null;
         this._visible     = false;
         this._deadZone    = 0.15;
         this._radiusRatio = 0.12;   // stick radius as a fraction of the display height
@@ -72,22 +73,27 @@ class InputVirtualGamepad {
             jump:   false,
             action: false,
             fire:   false,
-            pause:  false
+            pause:  false,
+            weaponNext: false
         };
 
         // touch identifier -> control owned by that finger
         this._touches = new Map();
+
+        // Weapon switch: a tap zone in the top-right (over the HUD ARMS panel)
+        // cycles to the next weapon. Rectangle in display fractions {x, y, w, h}.
+        this._weaponZone = { x: 0.70, y: 0.0, w: 0.30, h: 0.15 };
 
         // Button layout in fractions of the display (center x, center y, radius).
         // Radius is a fraction of the height so every button stays a circle.
         // The four action buttons ring the look stick in a cross, built from
         // its center so moving the stick moves its buttons with it. Positions
         // match the DualSense face buttons (standard mapping): action b3=△ top,
-        // jump b1=○ right, fire b2=□ left, crouch b0=✕ bottom. Pause keeps the
-        // top-right corner.
+        // jump b1=○ right, fire b2=□ left, crouch b0=✕ bottom. Pause sits just
+        // below the weapon tap zone so the two never overlap.
         const look = this._stickLayout.look;
         this._buttonLayout = {
-            pause:  { x: (look.x + ringX), y: (gapRight + btnR), r: btnR, label: '≡' },
+            pause:  { x: (look.x + ringX), y: (this._weaponZone.y + this._weaponZone.h + btnR + 0.02), r: btnR, label: '≡' },
             action: { x: look.x, y: (look.y - ringY), r: btnR, label: '☝︎' }, // ☝ up hand; FE0E forces monochrome (no emoji)
             jump:   { x: (look.x + ringX), y: look.y, r: btnR, label: '↑' },
             fire:   { x: (look.x - ringX), y: look.y, r: btnR, label: '⊕' },
@@ -161,6 +167,16 @@ class InputVirtualGamepad {
         return this._buttons.pause;
     }
 
+    // The top-right tap zone cycles to the next weapon. There is no previous
+    // binding on the virtual gamepad.
+    readButtonWeaponNext() {
+        return this._buttons.weaponNext;
+    }
+
+    readButtonWeaponPrev() {
+        return false;
+    }
+
     // --- DOM ---
 
     _buildOverlay(display) {
@@ -188,6 +204,8 @@ class InputVirtualGamepad {
         for (const name in this._buttonLayout) {
             this._buttonEls[name] = this._createButton(overlay, this._buttonLayout[name]);
         }
+
+        this._weaponEl = this._createWeaponZone(overlay);
 
         overlay.addEventListener('touchstart',  this._onTouchStart, { passive: false });
         overlay.addEventListener('touchmove',   this._onTouchMove,  { passive: false });
@@ -259,6 +277,44 @@ class InputVirtualGamepad {
         return el;
     }
 
+    // Rectangular tap zone in the top-right for the weapon switch, sized in
+    // fractions of the display. Faint dashed outline with a small glyph by
+    // default, tinted while pressed. Non-interactive (the overlay owns touches).
+    _createWeaponZone(overlay) {
+        const z = this._weaponZone;
+
+        const el = document.createElement('div');
+        el.style.position       = 'absolute';
+        el.style.left           = (z.x * 100) + '%';
+        el.style.top            = (z.y * 100) + '%';
+        el.style.width          = (z.w * 100) + '%';
+        el.style.height         = (z.h * 100) + '%';
+        el.style.boxSizing      = 'border-box';
+        el.style.border         = '2px dashed ' + this._color.btnBorder;
+        el.style.borderRadius   = '0.6em';
+        el.style.background      = 'transparent';
+        el.style.display         = 'flex';
+        el.style.alignItems      = 'flex-end';
+        el.style.justifyContent  = 'flex-start';
+        el.style.color           = this._color.btnLabel;
+        el.style.fontFamily      = 'monospace';
+        el.style.fontSize        = '5cqh';
+        el.style.padding         = '0.3em';
+        el.style.pointerEvents   = 'none';
+        el.textContent           = '⇆';
+        overlay.appendChild(el);
+        return el;
+    }
+
+    // Tints the weapon zone while it is held. No-op before the overlay is built.
+    _setWeaponPressed(pressed) {
+        if (this._weaponEl === null) {
+            return;
+        }
+        this._weaponEl.style.background  = ((pressed) ? this._color.btnDownFill   : 'transparent');
+        this._weaponEl.style.borderColor = ((pressed) ? this._color.btnDownBorder : this._color.btnBorder);
+    }
+
     // Lights the button up while it is held so the press is visible, and
     // restores the idle look on release. No-op before the overlay is built.
     _setButtonPressed(name, pressed) {
@@ -301,7 +357,7 @@ class InputVirtualGamepad {
         const rect = this._overlayRect();
         for (const touch of event.changedTouches) {
             const owned = this._touches.get(touch.identifier);
-            if ((owned === undefined) || (owned.kind === 'button')) {
+            if ((owned === undefined) || (owned.kind === 'button') || (owned.kind === 'weapon')) {
                 continue;
             }
             const px = touch.clientX - rect.left;
@@ -321,6 +377,11 @@ class InputVirtualGamepad {
             if (owned.kind === 'button') {
                 this._buttons[owned.button] = false;
                 this._setButtonPressed(owned.button, false);
+                continue;
+            }
+            if (owned.kind === 'weapon') {
+                this._buttons.weaponNext = false;
+                this._setWeaponPressed(false);
                 continue;
             }
             this._releaseStick(owned.kind);
@@ -344,12 +405,27 @@ class InputVirtualGamepad {
             return;
         }
 
+        if (this._hitWeaponZone(px, py, w, h)) {
+            this._buttons.weaponNext = true;
+            this._setWeaponPressed(true);
+            this._touches.set(touch.identifier, { kind: 'weapon' });
+            return;
+        }
+
         const stick = this._hitStick(px, py, w, h);
         if (stick !== null) {
             const owned = { kind: stick };
             this._touches.set(touch.identifier, owned);
             this._updateStick(owned, px, py, rect);
         }
+    }
+
+    // True if the point falls in the top-right weapon tap zone.
+    _hitWeaponZone(px, py, w, h) {
+        const z  = this._weaponZone;
+        const x0 = (z.x * w);
+        const y0 = (z.y * h);
+        return ((px >= x0) && (px <= (x0 + (z.w * w))) && (py >= y0) && (py <= (y0 + (z.h * h))));
     }
 
     // Returns the button name under the point, or null.
@@ -443,16 +519,18 @@ class InputVirtualGamepad {
         this._joy1.y = 0;
         this._joy2.x = 0;
         this._joy2.y = 0;
-        this._buttons.crouch = false;
-        this._buttons.jump   = false;
-        this._buttons.action = false;
-        this._buttons.fire   = false;
-        this._buttons.pause  = false;
+        this._buttons.crouch     = false;
+        this._buttons.jump       = false;
+        this._buttons.action     = false;
+        this._buttons.fire       = false;
+        this._buttons.pause      = false;
+        this._buttons.weaponNext = false;
         if (this._buttonEls !== null) {
             for (const name in this._buttonEls) {
                 this._setButtonPressed(name, false);
             }
         }
+        this._setWeaponPressed(false);
         if (this._stickEls !== null) {
             this._setKnob('move', 0, 0);
             this._setKnob('look', 0, 0);

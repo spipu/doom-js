@@ -1,5 +1,5 @@
 {
-    "version": "v1.263",
+    "version": "v1.269",
     "files": {
         "assets": [],
         "css": [
@@ -49,6 +49,8 @@
             "/js/doom/object/doomDecoration.js",
             "/js/doom/object/doomThingCatalog.js",
             "/js/doom/doomUser.js",
+            "/js/doom/hud/hudDoomDebug.js",
+            "/js/doom/hud/hudGameBar.js",
             "/js/doom/hud/hudDoom.js",
             "/js/doom/menu/menuDisplay.js",
             "/js/doom/menu/menuModal.js",

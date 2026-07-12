@@ -1,25 +1,28 @@
 class DoomGame {
     constructor() {
-        this._engine          = null;
-        this._world           = null;
-        this._screen          = null;
-        this._hud             = null;
-        this._inputs          = null;
-        this._wakeLock        = null;
-        this._wadFile         = null;
-        this._wadMeta         = null;
-        this._mapInfo         = null;
-        this._levelName       = null;
-        this._spawnOverride   = null;
-        this._skill           = 3;
-        this._carriedState    = null;
-        this._secretsFound    = 0;
-        this._secretsTotal    = 0;
-        this._pauseWasDown    = true;
-        this._cheatWasDown    = false;
-        this._running         = false;
-        this._transitioning   = false;
-        this._animateCallback = this._animate.bind(this);
+        this._engine            = null;
+        this._world             = null;
+        this._screen            = null;
+        this._hud               = null;
+        this._inputs            = null;
+        this._wakeLock          = null;
+        this._wadFile           = null;
+        this._wadMeta           = null;
+        this._mapInfo           = null;
+        this._levelName         = null;
+        this._spawnOverride     = null;
+        this._skill             = 3;
+        this._carriedState      = null;
+        this._secretsFound      = 0;
+        this._secretsTotal      = 0;
+        this._pauseWasDown      = true;
+        this._cheatWasDown      = false;
+        this._hudWasDown        = false;
+        this._weaponNextWasDown = false;
+        this._weaponPrevWasDown = false;
+        this._running           = false;
+        this._transitioning     = false;
+        this._animateCallback   = this._animate.bind(this);
 
         // Shared, immutable definitions (the per-player state lives on DoomUser)
         this._weapons   = {};
@@ -432,6 +435,26 @@ class DoomGame {
             this._applyCheatFullKit();
         }
         this._cheatWasDown = cheatDown;
+
+        // HUD toggle (press edge): switch between the game HUD and the debug HUD
+        const hudDown = this._inputs.readButtonToggleHud();
+        if (hudDown && !this._hudWasDown) {
+            this._hud.toggleMode();
+        }
+        this._hudWasDown = hudDown;
+
+        // Weapon switch (press edge): cycle owned weapons, wrapping both ways
+        const weaponNextDown = this._inputs.readButtonWeaponNext();
+        if (weaponNextDown && !this._weaponNextWasDown) {
+            this._world.getUser().nextWeapon();
+        }
+        this._weaponNextWasDown = weaponNextDown;
+
+        const weaponPrevDown = this._inputs.readButtonWeaponPrev();
+        if (weaponPrevDown && !this._weaponPrevWasDown) {
+            this._world.getUser().previousWeapon();
+        }
+        this._weaponPrevWasDown = weaponPrevDown;
 
         this._engine.calculateDeltaTime(timestamp);
         const dt = this._engine.getDeltaTime();

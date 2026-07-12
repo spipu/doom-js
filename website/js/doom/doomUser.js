@@ -46,6 +46,31 @@ class DoomUser extends User {
         return this._activeWeapon;
     }
 
+    // Cycle to the next owned weapon, in declaration (canonical) order, wrapping
+    // back to the first at the end. Drives the single-key weapon switch; no-op
+    // when nothing is owned. An unknown active weapon lands on the first owned.
+    nextWeapon() {
+        const owned = this.getOwnedWeaponCodes();
+        if (owned.length === 0) {
+            return this;
+        }
+        const index = owned.indexOf(this._activeWeapon);
+        this._activeWeapon = owned[(index + 1) % owned.length];
+        return this;
+    }
+
+    // Cycle to the previous owned weapon (same order, wrapping the other way).
+    // An unknown active weapon lands on the last owned.
+    previousWeapon() {
+        const owned = this.getOwnedWeaponCodes();
+        if (owned.length === 0) {
+            return this;
+        }
+        const index = owned.indexOf(this._activeWeapon);
+        this._activeWeapon = owned[((index <= 0) ? owned.length - 1 : index - 1)];
+        return this;
+    }
+
     // --- Ammo (shared pool by type) ---
     setAmmoMax(type, max) {
         this._ammoMax[type] = max;
