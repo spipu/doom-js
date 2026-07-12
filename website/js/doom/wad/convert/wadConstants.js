@@ -152,6 +152,63 @@ class WadConstants {
     static SECTOR_DOOR_CLOSE_DELAY_TICS = 30 * 35;
     static SECTOR_DOOR_OPEN_DELAY_TICS  = 5 * 60 * 35;
 
+    // --- Mover pressure (P_ChangeSector / T_MovePlane) ---
+
+    // A mover whose crush flag is TRUE keeps moving through a squeezed player
+    // and PIT_ChangeSector deals 10 hp every 4 tics; slow crushers (and the
+    // no-damage 44/72) drop to speed/8 while crushing (T_MoveCeiling).
+    static CRUSH_DAMAGE             = 10;
+    static CRUSH_DAMAGE_WINDOW_TICS = 4;
+    static PRESS_SLOW_FACTOR        = 0.125;
+
+    static crushDamageDescriptor() {
+        return {
+            delta:   WadConstants.CRUSH_DAMAGE,
+            windowS: WadConstants.CRUSH_DAMAGE_WINDOW_TICS * WadConstants.SECONDS_PER_TIC,
+        };
+    }
+
+    // Pressure profile of a door/ceiling special, from its table fields
+    // (p_doors.c T_VerticalDoor + p_ceilng.c EV_DoCeiling/T_MoveCeiling):
+    //  - crushers → crush=true, continue through the player; only the
+    //    CEILSPEED ones (25/49/73/141) slow to 1/8, the fast 6/77 do not.
+    //  - open round-trips → blocked while closing = go back up (reverse).
+    //  - 44/72 lowerAndCrush (the only close-stay with a closeMargin) →
+    //    crush=false despite the name: stall + 1/8 slowdown, NO damage.
+    //  - everything else (one-way opens, close-stay, close-wait-open,
+    //    trap-close) → stall ("DO NOT GO BACK UP!").
+    static doorPressProfile(anim, speedTics, closeMargin) {
+        if (anim === 'crusher') {
+            return {behavior: 'crush', slow: (speedTics === 1), damage: true};
+        }
+        if (anim === 'round-trip') {
+            return {behavior: 'reverse', slow: false, damage: false};
+        }
+        if ((anim === 'close-stay') && ((closeMargin ?? 0) > 0)) {
+            return {behavior: 'stall', slow: true, damage: false};
+        }
+        return {behavior: 'stall', slow: false, damage: false};
+    }
+
+    // Lifts (round-trip plats) blocked while rising go back down and re-wait
+    // (T_PlatRaise res==crushed → status=down, count=wait). Perpetuals stay
+    // on 'stall' (deliberate deviation: startReverse would end the loop at
+    // keyframe 0; the stall freezes pose AND clock, resuming exactly).
+    static floorDownPressBehavior(anim) {
+        return ((anim === 'round-trip') ? 'reverse' : 'stall');
+    }
+
+    // Rising floors: only the crush targets 56/65 (lowestCeilingCrush) carry
+    // the vanilla crush flag (EV_DoFloor raiseFloorCrush) — continue + damage,
+    // never slowed (floors have no 1/8 rule). Others stall (move undone).
+    static floorUpPressProfile(special) {
+        const entry = WadConstants.FLOOR_UP_BY_SPECIAL[special];
+        if ((entry !== undefined) && (entry.target === 'lowestCeilingCrush')) {
+            return {behavior: 'crush', slow: false, damage: true};
+        }
+        return {behavior: 'stall', slow: false, damage: false};
+    }
+
     // --- Sector light effects ---
 
     // p_spec.c P_SpawnSpecials → p_lights.c thinkers (one step per tic):

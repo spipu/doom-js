@@ -131,7 +131,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonCrouch();
         }
-        return this._keyboard.readKeyCtrl();
+        return this._keyboard.readKeyCrouch();
     }
 
     readButtonFire() {

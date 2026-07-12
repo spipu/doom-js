@@ -69,6 +69,9 @@ class InstanceLoader extends AbstractLoader {
         entity._triggerPlanar    = (data.triggerPlanar === true);
         entity._autoStart        = (data.autoStart === true);
         entity._damage           = data.damage || null;
+        entity._blockedBehavior  = (data.blockedBehavior ?? 'stall');
+        entity._blockedSlowFactor = (data.blockedSlowFactor ?? 1);
+        entity._crushDamage      = (data.crushDamage ?? null);
         entity._interaction      = data.interaction || null;
         entity._animKeyframes    = data.keyframes || [];
         entity._animVariants     = data.keyframeVariants || null;

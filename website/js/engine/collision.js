@@ -1,8 +1,9 @@
 class Collision {
     constructor() {
-        this._static  = []; // [{floors, ceilings, walls}]
-        this._dynamic = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, _platformDeltaApplied}]
-        this._boxes   = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
+        this._static      = []; // [{floors, ceilings, walls}]
+        this._dynamic     = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, _platformDeltaApplied}]
+        this._boxes       = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
+        this._prevUserPos = null; // player position at the end of the previous pressure pass
     }
 
     // --- Public setup ---
@@ -77,9 +78,10 @@ class Collision {
     }
 
     resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0) {
+        // A crush mover pressing the player is passable (vanilla lateral escape)
         const allWalls = [
             ...this._static.map((sc) => sc.walls),
-            ...this._dynamic.map((dc) => dc.walls),
+            ...this._dynamic.filter((dc) => !dc.instance.isCrushPassable()).map((dc) => dc.walls),
         ];
         const res = this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
         return this._resolveBoxes(res.x, res.z, r, feetY, h);
@@ -188,25 +190,47 @@ class Collision {
         }
     }
 
+    // Step 5b — mover-caused pressure ('stall'/'reverse'), resolved BEFORE the
+    // riding and the player's own movement: the mover is rolled back (and
+    // possibly reversed) while the player has not moved yet, so his movement
+    // resolution never sees the mover's advanced (overlapping) pose.
+    resolveMoverPressure(user) {
+        for (const dc of this._dynamic) {
+            if (!dc.instance.isCollidable()) {
+                continue;
+            }
+            if (dc.instance.getBlockedBehavior() === 'crush') {
+                continue;
+            }
+            this._resolveSolidPressure(user, dc, dc.instance.getPreviousTransform());
+        }
+        this._prevUserPos = {x: user.x, y: user.y, z: user.z};
+    }
+
+    // Step 8 — after riding and the player's movement: crush pressure (the
+    // pinch depends on the player's final position) and the riding leftovers
+    // of solid movers (a platform push that squeezed the player into one —
+    // original behaviour, the mover's own move was already handled at 5b).
     resolveObjectPlayerBlockage(user) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {
                 continue;
             }
+            const prev = dc.instance.getPreviousTransform();
+            if (dc.instance.getBlockedBehavior() === 'crush') {
+                this._resolveCrushPressure(user, dc, prev);
+                continue;
+            }
             if (!this._instanceCylinderIntersects(user, dc)) {
                 continue;
             }
-
-            const prev = dc.instance.getPreviousTransform();
             if (prev) {
-                // Only roll back if the movement caused the intersection (not pre-existing)
                 if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
                     continue;
                 }
                 dc.instance.rollbackTransform(prev);
                 this._updateDynamicCollider(dc);
             }
-
             if (dc._platformDeltaApplied) {
                 user.x   -= dc._platformDeltaApplied.x;
                 user.y   -= dc._platformDeltaApplied.y;
@@ -215,6 +239,132 @@ class Collision {
                 dc._platformDeltaApplied = null;
             }
         }
+    }
+
+    // Crush mover: no rollback. Pinch predicate (local floor/ceiling gap vs
+    // player height — vanilla PIT_ChangeSector) instead of the cylinder/walls
+    // test: a crush floor presses a player standing ON its top faces. The
+    // pressure engages only when caused by the mover's own movement, then
+    // lasts while the pinch does (a player trapped under a stopped crusher
+    // stays in pressure, so the mover stays passable and he can always leave);
+    // damage only ticks while the mover actually moves (EV_CeilingCrushStop).
+    _resolveCrushPressure(user, dc, prev) {
+        const inst = dc.instance;
+        if (!this._userPinchedBy(user, dc)) {
+            inst.setBlockedPressing(false);
+            return;
+        }
+        const moved = ((prev !== null) && this._moverMovedSince(dc, prev));
+        if ((inst.isBlockedPressing() === false) && (moved === false)) {
+            return;
+        }
+        inst.setBlockedPressing(true);
+        inst.setCrushActive(moved);
+        // The crusher moves through the squeezed player: keep his head under
+        // the static ceiling (the body sinks into the mover while the damage
+        // does its work) — vanilla clips the body, it NEVER ejects it above
+        // the map. Safe here: crush movers are never rolled back.
+        const staticCeil = this._getStaticCeiling(user.x, user.z, user.getRadius(), user.y);
+        if (staticCeil !== Infinity) {
+            user.y = Math.min(user.y, staticCeil - user.getCurrentHeight());
+        }
+    }
+
+    // Solid mover ('stall'/'reverse'): rollback when its movement causes the
+    // overlap. The pre-existing-overlap guard is split into its real cases:
+    // standing on top (riding artifact), mover at rest, overlap created by
+    // the PLAYER's own move this frame (resolveWall's job) — anything else is
+    // a chronic entrapment (missed frame) and the mover is stalled anyway
+    // instead of walking through the player.
+    _resolveSolidPressure(user, dc, prev) {
+        const inst = dc.instance;
+        if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
+            inst.setBlockedPressing(false);
+            return;
+        }
+        if (this._standsOnInstance(user, dc)) {
+            // Rider. Normal ride is the riding's job (step 6, the ride is not
+            // applied yet at 5b) — but a rider squeezed between this mover's
+            // rising floor and a ceiling IS a pressure (T_PlatRaise crushed):
+            // the walls/ceilings cylinder test is blind to it (they are all
+            // below his feet), hence the pinch predicate.
+            if (!this._userPinchedBy(user, dc)) {
+                inst.setBlockedPressing(false);
+                return;
+            }
+            if ((prev === null) || (this._moverFrameDeltaY(dc, prev) <= 1e-8)) {
+                return;   // not rising this frame (wait/descent): nothing to undo
+            }
+        } else {
+            if (!this._instanceCylinderIntersects(user, dc)) {
+                inst.setBlockedPressing(false);
+                return;
+            }
+            if (prev === null) {
+                return;
+            }
+            if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
+                // Chronic-entrapment rescue: only for a mover coming DOWN onto
+                // the player — a rising one is moving away (an opening door
+                // overlapped by a wedged player must keep opening and free him).
+                if (this._moverFrameDeltaY(dc, prev) >= -1e-8) {
+                    return;
+                }
+                if ((this._prevUserPos === null)
+                    || !this._cylinderIntersectsAtTransform(this._prevUserPos.x, this._prevUserPos.y,
+                            this._prevUserPos.z, user.getRadius(), user.getCurrentHeight(), dc, prev)) {
+                    return;
+                }
+            }
+        }
+        inst.rollbackTransform(prev);
+        this._updateDynamicCollider(dc);
+        inst.setBlockedPressing(true);
+        if (inst.getBlockedBehavior() === 'reverse') {
+            inst.reverseBlocked();
+        }
+    }
+
+    // Local vertical gap at the player's position vs his height (the vanilla
+    // "thing does not fit" of PIT_ChangeSector). Unfiltered lists on purpose:
+    // the pressing (passable) mover itself must keep counting in the gap.
+    _userPinchedBy(user, dc) {
+        if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
+            return false;
+        }
+        const r          = user.getRadius();
+        const floorLists = [...this._static.map((sc) => sc.floors),   ...this._dynamic.map((d) => d.floors)];
+        const ceilLists  = [...this._static.map((sc) => sc.ceilings), ...this._dynamic.map((d) => d.ceilings)];
+        // 0.15 above the feet: at 5b the ride is not applied yet, the mover's
+        // top may be up to a frame of travel above them (same tolerance as
+        // the standing test).
+        const floorY     = this._scanFloorLists(user.x, user.z, r, user.y + 0.15, floorLists).y;
+        if (floorY === -Infinity) {
+            return false;
+        }
+        const ceilY = this._scanCeilingLists(user.x, user.z, r, floorY + 0.001, ceilLists);
+        return ((ceilY - floorY) < (user.getCurrentHeight() - 1e-4));
+    }
+
+    // Same standing test as applyPlatformRiding (feet on the top faces)
+    _standsOnInstance(user, dc) {
+        const floorY = this._scanFloorLists(user.x, user.z, user.getRadius(), Infinity, [dc.floors]).y;
+        return ((floorY !== -Infinity) && (Math.abs(user.y - floorY) <= 0.15));
+    }
+
+    // Same frame-delta test as applyPlatformRiding
+    _moverMovedSince(dc, prev) {
+        const cur = dc.instance.getTransform();
+        const dx  = (cur.position[0] + cur.deltaTranslate[0]) - (prev.position[0] + prev.deltaTranslate[0]);
+        const dy  = (cur.position[1] + cur.deltaTranslate[1]) - (prev.position[1] + prev.deltaTranslate[1]);
+        const dz  = (cur.position[2] + cur.deltaTranslate[2]) - (prev.position[2] + prev.deltaTranslate[2]);
+        const dRy = (cur.rotation[1] + cur.deltaRotate[1]) - (prev.rotation[1] + prev.deltaRotate[1]);
+        return (Math.abs(dx) >= 1e-8 || Math.abs(dy) >= 1e-8 || Math.abs(dz) >= 1e-8 || Math.abs(dRy) >= 1e-8);
+    }
+
+    _moverFrameDeltaY(dc, prev) {
+        const cur = dc.instance.getTransform();
+        return (cur.position[1] + cur.deltaTranslate[1]) - (prev.position[1] + prev.deltaTranslate[1]);
     }
 
     // --- Private: collider builders ---
@@ -303,7 +453,7 @@ class Collision {
         // (t < 0), causing those faces to be ignored and the player to pass through.
         for (const walls of wallLists) {
             for (const tri of walls) {
-                if (feetY >= tri.yMax || feetY + h < tri.yMin) {
+                if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
                     continue;
                 }
                 if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
@@ -338,7 +488,7 @@ class Collision {
             let tMin = 1.0, bestNx = 0, bestNz = 0, hit = false;
 
             const check = (tri) => {
-                if (feetY >= tri.yMax || feetY + h < tri.yMin) {
+                if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
                     return;
                 }
                 if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
@@ -390,7 +540,7 @@ class Collision {
         const h = user.getCurrentHeight();
         // Floors excluded: standing on an object's floor is normal (platform riding), not a block
         for (const tri of dc.walls) {
-            if (user.y > tri.yMax || user.y + h < tri.yMin) {
+            if (user.y >= tri.yMax || user.y + h <= tri.yMin) {
                 continue;
             }
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
@@ -398,7 +548,7 @@ class Collision {
             }
         }
         for (const tri of dc.ceilings) {
-            if (user.y > tri.yMax || user.y + h < tri.yMin) {
+            if (user.y >= tri.yMax || user.y + h <= tri.yMin) {
                 continue;
             }
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
@@ -409,13 +559,16 @@ class Collision {
     }
 
     _instanceCylinderIntersectsAtTransform(user, dc, tf) {
+        return this._cylinderIntersectsAtTransform(user.x, user.y, user.z, user.getRadius(), user.getCurrentHeight(), dc, tf);
+    }
+
+    _cylinderIntersectsAtTransform(px, py, pz, r, h, dc, tf) {
         const m  = Matrix.composeInstanceTransform(tf);
         const cw = m.multiplyPosition([dc.centerLocal[0], dc.centerLocal[1], dc.centerLocal[2], 1]);
-        const bpDx = user.x - cw[0], bpDz = user.z - cw[2];
-        if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > user.getRadius() + dc.bRadius) {
+        const bpDx = px - cw[0], bpDz = pz - cw[2];
+        if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > r + dc.bRadius) {
             return false;
         }
-        const h = user.getCurrentHeight();
         for (const [la, lb, lc] of dc.localTris) {
             const wa = m.multiplyPosition([la[0], la[1], la[2], 1]);
             const wb = m.multiplyPosition([lb[0], lb[1], lb[2], 1]);
@@ -427,10 +580,10 @@ class Collision {
             if (tri.n[1] > 0.7) {
                 continue;
             }
-            if (user.y > tri.yMax || user.y + h < tri.yMin) {
+            if (py >= tri.yMax || py + h <= tri.yMin) {
                 continue;
             }
-            if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
+            if (this._circleIntersectsTri(px, pz, r, tri)) {
                 return true;
             }
         }
@@ -507,6 +660,11 @@ class Collision {
     _ceilingLists(px, pz, r) {
         const lists = this._static.map((sc) => sc.ceilings);
         for (const dc of this._dynamic) {
+            // The ceiling of a crush mover pressing the player leaves his queries
+            // (no head clamp under it, lateral clearance ignores it)
+            if (dc.instance.isCrushPassable()) {
+                continue;
+            }
             if (this._broadphaseXZ(px, pz, r, dc)) {
                 lists.push(dc.ceilings);
             }

@@ -230,6 +230,8 @@ class WadLiftBuilder {
             collisionShape:    'faces',
             interactionRadius: ((trigger === 'none') ? null : radius),
             damage:            null,
+            // Lift blocked while rising = go back down and re-wait (T_PlatRaise)
+            blockedBehavior:   WadConstants.floorDownPressBehavior(anim),
             keyframes:         keyframes
         };
     }
