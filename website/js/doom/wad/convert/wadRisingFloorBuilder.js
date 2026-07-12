@@ -165,6 +165,8 @@ class WadRisingFloorBuilder {
             {t: delayS + moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
         ];
 
+        const press = WadConstants.floorUpPressProfile(special);
+
         return {
             code:              floorName,
             position:          [0, 0, 0],
@@ -175,6 +177,8 @@ class WadRisingFloorBuilder {
             collisionShape:    'faces',
             interactionRadius: radius,
             damage:            null,
+            blockedBehavior:   press.behavior,
+            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),
             keyframes:         keyframes
         };
     }

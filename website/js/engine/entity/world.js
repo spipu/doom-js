@@ -61,6 +61,12 @@ class World extends AbstractLoadedEntity {
         // 5. Refresh dynamic collider triangles
         this._collision.updateDynamicColliders();
 
+        // 5b. Mover-caused pressure (stall/reverse rollback) — resolved BEFORE
+        // riding and the player's own movement, so the player is never clipped
+        // against the mover's advanced pose (a stalled door hovers at contact
+        // and its walls stay out of his body — he can walk out from under it).
+        this._collision.resolveMoverPressure(user);
+
         // 6. Platform riding
         this._collision.applyPlatformRiding(user);
 

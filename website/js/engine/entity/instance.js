@@ -41,6 +41,14 @@ class Instance extends AbstractLoadedEntity {
         this._damage            = null;
         this._wasInDamageRange  = false;
 
+        // Pressure on the player (state driven by the Collision pressure passes)
+        this._blockedBehavior   = 'stall';   // 'stall' | 'reverse' | 'crush'
+        this._blockedSlowFactor = 1;         // animation speed factor while pressing
+        this._blockedPressing   = false;     // pressing the player (lasts while the overlap does)
+        this._crushDamage       = null;      // {delta, windowS} | null
+        this._crushActive       = false;     // pressing AND moving this frame (arms the damage tick)
+        this._crushClockS       = 0;
+
         // Moving floor this instance stands on (its Y follows that floor)
         this._rideOn            = null;
         this._rideBaseY         = 0;
@@ -148,6 +156,7 @@ class Instance extends AbstractLoadedEntity {
     }
 
     checkDamage(user, dt) {
+        this._crushDamageTick(user, dt);
         if (!this._damage || user.isDead()) {
             return;
         }
@@ -165,6 +174,50 @@ class Instance extends AbstractLoadedEntity {
                 user.takeDamage(this._damage.delta * dt / 1000);
             }
         }
+    }
+
+    // Crush damage: dealt in windows of windowS seconds while the mover both
+    // presses the player AND moves (PIT_ChangeSector: 10 hp every 4 tics).
+    // The clock is primed to windowS on the pressing rising edge, so the
+    // first hit lands immediately.
+    _crushDamageTick(user, dt) {
+        if ((this._crushDamage === null) || (this._crushActive !== true) || user.isDead()) {
+            return;
+        }
+        this._crushClockS += dt / 1000;
+        if (this._crushClockS >= this._crushDamage.windowS) {
+            this._crushClockS %= this._crushDamage.windowS;
+            user.takeDamage(this._crushDamage.delta);
+        }
+    }
+
+    getBlockedBehavior() {
+        return this._blockedBehavior;
+    }
+
+    isBlockedPressing() {
+        return this._blockedPressing;
+    }
+
+    // A crush mover currently pressing the player is passable for him (the
+    // vanilla lateral escape): its walls/ceilings leave the player queries.
+    isCrushPassable() {
+        return ((this._blockedBehavior === 'crush') && (this._blockedPressing === true));
+    }
+
+    setBlockedPressing(pressing) {
+        if ((pressing === true) && (this._blockedPressing === false)) {
+            this._crushClockS = ((this._crushDamage !== null) ? this._crushDamage.windowS : 0);
+        }
+        if (pressing === false) {
+            this._crushClockS = 0;
+            this._crushActive = false;
+        }
+        this._blockedPressing = pressing;
+    }
+
+    setCrushActive(active) {
+        this._crushActive = active;
     }
 
     /**
@@ -217,7 +270,7 @@ class Instance extends AbstractLoadedEntity {
                 this._animDone    = false;
             }
         } else {
-            this._animTime += dt / 1000;
+            this._animTime += (dt / 1000) * ((this._blockedPressing) ? this._blockedSlowFactor : 1);
             if (this._animTime >= this._animMaxTime) {
                 if (this._animLoop) {
                     this._animTime = this._animTime % this._animMaxTime;
@@ -341,6 +394,26 @@ class Instance extends AbstractLoadedEntity {
         this._animReverseScale = timeScale;
         this._animDone         = false;
         this._animPlaying      = true;
+    }
+
+    // Mover pressing the player with blockedBehavior 'reverse': head back the
+    // other way (vanilla T_VerticalDoor going back up, T_PlatRaise going back
+    // down). Already reversing (the re-close is the opening segment replayed
+    // backward): flip forward again — full reopening then the normal cycle.
+    // Otherwise the pause()+startReverse() pattern lifts the playing guard.
+    reverseBlocked() {
+        if (!this._animPlaying) {
+            return;
+        }
+        if (this._animReverse) {
+            this._animReverse = false;
+            return;
+        }
+        if ((this._animKeyframes.length === 0) || (this._animTime <= this._animKeyframes[0].t)) {
+            return;
+        }
+        this._animPlaying = false;
+        this.startReverse();
     }
 
     stop() {

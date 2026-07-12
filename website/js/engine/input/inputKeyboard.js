@@ -10,7 +10,12 @@ class InputKeyboard {
 
         document.addEventListener('keydown', (e) => {
             this._keys.add(e.code);
-            if (e.ctrlKey && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
+            // Suppress the interceptable browser shortcuts (Ctrl+S/D/F…) while
+            // playing — but never inside a text field (menu URL paste), and
+            // Ctrl+Q/Ctrl+W are browser-privileged: they CANNOT be cancelled
+            // from page JS (hence the crouch alternative on C).
+            const typing = ((e.target instanceof HTMLInputElement) || (e.target instanceof HTMLTextAreaElement));
+            if (e.ctrlKey && !typing && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
                 e.preventDefault();
             }
         });
@@ -45,8 +50,11 @@ class InputKeyboard {
         return this._keys.has(code);
     }
 
-    readKeyCtrl() {
-        return (this._keys.has('ControlLeft') || this._keys.has('ControlRight'));
+    // C is the safe crouch key: holding Ctrl while strafing left on AZERTY
+    // (Ctrl+Q) QUITS Firefox — a browser-privileged shortcut no page JS can
+    // cancel. Ctrl stays accepted for the habit, at the player's own risk.
+    readKeyCrouch() {
+        return (this._keys.has('ControlLeft') || this._keys.has('ControlRight') || this._keys.has('KeyC'));
     }
 
     readKeyShift() {

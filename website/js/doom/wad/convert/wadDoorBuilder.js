@@ -267,6 +267,8 @@ class WadDoorBuilder {
             }
         }
 
+        const press = WadConstants.doorPressProfile(props.anim, speedTics, props.closeMargin);
+
         return {
             code:              doorName,
             position:          [0, 0, 0],
@@ -280,6 +282,9 @@ class WadDoorBuilder {
             // they carry no proximity radius — same convention as switch-driven lifts.
             interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
+            blockedBehavior:   press.behavior,
+            blockedSlowFactor: ((press.slow) ? WadConstants.PRESS_SLOW_FACTOR : 1),
+            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),
             keyRequired:       props.keyRequired,
             keyframes:         keyframes,
             keyframeVariants:  keyframeVariants
