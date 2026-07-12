@@ -70,7 +70,7 @@ class WadRisingFloorBuilder {
             code:         floorName,
             textures:     groups.newList,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(floorName, special, delta, mesh)
+            instanceData: this._buildInstanceData(floorName, special, delta)
         };
     }
 
@@ -143,13 +143,10 @@ class WadRisingFloorBuilder {
         }
     }
 
-    _buildInstanceData(floorName, special, delta, mesh) {
+    _buildInstanceData(floorName, special, delta) {
         const speed   = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
         const travelY = delta * WadConstants.SCALE;
         const moveS   = delta / (speed * 35.0);
-
-        // Radius kept for consistency (unused with trigger 'none').
-        const radius = WadMeshBuilder.xzActionRadius(mesh);
 
         // One-way, upward. Driven externally (walk-trigger zone or switch),
         // never by self-proximity. onlyOnce stays true even for WR/SR specials:
@@ -175,7 +172,7 @@ class WadRisingFloorBuilder {
             loop:              false,
             onlyOnce:          true,
             collisionShape:    'faces',
-            interactionRadius: radius,
+            interactionRadius: null,
             damage:            null,
             blockedBehavior:   press.behavior,
             crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),

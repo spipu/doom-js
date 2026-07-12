@@ -3,21 +3,13 @@ class Object3dRendererFlat extends Object3dRendererBase {
         return 'flat';
     }
 
-    begin(engine) {
-        engine.scrCtx.clearRect(0, 0, engine.scrWidth, engine.scrHeight);
-    }
-
-    end(engine) {
-        // no-op
-    }
-
     _collectFaces(obj, engine, faceIndices) {
         const result = [];
         for (const k of faceIndices) {
             const fc     = obj.faceList[k];
             const normal = fc.normal;
             const p      = obj.pt3d[fc.pts[0]];
-            if (normal[0]*p[0] + normal[1]*p[1] + normal[2]*p[2] >= 0) {
+            if (this._isBackFace(normal, p)) {
                 continue;
             }
             const center = [
@@ -37,17 +29,10 @@ class Object3dRendererFlat extends Object3dRendererBase {
 
     _drawFaces(obj, engine, faces) {
         for (const face of faces) {
-            const fc = obj.faceList[face.k];
             const color = 'rgb(' + face.r + ',' + face.g + ',' + face.b + ')';
             engine.scrCtx.fillStyle   = color;
             engine.scrCtx.strokeStyle = color;
-            engine.scrCtx.beginPath();
-            engine.scrCtx.moveTo(obj.pt2d[fc.pts[0]][0], obj.pt2d[fc.pts[0]][1]);
-            engine.scrCtx.lineTo(obj.pt2d[fc.pts[1]][0], obj.pt2d[fc.pts[1]][1]);
-            engine.scrCtx.lineTo(obj.pt2d[fc.pts[2]][0], obj.pt2d[fc.pts[2]][1]);
-            engine.scrCtx.closePath();
-            engine.scrCtx.fill();
-            engine.scrCtx.stroke();
+            this._traceTriangle(engine.scrCtx, obj, obj.faceList[face.k]);
         }
     }
 

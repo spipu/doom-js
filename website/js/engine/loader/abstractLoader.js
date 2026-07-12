@@ -105,8 +105,16 @@ class AbstractLoader {
         throw this._generateException('Not implemented');
     }
 
+    // Default JSON flow (instances, objects). Texture/interaction loaders
+    // override it (image element / injected script instead of a JSON fetch).
     _initialiseEntityFromUrl(entity) {
-        throw this._generateException('Not implemented');
+        appBootstrap.fetchJson(
+            entity.getUrl(),
+            (data) => {
+                this._populateFromData(entity, data);
+                entity.setLoaded();
+            }
+        );
     }
 
     _populateFromData(entity, data) {

@@ -27,8 +27,8 @@ class WadThingBuilder {
 
     /**
      * @returns {object[]} {key, texIds, animDuration, halfWidth, height,
-     *                      anchorOffsetX, anchorTop, si, light, position:[x,y,z],
-     *                      kind, solid, radius, effect}
+     *                      anchorOffsetX, anchorOffsetY, anchorTop, si, light,
+     *                      position:[x,y,z], kind, solid, radius, effect}
      */
     buildAll() {
         const scale  = WadConstants.SCALE;

@@ -34,11 +34,11 @@ class Object3dRendererFull extends Object3dRendererBase {
                 this._buildVertex(this._v1, engine, fc, obj, 1);
                 this._buildVertex(this._v2, engine, fc, obj, 2);
 
-                const tris    = this._clipNear(engine, this._v0, this._v1, this._v2);
+                const tris          = this._clipNear(engine, this._v0, this._v1, this._v2);
                 const resolvedTexId = this._resolveTexId(fc, engine._sceneMs);
-                const texture  = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
-                const alpha    = fc.alpha;
-                const clampV  = fc.clampV || false;
+                const texture       = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
+                const alpha         = fc.alpha;
+                const clampV        = fc.clampV || false;
 
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
@@ -113,14 +113,14 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
 
         // cnt === 2 : quad → 2 triangles
-        const i_out = inside.indexOf(false);
-        const i_in1 = (i_out + 1) % 3;
-        const i_in2 = (i_out + 2) % 3;
-        const a = this._clipVertex(engine, verts[i_out], verts[i_in1]);
-        const b = this._clipVertex(engine, verts[i_out], verts[i_in2]);
+        const iOut = inside.indexOf(false);
+        const iIn1 = (iOut + 1) % 3;
+        const iIn2 = (iOut + 2) % 3;
+        const a = this._clipVertex(engine, verts[iOut], verts[iIn1]);
+        const b = this._clipVertex(engine, verts[iOut], verts[iIn2]);
         return [
-            [verts[i_in1], verts[i_in2], a],
-            [verts[i_in2], b, a],
+            [verts[iIn1], verts[iIn2], a],
+            [verts[iIn2], b, a],
         ];
     }
 
@@ -148,8 +148,8 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 
-    _rasterize(engine, alpha, text, clampV = false) {
-        if (text) {
+    _rasterize(engine, alpha, texture, clampV = false) {
+        if (texture) {
             this._p1[6] /= this._p1[2]; this._p1[7] /= this._p1[2];
             this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
             this._p3[6] /= this._p3[2]; this._p3[7] /= this._p3[2];
@@ -167,7 +167,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             dt23[i] = this._p3[i] - this._p2[i];
             dt13[i] = this._p3[i] - this._p1[i];
         }
-        if (text) {
+        if (texture) {
             for (const i of [6, 7]) {
                 dt12[i] = this._p2[i] - this._p1[i];
                 dt23[i] = this._p3[i] - this._p2[i];
@@ -186,9 +186,9 @@ class Object3dRendererFull extends Object3dRendererBase {
                 lt0[3] = this._p1[3] + dt12[3]*al;
                 lt0[4] = this._p1[4] + dt12[4]*al;
                 lt0[5] = this._p1[5] + dt12[5]*al;
-                if (text) {
-                    lt0[6] = (this._p1[6] + dt12[6]*al) * text.width;
-                    lt0[7] = (this._p1[7] + dt12[7]*al) * text.height;
+                if (texture) {
+                    lt0[6] = (this._p1[6] + dt12[6]*al) * texture.width;
+                    lt0[7] = (this._p1[7] + dt12[7]*al) * texture.height;
                 }
             } else {
                 const al = ((dt23[1]) ? (ly - this._p2[1]) / dt23[1] : 0);
@@ -197,9 +197,9 @@ class Object3dRendererFull extends Object3dRendererBase {
                 lt0[3] = this._p2[3] + dt23[3]*al;
                 lt0[4] = this._p2[4] + dt23[4]*al;
                 lt0[5] = this._p2[5] + dt23[5]*al;
-                if (text) {
-                    lt0[6] = (this._p2[6] + dt23[6]*al) * text.width;
-                    lt0[7] = (this._p2[7] + dt23[7]*al) * text.height;
+                if (texture) {
+                    lt0[6] = (this._p2[6] + dt23[6]*al) * texture.width;
+                    lt0[7] = (this._p2[7] + dt23[7]*al) * texture.height;
                 }
             }
 
@@ -210,9 +210,9 @@ class Object3dRendererFull extends Object3dRendererBase {
                 lt1[3] = this._p1[3] + dt13[3]*al;
                 lt1[4] = this._p1[4] + dt13[4]*al;
                 lt1[5] = this._p1[5] + dt13[5]*al;
-                if (text) {
-                    lt1[6] = (this._p1[6] + dt13[6]*al) * text.width;
-                    lt1[7] = (this._p1[7] + dt13[7]*al) * text.height;
+                if (texture) {
+                    lt1[6] = (this._p1[6] + dt13[6]*al) * texture.width;
+                    lt1[7] = (this._p1[7] + dt13[7]*al) * texture.height;
                 }
             } else {
                 const al = ((dt23[1]) ? (this._p3[1] - ly) / dt23[1] : 0);
@@ -221,9 +221,9 @@ class Object3dRendererFull extends Object3dRendererBase {
                 lt1[3] = this._p3[3] - dt23[3]*al;
                 lt1[4] = this._p3[4] - dt23[4]*al;
                 lt1[5] = this._p3[5] - dt23[5]*al;
-                if (text) {
-                    lt1[6] = (this._p3[6] - dt23[6]*al) * text.width;
-                    lt1[7] = (this._p3[7] - dt23[7]*al) * text.height;
+                if (texture) {
+                    lt1[6] = (this._p3[6] - dt23[6]*al) * texture.width;
+                    lt1[7] = (this._p3[7] - dt23[7]*al) * texture.height;
                 }
             }
 
@@ -246,7 +246,7 @@ class Object3dRendererFull extends Object3dRendererBase {
             dt[3] = lt1[3] - lt0[3];
             dt[4] = lt1[4] - lt0[4];
             dt[5] = lt1[5] - lt0[5];
-            if (text) {
+            if (texture) {
                 dt[6] = lt1[6] - lt0[6];
                 dt[7] = lt1[7] - lt0[7];
             }
@@ -256,17 +256,17 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
                 let post = -1;
-                if (text) {
-                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % text.width;
+                if (texture) {
+                    let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % texture.width;
                     if (xt < 0) {
-                        xt += text.width;
+                        xt += texture.width;
                     }
-                    let yt_raw = lz * (lt0[7] + dt[7]*al);
+                    let ytRaw = lz * (lt0[7] + dt[7]*al);
                     let yt = ((clampV)
-                        ? Math.min(text.height - 1, Math.max(0, Math.trunc(yt_raw)))
-                        : (Math.trunc(yt_raw) % text.height + text.height) % text.height);
-                    post = 4 * (xt + yt * text.width);
-                    if (text.data[post+3] === 0) {
+                        ? Math.min(texture.height - 1, Math.max(0, Math.trunc(ytRaw)))
+                        : (Math.trunc(ytRaw) % texture.height + texture.height) % texture.height);
+                    post = 4 * (xt + yt * texture.width);
+                    if (texture.data[post+3] === 0) {
                         continue;
                     }
                 }
@@ -278,11 +278,11 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const posi = 4 * (lx + ly * engine.scrWidth);
                 let r, g, b, a;
 
-                if (text) {
-                    r = Math.trunc((lt0[3] + dt[3]*al) * text.data[post+0]);
-                    g = Math.trunc((lt0[4] + dt[4]*al) * text.data[post+1]);
-                    b = Math.trunc((lt0[5] + dt[5]*al) * text.data[post+2]);
-                    a = alpha * text.data[post+3] / 255.;
+                if (texture) {
+                    r = Math.trunc((lt0[3] + dt[3]*al) * texture.data[post+0]);
+                    g = Math.trunc((lt0[4] + dt[4]*al) * texture.data[post+1]);
+                    b = Math.trunc((lt0[5] + dt[5]*al) * texture.data[post+2]);
+                    a = alpha * texture.data[post+3] / 255.;
                 } else {
                     r = Math.trunc(lt0[3] + dt[3]*al);
                     g = Math.trunc(lt0[4] + dt[4]*al);

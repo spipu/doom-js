@@ -99,13 +99,13 @@ class WadStairBuilder {
 
     // Final (rest) floor height of a neighbour sector: a stair step's target, or
     // the static (already-patched) floor of any other sector.
-    _finalHeight(neighborSi) {
+    _finalHeight(neighbourSi) {
         const {stairIds, stairInfo} = this._analysis;
-        if (stairIds.has(neighborSi)) {
-            return stairInfo[neighborSi].targetFh;
+        if (stairIds.has(neighbourSi)) {
+            return stairInfo[neighbourSi].targetFh;
         }
 
-        return this._level.sectors[neighborSi].fh;
+        return this._level.sectors[neighbourSi].fh;
     }
 
     // Riser on each two-sided edge of the step, drawn only toward a neighbour
@@ -127,11 +127,11 @@ class WadStairBuilder {
             if (rSi !== si && lSi !== si) {
                 continue;
             }
-            const neighborSi = ((rSi === si) ? lSi : rSi);
-            if (neighborSi === si) {
+            const neighbourSi = ((rSi === si) ? lSi : rSi);
+            if (neighbourSi === si) {
                 continue;
             }
-            const neighFinal = this._finalHeight(neighborSi);
+            const neighFinal = this._finalHeight(neighbourSi);
             // The higher-ending step owns the shared riser.
             if (targetFh <= neighFinal) {
                 continue;
@@ -140,7 +140,7 @@ class WadStairBuilder {
             const isRightFloor = (rSi === si);
             const corrSd  = ((isRightFloor) ? sidedefs[ld.left] : sidedefs[ld.right]);
             const ownSd   = ((isRightFloor) ? sidedefs[ld.right] : sidedefs[ld.left]);
-            const corrSec = sectors[neighborSi];
+            const corrSec = sectors[neighbourSi];
 
             let tex = corrSd.lower;
             if (!tex || tex === '-') {
@@ -170,7 +170,7 @@ class WadStairBuilder {
                 wx1, wz1, wx2, wz2,
                 botDu * SCALE, topDu * SCALE,
                 wallLen, tw, th,
-                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighborSi)});
+                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi)});
         }
     }
 

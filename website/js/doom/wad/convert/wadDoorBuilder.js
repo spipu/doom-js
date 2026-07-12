@@ -179,7 +179,6 @@ class WadDoorBuilder {
         // ceiling raiser (40) rests at the sector's OWN ceiling — a partially
         // open sector keeps its slit — and travels up to ceilH from there.
         const restDu    = ((props.ceilingRaise === true) ? (this._level.sectors[si].ch - floorH) : 0);
-        const restY     = restDu * WadConstants.SCALE;
         const travelY   = (ceilH - floorH) * WadConstants.SCALE;
         const speedTics = props.speed;
 
@@ -188,7 +187,6 @@ class WadDoorBuilder {
             : WadConstants.DOOR_ACTION_RADIUS);
 
         const openS = (ceilH - floorH - restDu) / speedTics / 35.0;
-        const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
 
         let keyframes;
         if (props.anim === 'one-way' || props.anim === 'round-trip') {

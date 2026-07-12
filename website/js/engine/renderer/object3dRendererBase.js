@@ -13,6 +13,24 @@ class Object3dRendererBase {
         return canvas.getContext('2d');
     }
 
+    begin(engine) {
+        engine.scrCtx.clearRect(0, 0, engine.scrWidth, engine.scrHeight);
+    }
+
+    end(engine) {
+        // frame-completion hook — nothing to flush by default
+    }
+
+    _traceTriangle(ctx, obj, fc) {
+        ctx.beginPath();
+        ctx.moveTo(obj.pt2d[fc.pts[0]][0], obj.pt2d[fc.pts[0]][1]);
+        ctx.lineTo(obj.pt2d[fc.pts[1]][0], obj.pt2d[fc.pts[1]][1]);
+        ctx.lineTo(obj.pt2d[fc.pts[2]][0], obj.pt2d[fc.pts[2]][1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+
     // Back-face culling: a face whose normal points away from the camera is
     // skipped. Vertices are in camera space, so the test is normal·firstVertex
     // (>= 0 means the face turns away from the eye at the origin).

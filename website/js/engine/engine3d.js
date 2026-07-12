@@ -19,13 +19,13 @@ class Engine3d {
 
         this._renderer = renderer;
 
-        this._fpsCount        = 0;
-        this._fpsDisplay      = 0;
-        this._deltaTime       = 0;
-        this._deltaLast       = null;
+        this._fpsCount         = 0;
+        this._fpsDisplay       = 0;
+        this._deltaTime        = 0;
+        this._deltaLast        = null;
         this._currentTimestamp = 0;
-        this._fpsLastCheck    = null;
-        this._sceneMs         = 0;
+        this._fpsLastCheck     = null;
+        this._sceneMs          = 0;
 
         this.viewMatrix.identity();
 

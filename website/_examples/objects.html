@@ -108,7 +108,7 @@ function init()
     const code = document.getElementById('obj').value;
     const obj  = loader.objects().get(0);
     const hub = new HudDebug(engine)
-        .addDescription(code + ' | ' + obj.getFaceCount() + ' pts | ' + obj.getVertexCount() + ' faces')
+        .addDescription(code + ' | ' + obj.getVertexCount() + ' pts | ' + obj.getFaceCount() + ' faces')
         .addDescription('(c)2026 Spipu')
     ;
     screen.bindHud(hub);
