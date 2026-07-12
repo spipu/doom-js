@@ -303,6 +303,14 @@ class WadConstants {
 
     // Derived membership sets — never edit these, edit FLOOR_DOWN_BY_SPECIAL.
     static FLOOR_MOVE_DOWN_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, () => true);
+
+    // EV_DoFloor one-way lowers: their destination is NOT clamped in vanilla
+    // (p_floor.c posts P_Find*FloorSurrounding as-is, and the T_MovePlane DOWN
+    // branch jumps to a destination ABOVE the floor on the first tic) — the
+    // mappers' "instant floor rise" trick (pop-up bridges, ambushes). The
+    // round-trip/perpetual plats DO clamp (p_plats.c: if (plat->low >
+    // sec->floorheight) plat->low = sec->floorheight).
+    static FLOOR_DOWN_ONEWAY_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (d) => (d.anim === 'one-way'));
     static FLOOR_PERPETUAL_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (f) => (f.anim === 'perpetual'));
 
     // Tics at bottom before rising (Lower Lift)

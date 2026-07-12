@@ -18,7 +18,7 @@ class WadMapAnalyzer {
         const doors = this._identifyDoors();
         const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
-        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds);
+        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise);
         this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
@@ -29,28 +29,29 @@ class WadMapAnalyzer {
         const lightSectors = this._identifyLightSectors();
 
         return {
-            doorSectorIds:        doors.doorSectorIds,
-            doorProps:            doors.doorProps,
-            doorHeights:          doorHeights,
-            movingFloorDownIds:   lifts.movingFloorDownIds,
-            liftSectorSpecial:    lifts.liftSectorSpecial,
-            liftOriginalFh:       lifts.liftOriginalFh,
-            liftMinAdjFh:         lifts.liftMinAdjFh,
-            liftMaxAdjFh:         lifts.liftMaxAdjFh,
-            risingFloorIds:       rising.risingFloorIds,
-            risingFloorSpecial:   rising.risingFloorSpecial,
-            risingFloorTargetFh:  rising.risingFloorTargetFh,
-            stairIds:             stairs.stairIds,
-            stairInfo:            stairs.stairInfo,
-            stairStepTag:         stairs.stairStepTag,
-            donutRingTag:         donuts.ringTag,
-            floorChange:          floorChange,
-            switchLinedefIds:     switches.ids,
-            switchWalls:          switches.walls,
-            teleporterLinedefs:   teleporterLinedefs,
-            walkTriggerLinedefs:  walkTriggerLinedefs,
-            lightSectors:         lightSectors,
-            lightSectorIds:       new Set(lightSectors.map((s) => s.si))
+            doorSectorIds:         doors.doorSectorIds,
+            doorProps:             doors.doorProps,
+            doorHeights:           doorHeights,
+            movingFloorDownIds:    lifts.movingFloorDownIds,
+            liftSectorSpecial:     lifts.liftSectorSpecial,
+            liftOriginalFh:        lifts.liftOriginalFh,
+            liftMinAdjFh:          lifts.liftMinAdjFh,
+            liftMaxAdjFh:          lifts.liftMaxAdjFh,
+            risingFloorIds:        rising.risingFloorIds,
+            risingFloorSpecial:    rising.risingFloorSpecial,
+            risingFloorTargetFh:   rising.risingFloorTargetFh,
+            risingFloorInstantIds: rising.risingFloorInstantIds,
+            stairIds:              stairs.stairIds,
+            stairInfo:             stairs.stairInfo,
+            stairStepTag:          stairs.stairStepTag,
+            donutRingTag:          donuts.ringTag,
+            floorChange:           floorChange,
+            switchLinedefIds:      switches.ids,
+            switchWalls:           switches.walls,
+            teleporterLinedefs:    teleporterLinedefs,
+            walkTriggerLinedefs:   walkTriggerLinedefs,
+            lightSectors:          lightSectors,
+            lightSectorIds:        new Set(lightSectors.map((s) => s.si))
         };
     }
 
@@ -455,22 +456,27 @@ class WadMapAnalyzer {
         }
 
         // Save original fh and min adjacent fh before patching.
-        const liftOriginalFh = {};
-        const liftMinAdjFh   = {};
-        const liftMaxAdjFh   = {};
+        const liftOriginalFh      = {};
+        const liftMinAdjFh        = {};
+        const liftMaxAdjFh        = {};
+        const liftVanillaTargetFh = {};
         const computeTargets = () => {
             for (const si of movingFloorDownIds) {
-                const adjFh = [];
+                const adjFh    = [];
+                const adjAllFh = [];
                 for (const ld of linedefs) {
                     if (ld.right < 0 || ld.left < 0) {
                         continue;
                     }
                     const rSi = sidedefs[ld.right].sector;
                     const lSi = sidedefs[ld.left].sector;
-                    if (rSi === si && !movingFloorDownIds.has(lSi)) {
-                        adjFh.push(sectors[lSi].fh);
-                    } else if (lSi === si && !movingFloorDownIds.has(rSi)) {
-                        adjFh.push(sectors[rSi].fh);
+                    const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : null));
+                    if (other === null || other === si) {
+                        continue;
+                    }
+                    adjAllFh.push(sectors[other].fh);
+                    if (!movingFloorDownIds.has(other)) {
+                        adjFh.push(sectors[other].fh);
                     }
                 }
                 liftOriginalFh[si] = sectors[si].fh;
@@ -493,6 +499,19 @@ class WadMapAnalyzer {
                     target = Math.min(...adjFh);
                 }
                 liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
+                // Vanilla destination, for the instant-raise detection only: the
+                // P_Find*FloorSurrounding scans count EVERY neighbour, co-movers
+                // included (unlike adjFh, which feeds the lift patching above).
+                // Lowest seeds at the sector's own floor (p_spec.c — it can never
+                // end up above it, so the lowest family never raises instantly);
+                // highest seeds at -500; turbo adds its 8 only when the highest
+                // neighbour differs from the current floor (p_floor.c turboLower).
+                if (rule === 'highest' || rule === 'highest+8') {
+                    const highest = ((adjAllFh.length === 0) ? -500 : Math.max(...adjAllFh));
+                    liftVanillaTargetFh[si] = highest + (((rule === 'highest+8') && (highest !== sectors[si].fh)) ? 8 : 0);
+                } else {
+                    liftVanillaTargetFh[si] = Math.min(sectors[si].fh, ...adjAllFh);
+                }
                 // High end of a perpetual plat: highest adjacent floor, clamped
                 // so it never sits below the sector's own floor (p_plats.c).
                 liftMaxAdjFh[si] = ((adjFh.length === 0)
@@ -511,13 +530,32 @@ class WadMapAnalyzer {
         // target and revive it (its only lower neighbour may itself be a dead lift
         // still masking it). Dropping a whole batch at once would demote such a
         // survivor by mistake, so recompute after every single removal.
+        const instantRaise = {};
         while (true) {
             for (const k of Object.keys(liftOriginalFh)) {
                 delete liftOriginalFh[k];
                 delete liftMinAdjFh[k];
                 delete liftMaxAdjFh[k];
+                delete liftVanillaTargetFh[k];
             }
             computeTargets();
+            // An EV_DoFloor one-way lower whose VANILLA destination is ABOVE the
+            // floor is the vanilla "instant floor rise" trick (pop-up bridge):
+            // the sector leaves this family and becomes an instant rising floor —
+            // it must NOT fall through to the dead-lift demotion below, which
+            // would leave the trigger inert. Removed one at a time too (it
+            // becomes a normal neighbour for the remaining candidates).
+            const instant = [...movingFloorDownIds].find((si) => {
+                return (WadConstants.FLOOR_DOWN_ONEWAY_SPECIALS.has(liftSectorSpecial[si])
+                    && donutHoleTargetFh[si] === undefined
+                    && liftVanillaTargetFh[si] > liftOriginalFh[si]);
+            });
+            if (instant !== undefined) {
+                instantRaise[instant] = {targetFh: liftVanillaTargetFh[instant], special: liftSectorSpecial[instant]};
+                movingFloorDownIds.delete(instant);
+                delete liftSectorSpecial[instant];
+                continue;
+            }
             // A perpetual plat is dead only when its full amplitude is nil
             // (low == high): it may legitimately start AT its low end and only
             // travel upward, unlike a one-way/round-trip lower.
@@ -539,7 +577,8 @@ class WadMapAnalyzer {
             liftSectorSpecial:  liftSectorSpecial,
             liftOriginalFh:     liftOriginalFh,
             liftMinAdjFh:       liftMinAdjFh,
-            liftMaxAdjFh:       liftMaxAdjFh
+            liftMaxAdjFh:       liftMaxAdjFh,
+            instantRaise:       instantRaise
         };
     }
 
@@ -559,11 +598,12 @@ class WadMapAnalyzer {
     // (clamped to the own ceiling, -8 for crush) or next-higher neighbour
     // floor. A sector whose target does not rise above its floor is dropped
     // (no movement in vanilla): its static floor is kept, no dead instance.
-    _identifyRisingFloors(doorSectorIds, movingFloorDownIds) {
+    _identifyRisingFloors(doorSectorIds, movingFloorDownIds, instantRaise = {}) {
         const {linedefs, sectors} = this._level;
-        const risingFloorIds      = new Set();
-        const risingFloorSpecial  = {};
-        const risingFloorTargetFh = {};
+        const risingFloorIds        = new Set();
+        const risingFloorSpecial    = {};
+        const risingFloorTargetFh   = {};
+        const risingFloorInstantIds = new Set();
 
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && ld.tag !== 0) {
@@ -581,10 +621,21 @@ class WadMapAnalyzer {
             }
         }
 
+        // Instant risers (vanilla instant-raise trick, cf. _identifyLifts):
+        // same machinery as a rising floor, with a one-tic timeline.
+        for (const [key, info] of Object.entries(instantRaise)) {
+            const si = Number(key);
+            risingFloorIds.add(si);
+            risingFloorInstantIds.add(si);
+            risingFloorSpecial[si]  = info.special;
+            risingFloorTargetFh[si] = info.targetFh;
+        }
+
         return {
-            risingFloorIds:      risingFloorIds,
-            risingFloorSpecial:  risingFloorSpecial,
-            risingFloorTargetFh: risingFloorTargetFh
+            risingFloorIds:        risingFloorIds,
+            risingFloorSpecial:    risingFloorSpecial,
+            risingFloorTargetFh:   risingFloorTargetFh,
+            risingFloorInstantIds: risingFloorInstantIds
         };
     }
 

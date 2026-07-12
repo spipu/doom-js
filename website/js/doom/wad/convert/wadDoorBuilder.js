@@ -75,21 +75,54 @@ class WadDoorBuilder {
         };
     }
 
-    // Full-height panels: from the adjacent floor to THIS corridor's ceiling,
-    // using the corridor sidedef upper texture (door on right → left sidedef
-    // flip=false, door on left → right sidedef flip=true).
+    // Full-height panels: from the adjacent floor to the neighbour's static
+    // ceiling, riding with the panel (door on right → flip=false, door on
+    // left → flip=true, facing the neighbour). Texture: the neighbour-side
+    // upper (the viewer-side sidedef, as vanilla renders it) — toward ANOTHER
+    // door/crusher sector, whose slot draws no static band and whose own panel
+    // cannot cover this one's flank when the two desynchronise (adjacent
+    // crushers on different tags), the OWN upper serves as fallback. The
+    // parked flank also stands in for the static upper band between the two
+    // ceilings.
     _buildPanels(mesh, si, floorH) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds} = this._analysis;
+        const {doorSectorIds, doorHeights} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         for (const ld of linedefs) {
-            if (ld.right < 0) {
+            if (ld.right < 0 || ld.left < 0) {
                 continue;
             }
             const rSi2 = sidedefs[ld.right].sector;
-            const lSi2 = ((ld.left >= 0) ? sidedefs[ld.left].sector : -1);
-            if (rSi2 !== si && lSi2 !== si) {
+            const lSi2 = sidedefs[ld.left].sector;
+            const doorOnRight = (rSi2 === si);
+            if (!doorOnRight && lSi2 !== si) {
+                continue;
+            }
+            const neighbourSi  = ((doorOnRight) ? lSi2 : rSi2);
+            const neighbourSec = sectors[neighbourSi];
+            // Ceiling the flank rises against: an opening door neighbour is
+            // stored closed in the WAD (raw ch == fh) but still opens — judge
+            // and span with its patched open ceiling. Closed non-door
+            // neighbours (e.g. the spacer block between two crusher rows) stay
+            // skipped: no opening ever sees this face — and it would z-fight
+            // the static riser drawn on the same edge.
+            const neighbourCh = (doorHeights[neighbourSi]?.ceilH ?? neighbourSec.ch);
+            if (neighbourCh <= neighbourSec.fh) {
+                continue;
+            }
+
+            const neighbourSd = sidedefs[((doorOnRight) ? ld.left : ld.right)];
+            const ownSd       = sidedefs[((doorOnRight) ? ld.right : ld.left)];
+            const validUpper  = (sd) => ((sd.upper && sd.upper !== '-') ? sd : null);
+            const srcSd = ((doorSectorIds.has(neighbourSi))
+                ? (validUpper(neighbourSd) ?? validUpper(ownSd))
+                : validUpper(neighbourSd));
+            if (srcSd === null) {
+                continue;
+            }
+            const ti = this._bank.ensureWallTex(srcSd.upper);
+            if (ti < 0) {
                 continue;
             }
 
@@ -97,60 +130,17 @@ class WadDoorBuilder {
             const [dx2, dy2] = vertexes[ld.v2];
             const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
             const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
-            const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
+            const wallLen    = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
             const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
 
-            if (rSi2 === si && ld.left >= 0 && !doorSectorIds.has(lSi2)) {
-                // Door on right, corridor on left
-                const lSd   = sidedefs[ld.left];
-                const lSec2 = sectors[lSi2];
-                // Closed neighbour (e.g. the spacer block between two crusher
-                // rows): no opening ever sees this face — and it would z-fight
-                // the static riser drawn on the same edge.
-                if (lSec2.ch <= lSec2.fh) {
-                    continue;
-                }
-                const tex = lSd.upper;
-                if (!tex || tex === '-') {
-                    continue;
-                }
-                const ti = this._bank.ensureWallTex(tex);
-                if (ti < 0) {
-                    continue;
-                }
-                const {width: tw, height: th} = this._bank.getDims(ti);
-                const hPanel = lSec2.ch - floorH;
-                const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - hPanel));
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    floorH * SCALE, lSec2.ch * SCALE,
-                    wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, lSi2)});
-            } else if (lSi2 === si && !doorSectorIds.has(rSi2)) {
-                // Door on left, corridor on right
-                const rSd   = sidedefs[ld.right];
-                const rSec2 = sectors[rSi2];
-                // Closed neighbour: same rule as the mirrored branch above.
-                if (rSec2.ch <= rSec2.fh) {
-                    continue;
-                }
-                const tex = rSd.upper;
-                if (!tex || tex === '-') {
-                    continue;
-                }
-                const ti = this._bank.ensureWallTex(tex);
-                if (ti < 0) {
-                    continue;
-                }
-                const {width: tw, height: th} = this._bank.getDims(ti);
-                const hPanel = rSec2.ch - floorH;
-                const yo = rSd.yo + ((upperUnpeg) ? 0 : (th - hPanel));
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    floorH * SCALE, rSec2.ch * SCALE,
-                    wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, rSi2)});
-            }
+            const {width: tw, height: th} = this._bank.getDims(ti);
+            const hPanel = neighbourCh - floorH;
+            const yo = srcSd.yo + ((upperUnpeg) ? 0 : (th - hPanel));
+            WadMeshBuilder.addWallQuad(mesh, ti,
+                wx1, wz1, wx2, wz2,
+                floorH * SCALE, neighbourCh * SCALE,
+                wallLen, tw, th,
+                {xOff: srcSd.xo, yOff: yo, flip: !doorOnRight, light: neighbourSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi)});
         }
     }
 
