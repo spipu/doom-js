@@ -669,9 +669,9 @@ class User {
     }
 
     _tryStepUp(collision, vx, vz) {
-        // No ceiling guard here (validated in-game behaviour): a local check
-        // would refuse legal steps in any low corridor, and a destination
-        // clearance check remains to be designed (see next-steps).
+        // No ceiling guard here: a local check would refuse legal steps in any
+        // low corridor, and a too-low destination is already refused upstream
+        // (normal-path clearance check; its upper wall blocks both passes).
         const testY = this.y + this._stepHeight;
         const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());
         if (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8) {
