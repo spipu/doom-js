@@ -39,6 +39,12 @@ class HudDebug extends AbstractHud {
         this._el.style.left     = pad + 'px';
     }
 
+    setVisible(visible) {
+        if (this._el !== null) {
+            this._el.style.display = ((visible) ? 'block' : 'none');
+        }
+    }
+
     update() {
         this._applyFontScale();
         this._applyScreenFlash();

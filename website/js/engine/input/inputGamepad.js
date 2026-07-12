@@ -90,6 +90,16 @@ class InputGamepad {
         return this._button(9);
     }
 
+    // Weapon switch on the shoulder buttons (standard mapping: 4 = L1, 5 = R1).
+    // Provisional indices, to be confirmed on the physical pad.
+    readButtonWeaponPrev() {
+        return this._button(4);
+    }
+
+    readButtonWeaponNext() {
+        return this._button(5);
+    }
+
     // --- Internal ---
 
     // The standard mapping guarantees the sticks on axes 0-3. On non-standard

@@ -164,6 +164,32 @@ class Inputs {
         return this._keyboard.readKey('KeyO');
     }
 
+    // Keyboard-only (the 'h' key): toggle between the game HUD and the debug HUD.
+    // Reads the keyboard directly so gamepad / virtual gamepad never trigger it.
+    readButtonToggleHud() {
+        return this._keyboard.readKey('KeyH');
+    }
+
+    // Cycle to the next weapon (keyboard 'g'). On a pad (physical or virtual) it
+    // comes from the active device.
+    readButtonWeaponNext() {
+        const pad = this._pad();
+        if (pad !== null) {
+            return pad.readButtonWeaponNext();
+        }
+        return this._keyboard.readKey('KeyG');
+    }
+
+    // Cycle to the previous weapon (keyboard 'f'). On a pad it comes from the
+    // active device (the virtual gamepad has no previous binding → false).
+    readButtonWeaponPrev() {
+        const pad = this._pad();
+        if (pad !== null) {
+            return pad.readButtonWeaponPrev();
+        }
+        return this._keyboard.readKey('KeyF');
+    }
+
     // --- Internal ---
 
     // Active pad-like device (gamepad and virtual gamepad share the same API),
