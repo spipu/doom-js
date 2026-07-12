@@ -35,11 +35,13 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Single-player thing filtering**: like the real game (`P_SpawnMapThing`), each THING is gated by its `flags` — multiplayer-only things (`0x10`) are dropped, and a thing only appears if the chosen skill's bit is set (skill 1-2 → `0x01`, 3 → `0x02`, 4-5 → `0x04`). This matches what vanilla single-player shows (no co-op/deathmatch-only weapons).
 - **Player physics**: Doom metrics verified against the original source — eyes at `VIEWHEIGHT` 41, radius 16, height 56 units shaved by ~1% (vanilla lets the player through an opening of *exactly* 56, our vertical clearance is stricter — the margin restores those tight passages), **vanilla gravity** (1 unit/tic² ≈ 19.14 m/s²), 24-unit steps, and the **GZDoom jump height** (JumpZ 8 → 36-unit peak). Climbing a step keeps the eye at its world height and lets it catch up at 0.6× gravity (**smooth step**, both directions: walking down within step height snaps the body to the lower floor while the camera floats down — a deliberate deviation from vanilla's briefly-airborne stair descent). Falling out of the map (through a geometry hole) hits a **kill plane** at y −100: the body rests there and the player dies.
 - **Player equipment & pickups**: the `DoomUser` carries weapons / ammo (shared pool) / keys / power-up effects and armor; weapons, ammo and armor persist between levels while keys and timed effects reset (data-driven via `resetOnNewLevel`). Walking over a pickup applies its catalog effect through `DoomGame.applyPickup` and despawns the sprite — Doom-faithfully: picking up a weapon also hands out ammo (2× the type's clip, doubled on skill 1/5), an item already full (health/armor/ammo) or a key already held is left on the ground, and armor is a single 0→200 counter whose type only sets the absorption (green 100/⅓, blue 200/½). A brief golden screen flash confirms each pickup. **Locked doors** (blue/red/yellow key specials) only open if you hold the matching key. **Invulnerability** blocks all damage while active and the **radiation suit** cancels sector damage (with the vanilla 5/256 leak on the super-damage specials); invisibility and the light visor are carried as state pending their target systems (enemies, full-bright rendering).
+- **HUD**: a modern graphical game HUD (custom, DOM/CSS, no WAD graphics) laid out in the screen corners — health (green bar) and armor (green ⅓ / blue ½ by its absorption) with numeric values, current-weapon ammo (`cur/max`, `—` for the fist/chainsaw), the three keys and a `★ found/total` secret counter, and an ARMS panel (slots 1-7, active one highlighted, slot 1 tinted green when the chainsaw is owned) with the active weapon's name. Press **H** to toggle to the textual debug overlay (fps, position, inputs, full equipment/level/secrets) and back — keyboard only. The full-screen damage/pickup flash tints both views.
+- **Weapon switching**: cycles the owned weapons in canonical order, wrapping — keyboard **F** (previous) / **G** (next), gamepad shoulder buttons 4/5, or a tap in the HUD's top-right (ARMS) zone on the virtual gamepad.
 - **Sector effects**: damaging floors (specials 4/5/7/16, plus the E1M8 finale special 11 that ends the level when the player drops to 10 health) hurt every 32-tic window while standing on them; "+change" floors swap their flat texture and sector type when the move starts or completes (vanilla rules per special). **Scrolling walls** (linedef 48) advance the front sidedef's texture 35 texels/s through a generic per-face `uvScroll` UV offset. **Dynamic sector lights** replay the vanilla `p_lights.c` thinkers (flicker, fast/slow/synchronised strobes, glow, fire flicker) by driving a per-face `lightGroup` brightness factor each tic. **Secret sectors** (special 9) are counted per level — found once when the player first stands on their floor — and shown as `[SECRETS] found/total` in the HUD.
 - **Level chaining**: an exit — a switch (specials 11/51) or a **walk-over line** (52/124, same invisible zone as the walk triggers, no target) — shows a "level finished" modal, then the next level of the WAD is converted and started; after the last level you are back to the menu. **Secret exits** (51/124) follow the vanilla progression (`G_DoCompleted`) applied to the WAD's level names — the WAD format itself carries no progression data: ExMy → ExM9 (normal exit of ExM9 returns to the episode's map: E1M4/E2M6/E3M7/E4M3), MAPxx → MAP31 (MAP31 → MAP32; leaving 31/32 returns to MAP16), with a sequential fallback when the target level is missing. The vanilla rules are synthesized per level by `WadMapInfo`; a `UMAPINFO` lump in the WAD (inter-port spec) overrides them field by field — `next`, `nextsecret`, the `end*` markers (back to the menu) and `levelname`, which then shows on the HUD `[LEVEL]` line.
 - **Build error modal**: if level generation throws, the cause (message + top of the stack) is shown in a centred modal on top of the console log, then you drop back to the WAD list.
-- **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD.
-- **Touch controls**: touch-only devices get an on-screen virtual gamepad — two fixed, always-visible analog sticks (left = move, right = look) plus the four action buttons laid out around the right stick like a DualSense face cluster (△ action on top, ○ jump right, □ fire left, ✕ crouch bottom) and a pause button in the top-right corner.
+- **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD; shoulder buttons 4/5 cycle the previous/next weapon (provisional indices, to be confirmed on a physical pad).
+- **Touch controls**: touch-only devices get an on-screen virtual gamepad — two fixed, always-visible analog sticks (left = move, right = look) plus the four action buttons laid out around the right stick like a DualSense face cluster (△ action on top, ○ jump right, □ fire left, ✕ crouch bottom). A tap zone in the top-right (over the HUD ARMS panel) cycles to the next weapon, with the pause button just below it.
 - **Startup footer**: the first menu screen shows the aggregated version and the webapp stats (PWA/classic mode, offline, request counters) below the panel.
 
 ## Demo pages
@@ -65,6 +67,8 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 | E | Button 3 | Interact (open door, trigger lift or switch) |
 | Left click | Button 2 / right trigger | Fire (reserved — no weapons yet) |
 | P | Button 9 | Quit the level, back to the level list |
+| F / G | Buttons 4 / 5 (or top-right HUD tap zone → next) | Previous / next weapon — cycles the owned weapons, wrapping |
+| H | — | Toggle the game HUD ↔ debug overlay (keyboard only) |
 | Alt | — | Walk slowly (sticks do it through partial deflection) |
 | IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | ESC | — | Release mouse |
@@ -113,7 +117,9 @@ website/
 │   │   │   ├── doomDecoration.js      Scenery definition (sprite, solid, radius, ceiling)
 │   │   │   └── doomThingCatalog.js    THING type → world descriptor (decorations + pickups)
 │   │   ├── hud/
-│   │   │   └── hudDoom.js       Doom HUD (debug overlay: level + equipment, temporary)
+│   │   │   ├── hudDoom.js       Doom HUD coordinator: owns the two views, toggles them on H
+│   │   │   ├── hudDoomDebug.js  Debug view (text overlay: level + full equipment + secrets)
+│   │   │   └── hudGameBar.js    Modern game HUD (corners: health/armor/ammo/ARMS/keys/secrets)
 │   │   ├── menu/
 │   │   │   ├── menuDisplay.js   1920×1080 letterboxed virtual screen for DOM menus
 │   │   │   ├── menuModal.js     Confirm / loading / message modals
@@ -178,14 +184,14 @@ website/
 │       │   ├── user.js          FPS player (physics, gravity, jump, crouch, energy, armor)
 │       │   └── world.js         FPS scene (user, lights, collision, update loop)
 │       ├── hud/
-│       │   ├── abstractHud.js   Base HUD overlay: init(container), update(), bind helpers, screen-flash tint (damage red / pickup gold)
-│       │   └── hudDebug.js      Debug HUD: fps, position, energy + shield, inputs (mode, axes, buttons), font scaled to the display (screen-flash inherited from AbstractHud)
+│       │   ├── abstractHud.js   Base HUD overlay: init(container), update(), setVisible(), bind helpers, screen-flash tint (damage red / pickup gold)
+│       │   └── hudDebug.js      Debug HUD: fps, position, energy + shield, inputs (mode, axes, buttons), font scaled to the display, setVisible (screen-flash inherited from AbstractHud)
 │       ├── input/
 │       │   ├── inputs.js        Inputs coordinator: device selection (gamepad > virtual gamepad > keyboard+mouse), unified analog axes + semantic buttons API
 │       │   ├── inputKeyboard.js Keyboard input (e.code, Set-based, strict singleton)
 │       │   ├── inputMouse.js    Mouse input via Pointer Lock API (rebound to the canvas on each level)
 │       │   ├── inputGamepad.js  Physical gamepad: standard mapping preferred, known Sony layout by pad id or rest-pose axis detection on non-standard pads, dead zone
-│       │   └── inputVirtualGamepad.js  Virtual touch gamepad: two fixed always-visible sticks + action buttons ringed around the look stick (DualSense positions), shown on touch-only devices
+│       │   └── inputVirtualGamepad.js  Virtual touch gamepad: two fixed always-visible sticks + action buttons ringed around the look stick (DualSense positions) + a top-right weapon-switch tap zone, shown on touch-only devices
 │       ├── interaction/
 │       │   ├── abstractInteraction.js  Base interaction: code, triggered(instance), update(dt)
 │       │   └── switchInteraction.js    Switch modes: once / timed / toggle
