@@ -70,7 +70,7 @@ class WadRisingFloorBuilder {
             code:         floorName,
             textures:     groups.newList,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(floorName, special, delta)
+            instanceData: this._buildInstanceData(floorName, special, delta, this._analysis.risingFloorInstantIds.has(si))
         };
     }
 
@@ -143,24 +143,36 @@ class WadRisingFloorBuilder {
         }
     }
 
-    _buildInstanceData(floorName, special, delta) {
-        const speed   = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
+    _buildInstanceData(floorName, special, delta, instant = false) {
         const travelY = delta * WadConstants.SCALE;
-        const moveS   = delta / (speed * 35.0);
 
         // One-way, upward. Driven externally (walk-trigger zone or switch),
         // never by self-proximity. onlyOnce stays true even for WR/SR specials:
         // a one-way floor that reached its target must not replay from the
         // start (vanilla: re-triggering a raised floor does nothing); the
         // repeatable part lives on the zone/switch, whose extra start() calls
-        // are harmless (idempotent). A static pre-frame delays the raise so the
-        // player can step onto the platform (FLOOR_UP_START_DELAY_S).
-        const delayS = WadConstants.FLOOR_UP_START_DELAY_S;
-        const keyframes = [
-            {t: 0.0,            translate: [0, 0, 0],       rotate: [0, 0, 0]},
-            {t: delayS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
-            {t: delayS + moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-        ];
+        // are harmless (idempotent).
+        let keyframes;
+        if (instant) {
+            // Vanilla instant-raise (EV_DoFloor lower toward a destination
+            // ABOVE the floor: T_MovePlane jumps to it on the first tic) —
+            // the pop-up bridge trick. One tic, no walk-up pre-frame.
+            keyframes = [
+                {t: 0.0,                          translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: WadConstants.SECONDS_PER_TIC, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
+        } else {
+            // A static pre-frame delays the raise so the player can step onto
+            // the platform (FLOOR_UP_START_DELAY_S).
+            const speed  = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
+            const moveS  = delta / (speed * 35.0);
+            const delayS = WadConstants.FLOOR_UP_START_DELAY_S;
+            keyframes = [
+                {t: 0.0,            translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: delayS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: delayS + moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
+        }
 
         const press = WadConstants.floorUpPressProfile(special);
 
