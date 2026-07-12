@@ -392,53 +392,6 @@ class WadConstants {
     // the next sequential one (51 = S1, 124 = W1).
     static EXIT_SECRET_SPECIALS = new Set([51, 124]);
 
-    // --- Level progression (vanilla g_game.c G_DoCompleted) ---
-
-    // Normal exit taken FROM the secret level ExM9: per-episode return map.
-    static EPISODE_SECRET_RETURN = {1: 'E1M4', 2: 'E2M6', 3: 'E3M7', 4: 'E4M3'};
-
-    /**
-     * Next level after an exit. The WAD format carries no progression data
-     * (no UMAPINFO lump support yet), so this applies the vanilla engine
-     * rules (G_DoCompleted) to the level names read from the WAD:
-     * - ExMy: secret exit → ExM9; normal exit from ExM9 → per-episode return
-     *   (EPISODE_SECRET_RETURN); otherwise sequential.
-     * - MAPxx: secret exit → MAP31 (MAP32 when already on MAP31); normal exit
-     *   from MAP31/MAP32 → MAP16; otherwise sequential.
-     * Falls back to the sequential next level when the routed target does not
-     * exist in the WAD (partial WAD), and to null at the end of the list.
-     *
-     * @param {string[]} levels  level names of the WAD, in WAD order
-     * @param {string}   current
-     * @param {boolean}  secret
-     * @returns {string|null}
-     */
-    static nextLevelName(levels, current, secret) {
-        const index = levels.indexOf(current);
-        const sequential = ((index >= 0 && index + 1 < levels.length) ? levels[index + 1] : null);
-
-        let routed = null;
-        const episodic = current.match(/^E(\d)M(\d)$/);
-        const doom2 = current.match(/^MAP(\d{2})$/);
-        if (episodic !== null) {
-            const [, episode, map] = episodic;
-            if (secret) {
-                routed = 'E' + episode + 'M9';
-            } else if (map === '9') {
-                routed = WadConstants.EPISODE_SECRET_RETURN[episode] ?? null;
-            }
-        } else if (doom2 !== null) {
-            const map = parseInt(doom2[1], 10);
-            if (secret) {
-                routed = ((map === 31) ? 'MAP32' : 'MAP31');
-            } else if (map === 31 || map === 32) {
-                routed = 'MAP16';
-            }
-        }
-
-        return ((routed !== null && levels.includes(routed)) ? routed : sequential);
-    }
-
     // --- Teleporters ---
 
     // Walk-over linedefs that teleport the player to the thing type 14 (teleport

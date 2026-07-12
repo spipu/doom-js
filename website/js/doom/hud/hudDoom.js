@@ -11,6 +11,7 @@ class HudDoom extends HudDebug {
         this._wadId     = null;
         this._levelCode = null;
         this._skill     = null;
+        this._levelName = null;
         this._game      = null;
     }
 
@@ -18,11 +19,13 @@ class HudDoom extends HudDebug {
     // running level (DoomGame owns them) and are pushed in here only for display.
     // The [LEVEL] line is rendered in the exact form expected by
     // MenuNavigator.start(wadName, levelCode, ...) so a spawn can be reproduced
-    // straight from a screenshot.
-    setLevelInfo(wadId, levelCode, skill) {
+    // straight from a screenshot; the optional readable name (UMAPINFO
+    // levelname) is appended AFTER those three fields.
+    setLevelInfo(wadId, levelCode, skill, levelName = null) {
         this._wadId     = wadId;
         this._levelCode = levelCode;
         this._skill     = skill;
+        this._levelName = levelName;
         return this;
     }
 
@@ -44,7 +47,8 @@ class HudDoom extends HudDebug {
         const lines = [];
 
         lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?')
-            + ' / ' + (this._skill ?? '?'));
+            + ' / ' + (this._skill ?? '?')
+            + ((this._levelName !== null) ? ' — ' + this._levelName : ''));
 
         if (this._game) {
             lines.push('[SECRETS] ' + this._game.getSecretsFound() + '/' + this._game.getSecretsTotal());
