@@ -1,5 +1,5 @@
 {
-    "version": "v1.218",
+    "version": "v1.227",
     "files": {
         "assets": [],
         "css": [
@@ -17,6 +17,7 @@
             "/js/doom/wad/convert/wadTriangulator.js",
             "/js/doom/wad/convert/wadSectorPolygons.js",
             "/js/doom/wad/convert/wadLevelParser.js",
+            "/js/doom/wad/convert/wadMapInfo.js",
             "/js/doom/wad/convert/wadPalette.js",
             "/js/doom/wad/convert/wadPicture.js",
             "/js/doom/wad/convert/wadTextureBank.js",

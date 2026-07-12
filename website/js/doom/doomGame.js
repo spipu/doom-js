@@ -8,6 +8,7 @@ class DoomGame {
         this._wakeLock        = null;
         this._wadFile         = null;
         this._wadMeta         = null;
+        this._mapInfo         = null;
         this._levelName       = null;
         this._spawnOverride   = null;
         this._skill           = 3;
@@ -316,6 +317,7 @@ class DoomGame {
     // WAD spawn (see _applySpawnOverride).
     async startFromWad(wadFile, levelName, wadMeta = null, spawnOverride = null, skill = null) {
         this._wadFile   = wadFile;
+        this._mapInfo   = new WadMapInfo(wadFile);
         this._levelName = levelName;
         this._spawnOverride = spawnOverride;
         if (wadMeta !== null) {
@@ -395,7 +397,7 @@ class DoomGame {
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
             .bindGame(this)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill)
+            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._mapInfo.levelNameFor(this._levelName))
             .addDescription('(c)2026 Spipu')
         ;
 
@@ -483,9 +485,10 @@ class DoomGame {
         }
         this._transitioning = true;
 
-        // Vanilla progression rules on the WAD level names (see WadConstants).
-        const nextLevel = WadConstants.nextLevelName(
-            this._wadFile.getLevelNames(), this._levelName, secret === true);
+        // Progression owned by WadMapInfo: vanilla defaults synthesized from
+        // the level names, overlaid by the UMAPINFO lump when the WAD has one
+        // (null = end of game → back to the menu).
+        const nextLevel = this._mapInfo.nextLevelName(this._levelName, secret === true);
 
         const display = new MenuDisplay('screen').init();
         const modal = new MenuModal(display);
