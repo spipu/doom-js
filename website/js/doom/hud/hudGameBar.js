@@ -44,7 +44,8 @@ class HudGameBar extends AbstractHud {
 
         this._root = this._createEl('div', {
             position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
-            pointerEvents: 'none', fontFamily: 'system-ui, sans-serif', color: '#fff'
+            pointerEvents: 'none', fontFamily: 'system-ui, sans-serif', color: '#fff',
+            containerType: 'size'
         });
         container.appendChild(this._root);
 
@@ -64,7 +65,6 @@ class HudGameBar extends AbstractHud {
         if ((this._user === null) || (this._root === null)) {
             return;
         }
-        this._applyScale();
 
         const u = this._user;
 
@@ -260,19 +260,10 @@ class HudGameBar extends AbstractHud {
 
     // --- Helpers ---
 
-    // Scale the root font size to the rendered display height so every em-based
-    // measure stays proportional in letterbox (same idea as HudDebug).
-    _applyScale() {
-        if (!this._engine || !this._engine.scrHeight) {
-            return;
-        }
-        const fontPx = Math.max(12, Math.min(30, Math.round(this._engine.scrHeight * 0.03)));
-        this._root.style.fontSize = fontPx + 'px';
-    }
-
     _cornerStyle(anchors) {
         const style = {
             position: 'absolute',
+            fontSize: '3cqh',
             padding: '0.6em 0.8em',
             borderRadius: '0.5em',
             backgroundColor: 'rgba(0, 0, 0, 0.4)'

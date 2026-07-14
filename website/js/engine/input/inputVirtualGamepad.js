@@ -241,7 +241,7 @@ class InputVirtualGamepad {
         base.style.height     = diameterPct + '%';
         base.style.left       = (layout.x * 100) + '%';
         base.style.top        = (layout.y * 100) + '%';
-        base.style.border     = '2px solid ' + this._color.stickRing;
+        base.style.border     = '0.5cqh solid ' + this._color.stickRing;
         base.style.background = this._color.stickFill;
 
         const knob = this._createCircle();
@@ -264,7 +264,7 @@ class InputVirtualGamepad {
         el.style.height         = diameterPct + '%';
         el.style.left           = (layout.x * 100) + '%';
         el.style.top            = (layout.y * 100) + '%';
-        el.style.border         = '2px solid ' + this._color.btnBorder;
+        el.style.border         = '0.5cqh solid ' + this._color.btnBorder;
         el.style.background     = this._color.btnFill;
         el.style.color          = this._color.btnLabel;
         el.style.display        = 'flex';
@@ -290,7 +290,7 @@ class InputVirtualGamepad {
         el.style.width          = (z.w * 100) + '%';
         el.style.height         = (z.h * 100) + '%';
         el.style.boxSizing      = 'border-box';
-        el.style.border         = '2px dashed ' + this._color.btnBorder;
+        el.style.border         = '0.5cqh dashed ' + this._color.btnBorder;
         el.style.borderRadius   = '0.6em';
         el.style.background      = 'transparent';
         el.style.display         = 'flex';
