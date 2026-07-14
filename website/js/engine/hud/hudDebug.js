@@ -13,30 +13,18 @@ class HudDebug extends AbstractHud {
     init(container) {
         super.init(container);
 
+        container.style.containerType = 'size';
+
         this._el = document.createElement('div');
         this._el.style.position   = 'absolute';
-        this._el.style.bottom     = '5px';
-        this._el.style.left       = '5px';
+        this._el.style.bottom     = '1cqh';
+        this._el.style.left       = '1cqh';
         this._el.style.color      = '#aaa';
         this._el.style.fontFamily = 'monospace';
-        this._el.style.fontSize   = '12px';
+        this._el.style.fontSize   = '2.8cqh';
         this._el.style.whiteSpace = 'pre';
         this._el.style.textAlign  = 'left';
         container.appendChild(this._el);
-    }
-
-    // Scale the font (and offset) to the rendered display height so the overlay
-    // stays proportional on any screen size — engine.scrHeight is the actual
-    // pixel height of the (letterboxed) display, updated on every resize.
-    _applyFontScale() {
-        if (!this._engine || !this._engine.scrHeight) {
-            return;
-        }
-        const fontPx = Math.max(10, Math.min(24, Math.round(this._engine.scrHeight * 0.028)));
-        const pad    = Math.max(2, Math.round(fontPx * 0.4));
-        this._el.style.fontSize = fontPx + 'px';
-        this._el.style.bottom   = pad + 'px';
-        this._el.style.left     = pad + 'px';
     }
 
     setVisible(visible) {
@@ -46,7 +34,6 @@ class HudDebug extends AbstractHud {
     }
 
     update() {
-        this._applyFontScale();
         this._applyScreenFlash();
 
         const lines = [];
