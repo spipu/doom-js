@@ -23,6 +23,12 @@ class Inputs {
         return (magnitude - deadZone) / (1 - deadZone);
     }
 
+    // Movement stick reaches full speed at 80% of its travel, not only at the
+    // very edge (the look stick keeps its full range).
+    static get MOVE_SATURATION() {
+        return 0.8;
+    }
+
     /**
      * Creates and owns all the concrete input devices. Soft singleton:
      * InputKeyboard can only exist once per page, so new Inputs() returns
@@ -75,7 +81,7 @@ class Inputs {
     readJoy1X() {
         const pad = this._pad();
         if (pad !== null) {
-            return pad.readJoy1X();
+            return this._saturateMove(pad.readJoy1X(), pad.readJoy1Y()).x;
         }
         return this._keyAxis(this._keyboard.readKeyStrafeRight(), this._keyboard.readKeyStrafeLeft());
     }
@@ -83,7 +89,7 @@ class Inputs {
     readJoy1Y() {
         const pad = this._pad();
         if (pad !== null) {
-            return pad.readJoy1Y();
+            return this._saturateMove(pad.readJoy1X(), pad.readJoy1Y()).y;
         }
         return this._keyAxis(this._keyboard.readKeyForward(), this._keyboard.readKeyBackward());
     }
@@ -207,6 +213,18 @@ class Inputs {
     // Binary axis from two key states: +1, -1 or 0
     _keyAxis(positive, negative) {
         return ((positive) ? 1 : 0) - ((negative) ? 1 : 0);
+    }
+
+    // Rescales the joy1 vector so the movement stick saturates to full at
+    // MOVE_SATURATION of its travel, keeping its direction. Pad path only —
+    // keyboard axes are already ±1 and the look stick (joy2) is untouched.
+    _saturateMove(x, y) {
+        const mag = Math.sqrt((x * x) + (y * y));
+        if (mag < 1e-10) {
+            return { x: 0, y: 0 };
+        }
+        const factor = Math.min(mag / Inputs.MOVE_SATURATION, 1) / mag;
+        return { x: (x * factor), y: (y * factor) };
     }
 
     _computeJoy2DeltaX(dt) {
