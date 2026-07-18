@@ -40,6 +40,12 @@ class WadSpriteBank {
      * @param {string} name full sprite lump name (e.g. 'MEDIA0')
      * @returns {object|null}
      */
+    // True if the lump exists in the WAD, without decoding or warning — used to
+    // probe whether a weapon is present before deciding to decode its frames.
+    has(name) {
+        return (this._sprites[name] !== undefined);
+    }
+
     get(name) {
         if (this._cache[name] !== undefined) {
             return this._cache[name];

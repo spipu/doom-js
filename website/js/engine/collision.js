@@ -87,6 +87,9 @@ class Collision {
         let bestT = maxDist;
         for (const list of this._raycastLists(opts)) {
             for (const tri of list) {
+                if (tri.passableShot) {
+                    continue;
+                }
                 const denom = tri.n[0]*dx + tri.n[1]*dy + tri.n[2]*dz;
                 if (Math.abs(denom) < 1e-10) {
                     continue;
@@ -426,6 +429,9 @@ class Collision {
             if (!tri) {
                 continue;
             }
+            // Transparent walls (Doom grates/fences) block movement but let
+            // hitscan through, exactly like a two-sided line's middle texture.
+            tri.passableShot = (fc.isAlpha === true);
             this._classifyTri(tri, floors, ceilings, walls);
         }
         return { floors, ceilings, walls };

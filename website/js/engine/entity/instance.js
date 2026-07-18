@@ -78,6 +78,15 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
+    // Re-point the instance at another already-loaded object (e.g. an animated
+    // effect stepping through its frame billboards). Re-resolves the center.
+    setObject(objectId) {
+        this._objectId = objectId;
+        this._object   = loader.objects().get(objectId);
+        this._computeWorldCenter();
+        return this;
+    }
+
     _computeWorldCenter() {
         this._delta = this._interpolate();
         const lc = this._object.getCenter();
