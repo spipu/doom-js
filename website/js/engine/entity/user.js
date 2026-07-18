@@ -249,6 +249,10 @@ class User {
         return this._strafeLean + this._deathRoll;
     }
 
+    getRealVelocityXZ() {
+        return this._realVelocityXZ;
+    }
+
     getEnergyFlash() {
         return this._energyFlash;
     }

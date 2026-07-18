@@ -196,6 +196,12 @@ class Inputs {
         return this._keyboard.readKey('KeyF');
     }
 
+    // Net mouse-wheel weapon steps since the last call (up = next, down = prev).
+    // Discrete and consumable, unlike the held weapon buttons above.
+    readWeaponWheel() {
+        return this._mouse.readWheelNotches();
+    }
+
     // --- Internal ---
 
     // Active pad-like device (gamepad and virtual gamepad share the same API),

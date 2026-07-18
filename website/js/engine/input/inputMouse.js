@@ -20,7 +20,8 @@ class InputMouse {
         // would never reach a canvas listener and the button would stay down.
         document.addEventListener('mouseup', (e) => {
             if (e.button === 0) {
-                this._leftClick = false;
+                this._leftClick  = false;
+                this._focusClick = false;
             }
         });
 
@@ -44,9 +45,27 @@ class InputMouse {
         canvas.addEventListener('mousedown', (e) => {
             if (e.button === 0) {
                 this._leftClick = true;
+                // A press made while not yet pointer-locked is the click that
+                // grabs focus — it must not fire, even if the lock engages while
+                // the button is still held (cleared on release).
+                if (!this._locked) {
+                    this._focusClick = true;
+                }
             }
         });
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this._wheel += ((e.deltaY < 0) ? 1 : -1);
+        }, { passive: false });
+    }
+
+    // Net wheel notches since the last call (up = +1, down = -1), then reset.
+    readWheelNotches() {
+        const notches = this._wheel;
+        this._wheel = 0;
+        return notches;
     }
 
     // Returns accumulated delta since last call and resets to 0 — call once per frame.
@@ -63,7 +82,7 @@ class InputMouse {
     }
 
     isLeftClickDown() {
-        return this._leftClick;
+        return (this._leftClick && !this._focusClick);
     }
 
     // --- Internal ---
@@ -71,8 +90,10 @@ class InputMouse {
     _reset() {
         this._dx        = 0;
         this._dy        = 0;
-        this._locked    = false;
-        this._leftClick = false;
+        this._locked     = false;
+        this._leftClick  = false;
+        this._focusClick = false;
+        this._wheel      = 0;
     }
 
     _requestLock() {

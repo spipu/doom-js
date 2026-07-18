@@ -6,6 +6,7 @@ class Engine3d {
         this.scrHeight  = 0;
         this.background = [0, 0, 0];
         this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
+        this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this._viewYaw   = 0;          // cached in setCamera for the sky pass
         this._viewPitch = 0;
         this.viewMatrix = new Matrix();
@@ -69,6 +70,14 @@ class Engine3d {
 
     setSky(sky) {
         this.sky = sky;
+        return this;
+    }
+
+    // Register a callback drawn after the whole scene (over it, no depth), for
+    // 2D screen overlays. It receives (renderer, engine) and draws through the
+    // renderer's generic drawScreenSprite. null clears it. Game-agnostic.
+    setOverlayCallback(callback) {
+        this._overlayCallback = callback;
         return this;
     }
 
@@ -250,6 +259,9 @@ class Engine3d {
     }
 
     drawFinish() {
+        if (this._overlayCallback !== null) {
+            this._overlayCallback(this._renderer, this);
+        }
         this._renderer.end(this);
         this._updateFps();
         return this;
