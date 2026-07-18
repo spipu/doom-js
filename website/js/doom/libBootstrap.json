@@ -1,5 +1,5 @@
 {
-    "version": "v1.280",
+    "version": "v1.281",
     "files": {
         "assets": [],
         "css": [
@@ -52,6 +52,7 @@
             "/js/doom/weapon/doomWeaponState.js",
             "/js/doom/weapon/doomWeaponDef.js",
             "/js/doom/weapon/doomWeaponSpriteBank.js",
+            "/js/doom/weapon/doomWeaponMotion.js",
             "/js/doom/weapon/doomPlayerWeapon.js",
             "/js/doom/doomUser.js",
             "/js/doom/hud/hudDoomDebug.js",
