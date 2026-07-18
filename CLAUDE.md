@@ -11,4 +11,11 @@ Charger et appliquer automatiquement à chaque session :
 
 Puis lancer le serveur python et lancer doom dans firefox via playwright.
 
+Si la liste des WAD est vide, ajouter les 4 fichiers WAD présents dans `./.source/`, dans l'ordre suivant :
+
+* freedoom1
+* freedoom2
+* Doom1
+* Doom2
+
 Enfin analyse les 10 derniers commits, et analyser le fichier `~/git/claude/memory/projects/test/lib3d_js/next-steps.md`. 
