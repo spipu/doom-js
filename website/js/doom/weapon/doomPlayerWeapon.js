@@ -15,8 +15,16 @@ class DoomPlayerWeapon {
 
         this._weaponPsp = { stateKey: null, tics: 0 };
         this._flashPsp  = { stateKey: null, tics: 0 };
+        // Displayed offset (_sx,_sy) eases toward a target (_tx,_ty). Vanilla
+        // snaps the bob straight onto sx/sy, but its magnitude decays with the
+        // player's momentum (friction) so it drifts back gently; our velocity
+        // is instantaneous, so we smooth the offset instead. Firing/stopping
+        // aim the target at centre, which recenters the weapon and lets it
+        // resume bobbing without a phase jump when firing repeatedly.
         this._sx = 1;
         this._sy = DoomPlayerWeapon.WEAPONTOP;
+        this._tx = 1;
+        this._ty = DoomPlayerWeapon.WEAPONTOP;
 
         this._ready      = user.getActiveWeapon();
         this._pending    = null;
@@ -57,7 +65,15 @@ class DoomPlayerWeapon {
             this._ticks += 1;
             this._tickPsprite(this._weaponPsp);
             this._tickPsprite(this._flashPsp);
+            this._easeOffset();
         }
+    }
+
+    // Ease the shown offset toward the target set by the current action.
+    _easeOffset() {
+        const k = DoomPlayerWeapon.OFFSET_EASE;
+        this._sx += (this._tx - this._sx) * k;
+        this._sy += (this._ty - this._sy) * k;
     }
 
     _tickPsprite(psp) {
@@ -233,6 +249,8 @@ class DoomPlayerWeapon {
 
     _aLower() {
         this._sy += DoomPlayerWeapon.LOWERSPEED;
+        this._tx = 1;
+        this._ty = this._sy;
         if (this._sy < DoomPlayerWeapon.WEAPONBOTTOM) {
             return;
         }
@@ -242,10 +260,13 @@ class DoomPlayerWeapon {
 
     _aRaise() {
         this._sy -= DoomPlayerWeapon.RAISESPEED;
+        this._tx = 1;
+        this._ty = this._sy;
         if (this._sy > DoomPlayerWeapon.WEAPONTOP) {
             return;
         }
         this._sy = DoomPlayerWeapon.WEAPONTOP;
+        this._ty = DoomPlayerWeapon.WEAPONTOP;
         this._setState(this._weaponPsp, this._def().getEntry().ready);
     }
 
@@ -295,7 +316,10 @@ class DoomPlayerWeapon {
 
     _bringUpWeapon() {
         this._pending = null;
+        this._sx = 1;
         this._sy = DoomPlayerWeapon.WEAPONBOTTOM;
+        this._tx = 1;
+        this._ty = DoomPlayerWeapon.WEAPONBOTTOM;
         this._user.setActiveWeapon(this._ready);
         this._setState(this._weaponPsp, this._def().getEntry().up);
     }
@@ -304,6 +328,10 @@ class DoomPlayerWeapon {
         if (!this._checkAmmo()) {
             return;
         }
+        // Aim the offset at centre for the shot: the weapon recenters and stays
+        // steady through sustained fire instead of freezing mid-bob.
+        this._tx = 1;
+        this._ty = DoomPlayerWeapon.WEAPONTOP;
         this._setState(this._weaponPsp, this._def().getEntry().atk);
     }
 
@@ -358,19 +386,22 @@ class DoomPlayerWeapon {
     // --- Bob (A_WeaponReady) ---
 
     // player->bob = (momx^2 + momy^2) >> 2, capped at MAXBOB, in 320-base pixels.
-    // Our speed is world units/s → Doom map units/tic via the /64 map scale.
+    // Our speed is world units/s → Doom map units/tic via the /64 map scale. The
+    // bob feeds the eased TARGET (not the shown offset): at rest bob is ~0 so the
+    // target is centre and the weapon drifts back gently.
     _bob() {
         const mom = this._user.getRealVelocityXZ() * 64 / 35;
         const bob = Math.min(DoomPlayerWeapon.MAXBOB, (mom * mom) / 4);
         const ang = (128 * this._ticks) % DoomPlayerWeapon.FINEANGLES;
-        this._sx = 1 + bob * Math.cos(ang / DoomPlayerWeapon.FINEANGLES * 2 * Math.PI);
+        this._tx = 1 + bob * Math.cos(ang / DoomPlayerWeapon.FINEANGLES * 2 * Math.PI);
         const angY = ang % (DoomPlayerWeapon.FINEANGLES / 2);
-        this._sy = DoomPlayerWeapon.WEAPONTOP + bob * Math.sin(angY / DoomPlayerWeapon.FINEANGLES * 2 * Math.PI);
+        this._ty = DoomPlayerWeapon.WEAPONTOP + bob * Math.sin(angY / DoomPlayerWeapon.FINEANGLES * 2 * Math.PI);
     }
 }
 
 DoomPlayerWeapon.BASE_W       = 320;   // psprite reference screen (Doom SCREENWIDTH / height)
 DoomPlayerWeapon.BASE_H       = 200;
+DoomPlayerWeapon.OFFSET_EASE  = 0.28;  // per-tic easing of the shown offset toward its target
 DoomPlayerWeapon.WEAPONTOP    = 32;
 DoomPlayerWeapon.WEAPONBOTTOM = 128;
 DoomPlayerWeapon.LOWERSPEED   = 6;
