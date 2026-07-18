@@ -70,6 +70,20 @@ class AbstractLoader {
         return entity.getId();
     }
 
+    // Spawn a single entity at RUNTIME (after the level is loaded), finalising
+    // just it, WITHOUT the global load check — which re-runs finalizeInit on
+    // every entity and rebuilds the world collision (and re-snaps the player).
+    // For transient effects spawned mid-game (puffs, projectiles).
+    spawnFromData(code, data) {
+        const entity = this._create(this._entities.length, null, () => {});
+        this._registerNewEntity(code, entity);
+        this._populateFromData(entity, data);
+        entity.setLoaded();
+        this._loaded = true;
+        entity.finalizeInit();
+        return entity.getId();
+    }
+
     // Register an already-created entity: assigns the id slot, the code (if any)
     // and clears the loaded flag. Shared by loadFromData and the specialised
     // in-memory loaders (e.g. billboards) so they don't duplicate this bookkeeping.

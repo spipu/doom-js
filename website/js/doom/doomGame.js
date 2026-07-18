@@ -28,6 +28,8 @@ class DoomGame {
         this._playerWeapon    = null;
         this._weaponSprites   = null;
         this._availableWeapons = null;   // codes whose sprites exist in this WAD
+        this._effects         = null;    // transient sprite effects (puffs…)
+        this._hitscan         = null;
         this._rng             = new DoomRandom();
 
         // Shared, immutable definitions (the per-player state lives on DoomUser)
@@ -373,14 +375,17 @@ class DoomGame {
             this._availableWeapons = new Set();
             for (const code of Object.keys(this._weapons)) {
                 const def = this._weapons[code];
-                this._weaponSprites.decode(def.getSpriteLumps());
                 // A weapon "exists" in this WAD only if its sprites are present
                 // (e.g. the super shotgun / SHT2 is absent from Doom 1 WADs).
+                // Probe quietly, then decode only the frames we will actually use.
                 const readyLump = def.getState(def.getEntry().ready).getLump();
-                if (this._weaponSprites.get(readyLump) !== null) {
+                if (this._weaponSprites.has(readyLump)) {
                     this._availableWeapons.add(code);
+                    this._weaponSprites.decode(def.getSpriteLumps());
                 }
             }
+            // Effect sprites (puffs…) are built here too, inside the batch.
+            this._effects = new DoomEffects(this._weaponSprites, this._rng);
         }
 
         loader.setCallback(() => {
@@ -445,6 +450,8 @@ class DoomGame {
         if (DoomGame.WEAPON_STAGE >= 1) {
             this._rng.reset();
             this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
+            this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng);
+            this._playerWeapon.setAttackSystems(this._hitscan, null);
         }
         if (DoomGame.WEAPON_STAGE >= 2) {
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
@@ -512,6 +519,9 @@ class DoomGame {
         this._world.getUser().updateEffects(dt);
         if (this._playerWeapon !== null && DoomGame.WEAPON_STAGE >= 3) {
             this._playerWeapon.update(dt, this._inputs.readButtonFire());
+        }
+        if (this._effects !== null) {
+            this._effects.update(dt);
         }
         this._engine.displayWorld(this._world);
         this._screen.update();

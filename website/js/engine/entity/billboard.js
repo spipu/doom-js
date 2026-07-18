@@ -40,6 +40,7 @@ class Billboard extends Object3d {
         this._anchorTop     = (data.anchorTop === true);
 
         const light      = (data.light ?? 255);
+        const alpha      = (data.alpha ?? 1);
         const lightGroup = (data.lightGroup ?? null);
         const textureIds = data.textures;
         for (const tid of textureIds) {
@@ -50,8 +51,10 @@ class Billboard extends Object3d {
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
         const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (data.animDuration ?? 0)} : null);
-        this.fcAdd(1, 2, 3, [light, light, light], 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim, null, lightGroup);
-        this.fcAdd(1, 3, 4, [light, light, light], 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim, null, lightGroup);
+        // A fresh colour array per face (fcAdd normalises it in place); the alpha
+        // slot is added only when translucent, leaving opaque billboards untouched.
+        this.fcAdd(1, 2, 3, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim, null, lightGroup);
+        this.fcAdd(1, 3, 4, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim, null, lightGroup);
         return this;
     }
 

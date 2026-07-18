@@ -8,6 +8,11 @@ class DoomWeaponSpriteBank {
         this._cache = {};
     }
 
+    // True if the lump exists in the WAD (no decode, no warning).
+    has(lump) {
+        return this._bank.has(lump);
+    }
+
     // Decode a set of lumps eagerly (called inside the level load batch so no
     // texture is registered mid-render, which would re-trigger the loader).
     decode(lumps) {

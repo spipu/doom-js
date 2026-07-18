@@ -22,7 +22,6 @@ class DoomPlayerWeapon {
         this._refire     = 0;
         this._attackDown = false;
         this._fireHeld   = false;
-        this._extraLight = 0;
         this._light      = 1;
 
         this._ticks = 0;
@@ -40,10 +39,6 @@ class DoomPlayerWeapon {
     // Sector-light factor (0..1) applied to the non-fullbright weapon sprite.
     setLight(light) {
         this._light = light;
-    }
-
-    getExtraLight() {
-        return this._extraLight;
     }
 
     // --- Frame update ---
@@ -151,9 +146,6 @@ class DoomPlayerWeapon {
         do {
             if (stnum === null) {
                 psp.stateKey = null;
-                if (psp === this._flashPsp) {
-                    this._extraLight = 0;
-                }
                 return;
             }
             const state = this._def().getState(stnum);
@@ -179,8 +171,6 @@ class DoomPlayerWeapon {
             case 'refire':        this._aReFire();            break;
             case 'gunFlash':      this._aGunFlash();          break;
             case 'checkReload':   this._checkAmmo();          break;
-            case 'light1':        this._extraLight = 1;       break;
-            case 'light2':        this._extraLight = 2;       break;
             case 'punch':
             case 'saw':           this._aMelee();             break;
             case 'firePistol':    this._aFireHitscan(!this._refire); break;
@@ -191,7 +181,11 @@ class DoomPlayerWeapon {
             case 'fireMissile':
             case 'fireBFG':       this._aFireProjectile();    break;
             case 'firePlasma':    this._aFirePlasma();        break;
-            // Sound-only in vanilla (no audio yet); the state timing is kept.
+            // No-op: muzzle-flash extralight (no white screen flash, unlike a
+            // wrong earlier attempt) and reload sounds (no audio yet). The state
+            // timing and the flash sprite are still played.
+            case 'light1':
+            case 'light2':
             case 'bfgSound':
             case 'openShotgun2':
             case 'loadShotgun2':
