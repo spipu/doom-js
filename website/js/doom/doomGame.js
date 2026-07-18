@@ -24,6 +24,12 @@ class DoomGame {
         this._transitioning     = false;
         this._animateCallback   = this._animate.bind(this);
 
+        // Weapon firing (built per level)
+        this._playerWeapon    = null;
+        this._weaponSprites   = null;
+        this._availableWeapons = null;   // codes whose sprites exist in this WAD
+        this._rng             = new DoomRandom();
+
         // Shared, immutable definitions (the per-player state lives on DoomUser)
         this._weapons   = {};
         this._ammoTypes = {};
@@ -43,17 +49,7 @@ class DoomGame {
             cells:   new DoomAmmo({code: 'cells',   name: 'Cells',   maxNormal: 300, maxPack: 600, clip: 20})
         };
 
-        this._weapons = {
-            fist:         new DoomWeapon({code: 'fist',         name: 'Fist',            ammoType: null,      perShot: 0,  damage: 10}),
-            chainsaw:     new DoomWeapon({code: 'chainsaw',     name: 'Chainsaw',        ammoType: null,      perShot: 0,  damage: 20}),
-            pistol:       new DoomWeapon({code: 'pistol',       name: 'Pistol',          ammoType: 'bullets', perShot: 1,  damage: 10}),
-            shotgun:      new DoomWeapon({code: 'shotgun',      name: 'Shotgun',         ammoType: 'shells',  perShot: 1,  damage: 70}),
-            supershotgun: new DoomWeapon({code: 'supershotgun', name: 'Super Shotgun',   ammoType: 'shells',  perShot: 2,  damage: 70}),
-            chaingun:     new DoomWeapon({code: 'chaingun',     name: 'Chaingun',        ammoType: 'bullets', perShot: 1,  damage: 10}),
-            rocket:       new DoomWeapon({code: 'rocket',       name: 'Rocket Launcher', ammoType: 'rockets', perShot: 1,  damage: 100}),
-            plasma:       new DoomWeapon({code: 'plasma',       name: 'Plasma Rifle',    ammoType: 'cells',   perShot: 1,  damage: 20}),
-            bfg:          new DoomWeapon({code: 'bfg',          name: 'BFG9000',         ammoType: 'cells',   perShot: 40, damage: 500})
-        };
+        this._weapons = DoomWeaponDef.buildAll();
 
         this._items = {
             redKey:        new DoomItem({code: 'redKey',        name: 'Red Key',         type: 'key'}),
@@ -70,6 +66,12 @@ class DoomGame {
 
     getWeapon(code) {
         return (this._weapons[code] ?? null);
+    }
+
+    // True when the weapon's sprites exist in the current WAD. Before the sprite
+    // bank is built (staging off), everything is treated as available.
+    isWeaponAvailable(code) {
+        return ((this._availableWeapons === null) || this._availableWeapons.has(code));
     }
 
     getAmmo(code) {
@@ -135,15 +137,21 @@ class DoomGame {
 
     _pickupWeapon(user, code) {
         const def = this.getWeapon(code);
-        // Weapons absent from the catalog in Doom 1 (supershotgun, chainsaw…)
-        // are silently ignored rather than handed out.
-        if (def === null) {
+        // Unknown weapon, or one whose sprites are absent from this WAD (e.g. the
+        // super shotgun in Doom 1): not handed out.
+        if (def === null || !this.isWeaponAvailable(code)) {
             return false;
         }
         let gaveWeapon = false;
         if (!user.hasWeapon(code)) {
             user.giveWeapon(code);
-            user.setActiveWeapon(code);
+            // Vanilla sets pendingweapon → the new weapon is raised. Fall back to
+            // an instant swap only before the controller exists.
+            if (this._playerWeapon !== null) {
+                this._playerWeapon.requestWeapon(code);
+            } else {
+                user.setActiveWeapon(code);
+            }
             gaveWeapon = true;
         }
         // Doom hands out 2 × the ammo clip with the weapon (further doubled on
@@ -255,7 +263,9 @@ class DoomGame {
         const user = this._world.getUser();
 
         for (const code of Object.keys(this._weapons)) {
-            user.giveWeapon(code);
+            if (this.isWeaponAvailable(code)) {
+                user.giveWeapon(code);
+            }
         }
 
         for (const code of Object.keys(this._ammoTypes)) {
@@ -354,6 +364,25 @@ class DoomGame {
             skill: this._skill,
             game: this
         }).build();
+
+        // Pre-decode every weapon view/flash frame INSIDE the batch: decoding a
+        // sprite registers a texture, and any registration after endBatch would
+        // re-trigger the loader's global check (and _init) mid-render.
+        if (DoomGame.WEAPON_STAGE >= 1) {
+            this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
+            this._availableWeapons = new Set();
+            for (const code of Object.keys(this._weapons)) {
+                const def = this._weapons[code];
+                this._weaponSprites.decode(def.getSpriteLumps());
+                // A weapon "exists" in this WAD only if its sprites are present
+                // (e.g. the super shotgun / SHT2 is absent from Doom 1 WADs).
+                const readyLump = def.getState(def.getEntry().ready).getLump();
+                if (this._weaponSprites.get(readyLump) !== null) {
+                    this._availableWeapons.add(code);
+                }
+            }
+        }
+
         loader.setCallback(() => {
             this._init();
         });
@@ -362,6 +391,9 @@ class DoomGame {
 
     _init() {
         this._world = loader.world().get();
+        // Loading is done; drop the callback so runtime texture/instance spawns
+        // (weapon frames, puffs, projectiles) never re-enter _init.
+        loader.clearCallback();
 
         const user = this._world.getUser();
         if (this._carriedState === null) {
@@ -408,6 +440,16 @@ class DoomGame {
 
         this._engine.initFromWorld(this._world);
 
+        // Weapon firing: a fresh psprite controller per level, RNG cleared like
+        // vanilla M_ClearRandom. It brings the active weapon up on construction.
+        if (DoomGame.WEAPON_STAGE >= 1) {
+            this._rng.reset();
+            this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
+        }
+        if (DoomGame.WEAPON_STAGE >= 2) {
+            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+        }
+
         // Require a release before the first press (a button held during the
         // level start must not immediately quit it)
         this._pauseWasDown = true;
@@ -443,27 +485,46 @@ class DoomGame {
         }
         this._hudWasDown = hudDown;
 
-        // Weapon switch (press edge): cycle owned weapons, wrapping both ways
-        const weaponNextDown = this._inputs.readButtonWeaponNext();
-        if (weaponNextDown && !this._weaponNextWasDown) {
-            this._world.getUser().nextWeapon();
-        }
-        this._weaponNextWasDown = weaponNextDown;
+        // Weapon switching + firing are enabled in stages during bring-up
+        // (WEAPON_STAGE), so each layer can be validated on its own.
+        if (this._playerWeapon !== null && DoomGame.WEAPON_STAGE >= 4) {
+            const weaponNextDown = this._inputs.readButtonWeaponNext();
+            if (weaponNextDown && !this._weaponNextWasDown) {
+                this._playerWeapon.cycleWeapon(1);
+            }
+            this._weaponNextWasDown = weaponNextDown;
 
-        const weaponPrevDown = this._inputs.readButtonWeaponPrev();
-        if (weaponPrevDown && !this._weaponPrevWasDown) {
-            this._world.getUser().previousWeapon();
+            const weaponPrevDown = this._inputs.readButtonWeaponPrev();
+            if (weaponPrevDown && !this._weaponPrevWasDown) {
+                this._playerWeapon.cycleWeapon(-1);
+            }
+            this._weaponPrevWasDown = weaponPrevDown;
+
+            const wheel = this._inputs.readWeaponWheel();
+            for (let n = 0; n < Math.abs(wheel); n++) {
+                this._playerWeapon.cycleWeapon((wheel > 0) ? 1 : -1);
+            }
         }
-        this._weaponPrevWasDown = weaponPrevDown;
 
         this._engine.calculateDeltaTime(timestamp);
         const dt = this._engine.getDeltaTime();
         this._world.update(dt, this._inputs);
         this._world.getUser().updateEffects(dt);
+        if (this._playerWeapon !== null && DoomGame.WEAPON_STAGE >= 3) {
+            this._playerWeapon.update(dt, this._inputs.readButtonFire());
+        }
         this._engine.displayWorld(this._world);
         this._screen.update();
 
         requestAnimationFrame(this._animateCallback);
+    }
+
+    // Engine overlay callback: draw the weapon view sprite (+ muzzle flash) over
+    // the scene. The controller returns 0..1 screen rects; the renderer draws.
+    _drawWeaponOverlay(renderer, engine) {
+        for (const spr of this._playerWeapon.getViewSprites()) {
+            renderer.drawScreenSprite(engine, spr.texId, spr.x, spr.y, spr.w, spr.h, spr.light);
+        }
     }
 
     // Stop the running level and wipe every loader (rAF first: World.update
@@ -551,3 +612,10 @@ class DoomGame {
         }
     }
 }
+
+// Staged bring-up of the weapon system, so each layer is validated on its own:
+// 0 = off (baseline load), 1 = pre-decode sprites + build the controller,
+// 2 = + render the view sprite (static), 3 = + tick the state machine (bob,
+// fire animation), 4 = + weapon switching (keys / wheel). Raise once validated.
+// All stages validated in-game → full weapon system on.
+DoomGame.WEAPON_STAGE = 4;

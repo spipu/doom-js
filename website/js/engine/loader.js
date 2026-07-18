@@ -39,6 +39,13 @@ class Loader {
         }
     }
 
+    // Drop the ready callback once consumed, so runtime entity registrations
+    // (e.g. weapon/puff sprites spawned after loading) don't re-invoke it.
+    clearCallback() {
+        this._callback = null;
+        return this;
+    }
+
     instances() {
         return this._instanceLoader;
     }

@@ -21,6 +21,14 @@ class Object3dRendererBase {
         // frame-completion hook — nothing to flush by default
     }
 
+    // Draw a textured quad in normalised screen space (x, y top-left, w, h in
+    // 0..1; y downward), over the scene without depth, tinted by light (0..1).
+    // Generic 2D overlay primitive; only the WebGL renderer implements it (the
+    // CPU renderers skip it, like the sky).
+    drawScreenSprite(engine, texId, x, y, w, h, light) {
+        // no-op by default
+    }
+
     _traceTriangle(ctx, obj, fc) {
         ctx.beginPath();
         ctx.moveTo(obj.pt2d[fc.pts[0]][0], obj.pt2d[fc.pts[0]][1]);

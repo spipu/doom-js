@@ -78,6 +78,52 @@ class Collision {
         return this._scanCeilingLists(px, pz, r, headY, this._ceilingLists(px, pz, r));
     }
 
+    // Nearest triangle hit by the ray (origin, unit direction), within maxDist.
+    // Walls are always tested; floors/ceilings/dynamic movers are opt-in via
+    // opts. Returns {point, dist, normal, tri} or null. dist is in world units
+    // (the direction must be normalised).
+    raycast(ox, oy, oz, dx, dy, dz, maxDist = Infinity, opts = {}) {
+        let best  = null;
+        let bestT = maxDist;
+        for (const list of this._raycastLists(opts)) {
+            for (const tri of list) {
+                const denom = tri.n[0]*dx + tri.n[1]*dy + tri.n[2]*dz;
+                if (Math.abs(denom) < 1e-10) {
+                    continue;
+                }
+                const t = (tri.d - (tri.n[0]*ox + tri.n[1]*oy + tri.n[2]*oz)) / denom;
+                if (t < 0 || t > bestT) {
+                    continue;
+                }
+                const px = ox + t*dx, py = oy + t*dy, pz = oz + t*dz;
+                if (!this._pointInTri(px, py, pz, tri)) {
+                    continue;
+                }
+                bestT = t;
+                best  = { point: [px, py, pz], dist: t, normal: tri.n, tri };
+            }
+        }
+        return best;
+    }
+
+    _raycastLists(opts) {
+        const lists = [];
+        const push = (sc) => {
+            lists.push(sc.walls);
+            if (opts.floors) {
+                lists.push(sc.floors);
+            }
+            if (opts.ceilings) {
+                lists.push(sc.ceilings);
+            }
+        };
+        this._static.forEach(push);
+        if (opts.dynamic) {
+            this._dynamic.forEach((dc) => push(dc));
+        }
+        return lists;
+    }
+
     resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0) {
         // A crush mover pressing the player is passable (vanilla lateral escape)
         const allWalls = [
@@ -715,6 +761,25 @@ class Collision {
         return (this._distToSegment(px, pz, A[0],A[2], B[0],B[2]) < r
             || this._distToSegment(px, pz, B[0],B[2], C[0],C[2]) < r
             || this._distToSegment(px, pz, C[0],C[2], A[0],A[2]) < r);
+    }
+
+    // Same-side test on the triangle plane: the point (assumed coplanar, from a
+    // ray-plane hit) is inside when it stays on one side of every edge.
+    _pointInTri(px, py, pz, tri) {
+        const [A, B, C] = tri.pts;
+        const e0 = this._edgeSide(A, B, px, py, pz, tri.n);
+        const e1 = this._edgeSide(B, C, px, py, pz, tri.n);
+        const e2 = this._edgeSide(C, A, px, py, pz, tri.n);
+        return ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0));
+    }
+
+    _edgeSide(P, Q, px, py, pz, n) {
+        const ex = Q[0]-P[0], ey = Q[1]-P[1], ez = Q[2]-P[2];
+        const wx = px-P[0],   wy = py-P[1],   wz = pz-P[2];
+        const cx = ey*wz - ez*wy;
+        const cy = ez*wx - ex*wz;
+        const cz = ex*wy - ey*wx;
+        return cx*n[0] + cy*n[1] + cz*n[2];
     }
 
     _sweptCircleVsSegment(cx, cz, vx, vz, ax, az, bx, bz, r) {

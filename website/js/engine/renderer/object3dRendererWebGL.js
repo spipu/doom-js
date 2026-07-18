@@ -8,6 +8,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._skyProgram = null;   // dedicated full-screen sky program (lazy)
         this._skyVbo     = null;
         this._skyLoc     = {};
+        this._overlayProgram = null;   // dedicated screen-space overlay-sprite program (lazy)
+        this._overlayVbo     = null;
+        this._overlayLoc     = {};
     }
 
     get code() {
@@ -88,13 +91,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     _setupSky(gl) {
-        const vs = this._compile(gl, gl.VERTEX_SHADER, `
+        this._skyProgram = this._linkProgram(gl, `
             attribute vec2 a_pos;
             void main() {
                 gl_Position = vec4(a_pos, 0.0, 1.0);
             }
-        `);
-        const fs = this._compile(gl, gl.FRAGMENT_SHADER, `
+        `, `
             precision mediump float;
             uniform sampler2D u_sky;
             uniform vec3  u_cap;
@@ -122,11 +124,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             }
         `);
 
-        this._skyProgram = gl.createProgram();
-        gl.attachShader(this._skyProgram, vs);
-        gl.attachShader(this._skyProgram, fs);
-        gl.linkProgram(this._skyProgram);
-
         this._skyLoc = {
             aPos:   gl.getAttribLocation( this._skyProgram, 'a_pos'),
             sky:    gl.getUniformLocation(this._skyProgram, 'u_sky'),
@@ -145,6 +142,85 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             -1, -1,   1, -1,   1, 1,
             -1, -1,   1,  1,  -1, 1
         ]), gl.STATIC_DRAW);
+    }
+
+    // Generic 2D overlay: one textured quad in normalised screen space (0..1,
+    // y downward), drawn over the scene with depth test OFF and tinted by light.
+    // Knows nothing of what it draws (weapon, HUD sprite…) — the caller places it.
+    drawScreenSprite(engine, texId, x, y, w, h, light) {
+        const gl  = engine.scrCtx;
+        const tex = ((texId !== null) ? loader.textures().get(texId) : null);
+        if (!gl || !tex) {
+            return;
+        }
+        if (!this._overlayProgram) {
+            this._setupOverlay(gl);
+        }
+        const loc = this._overlayLoc;
+        const xl = x * 2.0 - 1.0;
+        const xr = (x + w) * 2.0 - 1.0;
+        const yt = 1.0 - y * 2.0;
+        const yb = 1.0 - (y + h) * 2.0;
+
+        gl.useProgram(this._overlayProgram);
+        gl.disable(gl.DEPTH_TEST);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._overlayVbo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            xl, yt, 0, 0,   xr, yt, 1, 0,   xr, yb, 1, 1,
+            xl, yt, 0, 0,   xr, yb, 1, 1,   xl, yb, 0, 1,
+        ]), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(loc.aPos);
+        gl.vertexAttribPointer(loc.aPos, 2, gl.FLOAT, false, 16, 0);
+        gl.enableVertexAttribArray(loc.aUv);
+        gl.vertexAttribPointer(loc.aUv, 2, gl.FLOAT, false, 16, 8);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, tex));
+        gl.uniform1i(loc.tex, 0);
+        gl.uniform1f(loc.light, light);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.enable(gl.DEPTH_TEST);
+    }
+
+    _setupOverlay(gl) {
+        this._overlayProgram = this._linkProgram(gl, `
+            attribute vec2 a_pos;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main() {
+                gl_Position = vec4(a_pos, 0.0, 1.0);
+                v_uv = a_uv;
+            }
+        `, `
+            precision mediump float;
+            uniform sampler2D u_tex;
+            uniform float u_light;
+            varying vec2 v_uv;
+            void main() {
+                vec4 t = texture2D(u_tex, v_uv);
+                if (t.a < 0.5) {
+                    discard;
+                }
+                gl_FragColor = vec4(t.rgb * u_light, t.a);
+            }
+        `);
+
+        this._overlayLoc = {
+            aPos:  gl.getAttribLocation( this._overlayProgram, 'a_pos'),
+            aUv:   gl.getAttribLocation( this._overlayProgram, 'a_uv'),
+            tex:   gl.getUniformLocation(this._overlayProgram, 'u_tex'),
+            light: gl.getUniformLocation(this._overlayProgram, 'u_light'),
+        };
+
+        this._overlayVbo = gl.createBuffer();
+    }
+
+    // Compile + link a vertex/fragment program (shared by every pass).
+    _linkProgram(gl, vsSrc, fsSrc) {
+        const program = gl.createProgram();
+        gl.attachShader(program, this._compile(gl, gl.VERTEX_SHADER, vsSrc));
+        gl.attachShader(program, this._compile(gl, gl.FRAGMENT_SHADER, fsSrc));
+        gl.linkProgram(program);
+        return program;
     }
 
     draw(obj, engine) {
@@ -257,7 +333,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     _setup(gl) {
-        const vs = this._compile(gl, gl.VERTEX_SHADER, `
+        this._program = this._linkProgram(gl, `
             attribute vec3 a_pos;
             attribute vec3 a_color;
             attribute vec2 a_uv;
@@ -274,8 +350,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 v_color = a_color;
                 v_uv    = a_uv;
             }
-        `);
-        const fs = this._compile(gl, gl.FRAGMENT_SHADER, `
+        `, `
             precision mediump float;
             uniform sampler2D u_tex;
             uniform int       u_hasTex;
@@ -307,11 +382,6 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 gl_FragColor = vec4(col, a);
             }
         `);
-
-        this._program = gl.createProgram();
-        gl.attachShader(this._program, vs);
-        gl.attachShader(this._program, fs);
-        gl.linkProgram(this._program);
         gl.useProgram(this._program);
 
         this._loc = {

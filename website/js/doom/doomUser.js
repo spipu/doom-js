@@ -86,6 +86,11 @@ class DoomUser extends User {
         return this;
     }
 
+    useAmmo(type, n) {
+        this._ammo[type] = Math.max(0, (this._ammo[type] ?? 0) - n);
+        return this;
+    }
+
     getAmmo(type) {
         return (this._ammo[type] ?? 0);
     }
