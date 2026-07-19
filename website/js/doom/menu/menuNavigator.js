@@ -11,6 +11,7 @@ class MenuNavigator {
         this._wadListScreen    = new WadListScreen(this, this._display, this._registry);
         this._difficultyScreen = new DifficultyScreen(this, this._display);
         this._levelListScreen  = new LevelListScreen(this, this._display, this._registry);
+        this._fallbackScreen   = new FallbackScreen(this, this._display);
 
         this._currentScreen      = null;
         this._selectedDifficulty = 3;
@@ -69,6 +70,15 @@ class MenuNavigator {
 
     showWadList() {
         this._switchTo(this._wadListScreen);
+    }
+
+    /**
+     * Difficulty kept for this session (used by the difficulty screen to
+     * preselect its entry).
+     * @returns {number}
+     */
+    getSelectedDifficulty() {
+        return this._selectedDifficulty;
     }
 
     /**
@@ -217,23 +227,7 @@ class MenuNavigator {
         this._display.destroy();
     }
 
-    /**
-     * Degraded screen when IndexedDB is not available: no WAD can be stored,
-     * the game cannot run.
-     */
     _showFallback() {
-        const container = document.createElement('div');
-        container.className = 'doom-menu';
-        this._display.getContainer().appendChild(container);
-
-        const title = document.createElement('div');
-        title.className = 'doom-menu-title';
-        title.textContent = 'Spipu-Doom';
-        container.appendChild(title);
-
-        const message = document.createElement('div');
-        message.className = 'doom-menu-status doom-menu-error';
-        message.textContent = 'Stockage navigateur indisponible — impossible de gérer les WADs.';
-        container.appendChild(message);
+        this._switchTo(this._fallbackScreen);
     }
 }

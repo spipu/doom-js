@@ -100,7 +100,35 @@ class InputGamepad {
         return this._button(5);
     }
 
+    // D-pad up/down, only trusted on the standard mapping (buttons 12/13).
+    // Raw layouts expose the d-pad as a hat axis on other slots, where 12/13
+    // may be unrelated physical buttons — there, the caller falls back on the
+    // left stick.
+    readDpadUp() {
+        return (this._isStandardMapping() && this._button(12));
+    }
+
+    readDpadDown() {
+        return (this._isStandardMapping() && this._button(13));
+    }
+
+    // Generic UI navigation: validate on face button 0 (✕ on a DualSense),
+    // back on face button 1 (○), used by the DOM menus.
+    readButtonValidate() {
+        return this._button(0);
+    }
+
+    readButtonBack() {
+        return this._button(1);
+    }
+
     // --- Internal ---
+
+    _isStandardMapping() {
+        const pad = this._getPad();
+
+        return ((pad !== null) && (pad.mapping === 'standard'));
+    }
 
     // The standard mapping guarantees the sticks on axes 0-3. On non-standard
     // pads, the triggers are exposed as axes mixed with the sticks; a known

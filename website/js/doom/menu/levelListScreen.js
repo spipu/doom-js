@@ -26,14 +26,15 @@ class LevelListScreen extends AbstractMenuScreen {
     _build() {
         const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Niveaux');
 
-        this._statusEl = this._addElement('div', 'doom-menu-status', panel);
+        this._addStatus(panel);
 
-        const actions = this._addElement('div', 'doom-menu-actions', panel);
-        this._addButton('Retour', () => {
-            this._navigator.openWad(this._wadMeta);
-        }, actions);
+        this._addBackButton(panel);
 
         this._loadLevels(listEl);
+    }
+
+    _onBack() {
+        this._navigator.openWad(this._wadMeta);
     }
 
     // --- Internal ---
@@ -50,11 +51,10 @@ class LevelListScreen extends AbstractMenuScreen {
         }
 
         this._clearStatus();
-        listEl.innerHTML = '';
+        this._clearList(listEl);
 
         if (levels.length === 0) {
-            const empty = this._addElement('div', 'doom-menu-empty', listEl);
-            empty.textContent = 'Aucun niveau trouvé dans ce WAD';
+            this._addListEmpty(listEl, 'Aucun niveau trouvé dans ce WAD');
             return;
         }
 
@@ -63,6 +63,7 @@ class LevelListScreen extends AbstractMenuScreen {
                 this._onSelectLevel(name);
             });
         }
+        this._nav.selectFirst();
     }
 
     _onSelectLevel(levelName) {

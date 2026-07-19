@@ -23,18 +23,12 @@ class WadListScreen extends AbstractMenuScreen {
         this._fileInput = null;
         this._buttons   = [];
 
-        this._addTitle('Spipu-Doom');
-
-        const panel = this._addElement('div', 'doom-menu-panel');
-
-        const subTitle = this._addElement('div', 'doom-menu-subtitle', panel);
-        subTitle.textContent = 'Fichiers WAD';
-
-        this._listEl = this._addList(panel);
+        const {panel, listEl} = this._buildPanel('Fichiers WAD');
+        this._listEl = listEl;
 
         this._buildAddForm(panel);
 
-        this._statusEl = this._addElement('div', 'doom-menu-status', panel);
+        this._addStatus(panel);
 
         this._refresh();
     }
@@ -47,6 +41,12 @@ class WadListScreen extends AbstractMenuScreen {
         this._urlInput = this._addElement('input', 'doom-menu-input', form);
         this._urlInput.type = 'text';
         this._urlInput.placeholder = 'https://exemple.com/fichier.wad';
+        this._urlInput.addEventListener('keydown', (event) => {
+            if ((event.code === 'Enter') || (event.code === 'NumpadEnter')) {
+                event.preventDefault();
+                this._onAddUrl();
+            }
+        });
 
         this._buttons.push(this._addButton('Ajouter par URL', () => {
             this._onAddUrl();
@@ -73,39 +73,31 @@ class WadListScreen extends AbstractMenuScreen {
             return;
         }
 
-        this._listEl.innerHTML = '';
+        this._clearList(this._listEl);
 
         if (list.length === 0) {
-            const empty = this._addElement('div', 'doom-menu-empty', this._listEl);
-            empty.textContent = 'Aucun WAD — ajoutez-en un ci-dessous';
+            this._addListEmpty(this._listEl, 'Aucun WAD — ajoutez-en un ci-dessous');
             return;
         }
 
         for (const meta of list) {
             this._buildItem(meta);
         }
+        this._nav.selectFirst();
     }
 
     _buildItem(meta) {
-        const item = this._addElement('div', 'doom-menu-item', this._listEl);
-        item.addEventListener('click', () => {
+        const item = this._addListItem(this._listEl, meta.name, () => {
             this._onSelectWad(meta);
         });
 
-        const label = this._addElement('div', 'doom-menu-item-label', item);
-        label.textContent = meta.name;
+        this._addListItemInfos(item, this._formatSize(meta.size) + ' — ' + this._formatDate(meta.addedAt));
 
-        const infos = this._addElement('div', 'doom-menu-item-infos', item);
-        infos.textContent = this._formatSize(meta.size) + ' — ' + this._formatDate(meta.addedAt);
-
-        const deleteButton = this._addElement('button', 'doom-menu-item-delete', item);
-        deleteButton.type = 'button';
-        deleteButton.textContent = '✕';
-        deleteButton.title = 'Supprimer';
-        deleteButton.addEventListener('click', (event) => {
+        const deleteButton = MenuDom.addButton(item, 'doom-menu-item-delete', '✕', (event) => {
             event.stopPropagation();
             this._onDeleteWad(meta);
         });
+        deleteButton.title = 'Supprimer';
     }
 
     // --- Handlers ---

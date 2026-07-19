@@ -1,5 +1,11 @@
 /**
  * Base class of the menu screens, displayed inside the MenuDisplay virtual screen.
+ *
+ * Every screen shares the same skeleton (title, panel, subtitle, selectable
+ * list, status, back button) and the same selection model on its list items,
+ * provided by MenuListNavigation (mouse hover, keyboard and gamepad all drive
+ * one single highlighted entry). Screens with a parent screen override
+ * _onBack().
  */
 
 // The footer (version + webapp stats) is only relevant on the startup screen:
@@ -18,6 +24,7 @@ class AbstractMenuScreen {
         this._statusEl    = null;
         this._footerEl    = null;
         this._footerTimer = null;
+        this._nav         = new MenuListNavigation(() => this._onBack(), () => this._navBlocked());
     }
 
     show() {
@@ -33,11 +40,13 @@ class AbstractMenuScreen {
         if (AbstractMenuScreen_footerAllowed) {
             this._addFooter();
         }
+        this._nav.attach();
 
         return this;
     }
 
     hide() {
+        this._nav.detach().clear();
         if (this._footerTimer !== null) {
             clearInterval(this._footerTimer);
             this._footerTimer = null;
@@ -59,29 +68,82 @@ class AbstractMenuScreen {
         throw new Error('AbstractMenuScreen._build must be implemented');
     }
 
-    // Standard skeleton of the WAD sub-screens (difficulty, level list):
-    // title, panel and subtitle "<wad name> — <label>", plus the empty list.
-    _buildWadPanel(wadName, subtitleLabel) {
+    // Screens with a parent screen override this to navigate back
+    // (Backspace key / gamepad button 1); the root screens ignore it.
+    _onBack() {
+    }
+
+    // Navigation is suspended while a modal overlay is open.
+    _navBlocked() {
+        if (this._container === null) {
+            return true;
+        }
+        const displayContainer = this._display.getContainer();
+        if (displayContainer === null) {
+            return true;
+        }
+
+        return (displayContainer.querySelector('.doom-menu-overlay') !== null);
+    }
+
+    // --- Shared skeleton ---
+
+    // Standard skeleton of every screen: title, panel, subtitle and the empty
+    // selectable list.
+    _buildPanel(subtitleText) {
         this._addTitle('Spipu-Doom');
 
         const panel = this._addElement('div', 'doom-menu-panel');
+        MenuDom.addText(panel, 'doom-menu-subtitle', subtitleText);
 
-        const subTitle = this._addElement('div', 'doom-menu-subtitle', panel);
-        subTitle.textContent = wadName + ' — ' + subtitleLabel;
-
-        return {panel: panel, listEl: this._addList(panel)};
+        return {panel: panel, listEl: this._addElement('div', 'doom-menu-list', panel)};
     }
 
-    // Clickable list entry with its label; the returned item can carry extra
-    // children (e.g. a meta line).
-    _addListItem(listEl, labelText, onClick) {
-        const item = this._addElement('div', 'doom-menu-item', listEl);
-        item.addEventListener('click', onClick);
+    // Skeleton of the WAD sub-screens: subtitle "<wad name> — <label>".
+    _buildWadPanel(wadName, subtitleLabel) {
+        return this._buildPanel(wadName + ' — ' + subtitleLabel);
+    }
 
-        const label = this._addElement('div', 'doom-menu-item-label', item);
-        label.textContent = labelText;
+    _addStatus(panel) {
+        this._statusEl = this._addElement('div', 'doom-menu-status', panel);
+
+        return this._statusEl;
+    }
+
+    // Right-aligned actions row with the standard back button.
+    _addBackButton(panel) {
+        const actions = this._addElement('div', 'doom-menu-actions', panel);
+
+        return this._addButton('Retour', () => {
+            this._onBack();
+        }, actions);
+    }
+
+    // --- Selectable list ---
+
+    // Selectable list entry with its label; the returned item can carry extra
+    // children (an infos line, a delete button...).
+    _addListItem(listEl, labelText, onActivate) {
+        const item = this._addElement('div', 'doom-menu-item', listEl);
+        this._nav.addItem(item, onActivate);
+        MenuDom.addText(item, 'doom-menu-item-label', labelText);
 
         return item;
+    }
+
+    // Secondary line of a list item (size, date, skill number...).
+    _addListItemInfos(item, text) {
+        return MenuDom.addText(item, 'doom-menu-item-infos', text);
+    }
+
+    _addListEmpty(listEl, text) {
+        return MenuDom.addText(listEl, 'doom-menu-empty', text);
+    }
+
+    // Empties a list and forgets its selectable entries (used before a rebuild).
+    _clearList(listEl) {
+        listEl.innerHTML = '';
+        this._nav.clear();
     }
 
     // --- Footer (version + webapp stats, same live line as the debug HUD) ---
@@ -100,34 +162,18 @@ class AbstractMenuScreen {
         this._footerEl.textContent = appBootstrap.getVersion() + ' — ' + appBootstrap.getStatsText();
     }
 
-    // --- DOM helpers ---
+    // --- DOM helpers (MenuDom wrappers defaulting to the screen container) ---
 
     _addElement(tagName, className, parent = null) {
-        const element = document.createElement(tagName);
-        element.className = className;
-        (parent ?? this._container).appendChild(element);
-
-        return element;
+        return MenuDom.addElement(parent ?? this._container, tagName, className);
     }
 
     _addTitle(text, parent = null) {
-        const title = this._addElement('div', 'doom-menu-title', parent);
-        title.textContent = text;
-
-        return title;
+        return MenuDom.addText(parent ?? this._container, 'doom-menu-title', text);
     }
 
     _addButton(label, onClick, parent = null) {
-        const button = this._addElement('button', 'doom-menu-button', parent);
-        button.type = 'button';
-        button.textContent = label;
-        button.addEventListener('click', onClick);
-
-        return button;
-    }
-
-    _addList(parent = null) {
-        return this._addElement('div', 'doom-menu-list', parent);
+        return MenuDom.addButton(parent ?? this._container, 'doom-menu-button', label, onClick);
     }
 
     _confirm(message, onConfirm) {
