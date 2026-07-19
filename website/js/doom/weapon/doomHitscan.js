@@ -5,11 +5,12 @@
 // sky meets no geometry → no hit → no puff, exactly like Doom. Damage rolls are
 // computed but only matter once there are things to hit.
 class DoomHitscan {
-    constructor(collision, effects, rng, decals) {
-        this._collision = collision;
-        this._effects   = effects;
-        this._rng       = rng;
-        this._decals    = decals;
+    constructor(collision, effects, rng, decals, gunTriggers = null) {
+        this._collision   = collision;
+        this._effects     = effects;
+        this._rng         = rng;
+        this._decals      = decals;
+        this._gunTriggers = gunTriggers;
     }
 
     // A ranged weapon shot: one ray per pellet. accurate (the first pistol /
@@ -48,6 +49,13 @@ class DoomHitscan {
             user.getCameraX(), user.getCameraY(), user.getCameraZ(),
             dx, dy, dz, range, { floors: true, ceilings: true, dynamic: true }
         );
+        // Impact specials (24/46/47) fire on the 2D trace, hit or not — a shot
+        // into the sky above a low shootable wall still crosses its line.
+        if (this._gunTriggers !== null) {
+            const endX = ((hit !== null) ? hit.point[0] : user.getCameraX() + dx * range);
+            const endZ = ((hit !== null) ? hit.point[2] : user.getCameraZ() + dz * range);
+            this._gunTriggers.onTrace(user.getCameraX(), user.getCameraZ(), endX, endZ);
+        }
         if (hit === null) {
             return;
         }

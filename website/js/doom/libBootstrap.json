@@ -1,5 +1,5 @@
 {
-    "version": "v1.300",
+    "version": "v1.309",
     "files": {
         "assets": [
             "/assets/uzdoom/sprite/chip1.png",
@@ -44,6 +44,7 @@
             "/js/doom/wad/convert/wadRisingFloorBuilder.js",
             "/js/doom/wad/convert/wadStairBuilder.js",
             "/js/doom/wad/convert/wadSwitchBuilder.js",
+            "/js/doom/wad/convert/wadGunTriggerBuilder.js",
             "/js/doom/wad/convert/wadTeleportBuilder.js",
             "/js/doom/wad/convert/wadWalkTriggerBuilder.js",
             "/js/doom/wad/convert/wadThingBuilder.js",
@@ -69,6 +70,7 @@
             "/js/doom/weapon/doomPlayerWeapon.js",
             "/js/doom/weapon/doomEffects.js",
             "/js/doom/weapon/doomHitscan.js",
+            "/js/doom/weapon/doomGunTriggers.js",
             "/js/doom/weapon/doomProjectile.js",
             "/js/doom/weapon/doomSectorLight.js",
             "/js/doom/weapon/doomDecalTextures.js",

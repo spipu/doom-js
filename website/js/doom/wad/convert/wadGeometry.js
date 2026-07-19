@@ -86,4 +86,20 @@ class WadGeometry {
 
         return s;
     }
+
+    /**
+     * Squared 2D distance from a point to a segment (same coordinate space
+     * for both).
+     */
+    static pointSegmentDistSq(px, pz, x1, z1, x2, z2) {
+        const dx    = x2 - x1;
+        const dz    = z2 - z1;
+        const lenSq = (dx * dx) + (dz * dz);
+        let t = ((lenSq > 0) ? ((((px - x1) * dx) + ((pz - z1) * dz)) / lenSq) : 0);
+        t = Math.max(0, Math.min(1, t));
+        const cx = x1 + (t * dx);
+        const cz = z1 + (t * dz);
+
+        return ((px - cx) * (px - cx)) + ((pz - cz) * (pz - cz));
+    }
 }

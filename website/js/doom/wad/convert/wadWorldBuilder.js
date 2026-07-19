@@ -56,6 +56,7 @@ class WadWorldBuilder {
             this._registerInstance(door, bank);
             builtDoorCodes.add(door.code);
             this._applyKeyGuard(door);
+            this._applyGunSideGuard(door, level);
         }
         await this._yield();
 
@@ -111,6 +112,15 @@ class WadWorldBuilder {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
             loader.interactions().loadFromData(interaction);
+        }
+
+        // Gun (impact) triggers (G1/GR lines 24/46/47): no zone — the weapon
+        // hitscan tests every shot trace against these segments at fire time
+        // (P_ShootSpecialLine) and start()s the tagged movers.
+        if (this._game !== null) {
+            const gunLines = new WadGunTriggerBuilder(
+                level, analysis, builtRisingCodes, builtDoorCodes).buildAll();
+            this._game.setGunTriggers(new DoomGunTriggers(gunLines));
         }
 
         // Teleporters (walk-over → landing thing type 14 of the same tag)
@@ -373,6 +383,49 @@ class WadWorldBuilder {
         if (keyCode) {
             loader.instances().getByCode(built.code).setTriggerCondition((user) => user.hasItem(keyCode));
         }
+    }
+
+    // A door carrying BOTH a gun face (46) and a manual face (1) — E1M2's
+    // shootable door is usable from its corridor side only — must not open on
+    // USE from the gun side: vanilla P_UseSpecialLine ignores the impact
+    // specials. The engine's USE is a radius around the whole door body, so
+    // the guard compares the player's distance to the two face sets (the key
+    // guard, when present, is folded into the same predicate).
+    _applyGunSideGuard(built, level) {
+        if (built.instanceData.trigger !== 'action') {
+            return;
+        }
+        const si = Number(built.code.split('_')[1]);
+        const gunFaces = [];
+        const useFaces = [];
+        for (const ld of level.linedefs) {
+            const touches = ((ld.right >= 0 && level.sidedefs[ld.right].sector === si)
+                || (ld.left >= 0 && level.sidedefs[ld.left].sector === si));
+            if (!touches) {
+                continue;
+            }
+            const [dx1, dy1] = level.vertexes[ld.v1];
+            const [dx2, dy2] = level.vertexes[ld.v2];
+            const [x1, z1] = WadGeometry.doomToWorld(dx1, dy1);
+            const [x2, z2] = WadGeometry.doomToWorld(dx2, dy2);
+            if (WadConstants.GUN_SPECIALS.has(ld.special)) {
+                gunFaces.push([x1, z1, x2, z2]);
+            }
+            if (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'action') {
+                useFaces.push([x1, z1, x2, z2]);
+            }
+        }
+        if (gunFaces.length === 0 || useFaces.length === 0) {
+            return;
+        }
+
+        const minDistSq = (user, faces) => Math.min(...faces.map(
+            (f) => WadGeometry.pointSegmentDistSq(user.x, user.z, f[0], f[1], f[2], f[3])));
+        const keyCode = built.instanceData.keyRequired;
+        const sideOk  = (user) => (minDistSq(user, useFaces) <= minDistSq(user, gunFaces));
+        const guard   = ((keyCode) ? ((user) => (user.hasItem(keyCode) && sideOk(user))) : sideOk);
+
+        loader.instances().getByCode(built.code).setTriggerCondition(guard);
     }
 
     _buildDefinition(level, bank) {

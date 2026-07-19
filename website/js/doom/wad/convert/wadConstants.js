@@ -91,6 +91,10 @@ class WadConstants {
         135: {kind: 'open',  speed: 8, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: 'redKey'},
         136: {kind: 'open',  speed: 8, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: 'yellowKey'},
         137: {kind: 'open',  speed: 8, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: 'yellowKey'},
+        // Gun-open door (46 GR — P_ShootSpecialLine: EV_DoDoor open, stays
+        // open). Driven by the impact lines (DoomGunTriggers), never
+        // self-activated — like any remotely-driven door.
+        46:  {kind: 'open',  speed: 2, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: null},
         // Closing doors (walk 3/75, reopen-after-30s 16/76, switch 42/50,
         // blaze 107/110/113/116). onlyOnce even in WR/SR: replaying a finished
         // close would snap the panel back open (vanilla no-op); the
@@ -342,6 +346,11 @@ class WadConstants {
         18:  {speed: 1,   target: 'nextHigher'},
         20:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
         22:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
+        // Gun (G1) impact lines — P_ShootSpecialLine: 24 = EV_DoFloor
+        // raiseFloor (same action as 5), 47 = EV_DoPlat raiseToNearestAndChange
+        // (same action as 20/22/68). Started by DoomGunTriggers, never by a zone.
+        24:  {speed: 1,   target: 'lowestCeiling'},
+        47:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
         56:  {speed: 1,   target: 'lowestCeilingCrush'},
         58:  {speed: 1,   target: 24},
         59:  {speed: 1,   target: 24, change: {source: 'front', special: 'copy', at: 'start'}},
@@ -372,6 +381,24 @@ class WadConstants {
     // a rising floor waits this long before moving, so a player who fired the
     // trigger next to the platform has time to step onto it and ride up.
     static FLOOR_UP_START_DELAY_S = 1.0;
+
+    // --- Gun (impact) triggers — p_spec.c P_ShootSpecialLine ---
+
+    // The special fires when a hitscan trace CROSSES the linedef in 2D:
+    // PTR_ShootTraverse calls P_ShootSpecialLine before any height check, so
+    // a shot passing above/through the opening still activates it. G1 lines
+    // burn out after one activation, GR (46) re-fires — and 46 is the only
+    // impact special non-players may activate. The movers themselves are
+    // registered by the tables above (46 → DOOR_BY_SPECIAL, 24/47 →
+    // FLOOR_UP_BY_SPECIAL); these entries only carry the trigger behaviour.
+    static GUN_BY_SPECIAL = {
+        24: {once: true},
+        46: {once: false},
+        47: {once: true},
+    };
+
+    // Derived membership set — never edit this, edit GUN_BY_SPECIAL.
+    static GUN_SPECIALS = new Set(Object.keys(WadConstants.GUN_BY_SPECIAL).map(Number));
 
     // --- Stairs (build stairs, EV_BuildStairs — single table) ---
 

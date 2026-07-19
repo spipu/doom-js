@@ -26,6 +26,7 @@ class WadMapAnalyzer {
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
+        const gunTriggerLinedefs = this._identifyGunTriggers();
         const lightSectors = this._identifyLightSectors();
 
         return {
@@ -50,6 +51,7 @@ class WadMapAnalyzer {
             switchWalls:           switches.walls,
             teleporterLinedefs:    teleporterLinedefs,
             walkTriggerLinedefs:   walkTriggerLinedefs,
+            gunTriggerLinedefs:    gunTriggerLinedefs,
             lightSectors:          lightSectors,
             lightSectorIds:        new Set(lightSectors.map((s) => s.si))
         };
@@ -140,6 +142,22 @@ class WadMapAnalyzer {
             }
         }
         return walkTriggers;
+    }
+
+    // Impact linedefs (G1/GR 24/46/47 — P_ShootSpecialLine): fired when a
+    // hitscan trace crosses them, no zone. The tagged movers themselves are
+    // registered by the door/floor passes (46 → door, 24/47 → rising floor);
+    // targets and world segments are resolved in WadGunTriggerBuilder.
+    _identifyGunTriggers() {
+        const {linedefs} = this._level;
+        const gunTriggers = [];
+        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
+            const ld = linedefs[ldIdx];
+            if (WadConstants.GUN_SPECIALS.has(ld.special) && ld.tag !== 0) {
+                gunTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
+            }
+        }
+        return gunTriggers;
     }
 
     // Walk-over teleport linedefs (39 W1 / 97 WR). The destination is the thing

@@ -33,6 +33,7 @@ class DoomGame {
         this._projectiles     = null;    // rocket / plasma / BFG shots
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
+        this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
         this._rng             = new DoomRandom();
 
         // Shared, immutable definitions (the per-player state lives on DoomUser)
@@ -323,6 +324,12 @@ class DoomGame {
         this._sectorLight = sectorLight;
     }
 
+    // Impact-special lines handed over by the world builder (gun triggers,
+    // tested by the hitscan against every shot trace).
+    setGunTriggers(gunTriggers) {
+        this._gunTriggers = gunTriggers;
+    }
+
     addSecretFound() {
         this._secretsFound++;
     }
@@ -465,7 +472,7 @@ class DoomGame {
         // vanilla M_ClearRandom. It brings the active weapon up on construction.
         this._rng.reset();
         this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
-        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals);
+        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
         this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
