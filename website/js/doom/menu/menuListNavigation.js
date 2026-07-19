@@ -135,6 +135,10 @@ class MenuListNavigation {
         return this;
     }
 
+    getSelectedIndex() {
+        return this._index;
+    }
+
     selectIndex(index) {
         this._focusSide(false);
         if (this._index === index) {

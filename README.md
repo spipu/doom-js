@@ -44,6 +44,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look — both analog). The pause button (`P` on the keyboard, button 9 on the gamepad) leaves the level and goes back to the level list of the WAD; shoulder buttons 4/5 cycle the previous/next weapon (provisional indices, to be confirmed on a physical pad).
 - **Touch controls**: touch-only devices get an on-screen virtual gamepad — two fixed, always-visible analog sticks (left = move, right = look) plus the four action buttons laid out around the right stick like a DualSense face cluster (△ action on top, ○ jump right, □ fire left, ✕ crouch bottom). A tap zone in the top-right (over the HUD ARMS panel) cycles to the next weapon, with the pause button just below it.
 - **Menu footer**: every menu screen shows the aggregated version, the webapp stats (PWA/classic mode, offline, request counters) and the copyright below the panel.
+- **Help modal & persistent settings**: a `?` button on the WAD screen (also reached by pressing Up from the first list item) opens a stacked help modal — breadcrumb title, same mouse/keyboard/gamepad navigation as the screens — with an **About** page and a **Controls** page that adapts to the active input device (named gamepad / virtual gamepad / keyboard+mouse). The settings list is auto-built from a definitions table and persisted in IndexedDB: per-device vertical-look inversion, and **full keyboard remapping** (one physical key per action — activate a binding, press the new key; a key already bound elsewhere is unbound from its old action, which becomes inert until remapped). A reset entry wipes every saved setting after confirmation.
 
 ## Demo pages
 
@@ -59,21 +60,23 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 
 ## Controls (index.html / _examples/world.html)
 
+Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the help modal (`?` on the WAD screen), one key per action.
+
 | Keyboard / mouse | Gamepad | Action |
 |---|---|---|
-| Arrow keys / ZQSD | Left stick | Move / strafe (analog on the stick) |
+| WASD | Left stick | Move / strafe (analog on the stick) |
 | Mouse (click canvas first) | Right stick | Look around |
-| Shift | Button 1 | Jump |
-| C (or Ctrl) | Button 0 | Crouch — prefer C: crouching on Ctrl while strafing left (Ctrl+Q) quits Firefox, a browser-privileged shortcut no page can block |
+| Left Shift | Button 1 | Jump |
+| Left Ctrl | Button 0 | Crouch — careful: holding it with the key that types `q` (strafe left on AZERTY, fire on QWERTY) is Ctrl+Q, which quits Firefox — a browser-privileged shortcut no page can block; remap if it bites you |
 | E | Button 3 | Interact (open door, trigger lift or switch) |
-| Left click | Button 2 / right trigger | Fire the active weapon (hitscan or projectile) |
+| Left click / Q | Button 2 / right trigger | Fire the active weapon (hitscan or projectile) |
 | P | Button 9 | Quit the level, back to the level list |
 | F / G | Buttons 4 / 5 (or top-right HUD tap zone → next) | Previous / next weapon — cycles the owned weapons, wrapping |
 | H | — | Toggle the game HUD ↔ debug overlay (keyboard only) |
-| Alt | — | Walk slowly (sticks do it through partial deflection) |
+| Left Alt | — | Walk slowly (sticks do it through partial deflection) |
 | IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | ESC | — | Release mouse |
-| O | — | Spipu-Doom debug cheat: grant the full kit (every weapon, all ammo at max, the three keys, full energy and full 200 blue armour) |
+| O | — | Spipu-Doom debug cheat (not remappable): grant the full kit (every weapon, all ammo at max, the three keys, full energy and full 200 blue armour) |
 
 The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices (phones, tablets) select the virtual gamepad mode: two fixed, always-visible analog sticks (left = move, right = look) with the action buttons arranged around the right stick at the DualSense face-button positions, plus a pause button in the top-right corner. Each button lights up while it is held. On iOS the touch mapping and the menus stay aligned with the display across device rotation (the residual viewport scroll Safari leaves on rotation is reset to the top).
 

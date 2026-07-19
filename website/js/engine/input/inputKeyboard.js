@@ -1,19 +1,50 @@
 let InputKeyboard_private = null;
 
 class InputKeyboard {
+    // Default binding of each game action: ONE physical key code per action
+    // (layout independent: WASD = ZQSD on AZERTY), '' = unmapped.
+    // ⚠️ Crouch on left Ctrl: held with the key printing 'q' (strafe left on
+    // AZERTY, fire on QWERTY) it QUITS Firefox — a browser-privileged
+    // shortcut no page JS can cancel; the dev Playwright profile disables
+    // it, players may rebind.
+    static get DEFAULT_MAPPING() {
+        return {
+            forward:     'KeyW',
+            backward:    'KeyS',
+            strafeLeft:  'KeyA',
+            strafeRight: 'KeyD',
+            jump:        'ShiftLeft',
+            crouch:      'ControlLeft',
+            action:      'KeyE',
+            fire:        'KeyQ',
+            weaponPrev:  'KeyF',
+            weaponNext:  'KeyG',
+            walkSlow:    'AltLeft',
+            pause:       'KeyP',
+            toggleHud:   'KeyH',
+            // Keyboard look fallback ("fake mouse", pointer lock broken in
+            // some VMs): +/- deltas on both axes.
+            lookUp:      'KeyI',
+            lookDown:    'KeyK',
+            lookLeft:    'KeyJ',
+            lookRight:   'KeyL'
+        };
+    }
+
     constructor() {
         if (InputKeyboard_private) {
             throw new Error('InputKeyboard object already exists...');
         }
         InputKeyboard_private = this;
-        this._keys = new Set();
+        this._keys    = new Set();
+        this._mapping = InputKeyboard.DEFAULT_MAPPING;
 
         document.addEventListener('keydown', (e) => {
             this._keys.add(e.code);
             // Suppress the interceptable browser shortcuts (Ctrl+S/D/F…) while
-            // playing — but never inside a text field (menu URL paste), and
+            // playing — but never inside a text field (menu URL paste).
             // Ctrl+Q/Ctrl+W are browser-privileged: they CANNOT be cancelled
-            // from page JS (hence the crouch alternative on C).
+            // from page JS (see the DEFAULT_MAPPING warning).
             const typing = ((e.target instanceof HTMLInputElement) || (e.target instanceof HTMLTextAreaElement));
             if (e.ctrlKey && !typing && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
                 e.preventDefault();
@@ -29,39 +60,41 @@ class InputKeyboard {
         });
     }
 
-    // FPS movement — arrows + WASD physical position (= ZQSD on AZERTY, WASD on QWERTY)
-    readKeyForward() {
-        return (this._keys.has('ArrowUp') || this._keys.has('KeyW'));
+    /**
+     * Optional per-action rebinding: one code per given action ('' unmaps
+     * it). Unknown actions are ignored, missing ones keep their defaults.
+     *
+     * @param {object} mapping - {action: string}
+     */
+    setMapping(mapping) {
+        const merged = InputKeyboard.DEFAULT_MAPPING;
+        for (const action of Object.keys(mapping ?? {})) {
+            if (merged[action] !== undefined) {
+                merged[action] = mapping[action];
+            }
+        }
+        this._mapping = merged;
+
+        return this;
     }
 
-    readKeyBackward() {
-        return (this._keys.has('ArrowDown') || this._keys.has('KeyS'));
-    }
+    /**
+     * True while the key bound to the action is held ('' or unknown: never).
+     */
+    readAction(action) {
+        const code = this._mapping[action];
+        if ((code === undefined) || (code === '')) {
+            return false;
+        }
 
-    readKeyStrafeLeft() {
-        return (this._keys.has('ArrowLeft') || this._keys.has('KeyA'));
-    }
-
-    readKeyStrafeRight() {
-        return (this._keys.has('ArrowRight') || this._keys.has('KeyD'));
-    }
-
-    readKey(code) {
         return this._keys.has(code);
     }
 
-    // C is the safe crouch key: holding Ctrl while strafing left on AZERTY
-    // (Ctrl+Q) QUITS Firefox — a browser-privileged shortcut no page JS can
-    // cancel. Ctrl stays accepted for the habit, at the player's own risk.
-    readKeyCrouch() {
-        return (this._keys.has('ControlLeft') || this._keys.has('ControlRight') || this._keys.has('KeyC'));
-    }
-
-    readKeyShift() {
-        return (this._keys.has('ShiftLeft') || this._keys.has('ShiftRight'));
-    }
-
-    readKeyAction() {
-        return this._keys.has('KeyE');
+    /**
+     * True while the given physical key code is held, whatever the mapping
+     * (fixed engine keys like the debug cheat).
+     */
+    readKey(code) {
+        return this._keys.has(code);
     }
 }

@@ -52,6 +52,15 @@ class InputGamepad {
         return (this._index !== null);
     }
 
+    /**
+     * Human-readable name of the active pad (Gamepad.id), null without one.
+     */
+    getName() {
+        const pad = this._getPad();
+
+        return ((pad !== null) ? pad.id : null);
+    }
+
     readJoy1X() {
         return this._axis(0);
     }

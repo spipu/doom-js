@@ -122,6 +122,13 @@
     letter-spacing: 0.1em;
 }
 
+/* Setting row value (right side of the item, the label pushes it there). */
+.doom-menu-item-value {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9em;
+    letter-spacing: 0.1em;
+}
+
 .doom-menu-item-delete {
     flex-shrink: 0;
     display: flex;
@@ -317,18 +324,20 @@
 
 .doom-menu-help-button {
     position: absolute;
-    top: 0.6em;
-    right: 0.8em;
+    top: 0.4em;
+    right: 0.5em;
     width: 1.6em;
     height: 1.6em;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
+    line-height: 1;
     background: none;
-    border: 0.06em solid rgba(192, 57, 43, 0.5);
-    border-radius: 0.2em;
+    border: 0.04em solid rgba(192, 57, 43, 0.5);
+    border-radius: 0.15em;
     color: rgba(255, 255, 255, 0.75);
-    font-size: 1.1em;
+    font-size: 1.65em;
     cursor: pointer;
 }
 
@@ -343,9 +352,12 @@
     color: #FFF;
 }
 
-/* Tall column layout: the body grows, the actions stick to the bottom right. */
+/* Tall column layout: the body grows, the actions stick to the bottom right.
+   Capped height: a long settings list scrolls inside the body instead of
+   growing the modal past the screen. */
 .doom-menu-modal-help {
     min-height: 60%;
+    max-height: 85%;
     display: flex;
     flex-direction: column;
 }
@@ -370,7 +382,8 @@
     margin-bottom: 0;
 }
 
-.doom-menu-about-line {
+/* Generic text line of a modal page (about, controls...). */
+.doom-menu-modal-line {
     color: rgba(255, 255, 255, 0.75);
     font-size: 0.85em;
     letter-spacing: 0.08em;
