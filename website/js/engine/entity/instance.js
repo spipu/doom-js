@@ -232,12 +232,17 @@ class Instance extends AbstractLoadedEntity {
     /**
      * Stand this instance on a moving floor instance: its Y (and derived world
      * centre) follows the floor's animation delta each frame — a pickup on a
-     * lowering pillar rides down with it. Base Y = the position at call time.
+     * lowering pillar rides down with it. The base is expressed at the
+     * floor's rest pose: an instance attached MID-TRAVEL (a decal shot on a
+     * moving platform) already contains the current delta in its position,
+     * and must not be shifted by it a second time on the next sync.
      */
     setRideOn(floorInstance) {
+        const dy = floorInstance.getTransform().deltaTranslate[1];
+
         this._rideOn     = floorInstance;
-        this._rideBaseY  = this._position[1];
-        this._rideLastDy = 0;
+        this._rideBaseY  = this._position[1] - dy;
+        this._rideLastDy = dy;
     }
 
     _syncRide() {
