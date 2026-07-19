@@ -268,12 +268,14 @@ class DoomPlayerWeapon {
     }
 
     _aFirePlasma() {
-        this._useAmmo();
         this._setState(this._flashPsp, (((this._rng.next() & 1) === 0) ? 'flash1' : 'flash2'));
         this._aFireProjectile();
     }
 
+    // A_FireMissile / A_FirePlasma / A_FireBFG all decrement the weapon's ammo
+    // (the BFG's 40 cells via getPerShot) before spawning the shot.
     _aFireProjectile() {
+        this._useAmmo();
         if (this._projectiles !== null) {
             this._projectiles.spawn(this._def().getProjectile(), this._user);
         }

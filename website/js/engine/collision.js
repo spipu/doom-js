@@ -99,6 +99,14 @@ class Collision {
                     continue;
                 }
                 const px = ox + t*dx, py = oy + t*dy, pz = oz + t*dz;
+                // Broadphase: reject on the triangle AABB (6 compares) before the
+                // costly point-in-triangle test. Matters for multi-ray shots
+                // (the super shotgun casts 20 rays through every wall).
+                if (px < tri.xMin || px > tri.xMax
+                    || py < tri.yMin || py > tri.yMax
+                    || pz < tri.zMin || pz > tri.zMax) {
+                    continue;
+                }
                 if (!this._pointInTri(px, py, pz, tri)) {
                     continue;
                 }

@@ -41,6 +41,7 @@ class Billboard extends Object3d {
 
         const light      = (data.light ?? 255);
         const alpha      = (data.alpha ?? 1);
+        const additive   = (data.additive === true);
         const lightGroup = (data.lightGroup ?? null);
         const textureIds = data.textures;
         for (const tid of textureIds) {
@@ -53,8 +54,15 @@ class Billboard extends Object3d {
         const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (data.animDuration ?? 0)} : null);
         // A fresh colour array per face (fcAdd normalises it in place); the alpha
         // slot is added only when translucent, leaving opaque billboards untouched.
+        const i0 = this.faceCount;
         this.fcAdd(1, 2, 3, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim, null, lightGroup);
         this.fcAdd(1, 3, 4, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim, null, lightGroup);
+        // Additive blend (gzdoom RenderStyle "Add"): energy sprites glow instead
+        // of just fading. Tagged post-hoc like isAlpha, so Face stays untouched.
+        if (additive) {
+            this.faceList[i0].blendAdd     = true;
+            this.faceList[i0 + 1].blendAdd = true;
+        }
         return this;
     }
 

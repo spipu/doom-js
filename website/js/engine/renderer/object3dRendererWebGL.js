@@ -247,10 +247,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     continue;
                 }
                 const clampV   = fc.clampV || false;
+                const blendAdd = fc.blendAdd || false;
                 const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
-                const key      = animKey + ',' + fc.alpha + ',' + clampV;
+                const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd;
                 if (!groups.has(key)) {
-                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, isAlpha, clampV, faces: [] });
+                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, isAlpha, clampV, blendAdd, faces: [] });
                 }
                 groups.get(key).faces.push(k);
             }
@@ -266,6 +267,16 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         ];
 
         for (const group of allGroups) {
+            // Additive groups (energy sprites) add their colour to the scene and
+            // don't write depth, so overlapping glows accumulate; normal groups
+            // keep src-alpha blending. State is restored after the loop.
+            if (group.blendAdd) {
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                gl.depthMask(false);
+            } else {
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                gl.depthMask(true);
+            }
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 
@@ -312,6 +323,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
             gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
+        // Restore the default blend state for the next object / pass.
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.depthMask(true);
     }
 
     _getTexture(gl, texture) {

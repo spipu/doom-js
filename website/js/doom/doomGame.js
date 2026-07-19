@@ -28,8 +28,10 @@ class DoomGame {
         this._playerWeapon    = null;
         this._weaponSprites   = null;
         this._availableWeapons = null;   // codes whose sprites exist in this WAD
-        this._effects         = null;    // transient sprite effects (puffs…)
+        this._effects         = null;    // transient sprite effects (puffs, explosions)
         this._hitscan         = null;
+        this._projectiles     = null;    // rocket / plasma / BFG shots
+        this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._rng             = new DoomRandom();
 
         // Shared, immutable definitions (the per-player state lives on DoomUser)
@@ -315,6 +317,11 @@ class DoomGame {
         this._secretsTotal = total;
     }
 
+    // Sector-light lookup handed over by the world builder (weapon shading).
+    setSectorLight(sectorLight) {
+        this._sectorLight = sectorLight;
+    }
+
     addSecretFound() {
         this._secretsFound++;
     }
@@ -370,23 +377,24 @@ class DoomGame {
         // Pre-decode every weapon view/flash frame INSIDE the batch: decoding a
         // sprite registers a texture, and any registration after endBatch would
         // re-trigger the loader's global check (and _init) mid-render.
-        if (DoomGame.WEAPON_STAGE >= 1) {
-            this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
-            this._availableWeapons = new Set();
-            for (const code of Object.keys(this._weapons)) {
-                const def = this._weapons[code];
-                // A weapon "exists" in this WAD only if its sprites are present
-                // (e.g. the super shotgun / SHT2 is absent from Doom 1 WADs).
-                // Probe quietly, then decode only the frames we will actually use.
-                const readyLump = def.getState(def.getEntry().ready).getLump();
-                if (this._weaponSprites.has(readyLump)) {
-                    this._availableWeapons.add(code);
-                    this._weaponSprites.decode(def.getSpriteLumps());
-                }
+        this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
+        this._availableWeapons = new Set();
+        for (const code of Object.keys(this._weapons)) {
+            const def = this._weapons[code];
+            // A weapon "exists" in this WAD only if its sprites are present
+            // (e.g. the super shotgun / SHT2 is absent from Doom 1 WADs).
+            // Probe quietly, then decode only the frames we will actually use.
+            const readyLump = def.getState(def.getEntry().ready).getLump();
+            if (this._weaponSprites.has(readyLump)) {
+                this._availableWeapons.add(code);
+                this._weaponSprites.decode(def.getSpriteLumps());
             }
-            // Effect sprites (puffs…) are built here too, inside the batch.
-            this._effects = new DoomEffects(this._weaponSprites, this._rng);
         }
+        // Effect + projectile sprites are built here too, inside the batch, so no
+        // billboard object is registered after endBatch (which would re-fire the
+        // loader). The projectile system gets its world (collision + user) in _init.
+        this._effects     = new DoomEffects(this._weaponSprites, this._rng);
+        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng);
 
         loader.setCallback(() => {
             this._init();
@@ -447,15 +455,12 @@ class DoomGame {
 
         // Weapon firing: a fresh psprite controller per level, RNG cleared like
         // vanilla M_ClearRandom. It brings the active weapon up on construction.
-        if (DoomGame.WEAPON_STAGE >= 1) {
-            this._rng.reset();
-            this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
-            this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng);
-            this._playerWeapon.setAttackSystems(this._hitscan, null);
-        }
-        if (DoomGame.WEAPON_STAGE >= 2) {
-            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
-        }
+        this._rng.reset();
+        this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
+        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng);
+        this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
+        this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
+        this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
 
         // Require a release before the first press (a button held during the
         // level start must not immediately quit it)
@@ -492,9 +497,7 @@ class DoomGame {
         }
         this._hudWasDown = hudDown;
 
-        // Weapon switching + firing are enabled in stages during bring-up
-        // (WEAPON_STAGE), so each layer can be validated on its own.
-        if (this._playerWeapon !== null && DoomGame.WEAPON_STAGE >= 4) {
+        if (this._playerWeapon !== null) {
             const weaponNextDown = this._inputs.readButtonWeaponNext();
             if (weaponNextDown && !this._weaponNextWasDown) {
                 this._playerWeapon.cycleWeapon(1);
@@ -517,11 +520,18 @@ class DoomGame {
         const dt = this._engine.getDeltaTime();
         this._world.update(dt, this._inputs);
         this._world.getUser().updateEffects(dt);
-        if (this._playerWeapon !== null && DoomGame.WEAPON_STAGE >= 3) {
+        if (this._playerWeapon !== null) {
+            const user = this._world.getUser();
+            if (this._sectorLight !== null) {
+                this._playerWeapon.setLight(this._sectorLight.factorAt(user.x, user.z));
+            }
             this._playerWeapon.update(dt, this._inputs.readButtonFire());
         }
         if (this._effects !== null) {
             this._effects.update(dt);
+        }
+        if (this._projectiles !== null) {
+            this._projectiles.update(dt);
         }
         this._engine.displayWorld(this._world);
         this._screen.update();
@@ -622,10 +632,3 @@ class DoomGame {
         }
     }
 }
-
-// Staged bring-up of the weapon system, so each layer is validated on its own:
-// 0 = off (baseline load), 1 = pre-decode sprites + build the controller,
-// 2 = + render the view sprite (static), 3 = + tick the state machine (bob,
-// fire animation), 4 = + weapon switching (keys / wheel). Raise once validated.
-// All stages validated in-game → full weapon system on.
-DoomGame.WEAPON_STAGE = 4;
