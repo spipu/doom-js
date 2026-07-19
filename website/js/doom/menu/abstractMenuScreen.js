@@ -8,10 +8,6 @@
  * _onBack().
  */
 
-// The footer (version + webapp stats) is only relevant on the startup screen:
-// the stats are reset afterwards, so it is dropped on the first navigation
-let AbstractMenuScreen_footerAllowed = true;
-
 class AbstractMenuScreen {
     /**
      * @param {MenuNavigator} navigator
@@ -37,9 +33,7 @@ class AbstractMenuScreen {
         this._display.getContainer().appendChild(this._container);
 
         this._build();
-        if (AbstractMenuScreen_footerAllowed) {
-            this._addFooter();
-        }
+        this._addFooter();
         this._nav.attach();
 
         return this;
@@ -51,10 +45,7 @@ class AbstractMenuScreen {
             clearInterval(this._footerTimer);
             this._footerTimer = null;
         }
-        if (this._footerEl !== null) {
-            AbstractMenuScreen_footerAllowed = false;
-            this._footerEl = null;
-        }
+        this._footerEl = null;
         if (this._container !== null) {
             this._container.remove();
             this._container = null;
@@ -146,7 +137,7 @@ class AbstractMenuScreen {
         this._nav.clear();
     }
 
-    // --- Footer (version + webapp stats, same live line as the debug HUD) ---
+    // --- Footer (version + webapp stats + copyright, on every screen) ---
 
     _addFooter() {
         this._footerEl = this._addElement('div', 'doom-menu-footer');
@@ -159,7 +150,9 @@ class AbstractMenuScreen {
         if (this._footerEl === null) {
             return;
         }
-        this._footerEl.textContent = appBootstrap.getVersion() + ' — ' + appBootstrap.getStatsText();
+        this._footerEl.textContent = appBootstrap.getVersion()
+            + ' — ' + appBootstrap.getStatsText()
+            + ' — © ' + new Date().getFullYear() + ' Spipu';
     }
 
     // --- DOM helpers (MenuDom wrappers defaulting to the screen container) ---
