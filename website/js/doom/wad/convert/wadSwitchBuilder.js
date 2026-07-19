@@ -101,6 +101,7 @@ class WadSwitchBuilder {
                 // Per-trigger door cycle (OWC vs open-stay on the same tag);
                 // null for non-door specials, ignored by variant-less targets.
                 doorVariant:    WadSwitchBuilder.doorVariantKey(ld.special),
+                remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
             }
@@ -137,6 +138,16 @@ class WadSwitchBuilder {
 
         const band = this._switchBand(ld, slotInfo, th);
 
+        // A switch graphic on a mover's riser parked level at build time
+        // (MAP19: SW1GRAY1 on the lower of a plat edge, exposed only once the
+        // plat has risen) yields a zero-height band: no panel to draw or
+        // collide with, and a degenerate zero-radius zone that could never
+        // fire. Fall back to the invisible USE zone; the mover's own riser
+        // shows the graphic, so the SW1↔SW2 swap is delegated to its faces.
+        if (band.yTopDu <= band.yBotDu) {
+            return this._buildRiserZoneGeometry(ld, slotInfo, ti);
+        }
+
         // SW2 partner (local index 2, swapped at runtime). A non-SW switch wall
         // has no partner → no index 2; DoomSwitchInteraction then simply does not
         // swap (it guards on an undefined index 2) instead of going black.
@@ -172,6 +183,53 @@ class WadSwitchBuilder {
         const zone = WadMeshBuilder.buildLineZone(this._level, ld);
 
         return {textures: [], mesh: zone.mesh, radius: zone.radius, collisionShape: 'none'};
+    }
+
+    // Invisible USE zone for a switch whose SW graphic lives on a mover's
+    // riser (zero-height panel at build): the SW1↔SW2 feedback is delegated
+    // to the riser faces of the adjacent built mover, matched at runtime on
+    // the linedef segment by the interaction (remoteSwap).
+    _buildRiserZoneGeometry(ld, slotInfo, ti) {
+        const geom = this._buildUseZoneGeometry(ld);
+
+        const moverCode   = this._riserMoverCode(ld);
+        const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
+        const ti2         = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
+        if (moverCode === null || ti2 < 0) {
+            return geom;
+        }
+
+        const {vertexes} = this._level;
+        const [wx1, wz1] = WadGeometry.doomToWorld(...vertexes[ld.v1]);
+        const [wx2, wz2] = WadGeometry.doomToWorld(...vertexes[ld.v2]);
+        geom.remoteSwap = {
+            moverCode: moverCode,
+            seg:       [wx1, wz1, wx2, wz2],
+            restTexId: this._bank.getLoaderId(ti),
+            swapTexId: this._bank.getLoaderId(ti2)
+        };
+
+        return geom;
+    }
+
+    // The built mover (rising floor / lift) whose riser draws this linedef's
+    // wall — one of the two sectors of the line.
+    _riserMoverCode(ld) {
+        const {sidedefs} = this._level;
+        for (const sd of [ld.right, ld.left]) {
+            if (sd < 0) {
+                continue;
+            }
+            const si = sidedefs[sd].sector;
+            if (this._builtRisingCodes.has('risingfloor_' + si)) {
+                return 'risingfloor_' + si;
+            }
+            if (this._builtLiftCodes.has('lift_' + si)) {
+                return 'lift_' + si;
+            }
+        }
+
+        return null;
     }
 
     // Action radius: half the 3D bounding diagonal + margin. The trigger is 3D

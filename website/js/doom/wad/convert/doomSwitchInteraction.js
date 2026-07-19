@@ -30,6 +30,8 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._swapIndex      = (swapIndex ?? null);
         this._exitCallback   = null;
         this._exitSecret     = false;
+        this._remoteSwap     = null;
+        this._remoteFaces    = null;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -48,11 +50,22 @@ class DoomSwitchInteraction extends SwitchInteraction {
         return this;
     }
 
+    // SW graphic carried by a mover's riser (the panel had no geometry of its
+    // own at build): the SW1↔SW2 swap applies to the mover's riser faces,
+    // matched lazily on the linedef segment.
+    // spec = {moverCode, seg: [x1, z1, x2, z2], restTexId, swapTexId}
+    setRemoteSwap(spec) {
+        this._remoteSwap  = (spec ?? null);
+        this._remoteFaces = null;
+        return this;
+    }
+
     _triggerOn(instance) {
         // Swap to SW2 only when the panel has a partner: a non-SW switch wall
         // (or an invisible USE zone with no faces) keeps its face untouched
         // instead of being blanked to a null textureId.
         this._swapFaces(instance, this._swapIndex);
+        this._applyRemoteSwap(true);
 
         for (const code of this._targets) {
             loader.instances().getByCode(code).start(this._doorVariant);
@@ -68,6 +81,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
 
     _triggerOff(instance) {
         this._swapFaces(instance, this._restIndex);
+        this._applyRemoteSwap(false);
     }
 
     _swapFaces(instance, localIndex) {
@@ -81,5 +95,35 @@ class DoomSwitchInteraction extends SwitchInteraction {
         instance.getObject().faceList.forEach((fc) => {
             fc.textureId = swapTo;
         });
+    }
+
+    // Points sitting on the linedef segment within 1 cm (the riser vertices
+    // are exactly on it).
+    static get REMOTE_SWAP_EPS_SQ() {
+        return 0.0001;
+    }
+
+    _applyRemoteSwap(on) {
+        if (this._remoteSwap === null) {
+            return;
+        }
+        if (this._remoteFaces === null) {
+            this._remoteFaces = this._findRemoteFaces();
+        }
+        const texId = ((on) ? this._remoteSwap.swapTexId : this._remoteSwap.restTexId);
+        this._remoteFaces.forEach((fc) => {
+            fc.textureId = texId;
+        });
+    }
+
+    _findRemoteFaces() {
+        const spec = this._remoteSwap;
+        const obj  = loader.instances().getByCode(spec.moverCode).getObject();
+        const [x1, z1, x2, z2] = spec.seg;
+        const onSeg = (p) => (WadGeometry.pointSegmentDistSq(p[0], p[2], x1, z1, x2, z2)
+            < DoomSwitchInteraction.REMOTE_SWAP_EPS_SQ);
+
+        return obj.faceList.filter((fc) => (fc.textureId === spec.restTexId)
+            && fc.pts.every((pi) => onSeg(obj.ptOrigin[pi])));
     }
 }
