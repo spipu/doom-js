@@ -24,3 +24,12 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+Third-party assets exception
+----------------------------
+
+The files under `website/assets/uzdoom/` are **not** covered by the MIT
+license above. They are third-party impact-decal graphics taken from UZDoom
+(https://github.com/UZDoom/uzdoom) and are licensed under the **GNU General
+Public License v3**. See `website/assets/uzdoom/LICENSE.md` for the full license
+text and `website/assets/uzdoom/README.md` for provenance and attribution.
+
