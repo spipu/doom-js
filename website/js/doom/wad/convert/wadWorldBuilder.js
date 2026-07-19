@@ -93,6 +93,9 @@ class WadWorldBuilder {
             this._applyKeyGuard(sw);
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.doorVariant, spec.restIndex, spec.swapIndex);
+            if (spec.remoteSwap) {
+                interaction.setRemoteSwap(spec.remoteSwap);
+            }
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
