@@ -28,6 +28,68 @@ class WadConstants {
         return new Set(Object.keys(table).map(Number).filter((sp) => predicate(table[sp])));
     }
 
+    // --- Game profile extensions ---
+
+    // The tables of this class are the GENERIC doom-format baseline. A game
+    // profile contributes its specific entries through this hook (called once
+    // per level build, before any analyzer runs): every entry lives in the
+    // >= GAME_EXTENSION_BASE namespace — unreachable by vanilla WAD data
+    // (specials cap at 141), emitted only by the profile's own xlat maps.
+    // Previous extensions are wiped first (a Doom WAD loaded after a Heretic
+    // one runs on the pristine baseline), then the derived membership sets
+    // are recomputed.
+    static GAME_EXTENSION_BASE = 1000;
+
+    static applyGameExtensions(extensions) {
+        for (const name of Object.keys(extensions)) {
+            if (WadConstants[name] === undefined) {
+                throw new Error('WadConstants - unknown extension table [' + name + ']');
+            }
+        }
+
+        for (const name of WadConstants._EXTENSIBLE) {
+            const target = WadConstants[name];
+            if (target instanceof Set) {
+                for (const value of [...target]) {
+                    if (value >= WadConstants.GAME_EXTENSION_BASE) {
+                        target.delete(value);
+                    }
+                }
+                continue;
+            }
+            for (const key of Object.keys(target)) {
+                if (Number(key) >= WadConstants.GAME_EXTENSION_BASE) {
+                    delete target[key];
+                }
+            }
+        }
+
+        for (const name of Object.keys(extensions)) {
+            const target = WadConstants[name];
+            if (target instanceof Set) {
+                for (const value of extensions[name]) {
+                    target.add(value);
+                }
+                continue;
+            }
+            Object.assign(target, extensions[name]);
+        }
+
+        WadConstants._recomputeDerivedSets();
+    }
+
+    // Every table a profile may extend (wiped of its >= 1000 entries before a
+    // new game's extensions are applied).
+    static _EXTENSIBLE = [
+        'DOOR_BY_SPECIAL', 'FLOOR_DOWN_BY_SPECIAL', 'FLOOR_UP_BY_SPECIAL',
+        'STAIR_BY_SPECIAL', 'GUN_BY_SPECIAL', 'SWITCH_INTERACTION_BY_SPECIAL',
+        'WALK_TRIGGER_ONCE_BY_SPECIAL', 'SCROLL_WALL_BY_SPECIAL',
+        'SECTOR_DAMAGE_BY_SPECIAL', 'LIGHT_EFFECT_BY_SPECIAL',
+        'SWITCH_SPECIALS', 'SWITCH_REVERSE_SPECIALS', 'SWITCH_EXIT_SPECIALS',
+        'WALK_TRIGGER_SPECIALS', 'WALK_STOP_SPECIALS', 'WALK_EXIT_SPECIALS',
+        'EXIT_SECRET_SPECIALS', 'TELEPORT_SPECIALS'
+    ];
+
     // --- Doors (single table per special) ---
 
     // One COMPLETE entry per door/ceiling special — the membership sets below
@@ -129,10 +191,11 @@ class WadConstants {
     // the plain VDOORSPEED manual-door profile, tuned after registration.
     static DOOR_TIMER_DEFAULTS = {kind: 'open', speed: 2, trigger: 'action', anim: 'round-trip', loop: false, onlyOnce: false, key: null};
 
-    // Derived membership sets — never edit these, edit DOOR_BY_SPECIAL.
-    static DOOR_SPECIALS               = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind !== 'close'));
-    static DOOR_CLOSE_SPECIALS         = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'close'));
-    static DOOR_CEILING_RAISE_SPECIALS = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'ceilingRaise'));
+    // Derived membership sets — never edit these, edit DOOR_BY_SPECIAL
+    // (computed by _recomputeDerivedSets, refreshed on profile extensions).
+    static DOOR_SPECIALS               = null;
+    static DOOR_CLOSE_SPECIALS         = null;
+    static DOOR_CEILING_RAISE_SPECIALS = null;
 
     // Close-wait-open: tics held closed before reopening (close30ThenOpen).
     static DOOR_CLOSE_REOPEN_WAIT_TICS = 30 * 35;
@@ -243,8 +306,9 @@ class WadConstants {
     // Linedef 48 (p_spec.c P_SpawnSpecials → linespeciallist, P_UpdateSpecials):
     // the FRONT sidedef's textureoffset advances FRACUNIT (1 texel) per tic,
     // forever — no tag, no trigger. 1 texel/tic × 35 tics/s = 35 texels/s.
-    static SCROLL_WALL_SPECIALS       = new Set([48]);
-    static SCROLL_WALL_TEXELS_PER_SEC = 35;
+    // The value is the SIGNED scroll rate: positive = leftward drift (48),
+    // negative = rightward (profile extensions, e.g. Heretic's 99).
+    static SCROLL_WALL_BY_SPECIAL = {48: 35};
 
     // --- Floors moving DOWN (lifts, lowers, perpetual plats — single table) ---
 
@@ -306,16 +370,15 @@ class WadConstants {
     };
 
     // Derived membership sets — never edit these, edit FLOOR_DOWN_BY_SPECIAL.
-    static FLOOR_MOVE_DOWN_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, () => true);
-
-    // EV_DoFloor one-way lowers: their destination is NOT clamped in vanilla
-    // (p_floor.c posts P_Find*FloorSurrounding as-is, and the T_MovePlane DOWN
-    // branch jumps to a destination ABOVE the floor on the first tic) — the
-    // mappers' "instant floor rise" trick (pop-up bridges, ambushes). The
-    // round-trip/perpetual plats DO clamp (p_plats.c: if (plat->low >
-    // sec->floorheight) plat->low = sec->floorheight).
-    static FLOOR_DOWN_ONEWAY_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (d) => (d.anim === 'one-way'));
-    static FLOOR_PERPETUAL_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (f) => (f.anim === 'perpetual'));
+    // FLOOR_DOWN_ONEWAY: EV_DoFloor one-way lowers — their destination is NOT
+    // clamped in vanilla (p_floor.c posts P_Find*FloorSurrounding as-is, and
+    // the T_MovePlane DOWN branch jumps to a destination ABOVE the floor on
+    // the first tic) — the mappers' "instant floor rise" trick (pop-up
+    // bridges, ambushes). The round-trip/perpetual plats DO clamp (p_plats.c:
+    // if (plat->low > sec->floorheight) plat->low = sec->floorheight).
+    static FLOOR_MOVE_DOWN_SPECIALS   = null;
+    static FLOOR_DOWN_ONEWAY_SPECIALS = null;
+    static FLOOR_PERPETUAL_SPECIALS   = null;
 
     // Tics at bottom before rising (Lower Lift)
     static LIFT_WAIT_TICS = 105;
@@ -375,7 +438,7 @@ class WadConstants {
     };
 
     // Derived membership set — never edit this, edit FLOOR_UP_BY_SPECIAL.
-    static FLOOR_MOVE_UP_SPECIALS = WadConstants._specialsWhere(WadConstants.FLOOR_UP_BY_SPECIAL, (f) => (f.donutRingOnly !== true));
+    static FLOOR_MOVE_UP_SPECIALS = null;
 
     // Deliberate deviation from vanilla (which starts the raise instantly):
     // a rising floor waits this long before moving, so a player who fired the
@@ -398,7 +461,7 @@ class WadConstants {
     };
 
     // Derived membership set — never edit this, edit GUN_BY_SPECIAL.
-    static GUN_SPECIALS = new Set(Object.keys(WadConstants.GUN_BY_SPECIAL).map(Number));
+    static GUN_SPECIALS = null;
 
     // --- Stairs (build stairs, EV_BuildStairs — single table) ---
 
@@ -418,9 +481,9 @@ class WadConstants {
     };
 
     // Derived membership sets — never edit these, edit STAIR_BY_SPECIAL.
-    static STAIR_SPECIALS        = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, () => true);
-    static STAIR_SWITCH_SPECIALS = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'switch'));
-    static STAIR_WALK_SPECIALS   = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'walk'));
+    static STAIR_SPECIALS        = null;
+    static STAIR_SWITCH_SPECIALS = null;
+    static STAIR_WALK_SPECIALS   = null;
 
     // --- Switches ---
 
@@ -562,16 +625,18 @@ class WadConstants {
 
     // --- Sector damage (P_PlayerInSpecialSector) ---
 
-    // Damage applied every 32-tic window to a player standing on the floor of
-    // a sector carrying these SECTOR specials. 11 = E1M8 finale (unprotected
-    // damage + normal exit at ≤ 10 health).
-    static SECTOR_DAMAGE_BY_SPECIAL = {7: 5, 5: 10, 4: 20, 16: 20, 11: 20};
-
-    // The radiation suit fully cancels 5/7 but leaks with a 5/256 chance per
-    // window on the super-damage specials.
-    static SECTOR_DAMAGE_LEAK_SPECIALS = new Set([4, 16]);
-
-    static SECTOR_DAMAGE_WINDOW_TICS = 32;
+    // Damage applied to a player standing on the floor of a sector carrying
+    // these SECTOR specials, once per windowTics window. leak = radiation-suit
+    // leak chance out of 256 per window (0 = full protection, 5 = the Doom
+    // super-damage leak, 256 = the suit never protects — e.g. Heretic lava).
+    // 11 = E1M8 finale (unprotected damage + normal exit at ≤ 10 health).
+    static SECTOR_DAMAGE_BY_SPECIAL = {
+        7:  {damage: 5,  windowTics: 32, leak: 0},
+        5:  {damage: 10, windowTics: 32, leak: 0},
+        4:  {damage: 20, windowTics: 32, leak: 5},
+        16: {damage: 20, windowTics: 32, leak: 5},
+        11: {damage: 20, windowTics: 32, leak: 0}
+    };
 
     // Secret sector (P_SpawnSpecials counts it in totalsecret, then
     // P_PlayerInSpecialSector credits it once and clears the special)
@@ -616,30 +681,23 @@ class WadConstants {
     static DEFAULT_BACKGROUND = [200, 200, 200];
     static DEFAULT_AMBIENT    = [235, 235, 235];
 
-    // Horizontal sky repeat factor: vanilla Doom wraps the 256-px sky ~4× per
-    // 360°. Carried in the sky descriptor so the (generic) engine never hardcodes
-    // this Doom-specific value.
-    static SKY_WRAP = 4;
+    // Recompute every derived membership set from its source table — called
+    // once at class load and again after each applyGameExtensions.
+    static _recomputeDerivedSets() {
+        WadConstants.DOOR_SPECIALS               = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind !== 'close'));
+        WadConstants.DOOR_CLOSE_SPECIALS         = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'close'));
+        WadConstants.DOOR_CEILING_RAISE_SPECIALS = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'ceilingRaise'));
+        WadConstants.FLOOR_MOVE_DOWN_SPECIALS    = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, () => true);
+        WadConstants.FLOOR_DOWN_ONEWAY_SPECIALS  = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (d) => (d.anim === 'one-way'));
+        WadConstants.FLOOR_PERPETUAL_SPECIALS    = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (f) => (f.anim === 'perpetual'));
+        WadConstants.FLOOR_MOVE_UP_SPECIALS      = WadConstants._specialsWhere(WadConstants.FLOOR_UP_BY_SPECIAL, (f) => (f.donutRingOnly !== true));
+        WadConstants.GUN_SPECIALS                = WadConstants._specialsWhere(WadConstants.GUN_BY_SPECIAL, () => true);
+        WadConstants.STAIR_SPECIALS              = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, () => true);
+        WadConstants.STAIR_SWITCH_SPECIALS       = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'switch'));
+        WadConstants.STAIR_WALK_SPECIALS         = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'walk'));
+    }
 
-    // Vanilla sky texture by level: E<m>M<n> → SKY<m> (m clamped 1..4) ;
-    // MAP<nn> → SKY1 (1-11) / SKY2 (12-20) / SKY3 (21+). Fallback SKY1.
-    static skyNameForLevel(levelName) {
-        const ep = (/^E(\d)M\d/i).exec(levelName);
-        if (ep !== null) {
-            return 'SKY' + Math.min(4, Math.max(1, parseInt(ep[1], 10)));
-        }
-        const mp = (/^MAP(\d+)/i).exec(levelName);
-        if (mp !== null) {
-            const n = parseInt(mp[1], 10);
-            if (n <= 11) {
-                return 'SKY1';
-            }
-            if (n <= 20) {
-                return 'SKY2';
-            }
-            return 'SKY3';
-        }
-
-        return 'SKY1';
+    static {
+        WadConstants._recomputeDerivedSets();
     }
 }

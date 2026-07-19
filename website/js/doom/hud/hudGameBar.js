@@ -21,17 +21,18 @@ class HudGameBar extends AbstractHud {
         this._armsEls = {};
     }
 
-    // Doom canonical weapon slots; the ARMS panel shows slots 1..7 (slot 1 is
-    // the fist, always owned, upgraded-look when the chainsaw is owned).
-    static get SLOT_BY_WEAPON() {
-        return {
-            fist: 1, chainsaw: 1, pistol: 2, shotgun: 3, supershotgun: 3,
-            chaingun: 4, rocket: 5, plasma: 6, bfg: 7
-        };
+    // The weapon slots and the key set are per-game data: both come from the
+    // game profile, so the panel adapts itself to the loaded WAD's game
+    // (empty layout when no game is bound — nothing to show).
+    _slotConfig() {
+        if (this._game === null) {
+            return {count: 0, byWeapon: {}, alwaysOwnedSlot: 0, upgradeWeapon: null};
+        }
+        return this._game.getGameProfile().hudWeaponSlots();
     }
 
-    static get KEY_COLORS() {
-        return { blueKey: '#3d7bff', yellowKey: '#ffd23d', redKey: '#ff4444' };
+    _keyColors() {
+        return ((this._game !== null) ? this._game.getGameProfile().hudKeyColors() : {});
     }
 
     bindGame(game) {
@@ -99,7 +100,8 @@ class HudGameBar extends AbstractHud {
     }
 
     _updateArms(u) {
-        const slotByWeapon = HudGameBar.SLOT_BY_WEAPON;
+        const slots        = this._slotConfig();
+        const slotByWeapon = slots.byWeapon;
         const code         = u.getActiveWeapon();
         const activeSlot   = (slotByWeapon[code] ?? null);
 
@@ -112,17 +114,17 @@ class HudGameBar extends AbstractHud {
             }
         }
 
-        for (let slot = 1; slot <= 7; slot++) {
+        for (let slot = 1; slot <= slots.count; slot++) {
             const el       = this._armsEls[slot];
             const isActive = (slot === activeSlot);
-            // Slot 1 (the fist) is always owned, so its cell is always lit.
-            const isOwned  = ((slot === 1) ? true : ownedSlots.has(slot));
+            // The always-owned slot (Doom fist / Heretic staff) is always lit.
+            const isOwned  = ((slot === slots.alwaysOwnedSlot) ? true : ownedSlots.has(slot));
             el.style.color      = ((isActive) ? '#111' : ((isOwned) ? '#fff' : '#555'));
             el.style.background = ((isActive) ? '#ffcc00' : 'transparent');
-            // Slot 1 gets a green accent border when the chainsaw is owned, to
-            // signal the upgrade over the bare fist (name shows it when active).
-            if (slot === 1) {
-                el.style.borderColor = ((!isActive && ownedCodes.has('chainsaw')) ? '#5dd35d' : 'rgba(255, 255, 255, 0.25)');
+            // That slot gets a green accent border when its upgrade weapon is
+            // owned (Doom chainsaw / Heretic gauntlets — name shows it active).
+            if (slot === slots.alwaysOwnedSlot) {
+                el.style.borderColor = ((!isActive && ownedCodes.has(slots.upgradeWeapon)) ? '#5dd35d' : 'rgba(255, 255, 255, 0.25)');
             }
         }
 
@@ -131,7 +133,7 @@ class HudGameBar extends AbstractHud {
     }
 
     _updateKeys(u) {
-        const keyColors = HudGameBar.KEY_COLORS;
+        const keyColors = this._keyColors();
         const owned     = new Set(u.getItemCodes());
         for (const key of Object.keys(keyColors)) {
             const el  = this._keyEls[key];
@@ -208,7 +210,7 @@ class HudGameBar extends AbstractHud {
         const block = this._createEl('div', this._cornerStyle({ top: '1em', left: '1em' }));
 
         const keysRow = this._createEl('div', { display: 'flex', gap: '0.4em' });
-        for (const key of Object.keys(HudGameBar.KEY_COLORS)) {
+        for (const key of Object.keys(this._keyColors())) {
             const pip = this._createEl('div', {
                 width: '1em', height: '1em', borderRadius: '50%',
                 border: '0.12em solid rgba(255, 255, 255, 0.5)', opacity: '0.25'
@@ -238,7 +240,7 @@ class HudGameBar extends AbstractHud {
         block.style.textAlign = 'right';
 
         const panel = this._createEl('div', { display: 'flex', gap: '0.3em', justifyContent: 'flex-end' });
-        for (let slot = 1; slot <= 7; slot++) {
+        for (let slot = 1; slot <= this._slotConfig().count; slot++) {
             const el = this._createEl('div', {
                 width: '1.3em', height: '1.3em', borderRadius: '0.2em',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

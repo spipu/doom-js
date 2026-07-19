@@ -67,7 +67,7 @@ class WadStaticMapBuilder {
 
             // Scrolling wall (48): vanilla animates the FRONT sidedef's texture
             // offset only, so the scroll rate applies to right-side faces alone
-            const uScroll = ((WadConstants.SCROLL_WALL_SPECIALS.has(ld.special)) ? WadConstants.SCROLL_WALL_TEXELS_PER_SEC : 0);
+            const uScroll = (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0);
 
             if (ld.left < 0) {
                 if (switchLinedefIds.has(ldIdx)) {
@@ -257,7 +257,7 @@ class WadStaticMapBuilder {
 
             // Scrolling wall (48): only the FRONT (right) sidedef's offset is
             // animated in vanilla — both flip quads show that same texture
-            const uScroll = ((WadConstants.SCROLL_WALL_SPECIALS.has(ld.special) && side === 'right') ? WadConstants.SCROLL_WALL_TEXELS_PER_SEC : 0);
+            const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
 
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,

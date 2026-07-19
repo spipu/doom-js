@@ -14,28 +14,32 @@
 // Sizes match UZDoom exactly: on-wall size (map units) = PNG pixels × decaldef
 // scale, converted to world units by WadConstants.SCALE.
 class DoomDecals {
-    // bfgShade = the BFG lightning tint ("shade" in decaldef): freedoom uses a
-    // bluish 80 80 ff, id Doom the green 80 ff 80.
-    constructor(decalTextures, rng, bfgShade) {
+    // The decal set (graphics, scales, shades) is per-game data: it comes from
+    // the game profile's decalTemplates(), a shade of 'bfg' resolving to its
+    // bfgDecalShade() (freedoom art uses a bluish 80 80 ff, id Doom 80 ff 80).
+    constructor(decalTextures, rng, profile) {
         this._rng       = rng;
         this._permanent = [];   // instIds of permanent decals (FIFO, capped)
         this._fading    = [];   // {instId, steps, elapsed, shown} — BFG lightning
-        this._templates = this._buildTemplates(decalTextures, bfgShade);
+        this._templates = this._buildTemplates(decalTextures, profile);
     }
 
     // --- Template building (in the load batch) ---
 
-    // Per-type descriptor: scale (decaldef), shade tint, face translucency, and a
-    // luminance gain lifting the mask above the shader's a<0.5 cutout so the soft
-    // burns (scorch/plasma/BFG) keep more of their body (chips are already crisp).
-    _buildTemplates(tex, bfgShade) {
-        return {
-            bulletChip: this._buildVariants(tex, ['chip1', 'chip2', 'chip3', 'chip4', 'chip5'], 0.5, [0, 0, 0], 0.85, 1.0),
-            scorch:     this._buildVariants(tex, ['scorch1'],              0.5, [0, 0, 0], 1, 1.8),
-            plasma:     this._buildVariants(tex, ['plasma1', 'plasma2'],   0.3, [0, 0, 0], 1, 2.2),
-            bfgscrc:    this._buildVariants(tex, ['bfgscrc1', 'bfgscrc2'], 1.0, [0, 0, 0], 1, 2.2),
-            bfglite:    this._buildFadeVariants(tex, ['bfglite1', 'bfglite2'], 1.0, bfgShade, 1.5),
-        };
+    // Per-type descriptor (profile decaldef data): scale, shade tint, face
+    // translucency, and a luminance gain lifting the mask above the shader's
+    // a<0.5 cutout so the soft burns keep more of their body.
+    _buildTemplates(tex, profile) {
+        const templates = {};
+        for (const spec of profile.decalTemplates()) {
+            const shade = ((spec.shade === 'bfg') ? profile.bfgDecalShade() : spec.shade);
+            if (spec.fade === true) {
+                templates[spec.type] = this._buildFadeVariants(tex, spec.keys, spec.scale, shade, spec.gain);
+                continue;
+            }
+            templates[spec.type] = this._buildVariants(tex, spec.keys, spec.scale, shade, spec.translucent, spec.gain);
+        }
+        return templates;
     }
 
     // Permanent decals: one texture per graphic, four UV-flip variants

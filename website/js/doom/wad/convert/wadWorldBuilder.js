@@ -11,11 +11,12 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelName
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, game: DoomGame}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, game: DoomGame, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; thingCatalog
      *                  (DoomGame) maps THING types to world sprites/pickups; skill
      *                  (1..5, default 3) drives the single-player thing filtering;
-     *                  game receives the level stats (secrets) and pickups.
+     *                  game receives the level stats (secrets) and pickups;
+     *                  profile carries the per-game policy (Doom by default).
      */
     constructor(wadFile, levelName, options = null) {
         options = options ?? {};
@@ -26,6 +27,7 @@ class WadWorldBuilder {
         this._thingCatalog = options.thingCatalog ?? null;
         this._skill        = options.skill ?? 3;
         this._game         = options.game ?? null;
+        this._profile      = options.profile ?? new DoomGameProfile();
     }
 
     /**
@@ -33,11 +35,17 @@ class WadWorldBuilder {
      * loading modal stays painted. The engine registration itself is synchronous.
      */
     async build() {
+        // Per-game policy FIRST: the profile's table extensions land in the
+        // WadConstants baseline, then the xlat rewrites the level specials —
+        // every analyzer/builder/interaction only ever sees internal codes.
+        WadConstants.applyGameExtensions(this._profile.wadConstantsExtensions());
+
         const palette  = new WadPalette(this._wadFile);
-        const bank     = new WadTextureBank(this._wadFile, palette).init();
-        const animBank = new WadAnimationBank(this._wadFile, bank).init();
+        const bank     = new WadTextureBank(this._wadFile, palette, this._profile).init();
+        const animBank = new WadAnimationBank(this._wadFile, bank, this._profile).init();
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
+        new WadSpecialTranslator(this._profile).translate(level);
         const analysis = new WadMapAnalyzer(level).analyze();
         // Sector polygons computed once (reused by the spawn + every thing)
         this._level       = level;
@@ -197,7 +205,7 @@ class WadWorldBuilder {
         // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
 
-        console.log('WadWorldBuilder - ' + this._levelName + ': '
+        console.log('WadWorldBuilder - ' + this._levelName + ' [profile ' + this._profile.getCode() + ']: '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
             + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
             + stairs.length + ' stairs, '
@@ -442,12 +450,13 @@ class WadWorldBuilder {
         // discards above/below (the clear colour shows through); in the CPU full
         // renderer the sky holes already show the background — so a sky-coloured
         // background gives a solid sky there for free, without a sky pass.
-        const skyIdx = bank.ensureSkyTex(WadConstants.skyNameForLevel(this._levelName));
+        const skyPolicy = this._profile.skyForLevel(this._levelName);
+        const skyIdx = bank.ensureSkyTex(skyPolicy.name);
         let sky = null;
         let background = WadConstants.DEFAULT_BACKGROUND;
         if (skyIdx >= 0) {
             const loaderId = bank.getLoaderId(skyIdx);
-            sky = {loaderId: loaderId, wrap: WadConstants.SKY_WRAP};
+            sky = {loaderId: loaderId, wrap: skyPolicy.wrap};
             background = this._skyCapColor(loaderId);
         }
 

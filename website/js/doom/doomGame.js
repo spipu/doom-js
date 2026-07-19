@@ -36,38 +36,27 @@ class DoomGame {
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
         this._rng             = new DoomRandom();
 
-        // Shared, immutable definitions (the per-player state lives on DoomUser)
-        this._weapons   = {};
-        this._ammoTypes = {};
-        this._items     = {};
+        // Per-game policy + shared immutable definitions (the per-player state
+        // lives on DoomUser). The default profile covers the pre-WAD state;
+        // startFromWad re-detects and rebuilds from the real WAD's profile.
+        this._gameProfile  = new DefaultGameProfile();
+        this._weapons      = {};
+        this._ammoTypes    = {};
+        this._items        = {};
+        this._thingCatalog = null;
         this._buildCatalogs();
-
-        // World things catalog (sprites placed from the WAD THINGS lump)
-        this._thingCatalog = new DoomThingCatalog();
     }
 
-    // --- Catalogs of definitions ---
+    // --- Catalogs of definitions (all per-game data comes from the profile) ---
     _buildCatalogs() {
-        this._ammoTypes = {
-            bullets: new DoomAmmo({code: 'bullets', name: 'Bullets', maxNormal: 200, maxPack: 400, clip: 10}),
-            shells:  new DoomAmmo({code: 'shells',  name: 'Shells',  maxNormal: 50,  maxPack: 100, clip: 4}),
-            rockets: new DoomAmmo({code: 'rockets', name: 'Rockets', maxNormal: 50,  maxPack: 100, clip: 1}),
-            cells:   new DoomAmmo({code: 'cells',   name: 'Cells',   maxNormal: 300, maxPack: 600, clip: 20})
-        };
+        this._ammoTypes    = this._gameProfile.buildAmmoTypes();
+        this._weapons      = this._gameProfile.buildWeapons();
+        this._items        = this._gameProfile.buildItems();
+        this._thingCatalog = this._gameProfile.createThingCatalog();
+    }
 
-        this._weapons = DoomWeaponDef.buildAll();
-
-        this._items = {
-            redKey:        new DoomItem({code: 'redKey',        name: 'Red Key',         type: 'key'}),
-            blueKey:       new DoomItem({code: 'blueKey',       name: 'Blue Key',        type: 'key'}),
-            yellowKey:     new DoomItem({code: 'yellowKey',     name: 'Yellow Key',      type: 'key'}),
-            berserk:       new DoomItem({code: 'berserk',       name: 'Berserk',         type: 'powerupPermanent', effect: 'berserk'}),
-            computerMap:   new DoomItem({code: 'computerMap',   name: 'Computer Map',    type: 'powerupPermanent', effect: 'map'}),
-            invulnerability: new DoomItem({code: 'invulnerability', name: 'Invulnerability', type: 'powerupTimed', effect: 'invulnerability', duration: 30000}),
-            radiationSuit: new DoomItem({code: 'radiationSuit', name: 'Radiation Suit',  type: 'powerupTimed', effect: 'radiation', duration: 60000}),
-            lightVisor:    new DoomItem({code: 'lightVisor',    name: 'Light Visor',     type: 'powerupTimed', effect: 'light', duration: 120000}),
-            invisibility:  new DoomItem({code: 'invisibility',  name: 'Invisibility',    type: 'powerupTimed', effect: 'invisibility', duration: 60000})
-        };
+    getGameProfile() {
+        return this._gameProfile;
     }
 
     getWeapon(code) {
@@ -93,7 +82,7 @@ class DoomGame {
     // Apply a picked-up thing's effect descriptor to the player. Returns true
     // when something was actually consumed — false leaves the sprite on the
     // ground (Doom does not pick up health/armor/ammo already full, nor a
-    // weapon/key already held). Effect shapes come from DoomThingCatalog.
+    // weapon/key already held). Effect shapes come from the profile's thing types (DoomThingCatalog).
     applyPickup(user, effect) {
         if ((effect === null) || (effect === undefined)) {
             return false;
@@ -114,15 +103,16 @@ class DoomGame {
             return this._pickupArmor(user, effect.armor);
         }
         if (effect.armorBonus !== undefined) {
-            return this._pickupArmorBonus(user, effect.armorBonus);
+            return this._pickupArmorBonus(user, effect.armorBonus, effect.absorb);
         }
         if (effect.item !== undefined) {
             return this._pickupItem(user, effect.item);
         }
-        if (effect.mega === true) {
-            // Vanilla megasphere SETS health to 200 (p_inter.c), it does not add
-            const healed  = user.addEnergy(200, 200);
-            const armored = this._pickupArmor(user, 'blue');
+        if (effect.mega !== undefined) {
+            // Megasphere-like: SETS health to the given value (p_inter.c, it
+            // does not add) and grants the given armour class.
+            const healed  = user.addEnergy(effect.mega.health, effect.mega.health);
+            const armored = this._pickupArmor(user, effect.mega.armor);
             return (healed || armored);
         }
         return false;
@@ -183,33 +173,34 @@ class DoomGame {
         for (const code of Object.keys(this._ammoTypes)) {
             user.setAmmoMax(code, this._ammoTypes[code].getMaxPack());
             // Doom's backpack also grants one base clip of each ammo type.
-            this._grantAmmo(user, code, this._ammoTypes[code].getClip() * this._ammoMultiplier());
+            this._grantAmmo(user, code, this._ammoTypes[code].getPackGive() * this._ammoMultiplier());
         }
         return true;
     }
 
-    _pickupArmor(user, kind) {
-        const target = ((kind === 'blue') ? 200 : 100);
-        const absorb = ((kind === 'blue') ? 0.5 : (1 / 3));
-        if (user.getArmor() >= target) {
+    // spec = {points, absorb} — the armour classes are per-game catalog data
+    // (Doom green 100/⅓ + blue 200/½, Heretic silver 100/½ + enchanted 200/¾).
+    _pickupArmor(user, spec) {
+        if (user.getArmor() >= spec.points) {
             return false;
         }
         // The 0→200 ceiling is fixed (set in the loadout); a pickup only sets the
         // armour points and the absorption fraction of its type.
-        user.setArmor(target);
-        user.setArmorAbsorb(absorb);
+        user.setArmor(spec.points);
+        user.setArmorAbsorb(spec.absorb);
         return true;
     }
 
-    _pickupArmorBonus(user, amount) {
-        if (user.getArmor() >= 200) {
+    // absorb = the fraction granted when the bonus lands on a bare player
+    // (catalog data — Doom's helmet bonus gives the green class).
+    _pickupArmorBonus(user, amount, absorb) {
+        if (user.getArmor() >= user.getMaxArmor()) {
             return false;
         }
-        // A bonus on top of no armor still grants the green absorption fraction.
         if ((user.getArmor() <= 0) && (user.getArmorAbsorb() <= 0)) {
-            user.setArmorAbsorb(1 / 3);
+            user.setArmorAbsorb(absorb);
         }
-        user.setArmor(Math.min(user.getArmor() + amount, 200));
+        user.setArmor(Math.min(user.getArmor() + amount, user.getMaxArmor()));
         return true;
     }
 
@@ -222,12 +213,12 @@ class DoomGame {
             user.addEffect(def.getEffect(), def.getDuration());
             return true;
         }
-        // Berserk (vanilla P_GivePower pw_strength): the heal-to-100 happens
-        // BEFORE the already-owned check — every sphere re-heals and is
-        // consumed, even when the power is already held.
-        if (code === 'berserk') {
+        // Pickup heal (catalog data — Doom's berserk, vanilla P_GivePower
+        // pw_strength): the heal happens BEFORE the already-owned check, so
+        // every sphere re-heals and is consumed even when already held.
+        if (def.getPickupHeal() !== null) {
             user.giveItem(code);
-            user.addEnergy(100, 100);
+            user.addEnergy(def.getPickupHeal(), def.getPickupHeal());
             return true;
         }
         // Key or permanent power-up: a key already held leaves the sprite.
@@ -238,25 +229,32 @@ class DoomGame {
         return true;
     }
 
-    // Pour the canonical Doom starting loadout on the freshly built DoomUser:
-    // all weapon slots declared, Fist + Pistol owned (Pistol active), the four
-    // ammo counters initialised to their normal cap with 50 bullets.
+    // Pour the game's canonical starting loadout (profile data) on the freshly
+    // built DoomUser: all weapon slots declared, the starting weapons owned,
+    // the ammo counters initialised to their normal cap with the starting ammo.
     _setupLoadout(user) {
+        const loadout = this._gameProfile.startingLoadout();
+
         for (const code of Object.keys(this._weapons)) {
             user.declareWeapon(code);
         }
-        user.giveWeapon('fist');
-        user.giveWeapon('pistol');
-        user.setActiveWeapon('pistol');
+        for (const code of loadout.weapons) {
+            user.giveWeapon(code);
+        }
+        if (loadout.activeWeapon !== null) {
+            user.setActiveWeapon(loadout.activeWeapon);
+        }
 
         for (const code of Object.keys(this._ammoTypes)) {
             user.setAmmoMax(code, this._ammoTypes[code].getMaxNormal());
         }
-        user.giveAmmo('bullets', 50);
+        for (const code of Object.keys(loadout.ammo)) {
+            user.giveAmmo(code, loadout.ammo[code]);
+        }
 
-        // Doom armour is a single 0→200 counter; the type (green/blue) only sets
-        // the absorption fraction. The player starts at 0 with the 200 ceiling.
-        user.setMaxArmor(200);
+        // The armour is a single 0→max counter; a pickup only sets the points
+        // and the absorption fraction of its type. The player starts at 0.
+        user.setMaxArmor(loadout.maxArmor);
         user.setArmor(0);
     }
 
@@ -346,9 +344,11 @@ class DoomGame {
     // player is forced to that location after the world is built, instead of the
     // WAD spawn (see _applySpawnOverride).
     async startFromWad(wadFile, levelName, wadMeta = null, spawnOverride = null, skill = null) {
-        this._wadFile   = wadFile;
-        this._mapInfo   = new WadMapInfo(wadFile);
-        this._levelName = levelName;
+        this._wadFile     = wadFile;
+        this._gameProfile = new GameProfileList().getForWad(wadFile);
+        this._buildCatalogs();
+        this._mapInfo     = new WadMapInfo(wadFile, this._gameProfile);
+        this._levelName   = levelName;
         this._spawnOverride = spawnOverride;
         if (wadMeta !== null) {
             this._wadMeta = wadMeta;
@@ -379,7 +379,8 @@ class DoomGame {
             },
             thingCatalog: this._thingCatalog,
             skill: this._skill,
-            game: this
+            game: this,
+            profile: this._gameProfile
         }).build();
 
         // Pre-decode every weapon view/flash frame INSIDE the batch: decoding a
@@ -402,13 +403,10 @@ class DoomGame {
         // billboard object is registered after endBatch (which would re-fire the
         // loader). The projectile system gets its world (collision + user) in _init.
         this._effects     = new DoomEffects(this._weaponSprites, this._rng);
-        // Impact decals: textures + quad templates are built here in the batch.
-        // Skipped only if the decal graphics haven't finished decoding yet
-        // (first-level race); the BFG lightning tint follows the WAD (freedoom
-        // uses a bluish shade, id Doom a green one).
-        const wadId    = ((this._wadMeta !== null) ? String(this._wadMeta.id).toLowerCase() : '');
-        const bfgShade = ((wadId.includes('freedoom')) ? [128, 128, 255] : [128, 255, 128]);
-        this._decals   = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, bfgShade) : null);
+        // Impact decals: textures + quad templates are built here in the batch,
+        // from the game profile's decal set. Skipped only if the decal graphics
+        // haven't finished decoding yet (first-level race).
+        this._decals = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, this._gameProfile) : null);
         this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals);
 
         loader.setCallback(() => {
@@ -470,13 +468,18 @@ class DoomGame {
         this._engine.initFromWorld(this._world);
 
         // Weapon firing: a fresh psprite controller per level, RNG cleared like
-        // vanilla M_ClearRandom. It brings the active weapon up on construction.
+        // vanilla M_ClearRandom. It brings the active weapon up on construction —
+        // skipped entirely while the player has no weapon (a game whose arsenal
+        // is not built yet): no controller, no overlay, nothing to decode.
         this._rng.reset();
-        this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
+        this._playerWeapon = null;
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
-        this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
-        this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+        if (this._world.getUser().getActiveWeapon() !== null) {
+            this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
+            this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
+            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+        }
 
         // Require a release before the first press (a button held during the
         // level start must not immediately quit it)

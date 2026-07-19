@@ -1,19 +1,19 @@
 {
-    "version": "v1.336",
+    "version": "v1.349",
     "files": {
         "assets": [
-            "/assets/uzdoom/sprite/chip1.png",
-            "/assets/uzdoom/sprite/chip2.png",
-            "/assets/uzdoom/sprite/chip3.png",
-            "/assets/uzdoom/sprite/chip4.png",
-            "/assets/uzdoom/sprite/chip5.png",
-            "/assets/uzdoom/sprite/scorch1.png",
-            "/assets/uzdoom/sprite/plasma1.png",
-            "/assets/uzdoom/sprite/plasma2.png",
-            "/assets/uzdoom/sprite/bfglite1.png",
-            "/assets/uzdoom/sprite/bfglite2.png",
-            "/assets/uzdoom/sprite/bfgscrc1.png",
-            "/assets/uzdoom/sprite/bfgscrc2.png"
+            "/assets/uzdoom/doom/sprite/chip1.png",
+            "/assets/uzdoom/doom/sprite/chip2.png",
+            "/assets/uzdoom/doom/sprite/chip3.png",
+            "/assets/uzdoom/doom/sprite/chip4.png",
+            "/assets/uzdoom/doom/sprite/chip5.png",
+            "/assets/uzdoom/doom/sprite/scorch1.png",
+            "/assets/uzdoom/doom/sprite/plasma1.png",
+            "/assets/uzdoom/doom/sprite/plasma2.png",
+            "/assets/uzdoom/doom/sprite/bfglite1.png",
+            "/assets/uzdoom/doom/sprite/bfglite2.png",
+            "/assets/uzdoom/doom/sprite/bfgscrc1.png",
+            "/assets/uzdoom/doom/sprite/bfgscrc2.png"
         ],
         "css": [
             "/css/doomMenu.css"
@@ -26,6 +26,13 @@
             "/js/doom/wad/wadStorage.js",
             "/js/doom/wad/wadRegistry.js",
             "/js/doom/wad/convert/wadConstants.js",
+            "/js/doom/wad/profile/abstractGameProfile.js",
+            "/js/doom/wad/profile/defaultGameProfile.js",
+            "/js/doom/wad/profile/doomGameProfile.js",
+            "/js/doom/wad/profile/freedoomGameProfile.js",
+            "/js/doom/wad/profile/hereticGameProfile.js",
+            "/js/doom/wad/gameProfileList.js",
+            "/js/doom/wad/convert/wadSpecialTranslator.js",
             "/js/doom/wad/convert/wadGeometry.js",
             "/js/doom/wad/convert/wadTriangulator.js",
             "/js/doom/wad/convert/wadSectorPolygons.js",

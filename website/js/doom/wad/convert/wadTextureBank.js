@@ -9,12 +9,14 @@
  */
 class WadTextureBank {
     /**
-     * @param {WadFile}    wadFile
-     * @param {WadPalette} palette
+     * @param {WadFile}             wadFile
+     * @param {WadPalette}          palette
+     * @param {AbstractGameProfile} profile
      */
-    constructor(wadFile, palette) {
+    constructor(wadFile, palette, profile) {
         this._wadFile = wadFile;
         this._palette = palette;
+        this._profile = profile;
 
         this._pnames      = [];
         this._patches     = {};   // name → DataView
@@ -252,6 +254,14 @@ class WadTextureBank {
     }
 
     _initSwitchPairs() {
+        // Engine-hardcoded pairs of the game profile first (e.g. Heretic's
+        // SW1OFF ↔ SW1ON), then the SWITCHES lump overrides when present —
+        // the WAD data always wins over the profile fallback.
+        for (const pair of this._profile.switchPairs()) {
+            this._switchPairs[pair[0]] = pair[1];
+            this._switchPairs[pair[1]] = pair[0];
+        }
+
         const dv = this._wadFile.getLump('SWITCHES');
         if (dv === null) {
             return;

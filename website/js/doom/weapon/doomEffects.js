@@ -25,15 +25,16 @@ class DoomEffects {
         };
     }
 
-    // One shared billboard object per frame; null if the WAD lacks the graphics.
+    // One shared billboard object per frame; null if the WAD lacks the graphics
+    // (probed quietly — another game's WAD misses them all, no warning spam).
     _buildTemplate(bank, spriteBase, letters, frameTics, alpha, rise, additive) {
         const scale  = WadConstants.SCALE;
         const frames = [];
         for (const letter of letters) {
-            const spr = bank.get(spriteBase + letter + '0');
-            if (spr === null) {
+            if (!bank.has(spriteBase + letter + '0')) {
                 return null;
             }
+            const spr = bank.get(spriteBase + letter + '0');
             frames.push({
                 objId:  loader.objects().loadBillboardFromData(null, {
                     textures:      [spr.texId],
