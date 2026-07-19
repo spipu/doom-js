@@ -11,6 +11,10 @@
 html {
     overflow: hidden;
     overscroll-behavior: none;
+    /* iOS Safari text autosizing would inflate the small em-scaled menu
+       labels (triggered e.g. by a filter/stacking-context change) */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body {
