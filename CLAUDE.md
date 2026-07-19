@@ -17,5 +17,6 @@ Si la liste des WAD est vide, ajouter les 4 fichiers WAD présents dans `./.sour
 * freedoom2
 * Doom1
 * Doom2
+* heretic
 
 Enfin analyse les 10 derniers commits, et analyser le fichier `~/git/claude/memory/projects/test/lib3d_js/next-steps.md`. 
