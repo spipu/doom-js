@@ -120,11 +120,31 @@ class MenuListNavigation {
         const entry = this._items[index];
         if (entry !== undefined) {
             entry.el.classList.add('doom-menu-item-selected');
-            entry.el.scrollIntoView({block: 'nearest'});
+            this._scrollListTo(entry.el);
             this._mouseArmed = false;
         }
 
         return this;
+    }
+
+    // Scrolls the list itself (scrollTop) instead of scrollIntoView: the
+    // latter may scroll any scrollable ancestor, page included — on iOS that
+    // page nudge collapses the Safari toolbar, resizes the viewport and makes
+    // the whole em-sized menu grow.
+    _scrollListTo(el) {
+        const list = el.parentElement;
+        if (list === null) {
+            return;
+        }
+        const listRect = list.getBoundingClientRect();
+        const itemRect = el.getBoundingClientRect();
+        if (itemRect.top < listRect.top) {
+            list.scrollTop += (itemRect.top - listRect.top);
+            return;
+        }
+        if (itemRect.bottom > listRect.bottom) {
+            list.scrollTop += (itemRect.bottom - listRect.bottom);
+        }
     }
 
     moveSelection(delta) {
