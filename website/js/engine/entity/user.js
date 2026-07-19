@@ -442,9 +442,6 @@ class User {
                     if (this._walkSlow) {
                         speed *= 0.5;
                     }
-                    if (this._strafeDir !== 0) {
-                        speed *= 0.7;
-                    }
                     speed *= (1 - this._crouchProgress * 0.4);
                     this._vx = this._inputX * norm * speed;
                     this._vz = this._inputZ * norm * speed;
