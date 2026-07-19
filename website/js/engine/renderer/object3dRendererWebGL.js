@@ -268,13 +268,14 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
         for (const group of allGroups) {
             // Additive groups (energy sprites) add their colour to the scene and
-            // don't write depth, so overlapping glows accumulate; normal groups
-            // keep src-alpha blending. State is restored after the loop.
+            // don't write depth, so overlapping glows accumulate. Textures are
+            // premultiplied (alpha already in the RGB), hence the ONE source
+            // factor in both modes. State is restored after the loop.
             if (group.blendAdd) {
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                gl.blendFunc(gl.ONE, gl.ONE);
                 gl.depthMask(false);
             } else {
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.depthMask(true);
             }
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
@@ -324,7 +325,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
         }
         // Restore the default blend state for the next object / pass.
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.depthMask(true);
     }
 
@@ -334,7 +335,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         }
         const tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(texture.data.buffer));
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this._premultiply(texture.data));
         // LINEAR smoothing on every texture, sprites and weapons included (the
         // a<0.5 discard still gives clean anti-aliased sprite edges).
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -345,6 +346,33 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         this._texCache.set(texture, tex);
         return tex;
+    }
+
+    // Premultiplied alpha upload: transparent texels keep RGB (0,0,0) in the
+    // decoded ImageData, so LINEAR filtering used to blend that black into the
+    // opaque edges (grey fringe around sprites/weapons/decals). With RGB×α and
+    // (ONE, ONE_MINUS_SRC_ALPHA) blending the interpolation becomes correct.
+    // Works on a copy: the source ImageData is shared with the software
+    // renderers, which expect straight alpha.
+    // (UNPACK_PREMULTIPLY_ALPHA_WEBGL is ignored for ArrayBufferView uploads.)
+    _premultiply(pixels) {
+        const src  = new Uint8Array(pixels.buffer);
+        const data = new Uint8Array(src.length);
+        for (let i = 0; i < src.length; i += 4) {
+            const a = src[i + 3];
+            if (a === 255) {
+                data[i]     = src[i];
+                data[i + 1] = src[i + 1];
+                data[i + 2] = src[i + 2];
+            }
+            if ((a > 0) && (a < 255)) {
+                data[i]     = Math.round(src[i]     * a / 255);
+                data[i + 1] = Math.round(src[i + 1] * a / 255);
+                data[i + 2] = Math.round(src[i + 2] * a / 255);
+            }
+            data[i + 3] = a;
+        }
+        return data;
     }
 
     _setup(gl) {
@@ -394,7 +422,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     col = min(v_color / 255.0, vec3(1.0));
                     a   = u_alpha;
                 }
-                gl_FragColor = vec4(col, a);
+                // Premultiplied output: the face opacity also scales the RGB
+                // (the texture alpha is already baked into t.rgb at upload).
+                gl_FragColor = vec4(col * u_alpha, a);
             }
         `);
         gl.useProgram(this._program);
@@ -420,7 +450,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._vbo = gl.createBuffer();
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Premultiplied-alpha pipeline: the source factor is ONE everywhere.
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
 
     _compile(gl, type, src) {
