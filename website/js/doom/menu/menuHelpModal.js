@@ -148,7 +148,7 @@ class MenuHelpModal extends MenuModal {
     _confirmReset() {
         new MenuModal(this._display).confirm('Supprimer tous les paramétrages enregistrés ?', () => {
             doomSettings.resetAll().applyToInputs(new Inputs());
-        }, 'Supprimer', 'Retour');
+        }, 'Confirmer', 'Retour');
     }
 
     // Adapts to what the game itself would use (same device priority as
