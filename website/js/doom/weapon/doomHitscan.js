@@ -5,10 +5,11 @@
 // sky meets no geometry → no hit → no puff, exactly like Doom. Damage rolls are
 // computed but only matter once there are things to hit.
 class DoomHitscan {
-    constructor(collision, effects, rng) {
+    constructor(collision, effects, rng, decals) {
         this._collision = collision;
         this._effects   = effects;
         this._rng       = rng;
+        this._decals    = decals;
     }
 
     // A ranged weapon shot: one ray per pellet. accurate (the first pistol /
@@ -58,5 +59,9 @@ class DoomHitscan {
             hit.point[2] - dz * back,
             melee
         );
+        // Persistent bullet chip on the wall (self-filters floors/ceilings).
+        if (this._decals !== null) {
+            this._decals.spawnWallDecal('bulletChip', hit.point, hit.normal, [dx, dy, dz], hit.tri.instance);
+        }
     }
 }

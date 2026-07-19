@@ -488,6 +488,10 @@ class Collision {
             if (!tri) {
                 continue;
             }
+            // Back-reference to the owning mover: a decal on a moving wall
+            // (door/lift) rides it. Static map tris (built elsewhere) never
+            // carry this, so hit.tri.instance === undefined marks a static wall.
+            tri.instance = dc.instance;
             this._classifyTri(tri, floors, ceilings, walls);
         }
         dc.floors   = floors;

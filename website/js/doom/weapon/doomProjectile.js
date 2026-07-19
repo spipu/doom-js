@@ -6,9 +6,10 @@
 // A_Explode splash — to the player only, faithfully (no enemies yet). The BFG
 // spray (A_BFGSpray) targets things, so with no enemies it is a no-op here.
 class DoomProjectileSystem {
-    constructor(spriteBank, effects, rng) {
+    constructor(spriteBank, effects, rng, decals) {
         this._effects   = effects;
         this._rng       = rng;
+        this._decals    = decals;
         this._collision = null;
         this._user      = null;
         this._active    = [];
@@ -26,15 +27,15 @@ class DoomProjectileSystem {
         // The rocket is a solid missile (opaque); the plasma/BFG balls glow
         // (gzdoom RenderStyle "Add", Alpha 0.75).
         return {
-            rocket: this._buildDef(bank, 'MISL', ['A'],      20, 1, 'rocketExplode', 128, false),
-            plasma: this._buildDef(bank, 'PLSS', ['A', 'B'], 25, 6, 'plasmaExplode', 0,   true),
-            bfg:    this._buildDef(bank, 'BFS1', ['A', 'B'], 25, 4, 'bfgExplode',    0,   true),
+            rocket: this._buildDef(bank, 'MISL', ['A'],      20, 1, 'rocketExplode', 128, false, 'scorch'),
+            plasma: this._buildDef(bank, 'PLSS', ['A', 'B'], 25, 6, 'plasmaExplode', 0,   true,  'plasma'),
+            bfg:    this._buildDef(bank, 'BFS1', ['A', 'B'], 25, 4, 'bfgExplode',    0,   true,  'bfg'),
         };
     }
 
     // In-flight billboard(s) + kinematics for one projectile kind; null if the
     // WAD lacks the sprites. speed is in map units/tic, converted to world units.
-    _buildDef(bank, spriteBase, letters, speedMap, flightTics, explosion, splashDamage, additive) {
+    _buildDef(bank, spriteBase, letters, speedMap, flightTics, explosion, splashDamage, additive, decalType) {
         const scale  = WadConstants.SCALE;
         const frames = [];
         for (const letter of letters) {
@@ -56,7 +57,7 @@ class DoomProjectileSystem {
                 height: spr.height * scale,
             });
         }
-        return { frames, speed: speedMap * scale, flightTics, explosion, splashDamage };
+        return { frames, speed: speedMap * scale, flightTics, explosion, splashDamage, decalType };
     }
 
     // In-flight sprite lookup. Projectiles are directional: the rocket ships only
@@ -170,6 +171,10 @@ class DoomProjectileSystem {
         const ey = hit.point[1] - p.dy * back;
         const ez = hit.point[2] - p.dz * back;
         this._effects.spawn(p.def.explosion, ex, ey, ez);
+        // Persistent scorch on the wall (self-filters floors/ceilings).
+        if (this._decals !== null) {
+            this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
+        }
         if (p.def.splashDamage > 0) {
             this._radiusAttack(ex, ez, p.def.splashDamage);
         }

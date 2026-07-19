@@ -29,6 +29,10 @@ function loadApp()
 {
     installViewportStabilizer();
 
+    // Decode the impact-decal graphics once (level-independent); ready well
+    // before the first level is built.
+    doomDecalTextures.load();
+
     // Every Doom level builds a DoomUser (player + equipment) instead of the
     // generic engine User.
     loader.world().setUserClass(DoomUser);

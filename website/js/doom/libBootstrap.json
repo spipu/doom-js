@@ -1,7 +1,20 @@
 {
-    "version": "v1.291",
+    "version": "v1.293",
     "files": {
-        "assets": [],
+        "assets": [
+            "/assets/uzdoom/sprite/chip1.png",
+            "/assets/uzdoom/sprite/chip2.png",
+            "/assets/uzdoom/sprite/chip3.png",
+            "/assets/uzdoom/sprite/chip4.png",
+            "/assets/uzdoom/sprite/chip5.png",
+            "/assets/uzdoom/sprite/scorch1.png",
+            "/assets/uzdoom/sprite/plasma1.png",
+            "/assets/uzdoom/sprite/plasma2.png",
+            "/assets/uzdoom/sprite/bfglite1.png",
+            "/assets/uzdoom/sprite/bfglite2.png",
+            "/assets/uzdoom/sprite/bfgscrc1.png",
+            "/assets/uzdoom/sprite/bfgscrc2.png"
+        ],
         "css": [
             "/css/doomMenu.css"
         ],
@@ -58,6 +71,8 @@
             "/js/doom/weapon/doomHitscan.js",
             "/js/doom/weapon/doomProjectile.js",
             "/js/doom/weapon/doomSectorLight.js",
+            "/js/doom/weapon/doomDecalTextures.js",
+            "/js/doom/weapon/doomDecals.js",
             "/js/doom/doomUser.js",
             "/js/doom/hud/hudDoomDebug.js",
             "/js/doom/hud/hudGameBar.js",
