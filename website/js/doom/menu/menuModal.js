@@ -17,15 +17,13 @@ class MenuModal {
     confirm(message, onConfirm) {
         const {modal} = this._createShell(message, 'doom-menu-modal', 'doom-menu-modal-message');
 
-        const actions = document.createElement('div');
-        actions.className = 'doom-menu-modal-actions';
-        modal.appendChild(actions);
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
 
-        this._addButton(actions, 'Annuler', 'doom-menu-button doom-menu-button-secondary', () => {
+        MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-secondary', 'Annuler', () => {
             this.close();
         });
 
-        this._addButton(actions, 'Confirmer', 'doom-menu-button', () => {
+        MenuDom.addButton(actions, 'doom-menu-button', 'Confirmer', () => {
             this.close();
             onConfirm();
         });
@@ -73,17 +71,12 @@ class MenuModal {
         const {modal} = this._createShell(message, 'doom-menu-modal doom-menu-modal-wide', 'doom-menu-modal-message doom-menu-modal-error');
 
         if (detail) {
-            const detailEl = document.createElement('div');
-            detailEl.className = 'doom-menu-modal-detail';
-            detailEl.textContent = detail;
-            modal.appendChild(detailEl);
+            MenuDom.addText(modal, 'doom-menu-modal-detail', detail);
         }
 
-        const actions = document.createElement('div');
-        actions.className = 'doom-menu-modal-actions';
-        modal.appendChild(actions);
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
 
-        this._addButton(actions, 'Fermer', 'doom-menu-button', () => {
+        MenuDom.addButton(actions, 'doom-menu-button', 'Fermer', () => {
             this.close();
             onClose();
         });
@@ -113,30 +106,10 @@ class MenuModal {
     _createShell(message, modalClass, messageClass) {
         this.close();
 
-        this._overlay = document.createElement('div');
-        this._overlay.className = 'doom-menu-overlay';
-        this._display.getContainer().appendChild(this._overlay);
-
-        const modal = document.createElement('div');
-        modal.className = modalClass;
-        this._overlay.appendChild(modal);
-
-        const messageEl = document.createElement('div');
-        messageEl.className = messageClass;
-        messageEl.textContent = message;
-        modal.appendChild(messageEl);
+        this._overlay = MenuDom.addElement(this._display.getContainer(), 'div', 'doom-menu-overlay');
+        const modal = MenuDom.addElement(this._overlay, 'div', modalClass);
+        const messageEl = MenuDom.addText(modal, messageClass, message);
 
         return {modal: modal, messageEl: messageEl};
-    }
-
-    _addButton(parent, label, className, onClick) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = className;
-        button.textContent = label;
-        button.addEventListener('click', onClick);
-        parent.appendChild(button);
-
-        return button;
     }
 }

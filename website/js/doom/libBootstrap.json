@@ -1,5 +1,5 @@
 {
-    "version": "v1.293",
+    "version": "v1.296",
     "files": {
         "assets": [
             "/assets/uzdoom/sprite/chip1.png",
@@ -78,8 +78,11 @@
             "/js/doom/hud/hudGameBar.js",
             "/js/doom/hud/hudDoom.js",
             "/js/doom/menu/menuDisplay.js",
+            "/js/doom/menu/menuDom.js",
             "/js/doom/menu/menuModal.js",
+            "/js/doom/menu/menuListNavigation.js",
             "/js/doom/menu/abstractMenuScreen.js",
+            "/js/doom/menu/fallbackScreen.js",
             "/js/doom/menu/wadListScreen.js",
             "/js/doom/menu/difficultyScreen.js",
             "/js/doom/menu/levelListScreen.js",

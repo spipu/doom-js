@@ -37,9 +37,11 @@
 
 /* --- Central panel --- */
 
+/* Fixed height: every screen (WAD list, difficulty, levels) shows the same
+   panel size, the list inside grows and scrolls. */
 .doom-menu-panel {
     width: 78%;
-    max-height: 82%;
+    height: 82%;
     display: flex;
     flex-direction: column;
     background: rgba(20, 8, 6, 0.55);
@@ -62,15 +64,16 @@
 
 /* --- List --- */
 
-/* Sized on its content (basis auto, no grow): the panel wraps the list
-   exactly, and only when the panel hits its max-height does the list — the
-   only shrinkable child — compress and scroll. A 0-basis flex would size the
-   auto-height panel slightly under the real content (spurious mini-scroll). */
+/* The list is the only growing/shrinking child of the fixed-height panel:
+   it fills the free space and scrolls when its content overflows (min-height
+   0 lifts the flexbox min-height:auto floor that would block the scroll). */
 .doom-menu-list {
-    flex: 0 1 auto;
-    min-height: 3em;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     margin-bottom: 0.7em;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(192, 57, 43, 0.4) transparent;
 }
 
 .doom-menu-list::-webkit-scrollbar {
@@ -99,10 +102,12 @@
     margin-bottom: 0;
 }
 
-.doom-menu-item:hover {
+/* Hovering only moves the shared selection (mouse, keyboard and gamepad all
+   drive the same highlighted entry). */
+.doom-menu-item-selected {
     filter: brightness(130%);
-    border-color: rgba(192, 57, 43, 0.5);
-    background: rgba(192, 57, 43, 0.12);
+    border-color: rgba(192, 57, 43, 0.7);
+    background: rgba(192, 57, 43, 0.15);
 }
 
 .doom-menu-item-label {

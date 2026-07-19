@@ -37,22 +37,32 @@ class DifficultyScreen extends AbstractMenuScreen {
     _build() {
         const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Difficulté');
 
-        const actions = this._addElement('div', 'doom-menu-actions', panel);
-        this._addButton('Retour', () => {
-            this._navigator.showWadList();
-        }, actions);
-
         for (const entry of this._skills) {
             const item = this._addListItem(listEl, entry.name, () => {
                 this._onSelectSkill(entry.skill);
             });
 
-            const meta = this._addElement('div', 'doom-menu-item-meta', item);
-            meta.textContent = 'Niveau ' + entry.skill;
+            this._addListItemInfos(item, 'Niveau ' + entry.skill);
         }
+
+        this._addBackButton(panel);
+
+        this._selectCurrentSkill();
+    }
+
+    _onBack() {
+        this._navigator.showWadList();
     }
 
     _onSelectSkill(skill) {
         this._navigator.openLevels(this._wadMeta, skill);
+    }
+
+    // Preselect the difficulty already chosen for this session (default 3).
+    _selectCurrentSkill() {
+        const current = this._navigator.getSelectedDifficulty();
+        const index   = this._skills.findIndex((entry) => (entry.skill === current));
+
+        this._nav.selectIndex(((index >= 0) ? index : 0));
     }
 }
