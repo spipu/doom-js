@@ -31,6 +31,7 @@ class DoomGame {
         this._effects         = null;    // transient sprite effects (puffs, explosions)
         this._hitscan         = null;
         this._projectiles     = null;    // rocket / plasma / BFG shots
+        this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._rng             = new DoomRandom();
 
@@ -394,7 +395,14 @@ class DoomGame {
         // billboard object is registered after endBatch (which would re-fire the
         // loader). The projectile system gets its world (collision + user) in _init.
         this._effects     = new DoomEffects(this._weaponSprites, this._rng);
-        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng);
+        // Impact decals: textures + quad templates are built here in the batch.
+        // Skipped only if the decal graphics haven't finished decoding yet
+        // (first-level race); the BFG lightning tint follows the WAD (freedoom
+        // uses a bluish shade, id Doom a green one).
+        const wadId    = ((this._wadMeta !== null) ? String(this._wadMeta.id).toLowerCase() : '');
+        const bfgShade = ((wadId.includes('freedoom')) ? [128, 128, 255] : [128, 255, 128]);
+        this._decals   = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, bfgShade) : null);
+        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals);
 
         loader.setCallback(() => {
             this._init();
@@ -457,7 +465,7 @@ class DoomGame {
         // vanilla M_ClearRandom. It brings the active weapon up on construction.
         this._rng.reset();
         this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
-        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng);
+        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
         this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
@@ -532,6 +540,9 @@ class DoomGame {
         }
         if (this._projectiles !== null) {
             this._projectiles.update(dt);
+        }
+        if (this._decals !== null) {
+            this._decals.update(dt);
         }
         this._engine.displayWorld(this._world);
         this._screen.update();
