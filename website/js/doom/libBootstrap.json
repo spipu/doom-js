@@ -1,5 +1,5 @@
 {
-    "version": "v1.320",
+    "version": "v1.335",
     "files": {
         "assets": [
             "/assets/uzdoom/sprite/chip1.png",
@@ -75,6 +75,7 @@
             "/js/doom/weapon/doomSectorLight.js",
             "/js/doom/weapon/doomDecalTextures.js",
             "/js/doom/weapon/doomDecals.js",
+            "/js/doom/doomSettings.js",
             "/js/doom/doomUser.js",
             "/js/doom/hud/hudDoomDebug.js",
             "/js/doom/hud/hudGameBar.js",

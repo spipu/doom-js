@@ -451,6 +451,7 @@ class DoomGame {
         }
         // The devices are re-bound to the new screen on each level
         this._inputs.bindScreen(this._screen);
+        doomSettings.applyToInputs(this._inputs);
 
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._engine.setFov(45.0);

@@ -50,6 +50,7 @@ class Inputs {
         this._keyLookSpeed   = 1.5;
         this._lastJoy2Dx     = 0;
         this._lastJoy2Dy     = 0;
+        this._lookInvertY    = {gamepad: false, virtualGamepad: false, keyboardMouse: false};
 
         this._selectMode();
         // gamepadconnected fires on the first button press of the pad
@@ -78,12 +79,37 @@ class Inputs {
         return this._mode;
     }
 
+    /**
+     * Name (Gamepad.id) of the active physical gamepad, null when the
+     * current mode is not 'gamepad'.
+     */
+    getGamepadName() {
+        return ((this._mode === 'gamepad') ? this._gamepad.getName() : null);
+    }
+
+    // Look Y inversion, one flag per input mode ('gamepad' | 'virtualGamepad'
+    // | 'keyboardMouse'). Game settings: the engine only carries the switch.
+    setLookInvertY(mode, inverted) {
+        if (this._lookInvertY[mode] !== undefined) {
+            this._lookInvertY[mode] = (inverted === true);
+        }
+        return this;
+    }
+
+    // Optional keyboard rebinding ({action: code}, see
+    // InputKeyboard.DEFAULT_MAPPING): actions left out keep their defaults.
+    // Game keys only — the DOM menus read their own fixed keys.
+    setKeyMapping(mapping) {
+        this._keyboard.setMapping(mapping);
+        return this;
+    }
+
     readJoy1X() {
         const pad = this._pad();
         if (pad !== null) {
             return this._saturateMove(pad.readJoy1X(), pad.readJoy1Y()).x;
         }
-        return this._keyAxis(this._keyboard.readKeyStrafeRight(), this._keyboard.readKeyStrafeLeft());
+        return this._keyAxis(this._keyboard.readAction('strafeRight'), this._keyboard.readAction('strafeLeft'));
     }
 
     readJoy1Y() {
@@ -91,7 +117,7 @@ class Inputs {
         if (pad !== null) {
             return this._saturateMove(pad.readJoy1X(), pad.readJoy1Y()).y;
         }
-        return this._keyAxis(this._keyboard.readKeyForward(), this._keyboard.readKeyBackward());
+        return this._keyAxis(this._keyboard.readAction('forward'), this._keyboard.readAction('backward'));
     }
 
     // dt (milliseconds) is only used to convert a stick position into a
@@ -121,7 +147,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonJump();
         }
-        return this._keyboard.readKeyShift();
+        return this._keyboard.readAction('jump');
     }
 
     readButtonAction() {
@@ -129,7 +155,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonAction();
         }
-        return this._keyboard.readKeyAction();
+        return this._keyboard.readAction('action');
     }
 
     readButtonCrouch() {
@@ -137,7 +163,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonCrouch();
         }
-        return this._keyboard.readKeyCrouch();
+        return this._keyboard.readAction('crouch');
     }
 
     readButtonFire() {
@@ -145,7 +171,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonFire();
         }
-        return this._mouse.isLeftClickDown();
+        return (this._mouse.isLeftClickDown() || this._keyboard.readAction('fire'));
     }
 
     readButtonPause() {
@@ -153,7 +179,7 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonPause();
         }
-        return this._keyboard.readKey('KeyP');
+        return this._keyboard.readAction('pause');
     }
 
     // Keyboard-only modifier: the analog sticks already give slow walking
@@ -162,38 +188,39 @@ class Inputs {
         if (this._pad() !== null) {
             return false;
         }
-        return (this._keyboard.readKey('AltLeft') || this._keyboard.readKey('AltRight'));
+        return this._keyboard.readAction('walkSlow');
     }
 
-    // Keyboard-only debug cheat (the 'o' key): grant the full Doom test kit.
+    // Keyboard-only debug cheat (fixed 'o' key, not remappable): grant the
+    // full Doom test kit.
     readButtonCheatFullKit() {
         return this._keyboard.readKey('KeyO');
     }
 
-    // Keyboard-only (the 'h' key): toggle between the game HUD and the debug HUD.
+    // Keyboard-only: toggle between the game HUD and the debug HUD.
     // Reads the keyboard directly so gamepad / virtual gamepad never trigger it.
     readButtonToggleHud() {
-        return this._keyboard.readKey('KeyH');
+        return this._keyboard.readAction('toggleHud');
     }
 
-    // Cycle to the next weapon (keyboard 'g'). On a pad (physical or virtual) it
+    // Cycle to the next weapon. On a pad (physical or virtual) it
     // comes from the active device.
     readButtonWeaponNext() {
         const pad = this._pad();
         if (pad !== null) {
             return pad.readButtonWeaponNext();
         }
-        return this._keyboard.readKey('KeyG');
+        return this._keyboard.readAction('weaponNext');
     }
 
-    // Cycle to the previous weapon (keyboard 'f'). On a pad it comes from the
+    // Cycle to the previous weapon. On a pad it comes from the
     // active device (the virtual gamepad has no previous binding → false).
     readButtonWeaponPrev() {
         const pad = this._pad();
         if (pad !== null) {
             return pad.readButtonWeaponPrev();
         }
-        return this._keyboard.readKey('KeyF');
+        return this._keyboard.readAction('weaponPrev');
     }
 
     // Net mouse-wheel weapon steps since the last call (up = next, down = prev).
@@ -238,19 +265,20 @@ class Inputs {
         if (pad !== null) {
             return pad.readJoy2X() * this._stickLookSpeed * dt;
         }
-        // J/L keys keep a keyboard look fallback (pointer lock is broken in some VMs)
-        const keys = this._keyAxis(this._keyboard.readKey('KeyL'), this._keyboard.readKey('KeyJ')) * this._keyLookSpeed * dt;
+        // The look keys keep a keyboard fallback (pointer lock is broken in some VMs)
+        const keys = this._keyAxis(this._keyboard.readAction('lookRight'), this._keyboard.readAction('lookLeft')) * this._keyLookSpeed * dt;
         return keys + this._mouse.readDeltaX();
     }
 
     _computeJoy2DeltaY(dt) {
+        const factor = ((this._lookInvertY[this._mode] === true) ? -1 : 1);
         const pad = this._pad();
         if (pad !== null) {
-            return pad.readJoy2Y() * this._stickLookSpeed * dt;
+            return pad.readJoy2Y() * this._stickLookSpeed * dt * factor;
         }
-        // I/K keys keep a keyboard look fallback (pointer lock is broken in some VMs)
-        const keys = this._keyAxis(this._keyboard.readKey('KeyK'), this._keyboard.readKey('KeyI')) * this._keyLookSpeed * dt;
-        return keys + this._mouse.readDeltaY();
+        // The look keys keep a keyboard fallback (pointer lock is broken in some VMs)
+        const keys = this._keyAxis(this._keyboard.readAction('lookDown'), this._keyboard.readAction('lookUp')) * this._keyLookSpeed * dt;
+        return (keys + this._mouse.readDeltaY()) * factor;
     }
 
     _selectMode() {

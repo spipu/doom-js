@@ -4,12 +4,14 @@
  * Stores:
  *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}}
  *  - wadData: {id, data: ArrayBuffer}
+ *  - settings: {key, value} — persisted game settings (read by DoomSettings)
  */
 class WadStorage {
     constructor() {
-        this._database = new AppDatabase('spipudoom', 1, [
+        this._database = new AppDatabase('spipudoom', 2, [
             {name: 'wadMeta', keyPath: 'id'},
-            {name: 'wadData', keyPath: 'id'}
+            {name: 'wadData', keyPath: 'id'},
+            {name: 'settings', keyPath: 'key'}
         ]);
     }
 
@@ -21,6 +23,15 @@ class WadStorage {
         }
 
         return this;
+    }
+
+    /**
+     * The opened spipudoom database — shared with DoomSettings so the whole
+     * app keeps a single connection and a single schema version.
+     * @returns {AppDatabase}
+     */
+    getDatabase() {
+        return this._database;
     }
 
     /**

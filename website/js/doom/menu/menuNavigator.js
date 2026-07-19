@@ -54,12 +54,14 @@ class MenuNavigator {
         });
     }
 
-    // Shared boot: display + registry init, then the entry action; a storage
-    // failure falls back to the degraded screen.
+    // Shared boot: display + registry init, then the persisted settings (same
+    // database), then the entry action; a storage failure falls back to the
+    // degraded screen.
     _boot(onReady) {
         this._display.init();
 
         this._registry.init()
+            .then(() => doomSettings.init(this._storage.getDatabase()))
             .then(onReady)
             .catch(() => {
                 this._showFallback();
