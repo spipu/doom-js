@@ -26,6 +26,13 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel('Fichiers WAD');
         this._listEl = listEl;
 
+        const helpButton = MenuDom.addButton(this._container, 'doom-menu-help-button', '?', () => {
+            this._openHelp();
+        });
+        this._nav.setSideButton(helpButton, () => {
+            this._openHelp();
+        });
+
         this._buildAddForm(panel);
 
         this._addStatus(panel);
@@ -155,6 +162,10 @@ class WadListScreen extends AbstractMenuScreen {
 
     _onSelectWad(meta) {
         this._navigator.openWad(meta);
+    }
+
+    _openHelp() {
+        new MenuHelpModal(this._display).show();
     }
 
     // --- Internal ---

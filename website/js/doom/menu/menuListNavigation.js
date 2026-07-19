@@ -1,11 +1,16 @@
 /**
- * Unified selection model of a menu screen list.
+ * Unified selection model of a menu list — one instance per owner (each
+ * screen, and each modal carrying a list).
  *
  * Owns the highlighted entry and drives it from every input source at once:
- * mouse hover, keyboard (arrows move, Enter validates, Backspace goes back)
- * and gamepad (d-pad or left stick moves with auto-repeat, button 0 validates,
- * button 1 goes back). The owning screen provides the back action and the
- * blocked state (modal open).
+ * mouse hover (armed by a real mouse move), keyboard (arrows move, Enter
+ * validates, Backspace goes back) and gamepad (d-pad or left stick with
+ * auto-repeat, button 0 validates, button 1 goes back). The selection clamps
+ * at both ends (no wrap-around), and an optional side button above the list
+ * joins the vertical flow (Up on the first entry / Down to come back). The
+ * owner provides the back action and the blocked state (its own modality);
+ * while blocked, the pad states keep tracking so lifting the block never
+ * replays a stale edge.
  */
 class MenuListNavigation {
     static get PAD_POLL_MS() {
@@ -36,19 +41,21 @@ class MenuListNavigation {
      * @param {function} isBlocked returns true while the inputs must be ignored
      */
     constructor(onBack, isBlocked) {
-        this._onBack     = onBack;
-        this._isBlocked  = isBlocked;
-        this._items      = [];
-        this._index      = -1;
-        this._keyProxy   = this._onKeyDown.bind(this);
-        this._mouseProxy = this._onMouseMove.bind(this);
-        this._mouseArmed = false;
-        this._pad        = new InputGamepad();
-        this._padTimer   = null;
-        this._padSeen    = false;
-        this._padState   = {validate: false, back: false};
-        this._padHeldDir = 0;
-        this._padHeldMs  = 0;
+        this._onBack      = onBack;
+        this._isBlocked   = isBlocked;
+        this._items       = [];
+        this._index       = -1;
+        this._sideButton  = null;
+        this._onSide      = false;
+        this._keyProxy    = this._onKeyDown.bind(this);
+        this._mouseProxy  = this._onMouseMove.bind(this);
+        this._mouseArmed  = false;
+        this._pad         = new InputGamepad();
+        this._padTimer    = null;
+        this._padSeen     = false;
+        this._padState    = {validate: false, back: false};
+        this._padHeldDir  = 0;
+        this._padHeldMs   = 0;
     }
 
     attach() {
@@ -78,10 +85,31 @@ class MenuListNavigation {
     }
 
     clear() {
+        this._focusSide(false);
         this._items = [];
         this._index = -1;
 
         return this;
+    }
+
+    // Optional target sitting above the list, reached by pressing Up on the
+    // first entry (and Down to come back): the WAD screen's help button.
+    // Highlighted through a dedicated class; Enter / validate activates it.
+    setSideButton(el, onActivate) {
+        this._sideButton = {el: el, action: onActivate};
+        this._onSide     = false;
+
+        return this;
+    }
+
+    // Standard navigable entry: builds the item + label in the list and
+    // registers it — the one-stop helper shared by the screens and the
+    // modal pages. The returned item can carry extra children.
+    addItemIn(listEl, labelText, onActivate) {
+        const item = MenuDom.addListItem(listEl, labelText);
+        this.addItem(item, onActivate);
+
+        return item;
     }
 
     // Registers a list entry: a click activates it, hovering selects it — but
@@ -108,6 +136,7 @@ class MenuListNavigation {
     }
 
     selectIndex(index) {
+        this._focusSide(false);
         if (this._index === index) {
             return this;
         }
@@ -147,19 +176,40 @@ class MenuListNavigation {
         }
     }
 
+    // Clamped at both ends — no wrap-around: pressing down on the last entry
+    // keeps the selection there. Up on the FIRST entry moves the highlight to
+    // the side button (when the screen has one), down from the button comes
+    // back to the list.
     moveSelection(delta) {
+        if (this._onSide) {
+            if (delta > 0) {
+                this._focusSide(false);
+            }
+            return this;
+        }
         const count = this._items.length;
         if (count === 0) {
+            if (delta < 0) {
+                this._focusSide(true);
+            }
             return this;
         }
         if (this._index === -1) {
             return this.selectIndex(((delta > 0) ? 0 : count - 1));
         }
+        if ((delta < 0) && (this._index === 0)) {
+            this._focusSide(true);
+            return this;
+        }
 
-        return this.selectIndex((this._index + delta + count) % count);
+        return this.selectIndex(Math.max(0, Math.min(count - 1, this._index + delta)));
     }
 
     activateSelection() {
+        if (this._onSide && (this._sideButton !== null)) {
+            this._sideButton.action();
+            return this;
+        }
         const entry = this._items[this._index];
         if (entry !== undefined) {
             entry.action();
@@ -169,6 +219,20 @@ class MenuListNavigation {
     }
 
     // --- Internal ---
+
+    // Moves the highlight between the list and the side button: the list
+    // keeps its index, only the visible highlight switches.
+    _focusSide(on) {
+        if ((this._sideButton === null) || (on === this._onSide)) {
+            return;
+        }
+        this._onSide = on;
+        this._sideButton.el.classList.toggle('doom-menu-button-focus', on);
+        const entry = this._items[this._index];
+        if (entry !== undefined) {
+            entry.el.classList.toggle('doom-menu-item-selected', !on);
+        }
+    }
 
     _selectElement(el) {
         const index = this._items.findIndex((entry) => (entry.el === el));
@@ -224,12 +288,17 @@ class MenuListNavigation {
     // --- Gamepad ---
 
     _readPad() {
-        if (this._isBlocked()) {
-            return;
-        }
         if (!this._pad.isAvailable()) {
             this._padSeen    = false;
             this._padHeldDir = 0;
+            return;
+        }
+        // While blocked (a modal owns the inputs) the button states keep
+        // tracking, so the press that closes the modal is not replayed here
+        // as a fresh edge once the block lifts.
+        if (this._isBlocked()) {
+            this._padState.validate = this._pad.readButtonValidate();
+            this._padState.back     = this._pad.readButtonBack();
             return;
         }
 

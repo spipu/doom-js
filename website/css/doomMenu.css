@@ -313,6 +313,72 @@
     background: rgba(192, 57, 43, 0.15);
 }
 
+/* --- Help (☰ button + modal) --- */
+
+.doom-menu-help-button {
+    position: absolute;
+    top: 0.6em;
+    right: 0.8em;
+    width: 1.6em;
+    height: 1.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 0.06em solid rgba(192, 57, 43, 0.5);
+    border-radius: 0.2em;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1.1em;
+    cursor: pointer;
+}
+
+.doom-menu-help-button:hover {
+    background: rgba(192, 57, 43, 0.15);
+}
+
+/* Keyboard/gamepad highlight of the side button (Right from the WAD list). */
+.doom-menu-button-focus {
+    background: rgba(231, 76, 60, 0.25);
+    border-color: rgba(231, 76, 60, 0.9);
+    color: #FFF;
+}
+
+/* Tall column layout: the body grows, the actions stick to the bottom right. */
+.doom-menu-modal-help {
+    min-height: 60%;
+    display: flex;
+    flex-direction: column;
+}
+
+.doom-menu-modal-help .doom-menu-modal-actions {
+    margin-top: auto;
+    justify-content: flex-end;
+}
+
+/* Page body: fills the modal, its list scrolls internally. */
+.doom-menu-modal-help-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1em;
+}
+
+.doom-menu-modal-help-body .doom-menu-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: 0;
+}
+
+.doom-menu-about-line {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.85em;
+    letter-spacing: 0.08em;
+    line-height: 1.5;
+    text-align: left;
+    margin-bottom: 0.6em;
+}
+
 /* --- Status / error --- */
 
 .doom-menu-status {
