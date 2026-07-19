@@ -103,11 +103,11 @@
 }
 
 /* Hovering only moves the shared selection (mouse, keyboard and gamepad all
-   drive the same highlighted entry). */
+   drive the same highlighted entry). Pre-brightened colors, no filter: a
+   filter here makes iOS re-run its text autosizing on the selected label. */
 .doom-menu-item-selected {
-    filter: brightness(130%);
-    border-color: rgba(192, 57, 43, 0.7);
-    background: rgba(192, 57, 43, 0.15);
+    border-color: rgba(231, 76, 60, 0.8);
+    background: rgba(231, 76, 60, 0.18);
 }
 
 .doom-menu-item-label {
