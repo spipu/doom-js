@@ -1,25 +1,38 @@
-// Transient sprite effects spawned by weapons — currently the bullet puff
-// (P_SpawnPuff / MT_PUFF). Faithful to vanilla: 4 frames (PUFF A-D, 4 tics
-// each), the puff floats up at 1 map unit/tic, the first frame is fullbright,
-// a melee hit starts at frame C (no bright spark on the wall), and the spawn z
-// is randomised a little. One shared billboard object per frame is built at
-// level load (in the loader batch); each puff is a runtime instance re-pointed
-// to the current frame's billboard, then despawned.
+// Transient sprite effects spawned by weapons: the bullet puff (P_SpawnPuff /
+// MT_PUFF) and the projectile explosions (rocket / plasma / BFG death frames).
+// Each effect is a short sprite animation; its frame billboards are pre-built
+// once at level load (in the loader batch), and each spawned effect is a runtime
+// instance re-pointed to the current frame, then despawned. Faithful to vanilla:
+// PUFF A-D (4 tics each) floats up, its first frame is fullbright and a melee
+// hit starts at frame C; the explosion frames come straight from info.c.
 class DoomEffects {
     constructor(spriteBank, rng) {
-        this._rng    = rng;
-        this._active = [];
-        this._acc    = 0;
-        this._puff   = this._buildPuffFrames(spriteBank);
+        this._rng       = rng;
+        this._active    = [];
+        this._acc       = 0;
+        this._templates = this._buildTemplates(spriteBank);
     }
 
-    _buildPuffFrames(bank) {
+    _buildTemplates(bank) {
+        // alpha/additive follow gzdoom: the rocket blast is opaque smoke, the
+        // plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75). The puff keeps
+        // its light translucency (0.25).
+        return {
+            puff:          this._buildTemplate(bank, 'PUFF', ['A', 'B', 'C', 'D'],           [4, 4, 4, 4],          0.25, true,  false),
+            rocketExplode: this._buildTemplate(bank, 'MISL', ['B', 'C', 'D'],                [8, 6, 4],             1,    false, false),
+            plasmaExplode: this._buildTemplate(bank, 'PLSE', ['A', 'B', 'C', 'D', 'E'],      [4, 4, 4, 4, 4],       0.75, false, true),
+            bfgExplode:    this._buildTemplate(bank, 'BFE1', ['A', 'B', 'C', 'D', 'E', 'F'], [8, 8, 8, 8, 8, 8],    0.75, false, true),
+        };
+    }
+
+    // One shared billboard object per frame; null if the WAD lacks the graphics.
+    _buildTemplate(bank, spriteBase, letters, frameTics, alpha, rise, additive) {
         const scale  = WadConstants.SCALE;
         const frames = [];
-        for (const letter of ['A', 'B', 'C', 'D']) {
-            const spr = bank.get('PUFF' + letter + '0');
+        for (const letter of letters) {
+            const spr = bank.get(spriteBase + letter + '0');
             if (spr === null) {
-                return null;   // no PUFF graphics in this WAD → no puffs
+                return null;
             }
             frames.push({
                 objId:  loader.objects().loadBillboardFromData(null, {
@@ -29,22 +42,28 @@ class DoomEffects {
                     anchorOffsetX: ((spr.width / 2) - spr.leftOffset) * scale,
                     anchorOffsetY: 0,
                     light:         255,
-                    alpha:         0.25,
+                    alpha:         alpha,
+                    additive:      additive,
                 }),
                 height: spr.height * scale,
             });
         }
-        return frames;
+        return { frames, frameTics, rise };
     }
 
-    // Spawn a bullet puff at a world impact point. melee starts at frame C.
+    // Bullet puff at a world impact point. melee starts at frame C.
     spawnPuff(x, y, z, melee) {
-        if (this._puff === null) {
+        this.spawn('puff', x, y, z, ((melee) ? 2 : 0));
+    }
+
+    // Spawn a named effect animation, centred on the impact point.
+    spawn(name, x, y, z, startFrame = 0) {
+        const tpl = this._templates[name];
+        if ((tpl === null) || (tpl === undefined)) {
             return;
         }
-        const start = ((melee) ? 2 : 0);
-        const jz    = (this._rng.next() - this._rng.next()) / 4096;   // vanilla (rnd-rnd)<<10, in world units
-        const frame = this._puff[start];
+        const frame = tpl.frames[startFrame];
+        const jz    = ((tpl.rise) ? (this._rng.next() - this._rng.next()) / 4096 : 0);  // puff z-rand
         const instId = loader.instances().spawnFromData(null, {
             object:         frame.objId,
             position:       [x, y + jz - frame.height / 2, z],
@@ -55,8 +74,9 @@ class DoomEffects {
             collisionShape: 'none',
             keyframes:      [],
         });
-        // th->tics -= P_Random()&3: the first frame is a touch shorter.
-        this._active.push({ instId, frame: start, shown: start, tics: (this._rng.next() & 3) });
+        // th->tics -= P_Random()&3: the puff's first frame is a touch shorter.
+        const elapsed = ((tpl.rise) ? (this._rng.next() & 3) : 0);
+        this._active.push({ tpl, instId, start: startFrame, shown: startFrame, elapsed });
     }
 
     update(dtMs) {
@@ -77,22 +97,36 @@ class DoomEffects {
             if (inst === undefined) {
                 continue;
             }
-            p.tics += 1;
-            const frame = p.frame + Math.floor(p.tics / DoomEffects.FRAME_TICS);
-            if (frame > 3) {
+            p.elapsed += 1;
+            const frame = this._frameAt(p.tpl, p.start, p.elapsed);
+            if (frame >= p.tpl.frames.length) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
             }
             if (frame !== p.shown) {
-                inst.setObject(this._puff[frame].objId);
+                inst.setObject(p.tpl.frames[frame].objId);
                 p.shown = frame;
             }
-            inst.getTransform().position[1] += WadConstants.SCALE;   // momz = 1 map unit/tic
+            if (p.tpl.rise) {
+                inst.getTransform().position[1] += WadConstants.SCALE;   // momz = 1 map unit/tic
+            }
             kept.push(p);
         }
         this._active = kept;
     }
+
+    // Current frame index for an effect that has run `elapsed` tics from `start`,
+    // walking the per-frame durations; returns frames.length once finished.
+    _frameAt(tpl, start, elapsed) {
+        let acc = 0;
+        for (let i = start; i < tpl.frames.length; i++) {
+            acc += tpl.frameTics[i];
+            if (elapsed < acc) {
+                return i;
+            }
+        }
+        return tpl.frames.length;
+    }
 }
 
-DoomEffects.FRAME_TICS = 4;
 DoomEffects.MS_PER_TIC = 1000 / 35;

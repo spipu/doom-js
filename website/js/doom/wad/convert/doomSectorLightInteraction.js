@@ -17,10 +17,26 @@ class DoomSectorLightInteraction extends AbstractInteraction {
         this._states  = lightSectors.map((s) => this._initState(s));
         this._clockS  = 0;
         this._targets = null;
+        // Lookup by sector index, so the weapon shading can read the same live
+        // factor a sector pushes to its walls (DoomSectorLight.factorAt).
+        this._bySi = {};
+        for (const st of this._states) {
+            this._bySi[st.si] = st;
+        }
     }
 
     get code() {
         return 'sectorLights';
+    }
+
+    // Current brightness factor of a light sector (1 for a sector with no light
+    // effect), i.e. current level / baked level — the value applied to its faces.
+    getFactor(si) {
+        const st = this._bySi[si];
+        if (st === undefined) {
+            return 1;
+        }
+        return ((st.maxLight > 0) ? (st.light / st.maxLight) : 1);
     }
 
     triggered(instance) {

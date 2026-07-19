@@ -146,8 +146,10 @@ class WadWorldBuilder {
         // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
         // per-level interaction stepping the vanilla p_lights.c thinkers and
         // driving the lightGroup factors of the static map faces.
+        let lightInteraction = null;
         if (analysis.lightSectors.length > 0) {
-            loader.interactions().loadFromData(new DoomSectorLightInteraction(analysis.lightSectors));
+            lightInteraction = new DoomSectorLightInteraction(analysis.lightSectors);
+            loader.interactions().loadFromData(lightInteraction);
         }
 
         // Secret sectors (special 9): the level total is a game stat, each
@@ -164,6 +166,10 @@ class WadWorldBuilder {
             if (secretZones.length > 0) {
                 loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
             }
+            // Hand over the sector-light lookup (else the poly cache is dropped);
+            // used to shade the weapon view sprite by the player's sector, pulsing
+            // with the sector's light effect via the interaction's live factor.
+            this._game.setSectorLight(new DoomSectorLight(this._sectorPolys, lightInteraction));
         }
 
         // "+change" floors: swap the moving top-flat texture (and the sector's
