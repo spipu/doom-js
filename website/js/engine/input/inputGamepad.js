@@ -112,6 +112,14 @@ class InputGamepad {
         return (this._isStandardMapping() && this._button(13));
     }
 
+    readDpadLeft() {
+        return (this._isStandardMapping() && this._button(14));
+    }
+
+    readDpadRight() {
+        return (this._isStandardMapping() && this._button(15));
+    }
+
     // Generic UI navigation: validate on face button 0 (✕ on a DualSense),
     // back on face button 1 (○), used by the DOM menus.
     readButtonValidate() {

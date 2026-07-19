@@ -115,11 +115,7 @@ class AbstractMenuScreen {
     // Selectable list entry with its label; the returned item can carry extra
     // children (an infos line, a delete button...).
     _addListItem(listEl, labelText, onActivate) {
-        const item = this._addElement('div', 'doom-menu-item', listEl);
-        this._nav.addItem(item, onActivate);
-        MenuDom.addText(item, 'doom-menu-item-label', labelText);
-
-        return item;
+        return this._nav.addItemIn(listEl, labelText, onActivate);
     }
 
     // Secondary line of a list item (size, date, skill number...).

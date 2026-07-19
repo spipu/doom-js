@@ -19,6 +19,15 @@ class MenuDom {
         return element;
     }
 
+    // Selectable list entry shell (item + label) — the caller registers it on
+    // its MenuListNavigation and may append extra children (infos, buttons).
+    static addListItem(listEl, labelText) {
+        const item = MenuDom.addElement(listEl, 'div', 'doom-menu-item');
+        MenuDom.addText(item, 'doom-menu-item-label', labelText);
+
+        return item;
+    }
+
     // The blur avoids a focused button: a focused one would swallow the next
     // Enter as a native re-click (e.g. reopening a freshly closed modal).
     static addButton(parent, className, label, onClick) {
