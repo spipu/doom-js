@@ -3,16 +3,18 @@
  * _parse_animated_lump / build_anim_groups of convert_wad.py).
  *
  * Reads the Boom ANIMATED lump if present, otherwise falls back to the
- * vanilla Doom hardcoded sequences (p_spec.c, speed = 8 tics).
+ * game profile's hardcoded engine sequences.
  */
 class WadAnimationBank {
     /**
-     * @param {WadFile}        wadFile
-     * @param {WadTextureBank} textureBank
+     * @param {WadFile}             wadFile
+     * @param {WadTextureBank}      textureBank
+     * @param {AbstractGameProfile} profile
      */
-    constructor(wadFile, textureBank) {
+    constructor(wadFile, textureBank, profile) {
         this._wadFile = wadFile;
         this._bank    = textureBank;
+        this._profile = profile;
 
         this._sequences = [];   // [{isFlat, frames, speedTics}]
     }
@@ -23,7 +25,7 @@ class WadAnimationBank {
             this._sequences = this._parseAnimatedLump(dv);
         }
         if (this._sequences.length === 0) {
-            this._sequences = this._vanillaSequences();
+            this._sequences = this._profile.vanillaAnimSequences();
         }
 
         return this;
@@ -136,35 +138,6 @@ class WadAnimationBank {
         }
 
         return sequences;
-    }
-
-    _vanillaSequences() {
-        const raw = [
-            [true,  ['NUKAGE1', 'NUKAGE2', 'NUKAGE3']],
-            [true,  ['FWATER1', 'FWATER2', 'FWATER3', 'FWATER4']],
-            [true,  ['SWATER1', 'SWATER2', 'SWATER3', 'SWATER4']],
-            [true,  ['LAVA1', 'LAVA2', 'LAVA3', 'LAVA4']],
-            [true,  ['BLOOD1', 'BLOOD2', 'BLOOD3']],
-            [true,  ['RROCK05', 'RROCK06', 'RROCK07', 'RROCK08']],
-            [true,  ['SLIME01', 'SLIME02', 'SLIME03', 'SLIME04']],
-            [true,  ['SLIME05', 'SLIME06', 'SLIME07', 'SLIME08']],
-            [true,  ['SLIME09', 'SLIME10', 'SLIME11', 'SLIME12']],
-            [false, ['BLODGR1', 'BLODGR2', 'BLODGR3', 'BLODGR4']],
-            [false, ['SLADRIP1', 'SLADRIP2', 'SLADRIP3']],
-            [false, ['BLODRIP1', 'BLODRIP2', 'BLODRIP3', 'BLODRIP4']],
-            [false, ['FIREWALA', 'FIREWALB', 'FIREWALL']],
-            [false, ['GSTFONT1', 'GSTFONT2', 'GSTFONT3']],
-            [false, ['FIRELAV3', 'FIRELAVA']],
-            [false, ['FIREMAG1', 'FIREMAG2', 'FIREMAG3']],
-            [false, ['FIREBLU1', 'FIREBLU2']],
-            [false, ['ROCKRED1', 'ROCKRED2', 'ROCKRED3']],
-            [false, ['BFALL1', 'BFALL2', 'BFALL3', 'BFALL4']],
-            [false, ['SFALL1', 'SFALL2', 'SFALL3', 'SFALL4']],
-            [false, ['WFALL1', 'WFALL2', 'WFALL3', 'WFALL4']],
-            [false, ['DBRAIN1', 'DBRAIN2', 'DBRAIN3', 'DBRAIN4']]
-        ];
-
-        return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: 8}));
     }
 
     _readName(dv, offset, length) {

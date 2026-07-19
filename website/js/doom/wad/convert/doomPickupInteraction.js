@@ -9,7 +9,7 @@
 class DoomPickupInteraction extends AbstractInteraction {
     /**
      * @param {string}   code   - unique interaction code, shared with the Instance
-     * @param {object}   effect - pickup effect descriptor from DoomThingCatalog
+     * @param {object}   effect - pickup effect descriptor from the profile's thing types
      * @param {DoomGame} game   - exposes applyPickup(user, effect)
      */
     constructor(code, effect, game) {

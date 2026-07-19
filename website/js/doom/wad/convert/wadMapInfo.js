@@ -3,11 +3,14 @@
  *
  * Every level of the WAD gets a default entry synthesized from the vanilla
  * engine rules (G_DoCompleted applied to the level names, since the original
- * WAD format carries no progression data):
- * - ExMy: secret exit → ExM9; normal exit from ExM9 → per-episode return
- *   (EPISODE_SECRET_RETURN); otherwise sequential lump order.
- * - MAPxx: secret exit → MAP31 (MAP32 when already on MAP31); normal exit
- *   from MAP31/MAP32 → MAP16; otherwise sequential lump order.
+ * WAD format carries no progression data). The per-game slots (episode
+ * secret returns, MAPxx secret maps) come from the game profile
+ * (progressionRules) — only the name-pattern mechanics live here:
+ * - ExMy: secret exit → ExM9; normal exit from ExM9 → per-episode return;
+ *   otherwise sequential lump order.
+ * - MAPxx: secret exit → the secret slot (the super-secret slot when already
+ *   on the secret one); normal exit from either slot → the secret return;
+ *   otherwise sequential lump order.
  * - A routed target absent from the WAD falls back to sequential; a null
  *   target means end of game (back to the menu).
  *
@@ -21,19 +24,18 @@
  * lumps carry C-style ones — // and slash-star blocks are tolerated.
  */
 class WadMapInfo {
-    // Vanilla map entered when leaving the secret ExM9 of each episode.
-    static EPISODE_SECRET_RETURN = {1: 'E1M4', 2: 'E2M6', 3: 'E3M7', 4: 'E4M3'};
-
     /**
-     * @param {WadFile} wadFile
+     * @param {WadFile}             wadFile
+     * @param {AbstractGameProfile} profile
      */
-    constructor(wadFile) {
+    constructor(wadFile, profile = null) {
+        this._rules   = (profile ?? new DefaultGameProfile()).progressionRules();
         this._levels  = wadFile.getLevelNames();
         this._entries = {};
         for (const name of this._levels) {
             this._entries[name] = {
-                next:       WadMapInfo._vanillaNext(this._levels, name, false),
-                nextsecret: WadMapInfo._vanillaNext(this._levels, name, true),
+                next:       this._vanillaNext(name, false),
+                nextsecret: this._vanillaNext(name, true),
                 levelname:  null
             };
         }
@@ -76,10 +78,11 @@ class WadMapInfo {
 
     // --- Vanilla defaults ---
 
-    // G_DoCompleted rules applied to the WAD level names (see class header).
-    static _vanillaNext(levels, current, secret) {
-        const index = levels.indexOf(current);
-        const sequential = ((index >= 0 && index + 1 < levels.length) ? levels[index + 1] : null);
+    // G_DoCompleted name-pattern rules; the per-game slots come from the
+    // profile's progressionRules (see class header).
+    _vanillaNext(current, secret) {
+        const index = this._levels.indexOf(current);
+        const sequential = ((index >= 0 && index + 1 < this._levels.length) ? this._levels[index + 1] : null);
 
         let routed = null;
         const episodic = current.match(/^E(\d)M(\d)$/);
@@ -89,18 +92,17 @@ class WadMapInfo {
             if (secret) {
                 routed = 'E' + episode + 'M9';
             } else if (map === '9') {
-                routed = WadMapInfo.EPISODE_SECRET_RETURN[episode] ?? null;
+                routed = this._rules.episodeSecretReturns[episode] ?? null;
             }
         } else if (doom2 !== null) {
-            const map = parseInt(doom2[1], 10);
             if (secret) {
-                routed = ((map === 31) ? 'MAP32' : 'MAP31');
-            } else if (map === 31 || map === 32) {
-                routed = 'MAP16';
+                routed = ((current === this._rules.mapSecretSlot) ? this._rules.mapSuperSecretSlot : this._rules.mapSecretSlot);
+            } else if ((current === this._rules.mapSecretSlot) || (current === this._rules.mapSuperSecretSlot)) {
+                routed = this._rules.mapSecretReturn;
             }
         }
 
-        return ((routed !== null && levels.includes(routed)) ? routed : sequential);
+        return ((routed !== null && this._levels.includes(routed)) ? routed : sequential);
     }
 
     // --- UMAPINFO lump ---
