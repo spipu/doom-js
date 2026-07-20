@@ -286,7 +286,7 @@ class DoomGame {
 
         const armor = this._gameProfile.cheatKitArmor();
         user.setEnergy(user.getMaxEnergy());
-        user.setMaxArmor(200);
+        user.setMaxArmor(this._gameProfile.startingLoadout().maxArmor);
         user.setArmor(armor.points);
         user.setArmorAbsorb(armor.absorb);
     }
