@@ -43,18 +43,19 @@ class DoomProjectileSystem {
             if (spr === null) {
                 return null;
             }
+            const geo = WadGeometry.spriteBillboardData(spr);
             frames.push({
                 objId:  loader.objects().loadBillboardFromData(null, {
                     textures:      [spr.texId],
-                    halfWidth:     (spr.width * scale) / 2,
-                    height:        spr.height * scale,
-                    anchorOffsetX: ((spr.width / 2) - spr.leftOffset) * scale,
+                    halfWidth:     geo.halfWidth,
+                    height:        geo.height,
+                    anchorOffsetX: geo.anchorOffsetX,
                     anchorOffsetY: 0,
                     light:         255,
-                    alpha:         ((spec.additive) ? 0.75 : 1),
+                    alpha:         spec.alpha,
                     additive:      spec.additive,
                 }),
-                height: spr.height * scale,
+                height: geo.height,
             });
         }
         return {
@@ -68,7 +69,7 @@ class DoomProjectileSystem {
             gravityDelayTics: spec.gravityDelayTics ?? 0,
             dropSpeed:        (spec.dropSpeed ?? 0) * scale,
             trailEffect:      spec.trailEffect ?? null,
-            trailEveryTics:   spec.trailEveryTics ?? 4,
+            trailEveryTics:   spec.trailEveryTics ?? 0,
         };
     }
 
@@ -109,7 +110,9 @@ class DoomProjectileSystem {
         const p = {
             def,
             x: user.getCameraX(), y: user.getCameraY(), z: user.getCameraZ(),
-            dx, dy, dz,
+            // The velocity is the single source of truth: the direction is
+            // recomputed from it at every tic (_stepTic), never read before.
+            dx: 0, dy: 0, dz: 0,
             vx: dx * def.speed, vy: dy * def.speed, vz: dz * def.speed,
             tics: 0, shown: 0, traveled: 0, dropped: false,
             instId: null,
@@ -168,8 +171,10 @@ class DoomProjectileSystem {
             // In-flight trail (Heretic A_PhoenixPuff), left at the current
             // position before the move so it lags behind the shot — never on
             // tic 0 (that would drop a puff in the player's eye; vanilla state
-            // actions only run from the first state transition).
-            if ((p.def.trailEffect !== null) && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
+            // actions only run from the first state transition). The cadence
+            // is profile data; a def without it stays inert.
+            if ((p.def.trailEffect !== null) && (p.def.trailEveryTics > 0)
+                && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
                 this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
             }
 

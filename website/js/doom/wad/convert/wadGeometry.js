@@ -18,6 +18,25 @@ class WadGeometry {
     }
 
     /**
+     * Camera-facing billboard quad of a decoded sprite, in world units — the
+     * R_ProjectSprite convention shared by world things, projectiles and
+     * weapon effects: leftOffset centres the sprite horizontally on its
+     * anchor. The vertical anchoring differs per consumer (floor-clip,
+     * flight centre, vanilla offset box) and stays on the caller.
+     *
+     * @param {object} spr decoded sprite {width, height, leftOffset, …}
+     * @returns {{halfWidth: number, height: number, anchorOffsetX: number}}
+     */
+    static spriteBillboardData(spr) {
+        const scale = WadConstants.SCALE;
+        return {
+            halfWidth:     (spr.width * scale) / 2,
+            height:        spr.height * scale,
+            anchorOffsetX: ((spr.width / 2) - spr.leftOffset) * scale
+        };
+    }
+
+    /**
      * 2D length of a wall segment in Doom units.
      */
     static wallLengthDoom(vertexes, v1, v2) {

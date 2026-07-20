@@ -6,8 +6,10 @@
 // WHICH graphics exist is per-game data: every registered game profile
 // contributes its decalAssets() manifest ({basePath, keys}), all loaded at
 // startup since the WAD (hence the game) is only known later. Keys must be
-// unique across games — each profile's decalTemplates() only ever references
-// its own keys.
+// unique across games (never the same key for two different files); since
+// the union of every manifest is always loaded, a profile's decalTemplates()
+// may reference keys declared by another profile (Heretic reuses the Doom
+// plasma1/plasma2/scorch1 graphics).
 //
 // The PNGs are grayscale intensity masks (fully opaque, black background): the
 // luminance IS the coverage. DoomDecals colourises them with the decaldef

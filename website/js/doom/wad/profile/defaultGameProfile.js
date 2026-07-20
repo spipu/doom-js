@@ -352,12 +352,14 @@ class DefaultGameProfile extends AbstractGameProfile {
     }
 
     // The three Doom projectiles (MT_ROCKET / MT_PLASMA / MT_BFG, info.c):
-    // speed in map units/tic, splash = the rocket's A_Explode 128.
+    // speed in map units/tic, splash = the rocket's A_Explode 128. The
+    // in-flight alpha follows gzdoom (PlasmaBall/BFGBall: RenderStyle "Add",
+    // Alpha 0.75; the rocket is a solid missile).
     projectileDefs() {
         return [
-            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, additive: false, decalType: 'scorch'},
-            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   additive: true,  decalType: 'plasma'},
-            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   additive: true,  decalType: 'bfg'}
+            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, alpha: 1,    additive: false, decalType: 'scorch'},
+            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   alpha: 0.75, additive: true,  decalType: 'plasma'},
+            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   alpha: 0.75, additive: true,  decalType: 'bfg'}
         ];
     }
 
