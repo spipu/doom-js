@@ -234,6 +234,57 @@ class AbstractGameProfile {
         return [];
     }
 
+    /**
+     * Transient weapon effect templates (hitscan puffs, projectile
+     * explosions/impacts): short sprite animations built once per level in
+     * the load batch. rise is the upward drift in map units/tic (0 = static);
+     * meleeStart is the frame index a melee hit starts the puff at.
+     *
+     * @returns {object[]} [{name, sprite, letters, frameTics, alpha, rise, additive, meleeStart?}]
+     */
+    weaponEffectTemplates() {
+        this._generateException('weaponEffectTemplates must be implemented');
+        return [];
+    }
+
+    /**
+     * Projectile definitions: in-flight sprite frames, speed (map units/tic),
+     * death effect template, wall decal. Optional: gravity (map units/tic²,
+     * applied after gravityDelayTics of straight flight, with the horizontal
+     * speed rescaled to dropSpeed and the vertical speed halved at dropoff)
+     * and trailEffect (template spawned every trailEveryTics of flight).
+     *
+     * @returns {object[]} [{kind, sprite, letters, speed, flightTics, explosion, splashDamage, additive, decalType, gravity?, gravityDelayTics?, dropSpeed?, trailEffect?, trailEveryTics?}]
+     */
+    projectileDefs() {
+        this._generateException('projectileDefs must be implemented');
+        return [];
+    }
+
+    /**
+     * Weapon preference order when the current weapon runs dry
+     * (P_CheckAmmo): the first owned entry with enough ammo wins. min
+     * overrides the ammo threshold (default = the weapon's perShot); the
+     * last entry is the unconditional fallback.
+     *
+     * @returns {object[]} [{code, min?}]
+     */
+    weaponFallbackOrder() {
+        this._generateException('weaponFallbackOrder must be implemented');
+        return [];
+    }
+
+    /**
+     * Armour granted by the full-kit test cheat — the best armour class of
+     * this game.
+     *
+     * @returns {{points: number, absorb: number}}
+     */
+    cheatKitArmor() {
+        this._generateException('cheatKitArmor must be implemented');
+        return {};
+    }
+
     _generateException(msg) {
         throw new Error('GameProfile - ' + msg);
     }

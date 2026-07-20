@@ -115,7 +115,7 @@ class DoomPlayerWeapon {
         if (spr === null) {
             return null;
         }
-        const rect = this._motion.screenRect(spr);
+        const rect = this._motion.screenRect(spr, this._def().getYAdjust());
         return {
             texId: spr.texId,
             x:     rect.x,
@@ -163,24 +163,23 @@ class DoomPlayerWeapon {
         } while (psp.tics === 0 && guard < 64);
     }
 
+    // Generic fire verbs, fully parameterized by the weapon def (pellets,
+    // spread, range, puff, decal, projectiles come from the profile data) —
+    // no game-specific action name may appear here.
     _runAction(name, psp) {
         switch (name) {
-            case 'ready':         this._aWeaponReady();       break;
-            case 'lower':         this._aLower();             break;
-            case 'raise':         this._aRaise();             break;
-            case 'refire':        this._aReFire();            break;
-            case 'gunFlash':      this._aGunFlash();          break;
-            case 'checkReload':   this._checkAmmo();          break;
-            case 'punch':
-            case 'saw':           this._aMelee();             break;
-            case 'firePistol':    this._aFireHitscan(!this._refire); break;
-            case 'fireShotgun':
-            case 'fireShotgun2':  this._aFireHitscan(false);  break;
-            case 'fireCGun1':     this._aFireCGun('flash1');  break;
-            case 'fireCGun2':     this._aFireCGun('flash2');  break;
-            case 'fireMissile':
-            case 'fireBFG':       this._aFireProjectile();    break;
-            case 'firePlasma':    this._aFirePlasma();        break;
+            case 'ready':                    this._aWeaponReady();       break;
+            case 'lower':                    this._aLower();             break;
+            case 'raise':                    this._aRaise();             break;
+            case 'refire':                   this._aReFire();            break;
+            case 'gunFlash':                 this._aGunFlash();          break;
+            case 'checkReload':              this._checkAmmo();          break;
+            case 'fireMelee':                this._aMelee();             break;
+            case 'fireHitscan':              this._aFireHitscan(this._accurateNow()); break;
+            case 'fireHitscanFlash1':        this._aFireHitscanFlash('flash1'); break;
+            case 'fireHitscanFlash2':        this._aFireHitscanFlash('flash2'); break;
+            case 'fireProjectiles':          this._aFireProjectiles();   break;
+            case 'fireProjectilesRandFlash': this._aFireProjectilesRandFlash(); break;
             // No-op: muzzle-flash extralight (no white screen flash, unlike a
             // wrong earlier attempt) and reload sounds (no audio yet). The state
             // timing and the flash sprite are still played.
@@ -192,6 +191,12 @@ class DoomPlayerWeapon {
             case 'closeShotgun2':
             default:              break;
         }
+    }
+
+    // Accurate shot = a weapon flagged accurateFirst and not refiring (vanilla
+    // pistol/chaingun first shot; Heretic goldwand/blaster outside refire).
+    _accurateNow() {
+        return (this._def().isAccurateFirst() && (this._refire === 0));
     }
 
     // --- Action functions (p_pspr.c) ---
@@ -237,8 +242,16 @@ class DoomPlayerWeapon {
         }
     }
 
+    // Weapons without a muzzle flash (the whole Heretic arsenal) simply have
+    // no flash entry — never set a psprite state on an undefined key.
+    _showFlash(flashKey) {
+        if (flashKey !== undefined) {
+            this._setState(this._flashPsp, flashKey);
+        }
+    }
+
     _aGunFlash() {
-        this._setState(this._flashPsp, this._def().getEntry().flash);
+        this._showFlash(this._def().getEntry().flash);
     }
 
     _aMelee() {
@@ -249,35 +262,48 @@ class DoomPlayerWeapon {
 
     _aFireHitscan(accurate) {
         this._useAmmo();
-        this._setState(this._flashPsp, this._def().getEntry().flash);
+        this._showFlash(this._def().getEntry().flash);
         if (this._hitscan !== null) {
             this._hitscan.fire(this._def(), this._user, accurate);
         }
     }
 
-    _aFireCGun(flashKey) {
+    // Hitscan with an explicit flash frame (A_FireCGun: the chaingun's flash
+    // mirrors the barrel state that fired).
+    _aFireHitscanFlash(flashKey) {
         const type = this._def().getAmmoType();
         if (this._user.getAmmo(type) <= 0) {
             return;
         }
         this._useAmmo();
-        this._setState(this._flashPsp, flashKey);
+        this._showFlash(flashKey);
         if (this._hitscan !== null) {
-            this._hitscan.fire(this._def(), this._user, !this._refire);
+            this._hitscan.fire(this._def(), this._user, this._accurateNow());
         }
     }
 
-    _aFirePlasma() {
-        this._setState(this._flashPsp, (((this._rng.next() & 1) === 0) ? 'flash1' : 'flash2'));
-        this._aFireProjectile();
+    _aFireProjectilesRandFlash() {
+        this._showFlash((((this._rng.next() & 1) === 0) ? 'flash1' : 'flash2'));
+        this._aFireProjectiles();
     }
 
     // A_FireMissile / A_FirePlasma / A_FireBFG all decrement the weapon's ammo
-    // (the BFG's 40 cells via getPerShot) before spawning the shot.
-    _aFireProjectile() {
+    // (the BFG's 40 cells via getPerShot) before spawning the shot(s) — one
+    // spawn per def entry, a multi-entry def fires a fan (Heretic crossbow).
+    // The ammo guard covers fire cycles with several firing states (Heretic
+    // skullrod: the second state dry-runs when the last rune is gone, like
+    // the ammo check opening every vanilla A_Fire*).
+    _aFireProjectiles() {
+        const type = this._def().getAmmoType();
+        if ((type !== null) && (this._user.getAmmo(type) < this._def().getPerShot())) {
+            return;
+        }
         this._useAmmo();
-        if (this._projectiles !== null) {
-            this._projectiles.spawn(this._def().getProjectile(), this._user);
+        if (this._projectiles === null) {
+            return;
+        }
+        for (const shot of this._def().getProjectiles()) {
+            this._projectiles.spawn(shot.kind, this._user, shot.angleOffset ?? 0, shot.randomSpreadH ?? 0);
         }
     }
 
@@ -297,7 +323,11 @@ class DoomPlayerWeapon {
         // Recenter for the shot: the weapon stays steady through sustained fire
         // instead of freezing mid-bob.
         this._motion.recenter();
-        this._setState(this._weaponPsp, this._def().getEntry().atk);
+        // A refire re-enters the hold loop when the weapon has one (zscript
+        // A_ReFire jumps to the Hold state — Heretic gauntlets/blaster/mace).
+        const entry = this._def().getEntry();
+        const start = (((this._refire > 0) && (entry.hold !== undefined)) ? entry.hold : entry.atk);
+        this._setState(this._weaponPsp, start);
     }
 
     _checkAmmo() {
@@ -318,34 +348,29 @@ class DoomPlayerWeapon {
         }
     }
 
-    // Vanilla weapon-preference chain when the current weapon runs dry.
+    // Weapon-preference chain when the current weapon runs dry — the order and
+    // ammo thresholds are game data (profile weaponFallbackOrder; the vanilla
+    // Doom chain keeps its explicit > 2 shells / > 40 cells thresholds there).
     _pickAmmoWeapon() {
-        const u = this._user;
-        if (u.hasWeapon('plasma') && u.getAmmo('cells') > 0) {
-            return 'plasma';
+        const order = this._game.getGameProfile().weaponFallbackOrder();
+        for (const entry of order) {
+            if (!this._user.hasWeapon(entry.code)) {
+                continue;
+            }
+            const def = this._game.getWeapon(entry.code);
+            if (def === null) {
+                continue;
+            }
+            const type = def.getAmmoType();
+            if (type === null) {
+                return entry.code;
+            }
+            const min = (entry.min ?? Math.max(def.getPerShot(), 1));
+            if (this._user.getAmmo(type) >= min) {
+                return entry.code;
+            }
         }
-        if (u.hasWeapon('supershotgun') && u.getAmmo('shells') > 2) {
-            return 'supershotgun';
-        }
-        if (u.hasWeapon('chaingun') && u.getAmmo('bullets') > 0) {
-            return 'chaingun';
-        }
-        if (u.hasWeapon('shotgun') && u.getAmmo('shells') > 0) {
-            return 'shotgun';
-        }
-        if (u.hasWeapon('pistol') && u.getAmmo('bullets') > 0) {
-            return 'pistol';
-        }
-        if (u.hasWeapon('chainsaw')) {
-            return 'chainsaw';
-        }
-        if (u.hasWeapon('rocket') && u.getAmmo('rockets') > 0) {
-            return 'rocket';
-        }
-        if (u.hasWeapon('bfg') && u.getAmmo('cells') > 40) {
-            return 'bfg';
-        }
-        return 'fist';
+        return order[order.length - 1].code;
     }
 }
 

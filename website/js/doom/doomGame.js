@@ -150,14 +150,16 @@ class DoomGame {
             }
             gaveWeapon = true;
         }
-        // Doom hands out 2 × the ammo clip with the weapon (further doubled on
-        // skill 1/5). An already-owned weapon is still collected as long as it
-        // tops up ammo; it only stays on the ground when ammo is already full.
+        // Ammo handed out with the weapon: the def's own ammoGive when the game
+        // sets one (Heretic per-weapon amounts), else the Doom 2 × clip rule —
+        // further doubled on skill 1/5. An already-owned weapon is still
+        // collected as long as it tops up ammo; it only stays on the ground
+        // when ammo is already full.
         let gaveAmmo = false;
         const ammoType = def.getAmmoType();
         if (ammoType !== null) {
-            const amount = this.getAmmo(ammoType).getClip() * 2 * this._ammoMultiplier();
-            gaveAmmo = this._grantAmmo(user, ammoType, amount);
+            const base   = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this.getAmmo(ammoType).getClip() * 2);
+            gaveAmmo = this._grantAmmo(user, ammoType, base * this._ammoMultiplier());
         }
         return (gaveWeapon || gaveAmmo);
     }
@@ -258,11 +260,11 @@ class DoomGame {
         user.setArmor(0);
     }
 
-    // Debug/test cheat (the 'o' key): hand the player the full Doom kit — every
-    // weapon, every ammo type topped to its current max, all three keys, full
-    // energy and a full 200 blue armour. Reuses the existing DoomUser grant
-    // paths so it stays consistent with the pickup system (same ammo caps, same
-    // fixed 0→200 armour ceiling and blue-armour absorption).
+    // Debug/test cheat (the 'o' key): hand the player the full kit — every
+    // weapon, every ammo type topped to its current max, all the keys, full
+    // energy and the game's best armour class (profile cheatKitArmor). Reuses
+    // the existing DoomUser grant paths so it stays consistent with the pickup
+    // system (same ammo caps, same fixed 0→200 armour ceiling).
     _applyCheatFullKit() {
         const user = this._world.getUser();
 
@@ -282,10 +284,11 @@ class DoomGame {
             }
         }
 
+        const armor = this._gameProfile.cheatKitArmor();
         user.setEnergy(user.getMaxEnergy());
         user.setMaxArmor(200);
-        user.setArmor(200);
-        user.setArmorAbsorb(0.5);
+        user.setArmor(armor.points);
+        user.setArmorAbsorb(armor.absorb);
     }
 
     // Debug helper: force the player to a chosen location instead of the WAD
@@ -402,12 +405,12 @@ class DoomGame {
         // Effect + projectile sprites are built here too, inside the batch, so no
         // billboard object is registered after endBatch (which would re-fire the
         // loader). The projectile system gets its world (collision + user) in _init.
-        this._effects     = new DoomEffects(this._weaponSprites, this._rng);
+        this._effects     = new DoomEffects(this._weaponSprites, this._rng, this._gameProfile);
         // Impact decals: textures + quad templates are built here in the batch,
         // from the game profile's decal set. Skipped only if the decal graphics
         // haven't finished decoding yet (first-level race).
         this._decals = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, this._gameProfile) : null);
-        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals);
+        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile);
 
         loader.setCallback(() => {
             this._init();

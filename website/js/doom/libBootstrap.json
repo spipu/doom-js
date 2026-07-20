@@ -1,5 +1,5 @@
 {
-    "version": "v1.349",
+    "version": "v1.356",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -13,7 +13,12 @@
             "/assets/uzdoom/doom/sprite/bfglite1.png",
             "/assets/uzdoom/doom/sprite/bfglite2.png",
             "/assets/uzdoom/doom/sprite/bfgscrc1.png",
-            "/assets/uzdoom/doom/sprite/bfgscrc2.png"
+            "/assets/uzdoom/doom/sprite/bfgscrc2.png",
+            "/assets/uzdoom/heretic/sprite/cbowmark.png",
+            "/assets/uzdoom/heretic/sprite/cbalscr1.png",
+            "/assets/uzdoom/heretic/sprite/cbalscr2.png",
+            "/assets/uzdoom/heretic/sprite/bal7scr1.png",
+            "/assets/uzdoom/heretic/sprite/bal7scr2.png"
         ],
         "css": [
             "/css/doomMenu.css"

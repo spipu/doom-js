@@ -225,30 +225,33 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'fist', name: 'Fist', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PUNG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['B', 4, null, 'fire2'], fire2: ['C', 4, 'punch', 'fire3'], fire3: ['D', 5, null, 'fire4'],
+                    fire1: ['B', 4, null, 'fire2'], fire2: ['C', 4, 'fireMelee', 'fire3'], fire3: ['D', 5, null, 'fire4'],
                     fire4: ['C', 4, null, 'fire5'], fire5: ['B', 5, 'refire', 'ready'],
                 },
             },
             {
                 code: 'chainsaw', name: 'Chainsaw', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SAWG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
                     ready: ['C', 4, 'ready', 'readyB'], readyB: ['D', 4, 'ready', 'ready'],
                     down: ['C', 1, 'lower', 'down'], up: ['C', 1, 'raise', 'up'],
-                    fire1: ['A', 4, 'saw', 'fire2'], fire2: ['B', 4, 'saw', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
+                    fire1: ['A', 4, 'fireMelee', 'fire2'], fire2: ['B', 4, 'fireMelee', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
                 },
             },
             {
                 code: 'pistol', name: 'Pistol', ammoType: 'bullets', ammoUse: 1,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PISG', flashSprite: 'PISF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['A', 4, null, 'fire2'], fire2: ['B', 6, 'firePistol', 'fire3'],
+                    fire1: ['A', 4, null, 'fire2'], fire2: ['B', 6, 'fireHitscan', 'fire3'],
                     fire3: ['C', 4, null, 'fire4'], fire4: ['B', 5, 'refire', 'ready'],
                 },
                 flash: { flash1: ['A', 7, 'light1', null] },
@@ -256,10 +259,11 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'shotgun', name: 'Shotgun', ammoType: 'shells', ammoUse: 1,
                 pellets: 7, spreadH: SPREAD, range: HITSCAN,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHTG', flashSprite: 'SHTF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireShotgun', 'fire3'], fire3: ['B', 5, null, 'fire4'],
+                    fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireHitscan', 'fire3'], fire3: ['B', 5, null, 'fire4'],
                     fire4: ['C', 5, null, 'fire5'], fire5: ['D', 4, null, 'fire6'], fire6: ['C', 5, null, 'fire7'],
                     fire7: ['B', 5, null, 'fire8'], fire8: ['A', 3, null, 'fire9'], fire9: ['A', 7, 'refire', 'ready'],
                 },
@@ -268,10 +272,11 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'supershotgun', name: 'Super Shotgun', ammoType: 'shells', ammoUse: 2,
                 pellets: 20, spreadH: SSG_H, spreadV: SSG_V, range: HITSCAN,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHT2', flashSprite: 'SHT2', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireShotgun2', 'fire3'], fire3: ['B', 7, null, 'fire4'],
+                    fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireHitscan', 'fire3'], fire3: ['B', 7, null, 'fire4'],
                     fire4: ['C', 7, 'checkReload', 'fire5'], fire5: ['D', 7, 'openShotgun2', 'fire6'], fire6: ['E', 7, null, 'fire7'],
                     fire7: ['F', 7, 'loadShotgun2', 'fire8'], fire8: ['G', 6, null, 'fire9'], fire9: ['H', 6, 'closeShotgun2', 'fire10'],
                     fire10: ['A', 5, 'refire', 'ready'],
@@ -281,20 +286,21 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'chaingun', name: 'Chaingun', ammoType: 'bullets', ammoUse: 1,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'CHGG', flashSprite: 'CHGF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['A', 4, 'fireCGun1', 'fire2'], fire2: ['B', 4, 'fireCGun2', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
+                    fire1: ['A', 4, 'fireHitscanFlash1', 'fire2'], fire2: ['B', 4, 'fireHitscanFlash2', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
                 },
                 flash: { flash1: ['A', 5, 'light1', null], flash2: ['B', 5, 'light2', null] },
             },
             {
                 code: 'rocket', name: 'Rocket Launcher', ammoType: 'rockets', ammoUse: 1,
-                projectile: 'rocket', autoFire: false,
+                projectiles: [{kind: 'rocket'}], autoFire: false,
                 viewSprite: 'MISG', flashSprite: 'MISF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['B', 8, 'gunFlash', 'fire2'], fire2: ['B', 12, 'fireMissile', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
+                    fire1: ['B', 8, 'gunFlash', 'fire2'], fire2: ['B', 12, 'fireProjectiles', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
                 },
                 flash: {
                     flash1: ['A', 3, 'light1', 'flash2'], flash2: ['B', 4, null, 'flash3'],
@@ -303,22 +309,22 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'plasma', name: 'Plasma Rifle', ammoType: 'cells', ammoUse: 1,
-                projectile: 'plasma',
+                projectiles: [{kind: 'plasma'}],
                 viewSprite: 'PLSG', flashSprite: 'PLSF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
-                    fire1: ['A', 3, 'firePlasma', 'fire2'], fire2: ['B', 20, 'refire', 'ready'],
+                    fire1: ['A', 3, 'fireProjectilesRandFlash', 'fire2'], fire2: ['B', 20, 'refire', 'ready'],
                 },
                 flash: { flash1: ['A', 4, 'light1', null], flash2: ['B', 4, 'light1', null] },
             },
             {
                 code: 'bfg', name: 'BFG9000', ammoType: 'cells', ammoUse: 40,
-                projectile: 'bfg', autoFire: false,
+                projectiles: [{kind: 'bfg'}], autoFire: false,
                 viewSprite: 'BFGG', flashSprite: 'BFGF', entry: READY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 20, 'bfgSound', 'fire2'], fire2: ['B', 10, 'gunFlash', 'fire3'],
-                    fire3: ['B', 10, 'fireBFG', 'fire4'], fire4: ['B', 20, 'refire', 'ready'],
+                    fire3: ['B', 10, 'fireProjectiles', 'fire4'], fire4: ['B', 20, 'refire', 'ready'],
                 },
                 flash: { flash1: ['A', 11, 'light1', 'flash2'], flash2: ['B', 6, 'light2', null] },
             },
@@ -329,6 +335,52 @@ class DefaultGameProfile extends AbstractGameProfile {
             catalog[entry.code] = new DoomWeaponDef(entry);
         }
         return catalog;
+    }
+
+    // Transient weapon effects (P_SpawnPuff + the projectile death frames from
+    // info.c). alpha/additive follow gzdoom: the rocket blast is opaque smoke,
+    // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), the puff
+    // keeps its light translucency (0.25), floats up 1 map unit/tic and starts
+    // a melee hit at frame C (meleeStart 2, no bright spark).
+    weaponEffectTemplates() {
+        return [
+            {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.25, rise: 1, additive: false, meleeStart: 2},
+            {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
+            {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true},
+            {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true}
+        ];
+    }
+
+    // The three Doom projectiles (MT_ROCKET / MT_PLASMA / MT_BFG, info.c):
+    // speed in map units/tic, splash = the rocket's A_Explode 128.
+    projectileDefs() {
+        return [
+            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, additive: false, decalType: 'scorch'},
+            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   additive: true,  decalType: 'plasma'},
+            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   additive: true,  decalType: 'bfg'}
+        ];
+    }
+
+    // Vanilla P_CheckAmmo preference chain; min carries the two explicit
+    // thresholds (> 2 shells for the SSG, > 40 cells for the BFG — a generic
+    // >= perShot would give 2 and 40, a subtle regression).
+    weaponFallbackOrder() {
+        return [
+            {code: 'plasma'},
+            {code: 'supershotgun', min: 3},
+            {code: 'chaingun'},
+            {code: 'shotgun'},
+            {code: 'pistol'},
+            {code: 'chainsaw'},
+            {code: 'rocket'},
+            {code: 'bfg', min: 41},
+            {code: 'fist'}
+        ];
+    }
+
+    // Full-kit cheat armour: the Doom blue armour (200 points, absorbs half).
+    cheatKitArmor() {
+        return {points: 200, absorb: 0.5};
     }
 
     buildItems() {
