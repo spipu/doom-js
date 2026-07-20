@@ -243,9 +243,11 @@ class DoomPlayerWeapon {
     }
 
     // Weapons without a muzzle flash (the whole Heretic arsenal) simply have
-    // no flash entry — never set a psprite state on an undefined key.
+    // no flash entry — never set a psprite state on an undefined key, nor on
+    // a key the def does not define (a flash verb on a flashless weapon is
+    // inert, never a crash).
     _showFlash(flashKey) {
-        if (flashKey !== undefined) {
+        if ((flashKey !== undefined) && (this._def().getState(flashKey) !== null)) {
             this._setState(this._flashPsp, flashKey);
         }
     }
@@ -269,10 +271,10 @@ class DoomPlayerWeapon {
     }
 
     // Hitscan with an explicit flash frame (A_FireCGun: the chaingun's flash
-    // mirrors the barrel state that fired).
+    // mirrors the barrel state that fired). An ammo-less weapon always fires.
     _aFireHitscanFlash(flashKey) {
         const type = this._def().getAmmoType();
-        if (this._user.getAmmo(type) <= 0) {
+        if ((type !== null) && (this._user.getAmmo(type) <= 0)) {
             return;
         }
         this._useAmmo();

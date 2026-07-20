@@ -166,8 +166,10 @@ class DoomProjectileSystem {
             }
 
             // In-flight trail (Heretic A_PhoenixPuff), left at the current
-            // position before the move so it lags behind the shot.
-            if ((p.def.trailEffect !== null) && ((p.tics % p.def.trailEveryTics) === 0)) {
+            // position before the move so it lags behind the shot — never on
+            // tic 0 (that would drop a puff in the player's eye; vanilla state
+            // actions only run from the first state transition).
+            if ((p.def.trailEffect !== null) && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
                 this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
             }
 
