@@ -249,12 +249,13 @@ class AbstractGameProfile {
 
     /**
      * Projectile definitions: in-flight sprite frames, speed (map units/tic),
-     * death effect template, wall decal. Optional: gravity (map units/tic²,
-     * applied after gravityDelayTics of straight flight, with the horizontal
-     * speed rescaled to dropSpeed and the vertical speed halved at dropoff)
-     * and trailEffect (template spawned every trailEveryTics of flight).
+     * in-flight alpha, death effect template, wall decal. Optional: gravity
+     * (map units/tic², applied after gravityDelayTics of straight flight,
+     * with the horizontal speed rescaled to dropSpeed and the vertical speed
+     * halved at dropoff) and trailEffect (template spawned every
+     * trailEveryTics of flight — set the two together).
      *
-     * @returns {object[]} [{kind, sprite, letters, speed, flightTics, explosion, splashDamage, additive, decalType, gravity?, gravityDelayTics?, dropSpeed?, trailEffect?, trailEveryTics?}]
+     * @returns {object[]} [{kind, sprite, letters, speed, flightTics, explosion, splashDamage, alpha, additive, decalType, gravity?, gravityDelayTics?, dropSpeed?, trailEffect?, trailEveryTics?}]
      */
     projectileDefs() {
         this._generateException('projectileDefs must be implemented');

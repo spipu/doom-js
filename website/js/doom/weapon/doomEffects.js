@@ -24,33 +24,28 @@ class DoomEffects {
 
     // One shared billboard object per frame; null if the WAD lacks the graphics
     // (probed quietly — another game's WAD misses them all, no warning spam).
-    // Every frame is re-blitted on the template's COMMON canvas, at the place
-    // its own vanilla offsets dictate (R_ProjectSprite draws a sprite with its
-    // left edge at -leftoffset and its top at +topoffset around the mobj
-    // point): all frames then share one quad geometry anchored on that point,
-    // so the runtime frame swap (setObject) never shifts the animation.
-    // Without this, frames of different heights stayed glued to the first
-    // frame's foot line — explosions on walls looked bottom-aligned.
+    // Every frame carries its OWN vanilla anchor (R_ProjectSprite draws a
+    // sprite with its left edge at -leftoffset and its top at +topoffset
+    // around the mobj point), so frames of different sizes all align on that
+    // point and the runtime frame swap (setObject) never shifts the animation
+    // — without this, frames stayed glued to the first frame's foot line
+    // (bottom-aligned explosions on walls).
     _buildTemplate(bank, spec) {
-        const sprites = [];
+        const scale  = WadConstants.SCALE;
+        const frames = [];
         for (const letter of spec.letters) {
             if (!bank.has(spec.sprite + letter + '0')) {
                 return null;
             }
-            sprites.push(bank.get(spec.sprite + letter + '0'));
-        }
-
-        const scale  = WadConstants.SCALE;
-        const box    = this._commonBox(sprites);
-        const frames = [];
-        for (const spr of sprites) {
+            const spr = bank.get(spec.sprite + letter + '0');
+            const geo = WadGeometry.spriteBillboardData(spr);
             frames.push({
                 objId: loader.objects().loadBillboardFromData(null, {
-                    textures:      [this._padToBox(spr, box)],
-                    halfWidth:     (box.width * scale) / 2,
-                    height:        box.height * scale,
-                    anchorOffsetX: ((box.width / 2) + box.left) * scale,
-                    anchorOffsetY: box.bottom * scale,
+                    textures:      [spr.texId],
+                    halfWidth:     geo.halfWidth,
+                    height:        geo.height,
+                    anchorOffsetX: geo.anchorOffsetX,
+                    anchorOffsetY: (spr.topOffset - spr.height) * scale,
                     light:         255,
                     alpha:         spec.alpha,
                     additive:      spec.additive,
@@ -58,39 +53,6 @@ class DoomEffects {
             });
         }
         return { frames, frameTics: spec.frameTics, rise: spec.rise, meleeStart: spec.meleeStart ?? 0 };
-    }
-
-    // Bounding box of every frame in the vanilla anchor space (x to the right
-    // of the mobj point, y up): a frame spans [-leftoffset, width-leftoffset]
-    // horizontally and [topoffset-height, topoffset] vertically.
-    _commonBox(sprites) {
-        let left   = Infinity;
-        let right  = -Infinity;
-        let top    = -Infinity;
-        let bottom = Infinity;
-        for (const spr of sprites) {
-            left   = Math.min(left, -spr.leftOffset);
-            right  = Math.max(right, spr.width - spr.leftOffset);
-            top    = Math.max(top, spr.topOffset);
-            bottom = Math.min(bottom, spr.topOffset - spr.height);
-        }
-        return { left, right, top, bottom, width: right - left, height: top - bottom };
-    }
-
-    // Re-blit one decoded frame onto the common canvas at its offset-aligned
-    // place and register the padded texture (still inside the load batch —
-    // the transparent padding is harmless with premultiplied-alpha uploads).
-    _padToBox(spr, box) {
-        const src   = loader.textures().get(spr.texId);
-        const out   = new ImageData(box.width, box.height);
-        const destX = -spr.leftOffset - box.left;
-        const destY = box.top - spr.topOffset;
-        for (let sy = 0; sy < spr.height; sy++) {
-            const srcOfs  = sy * spr.width * 4;
-            const destOfs = ((destY + sy) * box.width + destX) * 4;
-            out.data.set(src.data.subarray(srcOfs, srcOfs + spr.width * 4), destOfs);
-        }
-        return loader.textures().loadFromData(null, out);
     }
 
     // Weapon puff at a world impact point; the template is per-weapon def data,
@@ -104,8 +66,8 @@ class DoomEffects {
     }
 
     // Spawn a named effect animation. The instance sits exactly on the impact
-    // point: every frame's quad is anchored there through the template's
-    // common canvas (vanilla offsets), no per-frame height correction needed.
+    // point: every frame's quad is anchored there through its own vanilla
+    // offsets, no per-frame height correction needed.
     spawn(name, x, y, z, startFrame = 0) {
         const tpl = this._templates[name];
         if ((tpl === null) || (tpl === undefined)) {

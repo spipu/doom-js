@@ -114,6 +114,7 @@ class WadThingBuilder {
         }
 
         const first = sprites[0];
+        const geo   = WadGeometry.spriteBillboardData(first);
         // Hanging things anchor their top to the ceiling; the rest stand on the floor.
         const baseH = ((desc.ceiling) ? sect.ch : sect.fh);
 
@@ -128,11 +129,11 @@ class WadThingBuilder {
             key:           desc.frames.join('|'),
             texIds:        sprites.map((s) => s.loaderId),
             animDuration:  desc.animDuration,
-            halfWidth:     (first.width * scale) / 2,
-            height:        first.height * scale,
-            // leftOffset centres the sprite horizontally; the vertical offset is
-            // floor-clipped for floor things (see `sink` above).
-            anchorOffsetX: ((first.width / 2) - first.leftOffset) * scale,
+            halfWidth:     geo.halfWidth,
+            height:        geo.height,
+            // The billboard geometry centres the sprite horizontally; the
+            // vertical offset is floor-clipped for floor things (see `sink`).
+            anchorOffsetX: geo.anchorOffsetX,
             anchorOffsetY: ((desc.ceiling) ? sink : Math.max(0, sink)) * scale,
             anchorTop:     desc.ceiling,
             si:            sect.si,
