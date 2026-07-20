@@ -66,10 +66,12 @@ class DoomWeaponMotion {
         this._sy += (this._ty - this._sy) * k;
     }
 
-    // Normalised 0..1 screen rect for a sprite {width, height, leftOffset, topOffset}.
-    screenRect(spr) {
+    // Normalised 0..1 screen rect for a sprite {width, height, leftOffset,
+    // topOffset}. yAdjust = per-weapon vertical offset (gzdoom Weapon.YAdjust,
+    // 320x200 pixels, positive = down — Heretic draws its weapons lower).
+    screenRect(spr, yAdjust = 0) {
         const left = this._sx - spr.leftOffset;
-        const top  = this._sy - spr.topOffset;
+        const top  = (this._sy + yAdjust) - spr.topOffset;
         return {
             x: left / DoomWeaponMotion.BASE_W,
             y: top / DoomWeaponMotion.BASE_H,

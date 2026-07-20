@@ -1,12 +1,13 @@
-// Moving projectiles: the rocket, plasma ball and BFG shot (P_SpawnPlayerMissile
-// + the MT_ROCKET / MT_PLASMA / MT_BFG mobjs). Each is launched from the eye
-// along the free-aim direction at its vanilla speed, advances one tic at a time,
-// and raycasts the segment it just crossed for a wall/floor/ceiling. On impact it
-// spawns the matching explosion (DoomEffects) and, for the rocket, applies the
-// A_Explode splash — to the player only, faithfully (no enemies yet). The BFG
-// spray (A_BFGSpray) targets things, so with no enemies it is a no-op here.
+// Moving projectiles (P_SpawnPlayerMissile): each is launched from the eye
+// along the free-aim direction at its vanilla speed, advances one tic at a
+// time, and raycasts the segment it just crossed for a wall/floor/ceiling. On
+// impact it spawns its death effect (DoomEffects) and, when the def carries a
+// splash, applies the A_Explode blast — to the player only, faithfully (no
+// enemies yet). The BFG spray (A_BFGSpray) targets things, so with no enemies
+// it is a no-op here. All the data (sprites, speeds, effects, decals, gravity)
+// comes from the game profile's projectileDefs().
 class DoomProjectileSystem {
-    constructor(spriteBank, effects, rng, decals) {
+    constructor(spriteBank, effects, rng, decals, profile) {
         this._effects   = effects;
         this._rng       = rng;
         this._decals    = decals;
@@ -14,7 +15,7 @@ class DoomProjectileSystem {
         this._user      = null;
         this._active    = [];
         this._acc       = 0;
-        this._defs      = this._buildDefs(spriteBank);
+        this._defs      = this._buildDefs(spriteBank, profile);
     }
 
     setWorld(collision, user) {
@@ -23,23 +24,22 @@ class DoomProjectileSystem {
         return this;
     }
 
-    _buildDefs(bank) {
-        // The rocket is a solid missile (opaque); the plasma/BFG balls glow
-        // (gzdoom RenderStyle "Add", Alpha 0.75).
-        return {
-            rocket: this._buildDef(bank, 'MISL', ['A'],      20, 1, 'rocketExplode', 128, false, 'scorch'),
-            plasma: this._buildDef(bank, 'PLSS', ['A', 'B'], 25, 6, 'plasmaExplode', 0,   true,  'plasma'),
-            bfg:    this._buildDef(bank, 'BFS1', ['A', 'B'], 25, 4, 'bfgExplode',    0,   true,  'bfg'),
-        };
+    _buildDefs(bank, profile) {
+        const defs = {};
+        for (const spec of profile.projectileDefs()) {
+            defs[spec.kind] = this._buildDef(bank, spec);
+        }
+        return defs;
     }
 
     // In-flight billboard(s) + kinematics for one projectile kind; null if the
-    // WAD lacks the sprites. speed is in map units/tic, converted to world units.
-    _buildDef(bank, spriteBase, letters, speedMap, flightTics, explosion, splashDamage, additive, decalType) {
+    // WAD lacks the sprites. speed/gravity are in map units per tic (squared
+    // for gravity), converted to world units.
+    _buildDef(bank, spec) {
         const scale  = WadConstants.SCALE;
         const frames = [];
-        for (const letter of letters) {
-            const spr = this._pickSprite(bank, spriteBase, letter);
+        for (const letter of spec.letters) {
+            const spr = this._pickSprite(bank, spec.sprite, letter);
             if (spr === null) {
                 return null;
             }
@@ -51,13 +51,25 @@ class DoomProjectileSystem {
                     anchorOffsetX: ((spr.width / 2) - spr.leftOffset) * scale,
                     anchorOffsetY: 0,
                     light:         255,
-                    alpha:         ((additive) ? 0.75 : 1),
-                    additive:      additive,
+                    alpha:         ((spec.additive) ? 0.75 : 1),
+                    additive:      spec.additive,
                 }),
                 height: spr.height * scale,
             });
         }
-        return { frames, speed: speedMap * scale, flightTics, explosion, splashDamage, decalType };
+        return {
+            frames,
+            speed:            spec.speed * scale,
+            flightTics:       spec.flightTics,
+            explosion:        spec.explosion,
+            splashDamage:     spec.splashDamage,
+            decalType:        spec.decalType ?? null,
+            gravity:          (spec.gravity ?? 0) * scale,
+            gravityDelayTics: spec.gravityDelayTics ?? 0,
+            dropSpeed:        (spec.dropSpeed ?? 0) * scale,
+            trailEffect:      spec.trailEffect ?? null,
+            trailEveryTics:   spec.trailEveryTics ?? 4,
+        };
     }
 
     // In-flight sprite lookup. Projectiles are directional: the rocket ships only
@@ -76,12 +88,18 @@ class DoomProjectileSystem {
         return null;
     }
 
-    spawn(kind, user) {
+    // angleOffsetDeg = fixed fan angle (Heretic crossbow side bolts),
+    // randomSpreadDeg = degrees per DoomRandom difference unit (Heretic mace).
+    spawn(kind, user, angleOffsetDeg = 0, randomSpreadDeg = 0) {
         const def = this._defs[kind];
         if ((def === null) || (def === undefined) || (this._collision === null)) {
             return;
         }
-        const yawR   = user.yaw * DEG_TO_RAD;
+        let yawDeg = user.yaw + angleOffsetDeg;
+        if (randomSpreadDeg !== 0) {
+            yawDeg += randomSpreadDeg * this._rng.nextDiff();
+        }
+        const yawR   = yawDeg * DEG_TO_RAD;
         const pitchR = user.pitch * DEG_TO_RAD;
         const cp = Math.cos(pitchR);
         const dx = Math.sin(yawR) * cp;
@@ -93,7 +111,7 @@ class DoomProjectileSystem {
             x: user.getCameraX(), y: user.getCameraY(), z: user.getCameraZ(),
             dx, dy, dz,
             vx: dx * def.speed, vy: dy * def.speed, vz: dz * def.speed,
-            tics: 0, shown: 0, traveled: 0,
+            tics: 0, shown: 0, traveled: 0, dropped: false,
             instId: null,
         };
         p.instId = loader.instances().spawnFromData(null, {
@@ -127,7 +145,16 @@ class DoomProjectileSystem {
             if (inst === undefined) {
                 continue;
             }
-            const step = p.def.speed;
+            this._applyGravity(p);
+            // Step and direction follow the CURRENT velocity, so a ballistic
+            // projectile's raycast (impact, puff pull-back, decal) tracks the
+            // curved path; straight projectiles keep their launch values.
+            const step = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+            if (step > 0) {
+                p.dx = p.vx / step;
+                p.dy = p.vy / step;
+                p.dz = p.vz / step;
+            }
             const hit  = this._collision.raycast(
                 p.x, p.y, p.z, p.dx, p.dy, p.dz, step,
                 { floors: true, ceilings: true, dynamic: true }
@@ -136,6 +163,12 @@ class DoomProjectileSystem {
                 this._explode(p, hit);
                 loader.instances().scheduleRemoval(inst);
                 continue;
+            }
+
+            // In-flight trail (Heretic A_PhoenixPuff), left at the current
+            // position before the move so it lags behind the shot.
+            if ((p.def.trailEffect !== null) && ((p.tics % p.def.trailEveryTics) === 0)) {
+                this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
             }
 
             p.x += p.vx;
@@ -163,6 +196,29 @@ class DoomProjectileSystem {
         this._active = kept;
     }
 
+    // Ballistic projectiles (Heretic MaceFX1): fly straight for
+    // gravityDelayTics, then drop — at the dropoff tic the horizontal speed is
+    // rescaled to dropSpeed and the vertical speed halved (A_MacePL1Check),
+    // then gravity pulls every tic.
+    _applyGravity(p) {
+        if ((p.def.gravity <= 0) || (p.tics < p.def.gravityDelayTics)) {
+            return;
+        }
+        if (!p.dropped) {
+            p.dropped = true;
+            if (p.def.dropSpeed > 0) {
+                const h = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
+                if (h > 0) {
+                    const k = p.def.dropSpeed / h;
+                    p.vx *= k;
+                    p.vz *= k;
+                }
+                p.vy *= 0.5;
+            }
+        }
+        p.vy -= p.def.gravity;
+    }
+
     // Impact: spawn the explosion pulled a little off the surface (like the puff),
     // then the rocket's radius splash.
     _explode(p, hit) {
@@ -171,8 +227,9 @@ class DoomProjectileSystem {
         const ey = hit.point[1] - p.dy * back;
         const ez = hit.point[2] - p.dz * back;
         this._effects.spawn(p.def.explosion, ex, ey, ez);
-        // Persistent scorch on the wall (self-filters floors/ceilings).
-        if (this._decals !== null) {
+        // Persistent scorch on the wall (self-filters floors/ceilings); a null
+        // decal type leaves no mark.
+        if ((this._decals !== null) && (p.def.decalType !== null)) {
             this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
         }
         if (p.def.splashDamage > 0) {

@@ -39,10 +39,10 @@ class HereticGameProfile extends DefaultGameProfile {
     // transcribed from the UZDoom sources (mapinfo/heretic.txt DoomEdNums +
     // zscript/actors/heretic/ and actors/raven/) — never from memory.
     // Enemies, starts, ambient-sound things (41/42/1200-1209), generators
-    // (43/52/74), BossSpot (56), MaceSpawner (2002) and the Bridge (118)
-    // are absent on purpose (silent skip). Inventory artifacts with no
-    // transposable effect (egg, time bomb, chaos device, tome, wings) are
-    // visible pickups with a null effect: never consumed, they stay.
+    // (43/52/74), BossSpot (56) and the Bridge (118) are absent on purpose
+    // (silent skip). Inventory artifacts with no transposable effect (egg,
+    // time bomb, chaos device, tome, wings) are visible pickups with a null
+    // effect: never consumed, they stay.
     thingDecorations() {
         return {
             // Floor obstacles (solid)
@@ -86,6 +86,10 @@ class HereticGameProfile extends DefaultGameProfile {
             2004: {kind: 'pickup', sprite: 'WSKLA0', effect: {weapon: 'skullrod'}},
             2003: {kind: 'pickup', sprite: 'WPHXA0', effect: {weapon: 'phoenixrod'}},
             2005: {kind: 'pickup', sprite: 'WGNTA0', effect: {weapon: 'gauntlets'}},
+            // MaceSpawner: vanilla materializes ONE mace per level among all
+            // its spawner spots (P_RepositionMace) — spawnerGroup keeps a
+            // single random one (user-validated choice).
+            2002: {kind: 'pickup', sprite: 'WMCEA0', spawnerGroup: 'mace', effect: {weapon: 'mace'}},
             // --- Ammo (small / hefty amounts from the zscript definitions) ---
             10:   {kind: 'pickup', sprite: 'AMG1A0', effect: {ammo: 'crystals', amount: 10}},
             12:   {kind: 'pickup', sprite: 'AMG2A0', frames: DoomThingCatalog.animFrames('AMG2', 'ABC'), animDuration: 4 * WadConstants.SECONDS_PER_TIC, effect: {ammo: 'crystals', amount: 50}},
@@ -165,10 +169,205 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
-    // The Heretic arsenal (psprite states, firing) is not built yet: weapon
-    // pickups stay on the ground until it lands.
+    // The Heretic arsenal in slot order (PL1 mode only — the Tome of Power is
+    // out of scope), ported state-for-state from the UZDoom zscript actors
+    // (zscript/actors/heretic/weapon*.zs). Spread: Random2() * (5.625/256)°
+    // per difference unit = exactly the Doom SPREAD constant (360/16384).
+    // Ranges in world units (DEFMELEERANGE 64 → 1, PLAYERMISSILERANGE 8192 →
+    // 128). No Heretic weapon has a muzzle-flash psprite; ammoGive carries the
+    // per-weapon pickup amounts (Weapon.AmmoGive); yAdjust lowers the view
+    // sprites like gzdoom (15, the wand 5, the staff 0).
     buildWeapons() {
-        return {};
+        const MELEE   = 1.0;
+        const HITSCAN = 128.0;
+        const SPREAD  = 360 / 16384;
+        const ENTRY   = { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' };
+
+        const data = [
+            {
+                code: 'staff', name: 'Staff', ammoType: null, ammoUse: 0,
+                pellets: 1, spreadH: SPREAD, range: MELEE,
+                puffType: 'staffPuff',
+                viewSprite: 'STFF', entry: ENTRY,
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 6, null, 'fire2'], fire2: ['C', 8, 'fireMelee', 'fire3'], fire3: ['B', 8, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'gauntlets', name: 'Gauntlets', ammoType: null, ammoUse: 0,
+                pellets: 1, spreadH: SPREAD, range: MELEE, yAdjust: 15,
+                puffType: 'gauntletPuff',
+                viewSprite: 'GAUN', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 4, null, 'fire2'], fire2: ['C', 4, null, 'hold1'],
+                    hold1: ['D', 4, 'fireMelee', 'hold2', true], hold2: ['E', 4, 'fireMelee', 'hold3', true],
+                    hold3: ['F', 4, 'fireMelee', 'hold4', true], hold4: ['C', 4, 'refire', 'hold5'],
+                    hold5: ['B', 4, null, 'ready'],
+                },
+            },
+            {
+                code: 'goldwand', name: 'Gold Wand', ammoType: 'crystals', ammoUse: 1, ammoGive: 25,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 5,
+                puffType: 'goldwandPuff', decalType: 'railscorch',
+                viewSprite: 'GWND', entry: ENTRY,
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 3, null, 'fire2'], fire2: ['C', 5, 'fireHitscan', 'fire3'],
+                    fire3: ['D', 3, null, 'fire4'], fire4: ['D', 0, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'crossbow', name: 'Ethereal Crossbow', ammoType: 'arrows', ammoUse: 1, ammoGive: 10,
+                yAdjust: 15,
+                projectiles: [
+                    {kind: 'crossbowfx1'},
+                    {kind: 'crossbowfx3', angleOffset: -4.5},
+                    {kind: 'crossbowfx3', angleOffset: 4.5}
+                ],
+                viewSprite: 'CRBW', entry: ENTRY,
+                main: {
+                    ...this._animatedReadyStates('AAAAAABBBBBBCCCCCC'),
+                    down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['D', 6, 'fireProjectiles', 'fire2'],
+                    fire2: ['E', 3, null, 'fire3'], fire3: ['F', 3, null, 'fire4'],
+                    fire4: ['G', 3, null, 'fire5'], fire5: ['H', 3, null, 'fire6'],
+                    fire6: ['A', 4, null, 'fire7'], fire7: ['B', 4, null, 'fire8'],
+                    fire8: ['C', 5, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'blaster', name: 'Dragon Claw', ammoType: 'orbs', ammoUse: 1, ammoGive: 30,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 15,
+                puffType: 'blasterPuff', decalType: 'railscorch',
+                viewSprite: 'BLSR', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 3, null, 'fire2'], fire2: ['C', 3, null, 'hold1'],
+                    hold1: ['D', 2, 'fireHitscan', 'hold2'], hold2: ['C', 2, null, 'hold3'],
+                    hold3: ['B', 2, null, 'hold4'], hold4: ['A', 0, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'skullrod', name: 'Hellstaff', ammoType: 'runes', ammoUse: 1, ammoGive: 50,
+                yAdjust: 15,
+                projectiles: [{kind: 'hornrodfx1'}],
+                viewSprite: 'HROD', entry: ENTRY,
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['A', 4, 'fireProjectiles', 'fire2'], fire2: ['B', 4, 'fireProjectiles', 'fire3'],
+                    fire3: ['B', 0, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'phoenixrod', name: 'Phoenix Rod', ammoType: 'flameorbs', ammoUse: 1, ammoGive: 2,
+                yAdjust: 15, autoFire: false,
+                projectiles: [{kind: 'phoenixfx1'}],
+                viewSprite: 'PHNX', entry: ENTRY,
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 5, null, 'fire2'], fire2: ['C', 7, 'fireProjectiles', 'fire3'],
+                    fire3: ['D', 4, null, 'fire4'], fire4: ['B', 4, null, 'fire5'],
+                    fire5: ['B', 0, 'refire', 'ready'],
+                },
+            },
+            {
+                code: 'mace', name: 'Firemace', ammoType: 'spheres', ammoUse: 1, ammoGive: 50,
+                yAdjust: 15,
+                projectiles: [{kind: 'macefx1', randomSpreadH: SPREAD}],
+                viewSprite: 'MACE', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                main: {
+                    ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
+                    fire1: ['B', 4, null, 'hold1'],
+                    hold1: ['C', 3, 'fireProjectiles', 'hold2'], hold2: ['D', 3, 'fireProjectiles', 'hold3'],
+                    hold3: ['E', 3, 'fireProjectiles', 'hold4'], hold4: ['F', 3, 'fireProjectiles', 'hold5'],
+                    hold5: ['C', 4, 'refire', 'hold6'], hold6: ['D', 4, null, 'hold7'],
+                    hold7: ['E', 4, null, 'hold8'], hold8: ['F', 4, null, 'hold9'],
+                    hold9: ['B', 4, null, 'ready'],
+                },
+            },
+        ];
+
+        const catalog = {};
+        for (const entry of data) {
+            catalog[entry.code] = new DoomWeaponDef(entry);
+        }
+        return catalog;
+    }
+
+    // The crossbow idles on an 18-frame 1-tic animation (CRBW A×6 B×6 C×6),
+    // each state running A_WeaponReady like vanilla — generated as a chained
+    // loop the generic state machine consumes as-is.
+    _animatedReadyStates(letters) {
+        const states = {};
+        for (let i = 0; i < letters.length; i++) {
+            const key  = ((i === 0) ? 'ready' : 'ready' + (i + 1));
+            const next = ((i === (letters.length - 1)) ? 'ready' : 'ready' + (i + 2));
+            states[key] = [letters[i], 1, 'ready', next];
+        }
+        return states;
+    }
+
+    // Heretic hitscan puffs (zscript actors): the staff/gauntlet hits are
+    // translucent rising puffs (Alpha 0.4, VSpeed 1 / 0.8), the wand/claw
+    // sparks glow (RenderStyle Add, default alpha). The claw impact is
+    // BlasterPuff's Crash branch (FX17 ABCDE, the Spawn branch is its
+    // powered-mode in-flight puff).
+    weaponEffectTemplates() {
+        return [
+            {name: 'staffPuff',       sprite: 'PUF3', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 1,   additive: false},
+            {name: 'gauntletPuff',    sprite: 'PUF1', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 0.8, additive: false},
+            {name: 'goldwandPuff',    sprite: 'PUF2', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [3, 3, 3, 3, 3], alpha: 1,   rise: 0,   additive: true},
+            {name: 'blasterPuff',     sprite: 'FX17', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [4, 4, 4, 4, 4], alpha: 1,   rise: 0,   additive: true},
+            // Projectile deaths (zscript Death states): the bolts and the
+            // hellstaff burst glow (Add), the phoenix explosion and the mace
+            // ball break are plain bright frames.
+            {name: 'crossbowExplode1', sprite: 'FX03', letters: ['H', 'I', 'J'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true},
+            {name: 'crossbowExplode3', sprite: 'FX03', letters: ['C', 'D', 'E'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true},
+            {name: 'skullrodExplode',  sprite: 'FX00', letters: ['H', 'I', 'J', 'K', 'L', 'M'],      frameTics: [5, 5, 4, 4, 3, 3],       alpha: 1,   rise: 0, additive: true},
+            {name: 'phoenixExplode',   sprite: 'FX08', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [6, 5, 5, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false},
+            {name: 'phoenixTrail',     sprite: 'FX04', letters: ['B', 'C', 'D', 'E', 'F'],           frameTics: [4, 4, 4, 4, 4],          alpha: 0.4, rise: 0, additive: false},
+            {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false}
+        ];
+    }
+
+    // The Heretic projectiles (zscript actors, PL1): speed in map units/tic.
+    // The mace ball flies straight 16 tics then drops (A_MacePL1Check:
+    // gravity 1/8, horizontal speed rescaled to 7, vertical halved) — no
+    // bounce (agreed simplification: it breaks on first impact). The phoenix
+    // shot carries the A_Explode 128 splash and leaves its FX04 puff trail.
+    projectileDefs() {
+        return [
+            {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   additive: true,  decalType: 'cbowmark'},
+            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   additive: true,  decalType: 'cbowmark2'},
+            {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   additive: true,  decalType: 'hornscorch'},
+            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4},
+            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7}
+        ];
+    }
+
+    // Heretic weapon-preference chain when a weapon runs dry, from the zscript
+    // SelectionOrder values (lower = preferred: skullrod 200, blaster 500,
+    // crossbow 800, mace 1400, goldwand 2000, gauntlets 2300, phoenixrod 2600,
+    // staff 3800 = the unconditional fallback).
+    weaponFallbackOrder() {
+        return [
+            {code: 'skullrod'},
+            {code: 'blaster'},
+            {code: 'crossbow'},
+            {code: 'mace'},
+            {code: 'goldwand'},
+            {code: 'gauntlets'},
+            {code: 'phoenixrod'},
+            {code: 'staff'}
+        ];
+    }
+
+    // Full-kit cheat armour: the Enchanted Shield (zscript hereticarmor.zs,
+    // Armor.Saveamount 200, Savepercent 75).
+    cheatKitArmor() {
+        return {points: 200, absorb: 0.75};
     }
 
     buildItems() {
@@ -183,12 +382,13 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
-    // No weapon yet (see buildWeapons): bare hands until the arsenal lands.
+    // Canonical Heretic start (zscript hereticplayer.zs Player.StartItem):
+    // Staff + Gold Wand owned, the wand up, 50 wand crystals.
     startingLoadout() {
         return {
-            weapons:      [],
-            activeWeapon: null,
-            ammo:         {},
+            weapons:      ['staff', 'goldwand'],
+            activeWeapon: 'goldwand',
+            ammo:         {crystals: 50},
             maxArmor:     200
         };
     }
@@ -255,14 +455,33 @@ class HereticGameProfile extends DefaultGameProfile {
         return {name: name, wrap: 4};
     }
 
-    // No Heretic decal set yet (it lands with the arsenal): no external
-    // graphics, no templates — DoomDecals builds nothing under this profile.
+    // The UZDoom impact-decal graphics specific to Heretic (GPL v3,
+    // website/assets/uzdoom/heretic/). The boot loader takes the union of
+    // every profile's assets with key dedup: the templates below may also
+    // reference the plasma1/plasma2/scorch1 keys already loaded by the Doom
+    // profile (same UZDoom graphics).
     decalAssets() {
-        return {basePath: '', keys: []};
+        return {
+            basePath: '/assets/uzdoom/heretic/sprite/',
+            keys: ['cbowmark', 'cbalscr1', 'cbalscr2', 'bal7scr1', 'bal7scr2']
+        };
     }
 
+    // Faithful to UZDoom's decaldef.txt generators: GoldWand/Blaster hitscans
+    // → RailScorchLower (CBALSCR 0.2), CrossbowFX1/FX3 → CrossbowScorch
+    // (CBOWMARK 0.4 / 0.25), HornRodFX1 → PlasmaScorchLower (PLASMA 0.3),
+    // PhoenixFX1 → Scorch (SCORCH1 0.5), MaceFX1 → BaronScorch (BAL7SCR 0.5).
+    // translucent/gain follow the equivalent Doom templates (soft burns
+    // lifted above the shader's a<0.5 cutout).
     decalTemplates() {
-        return [];
+        return [
+            {type: 'railscorch',    keys: ['cbalscr1', 'cbalscr2'], scale: 0.2,  shade: [0, 0, 0], translucent: 1,    gain: 2.2},
+            {type: 'cbowmark',      keys: ['cbowmark'],             scale: 0.4,  shade: [0, 0, 0], translucent: 0.85, gain: 1.0},
+            {type: 'cbowmark2',     keys: ['cbowmark'],             scale: 0.25, shade: [0, 0, 0], translucent: 0.85, gain: 1.0},
+            {type: 'hornscorch',    keys: ['plasma1', 'plasma2'],   scale: 0.3,  shade: [0, 0, 0], translucent: 1,    gain: 2.2},
+            {type: 'phoenixscorch', keys: ['scorch1'],              scale: 0.5,  shade: [0, 0, 0], translucent: 1,    gain: 1.8},
+            {type: 'macescorch',    keys: ['bal7scr1', 'bal7scr2'], scale: 0.5,  shade: [0, 0, 0], translucent: 1,    gain: 2.2}
+        ];
     }
 
     /**

@@ -18,7 +18,6 @@ class DoomHitscan {
     fire(def, user, accurate) {
         const spreadH = def.getSpreadH();
         const spreadV = def.getSpreadV();
-        const range   = def.getRange();
         for (let i = 0; i < def.getPellets(); i++) {
             let yaw   = user.yaw;
             let pitch = user.pitch;
@@ -26,18 +25,20 @@ class DoomHitscan {
                 yaw   += spreadH * this._rng.nextDiff();
                 pitch += spreadV * this._rng.nextDiff();
             }
-            this._shootRay(user, yaw, pitch, range, false);
+            this._shootRay(def, user, yaw, pitch, false);
         }
     }
 
-    // A_Punch / A_Saw: a single short-range ray with horizontal spread; a melee
-    // puff starts at frame C (no bright spark).
+    // Melee swing (A_Punch / A_Saw, Heretic staff/gauntlets): a single
+    // short-range ray with horizontal spread; the melee puff skips its bright
+    // spark frames (the def's effect template says where it starts).
     fireMelee(def, user) {
         const yaw = user.yaw + def.getSpreadH() * this._rng.nextDiff();
-        this._shootRay(user, yaw, user.pitch, def.getRange(), true);
+        this._shootRay(def, user, yaw, user.pitch, true);
     }
 
-    _shootRay(user, yaw, pitch, range, melee) {
+    _shootRay(def, user, yaw, pitch, melee) {
+        const range  = def.getRange();
         const yawR   = yaw * DEG_TO_RAD;
         const pitchR = pitch * DEG_TO_RAD;
         const cp = Math.cos(pitchR);
@@ -60,16 +61,19 @@ class DoomHitscan {
             return;
         }
         // Pull the puff in front of the surface (vanilla: 4 map units back).
+        // The puff and decal are per-weapon def data (profile catalogs).
         const back = 4 * WadConstants.SCALE;
         this._effects.spawnPuff(
+            def.getPuffType(),
             hit.point[0] - dx * back,
             hit.point[1] - dy * back,
             hit.point[2] - dz * back,
             melee
         );
-        // Persistent bullet chip on the wall (self-filters floors/ceilings).
-        if (this._decals !== null) {
-            this._decals.spawnWallDecal('bulletChip', hit.point, hit.normal, [dx, dy, dz], hit.tri.instance);
+        // Persistent impact mark on the wall (self-filters floors/ceilings);
+        // a null decal type leaves no mark (Heretic melee weapons).
+        if ((this._decals !== null) && (def.getDecalType() !== null)) {
+            this._decals.spawnWallDecal(def.getDecalType(), hit.point, hit.normal, [dx, dy, dz], hit.tri.instance);
         }
     }
 }

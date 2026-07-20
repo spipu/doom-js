@@ -48,7 +48,8 @@ class DoomThingCatalog {
                 solid:        ((entry.solid !== undefined) ? (entry.solid === true) : def.isSolid()),
                 radius:       def.getRadius(),
                 ceiling:      def.isCeiling(),
-                effect:       null
+                effect:       null,
+                spawnerGroup: null
             };
         }
         return {
@@ -59,7 +60,10 @@ class DoomThingCatalog {
             solid:        false,
             radius:       0,
             ceiling:      false,
-            effect:       entry.effect
+            effect:       entry.effect,
+            // Spawner things sharing a group key: only ONE random occurrence
+            // per group materializes each level (Heretic MaceSpawner).
+            spawnerGroup: (entry.spawnerGroup ?? null)
         };
     }
 }
