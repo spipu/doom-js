@@ -221,7 +221,7 @@ class DoomDecals {
 
 DoomDecals.MAX        = 256;                       // FIFO cap on permanent decals
 DoomDecals.OFFSET     = 0.75 * WadConstants.SCALE; // push off the wall (anti z-fight)
-DoomDecals.LITE_LIFT  = 0.4 * WadConstants.SCALE;  // BFG flash sits in front of its scorch
+DoomDecals.LITE_LIFT  = 1.92 * WadConstants.SCALE; // BFG flash floats 0.03 m in front of its scorch (coplanar it was barely visible)
 DoomDecals.FADE_STEPS = 8;
 DoomDecals.FADE_START = 1.0;                        // GoAway2 DecayStart (s)
 DoomDecals.FADE_TIME  = 3.0;                        // GoAway2 DecayTime (s)
