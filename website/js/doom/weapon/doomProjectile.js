@@ -75,6 +75,9 @@ class DoomProjectileSystem {
             // pre-damping energy floor), maxBounces, spawnKind (balls spat
             // sideways at each bounce)} — null = explode on any impact.
             bounce:           spec.bounce ?? null,
+            // Muzzle height in map units above the FEET (A_FireMacePL1 spawns
+            // the lobbed ball at Pos + 28); null = the eye (camera) height.
+            spawnHeight:      ((spec.spawnHeight !== undefined) ? spec.spawnHeight * scale : null),
         };
     }
 
@@ -125,7 +128,13 @@ class DoomProjectileSystem {
             vy = (2 + Math.max(-5, Math.min(5, Math.tan(pitchR)))) * WadConstants.SCALE;
         }
 
-        this._spawnRaw(def, user.getCameraX(), user.getCameraY(), user.getCameraZ(), vx, vy, vz);
+        let originY = user.getCameraY();
+        if (def.spawnHeight !== null) {
+            // Feet-anchored muzzle, nudged by the initial vertical velocity
+            // like vanilla (A_FireMacePL1's ball.AddZ(ball.Vel.Z)).
+            originY = user.y + def.spawnHeight + vy;
+        }
+        this._spawnRaw(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz);
     }
 
     // Register one in-flight projectile from an explicit origin and velocity —

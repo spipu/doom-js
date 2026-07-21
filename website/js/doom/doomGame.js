@@ -629,8 +629,6 @@ class DoomGame {
         const modal = new MenuModal(display);
         let message = 'Niveau ' + this._levelName + ' terminé !';
         if (nextLevel === null) {
-            // End of game: episodic maps end their episode (ExM8), the rest
-            // ends the run (MAP30, last level of the WAD, UMAPINFO end*).
             message = ((/^E\dM\d$/.test(this._levelName)) ? 'Épisode terminé !' : 'Partie terminée !');
         }
         modal.showMessage(message);
