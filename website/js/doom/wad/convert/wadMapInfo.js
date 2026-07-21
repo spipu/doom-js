@@ -7,10 +7,14 @@
  * secret returns, MAPxx secret maps) come from the game profile
  * (progressionRules) — only the name-pattern mechanics live here:
  * - ExMy: secret exit → ExM9; normal exit from ExM9 → per-episode return;
+ *   normal exit from the episode-end map (ExM8) → end of game (ga_victory);
  *   otherwise sequential lump order.
  * - MAPxx: secret exit → the secret slot (the super-secret slot when already
  *   on the secret one); normal exit from either slot → the secret return;
+ *   both exits of the end slot (MAP30) → end of game (cast call);
  *   otherwise sequential lump order.
+ * - explicitRoutes of the profile override the patterns for listed maps
+ *   (Heretic hidden episode: E6M3 loops back to E6M1).
  * - A routed target absent from the WAD falls back to sequential; a null
  *   target means end of game (back to the menu).
  *
@@ -84,17 +88,32 @@ class WadMapInfo {
         const index = this._levels.indexOf(current);
         const sequential = ((index >= 0 && index + 1 < this._levels.length) ? this._levels[index + 1] : null);
 
+        const explicit = (this._rules.explicitRoutes ?? {})[current];
+        if (explicit !== undefined) {
+            const target = ((secret === true) ? explicit.nextsecret : explicit.next);
+            return ((target !== null && this._levels.includes(target)) ? target : sequential);
+        }
+
         let routed = null;
         const episodic = current.match(/^E(\d)M(\d)$/);
         const doom2 = current.match(/^MAP(\d{2})$/);
         if (episodic !== null) {
             const [, episode, map] = episodic;
+            if (!secret && (Number(map) === this._rules.episodeEndMap)) {
+                // Vanilla ends the game on the episode-end map's normal exit
+                // (ga_victory); its secret exit still routes to ExM9 below.
+                return null;
+            }
             if (secret) {
                 routed = 'E' + episode + 'M9';
             } else if (map === '9') {
                 routed = this._rules.episodeSecretReturns[episode] ?? null;
             }
         } else if (doom2 !== null) {
+            if (current === this._rules.mapEndSlot) {
+                // MAP30 ends the game through both exits (cast call).
+                return null;
+            }
             if (secret) {
                 routed = ((current === this._rules.mapSecretSlot) ? this._rules.mapSuperSecretSlot : this._rules.mapSecretSlot);
             } else if ((current === this._rules.mapSecretSlot) || (current === this._rules.mapSuperSecretSlot)) {
