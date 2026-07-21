@@ -465,7 +465,6 @@ class User {
                 }
                 const friction = this._externalForces.getGroundFriction();
                 if (friction === null) {
-                    // Full grip: direct control (default ground model)
                     this._vx = targetVx;
                     this._vz = targetVz;
                 } else {

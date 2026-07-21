@@ -355,7 +355,7 @@ class HereticGameProfile extends DefaultGameProfile {
             // at Speed 10 + pitch-driven vertical kick, gravity 0.125 from the
             // first tic, same death frames as the normal ball. Bounces while
             // its energy holds, spitting two sideways FX3 each time.
-            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
+            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
             // The tiny side balls spat by an FX2 bounce — one bounce each,
             // like the normal ball (they inherit MaceFX1's impact).
             {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}}
