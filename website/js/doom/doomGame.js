@@ -565,10 +565,16 @@ class DoomGame {
     }
 
     // Engine overlay callback: draw the weapon view sprite (+ muzzle flash) over
-    // the scene. The controller returns 0..1 screen rects; the renderer draws.
+    // the scene. The controller returns rects normalised on the 320x200
+    // psprite canvas — a 4:3 design (1.2 tall pixels) — so on a wider screen
+    // the weapon layer is squeezed around the centre to keep its vanilla
+    // proportions (gzdoom-like) instead of being stretched to the full width:
+    // asymmetric weapons (Heretic gauntlets, the Doom fist) stay where the
+    // original game puts them.
     _drawWeaponOverlay(renderer, engine) {
+        const k = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
         for (const spr of this._playerWeapon.getViewSprites()) {
-            renderer.drawScreenSprite(engine, spr.texId, spr.x, spr.y, spr.w, spr.h, spr.light);
+            renderer.drawScreenSprite(engine, spr.texId, 0.5 + (spr.x - 0.5) * k, spr.y, spr.w * k, spr.h, spr.light);
         }
     }
 
@@ -657,3 +663,6 @@ class DoomGame {
         }
     }
 }
+
+// The 320x200 psprite canvas was authored for a 4:3 display.
+DoomGame.PSPRITE_ASPECT = 4 / 3;
