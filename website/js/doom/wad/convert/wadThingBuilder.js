@@ -23,6 +23,7 @@ class WadThingBuilder {
         this._skill        = skill;
         this._skipped  = 0;
         this._filtered = 0;
+        this._paddedFrames = {};   // anim key → padded frame view
     }
 
     /**
@@ -113,8 +114,8 @@ class WadThingBuilder {
             return null;
         }
 
-        const first = sprites[0];
-        const geo   = WadGeometry.spriteBillboardData(first);
+        const view = this._frameView(desc, sprites);
+        const geo  = WadGeometry.spriteBillboardData(view);
         // Hanging things anchor their top to the ceiling; the rest stand on the floor.
         const baseH = ((desc.ceiling) ? sect.ch : sect.fh);
 
@@ -123,11 +124,11 @@ class WadThingBuilder {
         // clips this vertically (no free look); like modern ports we floor-clip
         // floor things so feet never sink below the sector floor. Hanging things
         // keep their (negative) offset so they stay below the ceiling.
-        const sink = first.topOffset - first.height;
+        const sink = view.topOffset - view.height;
 
         return {
             key:           desc.frames.join('|'),
-            texIds:        sprites.map((s) => s.loaderId),
+            texIds:        view.texIds,
             animDuration:  desc.animDuration,
             halfWidth:     geo.halfWidth,
             height:        geo.height,
@@ -144,6 +145,67 @@ class WadThingBuilder {
             radius:        desc.radius,
             effect:        desc.effect
         };
+    }
+
+    // Render view of a thing's frames: texture ids + the box the billboard quad
+    // is sized on. The quad is static and the animation only swaps textures on
+    // it, so frames of differing boxes would each be rescaled to the first
+    // frame's box (vanilla anchors every frame on its own offsets: the brazier
+    // flame grows, never the statue). Such frames are recomposed on a common
+    // padded canvas; a single frame (or frames sharing one box) passes through.
+    _frameView(desc, sprites) {
+        const first   = sprites[0];
+        const sameBox = sprites.every((s) => (
+            (s.width === first.width) && (s.height === first.height)
+            && (s.leftOffset === first.leftOffset) && (s.topOffset === first.topOffset)
+        ));
+        if (sameBox) {
+            return {
+                texIds:     sprites.map((s) => s.loaderId),
+                width:      first.width,
+                height:     first.height,
+                leftOffset: first.leftOffset,
+                topOffset:  first.topOffset
+            };
+        }
+
+        const key = desc.frames.join('|');
+        if (this._paddedFrames[key] === undefined) {
+            this._paddedFrames[key] = this._padFrames(sprites);
+        }
+
+        return this._paddedFrames[key];
+    }
+
+    // Recompose every frame on the union of their vanilla anchor boxes (top at
+    // topOffset, centred on leftOffset), each blitted at its exact vanilla
+    // position inside transparent padding: all frames share one box and the
+    // texture swap never rescales anything.
+    _padFrames(sprites) {
+        const top   = Math.max(...sprites.map((s) => s.topOffset));
+        const foot  = Math.min(...sprites.map((s) => (s.topOffset - s.height)));
+        const left  = Math.max(...sprites.map((s) => s.leftOffset));
+        const right = Math.max(...sprites.map((s) => (s.width - s.leftOffset)));
+        const w = left + right;
+        const h = top - foot;
+
+        const texIds = sprites.map((spr) => {
+            const src    = loader.textures().get(spr.loaderId);
+            const padded = new ImageData(w, h);
+            const dx     = left - spr.leftOffset;
+            const dy     = top - spr.topOffset;
+            for (let row = 0; row < spr.height; row++) {
+                const srcStart = row * spr.width * 4;
+                padded.data.set(
+                    src.data.subarray(srcStart, srcStart + (spr.width * 4)),
+                    (((row + dy) * w) + dx) * 4
+                );
+            }
+
+            return loader.textures().loadFromData(null, padded);
+        });
+
+        return {texIds, width: w, height: h, leftOffset: left, topOffset: top};
     }
 
     // Number of mapped things dropped because no sector was found (call after buildAll).

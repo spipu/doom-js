@@ -229,16 +229,19 @@ class DoomProjectileSystem {
     // Impact: spawn the explosion pulled a little off the surface (like the puff),
     // then the rocket's radius splash.
     _explode(p, hit) {
+        // Persistent scorch on the wall (self-filters floors/ceilings); a null
+        // decal type leaves no mark. Spawned BEFORE the explosion effect:
+        // instances draw in id order and an additive explosion writes no depth
+        // — a decal drawn after it would paint over it (same rule as the puff
+        // in DoomHitscan).
+        if ((this._decals !== null) && (p.def.decalType !== null)) {
+            this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
+        }
         const back = 4 * WadConstants.SCALE;
         const ex = hit.point[0] - p.dx * back;
         const ey = hit.point[1] - p.dy * back;
         const ez = hit.point[2] - p.dz * back;
         this._effects.spawn(p.def.explosion, ex, ey, ez);
-        // Persistent scorch on the wall (self-filters floors/ceilings); a null
-        // decal type leaves no mark.
-        if ((this._decals !== null) && (p.def.decalType !== null)) {
-            this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
-        }
         if (p.def.splashDamage > 0) {
             this._radiusAttack(ex, ez, p.def.splashDamage);
         }
