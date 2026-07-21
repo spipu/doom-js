@@ -17,10 +17,18 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {
             // Map entered when leaving the secret ExM9 of each episode
             episodeSecretReturns: {1: 'E1M4', 2: 'E2M6', 3: 'E3M7', 4: 'E4M3'},
+            // ExM<n> whose NORMAL exit ends the game (vanilla ga_victory);
+            // its secret exit still routes to ExM9
+            episodeEndMap: 8,
             // MAPxx secret slots and where their normal exit returns
             mapSecretSlot:      'MAP31',
             mapSuperSecretSlot: 'MAP32',
-            mapSecretReturn:    'MAP16'
+            mapSecretReturn:    'MAP16',
+            // MAPxx whose BOTH exits end the game (cast call)
+            mapEndSlot:         'MAP30',
+            // Per-map route overrides {name: {next, nextsecret}} — pattern
+            // exceptions like the Heretic hidden-episode loop
+            explicitRoutes:     {}
         };
     }
 

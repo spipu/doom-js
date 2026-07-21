@@ -31,7 +31,11 @@ class HereticGameProfile extends DefaultGameProfile {
     progressionRules() {
         return {
             ...super.progressionRules(),
-            episodeSecretReturns: {1: 'E1M7', 2: 'E2M5', 3: 'E3M5', 4: 'E4M5', 5: 'E5M4'}
+            episodeSecretReturns: {1: 'E1M7', 2: 'E2M5', 3: 'E3M5', 4: 'E4M5', 5: 'E5M4'},
+            // Hidden episode 6 loops forever (UZDoom mapinfo/heretic.txt:
+            // E6M1→E6M2→E6M3→E6M1, both exits). E6M1/E6M2 already chain by
+            // lump order; only the loop-back needs an explicit route.
+            explicitRoutes: {E6M3: {next: 'E6M1', nextsecret: 'E6M1'}}
         };
     }
 
