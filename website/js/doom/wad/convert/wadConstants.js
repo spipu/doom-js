@@ -85,6 +85,8 @@ class WadConstants {
         'STAIR_BY_SPECIAL', 'GUN_BY_SPECIAL', 'SWITCH_INTERACTION_BY_SPECIAL',
         'WALK_TRIGGER_ONCE_BY_SPECIAL', 'SCROLL_WALL_BY_SPECIAL',
         'SECTOR_DAMAGE_BY_SPECIAL', 'LIGHT_EFFECT_BY_SPECIAL',
+        'SECTOR_PUSH_BY_SPECIAL', 'SECTOR_FRICTION_BY_SPECIAL',
+        'SECTOR_FLAT_SCROLL_BY_SPECIAL',
         'SWITCH_SPECIALS', 'SWITCH_REVERSE_SPECIALS', 'SWITCH_EXIT_SPECIALS',
         'WALK_TRIGGER_SPECIALS', 'WALK_STOP_SPECIALS', 'WALK_EXIT_SPECIALS',
         'EXIT_SECRET_SPECIALS', 'TELEPORT_SPECIALS'
@@ -641,6 +643,24 @@ class WadConstants {
     // Secret sector (P_SpawnSpecials counts it in totalsecret, then
     // P_PlayerInSpecialSector credits it once and clears the special)
     static SECTOR_SECRET_SPECIAL = 9;
+
+    // --- Sector pushes (wind / conveyor floors) ---
+
+    // Player push of a SECTOR special, in map units per tic. kind 'wind' =
+    // per-tic thrust, applied on the ground AND in the air (Heretic windTab);
+    // kind 'carry' = terminal carry speed, feet on the sector floor only
+    // (BOOM scroller mechanics). Doom has none — the tables are filled by
+    // game profiles (Heretic 20-51 + lava 4).
+    static SECTOR_PUSH_BY_SPECIAL = {};
+
+    // Ground slipperiness of a SECTOR special: per-tic momentum keep factor
+    // fed to UserExternalForces.setGroundFriction (Heretic ice = 0.97265625).
+    static SECTOR_FRICTION_BY_SPECIAL = {};
+
+    // Visual floor-flat scroll of a SECTOR special, in map units per tic
+    // eastward (Heretic east carriers + scrolling lava — vanilla only
+    // scrolls the texture for the EAST family).
+    static SECTOR_FLAT_SCROLL_BY_SPECIAL = {};
 
     // --- Pickups ---
 

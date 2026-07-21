@@ -302,11 +302,18 @@ class WadStaticMapBuilder {
             const hasSky = sec.ct.startsWith('F_SKY');
             const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
+            // Visual eastward flat drift (Heretic scrolling lava / east
+            // conveyors): map units per tic → UV fraction per second (a flat
+            // texel = 1 map unit, 64 per tile); negative offset = the pattern
+            // flows toward +x (east).
+            const flatScroll = (WadConstants.SECTOR_FLAT_SCROLL_BY_SPECIAL[sec.special] ?? 0);
+            const uScroll    = ((flatScroll !== 0) ? (-flatScroll / WadConstants.SECONDS_PER_TIC / 64) : 0);
+
             for (const p of polys) {
                 // Skip the static floor for lifts, rising floors AND stairs — in
                 // every case a moving top-flat covers it (otherwise z-fighting).
                 if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
-                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si));
+                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si), uScroll);
                 }
                 // Sky flats skipped — outdoor areas have no ceiling geometry
                 if (ct >= 0) {

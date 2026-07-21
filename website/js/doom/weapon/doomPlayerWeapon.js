@@ -26,6 +26,7 @@ class DoomPlayerWeapon {
 
         this._ticks = 0;
         this._acc   = 0;
+        this._weaponDown = false;
 
         this._bringUpWeapon();
     }
@@ -49,6 +50,15 @@ class DoomPlayerWeapon {
         while (this._acc >= DoomPlayerWeapon.MS_PER_TIC) {
             this._acc  -= DoomPlayerWeapon.MS_PER_TIC;
             this._ticks += 1;
+            if (this._user.isDead()) {
+                // P_DropWeapon / A_Lower dead case: the weapon slides down at
+                // LOWERSPEED and stays at the bottom — states frozen, muzzle
+                // flash killed, vanilla never raises it again while dead.
+                this._flashPsp.stateKey = null;
+                this._weaponDown = this._motion.lower(DoomPlayerWeapon.LOWERSPEED);
+                continue;
+            }
+            this._weaponDown = false;
             this._tickPsprite(this._weaponPsp);
             this._tickPsprite(this._flashPsp);
             this._motion.ease();
@@ -93,6 +103,9 @@ class DoomPlayerWeapon {
     // --- View sprites for the renderer ---
 
     getViewSprites() {
+        if (this._weaponDown) {
+            return [];
+        }
         const out    = [];
         const weapon = this._spriteDesc(this._weaponPsp, this._stateBright(this._weaponPsp));
         if (weapon !== null) {
@@ -305,6 +318,12 @@ class DoomPlayerWeapon {
             return;
         }
         for (const shot of this._def().getProjectiles()) {
+            if ((shot.altKind !== undefined) && (this._rng.next() < shot.altChance)) {
+                // Rare alternative shot (A_FireMacePL1: 28/256 throws the
+                // lobbed MaceFX2) — straight along the aim, no spread.
+                this._projectiles.spawn(shot.altKind, this._user, 0, 0);
+                continue;
+            }
             this._projectiles.spawn(shot.kind, this._user, shot.angleOffset ?? 0, shot.randomSpreadH ?? 0);
         }
     }

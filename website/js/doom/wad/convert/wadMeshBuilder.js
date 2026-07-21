@@ -154,8 +154,10 @@ class WadMeshBuilder {
      * @param {number}     light
      * @param {number[][][]|null} holes
      * @param {int|null}   lightGroup
+     * @param {number}     uScrollUvPerSec  UV drift of the flat per second
+     *                     (scrolling lava/conveyor floors; 0 = static)
      */
-    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null) {
+    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null, uScrollUvPerSec = 0) {
         if (polyVerts2d.length < 3) {
             return;
         }
@@ -247,6 +249,9 @@ class WadMeshBuilder {
             }
             if (lightGroup !== null) {
                 face.lightGroup = lightGroup;
+            }
+            if (uScrollUvPerSec !== 0) {
+                face.uvScroll = {u: uScrollUvPerSec, v: 0};
             }
             mesh.faces.push(face);
         }
