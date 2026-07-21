@@ -279,7 +279,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {
                 code: 'mace', name: 'Firemace', ammoType: 'spheres', ammoUse: 1, ammoGive: 50,
                 yAdjust: 15,
-                projectiles: [{kind: 'macefx1', randomSpreadH: SPREAD}],
+                projectiles: [{kind: 'macefx1', randomSpreadH: SPREAD, altKind: 'macefx2', altChance: 28}],
                 viewSprite: 'MACE', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -350,7 +350,15 @@ class HereticGameProfile extends DefaultGameProfile {
             {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   alpha: 1, additive: true,  decalType: 'cbowmark2'},
             {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   alpha: 1, additive: true,  decalType: 'hornscorch'},
             {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4},
-            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7}
+            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}},
+            // The rare lobbed ball (28/256 of A_FireMacePL1 shots): flat launch
+            // at Speed 10 + pitch-driven vertical kick, gravity 0.125 from the
+            // first tic, same death frames as the normal ball. Bounces while
+            // its energy holds, spitting two sideways FX3 each time.
+            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
+            // The tiny side balls spat by an FX2 bounce — one bounce each,
+            // like the normal ball (they inherit MaceFX1's impact).
+            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}}
         ];
     }
 
@@ -528,10 +536,11 @@ class HereticGameProfile extends DefaultGameProfile {
      * ceiling lower-and-crush 1049 (close-stay at floor+8, crush damage 0 in
      * the xlat → same stall+slow pressure as Doom 44/72), stairs at
      * FLOORSPEED = 1 u/tic (1007/1008 step 8, 1106/1107 step 16), rightward
-     * texture scroll 1099, and the lava/sludge sector damages (specials.cpp
+     * texture scroll 1099, the lava/sludge sector damages (specials.cpp
      * SetupSectorDamage: lava 5/16 tics leak 256, hefty lava 8/16 leak 256,
-     * sludge 4/32 leak 0 — 1204 also scrolls the flat east in vanilla, the
-     * carry is not implemented, damage only).
+     * sludge 4/32 leak 0), the sector pushes (winds 1040-1051, conveyors
+     * 1021-1039, scrolling lava 1204 — see _sectorPushTable) and the ice
+     * ground 1015.
      *
      * @returns {object}
      */
@@ -557,13 +566,58 @@ class HereticGameProfile extends DefaultGameProfile {
                 1205: {damage: 5, windowTics: 16, leak: 256},
                 1207: {damage: 4, windowTics: 32, leak: 0},
                 1216: {damage: 8, windowTics: 16, leak: 256}
-            }
+            },
+            SECTOR_PUSH_BY_SPECIAL: this._sectorPushTable(),
+            // Ice ground (dFriction_Low): per-tic momentum keep = 0xF900/0x10000
+            SECTOR_FRICTION_BY_SPECIAL: {1015: {friction: 0.97265625}},
+            // Vanilla only scrolls the floor flat for the EAST carriers and the
+            // lava (specials.cpp: -0.5 × 2^n, lava -4) — map units per tic east
+            SECTOR_FLAT_SCROLL_BY_SPECIAL: {1020: 0.5, 1021: 1, 1022: 2, 1023: 4, 1024: 8, 1204: 4}
         };
     }
 
     /**
-     * Identity when absent, 0 = dropped (documented no-ops: wind/current
-     * 20-51, low friction 15, phased-light sequences share the same range).
+     * Player pushes of the Heretic sector specials, in map units per tic
+     * (UZDoom p_mobj.cpp:4809-4834 + 2410-2437). Carriers 20-39 (→ 1020-1039)
+     * are terminal carry speeds: the east family uses the modern GZDoom values
+     * matched to the scrolling texture (0.5/1/2/4/8 — user choice; the 0.5
+     * step sits below CARRYSTOPSPEED and pushes nothing, texture drift only,
+     * hence no 1020 entry), north/south/west keep the original mul/3 speeds
+     * (GZDoom only rebased the east). Winds 40-51 (→ 1040-1051) are per-tick
+     * thrusts (windTab 5/32, 10/32, 25/32); the scrolling lava 1204 carries
+     * east at 4.0 (12 / (32 × CARRYFACTOR)).
+     *
+     * @returns {object}
+     */
+    _sectorPushTable() {
+        const push = {
+            1021: {kind: 'carry', dx: 1, dz: 0},
+            1022: {kind: 'carry', dx: 2, dz: 0},
+            1023: {kind: 'carry', dx: 4, dz: 0},
+            1024: {kind: 'carry', dx: 8, dz: 0},
+            1204: {kind: 'carry', dx: 4, dz: 0}
+        };
+        const muls = [5, 10, 25, 30, 35];
+        for (let step = 0; step < 5; step++) {
+            const speed = muls[step] / 3;
+            push[1025 + step] = {kind: 'carry', dx: 0,      dz: speed};
+            push[1030 + step] = {kind: 'carry', dx: 0,      dz: -speed};
+            push[1035 + step] = {kind: 'carry', dx: -speed, dz: 0};
+        }
+        const windTab = [5 / 32, 10 / 32, 25 / 32];
+        for (let step = 0; step < 3; step++) {
+            push[1040 + step] = {kind: 'wind', dx: windTab[step],  dz: 0};
+            push[1043 + step] = {kind: 'wind', dx: 0,              dz: windTab[step]};
+            push[1046 + step] = {kind: 'wind', dx: 0,              dz: -windTab[step]};
+            push[1049 + step] = {kind: 'wind', dx: -windTab[step], dz: 0};
+        }
+        return push;
+    }
+
+    /**
+     * Identity when absent, 0 = dropped (documented no-op: 17, phased-light
+     * sequences). Winds/carriers 20-51 and the ice 15 map to their synthetic
+     * push/friction codes (1000 + special).
      *
      * @returns {object}
      */
@@ -573,11 +627,11 @@ class HereticGameProfile extends DefaultGameProfile {
             5:  1205,
             7:  1207,
             16: 1216,
-            15: 0,
+            15: 1015,
             17: 0
         };
         for (let special = 20; special <= 51; special++) {
-            map[special] = 0;
+            map[special] = 1000 + special;
         }
         return map;
     }

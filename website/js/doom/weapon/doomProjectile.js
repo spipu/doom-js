@@ -68,8 +68,13 @@ class DoomProjectileSystem {
             gravity:          (spec.gravity ?? 0) * scale,
             gravityDelayTics: spec.gravityDelayTics ?? 0,
             dropSpeed:        (spec.dropSpeed ?? 0) * scale,
+            lob:              (spec.lob === true),
             trailEffect:      spec.trailEffect ?? null,
             trailEveryTics:   spec.trailEveryTics ?? 0,
+            // Floor bounce (Heretic mace family): {damping, minVz (u/tic,
+            // pre-damping energy floor), maxBounces, spawnKind (balls spat
+            // sideways at each bounce)} — null = explode on any impact.
+            bounce:           spec.bounce ?? null,
         };
     }
 
@@ -107,14 +112,33 @@ class DoomProjectileSystem {
         const dy = Math.sin(pitchR);
         const dz = Math.cos(yawR) * cp;
 
+        let vx = dx * def.speed;
+        let vy = dy * def.speed;
+        let vz = dz * def.speed;
+        if (def.lob) {
+            // Lobbed ball (A_FireMacePL1's MaceFX2): full speed FLAT along the
+            // yaw (VelFromAngle) and a vertical kick from the aim pitch alone —
+            // Vel.Z = 2 - clamp(tan(pitch), -5, 5) with GZDoom's down-positive
+            // pitch (ours is up-positive), in map units per tic.
+            vx = Math.sin(yawR) * def.speed;
+            vz = Math.cos(yawR) * def.speed;
+            vy = (2 + Math.max(-5, Math.min(5, Math.tan(pitchR)))) * WadConstants.SCALE;
+        }
+
+        this._spawnRaw(def, user.getCameraX(), user.getCameraY(), user.getCameraZ(), vx, vy, vz);
+    }
+
+    // Register one in-flight projectile from an explicit origin and velocity —
+    // shared by the player muzzle (spawn) and the bounce-spawned balls.
+    _spawnRaw(def, x, y, z, vx, vy, vz) {
         const p = {
             def,
-            x: user.getCameraX(), y: user.getCameraY(), z: user.getCameraZ(),
+            x, y, z,
             // The velocity is the single source of truth: the direction is
             // recomputed from it at every tic (_stepTic), never read before.
             dx: 0, dy: 0, dz: 0,
-            vx: dx * def.speed, vy: dy * def.speed, vz: dz * def.speed,
-            tics: 0, shown: 0, traveled: 0, dropped: false,
+            vx, vy, vz,
+            tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0,
             instId: null,
         };
         p.instId = loader.instances().spawnFromData(null, {
@@ -163,28 +187,33 @@ class DoomProjectileSystem {
                 { floors: true, ceilings: true, dynamic: true }
             );
             if (hit !== null) {
-                this._explode(p, hit);
-                loader.instances().scheduleRemoval(inst);
-                continue;
-            }
+                if (!this._tryBounce(p, hit)) {
+                    this._explode(p, hit);
+                    loader.instances().scheduleRemoval(inst);
+                    continue;
+                }
+                // Bounced: repositioned on the floor with the reflected
+                // velocity, no move this tic — the flight resumes next tic
+                // (vanilla P_FloorBounceMissile cancels the move too).
+            } else {
+                // In-flight trail (Heretic A_PhoenixPuff), left at the current
+                // position before the move so it lags behind the shot — never on
+                // tic 0 (that would drop a puff in the player's eye; vanilla state
+                // actions only run from the first state transition). The cadence
+                // is profile data; a def without it stays inert.
+                if ((p.def.trailEffect !== null) && (p.def.trailEveryTics > 0)
+                    && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
+                    this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
+                }
 
-            // In-flight trail (Heretic A_PhoenixPuff), left at the current
-            // position before the move so it lags behind the shot — never on
-            // tic 0 (that would drop a puff in the player's eye; vanilla state
-            // actions only run from the first state transition). The cadence
-            // is profile data; a def without it stays inert.
-            if ((p.def.trailEffect !== null) && (p.def.trailEveryTics > 0)
-                && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
-                this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
-            }
-
-            p.x += p.vx;
-            p.y += p.vy;
-            p.z += p.vz;
-            p.traveled += step;
-            if (p.traveled > DoomProjectileSystem.MAX_TRAVEL) {   // escaped through open sky
-                loader.instances().scheduleRemoval(inst);
-                continue;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.z += p.vz;
+                p.traveled += step;
+                if (p.traveled > DoomProjectileSystem.MAX_TRAVEL) {   // escaped through open sky
+                    loader.instances().scheduleRemoval(inst);
+                    continue;
+                }
             }
 
             p.tics += 1;
@@ -224,6 +253,50 @@ class DoomProjectileSystem {
             }
         }
         p.vy -= p.def.gravity;
+    }
+
+    // Floor bounce of the Heretic mace balls (P_FloorBounceMissile +
+    // A_MaceBallImpact/A_MaceBallImpact2): on an upward-facing hit while
+    // falling, the vertical speed reflects damped (×0.75). FX1/FX3 bounce a
+    // single time (the MAGIC_JUNK marker), FX2 keeps bouncing while its
+    // pre-damping energy is >= minVz (2 u/tic) and spits two sideways FX3 at
+    // every bounce. Walls and ceilings always explode.
+    _tryBounce(p, hit) {
+        const bounce = p.def.bounce;
+        if ((bounce === null) || (hit.normal[1] < 0.7) || (p.vy >= 0)) {
+            return false;
+        }
+        if ((bounce.maxBounces !== undefined) && (p.bounces >= bounce.maxBounces)) {
+            return false;
+        }
+        const scale = WadConstants.SCALE;
+        if ((bounce.minVz !== undefined) && (-p.vy < bounce.minVz * scale)) {
+            return false;
+        }
+        p.bounces += 1;
+        p.x = hit.point[0];
+        p.y = hit.point[1] + 0.02;
+        p.z = hit.point[2];
+        p.vy = -p.vy * bounce.damping;
+
+        // A_MaceBallImpact2's side balls: horizontal speed = the ball's damped
+        // up-velocity minus 1 u/tic, perpendicular to its heading (±90°), plus
+        // half the ball's horizontal velocity; same (damped) vertical velocity.
+        if (bounce.spawnKind !== undefined) {
+            const tinyDef = this._defs[bounce.spawnKind];
+            const h     = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
+            const tinyH = p.vy - scale;
+            if ((tinyDef !== null) && (tinyDef !== undefined) && (h > 0) && (tinyH > 0)) {
+                for (const side of [1, -1]) {
+                    this._spawnRaw(tinyDef,
+                        p.x, p.y, p.z,
+                        (p.vz / h) * side * tinyH + p.vx * 0.5,
+                        p.vy,
+                        (-p.vx / h) * side * tinyH + p.vz * 0.5);
+                }
+            }
+        }
+        return true;
     }
 
     // Impact: spawn the explosion pulled a little off the surface (like the puff),

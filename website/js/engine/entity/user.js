@@ -49,6 +49,8 @@ class User {
         this._vz             = 0;
         this._inputX         = 0;
         this._inputZ         = 0;
+        // Environment perturbations (wind, conveyors, ice) fed by game code
+        this._externalForces = new UserExternalForces();
 
         // Energy / death
         this._energy         = maxEnergy;
@@ -139,6 +141,14 @@ class User {
     setStepHeight(v) {
         this._stepHeight = v;
         return this;
+    }
+
+    getStepHeight() {
+        return this._stepHeight;
+    }
+
+    isOnGround() {
+        return this._onGround;
     }
 
     setGroundSnapDist(v) {
@@ -306,6 +316,10 @@ class User {
         this._energyFlash = Math.max(this._energyFlash, 0.7);
     }
 
+    getExternalForces() {
+        return this._externalForces;
+    }
+
     // --- Input ---
     beginFrame(deltaTime) {
         this._deltaTime = deltaTime;
@@ -313,6 +327,7 @@ class User {
         this._inputX    = 0;
         this._inputZ    = 0;
         this._strafeDir = 0;
+        this._externalForces.beginFrame();
     }
 
     // scale: signed -1..+1 — keyboard gives ±1, sticks their analog deflection.
@@ -434,6 +449,8 @@ class User {
         const inputLen = Math.sqrt(this._inputX*this._inputX + this._inputZ*this._inputZ);
         if (!this.isDead()) {
             if (this._onGround) {
+                let targetVx = 0;
+                let targetVz = 0;
                 if (inputLen > 1e-10) {
                     // Clamp to 1 instead of normalizing: keyboard diagonals stay
                     // capped, analog partial deflections keep their magnitude
@@ -443,11 +460,22 @@ class User {
                         speed *= 0.5;
                     }
                     speed *= (1 - this._crouchProgress * 0.4);
-                    this._vx = this._inputX * norm * speed;
-                    this._vz = this._inputZ * norm * speed;
+                    targetVx = this._inputX * norm * speed;
+                    targetVz = this._inputZ * norm * speed;
+                }
+                const friction = this._externalForces.getGroundFriction();
+                if (friction === null) {
+                    // Full grip: direct control (default ground model)
+                    this._vx = targetVx;
+                    this._vz = targetVz;
                 } else {
-                    this._vx = 0;
-                    this._vz = 0;
+                    // Slippery ground: inertial blend toward the same target
+                    // speed — per tick `v = v*f + target*(1-f)`, closed form
+                    // over the frame. Sluggish start, long slide, identical
+                    // top speed.
+                    const keep = Math.pow(friction, dt_s * UserExternalForces.TICK_RATE);
+                    this._vx = this._vx * keep + targetVx * (1 - keep);
+                    this._vz = this._vz * keep + targetVz * (1 - keep);
                 }
             } else if (inputLen > 1e-10) {
                 // Air steering: nudge velocity toward desired direction
@@ -461,20 +489,29 @@ class User {
                     this._vz = this._vz / vLen * this._moveSpeed;
                 }
             }
-            const vx = this._vx * dt_ms, vz = this._vz * dt_ms;
-            if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
-                const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight);
-                const blocked = (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8);
-                if (!blocked) {
-                    const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
-                    const destCeil  = collision.getCeiling(res.x, res.z, this._radius, ((destFloor !== -Infinity) ? destFloor + this._stepHeight : this.y));
-                    if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
-                        this.x = res.x;
-                        this.z = res.z;
-                    }
-                } else if (this._onGround) {
-                    this._tryStepUp(collision, vx, vz);
+        }
+        // Environment push (wind/conveyors): its own velocity channel,
+        // integrated at tick rate and summed into the frame displacement so a
+        // single resolveWall call keeps wall sliding correct. It applies to a
+        // DEAD player too (GZDoom-style: the corpse keeps drifting on the
+        // current) — only the input velocity dies with the player.
+        this._externalForces.integrate(dt_s);
+        const inputVx = ((this.isDead()) ? 0 : this._vx);
+        const inputVz = ((this.isDead()) ? 0 : this._vz);
+        const vx = inputVx * dt_ms + this._externalForces.getVelX() * dt_s;
+        const vz = inputVz * dt_ms + this._externalForces.getVelZ() * dt_s;
+        if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
+            const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight);
+            const blocked = (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8);
+            if (!blocked) {
+                const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
+                const destCeil  = collision.getCeiling(res.x, res.z, this._radius, ((destFloor !== -Infinity) ? destFloor + this._stepHeight : this.y));
+                if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
+                    this.x = res.x;
+                    this.z = res.z;
                 }
+            } else if (this._onGround) {
+                this._tryStepUp(collision, vx, vz);
             }
         }
 
@@ -615,8 +652,10 @@ class User {
         this._prevX = this.x;
         this._prevZ = this.z;
 
-        // 13. Head bob
-        if (this._onGround && this._realVelocityXZ > 0.01) {
+        // 13. Head bob — gated on player INPUT (_walking), not just real
+        // displacement: being pushed around (wind, conveyor) must not play
+        // the walk animation.
+        if (this._onGround && this._walking && this._realVelocityXZ > 0.01) {
             this._walkAngle += dt * 0.6;
             if (this._walkAngle > 360) {
                 this._walkAngle -= 360;
@@ -737,7 +776,7 @@ class User {
     getCameraY() {
         const baseH = ((this._dead) ? this._height : this.getCurrentHeight());
         const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
-        const bob   = ((!this._dead && this._onGround && this._realVelocityXZ > 0.01)
+        const bob   = ((!this._dead && this._onGround && this._walking && this._realVelocityXZ > 0.01)
             ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0);
         return this.y + eyeH * (1 + bob) + this._stepViewOffset;
     }

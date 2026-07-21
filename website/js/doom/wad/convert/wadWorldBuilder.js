@@ -164,6 +164,24 @@ class WadWorldBuilder {
             loader.interactions().loadFromData(damageInteraction);
         }
 
+        // Sector pushes (wind / conveyors) and low-friction ground: one
+        // per-level interaction feeding the player's UserExternalForces each
+        // frame. Same zone shape as the damage interaction; the tables are
+        // empty outside the game profiles that fill them (Heretic).
+        const pushZones = this._sectorPolys
+            .filter((s) => (WadConstants.SECTOR_PUSH_BY_SPECIAL[s.special] !== undefined)
+                || (WadConstants.SECTOR_FRICTION_BY_SPECIAL[s.special] !== undefined))
+            .map((s) => ({
+                si:       s.si,
+                outers:   s.outers,
+                floorY:   (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE,
+                push:     (WadConstants.SECTOR_PUSH_BY_SPECIAL[s.special] ?? null),
+                friction: (WadConstants.SECTOR_FRICTION_BY_SPECIAL[s.special] ?? null)
+            }));
+        if (pushZones.length > 0) {
+            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones));
+        }
+
         // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
         // per-level interaction stepping the vanilla p_lights.c thinkers and
         // driving the lightGroup factors of the static map faces.
