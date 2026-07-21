@@ -110,6 +110,15 @@ class ScreenManager {
         return this._ratio;
     }
 
+    // Width/height aspect of the surface the screen-space overlays map onto —
+    // the virtual display when one is set, the real canvas otherwise.
+    getAspectRatio() {
+        if (this._hasVirtualDisplay) {
+            return this._virtualWidth / this._virtualHeight;
+        }
+        return this._screenWidth / this._screenHeight;
+    }
+
     update() {
         this._hud.setRatio(this._ratio);
         this._hud.update();
