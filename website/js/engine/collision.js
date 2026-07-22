@@ -101,6 +101,13 @@ class Collision {
         return this._scanFloorLists(px, pz, r, maxSearchY, this._floorLists(px, pz, r)).n;
     }
 
+    // Floor height plus the instance OWNING the winning triangle (null for the
+    // static world) — lets a body standing there follow a moving floor.
+    getFloorInfo(px, pz, r, maxSearchY = Infinity) {
+        const found = this._scanFloorLists(px, pz, r, maxSearchY, this._floorLists(px, pz, r));
+        return {y: found.y, instance: (found.tri ? (found.tri.instance ?? null) : null)};
+    }
+
     getCeiling(px, pz, r, headY) {
         return this._scanCeilingLists(px, pz, r, headY, this._ceilingLists(px, pz, r));
     }
@@ -699,8 +706,9 @@ class Collision {
     // maxSearchY, over the given triangle lists: {y, n} — n is null when
     // nothing matched.
     _scanFloorLists(px, pz, r, maxSearchY, lists) {
-        let maxY  = -Infinity;
-        let bestN = null;
+        let maxY    = -Infinity;
+        let bestN   = null;
+        let bestTri = null;
         for (const list of lists) {
             for (const tri of list) {
                 if (!this._aabbXZ(px, pz, r, tri)) {
@@ -711,12 +719,13 @@ class Collision {
                 }
                 const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
                 if (y > maxY && y <= maxSearchY) {
-                    maxY  = y;
-                    bestN = tri.n;
+                    maxY    = y;
+                    bestN   = tri.n;
+                    bestTri = tri;
                 }
             }
         }
-        return {y: maxY, n: bestN};
+        return {y: maxY, n: bestN, tri: bestTri};
     }
 
     // Lowest ceiling triangle strictly above headY, over the given lists.

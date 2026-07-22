@@ -15,11 +15,12 @@ class DoomWeaponDef extends DoomWeapon {
         this._range         = data.range ?? 0;
         // Per-pellet damage roll {base, dice, flat?} → flat + base×(1..dice),
         // straight from the game sources; kickback drives the victim thrust
-        // (chainsaw/gauntlets 0 pin the target); berserkFactor multiplies the
-        // fist under the strength power-up; puffOnMonsters shows the puff on
-        // flesh (Heretic sparks) instead of hiding it behind the blood.
+        // (null = the game's defKickback rule, an explicit 0 pins the target —
+        // chainsaw/gauntlets); berserkFactor multiplies the fist under the
+        // strength power-up; puffOnMonsters shows the puff on flesh (Heretic
+        // sparks) instead of hiding it behind the blood.
         this._damageSpec    = data.damage ?? null;
-        this._kickback      = data.kickback ?? 100;
+        this._kickback      = data.kickback ?? null;
         this._berserkItem   = data.berserkItem ?? null;
         this._berserkFactor = data.berserkFactor ?? 1;
         this._puffOnMonsters = (data.puffOnMonsters === true);

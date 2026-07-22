@@ -104,7 +104,9 @@ class DoomMonsterDamage {
             if (!this._blastReaches(x, y, z, c[0], c[1], c[2])) {
                 continue;
             }
-            this.damage(m, damage - mDist, {srcX: x, srcZ: z, kickback: (opts.kickback ?? this._rules.defKickback)});
+            // No blood on blast victims: vanilla only bleeds on direct hits
+            // (P_LineAttack / missile impact), never from P_RadiusAttack.
+            this.damage(m, damage - mDist, {srcX: x, srcZ: z, noBlood: true, kickback: (opts.kickback ?? this._rules.defKickback)});
         }
     }
 
@@ -126,8 +128,12 @@ class DoomMonsterDamage {
     // ApplyKickback (interaction.zs): thrust = clamp(damage × 0.125 × kickback
     // / mass, 0, 32) map units/tic away from the source. The vanilla "fall
     // forwards" flourish is skipped. Applies to corpses too (blast-slid
-    // bodies, user decision).
+    // bodies, user decision) — except the noCorpseThrust defs (an exploding
+    // barrel must not glide away mid-explosion).
     _thrust(record, damage, opts) {
+        if (record.dead && (record.def.getFlags().noCorpseThrust === true)) {
+            return;
+        }
         const kickback = (opts.kickback ?? this._rules.defKickback);
         if ((kickback <= 0) || (opts.srcX === undefined)) {
             return;

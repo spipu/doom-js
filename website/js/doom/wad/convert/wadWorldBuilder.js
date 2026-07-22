@@ -424,7 +424,7 @@ class WadWorldBuilder {
         const idle0 = t.def.getState('spawn0');
         loader.instances().loadFromData(null, {
             code:            code,
-            object:          frames[idle0.getSprite() + idle0.getFrame()][0],
+            object:          frames[DoomMonsterDef.viewKey(idle0.getSprite(), idle0.getFrame())][0],
             position:        [t.position[0], t.position[1] + ride.liftY, t.position[2]],
             rotation:        [0, 0, 0],
             trigger:         'none',

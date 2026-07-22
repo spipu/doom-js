@@ -88,6 +88,11 @@ class DoomMonsterSystem {
         const kept = [];
         for (const m of this._monsters) {
             this._integrateVelocity(m);
+            // A live rider's box blocker follows its lift (the ride sync moves
+            // the body outside this system) — corpses have no box anymore.
+            if (!m.dead && (this._collision !== null) && (m.inst.getRideOn() !== null)) {
+                this._collision.syncBoxFor(m.inst);
+            }
             const state = m.def.getState(m.stateKey);
             if (state.getTics() >= 0) {
                 m.ticsLeft--;
@@ -202,6 +207,7 @@ class DoomMonsterSystem {
         // The ACTOR height (thing->height), not the displayed billboard's —
         // that one changes with every animation frame and rotation.
         const h     = m.def.getHeight() * SCALE;
+        let   moved = false;
 
         if ((m.velX !== 0) || (m.velZ !== 0)) {
             // Vanilla P_TryMove: a shoved body climbs steps up to 24 units and
@@ -216,6 +222,7 @@ class DoomMonsterSystem {
             } else {
                 m.inst.translate(solved.x - pos[0], ((destFloor > pos[1]) ? destFloor - pos[1] : 0), solved.z - pos[2]);
                 this._collision.syncBoxFor(m.inst);
+                moved = true;
                 m.velX *= DoomMonsterSystem.FRICTION;
                 m.velZ *= DoomMonsterSystem.FRICTION;
                 if (Math.hypot(m.velX, m.velZ) < DoomMonsterSystem.STOPSPEED) {
@@ -240,14 +247,36 @@ class DoomMonsterSystem {
             const dy = Math.max(m.velY * SCALE, floorY - pos[1]);
             m.inst.translate(0, dy, 0);
             this._collision.syncBoxFor(m.inst);
+            moved = true;
         } else if (m.velY !== 0) {
             m.velY = 0;
+        }
+
+        // A body that moved re-resolves what it now stands on: grounded on a
+        // mover it hooks to it (a corpse shoved onto a lift rides it, a rising
+        // platform never swallows it), grounded on the static world it unhooks
+        // (no ghost-riding the lift it was blasted off).
+        if (moved) {
+            this._resolveRide(m);
+        }
+    }
+
+    _resolveRide(m) {
+        const pos  = m.inst.getTransform().position;
+        const info = this._collision.getFloorInfo(pos[0], pos[2], m.inst.getCollisionRadius(), pos[1] + 0.01);
+        if ((info.y === -Infinity) || (pos[1] - info.y > 0.01)) {
+            return;   // airborne — keep the current ride until it lands
+        }
+        if (info.instance !== null) {
+            m.inst.setRideOn(info.instance);
+        } else {
+            m.inst.clearRide();
         }
     }
 
     _refreshView(m) {
         const state = m.def.getState(m.stateKey);
-        const views = m.frames[state.getSprite() + state.getFrame()];
+        const views = m.frames[DoomMonsterDef.viewKey(state.getSprite(), state.getFrame())];
         if (views === undefined) {
             return;
         }

@@ -66,7 +66,7 @@ class DoomProjectileSystem {
             explosion:        spec.explosion,
             splashDamage:     spec.splashDamage,
             impactDamage:     spec.impactDamage ?? 0,
-            kickback:         spec.kickback,
+            kickback:         spec.kickback ?? null,
             spray:            spec.spray ?? null,
             decalType:        spec.decalType ?? null,
             gravity:          (spec.gravity ?? 0) * scale,
@@ -151,6 +151,9 @@ class DoomProjectileSystem {
             // recomputed from it at every tic (_stepTic), never read before.
             dx: 0, dy: 0, dz: 0,
             vx, vy, vz,
+            // Launch heading (degrees): A_BFGSpray fans around the BALL's
+            // angle, frozen at fire time — not the shooter's current yaw.
+            yaw: Math.atan2(vx, vz) / DEG_TO_RAD,
             tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0,
             instId: null,
         };
@@ -361,16 +364,17 @@ class DoomProjectileSystem {
             this._damage.radiusAttack(ex, ey, ez, p.def.splashDamage, p.def.splashDamage, {kickback: p.def.kickback});
         }
         if (p.def.spray !== null) {
-            this._sprayFromShooter(p.def.spray);
+            this._sprayFromShooter(p.def.spray, p.yaw);
         }
     }
 
-    // A_BFGSpray: rays fanned from the SHOOTER around his facing; each ray
-    // aims like P_AimLineAttack — the closest live body crossing the ray in
-    // 2D, above or below the eye plane — then a line-of-sight check to its
-    // centre settles it (walls and slabs block). The victim takes
-    // sum(damageCount × (1d8)) and flashes the spray effect at its centre.
-    _sprayFromShooter(spray) {
+    // A_BFGSpray: rays fanned from the SHOOTER's position around the BALL's
+    // launch heading (turning while the ball flies moves the origin, never the
+    // fan); each ray aims like P_AimLineAttack — the closest live body
+    // crossing the ray in 2D, above or below the eye plane — then a
+    // line-of-sight check to its centre settles it (walls and slabs block).
+    // The victim takes sum(damageCount × (1d8)) and flashes the spray effect.
+    _sprayFromShooter(spray, yawDeg) {
         if ((this._monsters === null) || (this._damage === null)) {
             return;
         }
@@ -379,7 +383,7 @@ class DoomProjectileSystem {
         const oy = this._user.getCameraY();
         const oz = this._user.getCameraZ();
         for (let i = 0; i < spray.rays; i++) {
-            const yawR = (this._user.yaw - spray.angle / 2 + (spray.angle / spray.rays) * i) * DEG_TO_RAD;
+            const yawR = (yawDeg - spray.angle / 2 + (spray.angle / spray.rays) * i) * DEG_TO_RAD;
             const aim  = this._monsters.aimRay(ox, oz, Math.sin(yawR), Math.cos(yawR), range);
             if (aim === null) {
                 continue;

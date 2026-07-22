@@ -90,7 +90,7 @@ class Instance extends AbstractLoadedEntity {
     // The moving floor this instance rides (null when grounded on static
     // floor) — lets a spawned child inherit its parent's ride.
     getRideOn() {
-        return (this._rideOn ?? null);
+        return this._rideOn;
     }
 
     // Move the instance keeping its cached world centre in sync (the pattern
@@ -105,6 +105,9 @@ class Instance extends AbstractLoadedEntity {
         // A ridden instance re-expresses its base at the new Y (the setRideOn
         // mid-travel invariant), so the next ride sync moves it by the floor's
         // FUTURE delta only instead of snapping it back to the old altitude.
+        // Sound because callers run AFTER the frame's instance update pass:
+        // _syncRide has already applied the mover's current delta — re-basing
+        // against it never swallows a pending one.
         if (this.getRideOn() !== null) {
             this.setRideOn(this._rideOn);
         }
@@ -267,6 +270,12 @@ class Instance extends AbstractLoadedEntity {
         this._rideOn     = floorInstance;
         this._rideBaseY  = this._position[1] - dy;
         this._rideLastDy = dy;
+    }
+
+    // Detach from the moving floor (the body left it) — its Y stops following
+    // the mover's delta.
+    clearRide() {
+        this._rideOn = null;
     }
 
     _syncRide() {

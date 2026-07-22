@@ -163,7 +163,7 @@ class HereticGameProfile extends DefaultGameProfile {
         return new DoomMonsterDef({
             code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
             health: 45, radius: 16, height: 54, speed: 0, painChance: 255,
-            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true},
+            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true, noCorpseThrust: true},
             params: {explode: {damage: 128, distance: 128}},
             states: {
                 spawn: [['A', 10, null, 'spawn']],

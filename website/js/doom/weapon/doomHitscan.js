@@ -101,7 +101,7 @@ class DoomHitscan {
         if ((def.getBerserkItem() !== null) && user.hasItem(def.getBerserkItem())) {
             damage *= def.getBerserkFactor();
         }
-        const point = WadGeometry.pullBack(flesh.point, dir);
+        const point = WadGeometry.pullBack(flesh.point, dir, 10);
         this._damage.damage(flesh.record, damage, {
             point:    point,
             srcX:     user.getCameraX(),

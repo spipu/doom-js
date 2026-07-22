@@ -160,6 +160,12 @@ class DoomMonsterDef {
         return Object.keys(this._states);
     }
 
+    // Catalog key of one monster view — the contract between the builders
+    // (which prebuild the billboards under it) and the runtime (_refreshView).
+    static viewKey(sprite, frame) {
+        return (sprite + frame);
+    }
+
     // Distinct {sprite, frame} pairs of the given state groups (the sprite is
     // per-state: spriteOverrides groups differ from the base — barrel BEXP).
     getFramePairs(groups) {
@@ -170,7 +176,7 @@ class DoomMonsterDef {
                 continue;
             }
             const state   = this._states[key];
-            const pairKey = state.getSprite() + state.getFrame();
+            const pairKey = DoomMonsterDef.viewKey(state.getSprite(), state.getFrame());
             if (!seen.has(pairKey)) {
                 seen.add(pairKey);
                 pairs.push({sprite: state.getSprite(), frame: state.getFrame()});
