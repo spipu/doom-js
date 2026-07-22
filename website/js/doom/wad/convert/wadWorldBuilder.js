@@ -21,13 +21,15 @@ class WadWorldBuilder {
     constructor(wadFile, levelName, options = null) {
         options = options ?? {};
 
-        this._wadFile      = wadFile;
-        this._levelName    = levelName;
-        this._onLevelExit  = options.onLevelExit ?? null;
-        this._thingCatalog = options.thingCatalog ?? null;
-        this._skill        = options.skill ?? 3;
-        this._game         = options.game ?? null;
-        this._profile      = options.profile ?? new DoomGameProfile();
+        this._wadFile        = wadFile;
+        this._levelName      = levelName;
+        this._onLevelExit    = options.onLevelExit ?? null;
+        this._thingCatalog   = options.thingCatalog ?? null;
+        this._skill          = options.skill ?? 3;
+        this._game           = options.game ?? null;
+        this._profile        = options.profile ?? new DoomGameProfile();
+        this._monsterCatalog = options.monsterCatalog ?? null;
+        this._monsterSystem  = options.monsterSystem ?? null;
     }
 
     /**
@@ -230,7 +232,7 @@ class WadWorldBuilder {
             + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
             + teleporters.length + ' teleporters, '
             + things.count + ' things (' + things.skipped + ' skipped, '
-            + things.filtered + ' filtered, skill ' + this._skill + ')');
+            + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + ')');
     }
 
     // --- Internal ---
@@ -243,7 +245,7 @@ class WadWorldBuilder {
     // despawns the sprite when picked up.
     _registerThings(level, palette, analysis, builtFloorCodes) {
         if (this._thingCatalog === null) {
-            return {count: 0, skipped: 0, filtered: 0};
+            return {count: 0, skipped: 0, filtered: 0, monsters: 0};
         }
 
         const spriteBank = new WadSpriteBank(this._wadFile, palette).init();
@@ -252,13 +254,22 @@ class WadWorldBuilder {
             this._thingCatalog,
             spriteBank,
             (x, y) => this._findSector(x, y),
-            this._skill
+            this._skill,
+            this._monsterCatalog,
+            // Out-of-range dev-starter skill → null → the builder's legacy
+            // bit fallback (monsters stay enabled).
+            (this._profile.skillRules()[this._skill] ?? null)
         );
         const things = builder.buildAll();
 
-        const billboardIds = {};
+        const billboardIds        = {};
+        const monsterBillboardIds = {};
         for (let i = 0; i < things.length; i++) {
             const t = things[i];
+            if (t.kind === 'monster') {
+                this._registerMonsterThing(t, i, analysis, builtFloorCodes, monsterBillboardIds);
+                continue;
+            }
             // Dedup the shared Object3d per (sprite, sector light, light group):
             // the sector brightness is baked into the billboard colour, so the
             // same sprite in differently-lit sectors needs distinct objects — and
@@ -316,7 +327,63 @@ class WadWorldBuilder {
             }
         }
 
-        return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered()};
+        return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
+    }
+
+    // One monster: a shared billboard per (rotation view, light, group, alpha)
+    // — each view keeps its own vanilla anchor, the runtime swaps the instance
+    // object per frame/octant (the doomEffects pattern, no padded canvas). The
+    // alpha MUST be part of the dedup key: the spectre shares the demon's SARG
+    // lumps and the Heretic ghosts share their base monsters' sprites.
+    _registerMonsterThing(t, i, analysis, builtFloorCodes, billboardIds) {
+        const scale      = WadConstants.SCALE;
+        const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
+
+        const frames = {};
+        for (const letter of Object.keys(t.frames)) {
+            frames[letter] = t.frames[letter].map((spr) => {
+                const objKey = spr.loaderId + '|' + t.light + '|' + lightGroup + '|' + t.alpha;
+                if (billboardIds[objKey] === undefined) {
+                    const geo  = WadGeometry.spriteBillboardData(spr);
+                    const sink = spr.topOffset - spr.height;
+                    billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
+                        billboard:     true,
+                        textures:      [spr.loaderId],
+                        halfWidth:     geo.halfWidth,
+                        height:        geo.height,
+                        anchorOffsetX: geo.anchorOffsetX,
+                        anchorOffsetY: ((t.def.isCeiling()) ? sink : Math.max(0, sink)) * scale,
+                        anchorTop:     t.def.isCeiling(),
+                        light:         t.light,
+                        lightGroup:    lightGroup,
+                        alpha:         t.alpha
+                    });
+                }
+                return billboardIds[objKey];
+            });
+        }
+
+        const code = 'monster_' + i;
+        const ride = this._resolveThingFloor(t, analysis, builtFloorCodes);
+        loader.instances().loadFromData(null, {
+            code:            code,
+            object:          frames[t.def.getSpawnFrameLetters()[0]][0],
+            position:        [t.position[0], t.position[1] + ride.liftY, t.position[2]],
+            rotation:        [0, 0, 0],
+            trigger:         'none',
+            loop:            false,
+            onlyOnce:        false,
+            collisionShape:  'box',
+            collisionRadius: t.radius,
+            keyframes:       []
+        });
+        const inst = loader.instances().getByCode(code);
+        if (ride.floorCode !== null) {
+            inst.setRideOn(loader.instances().getByCode(ride.floorCode));
+        }
+        if (this._monsterSystem !== null) {
+            this._monsterSystem.add({code: code, inst: inst, def: t.def, facing: t.facing, flags: t.flags, frames: frames});
+        }
     }
 
     // Moving floor under a thing: the built lift / rising-floor / stair

@@ -42,11 +42,11 @@ class HereticGameProfile extends DefaultGameProfile {
     // Heretic world things: editor numbers, sprite frames, radii and flags
     // transcribed from the UZDoom sources (mapinfo/heretic.txt DoomEdNums +
     // zscript/actors/heretic/ and actors/raven/) — never from memory.
-    // Enemies, starts, ambient-sound things (41/42/1200-1209), generators
-    // (43/52/74), BossSpot (56) and the Bridge (118) are absent on purpose
-    // (silent skip). Inventory artifacts with no transposable effect (egg,
-    // time bomb, chaos device, tome, wings) are visible pickups with a null
-    // effect: never consumed, they stay.
+    // Monsters live in monsterDefs(); starts, ambient-sound things
+    // (41/42/1200-1209), generators (43/52/74), BossSpot (56) and the Bridge
+    // (118) are absent on purpose (silent skip). Inventory artifacts with no
+    // transposable effect (egg, time bomb, chaos device, tome, wings) are
+    // visible pickups with a null effect: never consumed, they stay.
     thingDecorations() {
         return {
             // Floor obstacles (solid)
@@ -156,6 +156,233 @@ class HereticGameProfile extends DefaultGameProfile {
             48:   {kind: 'decoration', code: 'moss1'},
             49:   {kind: 'decoration', code: 'moss2'},
             51:   {kind: 'decoration', code: 'hangingCorpse'}
+        };
+    }
+
+    // Shared state blocks of the variant families (ghosts = base monsters
+    // with translucency, leaders swap the attack): one transcription each.
+    _gargoyleStates(leader) {
+        const states = {
+            spawn:  [['ABCB', 10, 'A_Look', 'spawn']],
+            see:    [['AABBCCBB', 3, 'A_Chase', 'see']],
+            pain:   [['G', 3], ['G', 3, 'A_Pain', 'see']],
+            // Death crumples in the air, Crash lands the pieces.
+            death:  [['G', 4, 'A_ImpDeath'], ['H', -1]],
+            xdeath: [['S', 5, 'A_ImpXDeath1'], ['TU', 5], ['V', 5, 'A_Gravity'], ['W', -1]],
+            crash:  [['I', 7, 'A_ImpExplode'], ['J', 7, 'A_Scream'], ['K', 7], ['L', -1]],
+            xcrash: [['XY', 7], ['Z', -1]]
+        };
+        if (leader) {
+            states.missile = [['DE', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomComboAttack', 'see']];
+            return states;
+        }
+        states.melee   = [['DE', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomMeleeAttack', 'see']];
+        states.missile = [['A', 10, 'A_FaceTarget'], ['B', 6, 'A_ImpMsAttack'], ['CBAB', 6, null, 'missile2']];
+        return states;
+    }
+
+    _golemStates(leader) {
+        const states = {
+            spawn: [['AB', 10, 'A_Look', 'spawn']],
+            see:   [['ABCD', 4, 'A_Chase', 'see']],
+            melee: [['E', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomMeleeAttack'], ['G', 6, null, 'see']],
+            pain:  [['H', 4], ['H', 4, 'A_Pain', 'see']],
+            death: [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, 'A_SpawnItemEx'], ['L', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
+        };
+        if (leader) {
+            states.missile = [['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_CustomComboAttack', 'see', true]];
+        }
+        return states;
+    }
+
+    _undeadWarriorStates() {
+        return {
+            // zscript labels Melee+Missile on the same block
+            // (A_KnightAttack picks axe type by range).
+            spawn:   [['AB', 10, 'A_Look', 'spawn']],
+            see:     [['ABCD', 4, 'A_Chase', 'see']],
+            missile: [['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, 'A_KnightAttack'], ['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, 'A_KnightAttack', 'see']],
+            pain:    [['H', 3], ['H', 3, 'A_Pain', 'see']],
+            death:   [['I', 6], ['J', 6, 'A_Scream'], ['K', 6], ['L', 6, 'A_NoBlocking'], ['MN', 6], ['O', -1]]
+        };
+    }
+
+    // The Heretic bestiary (mapinfo/heretic.txt DoomEdNums, states from
+    // zscript/actors/heretic/*.zs + actors/raven/minotaur.zs). The ghost
+    // variants share the base sprites with a 0.4 translucency (zscript
+    // RenderStyle Translucent / Alpha 0.4). Sorcerer2 (D'Sparil unmounted)
+    // has no editor number: he is spawned by Sorcerer1's death (phase D).
+    // The chicken is a player morph (inventory chantier), not a monster.
+    monsterDefs() {
+        return {
+            66: new DoomMonsterDef({
+                code: 'gargoyle', name: 'Gargoyle', sprite: 'IMPX',
+                health: 40, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
+                flags: {float: true},
+                params: {missileChanceMult: 0.5},
+                states: this._gargoyleStates(false)
+            }),
+            5: new DoomMonsterDef({
+                code: 'gargoyleLeader', name: 'Fire Gargoyle', sprite: 'IMPX',
+                health: 80, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
+                flags: {float: true},
+                states: this._gargoyleStates(true)
+            }),
+            68: new DoomMonsterDef({
+                code: 'golem', name: 'Golem', sprite: 'MUMM',
+                health: 80, radius: 22, height: 62, mass: 75, speed: 12, painChance: 128,
+                dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                states: this._golemStates(false)
+            }),
+            45: new DoomMonsterDef({
+                code: 'golemLeader', name: 'Nitrogolem', sprite: 'MUMM',
+                health: 100, radius: 22, height: 62, mass: 75, speed: 12, painChance: 64,
+                dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                states: this._golemStates(true)
+            }),
+            69: new DoomMonsterDef({
+                code: 'golemGhost', name: 'Golem Ghost', sprite: 'MUMM', alpha: 0.4,
+                health: 80, radius: 22, height: 62, mass: 75, speed: 12, painChance: 128,
+                flags: {ghost: true},
+                dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                states: this._golemStates(false)
+            }),
+            46: new DoomMonsterDef({
+                code: 'golemLeaderGhost', name: 'Nitrogolem Ghost', sprite: 'MUMM', alpha: 0.4,
+                health: 100, radius: 22, height: 62, mass: 75, speed: 12, painChance: 64,
+                flags: {ghost: true},
+                dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                states: this._golemStates(true)
+            }),
+            64: new DoomMonsterDef({
+                code: 'undeadWarrior', name: 'Undead Warrior', sprite: 'KNIG',
+                health: 200, radius: 24, height: 78, mass: 150, speed: 12, painChance: 100,
+                dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 5}],
+                states: this._undeadWarriorStates()
+            }),
+            65: new DoomMonsterDef({
+                code: 'undeadWarriorGhost', name: 'Undead Warrior Ghost', sprite: 'KNIG', alpha: 0.4,
+                health: 200, radius: 24, height: 78, mass: 150, speed: 12, painChance: 100,
+                flags: {ghost: true},
+                dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 5}],
+                states: this._undeadWarriorStates()
+            }),
+            15: new DoomMonsterDef({
+                code: 'disciple', name: 'Disciple of D\'Sparil', sprite: 'WZRD',
+                health: 180, radius: 16, height: 68, speed: 12, painChance: 64,
+                flags: {float: true},
+                dropItems: [{item: 'BlasterAmmo', chance: 84, amount: 10}, {item: 'ArtiTomeOfPower', chance: 4, amount: 0}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 3, 'A_Chase'], ['A', 4, 'A_Chase'], ['A', 3, 'A_Chase'], ['A', 4, 'A_Chase'], ['B', 3, 'A_Chase'], ['B', 4, 'A_Chase'], ['B', 3, 'A_Chase'], ['B', 4, 'A_Chase', 'see']],
+                    missile: [['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['D', 12, 'A_WizAtk3', 'see']],
+                    pain:    [['E', 3, 'A_GhostOff'], ['E', 3, 'A_Pain', 'see']],
+                    death:   [['F', 6, 'A_GhostOff'], ['G', 6, 'A_Scream'], ['HI', 6], ['J', 6, 'A_NoBlocking'], ['KL', 6], ['M', -1, 'A_SetFloorClip']]
+                }
+            }),
+            70: new DoomMonsterDef({
+                code: 'weredragon', name: 'Weredragon', sprite: 'BEAS',
+                health: 220, radius: 32, height: 74, mass: 200, speed: 14, painChance: 100,
+                dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 10}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['ABCDEF', 3, 'A_Chase', 'see']],
+                    missile: [['H', 10, 'A_FaceTarget'], ['I', 10, 'A_CustomComboAttack', 'see']],
+                    pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
+                    death:   [['R', 6], ['S', 6, 'A_Scream'], ['TUV', 6], ['W', 6, 'A_NoBlocking'], ['XY', 6], ['Z', -1]],
+                    xdeath:  [['J', 5], ['K', 6, 'A_Scream'], ['L', 5], ['M', 6], ['N', 5], ['O', 6, 'A_NoBlocking'], ['P', 5], ['Q', -1]]
+                }
+            }),
+            90: new DoomMonsterDef({
+                code: 'sabreclaw', name: 'Sabreclaw', sprite: 'CLNK',
+                health: 150, radius: 20, height: 64, mass: 75, speed: 14, painChance: 32,
+                flags: {noBlood: true},
+                dropItems: [{item: 'SkullRodAmmo', chance: 84, amount: 20}],
+                states: {
+                    spawn: [['AB', 10, 'A_Look', 'spawn']],
+                    see:   [['ABCD', 3, 'A_Chase', 'see']],
+                    melee: [['E', 5, 'A_FaceTarget'], ['F', 4, 'A_FaceTarget'], ['G', 7, 'A_CustomMeleeAttack', 'see']],
+                    pain:  [['H', 3], ['H', 3, 'A_Pain', 'see']],
+                    death: [['IJ', 6], ['K', 5, 'A_Scream'], ['L', 5, 'A_NoBlocking'], ['MN', 5], ['O', -1]]
+                }
+            }),
+            92: new DoomMonsterDef({
+                code: 'ophidian', name: 'Ophidian', sprite: 'SNKE',
+                health: 280, radius: 22, height: 70, speed: 10, painChance: 48,
+                dropItems: [{item: 'PhoenixRodAmmo', chance: 84, amount: 5}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['ABCD', 4, 'A_Chase', 'see']],
+                    missile: [['FF', 5, 'A_FaceTarget'], ['FFF', 4, 'A_SpawnProjectile'], ['FFF', 5, 'A_FaceTarget'], ['F', 4, 'A_SpawnProjectile', 'see']],
+                    pain:    [['E', 3], ['E', 3, 'A_Pain', 'see']],
+                    death:   [['G', 5], ['H', 5, 'A_Scream'], ['IJKL', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
+                }
+            }),
+            6: new DoomMonsterDef({
+                // The WAD lump prefix is HEAD (GZDoom renames it to LICH to
+                // dodge the Doom cacodemon clash — our catalogs are per-game,
+                // no clash to dodge).
+                code: 'ironlich', name: 'Iron Lich', sprite: 'HEAD',
+                health: 700, radius: 40, height: 72, mass: 325, speed: 6, painChance: 32,
+                flags: {noBlood: true, bossDeath: true},
+                dropItems: [{item: 'BlasterAmmo', chance: 84, amount: 10}, {item: 'ArtiEgg', chance: 51, amount: 0}],
+                states: {
+                    spawn:   [['A', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 4, 'A_Chase', 'see']],
+                    missile: [['A', 5, 'A_FaceTarget'], ['B', 20, 'A_LichAttack', 'see']],
+                    pain:    [['A', 4], ['A', 4, 'A_Pain', 'see']],
+                    death:   [['C', 7], ['D', 7, 'A_Scream'], ['EF', 7], ['G', 7, 'A_NoBlocking'], ['H', 7], ['I', -1, 'A_BossDeath']]
+                }
+            }),
+            9: new DoomMonsterDef({
+                code: 'maulotaur', name: 'Maulotaur', sprite: 'MNTR',
+                health: 3000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 25,
+                flags: {boss: true, dropOff: true, noTarget: true, noRadiusDmg: true, bossDeath: true},
+                params: {damage: 7},
+                dropItems: [{item: 'ArtiSuperHealth', chance: 51}, {item: 'PhoenixRodAmmo', chance: 84, amount: 10}],
+                states: {
+                    spawn:      [['AB', 10, 'A_MinotaurLook', 'spawn']],
+                    roam:       [['ABCD', 5, 'A_MinotaurRoam', 'roam']],
+                    see:        [['ABCD', 5, 'A_MinotaurChase', 'see']],
+                    melee:      [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, 'A_MinotaurAtk1', 'see']],
+                    missile:    [['V', 10, 'A_MinotaurDecide'], ['Y', 4, 'A_FaceTarget'], ['Z', 9, 'A_MinotaurAtk2', 'see']],
+                    hammer:     [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, 'A_MinotaurAtk3', 'see']],
+                    hammerLoop: [['X', 12, null, 'hammer']],
+                    charge:     [['U', 2, 'A_MinotaurCharge', 'charge']],
+                    pain:       [['E', 3], ['E', 6, 'A_Pain', 'see']],
+                    death:      [['F', 6, 'A_MinotaurDeath'], ['G', 5], ['H', 6, 'A_Scream'], ['I', 5], ['J', 6], ['K', 5], ['L', 6], ['M', 5, 'A_NoBlocking'], ['N', 6], ['O', 5], ['P', 6], ['Q', 5], ['R', 6], ['S', 5], ['T', -1, 'A_BossDeath']]
+                }
+            }),
+            7: new DoomMonsterDef({
+                code: 'dsparilSerpent', name: 'D\'Sparil', sprite: 'SRCR',
+                health: 2000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 56,
+                flags: {boss: true, noTarget: true, noRadiusDmg: true},
+                states: {
+                    spawn:    [['AB', 10, 'A_Look', 'spawn']],
+                    see:      [['ABCD', 5, 'A_Sor1Chase', 'see']],
+                    pain:     [['Q', 6, 'A_Sor1Pain', 'see']],
+                    missile:  [['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
+                    missile2: [['S', 10, 'A_FaceTarget'], ['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
+                    // The serpent's death raises Sorcerer2 (unmounted
+                    // D'Sparil, no editor number) — phase D machinery.
+                    death:    [['E', 7], ['F', 7, 'A_Scream'], ['G', 7], ['HIJK', 6], ['L', 25], ['MN', 5], ['O', 4], ['L', 20], ['MN', 5], ['O', 4], ['L', 12], ['P', -1, 'A_SorcererRise']]
+                }
+            })
+        };
+    }
+
+    // Heretic skill blocks (UZDoom mapinfo/heretic.txt): baby = ammo ×1.5,
+    // damage ×0.5, easy boss brain (Heretic's easy skill has NO easy boss
+    // brain, unlike Doom's); nightmare = ammo ×1.5, fast monsters, instant
+    // reaction and NO respawn (DoubleAmmoFactor is deathmatch-only, ignored).
+    skillRules() {
+        return {
+            0: {spawnFilterBit: 0x01, ammoFactor: 1.5, damageFactor: 0.5, monstersEnabled: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: true},
+            1: {spawnFilterBit: 0x01, ammoFactor: 1.5, damageFactor: 0.5, monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: true},
+            2: {spawnFilterBit: 0x01, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            3: {spawnFilterBit: 0x02, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            4: {spawnFilterBit: 0x04, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            5: {spawnFilterBit: 0x04, ammoFactor: 1.5, damageFactor: 1,   monstersEnabled: true,  fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 0, easyBossBrain: false}
         };
     }
 

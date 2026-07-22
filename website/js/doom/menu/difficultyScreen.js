@@ -15,8 +15,10 @@ class DifficultyScreen extends AbstractMenuScreen {
         this._wadMeta = null;
 
         // Canonical Doom skill names; skill 1..5 maps to the thing flag bits in
-        // the converter (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04).
+        // the converter (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04). Skill 0 is our own
+        // exploration mode: the skill-1 world with monsters disabled.
         this._skills = [
+            {skill: 0, name: 'Labyrinth but no monster'},
             {skill: 1, name: "I'm too young to die"},
             {skill: 2, name: 'Hey, not too rough'},
             {skill: 3, name: 'Hurt me plenty'},
