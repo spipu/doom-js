@@ -1,28 +1,34 @@
 /**
- * Builds the world things (decorations + pickups) from the level THINGS lump.
- * Each mapped thing becomes a camera-facing Billboard sprite; enemies, player /
- * deathmatch starts and teleport landings are left out (not mapped in the
- * catalog). Phase 1 only displays them — no collision, no pickup interaction.
+ * Builds the world things (decorations + pickups + monsters) from the level
+ * THINGS lump. Each mapped thing becomes a camera-facing Billboard sprite;
+ * player / deathmatch starts and teleport landings are left out (not mapped
+ * in the catalogs). Monsters resolve through the monster catalog and carry
+ * their rotation sets + facing; skill 0 filters them all out.
  *
  * Returns a flat list of placed things; WadWorldBuilder deduplicates the shared
  * Billboard Object3d per sprite and creates one Instance per occurrence.
  */
 class WadThingBuilder {
     /**
-     * @param {object}        level         parsed level ({things, vertexes, …})
-     * @param {object}        catalog       thing catalog exposing getThingForType(type)
-     * @param {WadSpriteBank} spriteBank    decodes sprite lumps to engine textures
-     * @param {function}      sectorFinder  (doomX, doomY) → {fh, ch} in Doom units
-     * @param {number}        skill         difficulty 1..5 (defaults to 3, HMP)
+     * @param {object}             level          parsed level ({things, vertexes, …})
+     * @param {object}             catalog        thing catalog exposing getThingForType(type)
+     * @param {WadSpriteBank}      spriteBank     decodes sprite lumps to engine textures
+     * @param {function}           sectorFinder   (doomX, doomY) → {fh, ch} in Doom units
+     * @param {number}             skill          difficulty 0..5 (defaults to 3, HMP)
+     * @param {DoomMonsterCatalog} monsterCatalog editor number → DoomMonsterDef (null = no monsters)
+     * @param {object}             skillRule      the profile's skillRules()[skill] (null = legacy bits)
      */
-    constructor(level, catalog, spriteBank, sectorFinder, skill = 3) {
-        this._level        = level;
-        this._catalog      = catalog;
-        this._spriteBank   = spriteBank;
-        this._sectorFinder = sectorFinder;
-        this._skill        = skill;
-        this._skipped  = 0;
-        this._filtered = 0;
+    constructor(level, catalog, spriteBank, sectorFinder, skill = 3, monsterCatalog = null, skillRule = null) {
+        this._level          = level;
+        this._catalog        = catalog;
+        this._spriteBank     = spriteBank;
+        this._sectorFinder   = sectorFinder;
+        this._skill          = skill;
+        this._monsterCatalog = monsterCatalog;
+        this._skillRule      = skillRule;
+        this._skipped      = 0;
+        this._filtered     = 0;
+        this._monsterCount = 0;
         this._paddedFrames = {};   // anim key → padded frame view
     }
 
@@ -34,14 +40,44 @@ class WadThingBuilder {
     buildAll() {
         const result   = [];
         const spawners = {};
-        this._skipped  = 0;
-        this._filtered = 0;
+        this._skipped      = 0;
+        this._filtered     = 0;
+        this._monsterCount = 0;
 
         // Skill bit for the chosen difficulty (Doom P_SpawnMapThing): a thing is
-        // present only if its flags carry this bit. 1-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
-        const skillBit = ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04));
+        // present only if its flags carry this bit. The profile's skill rules
+        // provide it (skill 0 shares the skill-1 bit); legacy fallback when a
+        // caller passes no rule. 0-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
+        const skillBit = ((this._skillRule !== null)
+            ? this._skillRule.spawnFilterBit
+            : ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04)));
+        const monstersEnabled = ((this._skillRule !== null) ? (this._skillRule.monstersEnabled === true) : true);
 
         for (const thing of this._level.things) {
+            // Monsters route through their own catalog, before the world
+            // things: same multiplayer/skill filters, plus the skill-0 kill
+            // switch ("Labyrinth but no monster").
+            const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
+            if (monsterDef !== null) {
+                if (((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)
+                    || ((thing.flags & skillBit) === 0)
+                    || !monstersEnabled) {
+                    this._filtered++;
+                    continue;
+                }
+                const spot = this._sectorFinder(thing.x, thing.y);
+                if (spot === null) {
+                    this._skipped++;
+                    continue;
+                }
+                const monsterEntry = this._buildMonsterEntry(thing, monsterDef, spot);
+                if (monsterEntry !== null) {
+                    result.push(monsterEntry);
+                    this._monsterCount++;
+                }
+                continue;
+            }
+
             const desc = this._catalog.getThingForType(thing.type);
             if (desc === null) {
                 continue;
@@ -147,6 +183,38 @@ class WadThingBuilder {
         };
     }
 
+    // World descriptor of one placed monster. Every spawn frame carries its
+    // full rotation set (1 or 8 raw sprite-bank entries): the world builder
+    // pre-builds one shared billboard per (frame, rotation) — no padded common
+    // canvas, each view keeps its own vanilla anchor (the doomEffects pattern).
+    _buildMonsterEntry(thing, def, sect) {
+        const frames = {};
+        for (const letter of def.getSpawnFrameLetters()) {
+            const views = this._spriteBank.getFrameRotations(def.getSprite(), letter);
+            if (views === null) {
+                return null;
+            }
+            frames[letter] = views;
+        }
+
+        const baseH = ((def.isCeiling()) ? sect.ch : sect.fh);
+
+        return {
+            kind:     'monster',
+            def:      def,
+            facing:   thing.angle,
+            flags:    thing.flags,   // the ambush bit 0x08 is phase-C data
+            frames:   frames,
+            si:       sect.si,
+            light:    sect.light,
+            position: WadGeometry.doomToWorld(thing.x, thing.y, baseH),
+            solid:    true,
+            radius:   def.getRadius() * WadConstants.SCALE,
+            alpha:    def.getAlpha(),
+            effect:   null
+        };
+    }
+
     // Render view of a thing's frames: texture ids + the box the billboard quad
     // is sized on. The quad is static and the animation only swaps textures on
     // it, so frames of differing boxes would each be rescaled to the first
@@ -216,5 +284,10 @@ class WadThingBuilder {
     // Number of mapped things filtered out by skill / multiplayer flag (call after buildAll).
     getFiltered() {
         return this._filtered;
+    }
+
+    // Number of monsters placed (call after buildAll).
+    getMonsterCount() {
+        return this._monsterCount;
     }
 }

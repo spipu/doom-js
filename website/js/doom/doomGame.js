@@ -39,20 +39,30 @@ class DoomGame {
         // Per-game policy + shared immutable definitions (the per-player state
         // lives on DoomUser). The default profile covers the pre-WAD state;
         // startFromWad re-detects and rebuilds from the real WAD's profile.
-        this._gameProfile  = new DefaultGameProfile();
-        this._weapons      = {};
-        this._ammoTypes    = {};
-        this._items        = {};
-        this._thingCatalog = null;
+        this._gameProfile    = new DefaultGameProfile();
+        this._weapons        = {};
+        this._ammoTypes      = {};
+        this._items          = {};
+        this._thingCatalog   = null;
+        this._monsterCatalog = null;
+        this._monsters       = null;   // runtime monster system (built per level)
+        this._skillTable     = null;
         this._buildCatalogs();
     }
 
     // --- Catalogs of definitions (all per-game data comes from the profile) ---
     _buildCatalogs() {
-        this._ammoTypes    = this._gameProfile.buildAmmoTypes();
-        this._weapons      = this._gameProfile.buildWeapons();
-        this._items        = this._gameProfile.buildItems();
-        this._thingCatalog = this._gameProfile.createThingCatalog();
+        this._ammoTypes      = this._gameProfile.buildAmmoTypes();
+        this._weapons        = this._gameProfile.buildWeapons();
+        this._items          = this._gameProfile.buildItems();
+        this._thingCatalog   = this._gameProfile.createThingCatalog();
+        this._monsterCatalog = this._gameProfile.createMonsterCatalog();
+        this._skillTable     = this._gameProfile.skillRules();
+    }
+
+    // Out-of-range skills (dev starter) fall back to the HMP rules.
+    _skillRule() {
+        return (this._skillTable[this._skill] ?? this._skillTable[3]);
     }
 
     getGameProfile() {
@@ -118,9 +128,10 @@ class DoomGame {
         return false;
     }
 
-    // Double ammo on the easiest and hardest skills, like Doom (ITYTD / Nightmare).
+    // Extra ammo on the easiest and hardest skills — the factor is per-game
+    // profile data (Doom ×2, Heretic ×1.5).
     _ammoMultiplier() {
-        return (((this._skill === 1) || (this._skill === 5)) ? 2 : 1);
+        return this._skillRule().ammoFactor;
     }
 
     // Give ammo and report whether the counter actually rose (it stays put when
@@ -376,6 +387,10 @@ class DoomGame {
 
         this._teardownLevel();
         loader.beginBatch();
+        // The monster system is created BEFORE the builder: the builder feeds
+        // it while pre-building every (frame × rotation) billboard inside the
+        // batch (an object registered after endBatch would re-fire the loader).
+        this._monsters = new DoomMonsterSystem();
         await new WadWorldBuilder(wadFile, levelName, {
             onLevelExit: (secret) => {
                 this._onLevelExit(secret);
@@ -383,7 +398,9 @@ class DoomGame {
             thingCatalog: this._thingCatalog,
             skill: this._skill,
             game: this,
-            profile: this._gameProfile
+            profile: this._gameProfile,
+            monsterCatalog: this._monsterCatalog,
+            monsterSystem: this._monsters
         }).build();
 
         // Pre-decode every weapon view/flash frame INSIDE the batch: decoding a
@@ -433,6 +450,9 @@ class DoomGame {
             user.importState(this._carriedState);
             user.resetForNewLevel(this);
         }
+        // Skill-derived, re-applied on every level — never part of the
+        // carried equipment state.
+        user.setDamageFactor(this._skillRule().damageFactor);
         this._applySpawnOverride();
 
         if (this._wakeLock === null) {
@@ -478,6 +498,7 @@ class DoomGame {
         this._playerWeapon = null;
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
+        this._monsters.setUser(this._world.getUser());
         if (this._world.getUser().getActiveWeapon() !== null) {
             this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
             this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
@@ -554,6 +575,9 @@ class DoomGame {
         }
         if (this._projectiles !== null) {
             this._projectiles.update(dt);
+        }
+        if (this._monsters !== null) {
+            this._monsters.update(dt);
         }
         if (this._decals !== null) {
             this._decals.update(dt);

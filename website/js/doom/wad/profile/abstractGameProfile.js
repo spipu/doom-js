@@ -102,6 +102,27 @@ class AbstractGameProfile {
     }
 
     /**
+     * Assemble the game's monster catalog. Generic here: the mechanics are in
+     * DoomMonsterCatalog, only the data (monsterDefs) is per-game.
+     *
+     * @returns {DoomMonsterCatalog}
+     */
+    createMonsterCatalog() {
+        return new DoomMonsterCatalog(this.monsterDefs());
+    }
+
+    /**
+     * Monster definitions of this game, transcribed from the UZDoom zscript
+     * actors (stats, state machine, flags, drops).
+     *
+     * @returns {object} editor number → DoomMonsterDef
+     */
+    monsterDefs() {
+        this._generateException('monsterDefs must be implemented');
+        return {};
+    }
+
+    /**
      * Decoration definitions of this game's things.
      *
      * @returns {object} code → DoomDecoration
@@ -118,6 +139,20 @@ class AbstractGameProfile {
      */
     thingTypes() {
         this._generateException('thingTypes must be implemented');
+        return {};
+    }
+
+    /**
+     * Per-skill gameplay rules, transcribed from the game's UZDoom MAPINFO
+     * skill blocks. Skill 0 is our own "Labyrinth but no monster" mode: the
+     * skill-1 world (spawn filter, ammo, damage) with monsters disabled.
+     *
+     * @returns {object} skill (0-5) → {spawnFilterBit, ammoFactor, damageFactor,
+     *                   monstersEnabled, fastMonsters, instantReaction,
+     *                   respawnTicsDelay, easyBossBrain}
+     */
+    skillRules() {
+        this._generateException('skillRules must be implemented');
         return {};
     }
 

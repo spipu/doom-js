@@ -17,6 +17,12 @@ class DoomUser extends User {
         this._ammoMax      = {};   // code -> max
         this._items        = new Set();
         this._effects      = {};   // code -> remaining time (ms)
+        this._damageFactor = 1;    // skill-derived, set by DoomGame per level
+    }
+
+    setDamageFactor(factor) {
+        this._damageFactor = factor;
+        return this;
     }
 
     // --- Weapons ---
@@ -122,6 +128,12 @@ class DoomUser extends User {
     takeDamage(delta) {
         if (this.hasEffect('invulnerability')) {
             return;
+        }
+        // Vanilla P_DamageMobj applies the skill damage factor BEFORE the
+        // armor absorption, and only when damage > 1 (the int truncation is
+        // not replicated — this engine deals float damage).
+        if (delta > 1) {
+            delta = delta * this._damageFactor;
         }
         super.takeDamage(delta);
     }

@@ -207,6 +207,293 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
+    // Shared state blocks of the variant families (the spectre is a demon,
+    // the hell knight is a baron): one transcription each.
+    _demonStates() {
+        return {
+            spawn: [['AB', 10, 'A_Look', 'spawn']],
+            see:   [['AABBCCDD', 2, 'A_Chase', 'see', false, true]],
+            melee: [['EF', 8, 'A_FaceTarget', null, false, true], ['G', 8, 'A_SargAttack', 'see', false, true]],
+            pain:  [['H', 2, null, null, false, true], ['H', 2, 'A_Pain', 'see', false, true]],
+            death: [['I', 8], ['J', 8, 'A_Scream'], ['K', 4], ['L', 4, 'A_NoBlocking'], ['M', 4], ['N', -1]],
+            raise: [['N', 5], ['MLKJI', 5, null, 'see']]
+        };
+    }
+
+    _bruiserStates(withBossDeath) {
+        return {
+            spawn:   [['AB', 10, 'A_Look', 'spawn']],
+            see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
+            missile: [['EF', 8, 'A_FaceTarget'], ['G', 8, 'A_BruisAttack', 'see']],
+            pain:    [['H', 2], ['H', 2, 'A_Pain', 'see']],
+            death:   [['I', 8], ['J', 8, 'A_Scream'], ['K', 8], ['L', 8, 'A_NoBlocking'], ['MN', 8], ['O', -1, ((withBossDeath) ? 'A_BossDeath' : null)]],
+            raise:   [['O', 8], ['NMLKJI', 8, null, 'see']]
+        };
+    }
+
+    // The Doom bestiary, transcribed state-for-state from the UZDoom zscript
+    // actors (zscript/actors/doom/*.zs) with the editor numbers of
+    // mapinfo/doomitems.txt. Radius/height in Doom units (converted by the
+    // consumers). BossTarget 87 / BossEye 89 are Icon-of-Sin plumbing (no
+    // body, handled by the boss machinery), Stealth* and ScriptedMarine are
+    // ZDoom additions: none of those are spawnable monsters here.
+    monsterDefs() {
+        return {
+            3004: new DoomMonsterDef({
+                code: 'zombieman', name: 'Zombieman', sprite: 'POSS',
+                health: 20, radius: 20, height: 56, speed: 8, painChance: 200,
+                dropItems: [{item: 'Clip'}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDD', 4, 'A_Chase', 'see']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['F', 8, 'A_PosAttack'], ['E', 8, null, 'see']],
+                    pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
+                    death:   [['H', 5], ['I', 5, 'A_Scream'], ['J', 5, 'A_NoBlocking'], ['K', 5], ['L', -1]],
+                    xdeath:  [['M', 5], ['N', 5, 'A_XScream'], ['O', 5, 'A_NoBlocking'], ['PQRST', 5], ['U', -1]],
+                    raise:   [['K', 5], ['JIH', 5, null, 'see']]
+                }
+            }),
+            9: new DoomMonsterDef({
+                code: 'shotgunguy', name: 'Shotgun Guy', sprite: 'SPOS',
+                health: 30, radius: 20, height: 56, speed: 8, painChance: 170,
+                dropItems: [{item: 'Shotgun'}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, 'A_SposAttackUseAtkSound', null, true], ['E', 10, null, 'see']],
+                    pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
+                    death:   [['H', 5], ['I', 5, 'A_Scream'], ['J', 5, 'A_NoBlocking'], ['K', 5], ['L', -1]],
+                    xdeath:  [['M', 5], ['N', 5, 'A_XScream'], ['O', 5, 'A_NoBlocking'], ['PQRST', 5], ['U', -1]],
+                    raise:   [['L', 5], ['KJIH', 5, null, 'see']]
+                }
+            }),
+            65: new DoomMonsterDef({
+                code: 'chaingunguy', name: 'Chaingunner', sprite: 'CPOS',
+                health: 70, radius: 20, height: 56, speed: 8, painChance: 170,
+                dropItems: [{item: 'Chaingun'}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['FE', 4, 'A_CPosAttack', null, true], ['F', 1, 'A_CPosRefire', 'missile1']],
+                    pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
+                    death:   [['H', 5], ['I', 5, 'A_Scream'], ['J', 5, 'A_NoBlocking'], ['KLM', 5], ['N', -1]],
+                    xdeath:  [['O', 5], ['P', 5, 'A_XScream'], ['Q', 5, 'A_NoBlocking'], ['RS', 5], ['T', -1]],
+                    raise:   [['N', 5], ['MLKJIH', 5, null, 'see']]
+                }
+            }),
+            84: new DoomMonsterDef({
+                code: 'wolfss', name: 'Wolfenstein SS', sprite: 'SSWV',
+                health: 50, radius: 20, height: 56, speed: 8, painChance: 170,
+                dropItems: [{item: 'Clip'}],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 6, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 1, 'A_CPosRefire', 'missile1']],
+                    pain:    [['H', 3], ['H', 3, 'A_Pain', 'see']],
+                    death:   [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, 'A_NoBlocking'], ['L', 5], ['M', -1]],
+                    xdeath:  [['N', 5], ['O', 5, 'A_XScream'], ['P', 5, 'A_NoBlocking'], ['QRSTU', 5], ['V', -1]],
+                    raise:   [['M', 5], ['LKJI', 5, null, 'see']]
+                }
+            }),
+            3001: new DoomMonsterDef({
+                code: 'imp', name: 'Imp', sprite: 'TROO',
+                health: 60, radius: 20, height: 56, speed: 8, painChance: 200,
+                states: {
+                    // zscript labels Melee+Missile on the same block
+                    // (A_TroopAttack picks claw or fireball by range).
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
+                    missile: [['EF', 8, 'A_FaceTarget'], ['G', 6, 'A_TroopAttack', 'see']],
+                    pain:    [['H', 2], ['H', 2, 'A_Pain', 'see']],
+                    death:   [['I', 8], ['J', 8, 'A_Scream'], ['K', 6], ['L', 6, 'A_NoBlocking'], ['M', -1]],
+                    xdeath:  [['N', 5], ['O', 5, 'A_XScream'], ['P', 5], ['Q', 5, 'A_NoBlocking'], ['RST', 5], ['U', -1]],
+                    raise:   [['ML', 8], ['KJI', 6, null, 'see']]
+                }
+            }),
+            3002: new DoomMonsterDef({
+                code: 'demon', name: 'Demon', sprite: 'SARG',
+                health: 150, radius: 30, height: 56, mass: 400, speed: 10, painChance: 180,
+                states: this._demonStates()
+            }),
+            58: new DoomMonsterDef({
+                // Demon data + translucency: zscript Spectre = RenderStyle
+                // OptFuzzy / Alpha 0.5; we render it as a 0.3-alpha shadow
+                // (user decision, no software fuzz effect).
+                code: 'spectre', name: 'Spectre', sprite: 'SARG', alpha: 0.3,
+                health: 150, radius: 30, height: 56, mass: 400, speed: 10, painChance: 180,
+                flags: {shadow: true},
+                states: this._demonStates()
+            }),
+            3006: new DoomMonsterDef({
+                code: 'lostsoul', name: 'Lost Soul', sprite: 'SKUL',
+                health: 100, radius: 16, height: 56, mass: 50, speed: 8, painChance: 256,
+                flags: {float: true},
+                params: {missileChanceMult: 0.5, damage: 3},
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn', true]],
+                    see:     [['AB', 6, 'A_Chase', 'see', true]],
+                    missile: [['C', 10, 'A_FaceTarget', null, true], ['D', 4, 'A_SkullAttack', null, true], ['CD', 4, null, 'missile2', true]],
+                    pain:    [['E', 3, null, null, true], ['E', 3, 'A_Pain', 'see', true]],
+                    // No corpse: the death sequence ends without a -1 state.
+                    death:   [['F', 6, null, null, true], ['G', 6, 'A_Scream', null, true], ['H', 6, null, null, true], ['I', 6, 'A_NoBlocking', null, true], ['J', 6], ['K', 6]]
+                }
+            }),
+            3005: new DoomMonsterDef({
+                code: 'cacodemon', name: 'Cacodemon', sprite: 'HEAD',
+                health: 400, radius: 31, height: 56, mass: 400, speed: 8, painChance: 128,
+                flags: {float: true},
+                states: {
+                    spawn:   [['A', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 3, 'A_Chase', 'see']],
+                    missile: [['B', 5, 'A_FaceTarget'], ['C', 5, 'A_FaceTarget'], ['D', 5, 'A_HeadAttack', 'see', true]],
+                    pain:    [['E', 3], ['E', 3, 'A_Pain'], ['F', 6, null, 'see']],
+                    death:   [['G', 8], ['H', 8, 'A_Scream'], ['I', 8], ['J', 8], ['K', 8, 'A_NoBlocking'], ['L', -1, 'A_SetFloorClip']],
+                    raise:   [['L', 8, 'A_UnSetFloorClip'], ['KJIHG', 8, null, 'see']]
+                }
+            }),
+            69: new DoomMonsterDef({
+                code: 'hellknight', name: 'Hell Knight', sprite: 'BOS2',
+                health: 500, radius: 24, height: 64, mass: 1000, speed: 8, painChance: 50,
+                states: this._bruiserStates(false)
+            }),
+            3003: new DoomMonsterDef({
+                code: 'baron', name: 'Baron of Hell', sprite: 'BOSS',
+                health: 1000, radius: 24, height: 64, mass: 1000, speed: 8, painChance: 50,
+                bossMaps: ['E1M8'],
+                states: this._bruiserStates(true)
+            }),
+            66: new DoomMonsterDef({
+                code: 'revenant', name: 'Revenant', sprite: 'SKEL',
+                health: 300, radius: 20, height: 56, mass: 500, speed: 10, painChance: 100,
+                params: {meleeThreshold: 196, missileChanceMult: 0.5},
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDDEEFF', 2, 'A_Chase', 'see']],
+                    melee:   [['G', 0, 'A_FaceTarget'], ['G', 6, 'A_SkelWhoosh'], ['H', 6, 'A_FaceTarget'], ['I', 6, 'A_SkelFist', 'see']],
+                    missile: [['J', 0, 'A_FaceTarget', null, true], ['J', 10, 'A_FaceTarget', null, true], ['K', 10, 'A_SkelMissile'], ['K', 10, 'A_FaceTarget', 'see']],
+                    pain:    [['L', 5], ['L', 5, 'A_Pain', 'see']],
+                    death:   [['LM', 7], ['N', 7, 'A_Scream'], ['O', 7, 'A_NoBlocking'], ['P', 7], ['Q', -1]],
+                    raise:   [['Q', 5], ['PONML', 5, null, 'see']]
+                }
+            }),
+            67: new DoomMonsterDef({
+                code: 'mancubus', name: 'Mancubus', sprite: 'FATT',
+                health: 600, radius: 48, height: 64, mass: 1000, speed: 8, painChance: 80,
+                bossMaps: ['MAP07-1'],
+                states: {
+                    spawn:   [['AB', 15, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDDEEFF', 4, 'A_Chase', 'see']],
+                    missile: [['G', 20, 'A_FatRaise'], ['H', 10, 'A_FatAttack1', null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, 'A_FatAttack2', null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, 'A_FatAttack3', null, true], ['IG', 5, 'A_FaceTarget', 'see']],
+                    pain:    [['J', 3], ['J', 3, 'A_Pain', 'see']],
+                    death:   [['K', 6], ['L', 6, 'A_Scream'], ['M', 6, 'A_NoBlocking'], ['NOPQRS', 6], ['T', -1, 'A_BossDeath']],
+                    raise:   [['R', 5], ['QPONMLK', 5, null, 'see']]
+                }
+            }),
+            68: new DoomMonsterDef({
+                code: 'arachnotron', name: 'Arachnotron', sprite: 'BSPI',
+                health: 500, radius: 64, height: 64, mass: 600, speed: 12, painChance: 128,
+                bossMaps: ['MAP07-2'],
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 20], ['A', 3, 'A_BabyMetal'], ['ABBCC', 3, 'A_Chase'], ['D', 3, 'A_BabyMetal'], ['DEEFF', 3, 'A_Chase', 'see1']],
+                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, 'A_BspiAttack', null, true], ['H', 4, null, null, true], ['H', 1, 'A_SpidRefire', 'missile1', true]],
+                    pain:    [['I', 3], ['I', 3, 'A_Pain', 'see1']],
+                    death:   [['J', 20, 'A_Scream'], ['K', 7, 'A_NoBlocking'], ['LMNO', 7], ['P', -1, 'A_BossDeath']],
+                    raise:   [['P', 5], ['ONMLKJ', 5, null, 'see1']]
+                }
+            }),
+            71: new DoomMonsterDef({
+                code: 'painelemental', name: 'Pain Elemental', sprite: 'PAIN',
+                health: 400, radius: 31, height: 56, mass: 400, speed: 8, painChance: 128,
+                flags: {float: true},
+                states: {
+                    spawn:   [['A', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCC', 3, 'A_Chase', 'see']],
+                    missile: [['D', 5, 'A_FaceTarget'], ['E', 5, 'A_FaceTarget'], ['F', 5, 'A_FaceTarget', null, true], ['F', 0, 'A_PainAttack', 'see', true]],
+                    pain:    [['G', 6], ['G', 6, 'A_Pain', 'see']],
+                    // A_PainDie bursts into lost souls: no corpse.
+                    death:   [['H', 8, null, null, true], ['I', 8, 'A_Scream', null, true], ['JK', 8, null, null, true], ['L', 8, 'A_PainDie', null, true], ['M', 8, null, null, true]],
+                    raise:   [['MLKJIH', 8, null, 'see']]
+                }
+            }),
+            64: new DoomMonsterDef({
+                code: 'archvile', name: 'Archvile', sprite: 'VILE',
+                health: 700, radius: 20, height: 56, mass: 500, speed: 15, painChance: 10,
+                flags: {noTarget: true},
+                params: {maxTargetRange: 896},
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['AABBCCDDEEFF', 2, 'A_VileChase', 'see']],
+                    missile: [['G', 0, 'A_VileStart', null, true], ['G', 10, 'A_FaceTarget', null, true], ['H', 8, 'A_VileTarget', null, true], ['IJKLMN', 8, 'A_FaceTarget', null, true], ['O', 8, 'A_VileAttack', null, true], ['P', 20, null, 'see', true]],
+                    heal:    [['[\\]', 10, null, 'see', true]],
+                    pain:    [['Q', 5], ['Q', 5, 'A_Pain', 'see']],
+                    death:   [['Q', 7], ['R', 7, 'A_Scream'], ['S', 7, 'A_NoBlocking'], ['TUVWXY', 7], ['Z', -1]]
+                }
+            }),
+            7: new DoomMonsterDef({
+                code: 'mastermind', name: 'Spider Mastermind', sprite: 'SPID',
+                health: 3000, radius: 128, height: 100, mass: 1000, speed: 12, painChance: 40,
+                flags: {boss: true, noRadiusDmg: true},
+                bossMaps: ['E3M8', 'E4M8'],
+                params: {missileChanceMult: 0.5},
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 3, 'A_Metal'], ['ABB', 3, 'A_Chase'], ['C', 3, 'A_Metal'], ['CDD', 3, 'A_Chase'], ['E', 3, 'A_Metal'], ['EFF', 3, 'A_Chase', 'see']],
+                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, 'A_SPosAttackUseAtkSound', null, true], ['H', 4, 'A_SposAttackUseAtkSound', null, true], ['H', 1, 'A_SpidRefire', 'missile1', true]],
+                    pain:    [['I', 3], ['I', 3, 'A_Pain', 'see']],
+                    death:   [['J', 20, 'A_Scream'], ['K', 10, 'A_NoBlocking'], ['LMNOPQR', 10], ['S', 30], ['S', -1, 'A_BossDeath']]
+                }
+            }),
+            16: new DoomMonsterDef({
+                code: 'cyberdemon', name: 'Cyberdemon', sprite: 'CYBR',
+                health: 4000, radius: 40, height: 110, mass: 1000, speed: 16, painChance: 20,
+                flags: {boss: true, noRadiusDmg: true},
+                bossMaps: ['E2M8', 'E4M6'],
+                params: {minMissileChance: 160, missileChanceMult: 0.5},
+                states: {
+                    spawn:   [['AB', 10, 'A_Look', 'spawn']],
+                    see:     [['A', 3, 'A_Hoof'], ['ABBCC', 3, 'A_Chase'], ['D', 3, 'A_Metal'], ['D', 3, 'A_Chase', 'see']],
+                    missile: [['E', 6, 'A_FaceTarget'], ['F', 12, 'A_CyberAttack'], ['E', 12, 'A_FaceTarget'], ['F', 12, 'A_CyberAttack'], ['E', 12, 'A_FaceTarget'], ['F', 12, 'A_CyberAttack', 'see']],
+                    pain:    [['G', 10, 'A_Pain', 'see']],
+                    death:   [['H', 10], ['I', 10, 'A_Scream'], ['JKL', 10], ['M', 10, 'A_NoBlocking'], ['NO', 10], ['P', 30], ['P', -1, 'A_BossDeath']]
+                }
+            }),
+            72: new DoomMonsterDef({
+                code: 'keen', name: 'Commander Keen', sprite: 'KEEN',
+                health: 100, radius: 16, height: 72, mass: 10000000, speed: 0, painChance: 256,
+                ceiling: true,
+                states: {
+                    spawn: [['A', -1]],
+                    pain:  [['M', 4], ['M', 8, 'A_Pain', 'spawn']],
+                    death: [['AB', 6], ['C', 6, 'A_Scream'], ['DEFGH', 6], ['I', 6], ['J', 6], ['K', 6, 'A_KeenDie'], ['L', -1]]
+                }
+            }),
+            88: new DoomMonsterDef({
+                code: 'bossbrain', name: 'Boss Brain', sprite: 'BBRN',
+                health: 250, radius: 16, height: 16, mass: 10000000, speed: 0, painChance: 255,
+                states: {
+                    spawn: [['A', -1]],
+                    pain:  [['B', 36, 'A_BrainPain', 'spawn']],
+                    death: [['A', 100, 'A_BrainScream'], ['AA', 10], ['A', -1, 'A_BrainDie']]
+                }
+            })
+        };
+    }
+
+    // Doom skill blocks (UZDoom mapinfo/doomcommon.txt): baby = ammo ×2,
+    // damage ×0.5, easy boss brain; nightmare = ammo ×2, fast monsters,
+    // instant reaction, 12 s respawn. Skill 0 = skill 1 without monsters.
+    skillRules() {
+        return {
+            0: {spawnFilterBit: 0x01, ammoFactor: 2, damageFactor: 0.5, monstersEnabled: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
+            1: {spawnFilterBit: 0x01, ammoFactor: 2, damageFactor: 0.5, monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
+            2: {spawnFilterBit: 0x01, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
+            3: {spawnFilterBit: 0x02, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
+            4: {spawnFilterBit: 0x04, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
+            5: {spawnFilterBit: 0x04, ammoFactor: 2, damageFactor: 1,   monstersEnabled: true,  fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 12 * 35, easyBossBrain: false}
+        };
+    }
+
     // Shared immutable definitions (the per-player state lives on DoomUser).
     buildAmmoTypes() {
         return {
