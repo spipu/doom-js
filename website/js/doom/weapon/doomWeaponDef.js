@@ -13,6 +13,16 @@ class DoomWeaponDef extends DoomWeapon {
         this._spreadH       = data.spreadH ?? 0;
         this._spreadV       = data.spreadV ?? 0;
         this._range         = data.range ?? 0;
+        // Per-pellet damage roll {base, dice, flat?} → flat + base×(1..dice),
+        // straight from the game sources; kickback drives the victim thrust
+        // (chainsaw/gauntlets 0 pin the target); berserkFactor multiplies the
+        // fist under the strength power-up; puffOnMonsters shows the puff on
+        // flesh (Heretic sparks) instead of hiding it behind the blood.
+        this._damageSpec    = data.damage ?? null;
+        this._kickback      = data.kickback ?? 100;
+        this._berserkItem   = data.berserkItem ?? null;
+        this._berserkFactor = data.berserkFactor ?? 1;
+        this._puffOnMonsters = (data.puffOnMonsters === true);
         this._projectiles   = data.projectiles ?? [];
         this._puffType      = data.puffType ?? null;
         this._decalType     = data.decalType ?? null;
@@ -66,6 +76,29 @@ class DoomWeaponDef extends DoomWeapon {
 
     getPuffType() {
         return this._puffType;
+    }
+
+    getDamageSpec() {
+        return this._damageSpec;
+    }
+
+    getKickback() {
+        return this._kickback;
+    }
+
+    // Inventory item code whose possession multiplies the damage by the
+    // berserk factor (the Doom fist under the strength power-up); null = the
+    // weapon never gets boosted.
+    getBerserkItem() {
+        return this._berserkItem;
+    }
+
+    getBerserkFactor() {
+        return this._berserkFactor;
+    }
+
+    isPuffOnMonsters() {
+        return this._puffOnMonsters;
     }
 
     getDecalType() {

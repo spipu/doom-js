@@ -52,7 +52,17 @@ class DoomEffects {
                 }),
             });
         }
-        return { frames, frameTics: spec.frameTics, rise: spec.rise, meleeStart: spec.meleeStart ?? 0 };
+        // The first-frame tic shortening is a Doom-family quirk (P_SpawnPuff /
+        // P_SpawnBlood under GAME_DoomChex): drifting templates get it unless
+        // the spec opts out (Heretic blood).
+        return {
+            frames,
+            frameTics:  spec.frameTics,
+            rise:       spec.rise,
+            gravity:    (spec.gravity ?? 0),
+            shorten:    (spec.shorten ?? (spec.rise > 0)),
+            meleeStart: spec.meleeStart ?? 0
+        };
     }
 
     // Weapon puff at a world impact point; the template is per-weapon def data,
@@ -85,8 +95,10 @@ class DoomEffects {
             keyframes:      [],
         });
         // th->tics -= P_Random()&3: the puff's first frame is a touch shorter.
-        const elapsed = ((tpl.rise > 0) ? (this._rng.next() & 3) : 0);
-        this._active.push({ tpl, instId, start: startFrame, shown: startFrame, elapsed });
+        const elapsed = ((tpl.shorten) ? (this._rng.next() & 3) : 0);
+        // A template with gravity ballistically drops its drift (blood: up at
+        // rise, then falling); without it the drift stays constant (puffs).
+        this._active.push({ tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise });
     }
 
     update(dtMs) {
@@ -118,7 +130,10 @@ class DoomEffects {
                 p.shown = frame;
             }
             if (p.tpl.rise > 0) {
-                inst.getTransform().position[1] += p.tpl.rise * WadConstants.SCALE;   // momz, map units/tic
+                inst.getTransform().position[1] += p.vy * WadConstants.SCALE;   // momz, map units/tic
+                if (p.tpl.gravity > 0) {
+                    p.vy -= p.tpl.gravity;
+                }
             }
             kept.push(p);
         }

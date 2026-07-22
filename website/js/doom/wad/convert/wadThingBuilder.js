@@ -59,9 +59,11 @@ class WadThingBuilder {
             // switch ("Labyrinth but no monster").
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
+                // alwaysSpawn bodies (barrels, pods) survive the skill-0
+                // monster kill switch — they are scenery you can shoot.
                 if (((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)
                     || ((thing.flags & skillBit) === 0)
-                    || !monstersEnabled) {
+                    || (!monstersEnabled && (monsterDef.getFlags().alwaysSpawn !== true))) {
                     this._filtered++;
                     continue;
                 }
@@ -188,13 +190,25 @@ class WadThingBuilder {
     // pre-builds one shared billboard per (frame, rotation) — no padded common
     // canvas, each view keeps its own vanilla anchor (the doomEffects pattern).
     _buildMonsterEntry(thing, def, sect) {
+        // The spawn views are the monster's body: without them the monster is
+        // dropped. The hurt/death views are optional (freedoom gaps): a state
+        // whose views are missing just keeps showing the previous ones.
         const frames = {};
-        for (const letter of def.getSpawnFrameLetters()) {
-            const views = this._spriteBank.getFrameRotations(def.getSprite(), letter);
+        for (const pair of def.getFramePairs(['spawn'])) {
+            const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
             if (views === null) {
                 return null;
             }
-            frames[letter] = views;
+            frames[pair.sprite + pair.frame] = views;
+        }
+        for (const pair of def.getFramePairs(['pain', 'death', 'xdeath'])) {
+            if (frames[pair.sprite + pair.frame] !== undefined) {
+                continue;
+            }
+            const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
+            if (views !== null) {
+                frames[pair.sprite + pair.frame] = views;
+            }
         }
 
         const baseH = ((def.isCeiling()) ? sect.ch : sect.fh);

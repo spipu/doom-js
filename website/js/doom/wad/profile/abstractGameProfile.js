@@ -123,6 +123,29 @@ class AbstractGameProfile {
     }
 
     /**
+     * Per-game numbers of the shootable-body damage pipeline (gib threshold,
+     * default kickback, blood behaviour) — UZDoom gameinfo + P_SpawnBlood.
+     *
+     * @returns {object} {gibFactor, defKickback, bloodTemplate, bloodDamageAdvance}
+     */
+    monsterDamageRules() {
+        this._generateException('monsterDamageRules must be implemented');
+        return {};
+    }
+
+    /**
+     * Pickup templates of the monsters' DropItems: zscript item name →
+     * {sprite, effect} (fixed effect) or {sprite, ammoType} (the amount comes
+     * from each monster's dropItems entry).
+     *
+     * @returns {object} name → {sprite, effect?|ammoType?}
+     */
+    dropItemTypes() {
+        this._generateException('dropItemTypes must be implemented');
+        return {};
+    }
+
+    /**
      * Decoration definitions of this game's things.
      *
      * @returns {object} code → DoomDecoration

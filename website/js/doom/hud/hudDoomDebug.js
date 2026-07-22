@@ -54,6 +54,7 @@ class HudDoomDebug extends HudDebug {
 
         if (this._game) {
             lines.push('[SECRETS] ' + this._game.getSecretsFound() + '/' + this._game.getSecretsTotal());
+            lines.push('[KILLS] ' + this._game.getKillsCount() + '/' + this._game.getKillsTotal());
         }
 
         lines.push('[ARMOR] ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor()

@@ -89,6 +89,7 @@ class HudGameBar extends AbstractHud {
 
         if (this._game !== null) {
             this._els.secretsValue.innerText = this._game.getSecretsFound() + '/' + this._game.getSecretsTotal();
+            this._els.killsValue.innerText   = this._game.getKillsCount() + '/' + this._game.getKillsTotal();
         }
     }
 
@@ -231,6 +232,18 @@ class HudGameBar extends AbstractHud {
         secrets.appendChild(icon);
         secrets.appendChild(this._els.secretsValue);
         block.appendChild(secrets);
+
+        const kills = this._createEl('div', {
+            display: 'flex', alignItems: 'center', gap: '0.35em',
+            marginTop: '0.35em', fontSize: '0.9em', fontWeight: '700'
+        });
+        const skull = this._createEl('div', { color: '#e05f5f', lineHeight: '1' });
+        skull.innerText = '☠';
+        this._els.killsValue = this._createEl('div', { color: '#eee' });
+        this._els.killsValue.innerText = '0/0';
+        kills.appendChild(skull);
+        kills.appendChild(this._els.killsValue);
+        block.appendChild(kills);
 
         this._root.appendChild(block);
     }

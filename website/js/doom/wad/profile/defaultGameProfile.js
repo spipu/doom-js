@@ -43,7 +43,6 @@ class DefaultGameProfile extends AbstractGameProfile {
     thingDecorations() {
         return {
             // Floor obstacles (solid)
-            barrel:        new DoomDecoration({code: 'barrel',        name: 'Barrel',             sprite: 'BAR1A0', solid: true,  radius: 10 * WadConstants.SCALE}),
             floorLamp:     new DoomDecoration({code: 'floorLamp',     name: 'Floor lamp',         sprite: 'COLUA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             techColumn:    new DoomDecoration({code: 'techColumn',    name: 'Tall techno column', sprite: 'ELECA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             candelabra:    new DoomDecoration({code: 'candelabra',    name: 'Candelabra',         sprite: 'CBRAA0', solid: true,  radius: 16 * WadConstants.SCALE}),
@@ -144,7 +143,6 @@ class DefaultGameProfile extends AbstractGameProfile {
             38:   {kind: 'pickup', sprite: 'RSKUA0', frames: DoomThingCatalog.animFrames('RSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
             39:   {kind: 'pickup', sprite: 'YSKUA0', frames: DoomThingCatalog.animFrames('YSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
             // --- Static floor decorations ---
-            2035: {kind: 'decoration', code: 'barrel'},
             2028: {kind: 'decoration', code: 'floorLamp'},
             48:   {kind: 'decoration', code: 'techColumn'},
             35:   {kind: 'decoration', code: 'candelabra'},
@@ -468,15 +466,41 @@ class DefaultGameProfile extends AbstractGameProfile {
                     death: [['AB', 6], ['C', 6, 'A_Scream'], ['DEFGH', 6], ['I', 6], ['J', 6], ['K', 6, 'A_KeenDie'], ['L', -1]]
                 }
             }),
+            2035: new DoomMonsterDef({
+                // doommisc.zs ExplosiveBarrel: a shootable body, not a kill —
+                // its death runs A_Explode (128/128) and the empty end of the
+                // sequence despawns it (no respawn).
+                code: 'barrel', name: 'Barrel', sprite: 'BAR1',
+                health: 20, radius: 10, height: 42, speed: 0, painChance: 0,
+                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true},
+                params: {explode: {damage: 128, distance: 128}},
+                spriteOverrides: {death: 'BEXP'},
+                states: {
+                    spawn: [['AB', 6, null, 'spawn']],
+                    death: [['A', 5, null, null, true], ['B', 5, 'A_Scream', null, true], ['C', 5, null, null, true], ['D', 10, 'A_Explode', null, true], ['E', 10, null, null, true]]
+                }
+            }),
             88: new DoomMonsterDef({
                 code: 'bossbrain', name: 'Boss Brain', sprite: 'BBRN',
                 health: 250, radius: 16, height: 16, mass: 10000000, speed: 0, painChance: 255,
+                flags: {countsKill: false, dontGib: true},
                 states: {
                     spawn: [['A', -1]],
                     pain:  [['B', 36, 'A_BrainPain', 'spawn']],
                     death: [['A', 100, 'A_BrainScream'], ['AA', 10], ['A', -1, 'A_BrainDie']]
                 }
             })
+        };
+    }
+
+    // What the Doom zombies leave behind (zscript DropItem): the dropped clip
+    // carries HALF the pickup amount (vanilla MF_DROPPED), dropped weapons
+    // flag their halved ammo through effect.dropped.
+    dropItemTypes() {
+        return {
+            Clip:     {sprite: 'CLIPA0', effect: {ammo: 'bullets', amount: 5}},
+            Shotgun:  {sprite: 'SHOTA0', effect: {weapon: 'shotgun', dropped: true}},
+            Chaingun: {sprite: 'MGUNA0', effect: {weapon: 'chaingun', dropped: true}}
         };
     }
 
@@ -520,6 +544,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'fist', name: 'Fist', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
+                damage: {base: 2, dice: 10}, berserkItem: 'berserk', berserkFactor: 10,
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PUNG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
@@ -531,6 +556,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'chainsaw', name: 'Chainsaw', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
+                damage: {base: 2, dice: 10}, kickback: 0,
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SAWG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
@@ -542,6 +568,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'pistol', name: 'Pistol', ammoType: 'bullets', ammoUse: 1,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PISG', flashSprite: 'PISF', entry: READY,
                 main: {
@@ -554,6 +581,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'shotgun', name: 'Shotgun', ammoType: 'shells', ammoUse: 1,
                 pellets: 7, spreadH: SPREAD, range: HITSCAN,
+                damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHTG', flashSprite: 'SHTF', entry: READY,
                 main: {
@@ -567,6 +595,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'supershotgun', name: 'Super Shotgun', ammoType: 'shells', ammoUse: 2,
                 pellets: 20, spreadH: SSG_H, spreadV: SSG_V, range: HITSCAN,
+                damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHT2', flashSprite: 'SHT2', entry: READY,
                 main: {
@@ -581,6 +610,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'chaingun', name: 'Chaingun', ammoType: 'bullets', ammoUse: 1,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'CHGG', flashSprite: 'CHGF', entry: READY,
                 main: {
@@ -642,19 +672,33 @@ class DefaultGameProfile extends AbstractGameProfile {
             {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.25, rise: 1, additive: false, meleeStart: 2},
             {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
             {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true},
-            {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true}
+            {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true},
+            {name: 'bfgSprayHit',   sprite: 'BFE2', letters: ['A', 'B', 'C', 'D'],           frameTics: [8, 8, 8, 8],       alpha: 0.75, rise: 0, additive: true},
+            // P_SpawnBlood: momz 2 under mobj gravity (1/tic²); big hits show
+            // the full splash, weaker ones start deeper in (monsterDamageRules).
+            {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false}
         ];
+    }
+
+    // Per-game damage-pipeline numbers (UZDoom gameinfo blocks + P_SpawnBlood
+    // quirks): Doom gibs past 1× spawn health, kicks back at 100, and stamps
+    // its blood by damage with shortened first tics.
+    monsterDamageRules() {
+        return {gibFactor: 1, defKickback: 100, bloodTemplate: 'blood', bloodDamageAdvance: true};
     }
 
     // The three Doom projectiles (MT_ROCKET / MT_PLASMA / MT_BFG, info.c):
     // speed in map units/tic, splash = the rocket's A_Explode 128. The
     // in-flight alpha follows gzdoom (PlasmaBall/BFGBall: RenderStyle "Add",
     // Alpha 0.75; the rocket is a solid missile).
+    // impactDamage = the zscript Damage property: a direct body hit rolls
+    // ((rng & 7) + 1) × impactDamage (GetMissileDamage). The BFG ball also
+    // fires the vanilla A_BFGSpray from the shooter on detonation.
     projectileDefs() {
         return [
-            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, alpha: 1,    additive: false, decalType: 'scorch'},
-            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   alpha: 0.75, additive: true,  decalType: 'plasma'},
-            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   alpha: 0.75, additive: true,  decalType: 'bfg'}
+            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, impactDamage: 20,  alpha: 1,    additive: false, decalType: 'scorch'},
+            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   impactDamage: 5,   alpha: 0.75, additive: true,  decalType: 'plasma'},
+            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}}
         ];
     }
 

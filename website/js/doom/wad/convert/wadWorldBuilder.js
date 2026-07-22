@@ -264,10 +264,14 @@ class WadWorldBuilder {
 
         const billboardIds        = {};
         const monsterBillboardIds = {};
+        let   killsTotal          = 0;
         for (let i = 0; i < things.length; i++) {
             const t = things[i];
             if (t.kind === 'monster') {
                 this._registerMonsterThing(t, i, analysis, builtFloorCodes, monsterBillboardIds);
+                if (t.def.getFlags().countsKill !== false) {
+                    killsTotal++;
+                }
                 continue;
             }
             // Dedup the shared Object3d per (sprite, sector light, light group):
@@ -326,8 +330,60 @@ class WadWorldBuilder {
                 loader.interactions().loadFromData(new DoomPickupInteraction(code, t.effect, this._game));
             }
         }
+        if (this._game !== null) {
+            this._game.setKillsTotal(killsTotal);
+        }
+        this._registerMonsterDrops(things, spriteBank);
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
+    }
+
+    // Pickup templates for everything this level's monsters can drop, built
+    // INSIDE the batch (billboards + one DoomPickupInteraction per distinct
+    // item/amount pair — an interaction cannot register at runtime, only the
+    // drop instances spawn at death). The catalog is handed to the monster
+    // system, keyed like DoomMonsterSystem._spawnDrops looks it up.
+    _registerMonsterDrops(things, spriteBank) {
+        if ((this._monsterSystem === null) || (this._game === null)) {
+            return;
+        }
+        const types   = this._profile.dropItemTypes();
+        const scale   = WadConstants.SCALE;
+        const catalog = {};
+        for (const t of things) {
+            if (t.kind !== 'monster') {
+                continue;
+            }
+            for (const d of t.def.getDropItems()) {
+                const key = DoomMonsterSystem.dropKey(d);
+                if ((catalog[key] !== undefined) || (types[d.item] === undefined)) {
+                    continue;
+                }
+                const type = types[d.item];
+                const spr  = spriteBank.get(type.sprite);
+                if (spr === null) {
+                    continue;
+                }
+                const geo    = WadGeometry.spriteBillboardData(spr);
+                const effect = ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (d.amount ?? 0)});
+                const code   = 'drop_' + d.item + '_' + (d.amount ?? 'x');
+                catalog[key] = {
+                    code:  code,
+                    objId: loader.objects().loadBillboardFromData(null, {
+                        billboard:     true,
+                        textures:      [spr.loaderId],
+                        halfWidth:     geo.halfWidth,
+                        height:        geo.height,
+                        anchorOffsetX: geo.anchorOffsetX,
+                        anchorOffsetY: Math.max(0, spr.topOffset - spr.height) * scale,
+                        anchorTop:     false,
+                        light:         255
+                    })
+                };
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._game));
+            }
+        }
+        this._monsterSystem.setDrops(catalog);
     }
 
     // One monster: a shared billboard per (rotation view, light, group, alpha)
@@ -363,11 +419,12 @@ class WadWorldBuilder {
             });
         }
 
-        const code = 'monster_' + i;
-        const ride = this._resolveThingFloor(t, analysis, builtFloorCodes);
+        const code  = 'monster_' + i;
+        const ride  = this._resolveThingFloor(t, analysis, builtFloorCodes);
+        const idle0 = t.def.getState('spawn0');
         loader.instances().loadFromData(null, {
             code:            code,
-            object:          frames[t.def.getSpawnFrameLetters()[0]][0],
+            object:          frames[idle0.getSprite() + idle0.getFrame()][0],
             position:        [t.position[0], t.position[1] + ride.liftY, t.position[2]],
             rotation:        [0, 0, 0],
             trigger:         'none',
