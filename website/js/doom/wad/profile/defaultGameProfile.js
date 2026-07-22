@@ -472,7 +472,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 // sequence despawns it (no respawn).
                 code: 'barrel', name: 'Barrel', sprite: 'BAR1',
                 health: 20, radius: 10, height: 42, speed: 0, painChance: 0,
-                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true},
+                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true, noCorpseThrust: true},
                 params: {explode: {damage: 128, distance: 128}},
                 spriteOverrides: {death: 'BEXP'},
                 states: {

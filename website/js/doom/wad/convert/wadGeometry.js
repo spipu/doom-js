@@ -37,16 +37,17 @@ class WadGeometry {
     }
 
     /**
-     * Impact point pulled back off its surface along the shot direction —
-     * the vanilla 4 map units every puff, blood splash and explosion backs
-     * off so the effect never clips into the wall or the body.
+     * Impact point pulled back off its surface along the shot direction, so
+     * the effect never clips into the wall or the body — vanilla backs off
+     * 4 map units on walls and 10 on flesh (PTR_ShootTraverse bleedpos).
      *
      * @param {number[]} point [x, y, z] impact
      * @param {number[]} dir   [dx, dy, dz] normalized shot direction
+     * @param {number}   units map units to back off
      * @returns {number[]} pulled-back [x, y, z]
      */
-    static pullBack(point, dir) {
-        const back = 4 * WadConstants.SCALE;
+    static pullBack(point, dir, units = 4) {
+        const back = units * WadConstants.SCALE;
         return [point[0] - dir[0] * back, point[1] - dir[1] * back, point[2] - dir[2] * back];
     }
 

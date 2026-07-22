@@ -199,15 +199,15 @@ class WadThingBuilder {
             if (views === null) {
                 return null;
             }
-            frames[pair.sprite + pair.frame] = views;
+            frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] = views;
         }
         for (const pair of def.getFramePairs(['pain', 'death', 'xdeath'])) {
-            if (frames[pair.sprite + pair.frame] !== undefined) {
+            if (frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] !== undefined) {
                 continue;
             }
             const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
             if (views !== null) {
-                frames[pair.sprite + pair.frame] = views;
+                frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] = views;
             }
         }
 
