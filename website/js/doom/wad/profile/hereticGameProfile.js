@@ -58,7 +58,6 @@ class HereticGameProfile extends DefaultGameProfile {
             barrel:          new DoomDecoration({code: 'barrel',          name: 'Barrel',             sprite: 'BARLA0', solid: true,  radius: 12 * WadConstants.SCALE}),
             brownPillar:     new DoomDecoration({code: 'brownPillar',     name: 'Brown pillar',       sprite: 'BRPLA0', solid: true,  radius: 14 * WadConstants.SCALE}),
             volcano:         new DoomDecoration({code: 'volcano',         name: 'Volcano',            sprite: 'VLCOA0', solid: true,  radius: 12 * WadConstants.SCALE}),
-            pod:             new DoomDecoration({code: 'pod',             name: 'Gas pod',            sprite: 'PPODA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             // Key gizmos: solid base pillar (the floating colored top of the
             // vanilla actor pair is not spawned — assumed simplification)
             keyGizmoBlue:    new DoomDecoration({code: 'keyGizmoBlue',    name: 'Blue key gizmo',     sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
@@ -137,7 +136,6 @@ class HereticGameProfile extends DefaultGameProfile {
             44:   {kind: 'decoration', code: 'barrel'},
             47:   {kind: 'decoration', code: 'brownPillar'},
             87:   {kind: 'decoration', code: 'volcano'},
-            2035: {kind: 'decoration', code: 'pod'},
             94:   {kind: 'decoration', code: 'keyGizmoBlue'},
             95:   {kind: 'decoration', code: 'keyGizmoGreen'},
             96:   {kind: 'decoration', code: 'keyGizmoYellow'},
@@ -161,6 +159,20 @@ class HereticGameProfile extends DefaultGameProfile {
 
     // Shared state blocks of the variant families (ghosts = base monsters
     // with translucency, leaders swap the attack): one transcription each.
+    _podDef() {
+        return new DoomMonsterDef({
+            code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
+            health: 45, radius: 16, height: 54, speed: 0, painChance: 255,
+            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true},
+            params: {explode: {damage: 128, distance: 128}},
+            states: {
+                spawn: [['A', 10, null, 'spawn']],
+                pain:  [['B', 14, 'A_PodPain', 'spawn']],
+                death: [['C', 5, 'A_RemovePod', null, true], ['D', 5, 'A_Scream', null, true], ['E', 5, 'A_Explode', null, true], ['F', 10, null, null, true]]
+            }
+        });
+    }
+
     _gargoyleStates(leader) {
         const states = {
             spawn:  [['ABCB', 10, 'A_Look', 'spawn']],
@@ -215,6 +227,11 @@ class HereticGameProfile extends DefaultGameProfile {
     // The chicken is a player morph (inventory chantier), not a monster.
     monsterDefs() {
         return {
+            // hereticmisc.zs Pod: a shootable exploding body, not a kill.
+            // A_PodPain (the goo squirt) and A_RemovePod (generator hook) are
+            // skipped — agreed simplification. Two editor numbers spawn it.
+            2035: this._podDef(),
+            125:  this._podDef(),
             66: new DoomMonsterDef({
                 code: 'gargoyle', name: 'Gargoyle', sprite: 'IMPX',
                 health: 40, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
@@ -371,6 +388,22 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // Heretic monster drops (zscript DropItem): the ammo amounts live on each
+    // monster's dropItems entry; the artifacts drop as the same visible
+    // pickups as their world things (urn heals, egg/tome stay inert).
+    dropItemTypes() {
+        return {
+            GoldWandAmmo:    {sprite: 'AMG1A0', ammoType: 'crystals'},
+            CrossbowAmmo:    {sprite: 'AMC1A0', ammoType: 'arrows'},
+            BlasterAmmo:     {sprite: 'AMB1A0', ammoType: 'orbs'},
+            SkullRodAmmo:    {sprite: 'AMS1A0', ammoType: 'runes'},
+            PhoenixRodAmmo:  {sprite: 'AMP1A0', ammoType: 'flameorbs'},
+            ArtiSuperHealth: {sprite: 'SPHLA0', effect: {health: 100}},
+            ArtiEgg:         {sprite: 'EGGCA0', effect: null},
+            ArtiTomeOfPower: {sprite: 'PWBKA0', effect: null}
+        };
+    }
+
     // Heretic skill blocks (UZDoom mapinfo/heretic.txt): baby = ammo ×1.5,
     // damage ×0.5, easy boss brain (Heretic's easy skill has NO easy boss
     // brain, unlike Doom's); nightmare = ammo ×1.5, fast monsters, instant
@@ -418,6 +451,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {
                 code: 'staff', name: 'Staff', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
+                damage: {flat: 4, base: 1, dice: 16}, kickback: 150, puffOnMonsters: true,
                 puffType: 'staffPuff',
                 viewSprite: 'STFF', entry: ENTRY,
                 main: {
@@ -428,6 +462,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {
                 code: 'gauntlets', name: 'Gauntlets', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE, yAdjust: 15,
+                damage: {base: 2, dice: 8}, kickback: 0, puffOnMonsters: true,
                 puffType: 'gauntletPuff',
                 viewSprite: 'GAUN', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
                 main: {
@@ -441,6 +476,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {
                 code: 'goldwand', name: 'Gold Wand', ammoType: 'crystals', ammoUse: 1, ammoGive: 25,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 5,
+                damage: {flat: 6, base: 1, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'goldwandPuff', decalType: 'railscorch',
                 viewSprite: 'GWND', entry: ENTRY,
                 main: {
@@ -471,6 +507,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {
                 code: 'blaster', name: 'Dragon Claw', ammoType: 'orbs', ammoUse: 1, ammoGive: 30,
                 pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 15,
+                damage: {base: 4, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'blasterPuff', decalType: 'railscorch',
                 viewSprite: 'BLSR', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
                 main: {
@@ -559,8 +596,18 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'skullrodExplode',  sprite: 'FX00', letters: ['H', 'I', 'J', 'K', 'L', 'M'],      frameTics: [5, 5, 4, 4, 3, 3],       alpha: 1,   rise: 0, additive: true},
             {name: 'phoenixExplode',   sprite: 'FX08', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [6, 5, 5, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false},
             {name: 'phoenixTrail',     sprite: 'FX04', letters: ['B', 'C', 'D', 'E', 'F'],           frameTics: [4, 4, 4, 4, 4],          alpha: 0.4, rise: 0, additive: false},
-            {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false}
+            {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false},
+            // Heretic blood (BLOD lumps): no damage-staged start and no
+            // shortened first tics (Doom-family quirks only).
+            {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false}
         ];
+    }
+
+    // Heretic gibs at half the spawn health (gameinfo gibfactor 0.5) and
+    // kicks back harder (defKickback 150); the blood splash always plays
+    // from its first frame.
+    monsterDamageRules() {
+        return {gibFactor: 0.5, defKickback: 150, bloodTemplate: 'blood', bloodDamageAdvance: false};
     }
 
     // The Heretic projectiles (zscript actors, PL1): speed in map units/tic.
@@ -573,19 +620,19 @@ class HereticGameProfile extends DefaultGameProfile {
     // frames in weaponEffectTemplates.
     projectileDefs() {
         return [
-            {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   alpha: 1, additive: true,  decalType: 'cbowmark'},
-            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   alpha: 1, additive: true,  decalType: 'cbowmark2'},
-            {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   alpha: 1, additive: true,  decalType: 'hornscorch'},
-            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4},
-            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}},
+            {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   impactDamage: 10, alpha: 1, additive: true,  decalType: 'cbowmark'},
+            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   impactDamage: 2,  alpha: 1, additive: true,  decalType: 'cbowmark2'},
+            {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   impactDamage: 3,  alpha: 1, additive: true,  decalType: 'hornscorch'},
+            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, impactDamage: 20, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4},
+            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 2, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}},
             // The rare lobbed ball (28/256 of A_FireMacePL1 shots): flat launch
             // at Speed 10 + pitch-driven vertical kick, gravity 0.125 from the
             // first tic, same death frames as the normal ball. Bounces while
             // its energy holds, spitting two sideways FX3 each time.
-            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
+            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 6, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
             // The tiny side balls spat by an FX2 bounce — one bounce each,
             // like the normal ball (they inherit MaceFX1's impact).
-            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}}
+            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 4, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}}
         ];
     }
 

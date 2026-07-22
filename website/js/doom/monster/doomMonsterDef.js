@@ -160,15 +160,22 @@ class DoomMonsterDef {
         return Object.keys(this._states);
     }
 
-    // Distinct (sprite, frame) pairs reachable in the spawn group — the only
-    // views needed while the monster is inert (phase A display).
-    getSpawnFrameLetters() {
-        const letters = new Set();
+    // Distinct {sprite, frame} pairs of the given state groups (the sprite is
+    // per-state: spriteOverrides groups differ from the base — barrel BEXP).
+    getFramePairs(groups) {
+        const seen  = new Set();
+        const pairs = [];
         for (const key of Object.keys(this._states)) {
-            if (key.startsWith('spawn')) {
-                letters.add(this._states[key].getFrame());
+            if (!groups.some((g) => key.startsWith(g))) {
+                continue;
+            }
+            const state   = this._states[key];
+            const pairKey = state.getSprite() + state.getFrame();
+            if (!seen.has(pairKey)) {
+                seen.add(pairKey);
+                pairs.push({sprite: state.getSprite(), frame: state.getFrame()});
             }
         }
-        return [...letters];
+        return pairs;
     }
 }

@@ -37,6 +37,20 @@ class WadGeometry {
     }
 
     /**
+     * Impact point pulled back off its surface along the shot direction —
+     * the vanilla 4 map units every puff, blood splash and explosion backs
+     * off so the effect never clips into the wall or the body.
+     *
+     * @param {number[]} point [x, y, z] impact
+     * @param {number[]} dir   [dx, dy, dz] normalized shot direction
+     * @returns {number[]} pulled-back [x, y, z]
+     */
+    static pullBack(point, dir) {
+        const back = 4 * WadConstants.SCALE;
+        return [point[0] - dir[0] * back, point[1] - dir[1] * back, point[2] - dir[2] * back];
+    }
+
+    /**
      * 2D length of a wall segment in Doom units.
      */
     static wallLengthDoom(vertexes, v1, v2) {

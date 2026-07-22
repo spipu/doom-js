@@ -1,16 +1,17 @@
 // Moving projectiles (P_SpawnPlayerMissile): each is launched from the eye
 // along the free-aim direction at its vanilla speed, advances one tic at a
-// time, and raycasts the segment it just crossed for a wall/floor/ceiling. On
-// impact it spawns its death effect (DoomEffects) and, when the def carries a
-// splash, applies the A_Explode blast — to the player only, faithfully (no
-// enemies yet). The BFG spray (A_BFGSpray) targets things, so with no enemies
-// it is a no-op here. All the data (sprites, speeds, effects, decals, gravity)
-// comes from the game profile's projectileDefs().
+// time, and raycasts the segment it just crossed for a wall/floor/ceiling —
+// and for a live body, which soaks the direct hit (impactDamage roll) before
+// the death effect and the A_Explode blast (player + bodies through the
+// shared damage pipeline). The BFG ball fires its vanilla shooter-side spray
+// on detonation. All the data comes from the game profile's projectileDefs().
 class DoomProjectileSystem {
-    constructor(spriteBank, effects, rng, decals, profile) {
+    constructor(spriteBank, effects, rng, decals, profile, monsters = null, damageModule = null) {
         this._effects   = effects;
         this._rng       = rng;
         this._decals    = decals;
+        this._monsters  = monsters;
+        this._damage    = damageModule;
         this._collision = null;
         this._user      = null;
         this._active    = [];
@@ -64,6 +65,9 @@ class DoomProjectileSystem {
             flightTics:       spec.flightTics,
             explosion:        spec.explosion,
             splashDamage:     spec.splashDamage,
+            impactDamage:     spec.impactDamage ?? 0,
+            kickback:         spec.kickback,
+            spray:            spec.spray ?? null,
             decalType:        spec.decalType ?? null,
             gravity:          (spec.gravity ?? 0) * scale,
             gravityDelayTics: spec.gravityDelayTics ?? 0,
@@ -195,6 +199,16 @@ class DoomProjectileSystem {
                 p.x, p.y, p.z, p.dx, p.dy, p.dz, step,
                 { floors: true, ceilings: true, dynamic: true }
             );
+            // A live body across this tic's segment soaks the shot before any
+            // surface: direct hit roll, then the ball explodes on the flesh.
+            const flesh = ((this._monsters !== null)
+                ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz, ((hit !== null) ? Math.min(hit.dist, step) : step))
+                : null);
+            if (flesh !== null) {
+                this._hitFlesh(p, flesh);
+                loader.instances().scheduleRemoval(inst);
+                continue;
+            }
             if (hit !== null) {
                 if (!this._tryBounce(p, hit)) {
                     this._explode(p, hit);
@@ -319,28 +333,71 @@ class DoomProjectileSystem {
         if ((this._decals !== null) && (p.def.decalType !== null)) {
             this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
         }
-        const back = 4 * WadConstants.SCALE;
-        const ex = hit.point[0] - p.dx * back;
-        const ey = hit.point[1] - p.dy * back;
-        const ez = hit.point[2] - p.dz * back;
+        const at = WadGeometry.pullBack(hit.point, [p.dx, p.dy, p.dz]);
+        this._detonate(p, at[0], at[1], at[2]);
+    }
+
+    // Direct body hit (PIT_CheckThing on a missile): the impact roll
+    // ((rng & 7) + 1) × Damage lands first, then the ball detonates on the
+    // flesh — the victim takes the splash on top, like vanilla.
+    _hitFlesh(p, flesh) {
+        if ((this._damage !== null) && (p.def.impactDamage > 0)) {
+            const roll = ((this._rng.next() & 7) + 1) * p.def.impactDamage;
+            this._damage.damage(flesh.record, roll, {
+                point:    flesh.point,
+                srcX:     p.x,
+                srcZ:     p.z,
+                kickback: p.def.kickback
+            });
+        }
+        const at = WadGeometry.pullBack(flesh.point, [p.dx, p.dy, p.dz]);
+        this._detonate(p, at[0], at[1], at[2]);
+    }
+
+    // Death effect + A_Explode blast + the def's shooter-side spray (BFG).
+    _detonate(p, ex, ey, ez) {
         this._effects.spawn(p.def.explosion, ex, ey, ez);
-        if (p.def.splashDamage > 0) {
-            this._radiusAttack(ex, ez, p.def.splashDamage);
+        if ((p.def.splashDamage > 0) && (this._damage !== null)) {
+            this._damage.radiusAttack(ex, ey, ez, p.def.splashDamage, p.def.splashDamage, {kickback: p.def.kickback});
+        }
+        if (p.def.spray !== null) {
+            this._sprayFromShooter(p.def.spray);
         }
     }
 
-    // P_RadiusAttack restricted to the player: Chebyshev distance in map units,
-    // minus the player radius; damage = bombdamage - dist, linear falloff.
-    _radiusAttack(ex, ez, damage) {
-        const toMap = 1 / WadConstants.SCALE;
-        const dxMap = Math.abs(this._user.x - ex) * toMap;
-        const dzMap = Math.abs(this._user.z - ez) * toMap;
-        let dist = Math.max(dxMap, dzMap) - 16;   // MT_PLAYER radius (map units)
-        if (dist < 0) {
-            dist = 0;
+    // A_BFGSpray: rays fanned from the SHOOTER around his facing; each ray
+    // aims like P_AimLineAttack — the closest live body crossing the ray in
+    // 2D, above or below the eye plane — then a line-of-sight check to its
+    // centre settles it (walls and slabs block). The victim takes
+    // sum(damageCount × (1d8)) and flashes the spray effect at its centre.
+    _sprayFromShooter(spray) {
+        if ((this._monsters === null) || (this._damage === null)) {
+            return;
         }
-        if (dist < damage) {
-            this._user.takeDamage(damage - dist);
+        const range = spray.distance * WadConstants.SCALE;
+        const ox = this._user.getCameraX();
+        const oy = this._user.getCameraY();
+        const oz = this._user.getCameraZ();
+        for (let i = 0; i < spray.rays; i++) {
+            const yawR = (this._user.yaw - spray.angle / 2 + (spray.angle / spray.rays) * i) * DEG_TO_RAD;
+            const aim  = this._monsters.aimRay(ox, oz, Math.sin(yawR), Math.cos(yawR), range);
+            if (aim === null) {
+                continue;
+            }
+            const c  = aim.record.inst.getWorldCenter();
+            const dx = c[0] - ox;
+            const dy = c[1] - oy;
+            const dz = c[2] - oz;
+            const d  = Math.hypot(dx, dy, dz);
+            if ((d > 1e-6) && (this._collision.raycast(ox, oy, oz, dx / d, dy / d, dz / d, d, {floors: true, ceilings: true, dynamic: true}) !== null)) {
+                continue;
+            }
+            let damage = 0;
+            for (let j = 0; j < spray.damageCount; j++) {
+                damage += (this._rng.next() & 7) + 1;
+            }
+            this._effects.spawn(spray.effect, c[0], c[1], c[2]);
+            this._damage.damage(aim.record, damage, {point: [c[0], c[1], c[2]], srcX: ox, srcZ: oz});
         }
     }
 }

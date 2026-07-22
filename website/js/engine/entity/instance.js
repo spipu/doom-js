@@ -87,6 +87,30 @@ class Instance extends AbstractLoadedEntity {
         return this;
     }
 
+    // The moving floor this instance rides (null when grounded on static
+    // floor) — lets a spawned child inherit its parent's ride.
+    getRideOn() {
+        return (this._rideOn ?? null);
+    }
+
+    // Move the instance keeping its cached world centre in sync (the pattern
+    // of _syncRide, exposed for game-driven bodies: knockback, falls).
+    translate(dx, dy, dz) {
+        this._position[0]    += dx;
+        this._position[1]    += dy;
+        this._position[2]    += dz;
+        this._worldCenter[0] += dx;
+        this._worldCenter[1] += dy;
+        this._worldCenter[2] += dz;
+        // A ridden instance re-expresses its base at the new Y (the setRideOn
+        // mid-travel invariant), so the next ride sync moves it by the floor's
+        // FUTURE delta only instead of snapping it back to the old altitude.
+        if (this.getRideOn() !== null) {
+            this.setRideOn(this._rideOn);
+        }
+        return this;
+    }
+
     _computeWorldCenter() {
         this._delta = this._interpolate();
         const lc = this._object.getCenter();

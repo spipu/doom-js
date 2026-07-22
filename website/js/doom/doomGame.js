@@ -15,6 +15,8 @@ class DoomGame {
         this._carriedState      = null;
         this._secretsFound      = 0;
         this._secretsTotal      = 0;
+        this._killsCount        = 0;
+        this._killsTotal        = 0;
         this._pauseWasDown      = true;
         this._cheatWasDown      = false;
         this._hudWasDown        = false;
@@ -46,6 +48,7 @@ class DoomGame {
         this._thingCatalog   = null;
         this._monsterCatalog = null;
         this._monsters       = null;   // runtime monster system (built per level)
+        this._monsterDamage  = null;   // shared damage pipeline (built per level)
         this._skillTable     = null;
         this._buildCatalogs();
     }
@@ -98,7 +101,7 @@ class DoomGame {
             return false;
         }
         if (effect.weapon !== undefined) {
-            return this._pickupWeapon(user, effect.weapon);
+            return this._pickupWeapon(user, effect.weapon, (effect.dropped === true));
         }
         if (effect.ammo !== undefined) {
             return this._pickupAmmo(user, effect.ammo, effect.amount);
@@ -142,7 +145,7 @@ class DoomGame {
         return (user.getAmmo(type) > before);
     }
 
-    _pickupWeapon(user, code) {
+    _pickupWeapon(user, code, dropped = false) {
         const def = this.getWeapon(code);
         // Unknown weapon, or one whose sprites are absent from this WAD (e.g. the
         // super shotgun in Doom 1): not handed out.
@@ -169,8 +172,10 @@ class DoomGame {
         let gaveAmmo = false;
         const ammoType = def.getAmmoType();
         if (ammoType !== null) {
+            // A weapon dropped by a monster hands out HALF its ammo (vanilla
+            // wp_dropped), still skill-multiplied.
             const base   = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this.getAmmo(ammoType).getClip() * 2);
-            gaveAmmo = this._grantAmmo(user, ammoType, base * this._ammoMultiplier());
+            gaveAmmo = this._grantAmmo(user, ammoType, base * ((dropped) ? 0.5 : 1) * this._ammoMultiplier());
         }
         return (gaveWeapon || gaveAmmo);
     }
@@ -354,6 +359,24 @@ class DoomGame {
         return this._secretsTotal;
     }
 
+    // --- Level kills (countable monsters put down) ---
+
+    setKillsTotal(total) {
+        this._killsTotal = total;
+    }
+
+    addKill() {
+        this._killsCount++;
+    }
+
+    getKillsCount() {
+        return this._killsCount;
+    }
+
+    getKillsTotal() {
+        return this._killsTotal;
+    }
+
     // spawnOverride is a debug helper: when set ({position, yaw, pitch}) the
     // player is forced to that location after the world is built, instead of the
     // WAD spawn (see _applySpawnOverride).
@@ -380,10 +403,12 @@ class DoomGame {
             this._carriedState = this._world.getUser().exportState();
         }
 
-        // Secrets are level stats (vanilla totalsecret / player->secretcount):
-        // reset on every level, the total is pushed back by the world builder.
+        // Secrets and kills are level stats (vanilla totalsecret/totalkills):
+        // reset on every level, the totals are pushed back by the world builder.
         this._secretsFound = 0;
         this._secretsTotal = 0;
+        this._killsCount   = 0;
+        this._killsTotal   = 0;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -427,7 +452,12 @@ class DoomGame {
         // from the game profile's decal set. Skipped only if the decal graphics
         // haven't finished decoding yet (first-level race).
         this._decals = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, this._gameProfile) : null);
-        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile);
+        // Shared damage pipeline of the shootable bodies — wired to the world
+        // in _init, consumed by hitscan, projectiles and the bodies' own
+        // A_Explode (barrels).
+        this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._gameProfile.monsterDamageRules(), this);
+        this._monsters.setDamageModule(this._monsterDamage);
+        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile, this._monsters, this._monsterDamage);
 
         loader.setCallback(() => {
             this._init();
@@ -496,9 +526,12 @@ class DoomGame {
         // is not built yet): no controller, no overlay, nothing to decode.
         this._rng.reset();
         this._playerWeapon = null;
-        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers);
+        // Monsters + the shared damage pipeline (blood, pain, death, thrust):
+        // wired before the hitscan so every attack channel lands on the bodies.
+        this._monsters.setWorld(this._world.getCollision(), this._world.getUser());
+        this._monsterDamage.setWorld(this._world.getCollision(), this._world.getUser());
+        this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
-        this._monsters.setUser(this._world.getUser());
         if (this._world.getUser().getActiveWeapon() !== null) {
             this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
             this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);

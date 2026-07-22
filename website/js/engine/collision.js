@@ -18,21 +18,15 @@ class Collision {
             return;
         }
 
-        // Doom-style square blocker (decorations): a static axis-aligned box
-        // centred on the thing point, with a vertical interval derived from the
-        // sprite body. No per-frame update (decorations don't move).
+        // Doom-style square blocker (decorations, bodies): a static
+        // axis-aligned box centred on the thing point, with a vertical
+        // interval derived from the sprite body. Not updated per frame — a
+        // box that moves or dies must be pushed back through syncBoxFor /
+        // removeBoxFor by its owner.
         if (instance.getCollisionShape() === 'box') {
-            const pos  = instance.getPosition();
-            const half = instance.getCollisionRadius();
-            const cyW  = instance.getWorldCenter()[1];
-            const h    = instance.getObject().getHeight();
-            this._boxes.push({
-                cx:      pos[0],
-                cz:      pos[2],
-                half:    half,
-                yBottom: cyW - h / 2,
-                yTop:    cyW + h / 2,
-            });
+            const box = {instance: instance, cx: 0, cz: 0, half: 0, yBottom: 0, yTop: 0};
+            this._refreshBox(box);
+            this._boxes.push(box);
             return;
         }
 
@@ -62,6 +56,39 @@ class Collision {
         for (const dc of this._dynamic) {
             this._updateDynamicCollider(dc);
         }
+    }
+
+    // Re-read a box blocker's position/interval from its instance (owner moved it).
+    syncBoxFor(instance) {
+        for (const box of this._boxes) {
+            if (box.instance === instance) {
+                this._refreshBox(box);
+                return;
+            }
+        }
+    }
+
+    // Drop an instance's box blocker (its body stopped blocking). Safe against
+    // an absent box (already removed, or never a box collider).
+    removeBoxFor(instance) {
+        for (let i = 0; i < this._boxes.length; i++) {
+            if (this._boxes[i].instance === instance) {
+                this._boxes.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    _refreshBox(box) {
+        const inst = box.instance;
+        const pos  = inst.getPosition();
+        const cyW  = inst.getWorldCenter()[1];
+        const h    = inst.getObject().getHeight();
+        box.cx      = pos[0];
+        box.cz      = pos[2];
+        box.half    = inst.getCollisionRadius();
+        box.yBottom = cyW - h / 2;
+        box.yTop    = cyW + h / 2;
     }
 
     // --- Queries ---
@@ -135,21 +162,23 @@ class Collision {
         return lists;
     }
 
-    resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0) {
+    // ignoreBoxOf: a moving box body resolves against everything BUT its own
+    // blocker (which sits at its own centre and would pin it in place).
+    resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0, ignoreBoxOf = null) {
         // A crush mover pressing the player is passable (vanilla lateral escape)
         const allWalls = [
             ...this._static.map((sc) => sc.walls),
             ...this._dynamic.filter((dc) => !dc.instance.isCrushPassable()).map((dc) => dc.walls),
         ];
         const res = this._resolveWallFromLists(cx, cz, vx, vz, r, feetY, h, allWalls, stepHeight);
-        return this._resolveBoxes(res.x, res.z, r, feetY, h);
+        return this._resolveBoxes(res.x, res.z, r, feetY, h, ignoreBoxOf);
     }
 
     // Doom-style square blockers: push the player cylinder out of any overlapping
     // decoration box along the axis of least penetration (which preserves the
     // tangential motion → sliding along faces). Purely 2D + a vertical gate
     // (feet/head vs box bottom/top), no sqrt. A few passes settle corners/multi-box.
-    _resolveBoxes(x, z, r, feetY, h) {
+    _resolveBoxes(x, z, r, feetY, h, ignoreBoxOf = null) {
         if (this._boxes.length === 0) {
             return { x, z };
         }
@@ -157,6 +186,9 @@ class Collision {
         for (let pass = 0; pass < 3; pass++) {
             let moved = false;
             for (const b of this._boxes) {
+                if (b.instance === ignoreBoxOf) {
+                    continue;
+                }
                 if (feetY >= b.yTop || headY <= b.yBottom) {
                     continue;
                 }
