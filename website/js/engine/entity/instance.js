@@ -331,6 +331,12 @@ class Instance extends AbstractLoadedEntity {
         this._computeWorldCenter();
     }
 
+    // A once-only trigger that already fired (or was force-stopped) is spent
+    // for every actor — game code syncing its own crossing bookkeeping.
+    isTriggerSpent() {
+        return this._animDone;
+    }
+
     /**
      * Purely visual position offset consumed at DRAW time only (the physics
      * body never moves): game code smoothing stepped logical motion — actors

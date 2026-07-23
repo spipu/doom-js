@@ -222,86 +222,10 @@ class WadWorldBuilder {
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         await this._yield();
 
-        // Level data the monster AI consumes at runtime (phase C): sector
-        // graph, REJECT table, sector resolver over the polygon cache (kept
-        // alive by the closure, like the sector-light handoff above), and the
-        // effective-height inputs of the sound flood — static sector heights,
-        // door panel floors, resting floor heights of the patched lifts, and
-        // the mover instance code of every moving sector (codes are only
-        // listed when actually built: getByCode never throws downstream).
+        // Level data the monster AI consumes at runtime (phase C)
         if (this._monsterSystem !== null) {
-            const doorFloorH = {};
-            const moverCodes = {};
-            for (const code of builtFloorCodes) {
-                moverCodes[code.split('_')[1]] = {kind: 'floor', code: code};
-            }
-            for (const si of analysis.doorSectorIds) {
-                if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
-                    const props = analysis.doorProps[si];
-                    doorFloorH[si] = analysis.doorHeights[si].floorH;
-                    // Monster-usable = the vanilla P_UseSpecialLine whitelist
-                    // net effect: the plain manual door (special 1) only —
-                    // repeatable action trigger, keyless, D_SLOW speed (the
-                    // blaze DR 117 is excluded), never close/ceiling kinds.
-                    moverCodes[si] = {
-                        kind:       'door',
-                        code:       'door_' + si,
-                        monsterUse: ((props.trigger === 'action') && (props.onlyOnce !== true)
-                            && ((props.keyRequired ?? null) === null) && (props.close !== true)
-                            && (props.ceilingRaise !== true) && (props.speed === 2))
-                    };
-                }
-            }
-            // Lines a monster may fire by CROSSING them during a walk step
-            // (vanilla P_CrossSpecialLine): the shared walk zones (4/10/88,
-            // consumed for everyone through fireZoneTrigger) and the teleport
-            // lines — 39/97 shared with the player, 125/126 monster-only.
-            const monsterLines = [];
-            const vx = level.vertexes;
-            const builtWalkCodes     = new Set(walkTriggers.map((w) => w.code));
-            const builtTeleportCodes = new Set(teleporters.map((t) => t.code));
-            for (const tp of analysis.teleporterLinedefs) {
-                if (landings[tp.tag] === undefined) {
-                    continue;
-                }
-                const ld = level.linedefs[tp.ldIdx];
-                const sharedZone = 'teleport_' + tp.ldIdx;
-                monsterLines.push({
-                    kind:     'teleport',
-                    x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
-                    x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
-                    once:     (WadConstants.TELEPORT_ONCE_BY_SPECIAL[tp.special] === true),
-                    used:     false,
-                    landing:  landings[tp.tag],
-                    zoneCode: ((builtTeleportCodes.has(sharedZone)) ? sharedZone : null)
-                });
-            }
-            for (const wt of analysis.walkTriggerLinedefs) {
-                if (!WadConstants.MONSTER_WALK_SPECIALS.has(wt.special) || !builtWalkCodes.has('walk_' + wt.ldIdx)) {
-                    continue;
-                }
-                const ld = level.linedefs[wt.ldIdx];
-                monsterLines.push({
-                    kind:     'zone',
-                    x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
-                    x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
-                    once:     (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] === true),
-                    used:     false,
-                    zoneCode: 'walk_' + wt.ldIdx
-                });
-            }
-            this._monsterSystem.setLevelData({
-                sectorGraph:  analysis.sectorGraph,
-                reject:       level.reject,
-                numSectors:   level.sectors.length,
-                findSector:   ((doomX, doomY) => this._findSector(doomX, doomY)),
-                sectors:      level.sectors,
-                doorFloorH:   doorFloorH,
-                restFh:       analysis.liftOriginalFh,
-                moverCodes:   moverCodes,
-                monsterLines: monsterLines,
-                levelName:    this._levelName
-            });
+            this._monsterSystem.setLevelData(
+                this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings));
         }
 
         // World + user
@@ -540,6 +464,87 @@ class WadWorldBuilder {
                 spawn:  {position: spawnPos, facing: t.facing, flags: t.flags, si: t.si}
             });
         }
+    }
+
+    // Level data of the monster AI: sector graph, REJECT table, sector
+    // resolver over the polygon cache (kept alive by the closure, like the
+    // sector-light handoff), the effective-height inputs of the sound flood
+    // (static sector heights, door panel floors, resting floor heights of the
+    // patched lifts), the mover instance code of every moving sector (codes
+    // only listed when actually built: getByCode never throws downstream),
+    // and the lines a monster may fire by CROSSING them during a walk step
+    // (vanilla P_CrossSpecialLine: the shared walk zones 4/10/88, consumed
+    // for everyone, and the teleports — 39/97 shared, 125/126 monster-only).
+    _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings) {
+        const doorFloorH = {};
+        const moverCodes = {};
+        for (const code of builtFloorCodes) {
+            moverCodes[code.split('_')[1]] = {kind: 'floor', code: code};
+        }
+        for (const si of analysis.doorSectorIds) {
+            if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
+                const props = analysis.doorProps[si];
+                doorFloorH[si] = analysis.doorHeights[si].floorH;
+                // Monster-usable = the vanilla P_UseSpecialLine whitelist net
+                // effect: the plain manual door (special 1) only — repeatable
+                // action trigger, keyless, D_SLOW speed (the blaze DR 117 is
+                // excluded), never close/ceiling kinds.
+                moverCodes[si] = {
+                    kind:       'door',
+                    code:       'door_' + si,
+                    monsterUse: ((props.trigger === 'action') && (props.onlyOnce !== true)
+                        && ((props.keyRequired ?? null) === null) && (props.close !== true)
+                        && (props.ceilingRaise !== true) && (props.speed === 2))
+                };
+            }
+        }
+        const monsterLines = [];
+        const vx = level.vertexes;
+        const builtWalkCodes     = new Set(walkTriggers.map((w) => w.code));
+        const builtTeleportCodes = new Set(teleporters.map((t) => t.code));
+        for (const tp of analysis.teleporterLinedefs) {
+            if (landings[tp.tag] === undefined) {
+                continue;
+            }
+            const ld = level.linedefs[tp.ldIdx];
+            const sharedZone = 'teleport_' + tp.ldIdx;
+            monsterLines.push({
+                kind:     'teleport',
+                x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
+                x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
+                once:     (WadConstants.TELEPORT_ONCE_BY_SPECIAL[tp.special] === true),
+                used:     false,
+                landing:  landings[tp.tag],
+                zoneCode: ((builtTeleportCodes.has(sharedZone)) ? sharedZone : null)
+            });
+        }
+        for (const wt of analysis.walkTriggerLinedefs) {
+            if (!WadConstants.MONSTER_WALK_SPECIALS.has(wt.special) || !builtWalkCodes.has('walk_' + wt.ldIdx)) {
+                continue;
+            }
+            const ld = level.linedefs[wt.ldIdx];
+            monsterLines.push({
+                kind:     'zone',
+                x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
+                x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
+                once:     (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] === true),
+                used:     false,
+                zoneCode: 'walk_' + wt.ldIdx
+            });
+        }
+
+        return {
+            sectorGraph:  analysis.sectorGraph,
+            reject:       level.reject,
+            numSectors:   level.sectors.length,
+            findSector:   ((doomX, doomY) => this._findSector(doomX, doomY)),
+            sectors:      level.sectors,
+            doorFloorH:   doorFloorH,
+            restFh:       analysis.liftOriginalFh,
+            moverCodes:   moverCodes,
+            monsterLines: monsterLines,
+            levelName:    this._levelName
+        };
     }
 
     // Moving floor under a thing: the built lift / rising-floor / stair
