@@ -39,7 +39,7 @@ class DoomGunTriggers {
             if (line.used) {
                 continue;
             }
-            if (!DoomGunTriggers._segmentsCross(x1, z1, ex, ez, line.x1, line.z1, line.x2, line.z2)) {
+            if (!WadGeometry.segmentsCross(x1, z1, ex, ez, line.x1, line.z1, line.x2, line.z2)) {
                 continue;
             }
             line.used = (line.once === true);
@@ -57,16 +57,4 @@ class DoomGunTriggers {
         }
     }
 
-    static _segmentsCross(ax, az, bx, bz, cx, cz, dx, dz) {
-        const d1 = DoomGunTriggers._side(cx, cz, dx, dz, ax, az);
-        const d2 = DoomGunTriggers._side(cx, cz, dx, dz, bx, bz);
-        const d3 = DoomGunTriggers._side(ax, az, bx, bz, cx, cz);
-        const d4 = DoomGunTriggers._side(ax, az, bx, bz, dx, dz);
-
-        return (((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0)));
-    }
-
-    static _side(ax, az, bx, bz, px, pz) {
-        return ((bx - ax) * (pz - az)) - ((bz - az) * (px - ax));
-    }
 }

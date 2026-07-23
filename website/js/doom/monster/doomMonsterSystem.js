@@ -69,6 +69,7 @@ class DoomMonsterSystem {
             noKillCount:  false,
             blend:        null,
             snapRender:   false,
+            walkStepped:  false,
             env:          new ActorExternalForces(),
             stateKey:     'spawn0',
             ticsLeft:     record.def.getState('spawn0').getTics(),
@@ -97,6 +98,7 @@ class DoomMonsterSystem {
         if ((this._move === null) && (this._rng !== null) && (this._user !== null)) {
             this._move = new DoomMonsterMove(this._collision, this._user, this._rng, this._levelData);
             this._move.setPostMove((m, fromX, fromZ, toX, toZ) => {
+                m.walkStepped = true;
                 this._resolveRide(m);
                 this._crossLines(m, fromX, fromZ, toX, toZ);
             });
@@ -210,8 +212,10 @@ class DoomMonsterSystem {
         if ((Math.abs(p[0] - fromX) < 1e-9) && (Math.abs(p[1] - fromY) < 1e-9) && (Math.abs(p[2] - fromZ) < 1e-9)) {
             return;
         }
-        const walking = (!m.dead && m.stateKey.startsWith('see') && (m.def.getState(m.stateKey).getTics() > 0));
-        const durTics = ((walking) ? Math.max(1, m.ticsLeft) : 1);
+        // Only a REAL walk step glides over the state duration; a momentum
+        // slide (knockback, drift) smooths over its own single tic — a shove
+        // mid-chase must not rubber-band across the whole See state.
+        const durTics = ((m.walkStepped) ? Math.max(1, m.ticsLeft) : 1);
         m.blend = {fx: fromX, fy: fromY, fz: fromZ, t0: this._clockMs, dur: durTics * DoomMonsterSystem.MS_PER_TIC};
     }
 
@@ -246,6 +250,7 @@ class DoomMonsterSystem {
             const beforeX  = before[0];
             const beforeY  = before[1];
             const beforeZ  = before[2];
+            m.walkStepped  = false;
             this._floatToward(m);
             this._integrateVelocity(m);
             // A live rider's box blocker follows its lift (the ride sync moves
@@ -627,7 +632,12 @@ class DoomMonsterSystem {
             const step      = WadConstants.ACTOR_STEP_HEIGHT;
             const solved    = this._collision.resolveWall(pos[0], pos[2], dxM, dzM, r, pos[1], h, step, m.inst);
             const destFloor = this._collision.getFloor(solved.x, solved.z, r, pos[1] + step);
-            if (destFloor === -Infinity) {
+            // A LIVE skidding body obeys the P_TryMove vertical rules too
+            // (ceiling fit, strict dropoff) — a corpse follows ledges down
+            // (acted deviation).
+            const slideOk = ((destFloor !== -Infinity)
+                && (m.dead || (this._move === null) || this._move.slideOk(m, solved.x, solved.z, destFloor)));
+            if (!slideOk) {
                 m.velX = 0;
                 m.velZ = 0;
             } else {
@@ -754,11 +764,17 @@ class DoomMonsterSystem {
                 continue;
             }
             // Teleport: a W1 line is consumed by the attempt (vanilla clears
-            // the special regardless of the EV_Teleport outcome), for the
-            // player too when the zone is shared.
+            // the special regardless of the EV_Teleport outcome, p_spec.c
+            // case 39/125), for the player too when the zone is shared — and
+            // a shared pad the PLAYER already consumed is spent for monsters
+            // (lazy sync on the zone state).
             if (line.once) {
-                line.used = true;
                 const zone = this._zoneInstance(line.zoneCode);
+                if ((zone !== null) && zone.isTriggerSpent()) {
+                    line.used = true;
+                    continue;
+                }
+                line.used = true;
                 if (zone !== null) {
                     zone.stop();
                 }
@@ -778,7 +794,7 @@ class DoomMonsterSystem {
                 return;
             }
             for (const other of spot.blockers) {
-                this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {noBlood: true});
+                this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
             }
             if (spot.playerBlocks) {
                 this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);

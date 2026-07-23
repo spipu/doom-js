@@ -255,7 +255,7 @@ class DoomMonsterMove {
             return refused;
         }
 
-        const destFloor = this._collision.getFloor(destX, destZ, r, pos[1] + WadConstants.ACTOR_STEP_HEIGHT);
+        const destFloor = this._collision.getFloor(destX, destZ, r, pos[1] + step);
         if (destFloor === -Infinity) {
             return refused;
         }
@@ -271,22 +271,8 @@ class DoomMonsterMove {
         if (isFloat && (ceil - pos[1] < h)) {
             return floatok;
         }
-
-        // Strict dropoff: the destination box must not overhang a drop deeper
-        // than one step (floaters and +DROPOFF actors are exempt). A corner
-        // over the void counts as a bottomless drop.
-        if (!isFloat && (m.def.getFlags().dropOff !== true)) {
-            let lowest = destFloor;
-            for (const c of [[destX - r, destZ - r], [destX + r, destZ - r], [destX - r, destZ + r], [destX + r, destZ + r]]) {
-                const fy = this._collision.getFloor(c[0], c[1], 0.01, pos[1] + step);
-                if (fy === -Infinity) {
-                    return refused;
-                }
-                lowest = Math.min(lowest, fy);
-            }
-            if (destFloor - lowest > step + 1e-9) {
-                return refused;
-            }
+        if (!this._dropoffOk(m, destX, destZ, destFloor, isFloat)) {
+            return refused;
         }
 
         // The player blocks like any body (PIT_CheckThing square overlap,
@@ -300,6 +286,42 @@ class DoomMonsterMove {
         }
 
         return {ok: true, floor: destFloor, floatok: true};
+    }
+
+    // Strict dropoff (P_TryMove): the destination box must not overhang a
+    // drop deeper than one step (floaters and +DROPOFF actors are exempt).
+    // A corner over the void counts as a bottomless drop. Shared by the walk
+    // step and the live momentum slides.
+    _dropoffOk(m, destX, destZ, destFloor, isFloat) {
+        if (isFloat || (m.def.getFlags().dropOff === true)) {
+            return true;
+        }
+        const r    = m.inst.getCollisionRadius();
+        const step = WadConstants.ACTOR_STEP_HEIGHT;
+        const capY = m.inst.getTransform().position[1] + step;
+        let lowest = destFloor;
+        for (const c of [[destX - r, destZ - r], [destX + r, destZ - r], [destX - r, destZ + r], [destX + r, destZ + r]]) {
+            const fy = this._collision.getFloor(c[0], c[1], 0.01, capY);
+            if (fy === -Infinity) {
+                return false;
+            }
+            lowest = Math.min(lowest, fy);
+        }
+        return (destFloor - lowest <= step + 1e-9);
+    }
+
+    // Vertical legality of a LIVE body's momentum slide (P_TryMove: ceiling
+    // fit + strict dropoff). Corpses skip it — the acted deviation lets a
+    // blast-slid body follow a ledge down.
+    slideOk(m, destX, destZ, destFloor) {
+        const isFloat = (m.def.getFlags().float === true);
+        const h       = m.def.getHeight() * WadConstants.SCALE;
+        const base    = ((isFloat) ? m.inst.getTransform().position[1] : destFloor);
+        const ceil    = this._collision.getCeiling(destX, destZ, m.inst.getCollisionRadius(), base + 0.01);
+        if (ceil - base < h) {
+            return false;
+        }
+        return this._dropoffOk(m, destX, destZ, destFloor, isFloat);
     }
 
     // Manual-door use on a blocked step (P_Move spechit): probe what blocks

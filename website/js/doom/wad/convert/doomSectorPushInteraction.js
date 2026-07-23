@@ -23,6 +23,23 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         super();
         this._zones    = zones;
         this._monsters = monsters;
+        // Cheap AABB of every zone (doom coords): the per-frame monster sweep
+        // rejects far bodies before any point-in-polygon test.
+        for (const zone of this._zones) {
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            for (const outer of zone.outers) {
+                for (const pt of outer) {
+                    minX = Math.min(minX, pt[0]);
+                    minY = Math.min(minY, pt[1]);
+                    maxX = Math.max(maxX, pt[0]);
+                    maxY = Math.max(maxY, pt[1]);
+                }
+            }
+            zone.bbox = [minX, minY, maxX, maxY];
+        }
     }
 
     get code() {
@@ -85,6 +102,9 @@ class DoomSectorPushInteraction extends AbstractInteraction {
             const doomX = pos[0] / WadConstants.SCALE;
             const doomZ = pos[2] / WadConstants.SCALE;
             for (const zone of this._zones) {
+                if ((doomX < zone.bbox[0]) || (doomX > zone.bbox[2]) || (doomZ < zone.bbox[1]) || (doomZ > zone.bbox[3])) {
+                    continue;
+                }
                 if (!this._inZone(zone, doomX, doomZ)) {
                     continue;
                 }

@@ -64,6 +64,9 @@ class DoomMonsterDamage {
         if ((this._rng.next() < def.getPainChance()) && (def.getState('pain0') !== null)) {
             this._monsters.enterState(record, 'pain0');
         }
+        // "we're awake now" (P_DamageMobj): the attack-gate delay is cleared
+        // by any hit, whatever the pain roll said.
+        record.reactiontime = 0;
         // P_DamageMobj wake: past its target lock, any damage turns the victim
         // on its attacker (solo: the player) even without a pain flinch — a
         // spawn-state monster jumps straight to its See state (the pain roll
