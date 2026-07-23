@@ -180,6 +180,17 @@ class AbstractGameProfile {
     }
 
     /**
+     * gameinfo nightmarefast: under the fastMonsters skill, EVERY monster's
+     * chase cadence halves at runtime (Heretic true; Doom relies on its Fast
+     * states only — demon/spectre).
+     *
+     * @returns {boolean}
+     */
+    nightmareFast() {
+        return false;
+    }
+
+    /**
      * @returns {object} code → DoomAmmo definition
      */
     buildAmmoTypes() {

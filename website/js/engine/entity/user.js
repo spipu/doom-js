@@ -50,7 +50,7 @@ class User {
         this._inputX         = 0;
         this._inputZ         = 0;
         // Environment perturbations (wind, conveyors, ice) fed by game code
-        this._externalForces = new UserExternalForces();
+        this._externalForces = new ActorExternalForces();
 
         // Energy / death
         this._energy         = maxEnergy;
@@ -472,7 +472,7 @@ class User {
                     // speed — per tick `v = v*f + target*(1-f)`, closed form
                     // over the frame. Sluggish start, long slide, identical
                     // top speed.
-                    const keep = Math.pow(friction, dt_s * UserExternalForces.TICK_RATE);
+                    const keep = Math.pow(friction, dt_s * ActorExternalForces.TICK_RATE);
                     this._vx = this._vx * keep + targetVx * (1 - keep);
                     this._vz = this._vz * keep + targetVz * (1 - keep);
                 }

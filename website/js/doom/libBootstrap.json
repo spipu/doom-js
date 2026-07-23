@@ -1,5 +1,5 @@
 {
-    "version": "v1.404",
+    "version": "v1.416",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -78,6 +78,8 @@
             "/js/doom/monster/doomMonsterState.js",
             "/js/doom/monster/doomMonsterDef.js",
             "/js/doom/monster/doomMonsterCatalog.js",
+            "/js/doom/monster/doomMonsterSight.js",
+            "/js/doom/monster/doomMonsterMove.js",
             "/js/doom/monster/doomMonsterSystem.js",
             "/js/doom/monster/doomMonsterDamage.js",
             "/js/doom/weapon/doomRandom.js",

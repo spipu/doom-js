@@ -415,7 +415,11 @@ class DoomGame {
         // The monster system is created BEFORE the builder: the builder feeds
         // it while pre-building every (frame × rotation) billboard inside the
         // batch (an object registered after endBatch would re-fire the loader).
+        // The skill rule must be known at add() time (InstantReaction).
         this._monsters = new DoomMonsterSystem();
+        this._monsters.setSkillRule(this._skillRule());
+        this._monsters.setRandom(this._rng);
+        this._monsters.setNightmareFast(this._gameProfile.nightmareFast());
         await new WadWorldBuilder(wadFile, levelName, {
             onLevelExit: (secret) => {
                 this._onLevelExit(secret);
@@ -535,6 +539,7 @@ class DoomGame {
         if (this._world.getUser().getActiveWeapon() !== null) {
             this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
             this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
+            this._playerWeapon.setNoiseCallback(() => this._monsters.noiseAlert());
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
         }
 

@@ -1,9 +1,10 @@
 /**
- * External perturbations applied to a User by its environment: wind gusts,
- * conveyor floors, slippery ground. Generic — the game code re-asserts its
- * forces every frame (interactions run before User.updateMove), the User
- * consumes them during its physics step and the whole state resets each
- * frame, so leaving the perturbed area simply stops feeding it.
+ * External perturbations applied to an actor (player or any game-driven body)
+ * by its environment: wind gusts, conveyor floors, slippery ground. Generic —
+ * the game code re-asserts its forces every frame (emitters run before the
+ * owner's physics step), the owner consumes them during that step and the
+ * whole state resets each frame, so leaving the perturbed area simply stops
+ * feeding it. Each actor carries its own channel.
  *
  * The horizontal push is an environment velocity integrated at a fixed tick
  * rate: each tick `vel = vel * DECAY + thrust`. A constant thrust therefore
@@ -11,7 +12,7 @@
  * so the terminal speed is exactly `target` (BOOM carry mechanics, where
  * CARRYFACTOR = 1 - DECAY = 3/32).
  */
-class UserExternalForces {
+class ActorExternalForces {
     constructor() {
         // Environment velocity (m/s), persists between frames (momentum)
         this._velX = 0;
@@ -23,7 +24,7 @@ class UserExternalForces {
         this._groundFriction = null;
     }
 
-    // --- Game-facing API (call every frame while the user is affected) ---
+    // --- Game-facing API (call every frame while the actor is affected) ---
 
     // Thrust in m/s added to the environment velocity at each simulation tick
     // (wind: pushes on the ground and in the air alike).
@@ -32,14 +33,14 @@ class UserExternalForces {
         this._thrustZ += z;
     }
 
-    // Terminal speed in m/s the environment carries the user toward
-    // (conveyor floor: the caller only applies it while the user stands on it).
+    // Terminal speed in m/s the environment carries the actor toward
+    // (conveyor floor: the caller only applies it while the actor stands on it).
     addCarry(x, z) {
-        this._thrustX += x * (1 - UserExternalForces.DECAY);
-        this._thrustZ += z * (1 - UserExternalForces.DECAY);
+        this._thrustX += x * (1 - ActorExternalForces.DECAY);
+        this._thrustZ += z * (1 - ActorExternalForces.DECAY);
     }
 
-    // Per-tick momentum keep factor of the ground for this frame — the User
+    // Per-tick momentum keep factor of the ground for this frame — the owner
     // switches its ground control to an inertial model (ice) when set.
     setGroundFriction(factor) {
         this._groundFriction = factor;
@@ -49,7 +50,7 @@ class UserExternalForces {
         return this._groundFriction;
     }
 
-    // --- User-facing hooks ---
+    // --- Owner-facing hooks ---
 
     // Frame reset: emitters re-assert their forces every frame.
     beginFrame() {
@@ -62,9 +63,9 @@ class UserExternalForces {
     // per-tick recurrence `vel = vel * DECAY + thrust` — exact for any frame
     // duration, no tick accumulator needed.
     integrate(dtS) {
-        const keep = Math.pow(UserExternalForces.DECAY, dtS * UserExternalForces.TICK_RATE);
-        const termX = this._thrustX / (1 - UserExternalForces.DECAY);
-        const termZ = this._thrustZ / (1 - UserExternalForces.DECAY);
+        const keep = Math.pow(ActorExternalForces.DECAY, dtS * ActorExternalForces.TICK_RATE);
+        const termX = this._thrustX / (1 - ActorExternalForces.DECAY);
+        const termZ = this._thrustZ / (1 - ActorExternalForces.DECAY);
         this._velX = this._velX * keep + termX * (1 - keep);
         this._velZ = this._velZ * keep + termZ * (1 - keep);
         if ((this._thrustX === 0) && (Math.abs(this._velX) < 1e-6)) {
@@ -85,6 +86,6 @@ class UserExternalForces {
 }
 
 // Simulation tick rate of the perturbation channel (Hz)
-UserExternalForces.TICK_RATE = 35;
+ActorExternalForces.TICK_RATE = 35;
 // Per-tick momentum keep factor of the push channel (BOOM ORIG_FRICTION)
-UserExternalForces.DECAY = 0.90625;
+ActorExternalForces.DECAY = 0.90625;

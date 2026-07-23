@@ -1,9 +1,10 @@
 /**
- * Runtime monster driver. Phase A scope: monsters are inert bodies — this
- * system only advances their Spawn-state animation at 35 Hz and picks the
- * rotation view matching the camera position (vanilla R_ProjectSprite: the
- * world angle monster→viewer minus the monster's facing selects one of the
- * 8 octants; rotation 1 faces the viewer).
+ * Runtime monster driver at 35 Hz: state machine (entry actions dispatched
+ * through a whitelist), velocity integration (knockback, gravity), rotation
+ * views by octant (vanilla R_ProjectSprite: the world angle monster→viewer
+ * minus the monster's facing selects one of the 8 octants; rotation 1 faces
+ * the viewer), and the phase-C senses (A_Look wake-up on sight or on the
+ * sector sound target fed by the player's fire).
  *
  * Records are added DURING the loading batch (the world builder) with their
  * engine instance: the entity exists as soon as loadFromData registers it —
@@ -12,35 +13,66 @@
  */
 class DoomMonsterSystem {
     constructor() {
-        this._monsters  = [];
-        this._user      = null;
-        this._collision = null;
-        this._damage    = null;
-        this._drops     = null;
-        this._timeAcc   = 0;
+        this._monsters      = [];
+        this._user          = null;
+        this._collision     = null;
+        this._damage        = null;
+        this._drops         = null;
+        this._levelData     = null;
+        this._sight         = null;
+        this._move          = null;
+        this._rng           = null;
+        this._skillRule     = null;
+        this._nightmareFast = false;
+        this._timeAcc       = 0;
+        this._ticCount      = 0;
+        this._userSi        = null;
+        this._userSiTic     = -1;
+        this._respawnQueue  = [];
+        this._zoneCache     = {};
+        this._clockMs       = 0;
     }
 
     /**
      * @param {object} record {code, inst (engine Instance), def,
      *                         facing (Doom degrees), flags,
-     *                         frames: {letter → [objId ×1|×8]}}
+     *                         frames: {letter → [objId ×1|×8]},
+     *                         si (build sector index),
+     *                         spawn: {position, facing, flags, si}}
      */
     add(record) {
+        // Vanilla P_SpawnMobj: reactiontime comes from the actor info (8)
+        // except in nightmare, where it stays 0 — the InstantReaction skill.
+        const instant = ((this._skillRule !== null) && (this._skillRule.instantReaction === true));
         this._monsters.push({
-            code:     record.code,
-            inst:     record.inst,
-            def:      record.def,
-            facing:   record.facing,
-            flags:    record.flags,
-            frames:   record.frames,
-            health:   record.def.getHealth(),
-            dead:     false,
-            velX:     0,
-            velZ:     0,
-            velY:     0,
-            stateKey: 'spawn0',
-            ticsLeft: record.def.getState('spawn0').getTics(),
-            shownObj: null
+            code:         record.code,
+            inst:         record.inst,
+            def:          record.def,
+            facing:       record.facing,
+            flags:        record.flags,
+            frames:       record.frames,
+            si:           (record.si ?? null),
+            spawn:        (record.spawn ?? null),
+            health:       record.def.getHealth(),
+            dead:         false,
+            velX:         0,
+            velZ:         0,
+            velY:         0,
+            target:       null,
+            threshold:    0,
+            reactiontime: ((instant) ? 0 : DoomMonsterSystem.REACTION_TIME),
+            movedir:      DoomMonsterMove.DI_NODIR,
+            movecount:    0,
+            special1:     0,
+            inFloat:      false,
+            respawnClock: 0,
+            noKillCount:  false,
+            blend:        null,
+            snapRender:   false,
+            env:          new ActorExternalForces(),
+            stateKey:     'spawn0',
+            ticsLeft:     record.def.getState('spawn0').getTics(),
+            shownObj:     null
         });
         return this;
     }
@@ -48,7 +80,71 @@ class DoomMonsterSystem {
     setWorld(collision, user) {
         this._collision = collision;
         this._user      = user;
+        this._wireModules();
         return this;
+    }
+
+    // The senses and locomotion need BOTH the level data and the world; the
+    // two setters arrive in build order — whichever lands last completes the
+    // wiring (no implicit ordering constraint).
+    _wireModules() {
+        if ((this._levelData === null) || (this._collision === null)) {
+            return;
+        }
+        if (this._sight === null) {
+            this._sight = new DoomMonsterSight(this._collision, this._levelData);
+        }
+        if ((this._move === null) && (this._rng !== null) && (this._user !== null)) {
+            this._move = new DoomMonsterMove(this._collision, this._user, this._rng, this._levelData);
+            this._move.setPostMove((m, fromX, fromZ, toX, toZ) => {
+                this._resolveRide(m);
+                this._crossLines(m, fromX, fromZ, toX, toZ);
+            });
+        }
+    }
+
+    // Skill rules of the running game (instantReaction, fastMonsters, respawn…),
+    // set before the builder feeds the records.
+    setSkillRule(rule) {
+        this._skillRule = rule;
+        return this;
+    }
+
+    // Shared vanilla P_Random table (the locomotion rolls its direction and
+    // move counts on it) — set before the world wiring.
+    setRandom(rng) {
+        this._rng = rng;
+        return this;
+    }
+
+    // gameinfo nightmarefast (Heretic true, Doom false): the runtime chase
+    // acceleration of the fastMonsters skill.
+    setNightmareFast(flag) {
+        this._nightmareFast = (flag === true);
+        return this;
+    }
+
+    // Level-wide data built once by the world builder: the sector adjacency
+    // graph (P_NoiseAlert flood, walk-line crossings), the REJECT table
+    // (sight-check early-out, null when the WAD has none), the sector count
+    // and a resolver over the level's polygon cache (a monster that moved
+    // re-resolves its current sector through it).
+    setLevelData(data) {
+        this._levelData = data;
+        this._wireModules();
+        return this;
+    }
+
+    // P_NoiseAlert entry point: the player's weapon fire (P_FireWeapon) floods
+    // the sector graph from his sector — every reached sector remembers him
+    // as its sound target, consumed by A_Look.
+    noiseAlert() {
+        if ((this._sight === null) || (this._user === null)) {
+            return;
+        }
+        const S   = WadConstants.SCALE;
+        const sec = this._levelData.findSector(this._user.x / S, this._user.z / S);
+        this._sight.noiseAlert(this._user, ((sec !== null) ? sec.si : null));
     }
 
     // Catalog key of one dropItems entry — shared with the world builder,
@@ -60,6 +156,10 @@ class DoomMonsterSystem {
     setDamageModule(damageModule) {
         this._damage = damageModule;
         return this;
+    }
+
+    getDamageModule() {
+        return this._damage;
     }
 
     // Drop pickup templates prepared in the batch by the world builder,
@@ -77,21 +177,85 @@ class DoomMonsterSystem {
         if (this._user === null) {
             return;
         }
+        this._clockMs += dt;
+        // Environmental channel (wind/conveyors/ice fed by the sector-push
+        // interaction earlier this frame): integrate per frame like the User,
+        // consumed per tic, then reset for the next frame's emitters.
+        for (const m of this._monsters) {
+            m.env.integrate(dt / 1000);
+        }
         this._timeAcc += dt;
         while (this._timeAcc >= DoomMonsterSystem.MS_PER_TIC) {
             this._timeAcc -= DoomMonsterSystem.MS_PER_TIC;
             this._stepTic();
         }
+        for (const m of this._monsters) {
+            m.env.beginFrame();
+            this._applyRenderBlend(m);
+        }
+    }
+
+    // Arm the render glide after a tic that moved the body: from its previous
+    // spot, over the current state's duration for a walking step (the next
+    // A_Chase step lands right when the glide ends — continuous motion) or a
+    // single tic for momentum slides. A teleport snaps instead.
+    _armRenderBlend(m, fromX, fromY, fromZ) {
+        if (m.snapRender) {
+            m.snapRender = false;
+            m.blend      = null;
+            m.inst.clearRenderOffset();
+            return;
+        }
+        const p = m.inst.getTransform().position;
+        if ((Math.abs(p[0] - fromX) < 1e-9) && (Math.abs(p[1] - fromY) < 1e-9) && (Math.abs(p[2] - fromZ) < 1e-9)) {
+            return;
+        }
+        const walking = (!m.dead && m.stateKey.startsWith('see') && (m.def.getState(m.stateKey).getTics() > 0));
+        const durTics = ((walking) ? Math.max(1, m.ticsLeft) : 1);
+        m.blend = {fx: fromX, fy: fromY, fz: fromZ, t0: this._clockMs, dur: durTics * DoomMonsterSystem.MS_PER_TIC};
+    }
+
+    // Render smoothing (user decision, GZDoom-like): the logical body moves
+    // by teleport-steps at 35 Hz, the DISPLAYED body glides from the previous
+    // spot to the current one — vertically too, so stair steps flow like the
+    // player's camera smoothing. Only the render offset moves, never the
+    // physics.
+    _applyRenderBlend(m) {
+        if (m.blend === null) {
+            return;
+        }
+        const k = (this._clockMs - m.blend.t0) / m.blend.dur;
+        if (k >= 1) {
+            m.inst.clearRenderOffset();
+            m.blend = null;
+            return;
+        }
+        const p = m.inst.getTransform().position;
+        m.inst.setRenderOffset(
+            (m.blend.fx - p[0]) * (1 - k),
+            (m.blend.fy - p[1]) * (1 - k),
+            (m.blend.fz - p[2]) * (1 - k)
+        );
     }
 
     _stepTic() {
+        this._ticCount++;
         const kept = [];
         for (const m of this._monsters) {
+            const before   = m.inst.getTransform().position;
+            const beforeX  = before[0];
+            const beforeY  = before[1];
+            const beforeZ  = before[2];
+            this._floatToward(m);
             this._integrateVelocity(m);
             // A live rider's box blocker follows its lift (the ride sync moves
             // the body outside this system) — corpses have no box anymore.
             if (!m.dead && (this._collision !== null) && (m.inst.getRideOn() !== null)) {
                 this._collision.syncBoxFor(m.inst);
+            }
+            if (this._maybeNightmareRespawn(m)) {
+                this._despawn(m);
+                continue;
             }
             const state = m.def.getState(m.stateKey);
             if (state.getTics() >= 0) {
@@ -109,28 +273,144 @@ class DoomMonsterSystem {
                 }
             }
 
+            this._armRenderBlend(m, beforeX, beforeY, beforeZ);
             this._refreshView(m);
             kept.push(m);
         }
         this._monsters = kept;
+        if (this._respawnQueue.length > 0) {
+            for (const spawn of this._respawnQueue) {
+                this._spawnRespawned(spawn);
+            }
+            this._respawnQueue = [];
+        }
+    }
+
+    // P_NightmareRespawn trigger (p_mobj.c P_MobjThinker): a counted corpse
+    // resting on its terminal frame ages, then rolls 5/256 every 32 tics past
+    // 12 s — and only respawns when its ORIGINAL spot is free of live bodies
+    // and of the player. The actual spawn is queued (never mutate the list
+    // mid-iteration).
+    _maybeNightmareRespawn(m) {
+        if (!m.dead || (this._skillRule === null) || !(this._skillRule.respawnTicsDelay > 0)) {
+            return false;
+        }
+        if ((m.def.getFlags().countsKill === false) || (m.spawn === null)) {
+            return false;
+        }
+        if (m.def.getState(m.stateKey).getTics() >= 0) {
+            return false;
+        }
+        m.respawnClock++;
+        if (m.respawnClock < this._skillRule.respawnTicsDelay) {
+            return false;
+        }
+        if ((this._ticCount & 31) !== 0) {
+            return false;
+        }
+        if (this._rng.next() > DoomMonsterSystem.RESPAWN_DICE) {
+            return false;
+        }
+        const spot = this._spotOccupancy(m.spawn.position[0], m.spawn.position[2], m.inst.getCollisionRadius(), m);
+        if ((spot.blockers.length > 0) || spot.playerBlocks) {
+            return false;
+        }
+        this._respawnQueue.push(m);
+        return true;
+    }
+
+    // P_CheckPosition against the live bodies and the player (the world
+    // geometry validated these spots at map load) — shared by the nightmare
+    // respawn (any occupancy refuses) and the monster teleport (MAP30 stomps).
+    _spotOccupancy(x, z, r, exclude) {
+        const blockers = [];
+        for (const other of this._monsters) {
+            if ((other === exclude) || other.dead) {
+                continue;
+            }
+            const op = other.inst.getTransform().position;
+            if (WadGeometry.boxesOverlap2d(x, z, r, op[0], op[2], other.inst.getCollisionRadius())) {
+                blockers.push(other);
+            }
+        }
+        const u = this._user;
+        return {
+            blockers:     blockers,
+            playerBlocks: WadGeometry.boxesOverlap2d(x, z, r, u.x, u.z, u.getRadius())
+        };
+    }
+
+    // Fresh actor at the original THINGS spot: same def/frames/facing/ambush,
+    // reactiontime 18 (vanilla), and — user decision — its future death no
+    // longer feeds the ☠ counter (x stays ≤ y despite the endless respawns).
+    _spawnRespawned(m) {
+        const sp     = m.spawn.position;
+        const idle0  = m.def.getState('spawn0');
+        const instId = loader.instances().spawnFromData(null, {
+            code:            null,
+            object:          m.frames[DoomMonsterDef.viewKey(idle0.getSprite(), idle0.getFrame())][0],
+            position:        [sp[0], sp[1], sp[2]],
+            rotation:        [0, 0, 0],
+            trigger:         'none',
+            loop:            false,
+            onlyOnce:        false,
+            collisionShape:  'box',
+            collisionRadius: m.inst.getCollisionRadius(),
+            keyframes:       []
+        });
+        const inst = loader.instances().get(instId);
+        this.add({
+            code:   m.code + '_r',
+            inst:   inst,
+            def:    m.def,
+            facing: m.spawn.facing,
+            flags:  m.spawn.flags,
+            frames: m.frames,
+            si:     m.spawn.si,
+            spawn:  m.spawn
+        });
+        const fresh = this._monsters[this._monsters.length - 1];
+        fresh.reactiontime = DoomMonsterSystem.RESPAWN_REACTION;
+        fresh.noKillCount  = true;
+        if (this._collision !== null) {
+            this._collision.addInstance(inst);
+        }
+        this._resolveRide(fresh);
     }
 
     // Switch a monster to a new state and run its entry action — the game
-    // verbs that matter while monsters cannot act yet (a whitelist; sounds and
-    // AI actions are inert). A chase target ('see…') falls back to the idle
-    // group until phase C brings the walking machinery.
+    // verbs implemented so far (a whitelist; sounds stay inert). Under the
+    // fastMonsters skill, a state carrying the zscript Fast keyword halves
+    // its duration on entry (GetTics: tics − (tics>>1) — Doom demon/spectre).
     enterState(m, key) {
-        if (key.startsWith('see')) {
-            key = 'spawn0';
-        }
         m.stateKey = key;
         m.ticsLeft = m.def.getState(key).getTics();
+        if ((m.ticsLeft > 0) && m.def.getState(key).isFast()
+            && (this._skillRule !== null) && (this._skillRule.fastMonsters === true)) {
+            m.ticsLeft = m.ticsLeft - (m.ticsLeft >> 1);
+        }
         this._dispatchAction(m, m.def.getState(key).getAction());
         this._refreshView(m);
     }
 
     _dispatchAction(m, action) {
-        if (action === 'A_NoBlocking') {
+        if ((action === 'A_Look') || (action === 'A_MinotaurLook')) {
+            this._aLook(m);
+            return;
+        }
+        if (DoomMonsterSystem.CHASE_ACTIONS.has(action)) {
+            this._aChase(m, action);
+            return;
+        }
+        if (action === 'A_Sor1Pain') {
+            // dsparil.zs: the pain arms the serpent's chase acceleration
+            m.special1 = 20;
+            return;
+        }
+        // The Heretic imp unblocks through its own death verbs (hereticimp.zs
+        // A_ImpDeath / A_ImpXDeath1: bSolid = false) — same effect as
+        // A_NoBlocking, without which a dead gargoyle still blocks the player.
+        if ((action === 'A_NoBlocking') || (action === 'A_ImpDeath') || (action === 'A_ImpXDeath1')) {
             if (this._collision !== null) {
                 this._collision.removeBoxFor(m.inst);
             }
@@ -154,6 +434,130 @@ class DoomMonsterSystem {
         if (this._collision !== null) {
             this._collision.removeBoxFor(m.inst);
         }
+    }
+
+    // A_Look (p_enemy.cpp): threshold cleared, then the sector sound target —
+    // a deaf monster (THINGS ambush bit) ignores it unless it SEES the target
+    // — then the visual scan (180° FOV + point-blank exception + sight check).
+    _aLook(m) {
+        m.threshold = 0;
+        const heard = ((this._sight !== null) ? this._sight.getSoundTarget(m.si) : null);
+        if ((heard !== null) && !heard.isDead()) {
+            if ((m.flags & WadConstants.MTF_AMBUSH) !== 0) {
+                if (this._checkSight(m)) {
+                    this._wake(m);
+                    return;
+                }
+            } else {
+                this._wake(m);
+                return;
+            }
+        }
+        if (this._lookForPlayer(m)) {
+            this._wake(m);
+        }
+    }
+
+    // P_LookForPlayers / P_IsVisible: front 180° cone around the facing, with
+    // the vanilla point-blank exception (seen even behind when closer than
+    // MELEERANGE + radius), then the expensive sight check last. The chase
+    // re-scan passes allaround (vanilla A_Chase looks in every direction).
+    _lookForPlayer(m, allaround = false) {
+        if ((this._user === null) || this._user.isDead()) {
+            return false;
+        }
+        const pos = m.inst.getTransform().position;
+        const dx  = this._user.x - pos[0];
+        const dz  = this._user.z - pos[2];
+        if (!allaround) {
+            let diff = (((Math.atan2(dz, dx) * 180 / Math.PI - m.facing) % 360) + 360) % 360;
+            if (diff > 180) {
+                diff = 360 - diff;
+            }
+            if (diff > 90) {
+                const closeRange = (DoomMonsterSystem.MELEE_RANGE + m.def.getRadius()) * WadConstants.SCALE;
+                if (Math.hypot(dx, dz) > closeRange) {
+                    return false;
+                }
+            }
+        }
+        return this._checkSight(m);
+    }
+
+    // A_Chase (p_enemy.cpp A_DoChase, movement scope of phase C): reaction
+    // and threshold countdowns, the 45° turn toward movedir, the target
+    // upkeep, then the walk step. The melee/missile checks live HERE in
+    // vanilla — stubbed until phase D. Active/see sounds are inert.
+    _aChase(m, action) {
+        if (m.reactiontime > 0) {
+            m.reactiontime--;
+        }
+        if (m.threshold > 0) {
+            if ((m.target === null) || m.target.isDead()) {
+                m.threshold = 0;
+            } else {
+                m.threshold--;
+            }
+        }
+        // A_Sor1Chase (dsparil.zs): the pain-armed boost eats 3 tics per call
+        if ((action === 'A_Sor1Chase') && (m.special1 > 0)) {
+            m.special1--;
+            m.ticsLeft = Math.max(1, m.ticsLeft - 3);
+        }
+        // Heretic gameinfo nightmarefast (A_DoChase runtime block): EVERY
+        // monster's chase cadence halves (floor 3 tics) under fastMonsters —
+        // Doom does not set the flag, only its Fast states speed up.
+        if (this._nightmareFast && (this._skillRule !== null) && (this._skillRule.fastMonsters === true) && (m.ticsLeft > 3)) {
+            m.ticsLeft -= (m.ticsLeft / 2) | 0;
+            if (m.ticsLeft < 3) {
+                m.ticsLeft = 3;
+            }
+        }
+        if (this._move !== null) {
+            this._move.turnToward(m);
+        }
+        // Lost or dead target: rescan all around, else drop back to idle
+        if ((m.target === null) || m.target.isDead()) {
+            m.target = null;
+            if (!this._lookForPlayer(m, true)) {
+                this.enterState(m, 'spawn0');
+                return;
+            }
+            m.target = this._user;
+        }
+        // [phase D] P_CheckMeleeRange / P_CheckMissileRange hook in here.
+        if (this._move !== null) {
+            this._move.chaseMove(m);
+        }
+    }
+
+    // P_CheckSight from this monster's eye (feet + 3/4 actor height) to the
+    // player, behind the REJECT early-out when the WAD carries the lump.
+    _checkSight(m) {
+        if (this._sight === null) {
+            return false;
+        }
+        const pos  = m.inst.getTransform().position;
+        const eyeY = pos[1] + m.def.getHeight() * 0.75 * WadConstants.SCALE;
+        return this._sight.checkSight(pos[0], eyeY, pos[2], m.si, this._user, this._userSector());
+    }
+
+    _wake(m) {
+        m.target = this._user;
+        if (m.def.getState('see0') !== null) {
+            this.enterState(m, 'see0');
+        }
+    }
+
+    // Player sector, resolved at most once per tic (REJECT needs both ends).
+    _userSector() {
+        if (this._userSiTic !== this._ticCount) {
+            const S   = WadConstants.SCALE;
+            const sec = this._levelData.findSector(this._user.x / S, this._user.z / S);
+            this._userSi    = ((sec !== null) ? sec.si : null);
+            this._userSiTic = this._ticCount;
+        }
+        return this._userSi;
     }
 
     // A_DropItem at the A_NoBlocking state: every dropItems entry rolls its
@@ -194,9 +598,10 @@ class DoomMonsterSystem {
     }
 
     // Bodies in motion (P_XYMovement / P_ZMovement at 35 Hz): the blast thrust
-    // slides them against walls and other bodies under the vanilla friction,
-    // and anything held above its floor falls — a floater's corpse drops, a
-    // body shoved past a ledge follows it down.
+    // and the environmental velocity (wind/conveyors, corpses drift too) slide
+    // them against walls and other bodies under the sector friction, and
+    // anything held above its floor falls — a floater's corpse drops, a body
+    // shoved past a ledge follows it down.
     _integrateVelocity(m) {
         if (this._collision === null) {
             return;
@@ -209,22 +614,44 @@ class DoomMonsterSystem {
         const h     = m.def.getHeight() * SCALE;
         let   moved = false;
 
-        if ((m.velX !== 0) || (m.velZ !== 0)) {
+        // Per-tic displacement: knockback/skid velocity (map units/tic) plus
+        // the environmental channel (m/s, integrated per frame)
+        const envX = m.env.getVelX() * WadConstants.SECONDS_PER_TIC;
+        const envZ = m.env.getVelZ() * WadConstants.SECONDS_PER_TIC;
+        const dxM  = m.velX * SCALE + envX;
+        const dzM  = m.velZ * SCALE + envZ;
+        if ((dxM !== 0) || (dzM !== 0)) {
             // Vanilla P_TryMove: a shoved body climbs steps up to 24 units and
             // a move onto NO floor is refused outright (never through the
             // world) — the momentum dies against the obstacle.
-            const step      = DoomMonsterSystem.STEP_HEIGHT;
-            const solved    = this._collision.resolveWall(pos[0], pos[2], m.velX * SCALE, m.velZ * SCALE, r, pos[1], h, step, m.inst);
+            const step      = WadConstants.ACTOR_STEP_HEIGHT;
+            const solved    = this._collision.resolveWall(pos[0], pos[2], dxM, dzM, r, pos[1], h, step, m.inst);
             const destFloor = this._collision.getFloor(solved.x, solved.z, r, pos[1] + step);
             if (destFloor === -Infinity) {
                 m.velX = 0;
                 m.velZ = 0;
             } else {
+                const fromX = pos[0];
+                const fromZ = pos[2];
                 m.inst.translate(solved.x - pos[0], ((destFloor > pos[1]) ? destFloor - pos[1] : 0), solved.z - pos[2]);
                 this._collision.syncBoxFor(m.inst);
                 moved = true;
-                m.velX *= DoomMonsterSystem.FRICTION;
-                m.velZ *= DoomMonsterSystem.FRICTION;
+                // A momentum move is a real move (P_TryMove): the sector index
+                // follows, and a LIVE skidding body still fires the special
+                // lines it crosses (a blast-slid corpse crossing a teleport
+                // stays put — refused deviation, documented).
+                const sec = this._levelData.findSector(solved.x / SCALE, solved.z / SCALE);
+                if (sec !== null) {
+                    m.si = sec.si;
+                }
+                if (!m.dead) {
+                    this._crossLines(m, fromX, fromZ, solved.x, solved.z);
+                }
+                // The skid decay follows the ground: BOOM ice keeps more of
+                // the momentum than the vanilla ORIG_FRICTION
+                const keep = (m.env.getGroundFriction() ?? WadConstants.ORIG_FRICTION);
+                m.velX *= keep;
+                m.velZ *= keep;
                 if (Math.hypot(m.velX, m.velZ) < DoomMonsterSystem.STOPSPEED) {
                     m.velX = 0;
                     m.velZ = 0;
@@ -232,9 +659,10 @@ class DoomMonsterSystem {
             }
         }
 
-        // Gravity — a LIVE floater hovers (its own lift, until phase C flies
-        // it); everything else falls to its floor. A void below (no floor at
-        // all) freezes the body instead of dropping it through the world.
+        // Gravity — a LIVE floater holds its altitude here (its vertical life
+        // is the float logic); everything else falls to its floor. A void
+        // below (no floor at all) freezes the body instead of dropping it
+        // through the world.
         if ((m.def.getFlags().float === true) && !m.dead) {
             return;
         }
@@ -259,6 +687,129 @@ class DoomMonsterSystem {
         if (moved) {
             this._resolveRide(m);
         }
+    }
+
+    // P_ZMovement float: a live floater with a target closes the height gap
+    // toward the target's feet + half its own height, by FLOATSPEED per tic,
+    // once horizontally near enough (dist2D < 3×|delta|). Suspended while the
+    // INFLOAT unstick owns the tic; clamped inside the local floor/ceiling.
+    _floatToward(m) {
+        if (m.dead || (m.def.getFlags().float !== true) || (m.target === null) || (m.inFloat === true)) {
+            return;
+        }
+        const SCALE = WadConstants.SCALE;
+        const pos   = m.inst.getTransform().position;
+        const h     = m.def.getHeight() * SCALE;
+        const dist  = Math.hypot(m.target.x - pos[0], m.target.z - pos[2]);
+        const delta = (m.target.y + h * 0.5) - pos[1];
+        let   dy    = 0;
+        if ((delta < 0) && (dist < -delta * 3)) {
+            dy = -WadConstants.ACTOR_FLOAT_SPEED;
+        } else if ((delta > 0) && (dist < delta * 3)) {
+            dy = WadConstants.ACTOR_FLOAT_SPEED;
+        }
+        if (dy === 0) {
+            return;
+        }
+        const r      = m.inst.getCollisionRadius();
+        const floorY = this._collision.getFloor(pos[0], pos[2], r, pos[1] + 0.01);
+        const ceilY  = this._collision.getCeiling(pos[0], pos[2], r, pos[1] + h);
+        let   newY   = pos[1] + dy;
+        if (floorY !== -Infinity) {
+            newY = Math.max(newY, floorY);
+        }
+        newY = Math.min(newY, ceilY - h);
+        if (Math.abs(newY - pos[1]) < 1e-9) {
+            return;
+        }
+        m.inst.translate(0, newY - pos[1], 0);
+        this._collision.syncBoxFor(m.inst);
+    }
+
+    // P_CrossSpecialLine (monster side): a walk step that crosses a listed
+    // line fires it — shared walk zones (4/10/88, W1 consumed for everyone)
+    // and teleports (39/97 shared with the player, 125/126 monster-only).
+    _crossLines(m, fromX, fromZ, toX, toZ) {
+        const lines = (this._levelData.monsterLines ?? []);
+        if (lines.length === 0) {
+            return;
+        }
+        const S  = WadConstants.SCALE;
+        const ax = fromX / S;
+        const ay = fromZ / S;
+        const bx = toX / S;
+        const by = toZ / S;
+        for (const line of lines) {
+            if (line.used) {
+                continue;
+            }
+            if (!WadGeometry.segmentsCross(ax, ay, bx, by, line.x1, line.y1, line.x2, line.y2)) {
+                continue;
+            }
+            if (line.kind === 'zone') {
+                const zone = this._zoneInstance(line.zoneCode);
+                if ((zone !== null) && zone.fireZoneTrigger() && line.once) {
+                    line.used = true;
+                }
+                continue;
+            }
+            // Teleport: a W1 line is consumed by the attempt (vanilla clears
+            // the special regardless of the EV_Teleport outcome), for the
+            // player too when the zone is shared.
+            if (line.once) {
+                line.used = true;
+                const zone = this._zoneInstance(line.zoneCode);
+                if (zone !== null) {
+                    zone.stop();
+                }
+            }
+            this._monsterTeleport(m, line.landing);
+        }
+    }
+
+    // EV_Teleport for a monster: an arrival spot held by any live body fails
+    // silently — the telefrag only exists on MAP30 (p_map.c PIT_StompThing).
+    // The teleported actor faces the landing angle with all momentum cleared,
+    // and no reaction delay (the 18-tic freeze is player-only).
+    _monsterTeleport(m, landing) {
+        const spot = this._spotOccupancy(landing.x, landing.z, m.inst.getCollisionRadius(), m);
+        if ((spot.blockers.length > 0) || spot.playerBlocks) {
+            if (this._levelData.levelName !== 'MAP30') {
+                return;
+            }
+            for (const other of spot.blockers) {
+                this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {noBlood: true});
+            }
+            if (spot.playerBlocks) {
+                this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
+            }
+        }
+        const pos = m.inst.getTransform().position;
+        m.inst.translate(landing.x - pos[0], landing.y - pos[1], landing.z - pos[2]);
+        this._collision.syncBoxFor(m.inst);
+        m.snapRender = true;
+        m.facing     = WadGeometry.doomAngleYaw(landing.yaw);
+        m.velX = 0;
+        m.velZ = 0;
+        m.velY = 0;
+        m.env  = new ActorExternalForces();
+        const S   = WadConstants.SCALE;
+        const sec = this._levelData.findSector(landing.x / S, landing.z / S);
+        if (sec !== null) {
+            m.si = sec.si;
+        }
+        this._resolveRide(m);
+        this._refreshView(m);
+    }
+
+    _zoneInstance(code) {
+        if (code === null) {
+            return null;
+        }
+        if (this._zoneCache[code] === undefined) {
+            this._zoneCache[code] = loader.instances().getByCode(code);
+        }
+        return this._zoneCache[code];
     }
 
     _resolveRide(m) {
@@ -395,8 +946,16 @@ class DoomMonsterSystem {
 }
 
 DoomMonsterSystem.MS_PER_TIC = 1000 / 35;
-// Vanilla P_XYMovement numbers (map units/tic): ORIG_FRICTION per-tic decay,
-// motion zeroed under STOPSPEED (0x1000/65536), gravity 1 unit/tic².
-DoomMonsterSystem.FRICTION    = 0.90625;
-DoomMonsterSystem.STOPSPEED   = 0.0625;
-DoomMonsterSystem.STEP_HEIGHT = 24 * WadConstants.SCALE;
+// Vanilla P_XYMovement stop threshold (0x1000/65536, map units/tic) — the
+// decay/step/float numbers live in WadConstants (shared with the locomotion)
+DoomMonsterSystem.STOPSPEED = 0.0625;
+// Actor info reactiontime default (actor.zs) and MELEERANGE (p_local.h), map units
+DoomMonsterSystem.REACTION_TIME = 8;
+DoomMonsterSystem.MELEE_RANGE   = 64;
+// P_NightmareRespawn rolls (p_mobj.c): P_Random() ≤ 4 every 32 tics, and the
+// vanilla 18-tic reaction delay of the fresh actor
+DoomMonsterSystem.RESPAWN_DICE     = 4;
+DoomMonsterSystem.RESPAWN_REACTION = 18;
+// Chase verbs of phase C: plain A_Chase plus its sound-flavoured wrappers
+// (their extras are sounds, inert here) and the serpent's accelerated chase.
+DoomMonsterSystem.CHASE_ACTIONS = new Set(['A_Chase', 'A_VileChase', 'A_MinotaurChase', 'A_BabyMetal', 'A_Metal', 'A_Hoof', 'A_Sor1Chase']);

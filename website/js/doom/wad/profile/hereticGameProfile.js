@@ -419,6 +419,12 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // gameinfo nightmarefast = true (mapinfo/heretic.txt:59): fastMonsters
+    // halves EVERY monster's chase cadence at runtime.
+    nightmareFast() {
+        return true;
+    }
+
     // Amounts/caps from the UZDoom zscript ammo definitions (hereticammo.zs):
     // clip = small-pickup amount, packGive = what the Bag of Holding grants
     // (mace spheres get none).
