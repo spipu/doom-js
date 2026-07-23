@@ -32,6 +32,7 @@ class Instance extends AbstractLoadedEntity {
         this._autoStart         = false;   // true = start() once at load (timer-armed elements)
         this._interaction       = null;
         this._triggerCondition  = null;
+        this._renderOffset      = null;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -330,6 +331,73 @@ class Instance extends AbstractLoadedEntity {
         this._computeWorldCenter();
     }
 
+    /**
+     * Purely visual position offset consumed at DRAW time only (the physics
+     * body never moves): game code smoothing stepped logical motion — actors
+     * advancing by teleport-steps at a fixed tick rate — hands the shrinking
+     * gap to the renderer here. Null when unused (zero cost).
+     */
+    setRenderOffset(dx, dy, dz) {
+        this._renderOffset = [dx, dy, dz];
+    }
+
+    clearRenderOffset() {
+        this._renderOffset = null;
+    }
+
+    // Transform used by the renderer: the logical transform, shifted by the
+    // render offset when one is set.
+    getRenderTransform() {
+        const t = this.getTransform();
+        if (this._renderOffset === null) {
+            return t;
+        }
+        return {
+            position: [
+                t.position[0] + this._renderOffset[0],
+                t.position[1] + this._renderOffset[1],
+                t.position[2] + this._renderOffset[2]
+            ],
+            rotation:       t.rotation,
+            deltaTranslate: t.deltaTranslate,
+            deltaRotate:    t.deltaRotate
+        };
+    }
+
+    /**
+     * Fire this trigger zone programmatically for a non-player actor (game
+     * code detecting its own crossings): same consumption path as the player
+     * proximity check — start(), notify the interaction, and a zero-keyframe
+     * zone stops immediately, so a once-only line is consumed for everyone.
+     * No-op on a spent or busy zone. Returns true when it fired.
+     */
+    fireZoneTrigger() {
+        if (this._trigger === 'none' || this._animDone || this._animPlaying) {
+            return false;
+        }
+        this.start();
+        if (!this._animPlaying) {
+            return false;
+        }
+        this._notifyTriggered();
+        return true;
+    }
+
+    // Interaction hand-off of a trigger that just started: a zone with no
+    // keyframes stops right away (its once-only flag consumes it). Shared by
+    // the player proximity path and fireZoneTrigger.
+    _notifyTriggered() {
+        if (this._interaction === null) {
+            return false;
+        }
+        loader.interactions().getByCode(this._interaction).triggered(this);
+        if (this._animKeyframes.length === 0) {
+            this.stop();
+            return true;
+        }
+        return false;
+    }
+
     _checkTrigger(user, action) {
         if (this._trigger === 'none' || this._animPlaying) {
             return false;
@@ -362,15 +430,8 @@ class Instance extends AbstractLoadedEntity {
                 break;
         }
 
-        if (this._animPlaying) {
-            if (this._interaction !== null) {
-                loader.interactions().getByCode(this._interaction).triggered(this);
-
-                if (this._animKeyframes.length === 0) {
-                    this.stop();
-                    return true;
-                }
-            }
+        if (this._animPlaying && this._notifyTriggered()) {
+            return true;
         }
 
         return false;

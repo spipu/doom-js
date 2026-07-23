@@ -156,10 +156,6 @@ class DoomMonsterDef {
         return (this._states[key] ?? null);
     }
 
-    getStateKeys() {
-        return Object.keys(this._states);
-    }
-
     // Catalog key of one monster view — the contract between the builders
     // (which prebuild the billboards under it) and the runtime (_refreshView).
     static viewKey(sprite, frame) {
@@ -169,7 +165,7 @@ class DoomMonsterDef {
     // Distinct {sprite, frame} pairs of the given state groups (the sprite is
     // per-state: spriteOverrides groups differ from the base — barrel BEXP).
     getFramePairs(groups) {
-        const seen  = new Set();
+        const byKey = {};
         const pairs = [];
         for (const key of Object.keys(this._states)) {
             if (!groups.some((g) => key.startsWith(g))) {
@@ -177,9 +173,14 @@ class DoomMonsterDef {
             }
             const state   = this._states[key];
             const pairKey = DoomMonsterDef.viewKey(state.getSprite(), state.getFrame());
-            if (!seen.has(pairKey)) {
-                seen.add(pairKey);
-                pairs.push({sprite: state.getSprite(), frame: state.getFrame()});
+            if (byKey[pairKey] === undefined) {
+                byKey[pairKey] = {sprite: state.getSprite(), frame: state.getFrame(), bright: false};
+                pairs.push(byKey[pairKey]);
+            }
+            // A view used by ANY bright state renders fullbright (zscript
+            // Bright keyword — the lost soul burns in the dark).
+            if (state.isBright()) {
+                byKey[pairKey].bright = true;
             }
         }
         return pairs;

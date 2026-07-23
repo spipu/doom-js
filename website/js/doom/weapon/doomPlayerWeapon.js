@@ -17,12 +17,13 @@ class DoomPlayerWeapon {
         this._flashPsp  = { stateKey: null, tics: 0 };
         this._motion    = new DoomWeaponMotion();   // on-screen offset + smoothing
 
-        this._ready      = user.getActiveWeapon();
-        this._pending    = null;
-        this._refire     = 0;
-        this._attackDown = false;
-        this._fireHeld   = false;
-        this._light      = 1;
+        this._ready         = user.getActiveWeapon();
+        this._pending       = null;
+        this._refire        = 0;
+        this._attackDown    = false;
+        this._fireHeld      = false;
+        this._light         = 1;
+        this._noiseCallback = null;
 
         this._ticks = 0;
         this._acc   = 0;
@@ -34,6 +35,13 @@ class DoomPlayerWeapon {
     setAttackSystems(hitscan, projectiles) {
         this._hitscan     = hitscan;
         this._projectiles = projectiles;
+        return this;
+    }
+
+    // Fired once per initiated attack (new press AND each refire cycle) —
+    // the vanilla P_FireWeapon site of P_NoiseAlert, every weapon included.
+    setNoiseCallback(callback) {
+        this._noiseCallback = callback;
         return this;
     }
 
@@ -340,6 +348,11 @@ class DoomPlayerWeapon {
     _fireWeapon() {
         if (!this._checkAmmo()) {
             return;
+        }
+        // P_FireWeapon wakes the neighbourhood (P_NoiseAlert) on every
+        // initiated attack — fist and chainsaw included, vanilla.
+        if (this._noiseCallback !== null) {
+            this._noiseCallback();
         }
         // Recenter for the shot: the weapon stays steady through sustained fire
         // instead of freezing mid-bob.

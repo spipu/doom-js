@@ -1,7 +1,7 @@
 /**
  * Per-level sector pushes (Heretic wind 40-51, conveyor floors 20-39 + the
  * scrolling lava 4) and low-friction ground (ice, 15). Every frame the
- * player's zone feeds the generic UserExternalForces channel consumed by
+ * player's zone feeds the generic ActorExternalForces channel consumed by
  * User.updateMove — forces are frame-scoped, so leaving the zone simply
  * stops feeding them.
  *
@@ -9,17 +9,20 @@
  *  - wind: per-tic thrust, applies on the ground AND in the air (XZ test only);
  *  - carry: terminal speed, feet on the sector floor only;
  *  - friction: ground slipperiness, feet on the sector floor only.
- * Player only, like vanilla (sector carry is player-gated, wind pushes
- * WINDTHRUST actors — we have no enemies).
+ * The same zones feed the player AND every monster record (BOOM/MBF style —
+ * user decision: monsters and corpses take the environmental physics; each
+ * record carries its own ActorExternalForces channel).
  */
 class DoomSectorPushInteraction extends AbstractInteraction {
     /**
-     * @param {object[]} zones - [{si, outers (doom-coord polygons), floorY (world),
-     *                            push: {kind, dx, dz}|null, friction: {friction}|null}]
+     * @param {object[]}          zones    [{si, outers (doom-coord polygons), floorY (world),
+     *                                     push: {kind, dx, dz}|null, friction: {friction}|null}]
+     * @param {DoomMonsterSystem} monsters
      */
-    constructor(zones) {
+    constructor(zones, monsters = null) {
         super();
-        this._zones = zones;
+        this._zones    = zones;
+        this._monsters = monsters;
     }
 
     get code() {
@@ -64,6 +67,39 @@ class DoomSectorPushInteraction extends AbstractInteraction {
             }
             if ((zone.friction !== null) && onFloor) {
                 forces.setGroundFriction(zone.friction.friction);
+            }
+        }
+
+        if (this._monsters !== null) {
+            this._feedMonsters(toMs);
+        }
+    }
+
+    // Same rules for every monster record, corpses included (they drift):
+    // wind at any height, carry and friction with the feet on the sector
+    // floor (straddle band like the player, boxes prop bodies on lips too).
+    _feedMonsters(toMs) {
+        const step = WadConstants.ACTOR_STEP_HEIGHT;
+        for (const m of this._monsters.getMonsters()) {
+            const pos   = m.inst.getTransform().position;
+            const doomX = pos[0] / WadConstants.SCALE;
+            const doomZ = pos[2] / WadConstants.SCALE;
+            for (const zone of this._zones) {
+                if (!this._inZone(zone, doomX, doomZ)) {
+                    continue;
+                }
+                const height  = pos[1] - zone.floorY;
+                const grounded = ((height >= -0.02) && (height <= step));
+                if (zone.push !== null) {
+                    if (zone.push.kind === 'wind') {
+                        m.env.addThrust(zone.push.dx * toMs, zone.push.dz * toMs);
+                    } else if (grounded) {
+                        m.env.addCarry(zone.push.dx * toMs, zone.push.dz * toMs);
+                    }
+                }
+                if ((zone.friction !== null) && (Math.abs(height) <= 0.02)) {
+                    m.env.setGroundFriction(zone.friction.friction);
+                }
             }
         }
     }

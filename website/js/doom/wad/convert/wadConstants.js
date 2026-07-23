@@ -13,6 +13,7 @@ class WadConstants {
     // (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04); 0x10 means "not in single-player"
     // (multiplayer/co-op/DM only). 0x08 is "ambush" (deaf), irrelevant to display.
     static MTF_NOT_SINGLE = 0x10;
+    static MTF_AMBUSH     = 0x08;
 
     // Doom game tic = 1/35 s (animation/timing unit).
     static SECONDS_PER_TIC = 1 / 35;
@@ -554,7 +555,24 @@ class WadConstants {
     // Walk-over linedefs that teleport the player to the thing type 14 (teleport
     // landing) in the sector of the same tag. 39 = W1 (once), 97 = WR (repeatable).
     static TELEPORT_SPECIALS = new Set([39, 97]);
-    static TELEPORT_ONCE_BY_SPECIAL = {39: true, 97: false};
+
+    // Monster-only teleport lines (xlat MONWALK) and the walk lines a monster
+    // may cross-trigger (vanilla P_CrossSpecialLine whitelist: doors 4, plats
+    // 10/88 — the teleports 39/97/125/126 are handled by the teleport tables).
+    static MONSTER_TELEPORT_SPECIALS = new Set([125, 126]);
+    static MONSTER_WALK_SPECIALS     = new Set([4, 10, 88]);
+    static TELEPORT_ONCE_BY_SPECIAL = {39: true, 97: false, 125: true, 126: false};
+
+    // PIT_StompThing telefrag damage (p_map.c)
+    static TELEFRAG_DAMAGE = 10000;
+
+    // Vanilla actor physics, shared by the monster modules: P_TryMove step
+    // climb cap (24 map units), FLOATSPEED (p_local.h, 4 u/tic) and the BOOM
+    // ORIG_FRICTION per-tic momentum keep (ActorExternalForces.DECAY holds the
+    // same value engine-side — the engine cannot depend on this class).
+    static ACTOR_STEP_HEIGHT = 24 * WadConstants.SCALE;
+    static ACTOR_FLOAT_SPEED = 4 * WadConstants.SCALE;
+    static ORIG_FRICTION     = 0.90625;
 
     // Doom thing type of a teleport landing (destination marker, not rendered).
     static TELEPORT_LANDING_THING = 14;
@@ -611,6 +629,7 @@ class WadConstants {
     static ML_BLOCKMONSTERS = 0x02;
     static ML_DONTPEGTOP    = 0x08;
     static ML_DONTPEGBOTTOM = 0x10;
+    static ML_SOUNDBLOCK    = 0x40;
 
     // Doom picture-column format sentinel
     static PATCH_END_COLUMN = 0xFF;
@@ -654,7 +673,7 @@ class WadConstants {
     static SECTOR_PUSH_BY_SPECIAL = {};
 
     // Ground slipperiness of a SECTOR special: per-tic momentum keep factor
-    // fed to UserExternalForces.setGroundFriction (Heretic ice = 0.97265625).
+    // fed to ActorExternalForces.setGroundFriction (Heretic ice = 0.97265625).
     static SECTOR_FRICTION_BY_SPECIAL = {};
 
     // Visual floor-flat scroll of a SECTOR special, in map units per tic

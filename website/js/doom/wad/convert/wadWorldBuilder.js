@@ -142,7 +142,7 @@ class WadWorldBuilder {
         for (const tp of teleporters) {
             this._registerInstance(tp, bank);
             loader.interactions().loadFromData(
-                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination));
+                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem));
         }
         await this._yield();
 
@@ -167,7 +167,7 @@ class WadWorldBuilder {
         }
 
         // Sector pushes (wind / conveyors) and low-friction ground: one
-        // per-level interaction feeding the player's UserExternalForces each
+        // per-level interaction feeding the player's ActorExternalForces each
         // frame. Same zone shape as the damage interaction; the tables are
         // empty outside the game profiles that fill them (Heretic).
         const pushZones = this._sectorPolys
@@ -181,7 +181,7 @@ class WadWorldBuilder {
                 friction: (WadConstants.SECTOR_FRICTION_BY_SPECIAL[s.special] ?? null)
             }));
         if (pushZones.length > 0) {
-            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones));
+            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem));
         }
 
         // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
@@ -221,6 +221,88 @@ class WadWorldBuilder {
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         await this._yield();
+
+        // Level data the monster AI consumes at runtime (phase C): sector
+        // graph, REJECT table, sector resolver over the polygon cache (kept
+        // alive by the closure, like the sector-light handoff above), and the
+        // effective-height inputs of the sound flood — static sector heights,
+        // door panel floors, resting floor heights of the patched lifts, and
+        // the mover instance code of every moving sector (codes are only
+        // listed when actually built: getByCode never throws downstream).
+        if (this._monsterSystem !== null) {
+            const doorFloorH = {};
+            const moverCodes = {};
+            for (const code of builtFloorCodes) {
+                moverCodes[code.split('_')[1]] = {kind: 'floor', code: code};
+            }
+            for (const si of analysis.doorSectorIds) {
+                if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
+                    const props = analysis.doorProps[si];
+                    doorFloorH[si] = analysis.doorHeights[si].floorH;
+                    // Monster-usable = the vanilla P_UseSpecialLine whitelist
+                    // net effect: the plain manual door (special 1) only —
+                    // repeatable action trigger, keyless, D_SLOW speed (the
+                    // blaze DR 117 is excluded), never close/ceiling kinds.
+                    moverCodes[si] = {
+                        kind:       'door',
+                        code:       'door_' + si,
+                        monsterUse: ((props.trigger === 'action') && (props.onlyOnce !== true)
+                            && ((props.keyRequired ?? null) === null) && (props.close !== true)
+                            && (props.ceilingRaise !== true) && (props.speed === 2))
+                    };
+                }
+            }
+            // Lines a monster may fire by CROSSING them during a walk step
+            // (vanilla P_CrossSpecialLine): the shared walk zones (4/10/88,
+            // consumed for everyone through fireZoneTrigger) and the teleport
+            // lines — 39/97 shared with the player, 125/126 monster-only.
+            const monsterLines = [];
+            const vx = level.vertexes;
+            const builtWalkCodes     = new Set(walkTriggers.map((w) => w.code));
+            const builtTeleportCodes = new Set(teleporters.map((t) => t.code));
+            for (const tp of analysis.teleporterLinedefs) {
+                if (landings[tp.tag] === undefined) {
+                    continue;
+                }
+                const ld = level.linedefs[tp.ldIdx];
+                const sharedZone = 'teleport_' + tp.ldIdx;
+                monsterLines.push({
+                    kind:     'teleport',
+                    x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
+                    x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
+                    once:     (WadConstants.TELEPORT_ONCE_BY_SPECIAL[tp.special] === true),
+                    used:     false,
+                    landing:  landings[tp.tag],
+                    zoneCode: ((builtTeleportCodes.has(sharedZone)) ? sharedZone : null)
+                });
+            }
+            for (const wt of analysis.walkTriggerLinedefs) {
+                if (!WadConstants.MONSTER_WALK_SPECIALS.has(wt.special) || !builtWalkCodes.has('walk_' + wt.ldIdx)) {
+                    continue;
+                }
+                const ld = level.linedefs[wt.ldIdx];
+                monsterLines.push({
+                    kind:     'zone',
+                    x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
+                    x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
+                    once:     (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] === true),
+                    used:     false,
+                    zoneCode: 'walk_' + wt.ldIdx
+                });
+            }
+            this._monsterSystem.setLevelData({
+                sectorGraph:  analysis.sectorGraph,
+                reject:       level.reject,
+                numSectors:   level.sectors.length,
+                findSector:   ((doomX, doomY) => this._findSector(doomX, doomY)),
+                sectors:      level.sectors,
+                doorFloorH:   doorFloorH,
+                restFh:       analysis.liftOriginalFh,
+                moverCodes:   moverCodes,
+                monsterLines: monsterLines,
+                levelName:    this._levelName
+            });
+        }
 
         // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
@@ -396,9 +478,14 @@ class WadWorldBuilder {
         const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
 
         const frames = {};
-        for (const letter of Object.keys(t.frames)) {
-            frames[letter] = t.frames[letter].map((spr) => {
-                const objKey = spr.loaderId + '|' + t.light + '|' + lightGroup + '|' + t.alpha;
+        for (const viewKey of Object.keys(t.frames)) {
+            // A bright view (zscript Bright states) bakes fullbright and never
+            // follows a sector light effect.
+            const bright = t.brightKeys.has(viewKey);
+            const light  = ((bright) ? 255 : t.light);
+            const group  = ((bright) ? null : lightGroup);
+            frames[viewKey] = t.frames[viewKey].map((spr) => {
+                const objKey = spr.loaderId + '|' + light + '|' + group + '|' + t.alpha;
                 if (billboardIds[objKey] === undefined) {
                     const geo  = WadGeometry.spriteBillboardData(spr);
                     const sink = spr.topOffset - spr.height;
@@ -410,8 +497,8 @@ class WadWorldBuilder {
                         anchorOffsetX: geo.anchorOffsetX,
                         anchorOffsetY: ((t.def.isCeiling()) ? sink : Math.max(0, sink)) * scale,
                         anchorTop:     t.def.isCeiling(),
-                        light:         t.light,
-                        lightGroup:    lightGroup,
+                        light:         light,
+                        lightGroup:    group,
                         alpha:         t.alpha
                     });
                 }
@@ -439,7 +526,19 @@ class WadWorldBuilder {
             inst.setRideOn(loader.instances().getByCode(ride.floorCode));
         }
         if (this._monsterSystem !== null) {
-            this._monsterSystem.add({code: code, inst: inst, def: t.def, facing: t.facing, flags: t.flags, frames: frames});
+            const spawnPos = [t.position[0], t.position[1] + ride.liftY, t.position[2]];
+            this._monsterSystem.add({
+                code:   code,
+                inst:   inst,
+                def:    t.def,
+                facing: t.facing,
+                flags:  t.flags,
+                frames: frames,
+                si:     t.si,
+                // Nightmare respawn returns the monster to its ORIGINAL map
+                // spot with its THINGS facing and ambush flag (P_NightmareRespawn)
+                spawn:  {position: spawnPos, facing: t.facing, flags: t.flags, si: t.si}
+            });
         }
     }
 
@@ -667,7 +766,7 @@ class WadWorldBuilder {
             x:   player1.x * WadConstants.SCALE,
             y:   floorFh * WadConstants.SCALE + 0.3,
             z:   player1.y * WadConstants.SCALE,
-            yaw: ((90 - player1.angle) % 360 + 360) % 360
+            yaw: WadGeometry.doomAngleYaw(player1.angle)
         };
     }
 
@@ -689,7 +788,7 @@ class WadWorldBuilder {
                 x:   t.x * SCALE,
                 y:   sec.fh * SCALE + 0.3,
                 z:   t.y * SCALE,
-                yaw: ((90 - t.angle) % 360 + 360) % 360
+                yaw: WadGeometry.doomAngleYaw(t.angle)
             };
         }
         return landings;

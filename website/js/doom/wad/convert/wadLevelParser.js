@@ -14,7 +14,7 @@ class WadLevelParser {
     }
 
     /**
-     * @returns {{vertexes: number[][], linedefs: object[], sidedefs: object[], sectors: object[], things: object[]}}
+     * @returns {{vertexes: number[][], linedefs: object[], sidedefs: object[], sectors: object[], things: object[], reject: Uint8Array|null}}
      */
     parse() {
         const lumps = this._wadFile.getMapLumps(this._levelName);
@@ -25,12 +25,15 @@ class WadLevelParser {
             }
         }
 
+        const sectors = this._parseSectors(lumps.SECTORS);
+
         return {
             vertexes: this._parseVertexes(lumps.VERTEXES),
             linedefs: this._parseLinedefs(lumps.LINEDEFS),
             sidedefs: this._parseSidedefs(lumps.SIDEDEFS),
-            sectors:  this._parseSectors(lumps.SECTORS),
-            things:   this._parseThings(lumps.THINGS)
+            sectors:  sectors,
+            things:   this._parseThings(lumps.THINGS),
+            reject:   this._parseReject(lumps.REJECT, sectors.length)
         };
     }
 
@@ -117,6 +120,20 @@ class WadLevelParser {
         }
 
         return result;
+    }
+
+    // REJECT: bit-packed sector×sector table (bit set = the pair can never see
+    // each other), used as a sight-check early-out. Optional and untrusted: an
+    // absent or too-short lump yields null and the sight code skips it.
+    _parseReject(dv, numSectors) {
+        if (dv === undefined) {
+            return null;
+        }
+        const needed = Math.ceil(numSectors * numSectors / 8);
+        if ((needed === 0) || (dv.byteLength < needed)) {
+            return null;
+        }
+        return new Uint8Array(dv.buffer, dv.byteOffset, needed);
     }
 
     _readName(dv, offset, length) {

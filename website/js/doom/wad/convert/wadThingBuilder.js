@@ -191,17 +191,26 @@ class WadThingBuilder {
     // canvas, each view keeps its own vanilla anchor (the doomEffects pattern).
     _buildMonsterEntry(thing, def, sect) {
         // The spawn views are the monster's body: without them the monster is
-        // dropped. The hurt/death views are optional (freedoom gaps): a state
-        // whose views are missing just keeps showing the previous ones.
-        const frames = {};
+        // dropped. The walk/hurt/death views are optional (freedoom gaps): a
+        // state whose views are missing just keeps showing the previous ones —
+        // but the See letters MUST be collected here, else the walk animation
+        // freezes on the last shared letter (uneven frame durations).
+        const frames     = {};
+        const brightKeys = new Set();
         for (const pair of def.getFramePairs(['spawn'])) {
             const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
             if (views === null) {
                 return null;
             }
             frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] = views;
+            if (pair.bright) {
+                brightKeys.add(DoomMonsterDef.viewKey(pair.sprite, pair.frame));
+            }
         }
-        for (const pair of def.getFramePairs(['pain', 'death', 'xdeath'])) {
+        for (const pair of def.getFramePairs(['see', 'pain', 'death', 'xdeath'])) {
+            if (pair.bright) {
+                brightKeys.add(DoomMonsterDef.viewKey(pair.sprite, pair.frame));
+            }
             if (frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] !== undefined) {
                 continue;
             }
@@ -214,18 +223,19 @@ class WadThingBuilder {
         const baseH = ((def.isCeiling()) ? sect.ch : sect.fh);
 
         return {
-            kind:     'monster',
-            def:      def,
-            facing:   thing.angle,
-            flags:    thing.flags,   // the ambush bit 0x08 is phase-C data
-            frames:   frames,
-            si:       sect.si,
-            light:    sect.light,
-            position: WadGeometry.doomToWorld(thing.x, thing.y, baseH),
-            solid:    true,
-            radius:   def.getRadius() * WadConstants.SCALE,
-            alpha:    def.getAlpha(),
-            effect:   null
+            kind:       'monster',
+            def:        def,
+            facing:     thing.angle,
+            flags:      thing.flags,
+            frames:     frames,
+            brightKeys: brightKeys,
+            si:         sect.si,
+            light:      sect.light,
+            position:   WadGeometry.doomToWorld(thing.x, thing.y, baseH),
+            solid:      true,
+            radius:     def.getRadius() * WadConstants.SCALE,
+            alpha:      def.getAlpha(),
+            effect:     null
         };
     }
 

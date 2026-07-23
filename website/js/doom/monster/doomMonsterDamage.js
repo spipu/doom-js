@@ -64,6 +64,17 @@ class DoomMonsterDamage {
         if ((this._rng.next() < def.getPainChance()) && (def.getState('pain0') !== null)) {
             this._monsters.enterState(record, 'pain0');
         }
+        // P_DamageMobj wake: past its target lock, any damage turns the victim
+        // on its attacker (solo: the player) even without a pain flinch — a
+        // spawn-state monster jumps straight to its See state (the pain roll
+        // above may already have moved it, the guard covers that).
+        if (record.threshold === 0) {
+            record.target    = this._user;
+            record.threshold = DoomMonsterDamage.BASE_THRESHOLD;
+            if (record.stateKey.startsWith('spawn') && (def.getState('see0') !== null)) {
+                this._monsters.enterState(record, 'see0');
+            }
+        }
     }
 
     /**
@@ -158,7 +169,9 @@ class DoomMonsterDamage {
             && (def.getState('xdeath0') !== null)
             && (def.getFlags().dontGib !== true));
         this._monsters.enterState(record, ((gibbed) ? 'xdeath0' : 'death0'));
-        if ((def.getFlags().countsKill !== false) && (this._game !== null)) {
+        // Nightmare-respawned actors no longer feed the counter (user
+        // decision: ☠ x never exceeds the level total).
+        if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._game !== null)) {
             this._game.addKill();
         }
     }
@@ -173,3 +186,6 @@ class DoomMonsterDamage {
         this._effects.spawn(this._rules.bloodTemplate, x, y, z, start);
     }
 }
+
+// Vanilla BASETHRESHOLD (p_inter.c): the target lock set on every wake-by-damage
+DoomMonsterDamage.BASE_THRESHOLD = 100;

@@ -28,6 +28,7 @@ class WadMapAnalyzer {
         const walkTriggerLinedefs = this._identifyWalkTriggers();
         const gunTriggerLinedefs = this._identifyGunTriggers();
         const lightSectors = this._identifyLightSectors();
+        const sectorGraph = this._buildSectorGraph();
 
         return {
             doorSectorIds:         doors.doorSectorIds,
@@ -53,8 +54,47 @@ class WadMapAnalyzer {
             walkTriggerLinedefs:   walkTriggerLinedefs,
             gunTriggerLinedefs:    gunTriggerLinedefs,
             lightSectors:          lightSectors,
-            lightSectorIds:        new Set(lightSectors.map((s) => s.si))
+            lightSectorIds:        new Set(lightSectors.map((s) => s.si)),
+            sectorGraph:           sectorGraph
         };
+    }
+
+    // Sector adjacency graph over the two-sided linedefs: each opening carries
+    // its Doom-space segment, both sector sides and the ML_SOUNDBLOCK flag.
+    // Feeds P_NoiseAlert (sound flood-fill), the monster walk-line crossings,
+    // and later the PVS visibility work — the openness of an opening is NOT
+    // stored here (doors move): consumers evaluate current heights themselves.
+    _buildSectorGraph() {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const lines    = [];
+        const bySector = sectors.map(() => []);
+        for (let li = 0; li < linedefs.length; li++) {
+            const ld = linedefs[li];
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            const siR = sidedefs[ld.right].sector;
+            const siL = sidedefs[ld.left].sector;
+            if (siR === siL) {
+                continue;
+            }
+            bySector[siR].push(lines.length);
+            bySector[siL].push(lines.length);
+            lines.push({
+                li:         li,
+                siR:        siR,
+                siL:        siL,
+                soundBlock: ((ld.flags & WadConstants.ML_SOUNDBLOCK) !== 0),
+                special:    ld.special,
+                tag:        ld.tag,
+                x1:         vertexes[ld.v1][0],
+                y1:         vertexes[ld.v1][1],
+                x2:         vertexes[ld.v2][0],
+                y2:         vertexes[ld.v2][1]
+            });
+        }
+
+        return {lines: lines, bySector: bySector};
     }
 
     // Light group of a face baked with the given sector's brightness: the sector
@@ -168,8 +208,9 @@ class WadMapAnalyzer {
         const teleporters = [];
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            if (WadConstants.TELEPORT_SPECIALS.has(ld.special) && ld.tag !== 0) {
-                teleporters.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
+            const monsterOnly = WadConstants.MONSTER_TELEPORT_SPECIALS.has(ld.special);
+            if ((WadConstants.TELEPORT_SPECIALS.has(ld.special) || monsterOnly) && ld.tag !== 0) {
+                teleporters.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special, monsterOnly: monsterOnly});
             }
         }
         return teleporters;

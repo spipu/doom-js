@@ -6,13 +6,15 @@
  */
 class DoomTeleportInteraction extends AbstractInteraction {
     /**
-     * @param {string} code        - unique interaction code, shared with the Instance
-     * @param {object} destination - {x, y, z, yaw} in world coordinates
+     * @param {string}            code        - unique interaction code, shared with the Instance
+     * @param {object}            destination - {x, y, z, yaw} in world coordinates
+     * @param {DoomMonsterSystem} monsters    - telefrag pool (a player teleport stomps)
      */
-    constructor(code, destination) {
+    constructor(code, destination, monsters = null) {
         super();
         this._code        = code;
         this._destination = destination;
+        this._monsters    = monsters;
         this._cooldown    = 0;
     }
 
@@ -39,6 +41,23 @@ class DoomTeleportInteraction extends AbstractInteraction {
         const floorY = world.getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
         if (floorY !== -Infinity) {
             user.y = floorY;
+        }
+
+        // P_TeleportMove: a PLAYER arrival always stomps — any live body
+        // overlapping the landing takes the 10000 telefrag (guaranteed gib).
+        if (this._monsters !== null) {
+            const damage = this._monsters.getDamageModule();
+            if (damage !== null) {
+                for (const m of this._monsters.getMonsters()) {
+                    if (m.dead) {
+                        continue;
+                    }
+                    const p = m.inst.getTransform().position;
+                    if (WadGeometry.boxesOverlap2d(p[0], p[2], m.inst.getCollisionRadius(), user.x, user.z, user.getRadius())) {
+                        damage.damage(m, WadConstants.TELEFRAG_DAMAGE, {noBlood: true});
+                    }
+                }
+            }
         }
 
         this._cooldown = WadConstants.TELEPORT_COOLDOWN_MS;

@@ -61,6 +61,27 @@ class WadGeometry {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    // Doom-style square blocker overlap (PIT_CheckThing: axis distances under
+    // the summed radii, no sqrt). Same-unit inputs (world or Doom).
+    static boxesOverlap2d(x1, z1, r1, x2, z2, r2) {
+        return ((Math.abs(x1 - x2) < r1 + r2) && (Math.abs(z1 - z2) < r1 + r2));
+    }
+
+    // Doom angle ↔ engine yaw conversion — the mapping is involutive
+    // (a = 90 − y mod 360 both ways).
+    static doomAngleYaw(value) {
+        return (((90 - value) % 360) + 360) % 360;
+    }
+
+    // Proper 2D segment intersection (walk-line crossings).
+    static segmentsCross(ax, ay, bx, by, cx, cy, dx, dy) {
+        const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+        const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+        const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+        const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+        return (((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0)));
+    }
+
     static cross2d(o, a, b) {
         return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
     }

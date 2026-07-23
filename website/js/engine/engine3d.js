@@ -222,7 +222,7 @@ class Engine3d {
 
     drawInstance(instance) {
         this.matrixPush();
-        this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getTransform()));
+        this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getRenderTransform()));
         this.drawObject(instance.getObject());
         this.matrixPop();
         return this;

@@ -39,6 +39,11 @@ class WadTeleportBuilder {
     _buildTeleport(tp) {
         const {linedefs} = this._level;
 
+        // Monster-only lines (125/126) never get a player zone — the monster
+        // system tests them by segment crossing at walk time.
+        if (tp.monsterOnly === true) {
+            return null;
+        }
         const destination = this._landingsByTag[tp.tag];
         if (destination === undefined) {
             return null;
