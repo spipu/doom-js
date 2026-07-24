@@ -6,6 +6,7 @@ class Engine3d {
         this.scrHeight  = 0;
         this.background = [0, 0, 0];
         this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
+        this.depthShading = null;     // depth-based light attenuation curve params, or null
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this._viewYaw   = 0;          // cached in setCamera for the sky pass
         this._viewPitch = 0;
@@ -70,6 +71,21 @@ class Engine3d {
 
     setSky(sky) {
         this.sky = sky;
+        return this;
+    }
+
+    // Depth-based light attenuation of the scene geometry (per pixel), or null
+    // to disable. Parametric curve, the game supplies its constants:
+    //   {visibility, visibilityMax, shadeBase, shadeScale, rampCount, strength}
+    //   vis    = min(visibility / viewDepth, visibilityMax)
+    //   shade  = shadeBase − shadeScale × light      (light = per-vertex level
+    //            0..1, derived from the face colour × its lightGroup factor)
+    //   darkness = clamp((shade − vis) × (rampCount−1), 0, rampCount−1) / rampCount
+    //   applied as colour × (1 − strength × darkness)   (strength 0..1)
+    // Applied by the WebGL renderer only — the CPU renderers ignore it, like
+    // the sky. Game-agnostic.
+    setDepthShading(params) {
+        this.depthShading = params;
         return this;
     }
 

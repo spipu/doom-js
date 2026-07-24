@@ -720,6 +720,40 @@ class WadConstants {
     static DEFAULT_BACKGROUND = [200, 200, 200];
     static DEFAULT_AMBIENT    = [235, 235, 235];
 
+    // Doom light diminishing — transcription of the UZDoom default lighting
+    // (shaders/glsl/main.fp R_ZDoomColormap, r_visibility = 8): the darkness
+    // colormap index of a pixel is (shade − vis) × 31 with
+    // vis = min(GlobVis/z, 24/32) and shade = 2 − (L+12)/128 (L = sector light
+    // 0..255). GlobVis = R_GetGlobVis()/32 = 40 in Doom units — resolution
+    // independent (320×200 4:3 and 1920×1080 16:9 both yield 1280/32,
+    // r_utility.cpp:375). The engine depth is in metres (1 m = 64 u), so the
+    // visibility constant is pre-divided by 64; the light input is L/255.
+    // Composition difference vs UZDoom: there the curve is the ONLY light
+    // application (vertex colours stay white in software lighting); here it
+    // multiplies faces already linearly baked with the sector light, so the
+    // scene reads darker and the vanilla close-up over-brightening is absent.
+    static LIGHT_DIMINISH_VISIBILITY     = 40 / 64;
+    static LIGHT_DIMINISH_VISIBILITY_MAX = 24 / 32;
+    static LIGHT_DIMINISH_SHADE_BASE     = 2 - (12 / 128);
+    static LIGHT_DIMINISH_SHADE_SCALE    = 255 / 128;
+    static LIGHT_DIMINISH_RAMP_COUNT     = 32;
+    // Fraction of the computed darkness actually applied (user setting: the
+    // full UZDoom curve reads slightly too strong here).
+    static LIGHT_DIMINISH_STRENGTH       = 0.9;
+
+    // Parameters for Engine3d.setDepthShading (common to every doom-format
+    // game — an engine behaviour, not a per-game profile datum).
+    static lightDiminishParams() {
+        return {
+            visibility:    WadConstants.LIGHT_DIMINISH_VISIBILITY,
+            visibilityMax: WadConstants.LIGHT_DIMINISH_VISIBILITY_MAX,
+            shadeBase:     WadConstants.LIGHT_DIMINISH_SHADE_BASE,
+            shadeScale:    WadConstants.LIGHT_DIMINISH_SHADE_SCALE,
+            rampCount:     WadConstants.LIGHT_DIMINISH_RAMP_COUNT,
+            strength:      WadConstants.LIGHT_DIMINISH_STRENGTH
+        };
+    }
+
     // Recompute every derived membership set from its source table — called
     // once at class load and again after each applyGameExtensions.
     static _recomputeDerivedSets() {
