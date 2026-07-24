@@ -197,6 +197,17 @@ class WadStaticMapBuilder {
             }
 
             this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
+
+            // ML_BLOCKING two-sided line (windows, balustrades): impassable
+            // for players and monsters whatever the opening heights, shots
+            // and projectiles exempt (PIT_CheckLine, p_map.c). A door side
+            // uses its OPEN ceiling: the flag still blocks under a raised
+            // panel (the sector's static ch is the closed height).
+            if ((ld.flags & WadConstants.ML_BLOCKING) !== 0) {
+                const rChEff = ((rIsDoor && doorHeights[rSd.sector] !== undefined) ? doorHeights[rSd.sector].ceilH : rCh);
+                const lChEff = ((lIsDoor && doorHeights[lSd.sector] !== undefined) ? doorHeights[lSd.sector].ceilH : lCh);
+                this._buildBlockingWall(mesh, rFh, rChEff, lFh, lChEff, wx1, wz1, wx2, wz2, wallLen);
+            }
         }
     }
 
@@ -259,20 +270,42 @@ class WadStaticMapBuilder {
             // animated in vanilla — both flip quads show that same texture
             const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
 
+            // Shots never test middle textures in vanilla (P_ShootTraverse
+            // only checks the line opening)
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
                 wallLen, tw, th,
                 {xOff: mSd.xo, yOff: yo, flip: true, light: mSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, uScrollTexelsPerSec: uScroll});
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, passableShot: true, uScrollTexelsPerSec: uScroll});
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
                 wallLen, tw, th,
                 {xOff: mSd.xo, yOff: yo, flip: false, light: otherSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, uScrollTexelsPerSec: uScroll});
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, passableShot: true, uScrollTexelsPerSec: uScroll});
             break;   // both sides already covered by the flip pair above
         }
+    }
+
+    // Collision-only quad over the whole opening band of an ML_BLOCKING line.
+    // Also emitted over a blocking middle texture: the texture covers its own
+    // height only, the flag blocks the full gap. A single facing is enough —
+    // the wall resolution is side-agnostic and the raycast skips the face.
+    _buildBlockingWall(mesh, rFh, rCh, lFh, lCh, wx1, wz1, wx2, wz2, wallLen) {
+        const SCALE = WadConstants.SCALE;
+        const botDu = Math.max(rFh, lFh);
+        const topDu = Math.min(rCh, lCh);
+        if (topDu <= botDu) {
+            return;
+        }
+        // 64×64 = dummy texture dims (only there to pass the addWallQuad
+        // guard; the UVs are dropped on a textureless face)
+        WadMeshBuilder.addWallQuad(mesh, -1,
+            wx1, wz1, wx2, wz2,
+            botDu * SCALE, topDu * SCALE,
+            wallLen, 64, 64,
+            {collisionOnly: true, passableShot: true});
     }
 
     // --- Flats ---
