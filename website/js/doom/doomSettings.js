@@ -12,10 +12,12 @@ class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
-            {key: 'display.crosshair',     name: 'Afficher le réticule',     type: 'bool', default: true},
-            {key: 'pad.y_inverse',         name: 'Inverser l\'axe vertical', type: 'bool', default: false},
-            {key: 'virtual_pad.y_inverse', name: 'Inverser l\'axe vertical', type: 'bool', default: false},
-            {key: 'mouse.y_inverse',       name: 'Inverser l\'axe vertical de la souris', type: 'bool', default: false},
+            {key: 'display.crosshair',        name: 'Afficher le réticule',                  type: 'bool', default: true},
+            {key: 'display.distance_shading', name: 'Assombrissement à la distance',         type: 'bool', default: true},
+            // Per-device look options.
+            {key: 'pad.y_inverse',            name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
+            {key: 'virtual_pad.y_inverse',    name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
+            {key: 'mouse.y_inverse',          name: 'Inverser l\'axe vertical de la souris', type: 'bool', default: false},
             // Keyboard bindings ('char' = one PHYSICAL key code, captured in
             // the settings UI). action = the engine mapping slot; the
             // defaults mirror InputKeyboard.DEFAULT_MAPPING one for one.
@@ -180,6 +182,10 @@ class DoomSettings {
 
     getDisplayCrosshair() {
         return (this.get('display.crosshair') === true);
+    }
+
+    getDisplayDistanceShading() {
+        return (this.get('display.distance_shading') === true);
     }
 }
 

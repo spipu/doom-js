@@ -11,7 +11,7 @@ Charger et appliquer automatiquement à chaque session :
 
 Puis lancer le serveur python et lancer doom dans firefox via playwright.
 
-Si la liste des WAD est vide, ajouter les 4 fichiers WAD présents dans `./.source/wad/`, dans l'ordre suivant :
+Si la liste des WAD est vide, ajouter les 6 fichiers WAD présents dans `./.source/wad/`, dans l'ordre suivant :
 
 * freedoom1
 * freedoom2

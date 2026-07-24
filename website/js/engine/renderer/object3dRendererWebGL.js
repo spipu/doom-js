@@ -11,6 +11,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._overlayProgram = null;   // dedicated screen-space overlay-sprite program (lazy)
         this._overlayVbo     = null;
         this._overlayLoc     = {};
+        // Neutral depth-shading parameters (engine.depthShading === null):
+        // every term zeroes out so the attenuation is exactly 1.0 — rampCount
+        // stays non-zero because the shader divides by it.
+        this._dsNeutral = {visibility: 0.0, visibilityMax: 0.0, shadeBase: 0.0, shadeScale: 0.0, rampCount: 32.0, strength: 0.0};
     }
 
     get code() {
@@ -239,6 +243,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer._z_near);
         gl.uniform1f(loc.far,  engine.zBuffer._z_far);
 
+        // Depth shading curve — read every draw so a toggle applies instantly.
+        const ds = ((engine.depthShading !== null) ? engine.depthShading : this._dsNeutral);
+        gl.uniform1f(loc.dsVis,      ds.visibility);
+        gl.uniform1f(loc.dsVisMax,   ds.visibilityMax);
+        gl.uniform1f(loc.dsBase,     ds.shadeBase);
+        gl.uniform1f(loc.dsScale,    ds.shadeScale);
+        gl.uniform1f(loc.dsRamp,     ds.rampCount);
+        gl.uniform1f(loc.dsStrength, ds.strength);
+
         const buildGroups = (faceIndices, isAlpha) => {
             const groups = new Map();
             for (const k of faceIndices) {
@@ -281,7 +294,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 
-            const data = new Float32Array(group.faces.length * 3 * 8);
+            const data = new Float32Array(group.faces.length * 3 * 9);
             let di = 0;
             for (const k of group.faces) {
                 const fc  = obj.faceList[k];
@@ -289,6 +302,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 // fragment shader absorbs the (already wrapped) offset.
                 const scroll = this._uvScrollOffset(fc, engine._sceneMs);
                 const lf     = obj.getFaceLightFactor(fc);
+                // Light level (0..1) fed to the depth shading curve: max of the
+                // face colour (before the ambient of _pointColor) times the live
+                // lightGroup factor. Untextured face colours are 0..255.
+                const fcMax   = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
+                const fcLight = Math.min(1.0, ((group.texId !== null) ? fcMax : fcMax / 255.0) * lf);
                 for (let v = 0; v < 3; v++) {
                     const ptIdx = fc.pts[v];
                     const pt  = obj.pt3d[ptIdx];
@@ -297,19 +315,22 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
                     data[di++] = col[0] * lf; data[di++] = col[1] * lf; data[di++] = col[2] * lf;
                     data[di++] = uv[0] + scroll[0];  data[di++] = uv[1] + scroll[1];
+                    data[di++] = fcLight;
                 }
             }
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
             gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
 
-            const stride = 8 * 4;
+            const stride = 9 * 4;
             gl.enableVertexAttribArray(loc.aPos);
             gl.vertexAttribPointer(loc.aPos,   3, gl.FLOAT, false, stride,  0);
             gl.enableVertexAttribArray(loc.aColor);
             gl.vertexAttribPointer(loc.aColor, 3, gl.FLOAT, false, stride, 12);
             gl.enableVertexAttribArray(loc.aUv);
             gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
+            gl.enableVertexAttribArray(loc.aLight);
+            gl.vertexAttribPointer(loc.aLight, 1, gl.FLOAT, false, stride, 32);
 
             gl.uniform1f(loc.alpha, group.alpha);
             gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
@@ -380,9 +401,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             attribute vec3 a_pos;
             attribute vec3 a_color;
             attribute vec2 a_uv;
+            attribute float a_light;
             uniform float u_sx, u_sy, u_ox, u_oy, u_w, u_h, u_near, u_far;
             varying vec3 v_color;
             varying vec2 v_uv;
+            varying float v_light;
+            varying float v_depth;
             void main() {
                 float z  = ((a_pos.z == 0.0) ? 1e-5 : a_pos.z);
                 float xn = 2.0 * (u_sx * a_pos.x / z - u_ox) / u_w - 1.0;
@@ -392,6 +416,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 gl_Position = vec4(xn * z, yn * z, A * z + B, z);
                 v_color = a_color;
                 v_uv    = a_uv;
+                v_light = a_light;
+                v_depth = z;
             }
         `, `
             precision mediump float;
@@ -399,8 +425,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform int       u_hasTex;
             uniform float     u_alpha;
             uniform int       u_clampV;
+            uniform float     u_dsVis, u_dsVisMax, u_dsBase, u_dsScale, u_dsRamp, u_dsStrength;
             varying vec3 v_color;
             varying vec2 v_uv;
+            varying float v_light;
+            varying float v_depth;
             void main() {
                 vec3  col;
                 float a;
@@ -422,6 +451,13 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     col = min(v_color / 255.0, vec3(1.0));
                     a   = u_alpha;
                 }
+                // Depth shading (engine.setDepthShading): the pixel darkens
+                // with the view depth, the darker the face light the sooner,
+                // scaled by the curve strength. Disabled = neutral uniforms
+                // => dsIndex 0, one shader path for both states.
+                float dsVis   = min(u_dsVis / v_depth, u_dsVisMax);
+                float dsIndex = clamp((u_dsBase - (u_dsScale * v_light) - dsVis) * (u_dsRamp - 1.0), 0.0, u_dsRamp - 1.0);
+                col = col * (1.0 - (u_dsStrength * dsIndex / u_dsRamp));
                 // Premultiplied output: the face opacity also scales the RGB
                 // (the texture alpha is already baked into t.rgb at upload).
                 gl_FragColor = vec4(col * u_alpha, a);
@@ -430,21 +466,28 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.useProgram(this._program);
 
         this._loc = {
-            aPos:   gl.getAttribLocation( this._program, 'a_pos'),
-            aColor: gl.getAttribLocation( this._program, 'a_color'),
-            aUv:    gl.getAttribLocation( this._program, 'a_uv'),
-            sx:     gl.getUniformLocation(this._program, 'u_sx'),
-            sy:     gl.getUniformLocation(this._program, 'u_sy'),
-            ox:     gl.getUniformLocation(this._program, 'u_ox'),
-            oy:     gl.getUniformLocation(this._program, 'u_oy'),
-            w:      gl.getUniformLocation(this._program, 'u_w'),
-            h:      gl.getUniformLocation(this._program, 'u_h'),
-            near:   gl.getUniformLocation(this._program, 'u_near'),
-            far:    gl.getUniformLocation(this._program, 'u_far'),
-            uTex:   gl.getUniformLocation(this._program, 'u_tex'),
-            hasTex: gl.getUniformLocation(this._program, 'u_hasTex'),
-            alpha:  gl.getUniformLocation(this._program, 'u_alpha'),
-            clampV: gl.getUniformLocation(this._program, 'u_clampV'),
+            aPos:       gl.getAttribLocation( this._program, 'a_pos'),
+            aColor:     gl.getAttribLocation( this._program, 'a_color'),
+            aUv:        gl.getAttribLocation( this._program, 'a_uv'),
+            aLight:     gl.getAttribLocation( this._program, 'a_light'),
+            sx:         gl.getUniformLocation(this._program, 'u_sx'),
+            sy:         gl.getUniformLocation(this._program, 'u_sy'),
+            ox:         gl.getUniformLocation(this._program, 'u_ox'),
+            oy:         gl.getUniformLocation(this._program, 'u_oy'),
+            w:          gl.getUniformLocation(this._program, 'u_w'),
+            h:          gl.getUniformLocation(this._program, 'u_h'),
+            near:       gl.getUniformLocation(this._program, 'u_near'),
+            far:        gl.getUniformLocation(this._program, 'u_far'),
+            uTex:       gl.getUniformLocation(this._program, 'u_tex'),
+            hasTex:     gl.getUniformLocation(this._program, 'u_hasTex'),
+            alpha:      gl.getUniformLocation(this._program, 'u_alpha'),
+            clampV:     gl.getUniformLocation(this._program, 'u_clampV'),
+            dsVis:      gl.getUniformLocation(this._program, 'u_dsVis'),
+            dsVisMax:   gl.getUniformLocation(this._program, 'u_dsVisMax'),
+            dsBase:     gl.getUniformLocation(this._program, 'u_dsBase'),
+            dsScale:    gl.getUniformLocation(this._program, 'u_dsScale'),
+            dsRamp:     gl.getUniformLocation(this._program, 'u_dsRamp'),
+            dsStrength: gl.getUniformLocation(this._program, 'u_dsStrength'),
         };
 
         this._vbo = gl.createBuffer();

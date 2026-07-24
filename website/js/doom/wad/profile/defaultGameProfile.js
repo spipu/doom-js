@@ -664,12 +664,13 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // Transient weapon effects (P_SpawnPuff + the projectile death frames from
     // info.c). alpha/additive follow gzdoom: the rocket blast is opaque smoke,
-    // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), the puff
-    // keeps its light translucency (0.25), floats up 1 map unit/tic and starts
-    // a melee hit at frame C (meleeStart 2, no bright spark).
+    // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), the puff is
+    // translucent (0.4 — user setting; gzdoom's BulletPuff is Alpha 0.5,
+    // doommisc.zs), floats up 1 map unit/tic and starts a melee hit at frame C
+    // (meleeStart 2, no bright spark).
     weaponEffectTemplates() {
         return [
-            {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.25, rise: 1, additive: false, meleeStart: 2},
+            {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, meleeStart: 2},
             {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
             {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true},
             {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true},
