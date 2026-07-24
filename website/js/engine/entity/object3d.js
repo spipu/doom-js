@@ -168,6 +168,9 @@ class Object3d extends AbstractLoadedEntity {
         this._alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
+            if (fc.collisionOnly === true) {
+                continue;
+            }
             fc.isAlpha = ((fc.alpha < 1) || (fc.blendAdd === true) || (fc.textureId !== null && loader.textures().get(fc.textureId).isAlpha()));
             ((fc.isAlpha) ? this._alphaFaces : this._opaqueFaces).push(k);
         }

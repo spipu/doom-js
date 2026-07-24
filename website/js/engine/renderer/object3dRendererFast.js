@@ -7,6 +7,9 @@ class Object3dRendererFast extends Object3dRendererBase {
         const pairs = [];
         for (let k = 0; k < obj.faceCount; k++) {
             const fc    = obj.faceList[k];
+            if (fc.collisionOnly === true) {
+                continue;
+            }
             const depth = (obj.pt3d[fc.pts[0]][2] + obj.pt3d[fc.pts[1]][2] + obj.pt3d[fc.pts[2]][2]) / 3;
             pairs.push([k, depth]);
         }

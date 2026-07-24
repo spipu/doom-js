@@ -114,14 +114,15 @@ class Collision {
 
     // Nearest triangle hit by the ray (origin, unit direction), within maxDist.
     // Walls are always tested; floors/ceilings/dynamic movers are opt-in via
-    // opts. Returns {point, dist, normal, tri} or null. dist is in world units
-    // (the direction must be normalised).
+    // opts, and shot-passable faces (movement-only blockers) join in with
+    // opts.includeShotPassable. Returns {point, dist, normal, tri} or null.
+    // dist is in world units (the direction must be normalised).
     raycast(ox, oy, oz, dx, dy, dz, maxDist = Infinity, opts = {}) {
         let best  = null;
         let bestT = maxDist;
         for (const list of this._raycastLists(opts)) {
             for (const tri of list) {
-                if (tri.passableShot) {
+                if (tri.passableShot && (opts.includeShotPassable !== true)) {
                     continue;
                 }
                 const denom = tri.n[0]*dx + tri.n[1]*dy + tri.n[2]*dz;
@@ -476,9 +477,7 @@ class Collision {
             if (!tri) {
                 continue;
             }
-            // Transparent walls (Doom grates/fences) block movement but let
-            // hitscan through, exactly like a two-sided line's middle texture.
-            tri.passableShot = (fc.isAlpha === true);
+            tri.passableShot = (fc.passableShot === true);
             this._classifyTri(tri, floors, ceilings, walls);
         }
         return { floors, ceilings, walls };

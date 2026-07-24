@@ -27,19 +27,30 @@ class Object3dLoader extends AbstractLoader {
     _populateFromData(entity, data) {
         (data.textures || []).forEach((t) => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
         data.points.forEach((p) => entity.ptAdd(p[0], p[1], p[2]));
-        data.faces.forEach((f) => entity.fcAdd(
-            f.pts[0],
-            f.pts[1],
-            f.pts[2],
-            ((f.color          !== undefined) ? f.color          : null),
-            ((f.texture        !== undefined) ? f.texture        : null),
-            ((f.map            !== undefined) ? f.map            : null),
-            ((f.clampV         !== undefined) ? f.clampV         : false),
-            ((f.passableUser   !== undefined) ? f.passableUser   : false),
-            ((f.passableEnemy  !== undefined) ? f.passableEnemy  : false),
-            ((f.textures       !== undefined) ? f.textures       : null),
-            ((f.uvScroll       !== undefined) ? f.uvScroll       : null),
-            ((f.lightGroup     !== undefined) ? f.lightGroup     : null)
-        ));
+        data.faces.forEach((f) => {
+            entity.fcAdd(
+                f.pts[0],
+                f.pts[1],
+                f.pts[2],
+                ((f.color          !== undefined) ? f.color          : null),
+                ((f.texture        !== undefined) ? f.texture        : null),
+                ((f.map            !== undefined) ? f.map            : null),
+                ((f.clampV         !== undefined) ? f.clampV         : false),
+                ((f.passableUser   !== undefined) ? f.passableUser   : false),
+                ((f.passableEnemy  !== undefined) ? f.passableEnemy  : false),
+                ((f.textures       !== undefined) ? f.textures       : null),
+                ((f.uvScroll       !== undefined) ? f.uvScroll       : null),
+                ((f.lightGroup     !== undefined) ? f.lightGroup     : null)
+            );
+            // collisionOnly = collision geometry, never rendered;
+            // passableShot = hitscans and projectiles pass through
+            const fc = entity.faceList[entity.getFaceCount() - 1];
+            if (f.collisionOnly === true) {
+                fc.collisionOnly = true;
+            }
+            if (f.passableShot === true) {
+                fc.passableShot = true;
+            }
+        });
     }
 }

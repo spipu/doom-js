@@ -89,7 +89,7 @@ class DoomMonsterMove {
             const df = this._collision.getFloor(destX, destZ, r, Infinity);
             if ((df !== -Infinity) && (df > pos[1])) {
                 const ce = this._collision.getCeiling(destX, destZ, r, df + 0.01);
-                if (ce - df >= m.def.getHeight() * S) {
+                if ((ce - df >= m.def.getHeight() * S) && !this._blockedAboveLedge(m, pos, destX, destZ, df, r)) {
                     res = {ok: false, floor: df, floatok: true};
                 }
             }
@@ -138,6 +138,21 @@ class DoomMonsterMove {
         return true;
     }
 
+    // Tells a climbable ledge from an impassable band (ML_BLOCKING blocker
+    // spanning the whole opening): a ray cast at the floater's would-be
+    // altitude above the destination floor clears a real riser (top at that
+    // floor, under the ray) but hits the band — no float-unstick then.
+    _blockedAboveLedge(m, pos, destX, destZ, destFloorY, r) {
+        const dx   = destX - pos[0];
+        const dz   = destZ - pos[2];
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 1e-9) {
+            return false;
+        }
+        const rayY = destFloorY + m.def.getHeight() * WadConstants.SCALE / 2;
+        const hit  = this._collision.raycast(pos[0], rayY, pos[2], dx / dist, 0, dz / dist, dist + r, {includeShotPassable: true});
+        return (hit !== null);
+    }
 
     // P_NewChaseDir (Doom strict): direct diagonal first, then the axial
     // tries (swapped on rng > 200 or |dy| > |dx|), the old direction, a
