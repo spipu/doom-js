@@ -11,6 +11,8 @@
 class DoomSettings {
     static get DEFINITIONS() {
         return [
+            // Display options ('display.' prefix = the "Affichage" help page).
+            {key: 'display.crosshair',     name: 'Afficher le réticule',     type: 'bool', default: true},
             {key: 'pad.y_inverse',         name: 'Inverser l\'axe vertical', type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse', name: 'Inverser l\'axe vertical', type: 'bool', default: false},
             {key: 'mouse.y_inverse',       name: 'Inverser l\'axe vertical de la souris', type: 'bool', default: false},
@@ -69,8 +71,9 @@ class DoomSettings {
 
     /**
      * Definitions whose key starts with the given prefix — the settings UI
-     * builds one page section per device this way ('pad.', 'virtual_pad.',
-     * 'mouse.', 'keyboard.').
+     * builds its pages this way: one section per device ('pad.',
+     * 'virtual_pad.', 'mouse.', 'keyboard.') plus the display page
+     * ('display.').
      */
     getDefinitions(prefix) {
         return DoomSettings.DEFINITIONS.filter((def) => def.key.startsWith(prefix));
@@ -173,6 +176,10 @@ class DoomSettings {
 
     getMouseYInverse() {
         return (this.get('mouse.y_inverse') === true);
+    }
+
+    getDisplayCrosshair() {
+        return (this.get('display.crosshair') === true);
     }
 }
 

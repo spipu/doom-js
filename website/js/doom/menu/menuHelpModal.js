@@ -138,6 +138,7 @@ class MenuHelpModal extends MenuModal {
     _buildRoot() {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
         this._nav.addItemIn(list, 'Contrôles', () => this._pushPage('Contrôles', () => this._buildControls()));
+        this._nav.addItemIn(list, 'Affichage', () => this._pushPage('Affichage', () => this._buildDisplay()));
         this._nav.addItemIn(list, 'Réinitialiser tous les paramétrages', () => this._confirmReset());
         this._nav.addItemIn(list, 'À propos', () => this._pushPage('À propos', () => this._buildAbout()));
         this._nav.selectFirst();
@@ -177,6 +178,17 @@ class MenuHelpModal extends MenuModal {
             }
             this._deviceLineEl.textContent = this._deviceLabel(inputs);
         }, MenuHelpModal.DEVICE_REFRESH_MS);
+    }
+
+    // Display options page: every 'display.' setting, same rows as the
+    // controls page — device-agnostic, so no device line nor refresh timer.
+    _buildDisplay() {
+        const inputs = new Inputs();
+        const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
+        for (const def of doomSettings.getDefinitions('display.')) {
+            this._addSettingItem(list, def, inputs);
+        }
+        this._nav.selectFirst();
     }
 
     _deviceLabel(inputs) {
