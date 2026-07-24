@@ -11,15 +11,21 @@
  * one is updated (the inactive one is hidden via setVisible). The full-screen
  * damage/pickup flash is applied once here, on the shared container.
  *
+ * The aiming crosshair (a plain cross of two crossing bars, centred on the view
+ * point) also lives here so it shows over BOTH views; it follows the
+ * display.crosshair setting live (read every frame — a toggle from the help
+ * modal applies without reloading).
+ *
  * DoomGame keeps the same fluent wiring (new HudDoom(engine).bindUser()…): the
  * binds are forwarded to the relevant sub-view(s).
  */
 class HudDoom extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._debug = new HudDoomDebug(engine);
-        this._game  = new HudGameBar(engine);
-        this._mode  = 'game';
+        this._debug     = new HudDoomDebug(engine);
+        this._game      = new HudGameBar(engine);
+        this._mode      = 'game';
+        this._crosshair = null;
     }
 
     bindUser(user) {
@@ -65,6 +71,7 @@ class HudDoom extends AbstractHud {
         super.init(container);
         this._debug.init(container);
         this._game.init(container);
+        this._buildCrosshair(container);
         this._applyVisibility();
     }
 
@@ -76,6 +83,9 @@ class HudDoom extends AbstractHud {
 
     update() {
         this._applyScreenFlash();
+        if (this._crosshair !== null) {
+            this._crosshair.style.display = ((doomSettings.getDisplayCrosshair()) ? 'block' : 'none');
+        }
         if (this._mode === 'game') {
             this._game.update();
             return;
@@ -86,5 +96,33 @@ class HudDoom extends AbstractHud {
     _applyVisibility() {
         this._game.setVisible(this._mode === 'game');
         this._debug.setVisible(this._mode === 'debug');
+    }
+
+    // A plain cross centred on the view point (where free-aim shots land):
+    // a full-size wrapper carries the cqh unit (container-type like the game
+    // bar root, letterbox proportional), holding one horizontal and one
+    // vertical bar. Translucent lightly-red tint with a dark halo so it reads
+    // on bright and dark walls alike.
+    _buildCrosshair(container) {
+        this._crosshair = document.createElement('div');
+        Object.assign(this._crosshair.style, {
+            position: 'absolute', top: '0', left: '0', width: '100%', height: '100%',
+            pointerEvents: 'none', containerType: 'size'
+        });
+        container.appendChild(this._crosshair);
+
+        const barStyle = {
+            position: 'absolute', left: '50%', top: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(255, 185, 185, 0.75)',
+            boxShadow: '0 0 0.15cqh rgba(0, 0, 0, 0.8)'
+        };
+        const horizontal = document.createElement('div');
+        Object.assign(horizontal.style, barStyle, {width: '2.2cqh', height: '0.22cqh'});
+        this._crosshair.appendChild(horizontal);
+
+        const vertical = document.createElement('div');
+        Object.assign(vertical.style, barStyle, {width: '0.22cqh', height: '2.2cqh'});
+        this._crosshair.appendChild(vertical);
     }
 }
