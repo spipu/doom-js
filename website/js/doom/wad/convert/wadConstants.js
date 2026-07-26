@@ -739,7 +739,7 @@ class WadConstants {
     static LIGHT_DIMINISH_RAMP_COUNT     = 32;
     // Fraction of the computed darkness actually applied (user setting: the
     // full UZDoom curve reads slightly too strong here).
-    static LIGHT_DIMINISH_STRENGTH       = 0.9;
+    static LIGHT_DIMINISH_STRENGTH       = 0.8;
 
     // Parameters for Engine3d.setDepthShading (common to every doom-format
     // game — an engine behaviour, not a per-game profile datum).
