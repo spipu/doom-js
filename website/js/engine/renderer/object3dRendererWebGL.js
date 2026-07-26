@@ -4,6 +4,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._program  = null;
         this._vbo      = null;
         this._texCache = new WeakMap();
+        this._texList   = [];       // every uploaded texture, to re-filter them on a smoothing toggle
+        this._smoothing = null;     // filter currently applied to them (null = not applied yet)
         this._loc      = {};
         this._skyProgram = null;   // dedicated full-screen sky program (lazy)
         this._skyVbo     = null;
@@ -46,6 +48,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         if (!this._program) {
             this._setup(gl);
         }
+        this._syncTextureFilter(gl, engine);
         gl.viewport(0, 0, engine.scrWidth, engine.scrHeight);
         const bg = engine.background;
         gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1.0);
@@ -357,16 +360,39 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this._premultiply(texture.data));
-        // LINEAR smoothing on every texture, sprites and weapons included (the
-        // a<0.5 discard still gives clean anti-aliased sprite edges).
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        this._applyTextureFilter(gl);
         // Always CLAMP_TO_EDGE: repetition is handled by fract() in the fragment shader,
         // preventing LINEAR filter from bleeding across the tile boundary at v=1.0.
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         this._texCache.set(texture, tex);
+        this._texList.push(tex);
         return tex;
+    }
+
+    // The filter is a per-texture GL parameter, so a toggle of
+    // engine.textureSmoothing re-applies it to everything already uploaded —
+    // hence the list beside the (non-enumerable) WeakMap cache.
+    _syncTextureFilter(gl, engine) {
+        if (engine.textureSmoothing === this._smoothing) {
+            return;
+        }
+        this._smoothing = engine.textureSmoothing;
+        for (const tex of this._texList) {
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            this._applyTextureFilter(gl);
+        }
+    }
+
+    // Filter of the BOUND texture. Sprites and weapons follow the scene: their
+    // a<0.5 discard keeps clean edges when smoothed, and raw texels give back
+    // the original pixelated look.
+    _applyTextureFilter(gl) {
+        // Tested on false, so the not-applied-yet state falls back to the
+        // smoothed default instead of the opt-in one.
+        const filter = ((this._smoothing === false) ? gl.NEAREST : gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     }
 
     // Premultiplied alpha upload: transparent texels keep RGB (0,0,0) in the

@@ -9,6 +9,7 @@ class Engine3d {
         this.depthShading = null;     // depth-based light attenuation curve params, or null
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
+        this.textureSmoothing = true; // texture filter: smoothed, or raw texels
         this._viewYaw   = 0;          // cached in setCamera for the sky pass
         this._viewPitch = 0;
         this.viewMatrix = new Matrix();
@@ -95,6 +96,15 @@ class Engine3d {
     // renderer's generic drawScreenSprite. null clears it. Game-agnostic.
     setOverlayCallback(callback) {
         this._overlayCallback = callback;
+        return this;
+    }
+
+    // Texture filter of the whole scene: true = smoothed (interpolated
+    // texels), false = raw texels. Applied by the WebGL renderer only — the
+    // CPU renderers always sample the nearest texel, like the sky and the
+    // depth shading. Game-agnostic.
+    setTextureSmoothing(smooth) {
+        this.textureSmoothing = smooth;
         return this;
     }
 

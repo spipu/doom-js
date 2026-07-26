@@ -12,8 +12,9 @@ class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
-            {key: 'display.crosshair',        name: 'Afficher le réticule',                  type: 'bool', default: true},
-            {key: 'display.distance_shading', name: 'Assombrissement à la distance',         type: 'bool', default: true},
+            {key: 'display.crosshair',         name: 'Afficher le réticule',                 type: 'bool', default: true},
+            {key: 'display.distance_shading',  name: 'Assombrissement à la distance',        type: 'bool', default: true},
+            {key: 'display.texture_smoothing', name: 'Lissage des textures',                 type: 'bool', default: true},
             // Per-device look options.
             {key: 'pad.y_inverse',            name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',    name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
@@ -186,6 +187,10 @@ class DoomSettings {
 
     getDisplayDistanceShading() {
         return (this.get('display.distance_shading') === true);
+    }
+
+    getDisplayTextureSmoothing() {
+        return (this.get('display.texture_smoothing') === true);
     }
 }
 

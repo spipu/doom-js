@@ -36,7 +36,8 @@ class DoomGame {
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
-        this._depthShadingOn  = null;    // last state pushed to the engine (null = never)
+        this._depthShadingOn  = null;    // last display states pushed to the engine (null = never)
+        this._texSmoothingOn  = null;
         this._rng             = new DoomRandom();
 
         // Per-game policy + shared immutable definitions (the per-player state
@@ -512,9 +513,10 @@ class DoomGame {
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._engine.setFov(45.0);
         this._engine.setZBuffer(0.1, 100);
-        // The engine is recreated on each level: re-arm the depth shading.
+        // The engine is recreated on each level: re-arm the display settings.
         this._depthShadingOn = null;
-        this._applyDepthShading();
+        this._texSmoothingOn = null;
+        this._applyDisplaySettings();
 
         this._hud = new HudDoom(this._engine)
             .bindUser(this._world.getUser())
@@ -624,23 +626,32 @@ class DoomGame {
         if (this._decals !== null) {
             this._decals.update(dt);
         }
-        this._applyDepthShading();
+        this._applyDisplaySettings();
         this._engine.displayWorld(this._world);
         this._screen.update();
 
         requestAnimationFrame(this._animateCallback);
     }
 
-    // Doom light diminishing: pushed to the engine when the setting changes
-    // (read every frame — a toggle from the Display help page applies live,
-    // like the crosshair). Curve constants live in WadConstants.
-    _applyDepthShading() {
-        const wanted = doomSettings.getDisplayDistanceShading();
-        if (wanted === this._depthShadingOn) {
-            return;
+    // display.* settings pushed to the engine when they change (read every
+    // frame — a toggle from the Display help page applies live, like the
+    // crosshair). The diminishing curve constants live in WadConstants.
+    _applyDisplaySettings() {
+        this._depthShadingOn = this._pushDisplaySetting(
+            this._depthShadingOn,
+            doomSettings.getDisplayDistanceShading(),
+            (on) => this._engine.setDepthShading(((on) ? WadConstants.lightDiminishParams() : null)));
+        this._texSmoothingOn = this._pushDisplaySetting(
+            this._texSmoothingOn,
+            doomSettings.getDisplayTextureSmoothing(),
+            (on) => this._engine.setTextureSmoothing(on));
+    }
+
+    _pushDisplaySetting(current, wanted, apply) {
+        if (wanted !== current) {
+            apply(wanted);
         }
-        this._engine.setDepthShading(((wanted) ? WadConstants.lightDiminishParams() : null));
-        this._depthShadingOn = wanted;
+        return wanted;
     }
 
     // Engine overlay callback: draw the weapon view sprite (+ muzzle flash) over
