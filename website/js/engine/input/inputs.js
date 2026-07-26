@@ -294,11 +294,9 @@ class Inputs {
         this._virtualGamepad.setVisible((mode === 'virtualGamepad'));
     }
 
-    // No fine pointer at all (mouse, trackpad, stylus) but a touch screen:
-    // iOS / Android used with fingers. An iPad with a trackpad keeps the
-    // keyboard+mouse mode because it does have a real pointer.
+    // Primary pointer, not `any-pointer`: the latter reports *possible*
+    // capabilities, so Android/Samsung falsely claim a fine pointer with no mouse.
     _isTouchOnlyDevice() {
-        const finePointer = window.matchMedia('(any-hover: hover) and (any-pointer: fine)').matches;
-        return (!finePointer && (navigator.maxTouchPoints > 0));
+        return (window.matchMedia('(pointer: coarse)').matches && (navigator.maxTouchPoints > 0));
     }
 }
