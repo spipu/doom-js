@@ -1,5 +1,40 @@
 # CLAUDE.md
 
+## Règles de codage
+
+### Répartition du code
+
+* Tout code générique, sans aucune connaissance du jeu, va dans `./website/js/engine` : moteur 3D, rendu, physique, collision, entités, chargeurs, entrées.
+* Tout code spécifique à Doom va dans `./website/js/doom` : règles de jeu, conversion WAD, catalogues, HUD de jeu.
+* Le moteur ne dépend jamais de `doom/` ni de `WadConstants` : il expose des primitives paramétrables (`Engine3d.setDepthShading`, `Instance.setRenderOffset`, `Instance.setRenderLight`…) que la couche jeu alimente avec ses propres constantes.
+* À l'intérieur de `doom/`, ce qui est propre à un jeu donné appartient à son profil (`wad/profile/`), pas aux tables de base.
+
+### Commentaires
+
+* Pas de commentaire inutile : le code doit être écrit assez clairement pour être compris sans commentaire (nommage explicite, méthodes courtes).
+* N'en mettre que lorsque c'est réellement nécessaire, et uniquement pour le « pourquoi » non déductible du code : écart volontaire par rapport à la source d'origine, contrainte non évidente, piège évité.
+* Jamais de commentaire qui paraphrase le code.
+
+### Qualité de code
+
+* Jamais de copier-coller : factoriser, refactorer, extraire une méthode ou un service commun.
+* Toujours privilégier la qualité de code : une duplication repérée doit être supprimée, pas dupliquée une fois de plus.
+* Mettre à jour `README.md` automatiquement, sans attendre qu'on le demande, dès qu'une modification le rend obsolète : nouvelle fonctionnalité, comportement décrit qui change, nouveau fichier dans l'arborescence.
+* Respecter les standards de codage en place dans le projet (ci-dessous).
+
+### Standards de codage
+
+* Une classe par fichier, nom de fichier en camelCase identique à la classe (`doomMonsterSystem.js` → `DoomMonsterSystem`), préfixé par son domaine (`Wad*`, `Doom*`, `Input*`).
+* Pas de modules ES : tout est chargé en portée globale par le bootstrap, donc un nouveau fichier doit être déclaré dans le `libBootstrap.json` concerné.
+* Incrémenter la `version` des `libBootstrap.json` modifiés à chaque changement (invalidation du cache PWA).
+* Champs privés préfixés `_`, exposés par des accesseurs explicites ; les setters de configuration chaînables retournent `this`.
+* Indentation de 4 espaces, toujours des accolades, early return plutôt qu'imbrication.
+* Parenthèses systématiques autour des ternaires et des comparaisons composées : `((a !== null) ? a : b)`, `((x > 0) && (y === true))`.
+* Comparaisons strictes (`===` / `!==`), `??` pour les valeurs par défaut, `null` pour l'absence de valeur.
+* Constantes en `MAJUSCULES_SNAKE`, en statique de classe ou affectées après la classe (`DoomPlayerWeapon.MS_PER_TIC = …`) ; jamais de nombre magique en ligne — les valeurs de jeu vont dans `WadConstants` ou dans un profil.
+* Code et commentaires en anglais ; seuls les textes affichés à l'utilisateur sont en français.
+* Les tables de données de jeu sont déclaratives et transcrites depuis les sources d'origine, référence citée (fichier / fonction vanilla ou zscript).
+
 ## Instructions
 
 Avant toute chose, vérifier l'existence du répertoire `~/git/claude/memory/instructions/`.

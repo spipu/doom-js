@@ -33,6 +33,7 @@ class Instance extends AbstractLoadedEntity {
         this._interaction       = null;
         this._triggerCondition  = null;
         this._renderOffset      = null;
+        this._renderLight       = 1;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -349,6 +350,19 @@ class Instance extends AbstractLoadedEntity {
 
     clearRenderOffset() {
         this._renderOffset = null;
+    }
+
+    /**
+     * Light multiplier consumed at DRAW time only (1 = baked colours
+     * untouched): two instances sharing one object may be lit differently, so
+     * a moving body can follow the lighting of the area it crosses.
+     */
+    setRenderLight(factor) {
+        this._renderLight = factor;
+    }
+
+    getRenderLight() {
+        return this._renderLight;
     }
 
     // Transform used by the renderer: the logical transform, shifted by the

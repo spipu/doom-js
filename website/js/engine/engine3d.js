@@ -8,6 +8,7 @@ class Engine3d {
         this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
         this.depthShading = null;     // depth-based light attenuation curve params, or null
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
+        this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
         this._viewYaw   = 0;          // cached in setCamera for the sky pass
         this._viewPitch = 0;
         this.viewMatrix = new Matrix();
@@ -239,7 +240,9 @@ class Engine3d {
     drawInstance(instance) {
         this.matrixPush();
         this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getRenderTransform()));
+        this.instanceLight = instance.getRenderLight();
         this.drawObject(instance.getObject());
+        this.instanceLight = 1;
         this.matrixPop();
         return this;
     }

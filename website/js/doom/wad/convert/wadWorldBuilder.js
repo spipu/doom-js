@@ -225,7 +225,7 @@ class WadWorldBuilder {
         // Level data the monster AI consumes at runtime (phase C)
         if (this._monsterSystem !== null) {
             this._monsterSystem.setLevelData(
-                this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings));
+                this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction));
         }
 
         // World + user
@@ -392,24 +392,23 @@ class WadWorldBuilder {
         this._monsterSystem.setDrops(catalog);
     }
 
-    // One monster: a shared billboard per (rotation view, light, group, alpha)
+    // One monster: a shared billboard per (rotation view, alpha, ceiling anchor)
     // — each view keeps its own vanilla anchor, the runtime swaps the instance
     // object per frame/octant (the doomEffects pattern, no padded canvas). The
     // alpha MUST be part of the dedup key: the spectre shares the demon's SARG
-    // lumps and the Heretic ghosts share their base monsters' sprites.
+    // lumps and the Heretic ghosts share their base monsters' sprites; the
+    // ceiling flag too, since it decides the vertical anchoring of the quad.
+    //
+    // Views are baked at FULL light with no light group: a body MOVES, so
+    // DoomMonsterSystem pushes its lighting per instance from the sector it
+    // currently stands in. Baking the spawn sector here would freeze it.
     _registerMonsterThing(t, i, analysis, builtFloorCodes, billboardIds) {
-        const scale      = WadConstants.SCALE;
-        const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
+        const scale = WadConstants.SCALE;
 
         const frames = {};
         for (const viewKey of Object.keys(t.frames)) {
-            // A bright view (zscript Bright states) bakes fullbright and never
-            // follows a sector light effect.
-            const bright = t.brightKeys.has(viewKey);
-            const light  = ((bright) ? 255 : t.light);
-            const group  = ((bright) ? null : lightGroup);
             frames[viewKey] = t.frames[viewKey].map((spr) => {
-                const objKey = spr.loaderId + '|' + light + '|' + group + '|' + t.alpha;
+                const objKey = spr.loaderId + '|' + t.alpha + '|' + t.def.isCeiling();
                 if (billboardIds[objKey] === undefined) {
                     const geo  = WadGeometry.spriteBillboardData(spr);
                     const sink = spr.topOffset - spr.height;
@@ -421,8 +420,7 @@ class WadWorldBuilder {
                         anchorOffsetX: geo.anchorOffsetX,
                         anchorOffsetY: ((t.def.isCeiling()) ? sink : Math.max(0, sink)) * scale,
                         anchorTop:     t.def.isCeiling(),
-                        light:         light,
-                        lightGroup:    group,
+                        light:         255,
                         alpha:         t.alpha
                     });
                 }
@@ -475,7 +473,7 @@ class WadWorldBuilder {
     // and the lines a monster may fire by CROSSING them during a walk step
     // (vanilla P_CrossSpecialLine: the shared walk zones 4/10/88, consumed
     // for everyone, and the teleports — 39/97 shared, 125/126 monster-only).
-    _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings) {
+    _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction) {
         const doorFloorH = {};
         const moverCodes = {};
         for (const code of builtFloorCodes) {
@@ -543,7 +541,10 @@ class WadWorldBuilder {
             restFh:       analysis.liftOriginalFh,
             moverCodes:   moverCodes,
             monsterLines: monsterLines,
-            levelName:    this._levelName
+            levelName:    this._levelName,
+            // Live brightness factor of a sector (1 without a light effect),
+            // the very source the weapon shading reads.
+            lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1))
         };
     }
 

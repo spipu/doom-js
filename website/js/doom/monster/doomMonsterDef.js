@@ -165,7 +165,7 @@ class DoomMonsterDef {
     // Distinct {sprite, frame} pairs of the given state groups (the sprite is
     // per-state: spriteOverrides groups differ from the base — barrel BEXP).
     getFramePairs(groups) {
-        const byKey = {};
+        const seen  = new Set();
         const pairs = [];
         for (const key of Object.keys(this._states)) {
             if (!groups.some((g) => key.startsWith(g))) {
@@ -173,14 +173,9 @@ class DoomMonsterDef {
             }
             const state   = this._states[key];
             const pairKey = DoomMonsterDef.viewKey(state.getSprite(), state.getFrame());
-            if (byKey[pairKey] === undefined) {
-                byKey[pairKey] = {sprite: state.getSprite(), frame: state.getFrame(), bright: false};
-                pairs.push(byKey[pairKey]);
-            }
-            // A view used by ANY bright state renders fullbright (zscript
-            // Bright keyword — the lost soul burns in the dark).
-            if (state.isBright()) {
-                byKey[pairKey].bright = true;
+            if (!seen.has(pairKey)) {
+                seen.add(pairKey);
+                pairs.push({sprite: state.getSprite(), frame: state.getFrame()});
             }
         }
         return pairs;
