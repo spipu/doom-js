@@ -301,10 +301,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 // Scroll baked into the per-frame VBO: the fract() wrap in the
                 // fragment shader absorbs the (already wrapped) offset.
                 const scroll = this._uvScrollOffset(fc, engine._sceneMs);
-                const lf     = obj.getFaceLightFactor(fc);
+                const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
                 // Light level (0..1) fed to the depth shading curve: max of the
                 // face colour (before the ambient of _pointColor) times the live
-                // lightGroup factor. Untextured face colours are 0..255.
+                // light factor. Untextured face colours are 0..255.
                 const fcMax   = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
                 const fcLight = Math.min(1.0, ((group.texId !== null) ? fcMax : fcMax / 255.0) * lf);
                 for (let v = 0; v < 3; v++) {

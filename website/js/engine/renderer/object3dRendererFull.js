@@ -63,7 +63,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         const pt3d = obj.pt3d[ptIdx];
         const pt2d = obj.pt2d[ptIdx];
         const scroll = this._uvScrollOffset(fc, engine._sceneMs);
-        const lf     = obj.getFaceLightFactor(fc);
+        const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
         out[3] = col[0] * lf;  out[4] = col[1] * lf;  out[5] = col[2] * lf;
         out[6] = fc.map[idx][0] + scroll[0]; out[7] = fc.map[idx][1] + scroll[1];

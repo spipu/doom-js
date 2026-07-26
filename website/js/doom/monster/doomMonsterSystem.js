@@ -64,6 +64,7 @@ class DoomMonsterSystem {
             movedir:      DoomMonsterMove.DI_NODIR,
             movecount:    0,
             special1:     0,
+            renderLight:  null,   // last factor pushed to the instance (null = never)
             inFloat:      false,
             respawnClock: 0,
             noKillCount:  false,
@@ -134,6 +135,11 @@ class DoomMonsterSystem {
     setLevelData(data) {
         this._levelData = data;
         this._wireModules();
+        // First lighting of the bodies already added: their views are baked
+        // fullbright, so none may reach a draw unlit.
+        for (const m of this._monsters) {
+            this._applyRenderLight(m);
+        }
         return this;
     }
 
@@ -194,7 +200,28 @@ class DoomMonsterSystem {
         for (const m of this._monsters) {
             m.env.beginFrame();
             this._applyRenderBlend(m);
+            this._applyRenderLight(m);
         }
+    }
+
+    // Light of the sector the body CURRENTLY stands in, times that sector's
+    // live effect: a monster leaving a dark room brightens, one entering a
+    // strobing room pulses with it. A bright state (zscript Bright — the lost
+    // soul burns in the dark) stays fullbright.
+    _applyRenderLight(m) {
+        const wanted = ((m.def.getState(m.stateKey).isBright()) ? 1 : this._sectorLight(m.si));
+        if (wanted !== m.renderLight) {
+            m.renderLight = wanted;
+            m.inst.setRenderLight(wanted);
+        }
+    }
+
+    // Sector brightness as a 0..1 factor; full light when the sector is unknown.
+    _sectorLight(si) {
+        if ((si === null) || (this._levelData === null) || (this._levelData.sectors[si] === undefined)) {
+            return 1;
+        }
+        return (this._levelData.sectors[si].light / 255) * this._levelData.lightFactorOf(si);
     }
 
     // Arm the render glide after a tic that moved the body: from its previous
@@ -381,6 +408,7 @@ class DoomMonsterSystem {
             this._collision.addInstance(inst);
         }
         this._resolveRide(fresh);
+        this._applyRenderLight(fresh);
     }
 
     // Switch a monster to a new state and run its entry action — the game
