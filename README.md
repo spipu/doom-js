@@ -209,8 +209,9 @@ website/
 │   │           └── wadWorldBuilder.js     Orchestrator: WadFile + level → loaded world, sector lookup for things
 │   └── engine/
 │       ├── libBootstrap.json    Engine bootstrap definition (version + js list)
-│       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, DEG_TO_RAD)
-│       ├── collision.js         FPS physics: floor/ceiling/wall detection (triangles), platform riding, square decoration blockers (Doom box hitbox), mover-pressure passes (stall/reverse rollback, crush pinch + damage)
+│       ├── engine3d.js          Main engine (viewport, lights, matrix, rendering loop, frustum culling of the instances, DEG_TO_RAD)
+│       ├── collision.js         FPS physics: floor/ceiling/wall detection (triangles, spatially indexed), platform riding, square decoration blockers (Doom box hitbox), mover-pressure passes (stall/reverse rollback, crush pinch + damage)
+│       ├── spatialGrid.js       Uniform XZ grid indexing a static triangle set (circle / swept-circle / DDA ray queries)
 │       ├── loader.js            Global Loader — synchronises all sub-loaders, batch mode
 │       ├── matrix.js            4×4 transformation matrices
 │       ├── screenManager.js     Creates canvas + HUD overlay in #screen (fullscreen, fixed or virtual size)
@@ -252,7 +253,7 @@ website/
 │           ├── object3dRendererFull.js   Per-pixel z-buffer + textures (CPU)
 │           ├── object3dRendererFlat.js   Flat shading + Painter's algorithm
 │           ├── object3dRendererFast.js   Wireframe (canvas 2D)
-│           └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer)
+│           └── object3dRendererWebGL.js  WebGL renderer (GLSL shaders, GPU z-buffer, face batching cached per object, reused vertex staging buffer)
 ```
 
 Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.

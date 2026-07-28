@@ -12,6 +12,14 @@ class ZBuffer {
         this._z_far  = z_far;
     }
 
+    getNear() {
+        return this._z_near;
+    }
+
+    getFar() {
+        return this._z_far;
+    }
+
     clear(width, height) {
         this._width  = width;
         this._height = height;

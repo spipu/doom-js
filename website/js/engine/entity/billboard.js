@@ -72,6 +72,15 @@ class Billboard extends Object3d {
         return this._height;
     }
 
+    // Radius around getCenter() enclosing the quad. Overridden because the base
+    // class derives it from the local vertices, which are all (0,0,0) here (the
+    // corners are rebuilt in camera space every frame) — it would report 0 and
+    // any bounding-sphere test upstream (frustum culling) would drop the sprite
+    // as soon as its centre left the volume.
+    getBoundingRadius() {
+        return Math.sqrt(this._halfWidth * this._halfWidth + (this._height * this._height) / 4);
+    }
+
     // The body centre (local), so Instance worldCenter sits at the sprite's
     // middle (used by collision/pickup later) rather than at the anchor.
     getCenter() {

@@ -71,7 +71,7 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     _clipVertex(engine, va, vb) {
-        const zNear = engine.zBuffer._z_near;
+        const zNear = engine.zBuffer.getNear();
         const t  = (zNear - va[2]) / (vb[2] - va[2]);
         const cx = va[8] + t * (vb[8] - va[8]);
         const cy = va[9] + t * (vb[9] - va[9]);
@@ -89,7 +89,7 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     _clipNear(engine, v0, v1, v2) {
-        const zNear  = engine.zBuffer._z_near;
+        const zNear  = engine.zBuffer.getNear();
         const verts  = [v0, v1, v2];
         const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
         const cnt    = inside.filter(Boolean).length;

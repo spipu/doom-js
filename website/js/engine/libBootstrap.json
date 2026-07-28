@@ -1,5 +1,5 @@
 {
-    "version": "v2.171",
+    "version": "v2.176",
     "files": {
         "assets": [],
         "css": [],
@@ -33,6 +33,7 @@
             "/js/engine/renderer/object3dRendererWebGL.js",
             "/js/engine/renderer/object3dRendererList.js",
             "/js/engine/engine3d.js",
+            "/js/engine/spatialGrid.js",
             "/js/engine/collision.js",
             "/js/engine/input/inputKeyboard.js",
             "/js/engine/input/inputMouse.js",

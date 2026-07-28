@@ -32,6 +32,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._exitSecret     = false;
         this._remoteSwap     = null;
         this._remoteFaces    = null;
+        this._remoteObject   = null;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -55,8 +56,9 @@ class DoomSwitchInteraction extends SwitchInteraction {
     // matched lazily on the linedef segment.
     // spec = {moverCode, seg: [x1, z1, x2, z2], restTexId, swapTexId}
     setRemoteSwap(spec) {
-        this._remoteSwap  = (spec ?? null);
-        this._remoteFaces = null;
+        this._remoteSwap   = (spec ?? null);
+        this._remoteFaces  = null;
+        this._remoteObject = null;
         return this;
     }
 
@@ -88,13 +90,15 @@ class DoomSwitchInteraction extends SwitchInteraction {
         if (localIndex === null) {
             return;
         }
-        const swapTo = instance.getObject().getTextureId(localIndex);
+        const object = instance.getObject();
+        const swapTo = object.getTextureId(localIndex);
         if (swapTo === undefined) {
             return;
         }
-        instance.getObject().faceList.forEach((fc) => {
+        object.faceList.forEach((fc) => {
             fc.textureId = swapTo;
         });
+        object.invalidateFaceGroups();
     }
 
     // Points sitting on the linedef segment within 1 cm (the riser vertices
@@ -114,11 +118,14 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._remoteFaces.forEach((fc) => {
             fc.textureId = texId;
         });
+        this._remoteObject.invalidateFaceGroups();
     }
 
+    // Resolves the mover object once and keeps it: the swap runs on every press.
     _findRemoteFaces() {
         const spec = this._remoteSwap;
         const obj  = loader.instances().getByCode(spec.moverCode).getObject();
+        this._remoteObject = obj;
         const [x1, z1, x2, z2] = spec.seg;
         const onSeg = (p) => (WadGeometry.pointSegmentDistSq(p[0], p[2], x1, z1, x2, z2)
             < DoomSwitchInteraction.REMOTE_SWAP_EPS_SQ);

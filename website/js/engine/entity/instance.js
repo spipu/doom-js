@@ -352,6 +352,17 @@ class Instance extends AbstractLoadedEntity {
         this._renderOffset = null;
     }
 
+    // Upper bound of how far the render offset can push the drawn body away
+    // from its world centre — the frustum test widens its sphere by it instead
+    // of trying to place the offset centre exactly.
+    getRenderOffsetBound() {
+        if (this._renderOffset === null) {
+            return 0;
+        }
+        const o = this._renderOffset;
+        return Math.sqrt(o[0]*o[0] + o[1]*o[1] + o[2]*o[2]);
+    }
+
     /**
      * Light multiplier consumed at DRAW time only (1 = baked colours
      * untouched): two instances sharing one object may be lit differently, so
