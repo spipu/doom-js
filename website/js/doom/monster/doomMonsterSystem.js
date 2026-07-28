@@ -65,6 +65,8 @@ class DoomMonsterSystem {
             movecount:    0,
             special1:     0,
             renderLight:  null,   // last factor pushed to the instance (null = never)
+            litSi:        null,   // sector and bright flag the light was resolved for
+            litBright:    false,
             inFloat:      false,
             respawnClock: 0,
             noKillCount:  false,
@@ -208,12 +210,29 @@ class DoomMonsterSystem {
     // live effect: a monster leaving a dark room brightens, one entering a
     // strobing room pulses with it. A bright state (zscript Bright — the lost
     // soul burns in the dark) stays fullbright.
+    //
+    // Only recomputed on an event that can change the answer — the body changed
+    // sector, its state switched fullbright, or its sector runs a light effect.
+    // A body standing still in a steadily-lit room is lit once and never again.
     _applyRenderLight(m) {
-        const wanted = ((m.def.getState(m.stateKey).isBright()) ? 1 : this._sectorLight(m.si));
+        const bright = m.def.getState(m.stateKey).isBright();
+        if ((m.renderLight !== null) && (m.litSi === m.si) && (m.litBright === bright)
+            && !this._hasLightEffect(m.si)) {
+            return;
+        }
+        m.litSi     = m.si;
+        m.litBright = bright;
+        const wanted = ((bright) ? 1 : this._sectorLight(m.si));
         if (wanted !== m.renderLight) {
             m.renderLight = wanted;
             m.inst.setRenderLight(wanted);
         }
+    }
+
+    // True when the sector runs one of the vanilla light thinkers, so its
+    // brightness moves on its own and its bodies must follow every frame.
+    _hasLightEffect(si) {
+        return ((si !== null) && (this._levelData !== null) && this._levelData.hasLightEffect(si));
     }
 
     // Sector brightness as a 0..1 factor; full light when the sector is unknown.

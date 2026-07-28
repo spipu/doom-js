@@ -4,6 +4,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._program  = null;
         this._vbo      = null;
         this._texCache = new WeakMap();
+        this._groupCache = new WeakMap();      // obj → {version, groups}: draw-state partition, see _groupsFor
+        this._vertexData = new Float32Array(0); // grown on demand, never reallocated per frame
         this._texList   = [];       // every uploaded texture, to re-filter them on a smoothing toggle
         this._smoothing = null;     // filter currently applied to them (null = not applied yet)
         this._loc      = {};
@@ -243,8 +245,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.oy,   engine.projOffsetY);
         gl.uniform1f(loc.w,    engine.scrWidth);
         gl.uniform1f(loc.h,    engine.scrHeight);
-        gl.uniform1f(loc.near, engine.zBuffer._z_near);
-        gl.uniform1f(loc.far,  engine.zBuffer._z_far);
+        gl.uniform1f(loc.near, engine.zBuffer.getNear());
+        gl.uniform1f(loc.far,  engine.zBuffer.getFar());
 
         // Depth shading curve — read every draw so a toggle applies instantly.
         const ds = ((engine.depthShading !== null) ? engine.depthShading : this._dsNeutral);
@@ -255,52 +257,17 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.dsRamp,     ds.rampCount);
         gl.uniform1f(loc.dsStrength, ds.strength);
 
-        const buildGroups = (faceIndices, isAlpha) => {
-            const groups = new Map();
-            for (const k of faceIndices) {
-                const fc     = obj.faceList[k];
-                if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
-                    continue;
-                }
-                const clampV   = fc.clampV || false;
-                const blendAdd = fc.blendAdd || false;
-                const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
-                const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd;
-                if (!groups.has(key)) {
-                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, isAlpha, clampV, blendAdd, faces: [] });
-                }
-                groups.get(key).faces.push(k);
-            }
-            return [...groups.values()].sort((a, b) => b.alpha - a.alpha);
-        };
-
-        // Draw opaque faces first, then alpha faces.
-        // Alpha faces use discard in the fragment shader for transparent pixels,
-        // so depth is written only where the texture is opaque (alpha >= 0.5).
-        const allGroups = [
-            ...buildGroups(obj._opaqueFaces, false),
-            ...buildGroups(obj._alphaFaces,  true),
-        ];
-
-        for (const group of allGroups) {
-            // Additive groups (energy sprites) add their colour to the scene and
-            // don't write depth, so overlapping glows accumulate. Textures are
-            // premultiplied (alpha already in the RGB), hence the ONE source
-            // factor in both modes. State is restored after the loop.
-            if (group.blendAdd) {
-                gl.blendFunc(gl.ONE, gl.ONE);
-                gl.depthMask(false);
-            } else {
-                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                gl.depthMask(true);
-            }
-            const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
-            const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
-
-            const data = new Float32Array(group.faces.length * 3 * 9);
+        for (const group of this._groupsFor(obj)) {
+            const data = this._ensureVertexData(group.faces.length * 3 * 9);
             let di = 0;
             for (const k of group.faces) {
                 const fc  = obj.faceList[k];
+                // Back-face culling lives here rather than in the grouping: the
+                // groups are cached across frames, and which faces turn away
+                // from the eye changes with every camera move.
+                if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
+                    continue;
+                }
                 // Scroll baked into the per-frame VBO: the fract() wrap in the
                 // fragment shader absorbs the (already wrapped) offset.
                 const scroll = this._uvScrollOffset(fc, engine._sceneMs);
@@ -321,9 +288,27 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     data[di++] = fcLight;
                 }
             }
+            // Every face of the group turned away: nothing to upload or draw.
+            if (di === 0) {
+                continue;
+            }
+
+            // Additive groups (energy sprites) add their colour to the scene and
+            // don't write depth, so overlapping glows accumulate. Textures are
+            // premultiplied (alpha already in the RGB), hence the ONE source
+            // factor in both modes. State is restored after the loop.
+            if (group.blendAdd) {
+                gl.blendFunc(gl.ONE, gl.ONE);
+                gl.depthMask(false);
+            } else {
+                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+                gl.depthMask(true);
+            }
+            const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
+            const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
-            gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, di), gl.DYNAMIC_DRAW);
 
             const stride = 9 * 4;
             gl.enableVertexAttribArray(loc.aPos);
@@ -346,11 +331,68 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 gl.uniform1i(loc.hasTex, 0);
             }
 
-            gl.drawArrays(gl.TRIANGLES, 0, group.faces.length * 3);
+            gl.drawArrays(gl.TRIANGLES, 0, di / 9);
         }
         // Restore the default blend state for the next object / pass.
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.depthMask(true);
+    }
+
+    /**
+     * Faces of an object grouped by draw state (texture / animation set / face
+     * opacity / clamp / additive), opaque groups first then translucent ones —
+     * alpha faces discard their transparent pixels in the shader, so depth is
+     * written only where the texture is opaque.
+     *
+     * Cached per object: the grouping walks every face and builds a string key
+     * for each, which on the level map means tens of thousands of key builds per
+     * frame for a partition that almost never changes. It is rebuilt only when
+     * the object reports a new face-groups version (a switch swapping SW1↔SW2,
+     * a "+change" floor swapping its flat).
+     */
+    _groupsFor(obj) {
+        const cached = this._groupCache.get(obj);
+        if ((cached !== undefined) && (cached.version === obj.getFaceGroupsVersion())) {
+            return cached.groups;
+        }
+
+        const groups = new Map();
+        const collect = (faceIndices) => {
+            for (const k of faceIndices) {
+                const fc       = obj.faceList[k];
+                const clampV   = fc.clampV || false;
+                const blendAdd = fc.blendAdd || false;
+                const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
+                const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd;
+                if (!groups.has(key)) {
+                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, clampV, blendAdd, faces: [] });
+                }
+                groups.get(key).faces.push(k);
+            }
+        };
+        collect(obj._opaqueFaces);
+        const opaque = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
+        groups.clear();
+        collect(obj._alphaFaces);
+        const alpha = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
+
+        const built = [...opaque, ...alpha];
+        this._groupCache.set(obj, {version: obj.getFaceGroupsVersion(), groups: built});
+        return built;
+    }
+
+    // Vertex staging buffer, kept and grown instead of reallocated: the level map
+    // alone needs ~300 000 floats, which was a fresh multi-megabyte array every
+    // frame. The caller uploads only the slice it filled.
+    _ensureVertexData(floats) {
+        if (this._vertexData.length < floats) {
+            let size = Math.max(this._vertexData.length, 1024);
+            while (size < floats) {
+                size *= 2;
+            }
+            this._vertexData = new Float32Array(size);
+        }
+        return this._vertexData;
     }
 
     _getTexture(gl, texture) {

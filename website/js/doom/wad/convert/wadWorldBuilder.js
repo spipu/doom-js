@@ -544,7 +544,11 @@ class WadWorldBuilder {
             levelName:    this._levelName,
             // Live brightness factor of a sector (1 without a light effect),
             // the very source the weapon shading reads.
-            lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1))
+            lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1)),
+            // Whether a sector's brightness moves on its own (light thinker):
+            // its bodies must then be re-lit every frame, the others only on a
+            // sector or state change.
+            hasLightEffect: ((si) => analysis.lightSectorIds.has(si))
         };
     }
 
@@ -612,6 +616,7 @@ class WadWorldBuilder {
                         fc.animTextures = newAnim;
                     }
                 });
+                inst.getObject().invalidateFaceGroups();
                 if ((change.special !== null) && (damageInteraction !== null)) {
                     damageInteraction.setSectorSpecial(si, change.special, targetFh * SCALE);
                 }

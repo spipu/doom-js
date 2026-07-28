@@ -14,6 +14,14 @@ class Engine3d {
         this._viewPitch = 0;
         this.viewMatrix = new Matrix();
         this.fov        = 0.0;
+        // Frustum half-slopes, filled by preComputeViewport. Infinite until then
+        // so a half-configured viewport rejects NOTHING: the visibility test must
+        // fail open — silently culling the whole scene would be far worse than
+        // drawing a few instances too many.
+        this._frustumTanX = Infinity;
+        this._frustumTanY = Infinity;
+        this._frustumKX   = Infinity;
+        this._frustumKY   = Infinity;
         this.viewXMin   = 0.0;
         this.viewXMax   = 0.0;
         this.viewYMin   = 0.0;
@@ -161,6 +169,15 @@ class Engine3d {
         this.projOffsetY = sy;
         this.projScaleX = factorX;
         this.projScaleY = factorY;
+
+        // Frustum half-slopes, derived from the projection itself rather than
+        // from the FOV: a point is on screen while |x/z| <= tanX and |y/z| <=
+        // tanY. The k factors normalise the side planes (x - tanX·z = 0), so a
+        // sphere test is one multiply and one compare per plane.
+        this._frustumTanX = this.scrWidth  / (2 * factorX);
+        this._frustumTanY = this.scrHeight / (2 * factorY);
+        this._frustumKX   = Math.sqrt(1 + this._frustumTanX * this._frustumTanX);
+        this._frustumKY   = Math.sqrt(1 + this._frustumTanY * this._frustumTanY);
     }
 
     initFromWorld(world) {
@@ -282,9 +299,42 @@ class Engine3d {
         this.lightsCalculatePosition();
         this.drawInit();
         this.drawObject(world.getMap());
-        world.getInstances().forEach((inst) => this.drawInstance(inst));
+        world.getInstances().forEach((inst) => {
+            if (this.isInView(inst)) {
+                this.drawInstance(inst);
+            }
+        });
         this.drawFinish();
         return this;
+    }
+
+    /**
+     * Frustum test of an instance's bounding sphere, in camera space (z = depth
+     * ahead, x = right, y = up — the convention the projection already imposes).
+     * Rejects what the camera cannot see BEFORE any per-vertex work: on a busy
+     * level most instances are behind the player or off to the sides, and each
+     * one costs a transform pass, a VBO fill and a draw call.
+     *
+     * The render offset (game-driven draw-time smoothing) is absorbed into the
+     * radius rather than into the centre: the composed transform applies the
+     * position translation before the rotations, so an offset added to it does
+     * not come out as a pure world translation. Bounding it is exact enough and
+     * costs nothing.
+     */
+    isInView(instance) {
+        const c = instance.getWorldCenter();
+        const m = this.viewMatrix.v;
+        const cz = m[0][2]*c[0] + m[1][2]*c[1] + m[2][2]*c[2] + m[3][2];
+        const r  = instance.getObject().getBoundingRadius() + instance.getRenderOffsetBound();
+        if ((cz + r < this.zBuffer.getNear()) || (cz - r > this.zBuffer.getFar())) {
+            return false;
+        }
+        const cx = m[0][0]*c[0] + m[1][0]*c[1] + m[2][0]*c[2] + m[3][0];
+        if (Math.abs(cx) - this._frustumTanX * cz > r * this._frustumKX) {
+            return false;
+        }
+        const cy = m[0][1]*c[0] + m[1][1]*c[1] + m[2][1]*c[2] + m[3][1];
+        return (Math.abs(cy) - this._frustumTanY * cz <= r * this._frustumKY);
     }
 
     drawFinish() {

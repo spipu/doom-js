@@ -25,8 +25,11 @@
 ### Standards de codage
 
 * Une classe par fichier, nom de fichier en camelCase identique à la classe (`doomMonsterSystem.js` → `DoomMonsterSystem`), préfixé par son domaine (`Wad*`, `Doom*`, `Input*`).
-* Pas de modules ES : tout est chargé en portée globale par le bootstrap, donc un nouveau fichier doit être déclaré dans le `libBootstrap.json` concerné.
-* Incrémenter la `version` des `libBootstrap.json` modifiés à chaque changement (invalidation du cache PWA).
+* Pas de modules ES : tout est chargé en portée globale par le bootstrap, donc un nouveau fichier doit être déclaré dans le `libBootstrap.json` concerné. Il y en a **deux**, un par arborescence, chacun avec sa propre `version` :
+  * `website/js/engine/libBootstrap.json` (version `v2.x`) — couvre `js/engine/` **et** `js/webapp/` ;
+  * `website/js/doom/libBootstrap.json` (version `v1.x`) — couvre `js/doom/`.
+  * L'ordre de déclaration est l'ordre de chargement : un fichier doit être listé avant ceux qui l'utilisent à l'initialisation.
+* Incrémenter la `version` de **chaque** `libBootstrap.json` dont un fichier a été touché, à chaque changement. Ce n'est pas cosmétique : le service worker sert les fichiers depuis le cache tant que la version concaténée (`v2.x|v1.x`) est inchangée, donc **sans l'incrément la modification n'est pas prise en compte, même après un rechargement**.
 * Champs privés préfixés `_`, exposés par des accesseurs explicites ; les setters de configuration chaînables retournent `this`.
 * Indentation de 4 espaces, toujours des accolades, early return plutôt qu'imbrication.
 * Parenthèses systématiques autour des ternaires et des comparaisons composées : `((a !== null) ? a : b)`, `((x > 0) && (y === true))`.
