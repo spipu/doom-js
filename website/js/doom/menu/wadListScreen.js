@@ -110,11 +110,12 @@ class WadListScreen extends AbstractMenuScreen {
     // --- Handlers ---
 
     async _onAddUrl() {
-        const url = this._urlInput.value.trim();
+        const url = WadRegistry.normalizeUrl(this._urlInput.value);
         if (url === '') {
             this._setError('Saisissez une URL');
             return;
         }
+        this._urlInput.value = url;
 
         this._setBusy(true);
         this._setStatus('Téléchargement...');

@@ -193,7 +193,10 @@ class AbstractMenuScreen {
 
     _showError(error) {
         const messages = {
-            'fetch-failed':        'Téléchargement impossible (réseau ou CORS)',
+            'fetch-offline':       'Aucune connexion réseau',
+            'fetch-blocked':       'Ce serveur n\'autorise pas le téléchargement direct — enregistrez le fichier, puis utilisez « Fichier local »',
+            'fetch-http':          'Le serveur a refusé le fichier',
+            'fetch-failed':        'Téléchargement impossible',
             'invalid-format':      'Ce fichier n\'est pas un WAD valide (IWAD/PWAD attendu)',
             'quota-exceeded':      'Espace de stockage insuffisant — supprimez un WAD',
             'storage-unavailable': 'Stockage navigateur indisponible',
@@ -201,7 +204,12 @@ class AbstractMenuScreen {
         };
 
         const code = ((error instanceof WadError) ? error.getCode() : null);
-        this._setError(messages[code] ?? ('Erreur : ' + error.message));
+        if (messages[code] === undefined) {
+            this._setError('Erreur : ' + error.message);
+            return;
+        }
+        const detail = error.getDetail();
+        this._setError(messages[code] + ((detail !== null) ? ' (' + detail + ')' : ''));
     }
 
     // --- Format helpers ---

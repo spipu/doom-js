@@ -27,25 +27,75 @@ class WadRegistry {
     }
 
     /**
+     * Rewrite the URL of a host whose paste-friendly form is not fetchable, to
+     * the one that is. One method per host; anything unrecognized (and anything
+     * that is not an absolute URL) passes through untouched.
+     *
+     * @param {string} input
+     * @returns {string}
+     */
+    static normalizeUrl(input) {
+        const raw = input.trim();
+
+        let url;
+        try {
+            url = new URL(raw);
+        } catch (error) {
+            return raw;
+        }
+        if (url.hostname === 'github.com') {
+            return WadRegistry.normalizeUrlGithub(url) ?? raw;
+        }
+
+        return raw;
+    }
+
+    /**
+     * `github.com/<owner>/<repo>/raw|blob/…` only 302s toward
+     * raw.githubusercontent.com, with an empty Access-Control-Allow-Origin the
+     * browser rejects before following it; a cross-origin redirect being opaque,
+     * predicting the target host is the only client-side fix. Release assets
+     * redirect to a signed URL and stay unreachable ('fetch-blocked').
+     *
+     * @param {URL} url
+     * @returns {string|null} null when the path is not a repository file
+     */
+    static normalizeUrlGithub(url) {
+        const parts = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:raw|blob)\/(.+)$/);
+        if (parts === null) {
+            return null;
+        }
+        // github.com spells the ref as refs/heads|refs/tags, the raw host does not
+        const ref = parts[3].replace(/^refs\/(?:heads|tags)\//, '');
+
+        return 'https://raw.githubusercontent.com/' + parts[1] + '/' + parts[2] + '/' + ref + url.search;
+    }
+
+    /**
      * Download a WAD from an URL and store it.
      * Raw fetch (no appBootstrap.buildUrl), with swBypass=1 so that the
      * Service Worker does not duplicate the WAD in the Cache Storage.
      *
-     * @param {string} url
+     * @param {string} rawUrl
      * @returns {Promise<object>} the stored metadata
      */
-    async addFromUrl(url) {
+    async addFromUrl(rawUrl) {
+        const url = WadRegistry.normalizeUrl(rawUrl);
         const separator = ((url.indexOf('?') === -1) ? '?' : '&');
 
         let response;
         try {
             response = await fetch(url + separator + 'swBypass=1');
         } catch (error) {
-            throw new WadError('fetch-failed', 'Unable to download the WAD: ' + error.message);
+            throw this._downloadError(url, error);
         }
 
         if (!response.ok) {
-            throw new WadError('fetch-failed', 'Unable to download the WAD: HTTP ' + response.status);
+            throw new WadError(
+                'fetch-http',
+                'Unable to download the WAD: HTTP ' + response.status,
+                'HTTP ' + response.status
+            );
         }
 
         const buffer = await response.arrayBuffer();
@@ -95,6 +145,45 @@ class WadRegistry {
     }
 
     // --- Internal ---
+
+    // A rejected fetch never says why: the browser hides a CORS refusal from the
+    // page, so the cause is inferred — on another origin it is in practice a
+    // missing CORS header, a permanent failure (hence the UI's local-file advice).
+    _downloadError(url, error) {
+        if (navigator.onLine === false) {
+            return new WadError('fetch-offline', 'Unable to download the WAD: offline');
+        }
+        if (this._isCrossOrigin(url)) {
+            return new WadError(
+                'fetch-blocked',
+                'Unable to download the WAD: blocked by the browser (CORS)',
+                this._hostOf(url)
+            );
+        }
+
+        return new WadError('fetch-failed', 'Unable to download the WAD: ' + error.message);
+    }
+
+    _isCrossOrigin(url) {
+        const parsed = this._parseUrl(url);
+
+        return ((parsed !== null) && (parsed.origin !== window.location.origin));
+    }
+
+    // host and not hostname: two ports of one machine are two origins.
+    _hostOf(url) {
+        const parsed = this._parseUrl(url);
+
+        return ((parsed !== null) ? parsed.host : null);
+    }
+
+    _parseUrl(url) {
+        try {
+            return new URL(url, window.location.href);
+        } catch (error) {
+            return null;
+        }
+    }
 
     async _validateAndSave(buffer, name, source) {
         new WadFile(buffer).parse();
