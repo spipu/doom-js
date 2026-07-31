@@ -104,6 +104,22 @@ class Inputs {
         return this;
     }
 
+    // Dead zone of one virtual-pad gesture ('move' | 'aim' | 'fire'), as a
+    // fraction of the stick travel. Game settings: the coordinator only carries
+    // the value to the device, which owns the behaviour.
+    setVirtualPadDeadZone(kind, fraction) {
+        this._virtualGamepad.setDeadZone(kind, fraction);
+        return this;
+    }
+
+    // Output sensitivity of the virtual pad's FIRING gesture (1 = same as its
+    // silent aim gesture). Scoped to that device — the physical pad and the
+    // mouse look speed are untouched.
+    setVirtualPadSensitivity(factor) {
+        this._virtualGamepad.setFireSensitivity(factor);
+        return this;
+    }
+
     readJoy1X() {
         const pad = this._pad();
         if (pad !== null) {
