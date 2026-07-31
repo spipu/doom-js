@@ -83,6 +83,11 @@ class AppDatabase {
      * @param {object[]} records - [{storeName: string, record: object}]
      */
     async putMulti(records) {
+        // Writing nothing is a legitimate no-op; IndexedDB refuses a transaction
+        // without a store, so the empty batch never reaches it.
+        if (records.length === 0) {
+            return;
+        }
         const storeNames = [...new Set(records.map((item) => item.storeName))];
         const transaction = this.transaction(storeNames, 'readwrite');
 
@@ -99,6 +104,9 @@ class AppDatabase {
      * @param {object[]} keys - [{storeName: string, key: *}]
      */
     async deleteMulti(keys) {
+        if (keys.length === 0) {
+            return;
+        }
         const storeNames = [...new Set(keys.map((item) => item.storeName))];
         const transaction = this.transaction(storeNames, 'readwrite');
 

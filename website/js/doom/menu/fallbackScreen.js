@@ -6,6 +6,6 @@ class FallbackScreen extends AbstractMenuScreen {
     _build() {
         this._addTitle('Spipu-Doom');
         this._statusEl = this._addElement('div', 'doom-menu-status');
-        this._setError('Stockage navigateur indisponible — impossible de gérer les WADs.');
+        this._setError(appTranslator.get('menu.storageUnavailable'));
     }
 }

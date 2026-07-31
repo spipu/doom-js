@@ -29,6 +29,13 @@ function loadApp()
 {
     installViewportStabilizer();
 
+    // Texts first: French is the reference language of the catalog, so it is
+    // also the fallback. The chosen language lands once the settings are read
+    // from the database (MenuNavigator._boot).
+    appTranslator.addCatalog(DoomTranslations.CATALOG)
+        .setFallbackLanguage('fr')
+        .setLanguage('fr');
+
     // Decode the impact-decal graphics once (level-independent); ready well
     // before the first level is built.
     doomDecalTextures.load();

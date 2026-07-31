@@ -55,13 +55,15 @@ class MenuNavigator {
     }
 
     // Shared boot: display + registry init, then the persisted settings (same
-    // database), then the entry action; a storage failure falls back to the
+    // database) whose language reaches the translator before the first screen
+    // is built, then the entry action; a storage failure falls back to the
     // degraded screen.
     _boot(onReady) {
         this._display.init();
 
         this._registry.init()
             .then(() => doomSettings.init(this._storage.getDatabase()))
+            .then(() => doomSettings.applyToTranslator(appTranslator))
             .then(onReady)
             .catch(() => {
                 this._showFallback();
@@ -123,7 +125,7 @@ class MenuNavigator {
 
     async _launchFromWad(meta, levelName, spawnOverride = null) {
         const modal = new MenuModal(this._display)
-            .showLoading('Chargement du niveau ' + levelName + ' de ' + meta.name);
+            .showLoading(appTranslator.get('menu.level.loading', {level: levelName, wad: meta.name}));
         await this._launchGame(meta, levelName, spawnOverride, modal, false);
     }
 
@@ -185,7 +187,7 @@ class MenuNavigator {
         }
 
         const modal = new MenuModal(this._display)
-            .showLoading('Chargement de ' + meta.name);
+            .showLoading(appTranslator.get('menu.wad.loading', {wad: meta.name}));
         await this._launchGame(meta, levelCode, spawnOverride, modal, true);
     }
 

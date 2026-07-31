@@ -14,17 +14,12 @@ class DifficultyScreen extends AbstractMenuScreen {
 
         this._wadMeta = null;
 
-        // Canonical Doom skill names; skill 1..5 maps to the thing flag bits in
-        // the converter (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04). Skill 0 is our own
-        // exploration mode: the skill-1 world with monsters disabled.
-        this._skills = [
-            {skill: 0, name: 'Labyrinth but no monster'},
-            {skill: 1, name: "I'm too young to die"},
-            {skill: 2, name: 'Hey, not too rough'},
-            {skill: 3, name: 'Hurt me plenty'},
-            {skill: 4, name: 'Ultra-Violence'},
-            {skill: 5, name: 'Nightmare!'}
-        ];
+        // Skill 1..5 maps to the thing flag bits in the converter (1-2 → 0x01,
+        // 3 → 0x02, 4-5 → 0x04). Skill 0 is our own exploration mode: the
+        // skill-1 world with monsters disabled. The displayed names are a
+        // generic scale served by the translator ('difficulty.<skill>'), not the
+        // vanilla titles ("I'm too young to die" … "Nightmare!").
+        this._skills = [0, 1, 2, 3, 4, 5];
     }
 
     /**
@@ -37,14 +32,14 @@ class DifficultyScreen extends AbstractMenuScreen {
     }
 
     _build() {
-        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Difficulté');
+        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, appTranslator.get('menu.difficulty.title'));
 
-        for (const entry of this._skills) {
-            const item = this._addListItem(listEl, entry.name, () => {
-                this._onSelectSkill(entry.skill);
+        for (const skill of this._skills) {
+            const item = this._addListItem(listEl, appTranslator.get('difficulty.' + skill), () => {
+                this._onSelectSkill(skill);
             });
 
-            this._addListItemInfos(item, 'Niveau ' + entry.skill);
+            this._addListItemInfos(item, appTranslator.get('menu.difficulty.skill', {skill: skill}));
         }
 
         this._addBackButton(panel);
@@ -63,7 +58,7 @@ class DifficultyScreen extends AbstractMenuScreen {
     // Preselect the difficulty already chosen for this session (default 3).
     _selectCurrentSkill() {
         const current = this._navigator.getSelectedDifficulty();
-        const index   = this._skills.findIndex((entry) => (entry.skill === current));
+        const index   = this._skills.indexOf(current);
 
         this._nav.selectIndex(((index >= 0) ? index : 0));
     }

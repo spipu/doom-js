@@ -105,7 +105,7 @@ class AbstractMenuScreen {
     _addBackButton(panel) {
         const actions = this._addElement('div', 'doom-menu-actions', panel);
 
-        return this._addButton('Retour', () => {
+        return this._addButton(appTranslator.get('menu.back'), () => {
             this._onBack();
         }, actions);
     }
@@ -191,44 +191,48 @@ class AbstractMenuScreen {
         this._setStatus('');
     }
 
+    // An error outside the WadError set is a genuine bug: it shows its raw
+    // English message, which is what a report needs.
     _showError(error) {
-        const messages = {
-            'fetch-offline':       'Aucune connexion réseau',
-            'fetch-blocked':       'Ce serveur n\'autorise pas le téléchargement direct — enregistrez le fichier, puis utilisez « Fichier local »',
-            'fetch-http':          'Le serveur a refusé le fichier',
-            'fetch-failed':        'Téléchargement impossible',
-            'invalid-format':      'Ce fichier n\'est pas un WAD valide (IWAD/PWAD attendu)',
-            'quota-exceeded':      'Espace de stockage insuffisant — supprimez un WAD',
-            'storage-unavailable': 'Stockage navigateur indisponible',
-            'not-found':           'WAD introuvable'
+        const codes = {
+            'fetch-offline':       'error.fetchOffline',
+            'fetch-blocked':       'error.fetchBlocked',
+            'fetch-http':          'error.fetchHttp',
+            'fetch-failed':        'error.fetchFailed',
+            'invalid-format':      'error.invalidFormat',
+            'quota-exceeded':      'error.quotaExceeded',
+            'storage-unavailable': 'error.storageUnavailable',
+            'not-found':           'error.notFound'
         };
 
         const code = ((error instanceof WadError) ? error.getCode() : null);
-        if (messages[code] === undefined) {
-            this._setError('Erreur : ' + error.message);
+        if (codes[code] === undefined) {
+            this._setError(appTranslator.get('error.generic', {message: error.message}));
             return;
         }
         const detail = error.getDetail();
-        this._setError(messages[code] + ((detail !== null) ? ' (' + detail + ')' : ''));
+        this._setError(appTranslator.get(codes[code]) + ((detail !== null) ? ' (' + detail + ')' : ''));
     }
 
     // --- Format helpers ---
 
     _formatSize(bytes) {
+        const decimal = (value) => new Intl.NumberFormat(appTranslator.getLocale(), {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(value);
         if (bytes >= 1048576) {
-            return (bytes / 1048576).toFixed(1) + ' Mo';
+            return decimal(bytes / 1048576) + ' ' + appTranslator.get('unit.megabyte');
         }
         if (bytes >= 1024) {
-            return (bytes / 1024).toFixed(1) + ' Ko';
+            return decimal(bytes / 1024) + ' ' + appTranslator.get('unit.kilobyte');
         }
 
-        return bytes + ' o';
+        return bytes + ' ' + appTranslator.get('unit.byte');
     }
 
     _formatDate(timestamp) {
-        const date = new Date(timestamp);
+        const date   = new Date(timestamp);
+        const locale = appTranslator.getLocale();
 
-        return date.toLocaleDateString('fr-FR')
-            + ' ' + date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+        return date.toLocaleDateString(locale)
+            + ' ' + date.toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'});
     }
 }

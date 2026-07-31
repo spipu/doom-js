@@ -23,7 +23,7 @@ class WadListScreen extends AbstractMenuScreen {
         this._fileInput = null;
         this._buttons   = [];
 
-        const {panel, listEl} = this._buildPanel('Fichiers WAD');
+        const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
         const helpButton = MenuDom.addButton(this._container, 'doom-menu-help-button', '?', () => {
@@ -47,7 +47,7 @@ class WadListScreen extends AbstractMenuScreen {
 
         this._urlInput = this._addElement('input', 'doom-menu-input', form);
         this._urlInput.type = 'text';
-        this._urlInput.placeholder = 'https://exemple.com/fichier.wad';
+        this._urlInput.placeholder = appTranslator.get('menu.wad.urlPlaceholder');
         this._urlInput.addEventListener('keydown', (event) => {
             if ((event.code === 'Enter') || (event.code === 'NumpadEnter')) {
                 event.preventDefault();
@@ -55,7 +55,7 @@ class WadListScreen extends AbstractMenuScreen {
             }
         });
 
-        this._buttons.push(this._addButton('Ajouter par URL', () => {
+        this._buttons.push(this._addButton(appTranslator.get('menu.wad.addUrl'), () => {
             this._onAddUrl();
         }, form));
 
@@ -66,7 +66,7 @@ class WadListScreen extends AbstractMenuScreen {
             this._onAddFile(event);
         });
 
-        this._buttons.push(this._addButton('Fichier local', () => {
+        this._buttons.push(this._addButton(appTranslator.get('menu.wad.addFile'), () => {
             this._fileInput.click();
         }, form));
     }
@@ -83,7 +83,7 @@ class WadListScreen extends AbstractMenuScreen {
         this._clearList(this._listEl);
 
         if (list.length === 0) {
-            this._addListEmpty(this._listEl, 'Aucun WAD — ajoutez-en un ci-dessous');
+            this._addListEmpty(this._listEl, appTranslator.get('menu.wad.empty'));
             return;
         }
 
@@ -104,7 +104,7 @@ class WadListScreen extends AbstractMenuScreen {
             event.stopPropagation();
             this._onDeleteWad(meta);
         });
-        deleteButton.title = 'Supprimer';
+        deleteButton.title = appTranslator.get('menu.wad.delete');
     }
 
     // --- Handlers ---
@@ -112,17 +112,17 @@ class WadListScreen extends AbstractMenuScreen {
     async _onAddUrl() {
         const url = WadRegistry.normalizeUrl(this._urlInput.value);
         if (url === '') {
-            this._setError('Saisissez une URL');
+            this._setError(appTranslator.get('menu.wad.urlMissing'));
             return;
         }
         this._urlInput.value = url;
 
         this._setBusy(true);
-        this._setStatus('Téléchargement...');
+        this._setStatus(appTranslator.get('menu.wad.downloading'));
         try {
             const meta = await this._registry.addFromUrl(url);
             this._urlInput.value = '';
-            this._setStatus(meta.name + ' ajouté');
+            this._setStatus(appTranslator.get('menu.wad.added', {wad: meta.name}));
             await this._refresh();
         } catch (error) {
             this._showError(error);
@@ -137,10 +137,10 @@ class WadListScreen extends AbstractMenuScreen {
         }
 
         this._setBusy(true);
-        this._setStatus('Lecture du fichier...');
+        this._setStatus(appTranslator.get('menu.wad.reading'));
         try {
             const meta = await this._registry.addFromFile(file);
-            this._setStatus(meta.name + ' ajouté');
+            this._setStatus(appTranslator.get('menu.wad.added', {wad: meta.name}));
             await this._refresh();
         } catch (error) {
             this._showError(error);
@@ -150,7 +150,7 @@ class WadListScreen extends AbstractMenuScreen {
     }
 
     _onDeleteWad(meta) {
-        this._confirm('Supprimer ' + meta.name + ' ?', async () => {
+        this._confirm(appTranslator.get('menu.wad.deleteConfirm', {wad: meta.name}), async () => {
             try {
                 await this._registry.remove(meta.id);
                 this._clearStatus();
@@ -165,8 +165,10 @@ class WadListScreen extends AbstractMenuScreen {
         this._navigator.openWad(meta);
     }
 
+    // Rebuilt on close: a language changed in the modal must reach this screen
+    // too, which stayed untouched underneath it.
     _openHelp() {
-        new MenuHelpModal(this._display).show();
+        new MenuHelpModal(this._display).setOnClose(() => this.show()).show();
     }
 
     // --- Internal ---

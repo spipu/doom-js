@@ -717,9 +717,10 @@ class DoomGame {
 
         const display = new MenuDisplay('screen').init();
         const modal = new MenuModal(display);
-        let message = 'Niveau ' + this._levelName + ' terminé !';
+        let message = appTranslator.get('game.level.finished', {level: this._levelName});
         if (nextLevel === null) {
-            message = ((/^E\dM\d$/.test(this._levelName)) ? 'Épisode terminé !' : 'Partie terminée !');
+            const endCode = ((/^E\dM\d$/.test(this._levelName)) ? 'game.episode.finished' : 'game.finished');
+            message = appTranslator.get(endCode);
         }
         modal.showMessage(message);
 
@@ -739,7 +740,7 @@ class DoomGame {
             return;
         }
 
-        modal.showLoading('Chargement du niveau ' + nextLevel);
+        modal.showLoading(appTranslator.get('game.level.loading', {level: nextLevel}));
         try {
             await this.startFromWad(this._wadFile, nextLevel);
             modal.close();
