@@ -72,6 +72,26 @@ class WadRegistry {
     }
 
     /**
+     * Same URL carrying the swBypass=1 marker the Service Worker looks for, so
+     * it serves the download from the network and never duplicates a 30 MB WAD
+     * in the Cache Storage.
+     *
+     * Built through URL rather than by concatenation: appended by hand, the
+     * marker lands INSIDE a fragment when the URL has one (…doom.wad#sha256),
+     * and since Request.url drops fragments the worker would never see it. A
+     * relative URL is resolved against the page, exactly like fetch would.
+     *
+     * @param {string} url
+     * @returns {string}
+     */
+    static bypassUrl(url) {
+        const parsed = new URL(url, window.location.href);
+        parsed.searchParams.set('swBypass', '1');
+
+        return parsed.href;
+    }
+
+    /**
      * Download a WAD from an URL and store it.
      * Raw fetch (no appBootstrap.buildUrl), with swBypass=1 so that the
      * Service Worker does not duplicate the WAD in the Cache Storage.
@@ -81,11 +101,10 @@ class WadRegistry {
      */
     async addFromUrl(rawUrl) {
         const url = WadRegistry.normalizeUrl(rawUrl);
-        const separator = ((url.indexOf('?') === -1) ? '?' : '&');
 
         let response;
         try {
-            response = await fetch(url + separator + 'swBypass=1');
+            response = await fetch(WadRegistry.bypassUrl(url));
         } catch (error) {
             throw this._downloadError(url, error);
         }

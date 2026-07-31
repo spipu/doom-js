@@ -27,7 +27,7 @@ class MenuHelpModal extends MenuModal {
     // name needs an override is the space bar.
     static get KEY_LABELS() {
         return {
-            Space: 'Espace'
+            Space: 'key.space'
         };
     }
 
@@ -48,6 +48,20 @@ class MenuHelpModal extends MenuModal {
         this._captureHandler = null;
         this._restoreIndex   = null;
         this._layoutMap      = null;
+        this._onClose        = null;
+    }
+
+    /**
+     * Hook fired once the modal is closed. The screen underneath is NOT rebuilt
+     * while the modal covers it, so a setting changed here (the language, the
+     * size units…) would leave it stale: its owner re-renders it from here.
+     *
+     * @param {function} callback
+     */
+    setOnClose(callback) {
+        this._onClose = callback;
+
+        return this;
     }
 
     show() {
@@ -59,13 +73,13 @@ class MenuHelpModal extends MenuModal {
         this._bodyEl  = MenuDom.addElement(modal, 'div', 'doom-menu-modal-help-body');
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        this._actionButton = MenuDom.addButton(actions, 'doom-menu-button', 'Fermer', () => {
+        this._actionButton = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
             this._onBack();
         });
 
         this._nav.attach();
         this._stack = [];
-        this._pushPage('Aide', () => this._buildRoot());
+        this._pushPage('help.title', () => this._buildRoot());
 
         return this;
     }
@@ -74,8 +88,13 @@ class MenuHelpModal extends MenuModal {
         this._stopKeyCapture();
         this._clearPageTimer();
         this._nav.detach().clear();
+        super.close();
 
-        return super.close();
+        if (this._onClose !== null) {
+            this._onClose();
+        }
+
+        return this;
     }
 
     // --- Page stack ---
@@ -92,8 +111,10 @@ class MenuHelpModal extends MenuModal {
         return (overlays[overlays.length - 1] !== this._overlay);
     }
 
-    _pushPage(title, builder, noBack = false) {
-        this._stack.push({title: title, builder: builder, noBack: (noBack === true)});
+    // titleCode, not a resolved label: the breadcrumb is rebuilt from the codes
+    // at every render, so a language switch reaches the pages already stacked.
+    _pushPage(titleCode, builder, noBack = false) {
+        this._stack.push({titleCode: titleCode, builder: builder, noBack: (noBack === true)});
         this._renderPage();
     }
 
@@ -111,8 +132,9 @@ class MenuHelpModal extends MenuModal {
     _renderPage() {
         this._clearPageTimer();
         const current = this._stack[this._stack.length - 1];
-        this._titleEl.textContent        = this._stack.map((page) => page.title).join(' > ');
-        this._actionButton.textContent   = ((this._stack.length > 1) ? 'Retour' : 'Fermer');
+        this._titleEl.textContent        = this._stack.map((page) => appTranslator.get(page.titleCode)).join(' > ');
+        const actionCode                 = ((this._stack.length > 1) ? 'menu.back' : 'menu.close');
+        this._actionButton.textContent   = appTranslator.get(actionCode);
         // A capture page cannot be left by any mean but pressing a key.
         this._actionButton.style.display = ((current.noBack === true) ? 'none' : '');
         this._bodyEl.innerHTML           = '';
@@ -137,19 +159,20 @@ class MenuHelpModal extends MenuModal {
 
     _buildRoot() {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        this._nav.addItemIn(list, 'Affichage', () => this._pushPage('Affichage', () => this._buildDisplay()));
-        this._nav.addItemIn(list, 'Contrôles', () => this._pushPage('Contrôles', () => this._buildControls()));
-        this._nav.addItemIn(list, 'Réinitialiser tous les paramétrages', () => this._confirmReset());
-        this._nav.addItemIn(list, 'À propos', () => this._pushPage('À propos', () => this._buildAbout()));
+        this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildDisplay()));
+        this._nav.addItemIn(list, appTranslator.get('help.controls'), () => this._pushPage('help.controls', () => this._buildControls()));
+        this._nav.addItemIn(list, appTranslator.get('help.reset'), () => this._confirmReset());
+        this._nav.addItemIn(list, appTranslator.get('help.about'), () => this._pushPage('help.about', () => this._buildAbout()));
         this._nav.selectFirst();
     }
 
     // Wipes every saved setting after a nested confirmation (its overlay
     // stacks above this modal and suspends our navigation, DOM-detected).
     _confirmReset() {
-        new MenuModal(this._display).confirm('Supprimer tous les paramétrages enregistrés ?', () => {
-            doomSettings.resetAll().applyToInputs(new Inputs());
-        }, 'Confirmer', 'Retour');
+        new MenuModal(this._display).confirm(appTranslator.get('help.resetConfirm'), () => {
+            doomSettings.resetAll().applyToInputs(new Inputs()).applyToTranslator(appTranslator);
+            this._renderPage();
+        }, null, appTranslator.get('menu.back'));
     }
 
     // Adapts to what the game itself would use (same device priority as
@@ -194,43 +217,54 @@ class MenuHelpModal extends MenuModal {
     _deviceLabel(inputs) {
         const mode = inputs.getMode();
         if (mode === 'virtualGamepad') {
-            return 'Manette virtuelle';
+            return appTranslator.get('device.virtualPad');
         }
         if (mode === 'gamepad') {
-            return ('Manette ' + (inputs.getGamepadName() ?? '')).trim();
+            return appTranslator.get('device.gamepad', {name: (inputs.getGamepadName() ?? '')}).trim();
         }
 
-        return 'Clavier et souris';
+        return appTranslator.get('device.keyboardMouse');
     }
 
     // One navigable row per setting: name on the left, current value on the
-    // right. Activating a bool flips it in place, a list steps to its next
-    // value (wrapping); activating a char (key binding) opens the capture page.
+    // right.
     _addSettingItem(listEl, def, inputs) {
         let valueEl = null;
-        const item = this._nav.addItemIn(listEl, def.name, () => {
-            if (def.type === 'bool') {
-                doomSettings.set(def.key, !(doomSettings.get(def.key) === true));
-                doomSettings.applyToInputs(inputs);
-                valueEl.textContent = this._settingValueText(def);
-            }
-            if (def.type === 'list') {
-                doomSettings.set(def.key, doomSettings.nextListValue(def));
-                doomSettings.applyToInputs(inputs);
-                valueEl.textContent = this._settingValueText(def);
-            }
+        const item = this._nav.addItemIn(listEl, appTranslator.get(def.nameCode), () => {
             if (def.type === 'char') {
                 this._startKeyCapture(def, inputs);
+                return;
             }
+            this._stepSettingValue(def, inputs, valueEl);
         });
         valueEl = MenuDom.addText(item, 'doom-menu-item-value', this._settingValueText(def));
 
         return item;
     }
 
+    // The language is the one value that rewrites the WHOLE page — its own row
+    // included — so the page is rebuilt instead of patched, keeping the
+    // selection where it was.
+    _stepSettingValue(def, inputs, valueEl) {
+        const next = ((def.type === 'bool')
+            ? !(doomSettings.get(def.key) === true)
+            : doomSettings.nextListValue(def));
+
+        doomSettings.set(def.key, next).applyToInputs(inputs).applyToTranslator(appTranslator);
+
+        if (def.key === 'display.language') {
+            this._restoreIndex = this._nav.getSelectedIndex();
+            this._renderPage();
+            return;
+        }
+        valueEl.textContent = this._settingValueText(def);
+    }
+
     _settingValueText(def) {
         if (def.type === 'bool') {
-            return ((doomSettings.get(def.key) === true) ? 'Oui' : 'Non');
+            const valueCode = ((doomSettings.get(def.key) === true) ? 'value.yes' : 'value.no');
+
+            return appTranslator.get(valueCode);
         }
         if (def.type === 'list') {
             return doomSettings.getListLabel(def);
@@ -254,8 +288,9 @@ class MenuHelpModal extends MenuModal {
         // Consumed by the settings list re-render on the way back — never by
         // the (list-less) capture page itself.
         const returnIndex = this._nav.getSelectedIndex();
-        this._pushPage(def.name, () => {
-            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', 'Appuyez sur la touche à utiliser pour « ' + def.name + ' »…');
+        this._pushPage(def.nameCode, () => {
+            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line',
+                appTranslator.get('help.keyCapture', {action: appTranslator.get(def.nameCode)}));
         }, true);
 
         this._captureHandler = (event) => {
@@ -302,9 +337,9 @@ class MenuHelpModal extends MenuModal {
         if ((code === '') || (code === null) || (code === undefined)) {
             return '';
         }
-        const label = MenuHelpModal.KEY_LABELS[code];
-        if (label !== undefined) {
-            return label;
+        const labelCode = MenuHelpModal.KEY_LABELS[code];
+        if (labelCode !== undefined) {
+            return appTranslator.get(labelCode);
         }
         if ((this._layoutMap !== null) && this._layoutMap.has(code)) {
             return this._layoutMap.get(code).toUpperCase();
@@ -316,7 +351,7 @@ class MenuHelpModal extends MenuModal {
             return code.slice(5);
         }
         if (code.startsWith('Numpad')) {
-            return 'Num ' + code.slice(6);
+            return appTranslator.get('key.numpad', {key: code.slice(6)});
         }
 
         return code;
@@ -324,11 +359,11 @@ class MenuHelpModal extends MenuModal {
 
     _buildAbout() {
         const lines = [
-            'Spipu-Doom convertit et fait tourner vos fichiers WAD Doom à la volée, entièrement dans le navigateur : rendu WebGL, physique FPS, éléments mouvants et armes fidèles au jeu original.',
-            'Développé par Spipu (Laurent Minguet).',
-            'Licence MIT — à l\'exception des graphismes de decals d\'impact, repris d\'UZDoom sous licence GPL v3.',
-            'Aucun fichier WAD n\'est fourni. Utilisez un WAD libre comme Freedoom, ou vos propres fichiers dont vous détenez les droits — Doom et ses données de jeu restent la propriété de leurs ayants droit.',
-            '© 2024-' + new Date().getFullYear() + ' Spipu.'
+            appTranslator.get('help.about.what'),
+            appTranslator.get('help.about.author'),
+            appTranslator.get('help.about.licence'),
+            appTranslator.get('help.about.wads'),
+            appTranslator.get('help.about.copyright', {year: new Date().getFullYear()})
         ];
         for (const line of lines) {
             MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', line);

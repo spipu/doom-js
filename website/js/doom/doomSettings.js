@@ -2,31 +2,31 @@
  * Persistent game settings, stored in the `settings` store of the spipudoom
  * IndexedDB base ({key, value} rows).
  *
- * Every setting is declared in DEFINITIONS (key, display name, type,
+ * Every setting is declared in DEFINITIONS (key, name translation code, type,
  * default): the settings UI is built from that table (filtered by key
  * prefix, one prefix per input device), init() loads all the saved rows in
  * one pass at boot, set() persists a new value. The generic get() serves the
  * settings UI; the game code reads the dedicated getters (one per setting).
  *
- * Types: 'bool' (Oui/Non), 'char' (one physical key code, captured in the UI)
+ * Types: 'bool' (yes/no), 'char' (one physical key code, captured in the UI)
  * and 'list' — a closed set of values the definition carries as
- * `values: [{code, label}]`, of any length: the stored value is the code, the
- * UI shows the label and steps through the list (nextListValue).
+ * `values: [{code, label?}]`, of any length: the stored value is the code, the
+ * UI shows the label and steps through the list (nextListValue). A list value
+ * carries either a literal `label` (a language autonym, never translated) or a
+ * `format` tag, and is then rendered in the current locale (see getListLabel).
  */
 class DoomSettings {
     /**
-     * Values of a percent-coded 'list' setting: the code is the raw percent,
-     * the label its French rendering ('7.5' → '7,5 %') — built from one source
-     * so a code can never drift from its label.
+     * Values of a percent-coded 'list' setting: only the raw percent as a code.
+     * The label is NOT stored — it is formatted at display time from the
+     * current locale (see getListLabel), so '7.5' reads '7,5 %' in French and
+     * '7.5 %' in English.
      *
      * @param {number[]} percents
-     * @returns {object[]} [{code, label}]
+     * @returns {object[]} [{code, format}]
      */
     static percentValues(percents) {
-        return percents.map((percent) => ({
-            code:  String(percent),
-            label: String(percent).replace('.', ',') + ' %'
-        }));
+        return percents.map((percent) => ({code: String(percent), format: 'percent'}));
     }
 
     // Dead zones offered for the virtual pad's gestures: fine steps at the
@@ -45,48 +45,50 @@ class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
-            {key: 'display.language',          name: 'Langue',                               type: 'list', default: 'fr', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
-            {key: 'display.crosshair',         name: 'Afficher le réticule',                 type: 'bool', default: true},
-            {key: 'display.distance_shading',  name: 'Assombrissement à la distance',        type: 'bool', default: true},
-            {key: 'display.texture_smoothing', name: 'Lissage des textures',                 type: 'bool', default: true},
+            {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'fr', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
+            {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
+            {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
+            {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
             // Per-device look options.
-            {key: 'pad.y_inverse',            name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
-            {key: 'virtual_pad.y_inverse',    name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
-            // Virtual pad tuning: one dead zone per gesture (the firing gesture
-            // is the upper band of the aim stick), plus the output sensitivity
-            // of the firing gesture. Codes are raw percents (see getPercent).
-            {key: 'virtual_pad.move_dead_zone', name: 'Stick de déplacement — zone morte',    type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
-            {key: 'virtual_pad.aim_dead_zone',  name: 'Stick de visée — zone morte',          type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
-            {key: 'virtual_pad.fire_dead_zone', name: 'Stick de visée en tirant — zone morte', type: 'list', default: '7.5', values: DoomSettings.DEAD_ZONE_VALUES},
-            {key: 'virtual_pad.fire_sensitivity', name: 'Stick de visée en tirant — sensibilité', type: 'list', default: '80', values: DoomSettings.SENSITIVITY_VALUES},
-            {key: 'mouse.y_inverse',          name: 'Inverser l\'axe vertical de la souris', type: 'bool', default: false},
+            {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
+            {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
+            // The firing gesture is the upper band of the aim stick, not a
+            // third stick. Codes are raw percents (see getPercent).
+            {key: 'virtual_pad.move_dead_zone',   nameCode: 'settings.virtualPad.moveDeadZone',    type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.aim_dead_zone',    nameCode: 'settings.virtualPad.aimDeadZone',     type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.fire_dead_zone',   nameCode: 'settings.virtualPad.fireDeadZone',    type: 'list', default: '7.5', values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.fire_sensitivity', nameCode: 'settings.virtualPad.fireSensitivity', type: 'list', default: '80', values: DoomSettings.SENSITIVITY_VALUES},
+            {key: 'mouse.y_inverse',              nameCode: 'settings.mouse.yInverse',             type: 'bool', default: false},
             // Keyboard bindings ('char' = one PHYSICAL key code, captured in
             // the settings UI). action = the engine mapping slot; the
             // defaults mirror InputKeyboard.DEFAULT_MAPPING one for one.
-            {key: 'keyboard.forward',      name: 'Avancer',                  type: 'char', default: 'KeyW',      action: 'forward'},
-            {key: 'keyboard.backward',     name: 'Reculer',                  type: 'char', default: 'KeyS',      action: 'backward'},
-            {key: 'keyboard.strafe_left',  name: 'Pas à gauche',             type: 'char', default: 'KeyA',      action: 'strafeLeft'},
-            {key: 'keyboard.strafe_right', name: 'Pas à droite',             type: 'char', default: 'KeyD',      action: 'strafeRight'},
-            {key: 'keyboard.jump',         name: 'Sauter',                   type: 'char', default: 'ShiftLeft', action: 'jump'},
-            {key: 'keyboard.crouch',       name: 'S\'accroupir',             type: 'char', default: 'ControlLeft', action: 'crouch'},
-            {key: 'keyboard.action',       name: 'Action / utiliser',        type: 'char', default: 'KeyE',      action: 'action'},
-            {key: 'keyboard.fire',         name: 'Tirer',                    type: 'char', default: 'KeyQ',      action: 'fire'},
-            {key: 'keyboard.weapon_prev',  name: 'Arme précédente',          type: 'char', default: 'KeyF',      action: 'weaponPrev'},
-            {key: 'keyboard.weapon_next',  name: 'Arme suivante',            type: 'char', default: 'KeyG',      action: 'weaponNext'},
-            {key: 'keyboard.walk_slow',    name: 'Marcher lentement',        type: 'char', default: 'AltLeft',   action: 'walkSlow'},
-            {key: 'keyboard.pause',        name: 'Pause / quitter le niveau', type: 'char', default: 'KeyP',     action: 'pause'},
-            {key: 'keyboard.toggle_hud',   name: 'Afficher le HUD de debug', type: 'char', default: 'KeyH',      action: 'toggleHud'},
-            {key: 'keyboard.look_down',    name: 'Fausse souris - Y+',       type: 'char', default: 'KeyK',      action: 'lookDown'},
-            {key: 'keyboard.look_up',      name: 'Fausse souris - Y-',       type: 'char', default: 'KeyI',      action: 'lookUp'},
-            {key: 'keyboard.look_right',   name: 'Fausse souris - X+',       type: 'char', default: 'KeyL',      action: 'lookRight'},
-            {key: 'keyboard.look_left',    name: 'Fausse souris - X-',       type: 'char', default: 'KeyJ',      action: 'lookLeft'}
+            {key: 'keyboard.forward',             nameCode: 'settings.keyboard.forward',           type: 'char', default: 'KeyW',      action: 'forward'},
+            {key: 'keyboard.backward',            nameCode: 'settings.keyboard.backward',          type: 'char', default: 'KeyS',      action: 'backward'},
+            {key: 'keyboard.strafe_left',         nameCode: 'settings.keyboard.strafeLeft',        type: 'char', default: 'KeyA',      action: 'strafeLeft'},
+            {key: 'keyboard.strafe_right',        nameCode: 'settings.keyboard.strafeRight',       type: 'char', default: 'KeyD',      action: 'strafeRight'},
+            {key: 'keyboard.jump',                nameCode: 'settings.keyboard.jump',              type: 'char', default: 'ShiftLeft', action: 'jump'},
+            {key: 'keyboard.crouch',              nameCode: 'settings.keyboard.crouch',            type: 'char', default: 'ControlLeft', action: 'crouch'},
+            {key: 'keyboard.action',              nameCode: 'settings.keyboard.action',            type: 'char', default: 'KeyE',      action: 'action'},
+            {key: 'keyboard.fire',                nameCode: 'settings.keyboard.fire',              type: 'char', default: 'KeyQ',      action: 'fire'},
+            {key: 'keyboard.weapon_prev',         nameCode: 'settings.keyboard.weaponPrev',        type: 'char', default: 'KeyF',      action: 'weaponPrev'},
+            {key: 'keyboard.weapon_next',         nameCode: 'settings.keyboard.weaponNext',        type: 'char', default: 'KeyG',      action: 'weaponNext'},
+            {key: 'keyboard.walk_slow',           nameCode: 'settings.keyboard.walkSlow',          type: 'char', default: 'AltLeft',   action: 'walkSlow'},
+            {key: 'keyboard.pause',               nameCode: 'settings.keyboard.pause',             type: 'char', default: 'KeyP',     action: 'pause'},
+            {key: 'keyboard.toggle_hud',          nameCode: 'settings.keyboard.toggleHud',         type: 'char', default: 'KeyH',      action: 'toggleHud'},
+            {key: 'keyboard.look_down',           nameCode: 'settings.keyboard.lookDown',          type: 'char', default: 'KeyK',      action: 'lookDown'},
+            {key: 'keyboard.look_up',             nameCode: 'settings.keyboard.lookUp',            type: 'char', default: 'KeyI',      action: 'lookUp'},
+            {key: 'keyboard.look_right',          nameCode: 'settings.keyboard.lookRight',         type: 'char', default: 'KeyL',      action: 'lookRight'},
+            {key: 'keyboard.look_left',           nameCode: 'settings.keyboard.lookLeft',          type: 'char', default: 'KeyJ',      action: 'lookLeft'}
         ];
     }
 
     constructor() {
         this._database = null;
-        this._values   = {};
-        this._defaults = {};
+        // Prototype-less maps: the keys come from the database, and a row keyed
+        // '__proto__' would otherwise mutate the prototype chain instead of
+        // being stored as a plain value.
+        this._values   = Object.create(null);
+        this._defaults = Object.create(null);
         for (const def of DoomSettings.DEFINITIONS) {
             this._defaults[def.key] = def.default;
         }
@@ -100,7 +102,7 @@ class DoomSettings {
      */
     async init(database) {
         this._database = database;
-        this._values   = {};
+        this._values   = Object.create(null);
         try {
             const rows = await database.getAll('settings');
             for (const row of rows) {
@@ -150,13 +152,23 @@ class DoomSettings {
      * every percentage setting uses (see percentValues).
      */
     getPercent(key) {
-        return parseFloat(this.get(key)) / 100;
+        const percent = parseFloat(this.get(key));
+        if (Number.isFinite(percent)) {
+            return (percent / 100);
+        }
+        // Stored value outside the list (a value code dropped by an evolution, a
+        // hand-edited base): fall back to the default rather than let a NaN
+        // travel into the physics, where it silently freezes the stick.
+        console.warn('DoomSettings - [' + key + '] is not a number, falling back to its default');
+
+        return (parseFloat(this._defaults[key]) / 100);
     }
 
     /**
-     * Label of the current value of a 'list' setting — what the UI displays.
-     * A saved code missing from the list (a value dropped since) falls back to
-     * the code itself rather than showing an empty row.
+     * Label of the current value of a 'list' setting — what the UI displays:
+     * the entry's literal label, or its formatted rendering when it carries a
+     * format tag instead. A saved code missing from the list (a value dropped
+     * since) falls back to the code itself rather than showing an empty row.
      *
      * @param {object} def - a 'list' definition
      * @returns {string}
@@ -164,8 +176,28 @@ class DoomSettings {
     getListLabel(def) {
         const value = this.get(def.key);
         const entry = def.values.find((item) => (item.code === value));
+        if (entry === undefined) {
+            return String(value);
+        }
 
-        return ((entry !== undefined) ? entry.label : String(value));
+        return (entry.label ?? DoomSettings.formatListValue(entry));
+    }
+
+    /**
+     * Rendering of a label-less list value, in the current locale: a 'percent'
+     * code reads '7,5 %' in French and '7.5%' in English — the separator and
+     * the spacing before the sign are the platform's business, not ours.
+     *
+     * @param {object} entry - a 'list' value {code, format}
+     * @returns {string}
+     */
+    static formatListValue(entry) {
+        if (entry.format === 'percent') {
+            return new Intl.NumberFormat(appTranslator.getLocale(), {style: 'percent', maximumFractionDigits: 1})
+                .format(parseFloat(entry.code) / 100);
+        }
+
+        return entry.code;
     }
 
     /**
@@ -221,7 +253,7 @@ class DoomSettings {
      * store wipe is fire-and-forget like set().
      */
     resetAll() {
-        this._values = {};
+        this._values = Object.create(null);
         if (this._database !== null) {
             this._database.getAll('settings').then((rows) => this._database.deleteMulti(
                 rows.map((row) => ({storeName: 'settings', key: row.key}))
@@ -250,6 +282,18 @@ class DoomSettings {
         return this;
     }
 
+    /**
+     * Pushes the language onto the translator — called at boot and after every
+     * change from the settings UI, like applyToInputs.
+     *
+     * @param {AppTranslator} translator
+     */
+    applyToTranslator(translator) {
+        translator.setLanguage(this.getDisplayLanguage());
+
+        return this;
+    }
+
     // --- Dedicated getters (game side) ---
 
     getPadYInverse() {
@@ -260,8 +304,7 @@ class DoomSettings {
         return (this.get('virtual_pad.y_inverse') === true);
     }
 
-    // Dead zones of the virtual pad's three gestures, as a fraction of the
-    // stick travel.
+    // Fractions of the stick travel.
     getVirtualPadMoveDeadZone() {
         return this.getPercent('virtual_pad.move_dead_zone');
     }
@@ -283,8 +326,6 @@ class DoomSettings {
         return (this.get('mouse.y_inverse') === true);
     }
 
-    // Interface language code ('fr' | 'en'). Stored and editable, not consumed
-    // yet — no text is localized at this point.
     getDisplayLanguage() {
         return this.get('display.language');
     }

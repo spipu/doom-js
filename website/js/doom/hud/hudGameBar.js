@@ -73,7 +73,7 @@ class HudGameBar extends AbstractHud {
         const energy    = u.getEnergy();
         const maxEnergy = u.getMaxEnergy();
         this._els.healthFill.style.width = this._ratioPct(energy, maxEnergy);
-        this._els.healthValue.innerText  = Math.ceil(energy);
+        this._els.healthValue.innerText  = String(Math.ceil(energy));
 
         // Armor — value + bar coloured by the armour tier (green ⅓, blue ½)
         const armor    = u.getArmor();
@@ -81,7 +81,7 @@ class HudGameBar extends AbstractHud {
         const armorColor = ((u.getArmorAbsorb() >= 0.5) ? '#4d9fff' : '#5dd35d');
         this._els.armorFill.style.width           = this._ratioPct(armor, maxArmor);
         this._els.armorFill.style.backgroundColor = armorColor;
-        this._els.armorValue.innerText            = Math.ceil(armor);
+        this._els.armorValue.innerText            = String(Math.ceil(armor));
 
         this._updateAmmo(u);
         this._updateArms(u);
@@ -130,7 +130,15 @@ class HudGameBar extends AbstractHud {
         }
 
         const weapon = ((this._game !== null) ? this._game.getWeapon(code) : null);
-        this._els.weaponName.innerText = ((weapon !== null) ? weapon.getName() : '—');
+        this._els.weaponName.innerText = ((weapon !== null) ? this._weaponLabel(code, weapon) : '—');
+    }
+
+    // A weapon from a profile with no catalog entry keeps its transcribed name,
+    // rather than showing its translation code.
+    _weaponLabel(code, weapon) {
+        const translationCode = 'weapon.' + code;
+
+        return ((appTranslator.has(translationCode)) ? appTranslator.get(translationCode) : weapon.getName());
     }
 
     _updateKeys(u) {
@@ -149,12 +157,12 @@ class HudGameBar extends AbstractHud {
     _buildHealthArmor() {
         const block = this._createEl('div', this._cornerStyle({ bottom: '1em', left: '1em' }));
 
-        const health = this._buildBarRow('HP', '#5dd35d');
+        const health = this._buildBarRow(appTranslator.get('hud.health'), '#5dd35d');
         this._els.healthFill  = health.fill;
         this._els.healthValue = health.value;
         block.appendChild(health.row);
 
-        const armor = this._buildBarRow('AR', '#5dd35d');
+        const armor = this._buildBarRow(appTranslator.get('hud.armor'), '#5dd35d');
         this._els.armorFill  = armor.fill;
         this._els.armorValue = armor.value;
         block.appendChild(armor.row);
@@ -197,7 +205,7 @@ class HudGameBar extends AbstractHud {
         block.style.textAlign = 'right';
 
         const label = this._createEl('div', { fontSize: '0.7em', fontWeight: '700', color: '#ccc', letterSpacing: '0.15em' });
-        label.innerText = 'AMMO';
+        label.innerText = appTranslator.get('hud.ammo');
 
         this._els.ammoValue = this._createEl('div', { fontSize: '1.6em', fontWeight: '800', lineHeight: '1' });
         this._els.ammoValue.innerText = '—';
@@ -260,7 +268,7 @@ class HudGameBar extends AbstractHud {
                 fontSize: '0.95em', fontWeight: '700', color: '#555',
                 border: '0.1em solid rgba(255, 255, 255, 0.25)'
             });
-            el.innerText = slot;
+            el.innerText = String(slot);
             this._armsEls[slot] = el;
             panel.appendChild(el);
         }

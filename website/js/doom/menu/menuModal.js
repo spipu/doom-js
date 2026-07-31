@@ -16,7 +16,10 @@ class MenuModal {
      * @param {string}   confirmLabel
      * @param {string}   cancelLabel
      */
-    confirm(message, onConfirm, confirmLabel = 'Confirmer', cancelLabel = 'Annuler') {
+    confirm(message, onConfirm, confirmLabel = null, cancelLabel = null) {
+        confirmLabel = (confirmLabel ?? appTranslator.get('menu.confirm'));
+        cancelLabel  = (cancelLabel ?? appTranslator.get('menu.cancel'));
+
         const {modal} = this._createShell(message, 'doom-menu-modal', 'doom-menu-modal-message');
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
@@ -78,7 +81,7 @@ class MenuModal {
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
 
-        MenuDom.addButton(actions, 'doom-menu-button', 'Fermer', () => {
+        MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
             this.close();
             onClose();
         });

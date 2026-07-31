@@ -24,7 +24,7 @@ class LevelListScreen extends AbstractMenuScreen {
     }
 
     _build() {
-        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, 'Niveaux');
+        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, appTranslator.get('menu.level.title'));
 
         this._addStatus(panel);
 
@@ -40,7 +40,7 @@ class LevelListScreen extends AbstractMenuScreen {
     // --- Internal ---
 
     async _loadLevels(listEl) {
-        this._setStatus('Lecture du WAD...');
+        this._setStatus(appTranslator.get('menu.level.reading'));
 
         let levels;
         try {
@@ -54,7 +54,7 @@ class LevelListScreen extends AbstractMenuScreen {
         this._clearList(listEl);
 
         if (levels.length === 0) {
-            this._addListEmpty(listEl, 'Aucun niveau trouvé dans ce WAD');
+            this._addListEmpty(listEl, appTranslator.get('menu.level.empty'));
             return;
         }
 

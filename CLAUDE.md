@@ -26,8 +26,9 @@
 
 * Une classe par fichier, nom de fichier en camelCase identique à la classe (`doomMonsterSystem.js` → `DoomMonsterSystem`), préfixé par son domaine (`Wad*`, `Doom*`, `Input*`).
 * Pas de modules ES : tout est chargé en portée globale par le bootstrap, donc un nouveau fichier doit être déclaré dans le `libBootstrap.json` concerné. Il y en a **deux**, un par arborescence, chacun avec sa propre `version` :
-  * `website/js/engine/libBootstrap.json` (version `v2.x`) — couvre `js/engine/` **et** `js/webapp/` ;
+  * `website/js/engine/libBootstrap.json` (version `v2.x`) — couvre `js/engine/` ;
   * `website/js/doom/libBootstrap.json` (version `v1.x`) — couvre `js/doom/`.
+  * Un fichier de `js/webapp/` est déclaré dans le bootstrap de la bibliothèque qui le **consomme** (aujourd'hui doom : `screenWakeLock.js`, `appDatabase.js`, `appTranslator.js`), et c'est donc cette version qu'on incrémente en le touchant. Les démos, qui n'empilent que le bootstrap engine, ne téléchargent ainsi que ce dont elles ont l'usage.
   * L'ordre de déclaration est l'ordre de chargement : un fichier doit être listé avant ceux qui l'utilisent à l'initialisation.
 * Incrémenter la `version` de **chaque** `libBootstrap.json` dont un fichier a été touché, à chaque changement. Ce n'est pas cosmétique : le service worker sert les fichiers depuis le cache tant que la version concaténée (`v2.x|v1.x`) est inchangée, donc **sans l'incrément la modification n'est pas prise en compte, même après un rechargement**.
 * Champs privés préfixés `_`, exposés par des accesseurs explicites ; les setters de configuration chaînables retournent `this`.
@@ -35,7 +36,11 @@
 * Parenthèses systématiques autour des ternaires et des comparaisons composées : `((a !== null) ? a : b)`, `((x > 0) && (y === true))`.
 * Comparaisons strictes (`===` / `!==`), `??` pour les valeurs par défaut, `null` pour l'absence de valeur.
 * Constantes en `MAJUSCULES_SNAKE`, en statique de classe ou affectées après la classe (`DoomPlayerWeapon.MS_PER_TIC = …`) ; jamais de nombre magique en ligne — les valeurs de jeu vont dans `WadConstants` ou dans un profil.
-* Code et commentaires en anglais ; seuls les textes affichés à l'utilisateur sont en français.
+* Code et commentaires en anglais.
+* **Aucun texte affiché à l'utilisateur ne doit être écrit en dur dans le code.** Tout libellé passe obligatoirement par le système de traduction : le code ne porte qu'un **code de traduction** (`appTranslator.get('menu.back')`, avec `{placeholders}` pour les textes paramétrés), et le texte lui-même vit dans le catalogue `website/js/doom/doomTranslations.js`, renseigné dans **toutes** les langues (`fr` et `en` aujourd'hui). Cela vaut aussi pour les tables déclaratives, qui portent un code (`nameCode` des réglages) et non un libellé.
+  * Le moteur (`js/engine/`) n'affiche aucun texte utilisateur et ne doit donc jamais dépendre du traducteur : un libellé vient toujours de la couche jeu.
+  * Seules exceptions, à ne pas traduire : les noms propres (la marque Spipu-Doom, les noms de WAD et de niveaux, les autonymes de langues `Français` / `English`, `BFG9000`), et les tables de données transcrites des sources d'origine, qui gardent leur nom anglais — la traduction se fait alors par code, avec repli sur ce nom.
+  * Ce qui dépend de la locale et non des mots (dates, tailles, pourcentages) se formate avec `Intl` à partir de `appTranslator.getLocale()`, jamais avec un séparateur ou une unité codés en dur.
 * Les tables de données de jeu sont déclaratives et transcrites depuis les sources d'origine, référence citée (fichier / fonction vanilla ou zscript).
 
 ## Instructions
