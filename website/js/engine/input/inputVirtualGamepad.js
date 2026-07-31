@@ -24,6 +24,12 @@
  * pressing buttons stay independent. Touches are hit-tested buttons FIRST, then
  * the two large zones: a press landing on a button never leaks to the zone
  * underneath it.
+ *
+ * Three gestures come out of those two sticks — move, aim, aim+fire — and each
+ * carries its OWN dead zone (setDeadZone), the firing one also scaling its
+ * analog output (setFireSensitivity) so the view turns slower while shooting.
+ * The mode being locked at touchstart, the gesture keeps one dead zone from
+ * start to release: no discontinuity mid-slide.
  */
 class InputVirtualGamepad {
     constructor() {
@@ -59,6 +65,16 @@ class InputVirtualGamepad {
             weaponNext: false
         };
 
+        // Dead zone per gesture (fraction of the stick travel) and output
+        // sensitivity of the firing gesture — tunable, defaults reproduce the
+        // historic single-constant behaviour.
+        this._deadZone = {
+            move: InputVirtualGamepad.DEAD_ZONE_DEFAULT,
+            aim:  InputVirtualGamepad.DEAD_ZONE_DEFAULT,
+            fire: InputVirtualGamepad.DEAD_ZONE_DEFAULT
+        };
+        this._fireSensitivity = 1;
+
         // touch identifier -> control owned by that finger
         this._touches = new Map();
 
@@ -90,6 +106,34 @@ class InputVirtualGamepad {
         if (!this._visible) {
             this._resetState();
         }
+        return this;
+    }
+
+    /**
+     * Dead zone of one gesture, as a fraction of the stick travel (0 = none).
+     * An unknown kind is ignored, like Inputs.setLookInvertY.
+     *
+     * @param {string} kind     'move' | 'aim' | 'fire'
+     * @param {number} fraction 0..1
+     */
+    setDeadZone(kind, fraction) {
+        if (this._deadZone[kind] !== undefined) {
+            this._deadZone[kind] = fraction;
+        }
+        return this;
+    }
+
+    /**
+     * Output sensitivity of the FIRING gesture: its analog value is scaled by
+     * this factor, so the view turns slower while shooting and the aim stays
+     * fine (1 = same speed as the silent aim gesture). Nothing else is
+     * affected — the knob still follows the finger, and the aim and move
+     * gestures keep their full output.
+     *
+     * @param {number} factor 0..1
+     */
+    setFireSensitivity(factor) {
+        this._fireSensitivity = factor;
         return this;
     }
 
@@ -476,7 +520,9 @@ class InputVirtualGamepad {
 
     // Deflection from the finger's OWN origin (both sticks are relative), the
     // knob follows it, and the axes are stored with the engine sign convention
-    // (joy1Y forward = up, joy2Y down = down).
+    // (joy1Y forward = up, joy2Y down = down). The firing gesture's OUTPUT is
+    // scaled by its sensitivity — the knob keeps following the finger, only the
+    // value the game reads is damped.
     _updateStick(owned, px, py, rect) {
         const radius = (rect.height * InputVirtualGamepad.STICK_RADIUS_RATIO);
         let nx = ((px - owned.ox) / radius);
@@ -490,17 +536,27 @@ class InputVirtualGamepad {
         const isMove = (owned.kind === 'move');
         this._setKnob(((isMove) ? this._moveStick : this._aimStick), nx, ny);
 
-        const out = this._applyDeadZone(nx, ny);
-        const joy = ((isMove) ? this._joy1 : this._joy2);
-        joy.x = out.x;
-        joy.y = ((isMove) ? -out.y : out.y);
+        const out   = this._applyDeadZone(nx, ny, owned);
+        const scale = ((owned.fire) ? this._fireSensitivity : 1);
+        const joy   = ((isMove) ? this._joy1 : this._joy2);
+        joy.x = out.x * scale;
+        joy.y = ((isMove) ? -out.y : out.y) * scale;
     }
 
-    // Radial dead zone with rescale: the value restarts at 0 on the dead-zone
-    // edge and still reaches 1 at full deflection.
-    _applyDeadZone(nx, ny) {
+    // Dead zone of a gesture: the firing gesture is a MODE of the aim stick
+    // (locked at touchstart), not a third stick.
+    _zoneKey(owned) {
+        if (owned.kind === 'move') {
+            return 'move';
+        }
+        return ((owned.fire) ? 'fire' : 'aim');
+    }
+
+    // Radial dead zone with rescale, taken from the gesture: the value restarts
+    // at 0 on the dead-zone edge and still reaches 1 at full deflection.
+    _applyDeadZone(nx, ny, owned) {
         const mag    = Math.min(Math.sqrt((nx * nx) + (ny * ny)), 1);
-        const scaled = Inputs.rescaleDeadZone(mag, InputVirtualGamepad.DEAD_ZONE);
+        const scaled = Inputs.rescaleDeadZone(mag, this._deadZone[this._zoneKey(owned)]);
         if (scaled === 0) {
             return {x: 0, y: 0};
         }
@@ -560,8 +616,10 @@ InputVirtualGamepad.AIM_SPLIT_MARK_WIDTH = 0.1;
 // offset from that ratio.
 InputVirtualGamepad.STICK_RADIUS_RATIO = 0.12;
 InputVirtualGamepad.KNOB_RATIO         = 0.45;
-// Dead zone as a fraction of the stick travel, shared by both sticks.
-InputVirtualGamepad.DEAD_ZONE = 0.15;
+// Default dead zone of every gesture, as a fraction of the stick travel — used
+// until the game pushes its own values (setDeadZone), so a page with no
+// settings layer keeps the historic feel.
+InputVirtualGamepad.DEAD_ZONE_DEFAULT = 0.15;
 // Rectangular targets, hit-tested in declaration order, all four buttons the
 // same size. They clear the HUD blocks by the same 0.02 margin: the left column
 // (jump above crouch) starts below the counters block (keys / secrets / kills,

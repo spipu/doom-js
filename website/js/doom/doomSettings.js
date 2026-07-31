@@ -14,6 +14,34 @@
  * UI shows the label and steps through the list (nextListValue).
  */
 class DoomSettings {
+    /**
+     * Values of a percent-coded 'list' setting: the code is the raw percent,
+     * the label its French rendering ('7.5' → '7,5 %') — built from one source
+     * so a code can never drift from its label.
+     *
+     * @param {number[]} percents
+     * @returns {object[]} [{code, label}]
+     */
+    static percentValues(percents) {
+        return percents.map((percent) => ({
+            code:  String(percent),
+            label: String(percent).replace('.', ',') + ' %'
+        }));
+    }
+
+    // Dead zones offered for the virtual pad's gestures: fine steps at the
+    // bottom of the scale, which is where a touch stick needs them (a floating
+    // stick re-centres at every touch, there is no hardware drift to absorb).
+    static get DEAD_ZONE_VALUES() {
+        return DoomSettings.percentValues([0, 2.5, 5, 7.5, 10, 15]);
+    }
+
+    // Output sensitivities offered for the firing gesture; 100 % = the speed of
+    // the silent aim gesture.
+    static get SENSITIVITY_VALUES() {
+        return DoomSettings.percentValues([60, 70, 80, 90, 100]);
+    }
+
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
@@ -24,6 +52,13 @@ class DoomSettings {
             // Per-device look options.
             {key: 'pad.y_inverse',            name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',    name: 'Inverser l\'axe vertical',              type: 'bool', default: false},
+            // Virtual pad tuning: one dead zone per gesture (the firing gesture
+            // is the upper band of the aim stick), plus the output sensitivity
+            // of the firing gesture. Codes are raw percents (see getPercent).
+            {key: 'virtual_pad.move_dead_zone', name: 'Stick de déplacement — zone morte',    type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.aim_dead_zone',  name: 'Stick de visée — zone morte',          type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.fire_dead_zone', name: 'Stick de visée en tirant — zone morte', type: 'list', default: '7.5', values: DoomSettings.DEAD_ZONE_VALUES},
+            {key: 'virtual_pad.fire_sensitivity', name: 'Stick de visée en tirant — sensibilité', type: 'list', default: '80', values: DoomSettings.SENSITIVITY_VALUES},
             {key: 'mouse.y_inverse',          name: 'Inverser l\'axe vertical de la souris', type: 'bool', default: false},
             // Keyboard bindings ('char' = one PHYSICAL key code, captured in
             // the settings UI). action = the engine mapping slot; the
@@ -108,6 +143,14 @@ class DoomSettings {
         }
 
         return this;
+    }
+
+    /**
+     * Fraction 0..1 of a percent-coded 'list' value ('7.5' → 0.075) — the shape
+     * every percentage setting uses (see percentValues).
+     */
+    getPercent(key) {
+        return parseFloat(this.get(key)) / 100;
     }
 
     /**
@@ -199,6 +242,10 @@ class DoomSettings {
         inputs.setLookInvertY('virtualGamepad', this.getVirtualPadYInverse());
         inputs.setLookInvertY('keyboardMouse', this.getMouseYInverse());
         inputs.setKeyMapping(this.getKeyboardMapping());
+        inputs.setVirtualPadDeadZone('move', this.getVirtualPadMoveDeadZone());
+        inputs.setVirtualPadDeadZone('aim', this.getVirtualPadAimDeadZone());
+        inputs.setVirtualPadDeadZone('fire', this.getVirtualPadFireDeadZone());
+        inputs.setVirtualPadSensitivity(this.getVirtualPadFireSensitivity());
 
         return this;
     }
@@ -211,6 +258,25 @@ class DoomSettings {
 
     getVirtualPadYInverse() {
         return (this.get('virtual_pad.y_inverse') === true);
+    }
+
+    // Dead zones of the virtual pad's three gestures, as a fraction of the
+    // stick travel.
+    getVirtualPadMoveDeadZone() {
+        return this.getPercent('virtual_pad.move_dead_zone');
+    }
+
+    getVirtualPadAimDeadZone() {
+        return this.getPercent('virtual_pad.aim_dead_zone');
+    }
+
+    getVirtualPadFireDeadZone() {
+        return this.getPercent('virtual_pad.fire_dead_zone');
+    }
+
+    // Output sensitivity of the firing gesture (1 = the silent aim speed).
+    getVirtualPadFireSensitivity() {
+        return this.getPercent('virtual_pad.fire_sensitivity');
     }
 
     getMouseYInverse() {
