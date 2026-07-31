@@ -7,11 +7,17 @@
  * prefix, one prefix per input device), init() loads all the saved rows in
  * one pass at boot, set() persists a new value. The generic get() serves the
  * settings UI; the game code reads the dedicated getters (one per setting).
+ *
+ * Types: 'bool' (Oui/Non), 'char' (one physical key code, captured in the UI)
+ * and 'list' — a closed set of values the definition carries as
+ * `values: [{code, label}]`, of any length: the stored value is the code, the
+ * UI shows the label and steps through the list (nextListValue).
  */
 class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
+            {key: 'display.language',          name: 'Langue',                               type: 'list', default: 'fr', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
             {key: 'display.crosshair',         name: 'Afficher le réticule',                 type: 'bool', default: true},
             {key: 'display.distance_shading',  name: 'Assombrissement à la distance',        type: 'bool', default: true},
             {key: 'display.texture_smoothing', name: 'Lissage des textures',                 type: 'bool', default: true},
@@ -105,6 +111,36 @@ class DoomSettings {
     }
 
     /**
+     * Label of the current value of a 'list' setting — what the UI displays.
+     * A saved code missing from the list (a value dropped since) falls back to
+     * the code itself rather than showing an empty row.
+     *
+     * @param {object} def - a 'list' definition
+     * @returns {string}
+     */
+    getListLabel(def) {
+        const value = this.get(def.key);
+        const entry = def.values.find((item) => (item.code === value));
+
+        return ((entry !== undefined) ? entry.label : String(value));
+    }
+
+    /**
+     * Next value of a 'list' setting, wrapping back to the first — the step
+     * applied when the UI activates its row. An unknown current value restarts
+     * at the first entry.
+     *
+     * @param {object} def - a 'list' definition
+     * @returns {string} the new code
+     */
+    nextListValue(def) {
+        const codes = def.values.map((item) => item.code);
+        const index = codes.indexOf(this.get(def.key));
+
+        return codes[((index + 1) % codes.length)];
+    }
+
+    /**
      * Removes the given key code from every OTHER keyboard binding that
      * carries it (a key can only serve one action) — the emptied binding is
      * saved as '' (unmapped).
@@ -179,6 +215,12 @@ class DoomSettings {
 
     getMouseYInverse() {
         return (this.get('mouse.y_inverse') === true);
+    }
+
+    // Interface language code ('fr' | 'en'). Stored and editable, not consumed
+    // yet — no text is localized at this point.
+    getDisplayLanguage() {
+        return this.get('display.language');
     }
 
     getDisplayCrosshair() {

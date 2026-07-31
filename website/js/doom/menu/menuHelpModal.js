@@ -137,8 +137,8 @@ class MenuHelpModal extends MenuModal {
 
     _buildRoot() {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        this._nav.addItemIn(list, 'Contrôles', () => this._pushPage('Contrôles', () => this._buildControls()));
         this._nav.addItemIn(list, 'Affichage', () => this._pushPage('Affichage', () => this._buildDisplay()));
+        this._nav.addItemIn(list, 'Contrôles', () => this._pushPage('Contrôles', () => this._buildControls()));
         this._nav.addItemIn(list, 'Réinitialiser tous les paramétrages', () => this._confirmReset());
         this._nav.addItemIn(list, 'À propos', () => this._pushPage('À propos', () => this._buildAbout()));
         this._nav.selectFirst();
@@ -204,13 +204,18 @@ class MenuHelpModal extends MenuModal {
     }
 
     // One navigable row per setting: name on the left, current value on the
-    // right. Activating a bool flips it in place; activating a char (key
-    // binding) opens the capture page.
+    // right. Activating a bool flips it in place, a list steps to its next
+    // value (wrapping); activating a char (key binding) opens the capture page.
     _addSettingItem(listEl, def, inputs) {
         let valueEl = null;
         const item = this._nav.addItemIn(listEl, def.name, () => {
             if (def.type === 'bool') {
                 doomSettings.set(def.key, !(doomSettings.get(def.key) === true));
+                doomSettings.applyToInputs(inputs);
+                valueEl.textContent = this._settingValueText(def);
+            }
+            if (def.type === 'list') {
+                doomSettings.set(def.key, doomSettings.nextListValue(def));
                 doomSettings.applyToInputs(inputs);
                 valueEl.textContent = this._settingValueText(def);
             }
@@ -226,6 +231,9 @@ class MenuHelpModal extends MenuModal {
     _settingValueText(def) {
         if (def.type === 'bool') {
             return ((doomSettings.get(def.key) === true) ? 'Oui' : 'Non');
+        }
+        if (def.type === 'list') {
+            return doomSettings.getListLabel(def);
         }
         if (def.type === 'char') {
             return this._keyLabel(doomSettings.get(def.key));
