@@ -173,6 +173,18 @@ class WadRegistry {
         return new WadFile(stored.data).parse();
     }
 
+    /**
+     * Display title of a stored WAD: the file name without its extension.
+     * meta.name itself stays untouched — the messages and the registry
+     * lookups rely on the raw file name.
+     *
+     * @param {object} meta
+     * @returns {string}
+     */
+    static displayTitle(meta) {
+        return meta.name.replace(/\.wad$/i, '');
+    }
+
     // --- Internal ---
 
     // Group the level names into episodes: an ExMy map belongs to episode x,

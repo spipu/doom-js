@@ -52,6 +52,7 @@ class Inputs {
         this._lastJoy2Dy     = 0;
         this._lookInvertY    = {gamepad: false, virtualGamepad: false, keyboardMouse: false};
 
+        this._virtualPadSuppressed = false;
         this._selectMode();
         // gamepadconnected fires on the first button press of the pad
         // (anti-fingerprinting), gamepaddisconnected on unplug / BT sleep.
@@ -69,6 +70,10 @@ class Inputs {
     bindScreen(screen) {
         this._mouse.bindCanvas(screen.getCanvas());
         this._virtualGamepad.bindScreen(screen);
+        // A new screen always starts unsuppressed: a pause left open on the
+        // previous level must not hide the pad of the next one (singleton).
+        this._virtualPadSuppressed = false;
+        this._applyVirtualPadVisibility();
         return this;
     }
 
@@ -79,6 +84,33 @@ class Inputs {
     releaseMouse() {
         this._mouse.releaseLock();
         return this;
+    }
+
+    /**
+     * Grabs the mouse pointer lock back — the game calls it on a user gesture
+     * (resuming from the pause menu); fails silently without one.
+     */
+    grabMouse() {
+        this._mouse.requestLock();
+        return this;
+    }
+
+    /**
+     * Hides (or restores) the virtual gamepad overlay while a modal covers the
+     * game. The suppression is remembered, so a device change during the pause
+     * (gamepad unplugged) cannot bring the pad back over the modal.
+     * @param {boolean} visible
+     */
+    setVirtualPadVisible(visible) {
+        this._virtualPadSuppressed = (visible !== true);
+        this._applyVirtualPadVisibility();
+        return this;
+    }
+
+    // The pad only shows when the touch mode is the active one AND no modal
+    // asked for its suppression.
+    _applyVirtualPadVisibility() {
+        this._virtualGamepad.setVisible(!this._virtualPadSuppressed && (this.getMode() === 'virtualGamepad'));
     }
 
     /**
@@ -317,8 +349,7 @@ class Inputs {
             mode = 'gamepad';
         }
         this._mode = mode;
-        // Only the active virtualGamepad mode shows its on-screen controls
-        this._virtualGamepad.setVisible((mode === 'virtualGamepad'));
+        this._applyVirtualPadVisibility();
     }
 
     // Primary pointer, not `any-pointer`: the latter reports *possible*

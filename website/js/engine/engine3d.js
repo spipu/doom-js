@@ -71,6 +71,16 @@ class Engine3d {
         return this._deltaTime;
     }
 
+    /**
+     * Forgets the last frame timestamp: the next calculateDeltaTime returns a
+     * zero delta and the scene clock stays put — call it when resuming after
+     * a pause, so the frozen time does not leak into the first live frame.
+     */
+    resetDeltaClock() {
+        this._deltaLast = null;
+        return this;
+    }
+
     setBackground(r, g, b) {
         this.background[0] = r;
         this.background[1] = g;

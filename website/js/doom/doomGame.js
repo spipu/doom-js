@@ -24,6 +24,9 @@ class DoomGame {
         this._weaponPrevWasDown = false;
         this._running           = false;
         this._transitioning     = false;
+        this._paused            = false;
+        this._pauseDisplay      = null;
+        this._pauseModal        = null;
         this._animateCallback   = this._animate.bind(this);
 
         // Weapon firing (built per level)
@@ -562,13 +565,29 @@ class DoomGame {
             return;
         }
 
-        // Pause button (press edge): leave the level, back to the WAD's menu
+        // Pause button (press edge): toggle the pause menu over the frozen
+        // game — read every frame, paused included, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning) {
-            this._quitToMenu();
-            return;
+            if (this._paused) {
+                this._leavePause();
+            } else {
+                this._enterPause();
+            }
         }
         this._pauseWasDown = pauseDown;
+
+        // Frozen frame: no other input read (the modal owns them, and some
+        // reads are consuming), no time step — just redraw the same image (a
+        // resize would otherwise wipe the canvas) under the pause overlay.
+        // Display settings stay live: the stacked options modal can toggle them.
+        if (this._paused) {
+            this._applyDisplaySettings();
+            this._engine.displayWorld(this._world);
+            this._screen.update();
+            requestAnimationFrame(this._animateCallback);
+            return;
+        }
 
         // Cheat key (press edge): hand the player the full test kit
         const cheatDown = this._inputs.readButtonCheatFullKit();
@@ -680,7 +699,62 @@ class DoomGame {
         loader.reset();
     }
 
-    // Leave the current level (pause button) and go back to the WAD's menu.
+    // --- Pause menu ---
+
+    // Freeze the game under the pause modal: no time step runs while paused
+    // (engine clock untouched → animated textures, movers, monsters, weapons
+    // and screen flashes all hold still). The mouse goes back to the browser
+    // and the touch pad hides under the overlay.
+    _enterPause() {
+        this._paused = true;
+        this._inputs.releaseMouse().setVirtualPadVisible(false);
+
+        this._pauseDisplay = new MenuDisplay('screen').init(true);
+        this._pauseModal   = new MenuPauseModal(this._pauseDisplay)
+            .setOnResume(() => this._leavePause())
+            .setOnQuit(() => {
+                this._leavePause(false);
+                this._quitToMenu();
+            })
+            .show(() => this._pauseTitle());
+    }
+
+    // Back to the game: the delta clock restarts from zero so the paused
+    // wall-time never reaches the world, and the mouse is grabbed back — a
+    // click/Enter resume carries the user activation the lock needs; an
+    // Escape resume does not (the browser refuses it), the player re-clicks
+    // the canvas, the pre-existing recovery. Quitting the level skips the
+    // grab — the canvas is about to be destroyed.
+    _leavePause(backToGame = true) {
+        this._pauseModal.close();
+        this._pauseDisplay.destroy();
+        this._pauseModal   = null;
+        this._pauseDisplay = null;
+
+        this._paused       = false;
+        this._pauseWasDown = true;
+        this._engine.resetDeltaClock();
+        if (backToGame) {
+            this._inputs.setVirtualPadVisible(true);
+            if (this._inputs.getMode() === 'keyboardMouse') {
+                this._inputs.grabMouse();
+            }
+        }
+    }
+
+    // "{wad} — Episode {n}" — the episode digit comes from the level name
+    // (a MAPxx game is its single episode 1); without stored meta (direct
+    // test shortcut) the level name stands in for the WAD.
+    _pauseTitle() {
+        const episodeMatch = /^E(\d)M/i.exec(this._levelName);
+        const episode      = ((episodeMatch !== null) ? Number(episodeMatch[1]) : 1);
+        const wadTitle     = ((this._wadMeta !== null) ? WadRegistry.displayTitle(this._wadMeta) : this._levelName);
+
+        return wadTitle + ' — ' + appTranslator.get('menu.episode.item', {episode: episode});
+    }
+
+    // Leave the current level (pause menu quit entry) and go back to the
+    // WAD's menu.
     _quitToMenu() {
         this._teardownLevel();
         this._backToMenu();

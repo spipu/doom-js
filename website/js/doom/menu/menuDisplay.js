@@ -19,9 +19,14 @@ class MenuDisplay {
         this._resizeProxy  = this._resizeWait.bind(this);
     }
 
-    init() {
+    /**
+     * @param {boolean} overGame true = transparent display pinned over the
+     *                           running game (pause menu), instead of the
+     *                           opaque standalone menu background
+     */
+    init(overGame = false) {
         this._container = document.createElement('div');
-        this._container.className = 'doom-menu-display';
+        this._container.className = 'doom-menu-display' + ((overGame) ? ' doom-menu-display-over-game' : '');
         this._screen.appendChild(this._container);
 
         this.resize();
