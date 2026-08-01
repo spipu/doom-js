@@ -231,12 +231,4 @@ class AbstractMenuScreen {
 
         return bytes + ' ' + appTranslator.get('unit.byte');
     }
-
-    _formatDate(timestamp) {
-        const date   = new Date(timestamp);
-        const locale = appTranslator.getLocale();
-
-        return date.toLocaleDateString(locale)
-            + ' ' + date.toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'});
-    }
 }

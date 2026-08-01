@@ -25,6 +25,11 @@ class MenuDisplay {
      *                           opaque standalone menu background
      */
     init(overGame = false) {
+        // Idempotent: a re-boot on an already-initialized display (loading a
+        // save from the WAD menu) must not stack a second container — the
+        // orphan would keep its letterboxed size and push the new menu aside.
+        this.destroy();
+
         this._container = document.createElement('div');
         this._container.className = 'doom-menu-display' + ((overGame) ? ' doom-menu-display-over-game' : '');
         this._screen.appendChild(this._container);

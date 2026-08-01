@@ -13,6 +13,7 @@ class DoomGame {
         this._spawnOverride     = null;
         this._skill             = 3;
         this._carriedState      = null;
+        this._restoreSnapshot   = null;
         this._secretsFound      = 0;
         this._secretsTotal      = 0;
         this._killsCount        = 0;
@@ -382,6 +383,46 @@ class DoomGame {
         return this._killsTotal;
     }
 
+    // --- Save / load ---
+
+    /**
+     * Arms the next startFromWad to restore a saved game on top of the rebuilt
+     * level (see DoomGameSnapshot). Consumed by _init.
+     */
+    setRestoreSnapshot(snapshot) {
+        this._restoreSnapshot = snapshot;
+        return this;
+    }
+
+    /**
+     * Snapshot of the running level (save game) — captured while the game is
+     * frozen under the pause menu, so the state is coherent.
+     */
+    captureSnapshot() {
+        return new DoomGameSnapshot().capture(this._snapshotContext());
+    }
+
+    // Explicit dependencies of the snapshot service — it never reaches into
+    // the game's privates.
+    _snapshotContext() {
+        return {
+            wadId:        ((this._wadMeta !== null) ? this._wadMeta.id : null),
+            levelCode:    this._levelName,
+            skill:        this._skill,
+            user:         this._world.getUser(),
+            collision:    this._world.getCollision(),
+            rng:          this._rng,
+            monsters:     this._monsters,
+            gunTriggers:  this._gunTriggers,
+            secretsFound: this._secretsFound,
+            killsCount:   this._killsCount,
+            setCounters:  (secretsFound, killsCount) => {
+                this._secretsFound = secretsFound;
+                this._killsCount   = killsCount;
+            },
+        };
+    }
+
     // spawnOverride is a debug helper: when set ({position, yaw, pitch}) the
     // player is forced to that location after the world is built, instead of the
     // WAD spawn (see _applySpawnOverride).
@@ -481,7 +522,11 @@ class DoomGame {
         loader.clearCallback();
 
         const user = this._world.getUser();
-        if (this._carriedState === null) {
+        if (this._restoreSnapshot !== null) {
+            // Saved-game restore: the full saved equipment comes back, keys
+            // and timed effects included — no per-level reset.
+            user.importState(this._restoreSnapshot.player.state);
+        } else if (this._carriedState === null) {
             this._setupLoadout(user);
         } else {
             // Carry equipment over, then drop the level-scoped possessions
@@ -550,6 +595,14 @@ class DoomGame {
             this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
             this._playerWeapon.setNoiseCallback(() => this._monsters.noiseAlert());
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+        }
+
+        // Saved-game restore, once everything is built and wired but before
+        // the first frame: patch the dynamic state over the fresh level.
+        if (this._restoreSnapshot !== null) {
+            new DoomGameSnapshot().apply(this._snapshotContext(), this._restoreSnapshot);
+            this._restoreSnapshot = null;
+            this._engine.resetDeltaClock();
         }
 
         // Require a release before the first press (a button held during the
@@ -716,7 +769,32 @@ class DoomGame {
                 this._leavePause(false);
                 this._quitToMenu();
             })
+            .setSaveContext(this._saveContext())
             .show(() => this._pauseTitle());
+    }
+
+    // Save/load wiring of the pause menu — the frozen game captures a coherent
+    // snapshot. Null without stored WAD metadata (direct test shortcut): saves
+    // are partitioned by WAD, there is nothing to key them on.
+    _saveContext() {
+        if (this._wadMeta === null) {
+            return null;
+        }
+        return {
+            wadMeta:   this._wadMeta,
+            buildMeta: (slot) => ({
+                id:            DoomSaveStore.saveId(this._wadMeta.id, slot),
+                wadId:         this._wadMeta.id,
+                slot:          slot,
+                levelCode:     this._levelName,
+                skill:         this._skill,
+                savedAt:       Date.now(),
+                formatVersion: DoomSaveStore.FORMAT_VERSION,
+            }),
+            capture:   () => this.captureSnapshot(),
+            canSave:   () => !this._world.getUser().isDead(),
+            onLoad:    (saveMeta) => this._loadFromSave(saveMeta),
+        };
     }
 
     // Back to the game: the delta clock restarts from zero so the paused
@@ -758,6 +836,28 @@ class DoomGame {
     _quitToMenu() {
         this._teardownLevel();
         this._backToMenu();
+    }
+
+    // Load a saved game from the pause menu: the running level only goes down
+    // once the save proved readable and compatible — a broken slot must not
+    // cost the current (unsaved) game.
+    async _loadFromSave(saveMeta) {
+        let snapshot = null;
+        try {
+            snapshot = (await doomSaveStore.read(saveMeta.wadId, saveMeta.slot)).snapshot;
+        } catch (error) {
+            console.error(error);
+            new MenuModal(this._pauseDisplay).showError(appTranslator.get('menu.save.loadError'), error.message, () => {});
+            return;
+        }
+        if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
+            new MenuModal(this._pauseDisplay).info(appTranslator.get('menu.save.incompatible'));
+            return;
+        }
+
+        this._leavePause(false);
+        this._teardownLevel();
+        new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
     }
 
     // Back to the played WAD's menu (pause, end of game, failed chain

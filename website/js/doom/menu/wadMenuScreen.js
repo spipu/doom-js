@@ -30,6 +30,9 @@ class WadMenuScreen extends AbstractMenuScreen {
         this._addListItem(listEl, appTranslator.get('menu.game.newGame'), () => {
             this._navigator.openEpisodes(this._wadMeta);
         });
+        this._addListItem(listEl, appTranslator.get('menu.game.load'), () => {
+            this._openLoadGame();
+        });
         this._addListItem(listEl, appTranslator.get('menu.game.options'), () => {
             this._openOptions();
         });
@@ -51,6 +54,19 @@ class WadMenuScreen extends AbstractMenuScreen {
     // units…) must reach this screen too, which stayed untouched underneath it.
     _openOptions() {
         new MenuOptionsModal(this._display).setOnClose(() => this.show()).show();
+    }
+
+    // Save slots of this WAD in load mode; picking one launches its level
+    // with the saved state restored on top.
+    _openLoadGame() {
+        new MenuSaveSlotsModal(this._display)
+            .setMode(MenuSaveSlotsModal.MODE_LOAD)
+            .setWad(this._wadMeta)
+            .setOnClose(() => this.show())
+            .setOnLoad((saveMeta) => {
+                this._navigator.startFromSave(this._wadMeta, saveMeta);
+            })
+            .show();
     }
 
     _openAbout() {

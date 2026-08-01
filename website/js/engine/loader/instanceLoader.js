@@ -33,7 +33,7 @@ class InstanceLoader extends AbstractLoader {
             return;
         }
         const code = entity.getCode();
-        if ((code !== undefined) && (this._codeRegistry[code] !== undefined)) {
+        if ((code !== null) && (this._codeRegistry[code] !== undefined)) {
             delete this._codeRegistry[code];
         }
         delete this._entities[id];
@@ -45,7 +45,9 @@ class InstanceLoader extends AbstractLoader {
 
     // data.object: url string (loaded via Object3dLoader) or number (already loaded object id)
     _populateFromData(entity, data) {
-        entity._code             = data.code;
+        // Null, never undefined: runtime spawns (effects, projectiles, decals)
+        // omit the key, and every consumer tests the code against null.
+        entity._code             = (data.code ?? null);
         entity._objectId         = ((typeof data.object === 'number') ? data.object : loader.objects().load(data.object));
         entity._position         = data.position;
         entity._rotation         = data.rotation;
@@ -67,7 +69,9 @@ class InstanceLoader extends AbstractLoader {
         entity._animMaxTime      = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[entity._animKeyframes.length - 1].t : 0);
         entity._animTime         = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[0].t : 0);
 
-        this._codeRegistry[entity.getCode()] = entity.getId();
+        if (entity._code !== null) {
+            this._codeRegistry[entity._code] = entity.getId();
+        }
     }
 }
 

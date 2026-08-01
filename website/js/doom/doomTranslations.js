@@ -41,8 +41,27 @@ class DoomTranslations {
 
             // WAD menu (one WAD selected)
             'menu.game.newGame':       {fr: 'Nouvelle partie',                       en: 'New game'},
+            'menu.game.load':          {fr: 'Charger une partie',                    en: 'Load game'},
             'menu.game.options':       {fr: 'Options',                               en: 'Options'},
             'menu.game.quit':          {fr: 'Quitter {wad}',                         en: 'Quit {wad}'},
+
+            // Save slots modal (load from the WAD menu or the pause menu,
+            // save from the pause menu)
+            'menu.save.titleLoad':        {fr: 'Charger une partie',                 en: 'Load game'},
+            'menu.save.titleSave':        {fr: 'Sauvegarder la partie',              en: 'Save game'},
+            'menu.save.slot':             {fr: 'Slot {n}',                           en: 'Slot {n}'},
+            'menu.save.empty':            {fr: 'Vide',                               en: 'Empty'},
+            'menu.save.delete':           {fr: 'Supprimer',                          en: 'Delete'},
+            'menu.save.deleteConfirm':    {fr: 'Supprimer la sauvegarde du slot {n} ?',
+                                           en: 'Delete the save in slot {n}?'},
+            'menu.save.overwriteConfirm': {fr: 'Remplacer la sauvegarde du slot {n} ?',
+                                           en: 'Replace the save in slot {n}?'},
+            'menu.save.deadInfo':         {fr: 'Impossible de sauvegarder quand on est mort',
+                                           en: 'Cannot save while dead'},
+            'menu.save.incompatible':     {fr: 'Sauvegarde incompatible avec cette version du jeu',
+                                           en: 'Save incompatible with this game version'},
+            'menu.save.loadError':        {fr: 'Impossible de charger la sauvegarde',
+                                           en: 'Unable to load the save'},
 
             // Episode selection (New game). The episode NAMES are proper
             // nouns carried by the game profiles, never translated — like the
@@ -103,6 +122,7 @@ class DoomTranslations {
 
             // --- Game (pause menu + level chaining modals) ---
             'game.pause.resume':       {fr: 'Reprendre',                             en: 'Resume'},
+            'game.pause.save':         {fr: 'Sauvegarder la partie',                 en: 'Save game'},
             'game.pause.quit':         {fr: 'Quitter le niveau',                     en: 'Leave the level'},
             'game.level.loading':      {fr: 'Chargement du niveau {level}',          en: 'Loading level {level}'},
             'game.level.finished':     {fr: 'Niveau {level} terminé !',              en: 'Level {level} finished!'},

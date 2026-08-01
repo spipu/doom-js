@@ -11,6 +11,10 @@ class Interaction extends AbstractLoadedEntity {
         this.setLoaded();
     }
 
+    getInteraction() {
+        return this._interaction;
+    }
+
     triggered(instance) {
         this._interaction.triggered(instance);
     }

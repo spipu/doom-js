@@ -14,10 +14,24 @@ class DoomSecretInteraction extends AbstractInteraction {
         super();
         this._zones = zones;
         this._game  = game;
+        // Deterministic identity of each zone (the build order), so a save can
+        // record which secrets are still pending across a level rebuild.
+        this._zones.forEach((zone, index) => {
+            zone.buildIndex = index;
+        });
     }
 
     get code() {
         return 'secretSectors';
+    }
+
+    exportState() {
+        return {pending: this._zones.map((zone) => zone.buildIndex)};
+    }
+
+    importState(state) {
+        const pending = new Set(state.pending);
+        this._zones = this._zones.filter((zone) => pending.has(zone.buildIndex));
     }
 
     triggered(instance) {

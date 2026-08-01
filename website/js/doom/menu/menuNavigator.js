@@ -68,6 +68,7 @@ class MenuNavigator {
 
         this._registry.init()
             .then(() => doomSettings.init(this._storage.getDatabase()))
+            .then(() => doomSaveStore.init(this._storage.getDatabase()))
             .then(() => doomSettings.applyToTranslator(appTranslator))
             .then(onReady)
             .catch(() => {
@@ -127,6 +128,19 @@ class MenuNavigator {
         this._launchFromWad(meta, levelName);
     }
 
+    /**
+     * Load a saved game slot: rebuild its level deterministically, then let
+     * the game restore the snapshot on top (DoomGameSnapshot). Reached from
+     * the WAD menu and from the pause menu (whose level is torn down first).
+     * @param {object} meta     WAD metadata
+     * @param {object} saveMeta save slot metadata {wadId, slot, levelCode, …}
+     */
+    startFromSave(meta, saveMeta) {
+        return this._boot(() => {
+            this._launchFromSave(meta, saveMeta);
+        });
+    }
+
     // --- Internal ---
 
     _switchTo(screen) {
@@ -141,6 +155,38 @@ class MenuNavigator {
         const modal = new MenuModal(this._display)
             .showLoading(appTranslator.get('menu.level.loading', {level: levelName, wad: meta.name}));
         await this._launchGame(meta, levelName, spawnOverride, modal, false);
+    }
+
+    // Saved-game counterpart of _launchGame: reads the snapshot, guards its
+    // format version, then launches the saved level with the restore armed.
+    // The spawn override places the player safely (the exact saved Y is
+    // re-applied after the movers are restored); any failure lands on the
+    // same error modal as a normal launch.
+    async _launchFromSave(meta, saveMeta) {
+        const modal = new MenuModal(this._display)
+            .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: meta.name}));
+        try {
+            const {snapshot} = await doomSaveStore.read(saveMeta.wadId, saveMeta.slot);
+            if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
+                modal.showError(appTranslator.get('menu.save.incompatible'), null, () => {
+                    this.openWadMenu(meta);
+                });
+                return;
+            }
+            this._selectedDifficulty = snapshot.skill;
+
+            const wadFile = await this._registry.getWadFile(meta.id);
+            const game = new DoomGame().setRestoreSnapshot(snapshot);
+            await game.startFromWad(wadFile, snapshot.levelCode, meta, {
+                position: [snapshot.player.x, snapshot.player.y + DoomGameSnapshot.SPAWN_Y_MARGIN, snapshot.player.z],
+                yaw:      snapshot.player.yaw,
+                pitch:    snapshot.player.pitch
+            }, snapshot.skill);
+            modal.close();
+            this._closeMenus();
+        } catch (error) {
+            this._showBuildError(error, modal, meta);
+        }
     }
 
     // Shared tail of both launch paths, with the same failure modal on any

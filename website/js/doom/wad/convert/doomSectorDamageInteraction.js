@@ -32,6 +32,17 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         return 'sectorDamage';
     }
 
+    // The zone mutations of setSectorSpecial ("+change" floors) are NOT
+    // exported: they are replayed by the instances' lifecycle hooks when
+    // their animation state is restored.
+    exportState() {
+        return {exited: this._exited};
+    }
+
+    importState(state) {
+        this._exited = (state.exited === true);
+    }
+
     triggered(instance) {
     }
 

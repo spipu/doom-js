@@ -47,6 +47,20 @@ class DoomGunTriggers {
         }
     }
 
+    /**
+     * Burnt-out flags of the registered lines, in their (deterministic) build
+     * order — the only mutable state of the system.
+     */
+    exportState() {
+        return this._lines.map((line) => line.used);
+    }
+
+    importState(usedFlags) {
+        for (let i = 0; i < this._lines.length && i < usedFlags.length; i++) {
+            this._lines[i].used = usedFlags[i];
+        }
+    }
+
     // --- Internal ---
 
     // Target codes are guaranteed by the builder (filtered on the built-code

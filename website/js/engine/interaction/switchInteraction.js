@@ -72,6 +72,20 @@ class SwitchInteraction extends AbstractInteraction {
         }
     }
 
+    exportState() {
+        return {
+            state:   this._state,
+            onTimer: this._onTimer,
+            done:    this._done,
+        };
+    }
+
+    importState(state) {
+        this._state   = (state.state === true);
+        this._onTimer = state.onTimer;
+        this._done    = (state.done === true);
+    }
+
     _triggerOn(instance) {
         console.log('[SwitchInteraction] ' + instance.getCode() + ' -> ON');
     }

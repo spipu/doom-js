@@ -5,13 +5,17 @@
  *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}}
  *  - wadData: {id, data: ArrayBuffer}
  *  - settings: {key, value} — persisted game settings (read by DoomSettings)
+ *  - saveMeta: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)
+ *  - saveData: {id, snapshot} — full game snapshot of a slot, only read on load
  */
 class WadStorage {
     constructor() {
-        this._database = new AppDatabase('spipudoom', 2, [
+        this._database = new AppDatabase('spipudoom', 3, [
             {name: 'wadMeta', keyPath: 'id'},
             {name: 'wadData', keyPath: 'id'},
-            {name: 'settings', keyPath: 'key'}
+            {name: 'settings', keyPath: 'key'},
+            {name: 'saveMeta', keyPath: 'id'},
+            {name: 'saveData', keyPath: 'id'}
         ]);
     }
 
@@ -79,14 +83,21 @@ class WadStorage {
     }
 
     /**
-     * Delete metadata + binary content in a single transaction.
+     * Delete metadata + binary content + every save slot of the WAD, in a
+     * single transaction (the WAD and its saves disappear together or not at all).
      *
      * @param {string} id
      */
     async deleteWad(id) {
+        const saveIds = (await this._database.getAll('saveMeta'))
+            .filter((meta) => (meta.wadId === id))
+            .map((meta) => meta.id);
+
         await this._database.deleteMulti([
             {storeName: 'wadMeta', key: id},
-            {storeName: 'wadData', key: id}
+            {storeName: 'wadData', key: id},
+            ...saveIds.map((saveId) => ({storeName: 'saveMeta', key: saveId})),
+            ...saveIds.map((saveId) => ({storeName: 'saveData', key: saveId}))
         ]);
     }
 }

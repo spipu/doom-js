@@ -31,6 +31,9 @@ class DoomMonsterSystem {
         this._respawnQueue  = [];
         this._zoneCache     = {};
         this._clockMs       = 0;
+        // Dropped pickups spawned at runtime ({key, inst}): they carry no
+        // instance code, so a save must re-spawn them explicitly.
+        this._droppedRecords = [];
     }
 
     /**
@@ -181,6 +184,149 @@ class DoomMonsterSystem {
 
     getMonsters() {
         return this._monsters;
+    }
+
+    /**
+     * Plain-data snapshot of every record (live and corpses) plus the dropped
+     * pickups still on the ground, restorable by importState after a
+     * deterministic level rebuild. The environmental channel and the render
+     * smoothing are transient and not exported.
+     */
+    exportState() {
+        const monsters = this._monsters.map((m) => this._exportRecord(m));
+        const drops    = [];
+        for (const drop of this._droppedRecords) {
+            if (loader.instances().get(drop.inst.getId()) === undefined) {
+                continue;   // picked up since it fell
+            }
+            const pos  = drop.inst.getTransform().position;
+            const ride = drop.inst.getRideOn();
+            drops.push({
+                key:        drop.key,
+                position:   [...pos],
+                rideOnCode: ((ride !== null) ? ride.getCode() : null),
+            });
+        }
+
+        return {
+            monsters: monsters,
+            drops:    drops,
+            // Consumed walk/teleport lines of the monsters (deterministic
+            // build order) — owned here, where they are crossed.
+            lines:    (this._levelData.monsterLines ?? []).map((line) => line.used),
+        };
+    }
+
+    /**
+     * Counterpart of exportState, applied on the freshly rebuilt records:
+     * a build monster absent from the save is despawned (lost soul faded,
+     * exploded barrel), a present one is patched in place, and the nightmare
+     * respawns ('_r' codes) are recreated from their base record's def/frames.
+     */
+    importState(data) {
+        const rebuilt = new Map(this._monsters.map((m) => [m.code, m]));
+        const saved   = new Map(data.monsters.map((rec) => [rec.code, rec]));
+
+        const kept = [];
+        for (const m of this._monsters) {
+            const rec = saved.get(m.code);
+            if (rec === undefined) {
+                this._despawn(m);
+                continue;
+            }
+            this._restoreRecord(m, rec);
+            kept.push(m);
+        }
+        this._monsters = kept;
+
+        for (const rec of data.monsters) {
+            if (rebuilt.has(rec.code)) {
+                continue;
+            }
+            const proto = rebuilt.get(rec.code.replace(/(_r)+$/, ''));
+            if (proto !== undefined) {
+                this._restoreRecord(this._spawnFreshBody(proto, rec.code, rec.position), rec);
+            }
+        }
+
+        this._droppedRecords = [];
+        for (const drop of data.drops) {
+            const ride = ((drop.rideOnCode !== null) ? loader.instances().getByCode(drop.rideOnCode) : null);
+            this._spawnDropAt(drop.key, drop.position[0], drop.position[1], drop.position[2], ride);
+        }
+
+        const lines = (this._levelData.monsterLines ?? []);
+        for (let i = 0; i < lines.length && i < data.lines.length; i++) {
+            lines[i].used = data.lines[i];
+        }
+    }
+
+    _exportRecord(m) {
+        const pos = m.inst.getTransform().position;
+
+        return {
+            code:           m.code,
+            position:       [...pos],
+            facing:         m.facing,
+            si:             m.si,
+            stateKey:       m.stateKey,
+            ticsLeft:       m.ticsLeft,
+            health:         m.health,
+            dead:           m.dead,
+            velX:           m.velX,
+            velY:           m.velY,
+            velZ:           m.velZ,
+            targetIsPlayer: (m.target !== null),
+            threshold:      m.threshold,
+            reactiontime:   m.reactiontime,
+            movedir:        m.movedir,
+            movecount:      m.movecount,
+            special1:       m.special1,
+            inFloat:        m.inFloat,
+            respawnClock:   m.respawnClock,
+            noKillCount:    m.noKillCount,
+            hasBox:         ((this._collision !== null) && this._collision.hasBoxFor(m.inst)),
+        };
+    }
+
+    // The state key and tics are written DIRECTLY — enterState would replay
+    // the entry action (A_Explode, A_NoBlocking, A_Look) on a state the saved
+    // game already went through.
+    _restoreRecord(m, rec) {
+        const pos = m.inst.getTransform().position;
+        m.inst.translate(rec.position[0] - pos[0], rec.position[1] - pos[1], rec.position[2] - pos[2]);
+        m.facing       = rec.facing;
+        m.si           = rec.si;
+        m.stateKey     = rec.stateKey;
+        m.ticsLeft     = rec.ticsLeft;
+        m.health       = rec.health;
+        m.dead         = rec.dead;
+        m.velX         = rec.velX;
+        m.velY         = rec.velY;
+        m.velZ         = rec.velZ;
+        m.target       = ((rec.targetIsPlayer === true) ? this._user : null);
+        m.threshold    = rec.threshold;
+        m.reactiontime = rec.reactiontime;
+        m.movedir      = rec.movedir;
+        m.movecount    = rec.movecount;
+        m.special1     = rec.special1;
+        m.inFloat      = rec.inFloat;
+        m.respawnClock = rec.respawnClock;
+        m.noKillCount  = rec.noKillCount;
+        m.blend        = null;
+        m.snapRender   = false;
+        if (this._collision !== null) {
+            if (rec.hasBox === true) {
+                this._collision.syncBoxFor(m.inst);
+            } else {
+                this._collision.removeBoxFor(m.inst);
+            }
+        }
+        this._resolveRide(m);
+        this._refreshView(m);
+        this._applyRenderLight(m);
+
+        return m;
     }
 
     update(dt) {
@@ -395,39 +541,47 @@ class DoomMonsterSystem {
     // reactiontime 18 (vanilla), and — user decision — its future death no
     // longer feeds the ☠ counter (x stays ≤ y despite the endless respawns).
     _spawnRespawned(m) {
-        const sp     = m.spawn.position;
-        const idle0  = m.def.getState('spawn0');
+        const fresh = this._spawnFreshBody(m, m.code + '_r', m.spawn.position);
+        fresh.reactiontime = DoomMonsterSystem.RESPAWN_REACTION;
+        this._resolveRide(fresh);
+        this._applyRenderLight(fresh);
+    }
+
+    // Fresh runtime body sharing an existing record's def/frames/spawn — the
+    // nightmare respawn and the save restore of a respawned monster. Runtime
+    // bodies never feed the ☠ counter (their build original already did).
+    _spawnFreshBody(proto, code, position) {
+        const idle0  = proto.def.getState('spawn0');
         const instId = loader.instances().spawnFromData(null, {
             code:            null,
-            object:          m.frames[DoomMonsterDef.viewKey(idle0.getSprite(), idle0.getFrame())][0],
-            position:        [sp[0], sp[1], sp[2]],
+            object:          proto.frames[DoomMonsterDef.viewKey(idle0.getSprite(), idle0.getFrame())][0],
+            position:        [position[0], position[1], position[2]],
             rotation:        [0, 0, 0],
             trigger:         'none',
             loop:            false,
             onlyOnce:        false,
             collisionShape:  'box',
-            collisionRadius: m.inst.getCollisionRadius(),
+            collisionRadius: proto.inst.getCollisionRadius(),
             keyframes:       []
         });
         const inst = loader.instances().get(instId);
         this.add({
-            code:   m.code + '_r',
+            code:   code,
             inst:   inst,
-            def:    m.def,
-            facing: m.spawn.facing,
-            flags:  m.spawn.flags,
-            frames: m.frames,
-            si:     m.spawn.si,
-            spawn:  m.spawn
+            def:    proto.def,
+            facing: proto.spawn.facing,
+            flags:  proto.spawn.flags,
+            frames: proto.frames,
+            si:     proto.spawn.si,
+            spawn:  proto.spawn
         });
         const fresh = this._monsters[this._monsters.length - 1];
-        fresh.reactiontime = DoomMonsterSystem.RESPAWN_REACTION;
-        fresh.noKillCount  = true;
+        fresh.noKillCount = true;
         if (this._collision !== null) {
             this._collision.addInstance(inst);
         }
-        this._resolveRide(fresh);
-        this._applyRenderLight(fresh);
+
+        return fresh;
     }
 
     // Switch a monster to a new state and run its entry action — the game
@@ -621,32 +775,42 @@ class DoomMonsterSystem {
         }
         const pos = m.inst.getTransform().position;
         for (const d of m.def.getDropItems()) {
-            const tpl = this._drops[DoomMonsterSystem.dropKey(d)];
-            if (tpl === undefined) {
+            const key = DoomMonsterSystem.dropKey(d);
+            if (this._drops[key] === undefined) {
                 continue;
             }
             if (!this._damage.rollChance(d.chance ?? 256)) {
                 continue;
             }
-            const dropId = loader.instances().spawnFromData(null, {
-                code:              null,
-                object:            tpl.objId,
-                position:          [pos[0], pos[1], pos[2]],
-                rotation:          [0, 0, 0],
-                trigger:           'proximity',
-                loop:              false,
-                onlyOnce:          false,
-                collisionShape:    'none',
-                interactionRadius: WadConstants.PICKUP_RADIUS,
-                interaction:       tpl.code,
-                keyframes:         []
-            });
             // A drop released on a moving floor rides it, like its owner did
             // (a clip left on a lift goes up and down with it).
-            if (m.inst.getRideOn() !== null) {
-                loader.instances().get(dropId).setRideOn(m.inst.getRideOn());
-            }
+            this._spawnDropAt(key, pos[0], pos[1], pos[2], m.inst.getRideOn());
         }
+    }
+
+    _spawnDropAt(key, x, y, z, rideInstance) {
+        const tpl = this._drops[key];
+        if (tpl === undefined) {
+            return;
+        }
+        const dropId = loader.instances().spawnFromData(null, {
+            code:              null,
+            object:            tpl.objId,
+            position:          [x, y, z],
+            rotation:          [0, 0, 0],
+            trigger:           'proximity',
+            loop:              false,
+            onlyOnce:          false,
+            collisionShape:    'none',
+            interactionRadius: WadConstants.PICKUP_RADIUS,
+            interaction:       tpl.code,
+            keyframes:         []
+        });
+        const inst = loader.instances().get(dropId);
+        if (rideInstance !== null) {
+            inst.setRideOn(rideInstance);
+        }
+        this._droppedRecords.push({key: key, inst: inst});
     }
 
     // Bodies in motion (P_XYMovement / P_ZMovement at 35 Hz): the blast thrust
