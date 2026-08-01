@@ -232,13 +232,18 @@ class Inputs {
     }
 
     readButtonPause() {
-        const pad = this._pad();
+        // Escape on the keyboard side, not remappable: the raw key when the
+        // pointer is not locked, the lock loss (the browser's own Escape
+        // path) when it is. Both are read even with a pad active — Escape
+        // must pause for a hybrid player, and the consumable lock-loss flag
+        // would otherwise go stale and fire a phantom toggle later.
+        const mousePause = this._mouse.consumePauseRequest();
+        const keyPause   = this._keyboard.readKey('Escape');
+        const pad        = this._pad();
         if (pad !== null) {
-            return pad.readButtonPause();
+            return (pad.readButtonPause() || keyPause || mousePause);
         }
-        // Escape only, not remappable: the raw key when the pointer is not
-        // locked, the lock loss (the browser's own Escape path) when it is.
-        return (this._keyboard.readKey('Escape') || this._mouse.consumePauseRequest());
+        return (keyPause || mousePause);
     }
 
     // Keyboard-only modifier: the analog sticks already give slow walking

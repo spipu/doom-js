@@ -101,12 +101,16 @@ class MenuOptionsModal extends MenuModal {
     }
 
     close() {
+        // _createShell() closes a not-yet-opened modal before building the
+        // shell: the owner's onClose only makes sense after a real display.
+        const wasOpen = (this._overlay !== null);
+
         this._stopKeyCapture();
         this._clearPageTimer();
         this._nav.detach().clear();
         super.close();
 
-        if (this._onClose !== null) {
+        if (wasOpen && (this._onClose !== null)) {
             this._onClose();
         }
 
