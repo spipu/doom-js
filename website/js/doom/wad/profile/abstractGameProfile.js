@@ -80,6 +80,19 @@ class AbstractGameProfile {
     }
 
     /**
+     * Display names of the game's episodes, keyed by the episode's first map
+     * slot (uppercase). The names are proper nouns, never translated — like
+     * the level names. An episode present in the WAD but absent from this
+     * table only shows its number ("Episode 6").
+     *
+     * @returns {object} first level name → episode name
+     */
+    episodeNames() {
+        this._generateException('episodeNames must be implemented');
+        return {};
+    }
+
+    /**
      * RGB tint of the BFG lightning decal (the WAD art shades differ).
      *
      * @returns {number[]}

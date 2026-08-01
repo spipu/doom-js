@@ -39,18 +39,27 @@ class DoomTranslations {
             'menu.wad.deleteConfirm':  {fr: 'Supprimer {wad} ?',                     en: 'Delete {wad}?'},
             'menu.wad.loading':        {fr: 'Chargement de {wad}',                   en: 'Loading {wad}'},
 
+            // WAD menu (one WAD selected)
+            'menu.game.newGame':       {fr: 'Nouvelle partie',                       en: 'New game'},
+            'menu.game.options':       {fr: 'Options',                               en: 'Options'},
+            'menu.game.quit':          {fr: 'Quitter {wad}',                         en: 'Quit {wad}'},
+
+            // Episode selection (New game). The episode NAMES are proper
+            // nouns carried by the game profiles, never translated — like the
+            // level names.
+            'menu.episode.title':      {fr: 'Épisode',                               en: 'Episode'},
+            'menu.episode.item':       {fr: 'Épisode {episode}',                     en: 'Episode {episode}'},
+            'menu.episode.reading':    {fr: 'Lecture du WAD...',                     en: 'Reading the WAD...'},
+            'menu.episode.empty':      {fr: 'Aucun niveau trouvé dans ce WAD',       en: 'No level found in this WAD'},
+
             // Difficulty
             'menu.difficulty.title':   {fr: 'Difficulté',                            en: 'Difficulty'},
             'menu.difficulty.skill':   {fr: 'Niveau {skill}',                        en: 'Level {skill}'},
 
-            // Level list
-            'menu.level.title':        {fr: 'Niveaux',                               en: 'Levels'},
-            'menu.level.reading':      {fr: 'Lecture du WAD...',                     en: 'Reading the WAD...'},
-            'menu.level.empty':        {fr: 'Aucun niveau trouvé dans ce WAD',       en: 'No level found in this WAD'},
+            // Level launch modal
             'menu.level.loading':      {fr: 'Chargement du niveau {level} de {wad}', en: 'Loading level {level} of {wad}'},
 
-            // --- Help modal ---
-            'help.title':              {fr: 'Aide',                                  en: 'Help'},
+            // --- Options modal (also serves the About page of the ? button) ---
             'help.display':            {fr: 'Affichage',                             en: 'Display'},
             'help.controls':           {fr: 'Contrôles',                             en: 'Controls'},
             'help.reset':              {fr: 'Réinitialiser tous les paramétrages',   en: 'Reset every setting'},
@@ -170,7 +179,6 @@ class DoomTranslations {
             'settings.keyboard.weaponPrev':       {fr: 'Arme précédente',              en: 'Previous weapon'},
             'settings.keyboard.weaponNext':       {fr: 'Arme suivante',                en: 'Next weapon'},
             'settings.keyboard.walkSlow':         {fr: 'Marcher lentement',            en: 'Walk slowly'},
-            'settings.keyboard.pause':            {fr: 'Pause / quitter le niveau',    en: 'Pause / leave the level'},
             'settings.keyboard.toggleHud':        {fr: 'Afficher le HUD de debug',     en: 'Show the debug HUD'},
             'settings.keyboard.lookDown':         {fr: 'Fausse souris - Y+',           en: 'Fake mouse - Y+'},
             'settings.keyboard.lookUp':           {fr: 'Fausse souris - Y-',           en: 'Fake mouse - Y-'},

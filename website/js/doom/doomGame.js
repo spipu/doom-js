@@ -562,10 +562,10 @@ class DoomGame {
             return;
         }
 
-        // Pause button (press edge): leave the level, back to the level list
+        // Pause button (press edge): leave the level, back to the WAD's menu
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning) {
-            this._quitToLevelList();
+            this._quitToMenu();
             return;
         }
         this._pauseWasDown = pauseDown;
@@ -669,18 +669,31 @@ class DoomGame {
     }
 
     // Stop the running level and wipe every loader (rAF first: World.update
-    // reads the loaders each frame).
+    // reads the loaders each frame). The mouse goes back to the browser —
+    // a gamepad pause can leave the pointer lock engaged. Inputs are null
+    // until the first level built its screen (startFromWad tears down first).
     _teardownLevel() {
+        if (this._inputs !== null) {
+            this._inputs.releaseMouse();
+        }
         this._stopLevel();
         loader.reset();
     }
 
-    // Leave the current level and go back to the level list of the WAD
-    _quitToLevelList() {
+    // Leave the current level (pause button) and go back to the WAD's menu.
+    _quitToMenu() {
         this._teardownLevel();
+        this._backToMenu();
+    }
+
+    // Back to the played WAD's menu (pause, end of game, failed chain
+    // conversion), carrying the skill of the interrupted game so a new one
+    // preselects it — or to the WAD list when no meta is known (direct test
+    // shortcut).
+    _backToMenu() {
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
-            navigator.startAtLevels(this._wadMeta);
+            navigator.startAtWadMenu(this._wadMeta, this._skill);
             return;
         }
         navigator.start();
@@ -731,12 +744,12 @@ class DoomGame {
 
     async _startNextLevel(display, modal, nextLevel) {
         if (nextLevel === null) {
-            // Last level of the WAD → back to the menu
+            // Last level of the WAD → back to the WAD's menu
             this._teardownLevel();
             modal.close();
             display.destroy();
             this._transitioning = false;
-            new MenuNavigator().start();
+            this._backToMenu();
             return;
         }
 
@@ -747,14 +760,14 @@ class DoomGame {
             display.destroy();
             this._transitioning = false;
         } catch (error) {
-            // Conversion failure mid-chain: clean up and fall back to the menu
-            // (same recovery as a failed launch from the level list).
+            // Conversion failure mid-chain: clean up and fall back to the
+            // WAD's menu (same recovery as the end of a game).
             console.error(error);
             loader.reset();
             modal.close();
             display.destroy();
             this._transitioning = false;
-            new MenuNavigator().start();
+            this._backToMenu();
         }
     }
 }

@@ -142,13 +142,23 @@ class WadRegistry {
     }
 
     /**
+     * Episodes actually present in the WAD, in episode order. The levels are
+     * grouped by their ExMy episode digit (a MAPxx set forms one single
+     * group), each group starts at its lowest map, and the game profile
+     * provides the display name (a proper noun, never translated — null when
+     * it declares none: the screen then only shows the episode number).
+     *
      * @param {string} id
-     * @returns {Promise<string[]>} the level names of the WAD
+     * @returns {Promise<object[]>} [{episode, firstLevel, name}]
      */
-    async getLevels(id) {
+    async getEpisodes(id) {
         const wadFile = await this.getWadFile(id);
+        const names   = new GameProfileList().getForWad(wadFile).episodeNames();
 
-        return wadFile.getLevelNames();
+        return WadRegistry._episodeStarts(wadFile.getLevelNames()).map((entry) => ({
+            ...entry,
+            name: (names[entry.firstLevel.toUpperCase()] ?? null)
+        }));
     }
 
     /**
@@ -164,6 +174,34 @@ class WadRegistry {
     }
 
     // --- Internal ---
+
+    // Group the level names into episodes: an ExMy map belongs to episode x,
+    // which starts at its lowest y; everything else (MAPxx sets, free-form
+    // markers) forms one single episode starting at the first level listed.
+    static _episodeStarts(levels) {
+        const groups = new Map();
+        for (const name of levels) {
+            const match = name.toUpperCase().match(/^E(\d)M(\d)$/);
+            const key   = ((match !== null) ? Number(match[1]) : 0);
+            const rank  = ((match !== null) ? Number(match[2]) : Number.MAX_SAFE_INTEGER);
+            const found = groups.get(key);
+            if ((found === undefined) || (rank < found.rank)) {
+                groups.set(key, {rank: rank, firstLevel: name});
+            }
+        }
+
+        // The non-ExMy group goes last, numbered after the ExMy episodes — a
+        // mixed WAD would otherwise show two "Episode 1".
+        const keys = [...groups.keys()].sort((a, b) => (a - b));
+        if ((keys[0] === 0) && (keys.length > 1)) {
+            keys.push(keys.shift());
+        }
+
+        return keys.map((key) => ({
+            episode:    ((key !== 0) ? key : ((keys.length > 1) ? (Math.max(...keys) + 1) : 1)),
+            firstLevel: groups.get(key).firstLevel
+        }));
+    }
 
     // A rejected fetch never says why: the browser hides a CORS refusal from the
     // page, so the cause is inferred — on another origin it is in practice a

@@ -45,7 +45,7 @@ class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
-            {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'fr', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
+            {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
@@ -73,7 +73,6 @@ class DoomSettings {
             {key: 'keyboard.weapon_prev',         nameCode: 'settings.keyboard.weaponPrev',        type: 'char', default: 'KeyF',      action: 'weaponPrev'},
             {key: 'keyboard.weapon_next',         nameCode: 'settings.keyboard.weaponNext',        type: 'char', default: 'KeyG',      action: 'weaponNext'},
             {key: 'keyboard.walk_slow',           nameCode: 'settings.keyboard.walkSlow',          type: 'char', default: 'AltLeft',   action: 'walkSlow'},
-            {key: 'keyboard.pause',               nameCode: 'settings.keyboard.pause',             type: 'char', default: 'KeyP',     action: 'pause'},
             {key: 'keyboard.toggle_hud',          nameCode: 'settings.keyboard.toggleHud',         type: 'char', default: 'KeyH',      action: 'toggleHud'},
             {key: 'keyboard.look_down',           nameCode: 'settings.keyboard.lookDown',          type: 'char', default: 'KeyK',      action: 'lookDown'},
             {key: 'keyboard.look_up',             nameCode: 'settings.keyboard.lookUp',            type: 'char', default: 'KeyI',      action: 'lookUp'},

@@ -39,6 +39,20 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden
+    // E6 is not named there — when the WAD carries its maps it shows up as a
+    // bare "Episode 6" (deliberate: without an entry in the episode menu
+    // those maps would be unreachable, no level exit routes to them).
+    episodeNames() {
+        return {
+            E1M1: 'City of the Damned',
+            E2M1: 'Hell\'s Maw',
+            E3M1: 'The Dome of D\'Sparil',
+            E4M1: 'The Ossuary',
+            E5M1: 'The Stagnant Demesne'
+        };
+    }
+
     // Heretic world things: editor numbers, sprite frames, radii and flags
     // transcribed from the UZDoom sources (mapinfo/heretic.txt DoomEdNums +
     // zscript/actors/heretic/ and actors/raven/) — never from memory.

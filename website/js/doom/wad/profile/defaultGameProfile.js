@@ -32,6 +32,12 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
+    // An unknown doom-format WAD gets no episode names (bare numbered
+    // entries) — the id titles belong to the Doom profile, not the fallback.
+    episodeNames() {
+        return {};
+    }
+
     bfgDecalShade() {
         return [128, 255, 128];
     }

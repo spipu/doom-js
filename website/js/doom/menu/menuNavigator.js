@@ -9,12 +9,13 @@ class MenuNavigator {
         this._registry = new WadRegistry(this._storage);
 
         this._wadListScreen    = new WadListScreen(this, this._display, this._registry);
+        this._wadMenuScreen    = new WadMenuScreen(this, this._display);
+        this._episodeScreen    = new EpisodeScreen(this, this._display, this._registry);
         this._difficultyScreen = new DifficultyScreen(this, this._display);
-        this._levelListScreen  = new LevelListScreen(this, this._display, this._registry);
         this._fallbackScreen   = new FallbackScreen(this, this._display);
 
         this._currentScreen      = null;
-        this._selectedDifficulty = 3;
+        this._selectedDifficulty = MenuNavigator.DEFAULT_SKILL;
     }
 
     /**
@@ -32,7 +33,7 @@ class MenuNavigator {
      * @param {{position: number[], yaw: number, pitch: number}|null} spawnOverride
      * @param {number} skill   difficulty 1..5 for the direct shortcut (default 3)
      */
-    start(wadName = null, levelCode = null, spawnOverride = null, skill = 3) {
+    start(wadName = null, levelCode = null, spawnOverride = null, skill = MenuNavigator.DEFAULT_SKILL) {
         return this._boot(() => {
             if (wadName !== null) {
                 this._startDirect(wadName, levelCode, spawnOverride, skill);
@@ -43,14 +44,18 @@ class MenuNavigator {
     }
 
     /**
-     * Starts the menu directly on the level list of the given WAD
-     * (used when leaving a level with the pause button). The difficulty already
-     * chosen for this session is kept, so this skips the difficulty screen.
+     * Starts the menu directly on the given WAD's menu (used when the pause
+     * button leaves a level and when the game ends). The skill of the
+     * interrupted game is carried over, so the difficulty screen of the next
+     * new game preselects it.
      * @param {object} meta
+     * @param {number|null} skill
      */
-    startAtLevels(meta) {
+    startAtWadMenu(meta, skill = null) {
+        this._selectedDifficulty = (skill ?? MenuNavigator.DEFAULT_SKILL);
+
         return this._boot(() => {
-            this._switchTo(this._levelListScreen.setWad(meta));
+            this.openWadMenu(meta);
         });
     }
 
@@ -86,30 +91,39 @@ class MenuNavigator {
     }
 
     /**
-     * WAD selected → pick the difficulty before the level list.
+     * WAD selected → its menu (new game, options, about, quit).
      * @param {object} meta
      */
-    openWad(meta) {
-        this._switchTo(this._difficultyScreen.setWad(meta));
+    openWadMenu(meta) {
+        this._switchTo(this._wadMenuScreen.setWad(meta));
     }
 
     /**
-     * Difficulty selected → go to the level list (keeps the chosen skill).
+     * New game requested → pick the episode.
      * @param {object} meta
-     * @param {number} skill
      */
-    openLevels(meta, skill) {
-        this._selectedDifficulty = skill;
-        this._switchTo(this._levelListScreen.setWad(meta));
+    openEpisodes(meta) {
+        this._switchTo(this._episodeScreen.setWad(meta));
     }
 
     /**
-     * Convert the selected level on the fly and start the game on it.
-     *
+     * Episode chosen → pick the difficulty for a new game starting on the
+     * episode's first level.
+     * @param {object} meta
+     * @param {object} episode {episode, firstLevel, name} entry of getEpisodes
+     */
+    openDifficulty(meta, episode) {
+        this._switchTo(this._difficultyScreen.setWad(meta, episode));
+    }
+
+    /**
+     * Difficulty chosen → convert the episode's first level and start playing.
      * @param {object} meta
      * @param {string} levelName
+     * @param {number} skill
      */
-    startGame(meta, levelName) {
+    startNewGame(meta, levelName, skill) {
+        this._selectedDifficulty = skill;
         this._launchFromWad(meta, levelName);
     }
 
@@ -143,13 +157,14 @@ class MenuNavigator {
             modal.close();
             this._closeMenus();
         } catch (error) {
-            this._showBuildError(error, modal);
+            this._showBuildError(error, modal, meta);
         }
     }
 
     // Surface a level-launch failure as a centred modal (on top of the console
-    // log) so the cause is immediately visible, then drop back to the WAD list.
-    _showBuildError(error, modal) {
+    // log) so the cause is immediately visible, then drop back to the WAD's
+    // menu (or to the WAD list when no WAD is known).
+    _showBuildError(error, modal, meta = null) {
         console.error(error);
         loader.reset();
 
@@ -161,6 +176,10 @@ class MenuNavigator {
         // Reuse the loading modal instance (showError() closes its own overlay
         // first) instead of closing it and spawning a second one.
         modal.showError(message, detail, () => {
+            if (meta !== null) {
+                this.openWadMenu(meta);
+                return;
+            }
             this.showWadList();
         });
     }
@@ -175,7 +194,7 @@ class MenuNavigator {
      * @param {object|null} spawnOverride
      * @param {number} skill   difficulty 1..5 (default 3)
      */
-    async _startDirect(wadName, levelCode, spawnOverride, skill = 3) {
+    async _startDirect(wadName, levelCode, spawnOverride, skill = MenuNavigator.DEFAULT_SKILL) {
         this._selectedDifficulty = skill;
 
         const list = await this._registry.getList();
@@ -235,3 +254,6 @@ class MenuNavigator {
         this._switchTo(this._fallbackScreen);
     }
 }
+
+// Hurt me plenty — the skill preselected before any player choice.
+MenuNavigator.DEFAULT_SKILL = 3;

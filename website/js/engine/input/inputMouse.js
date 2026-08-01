@@ -4,10 +4,17 @@ class InputMouse {
         this._reset();
 
         document.addEventListener('pointerlockchange', () => {
+            const wasLocked = this._locked;
             this._locked = ((this._canvas !== null) && (document.pointerLockElement === this._canvas));
             if (!this._locked) {
                 this._dx = 0;
                 this._dy = 0;
+            }
+            // Escape is reserved by the browser to leave the pointer lock and
+            // never reaches the page as a key event while locked: losing the
+            // lock IS the pause signal (any other loss counts too).
+            if (wasLocked && !this._locked) {
+                this._pauseRequested = true;
             }
         });
 
@@ -85,15 +92,33 @@ class InputMouse {
         return (this._leftClick && !this._focusClick);
     }
 
+    // True once when the pointer lock was lost since the last call (the
+    // browser's Escape path — the key itself is swallowed while locked).
+    consumePauseRequest() {
+        const requested = this._pauseRequested;
+        this._pauseRequested = false;
+
+        return requested;
+    }
+
+    // Release the pointer lock if this input holds it — leaving the game must
+    // hand the mouse back to the browser (no-op when Escape already did).
+    releaseLock() {
+        if (this._locked) {
+            document.exitPointerLock();
+        }
+    }
+
     // --- Internal ---
 
     _reset() {
-        this._dx        = 0;
-        this._dy        = 0;
-        this._locked     = false;
-        this._leftClick  = false;
-        this._focusClick = false;
-        this._wheel      = 0;
+        this._dx             = 0;
+        this._dy             = 0;
+        this._locked         = false;
+        this._leftClick      = false;
+        this._focusClick     = false;
+        this._wheel          = 0;
+        this._pauseRequested = false;
     }
 
     _requestLock() {
