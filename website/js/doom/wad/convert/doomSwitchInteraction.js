@@ -62,6 +62,22 @@ class DoomSwitchInteraction extends SwitchInteraction {
         return this;
     }
 
+    // The SW1/SW2 texture swap is a side effect of the state, not a field: a
+    // restored ON switch must replay it on the freshly rebuilt panel (the
+    // switch instance shares the interaction's code). The panel also becomes
+    // _lastInstance: a restored timed switch swaps back through it when its
+    // timer expires.
+    importState(state) {
+        super.importState(state);
+        if (this._state !== true) {
+            return;
+        }
+        const panel = loader.instances().getByCode(this.code);
+        this._lastInstance = panel;
+        this._swapFaces(panel, this._swapIndex);
+        this._applyRemoteSwap(true);
+    }
+
     _triggerOn(instance) {
         // Swap to SW2 only when the panel has a partner: a non-SW switch wall
         // (or an invisible USE zone with no faces) keeps its face untouched

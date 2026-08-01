@@ -76,6 +76,12 @@ class Collision {
         }
     }
 
+    // Whether an instance still owns a box blocker (a restored corpse must
+    // know if its unblocking already happened).
+    hasBoxFor(instance) {
+        return this._boxes.some((box) => (box.instance === instance));
+    }
+
     // Drop an instance's box blocker (its body stopped blocking). Safe against
     // an absent box (already removed, or never a box collider).
     removeBoxFor(instance) {

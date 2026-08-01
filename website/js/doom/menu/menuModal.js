@@ -33,11 +33,7 @@ class MenuModal {
             onConfirm();
         });
 
-        this._overlay.addEventListener('click', (event) => {
-            if (event.target === this._overlay) {
-                this.close();
-            }
-        });
+        this._dismissOnOverlayClick(() => this.close());
 
         return this;
     }
@@ -60,6 +56,30 @@ class MenuModal {
      */
     showMessage(message) {
         return this._showText(message, false);
+    }
+
+    /**
+     * Information modal: a message and a single "Back" button (e.g. saving is
+     * refused while the player is dead). The overlay click dismisses it too.
+     *
+     * @param {string}        message
+     * @param {function|null} onClose
+     */
+    info(message, onClose = null) {
+        const {modal} = this._createShell(message, 'doom-menu-modal', 'doom-menu-modal-message');
+
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
+        const dismiss = () => {
+            this.close();
+            if (onClose !== null) {
+                onClose();
+            }
+        };
+
+        MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.back'), dismiss);
+        this._dismissOnOverlayClick(dismiss);
+
+        return this;
     }
 
     /**
@@ -116,6 +136,14 @@ class MenuModal {
             'doom-menu-modal-message ' + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static'));
 
         return this;
+    }
+
+    _dismissOnOverlayClick(action) {
+        this._overlay.addEventListener('click', (event) => {
+            if (event.target === this._overlay) {
+                action();
+            }
+        });
     }
 
     // Fresh overlay + modal + message shell, shared by every modal flavour.

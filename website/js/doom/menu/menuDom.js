@@ -28,6 +28,21 @@ class MenuDom {
         return item;
     }
 
+    // Locale-formatted "date hour:minute[:second]" of a timestamp (WAD list
+    // entries, save slots — the latter with seconds: two saves may land in the
+    // same minute) — the words come from the translator, the format from Intl.
+    static formatDate(timestamp, withSeconds = false) {
+        const date        = new Date(timestamp);
+        const locale      = appTranslator.getLocale();
+        const timeOptions = {hour: '2-digit', minute: '2-digit'};
+        if (withSeconds) {
+            timeOptions.second = '2-digit';
+        }
+
+        return date.toLocaleDateString(locale)
+            + ' ' + date.toLocaleTimeString(locale, timeOptions);
+    }
+
     // The blur avoids a focused button: a focused one would swallow the next
     // Enter as a native re-click (e.g. reopening a freshly closed modal).
     static addButton(parent, className, label, onClick) {

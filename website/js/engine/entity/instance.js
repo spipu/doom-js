@@ -16,6 +16,7 @@ class Instance extends AbstractLoadedEntity {
         // Animation playback (keyframes-driven)
         this._animKeyframes     = [];
         this._animVariants      = null;   // name → {keyframes, onlyOnce}: per-trigger cycles (see start)
+        this._animActiveVariant = null;   // name of the variant currently applied (exportAnimState)
         this._animTime          = 0;
         this._animMaxTime       = 0;
         this._animPlaying       = false;
@@ -191,6 +192,70 @@ class Instance extends AbstractLoadedEntity {
         this._animReverse     = prev.reverse;
         this._animDone        = prev.done;
         this._computeWorldCenter();
+    }
+
+    /**
+     * Plain-data snapshot of the mutable animation/transform state, restorable
+     * by importAnimState after a deterministic rebuild of the same scene. The
+     * ridden floor is referenced by its code (a reference would not survive
+     * serialization); the interpolation delta is derived, so it is not exported.
+     */
+    exportAnimState() {
+        return {
+            position:     [...this._position],
+            rotation:     [...this._rotation],
+            time:         this._animTime,
+            playing:      this._animPlaying,
+            reverse:      this._animReverse,
+            reverseScale: this._animReverseScale,
+            done:         this._animDone,
+            variant:      this._animActiveVariant,
+            rideOnCode:   ((this._rideOn !== null) ? this._rideOn.getCode() : null),
+            rideBaseY:    this._rideBaseY,
+            rideLastDy:   this._rideLastDy,
+        };
+    }
+
+    /**
+     * Counterpart of exportAnimState. The keyframe variant is re-applied first
+     * (it swaps the timeline), then the raw fields overwrite it. The ride is
+     * restored directly — setRideOn() would recompute the base against the
+     * mover's CURRENT delta, while the saved base already matches the restored
+     * mover pose. The lifecycle hooks are replayed when the restored state
+     * says they already fired: their effects (e.g. a floor texture change)
+     * belong to the animation's progress, not to the freshly rebuilt scene.
+     *
+     * @param {object} data
+     * @param {Instance|null} rideOnInstance resolved from data.rideOnCode by the caller
+     */
+    importAnimState(data, rideOnInstance = null) {
+        if (data.variant !== null && this._animVariants !== null && this._animVariants[data.variant] !== undefined) {
+            const v = this._animVariants[data.variant];
+            this._animKeyframes     = v.keyframes;
+            this._animMaxTime       = v.keyframes[v.keyframes.length - 1].t;
+            this._animOnlyOnce      = (v.onlyOnce === true);
+            this._animActiveVariant = data.variant;
+        }
+        this._position         = [...data.position];
+        this._rotation         = [...data.rotation];
+        this._animTime         = data.time;
+        this._animPlaying      = data.playing;
+        this._animReverse      = data.reverse;
+        this._animReverseScale = data.reverseScale;
+        this._animDone         = data.done;
+        this._rideOn           = rideOnInstance;
+        this._rideBaseY        = data.rideBaseY;
+        this._rideLastDy       = data.rideLastDy;
+        this._computeWorldCenter();
+
+        const firstT  = ((this._animKeyframes.length > 0) ? this._animKeyframes[0].t : 0);
+        const started = (this._animPlaying || this._animDone || (this._animTime > firstT));
+        if (started && (this._onStart !== null)) {
+            this._onStart();
+        }
+        if (this._animDone && (this._onComplete !== null)) {
+            this._onComplete();
+        }
     }
 
     checkDamage(user, dt) {
@@ -487,10 +552,11 @@ class Instance extends AbstractLoadedEntity {
         }
         if (variant !== null && this._animVariants !== null && this._animVariants[variant] !== undefined) {
             const v = this._animVariants[variant];
-            this._animKeyframes = v.keyframes;
-            this._animMaxTime   = v.keyframes[v.keyframes.length - 1].t;
-            this._animOnlyOnce  = (v.onlyOnce === true);
-            this._animTime      = v.keyframes[0].t;
+            this._animKeyframes     = v.keyframes;
+            this._animMaxTime       = v.keyframes[v.keyframes.length - 1].t;
+            this._animOnlyOnce      = (v.onlyOnce === true);
+            this._animTime          = v.keyframes[0].t;
+            this._animActiveVariant = variant;
         }
         this._animPlaying = true;
         if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {

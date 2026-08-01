@@ -9,6 +9,14 @@ class DoomRandom {
         this._index = 0;
     }
 
+    getIndex() {
+        return this._index;
+    }
+
+    setIndex(index) {
+        this._index = (index & 0xff);
+    }
+
     next() {
         this._index = (this._index + 1) & 0xff;
         return DoomRandom.TABLE[this._index];

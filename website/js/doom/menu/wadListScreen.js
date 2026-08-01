@@ -98,7 +98,7 @@ class WadListScreen extends AbstractMenuScreen {
             this._onSelectWad(meta);
         });
 
-        this._addListItemInfos(item, this._formatSize(meta.size) + ' — ' + this._formatDate(meta.addedAt));
+        this._addListItemInfos(item, this._formatSize(meta.size) + ' — ' + MenuDom.formatDate(meta.addedAt));
 
         const deleteButton = MenuDom.addButton(item, 'doom-menu-item-delete', '✕', (event) => {
             event.stopPropagation();

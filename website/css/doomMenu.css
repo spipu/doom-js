@@ -157,6 +157,12 @@
     background: rgba(192, 57, 43, 0.25);
 }
 
+/* Shown but not selectable (an empty save slot on the load list). */
+.doom-menu-item-disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
 .doom-menu-empty {
     color: rgba(255, 255, 255, 0.28);
     font-size: 0.85em;

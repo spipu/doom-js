@@ -1,5 +1,5 @@
 {
-    "version": "v1.473",
+    "version": "v1.478",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -98,6 +98,8 @@
             "/js/doom/weapon/doomDecalTextures.js",
             "/js/doom/weapon/doomDecals.js",
             "/js/doom/doomSettings.js",
+            "/js/doom/save/doomSaveStore.js",
+            "/js/doom/save/doomGameSnapshot.js",
             "/js/doom/doomUser.js",
             "/js/doom/hud/hudDoomDebug.js",
             "/js/doom/hud/hudGameBar.js",
@@ -107,6 +109,7 @@
             "/js/doom/menu/menuModal.js",
             "/js/doom/menu/menuOptionsModal.js",
             "/js/doom/menu/menuListNavigation.js",
+            "/js/doom/menu/menuSaveSlotsModal.js",
             "/js/doom/menu/menuPauseModal.js",
             "/js/doom/menu/abstractMenuScreen.js",
             "/js/doom/menu/fallbackScreen.js",
