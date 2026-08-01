@@ -73,6 +73,15 @@ class Inputs {
     }
 
     /**
+     * Releases the mouse pointer lock if held — the game calls it when a
+     * level is left for the menus (a gamepad pause can leave it engaged).
+     */
+    releaseMouse() {
+        this._mouse.releaseLock();
+        return this;
+    }
+
+    /**
      * @returns {string} 'gamepad' | 'virtualGamepad' | 'keyboardMouse'
      */
     getMode() {
@@ -195,7 +204,9 @@ class Inputs {
         if (pad !== null) {
             return pad.readButtonPause();
         }
-        return this._keyboard.readAction('pause');
+        // Escape only, not remappable: the raw key when the pointer is not
+        // locked, the lock loss (the browser's own Escape path) when it is.
+        return (this._keyboard.readKey('Escape') || this._mouse.consumePauseRequest());
     }
 
     // Keyboard-only modifier: the analog sticks already give slow walking

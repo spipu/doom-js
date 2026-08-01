@@ -20,7 +20,6 @@ class InputKeyboard {
             weaponPrev:  'KeyF',
             weaponNext:  'KeyG',
             walkSlow:    'AltLeft',
-            pause:       'KeyP',
             toggleHud:   'KeyH',
             // Keyboard look fallback ("fake mouse", pointer lock broken in
             // some VMs): +/- deltas on both axes.

@@ -1,13 +1,16 @@
 /**
- * Help modal of the menus, opened by the ? button of the WAD list screen.
- * A page stack sharing one MenuListNavigation: the root lists the help topics
- * (scrolling list, same mouse/keyboard/gamepad navigation as the screens),
- * entering a topic pushes a page, and the title shows the breadcrumb of the
- * stack ("Aide > À propos"). The bottom-right button reads "Fermer" at the
- * root and "Retour" deeper; Backspace / gamepad circle follow the same back
- * path.
+ * Options modal of the menus, opened from a WAD's menu screen — show() starts
+ * on the options root (display / controls / reset), showAbout() starts
+ * directly on the About page (the ? button of the WAD list and the About entry
+ * of a WAD's menu). A page stack sharing one MenuListNavigation: the root
+ * lists the topics (scrolling list, same mouse/keyboard/gamepad navigation as
+ * the screens), entering a topic pushes a page, and the title shows the
+ * breadcrumb of the stack ("Options > Contrôles"). The bottom-right button
+ * reads "Retour" everywhere in options mode (the root closes back to the WAD
+ * menu) and "Fermer" on the direct About popup; Backspace / gamepad circle
+ * follow the same back path.
  */
-class MenuHelpModal extends MenuModal {
+class MenuOptionsModal extends MenuModal {
     static get DEVICE_REFRESH_MS() {
         return 500;
     }
@@ -49,6 +52,7 @@ class MenuHelpModal extends MenuModal {
         this._restoreIndex   = null;
         this._layoutMap      = null;
         this._onClose        = null;
+        this._mode           = null;
     }
 
     /**
@@ -65,12 +69,24 @@ class MenuHelpModal extends MenuModal {
     }
 
     show() {
+        return this._open('options', 'menu.game.options', () => this._buildRoot());
+    }
+
+    /**
+     * Opens the modal directly on the About page (no options root underneath).
+     */
+    showAbout() {
+        return this._open('about', 'help.about', () => this._buildAbout());
+    }
+
+    _open(mode, titleCode, builder) {
+        this._mode = mode;
         this._loadLayoutMap();
         // The page title reuses the screens' subtitle design (uppercase,
         // left-aligned, red underline) instead of the centred modal message.
-        const {modal, messageEl} = this._createShell('', 'doom-menu-modal doom-menu-modal-wide doom-menu-modal-help', 'doom-menu-subtitle');
+        const {modal, messageEl} = this._createShell('', 'doom-menu-modal doom-menu-modal-wide doom-menu-modal-options', 'doom-menu-subtitle');
         this._titleEl = messageEl;
-        this._bodyEl  = MenuDom.addElement(modal, 'div', 'doom-menu-modal-help-body');
+        this._bodyEl  = MenuDom.addElement(modal, 'div', 'doom-menu-modal-options-body');
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
         this._actionButton = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
@@ -79,7 +95,7 @@ class MenuHelpModal extends MenuModal {
 
         this._nav.attach();
         this._stack = [];
-        this._pushPage('help.title', () => this._buildRoot());
+        this._pushPage(titleCode, builder);
 
         return this;
     }
@@ -118,8 +134,8 @@ class MenuHelpModal extends MenuModal {
         this._renderPage();
     }
 
-    // "Fermer" at the root, "Retour" deeper — same path as Backspace and the
-    // gamepad back button.
+    // Close at the root, pop deeper — same path as Backspace and the gamepad
+    // back button.
     _onBack() {
         if (this._stack.length <= 1) {
             this.close();
@@ -133,8 +149,10 @@ class MenuHelpModal extends MenuModal {
         this._clearPageTimer();
         const current = this._stack[this._stack.length - 1];
         this._titleEl.textContent        = this._stack.map((page) => appTranslator.get(page.titleCode)).join(' > ');
-        const actionCode                 = ((this._stack.length > 1) ? 'menu.back' : 'menu.close');
-        this._actionButton.textContent   = appTranslator.get(actionCode);
+        // The options root closes back to the WAD menu, so its button reads
+        // "Retour" like the sub-pages; the direct About popup reads "Fermer".
+        const rootCode                   = ((this._mode === 'about') ? 'menu.close' : 'menu.back');
+        this._actionButton.textContent   = appTranslator.get(((this._stack.length > 1) ? 'menu.back' : rootCode));
         // A capture page cannot be left by any mean but pressing a key.
         this._actionButton.style.display = ((current.noBack === true) ? 'none' : '');
         this._bodyEl.innerHTML           = '';
@@ -162,7 +180,6 @@ class MenuHelpModal extends MenuModal {
         this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildDisplay()));
         this._nav.addItemIn(list, appTranslator.get('help.controls'), () => this._pushPage('help.controls', () => this._buildControls()));
         this._nav.addItemIn(list, appTranslator.get('help.reset'), () => this._confirmReset());
-        this._nav.addItemIn(list, appTranslator.get('help.about'), () => this._pushPage('help.about', () => this._buildAbout()));
         this._nav.selectFirst();
     }
 
@@ -187,7 +204,7 @@ class MenuHelpModal extends MenuModal {
         this._deviceLineEl = MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', this._deviceLabel(inputs));
 
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        for (const prefix of MenuHelpModal.SETTING_PREFIXES_BY_MODE[this._controlsMode]) {
+        for (const prefix of MenuOptionsModal.SETTING_PREFIXES_BY_MODE[this._controlsMode]) {
             for (const def of doomSettings.getDefinitions(prefix)) {
                 this._addSettingItem(list, def, inputs);
             }
@@ -200,7 +217,7 @@ class MenuHelpModal extends MenuModal {
                 return;
             }
             this._deviceLineEl.textContent = this._deviceLabel(inputs);
-        }, MenuHelpModal.DEVICE_REFRESH_MS);
+        }, MenuOptionsModal.DEVICE_REFRESH_MS);
     }
 
     // Display options page: every 'display.' setting, same rows as the
@@ -294,7 +311,8 @@ class MenuHelpModal extends MenuModal {
         }, true);
 
         this._captureHandler = (event) => {
-            if (event.code.startsWith('F') && (event.code.length <= 3)) {
+            // F1-F12 stay with the browser; Escape is the fixed pause key.
+            if ((event.code.startsWith('F') && (event.code.length <= 3)) || (event.code === 'Escape')) {
                 return;
             }
             event.preventDefault();
@@ -337,7 +355,7 @@ class MenuHelpModal extends MenuModal {
         if ((code === '') || (code === null) || (code === undefined)) {
             return '';
         }
-        const labelCode = MenuHelpModal.KEY_LABELS[code];
+        const labelCode = MenuOptionsModal.KEY_LABELS[code];
         if (labelCode !== undefined) {
             return appTranslator.get(labelCode);
         }

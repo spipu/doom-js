@@ -26,11 +26,11 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
-        const helpButton = MenuDom.addButton(this._container, 'doom-menu-help-button', '?', () => {
-            this._openHelp();
+        const aboutButton = MenuDom.addButton(this._container, 'doom-menu-help-button', '?', () => {
+            this._openAbout();
         });
-        this._nav.setSideButton(helpButton, () => {
-            this._openHelp();
+        this._nav.setSideButton(aboutButton, () => {
+            this._openAbout();
         });
 
         this._buildAddForm(panel);
@@ -162,13 +162,13 @@ class WadListScreen extends AbstractMenuScreen {
     }
 
     _onSelectWad(meta) {
-        this._navigator.openWad(meta);
+        this._navigator.openWadMenu(meta);
     }
 
-    // Rebuilt on close: a language changed in the modal must reach this screen
-    // too, which stayed untouched underneath it.
-    _openHelp() {
-        new MenuHelpModal(this._display).setOnClose(() => this.show()).show();
+    // The ? button only shows the About page (the options live in the menu of
+    // a selected WAD). Rebuilt on close, like every screen under a modal.
+    _openAbout() {
+        new MenuOptionsModal(this._display).setOnClose(() => this.show()).showAbout();
     }
 
     // --- Internal ---

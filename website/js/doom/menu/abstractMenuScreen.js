@@ -90,9 +90,16 @@ class AbstractMenuScreen {
         return {panel: panel, listEl: this._addElement('div', 'doom-menu-list', panel)};
     }
 
-    // Skeleton of the WAD sub-screens: subtitle "<wad name> — <label>".
-    _buildWadPanel(wadName, subtitleLabel) {
-        return this._buildPanel(wadName + ' — ' + subtitleLabel);
+    // Skeleton of the WAD sub-screens: subtitle "<wad title> — <label>".
+    _buildWadPanel(wadMeta, subtitleLabel) {
+        return this._buildPanel(this._wadTitle(wadMeta) + ' — ' + subtitleLabel);
+    }
+
+    // Display title of a WAD: the file name without its extension. meta.name
+    // itself stays untouched — the messages (menu.wad.*, menu.level.loading)
+    // and the registry lookups rely on the raw file name.
+    _wadTitle(meta) {
+        return meta.name.replace(/\.wad$/i, '');
     }
 
     _addStatus(panel) {

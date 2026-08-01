@@ -1,8 +1,9 @@
 /**
- * Screen between the WAD list and the level list: pick the skill (difficulty).
- * The chosen skill is handed to the converter, which filters the THINGS lump
- * exactly like the real game (skill bits + the multiplayer-only flag), so a
- * single-player session shows the same things as vanilla Doom.
+ * Screen after the episode choice: pick the skill (difficulty), then the new
+ * game starts on the episode's first level. The chosen skill is handed to the
+ * converter, which filters the THINGS lump exactly like the real game (skill
+ * bits + the multiplayer-only flag), so a single-player session shows the
+ * same things as vanilla Doom.
  */
 class DifficultyScreen extends AbstractMenuScreen {
     /**
@@ -13,6 +14,7 @@ class DifficultyScreen extends AbstractMenuScreen {
         super(navigator, display);
 
         this._wadMeta = null;
+        this._episode = null;
 
         // Skill 1..5 maps to the thing flag bits in the converter (1-2 → 0x01,
         // 3 → 0x02, 4-5 → 0x04). Skill 0 is our own exploration mode: the
@@ -24,15 +26,18 @@ class DifficultyScreen extends AbstractMenuScreen {
 
     /**
      * @param {object} meta
+     * @param {object} episode chosen episode ({episode, firstLevel, name})
      */
-    setWad(meta) {
+    setWad(meta, episode) {
         this._wadMeta = meta;
+        this._episode = episode;
 
         return this;
     }
 
     _build() {
-        const {panel, listEl} = this._buildWadPanel(this._wadMeta.name, appTranslator.get('menu.difficulty.title'));
+        const episodeLabel    = appTranslator.get('menu.episode.item', {episode: this._episode.episode});
+        const {panel, listEl} = this._buildWadPanel(this._wadMeta, episodeLabel + ' — ' + appTranslator.get('menu.difficulty.title'));
 
         for (const skill of this._skills) {
             const item = this._addListItem(listEl, appTranslator.get('difficulty.' + skill), () => {
@@ -48,11 +53,11 @@ class DifficultyScreen extends AbstractMenuScreen {
     }
 
     _onBack() {
-        this._navigator.showWadList();
+        this._navigator.openEpisodes(this._wadMeta);
     }
 
     _onSelectSkill(skill) {
-        this._navigator.openLevels(this._wadMeta, skill);
+        this._navigator.startNewGame(this._wadMeta, this._episode.firstLevel, skill);
     }
 
     // Preselect the difficulty already chosen for this session (default 3).

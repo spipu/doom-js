@@ -16,6 +16,17 @@ class FreedoomGameProfile extends DefaultGameProfile {
         return ((wadFile.getLump('FREEDOOM') !== null) || (wadFile.getLump('FREEDM') !== null));
     }
 
+    // Freedoom Phase 1 episode titles (freedoom.github.io manual). Phase 2
+    // (MAPxx) has none, like Doom 2.
+    episodeNames() {
+        return {
+            E1M1: 'Outpost Outbreak',
+            E2M1: 'Military Labs',
+            E3M1: 'Event Horizon',
+            E4M1: 'Double Impact'
+        };
+    }
+
     bfgDecalShade() {
         return [128, 128, 255];
     }
