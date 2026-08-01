@@ -95,11 +95,8 @@ class AbstractMenuScreen {
         return this._buildPanel(this._wadTitle(wadMeta) + ' — ' + subtitleLabel);
     }
 
-    // Display title of a WAD: the file name without its extension. meta.name
-    // itself stays untouched — the messages (menu.wad.*, menu.level.loading)
-    // and the registry lookups rely on the raw file name.
     _wadTitle(meta) {
-        return meta.name.replace(/\.wad$/i, '');
+        return WadRegistry.displayTitle(meta);
     }
 
     _addStatus(panel) {

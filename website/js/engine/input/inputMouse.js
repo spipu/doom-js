@@ -47,7 +47,7 @@ class InputMouse {
         this._canvas = canvas;
         this._reset();
 
-        canvas.addEventListener('click', () => this._requestLock());
+        canvas.addEventListener('click', () => this.requestLock());
 
         canvas.addEventListener('mousedown', (e) => {
             if (e.button === 0) {
@@ -109,6 +109,22 @@ class InputMouse {
         }
     }
 
+    // Grab the pointer lock on the bound canvas. Also callable by the game on
+    // a user gesture (resuming from a pause menu) — fails silently without one.
+    requestLock() {
+        if (document.pointerLockElement || (this._canvas === null)) {
+            return;
+        }
+        const p = this._canvas.requestPointerLock({ unadjustedMovement: true });
+        if (p) {
+            p.catch((e) => {
+                if (e.name === 'NotSupportedError') {
+                    this._canvas.requestPointerLock();
+                }
+            });
+        }
+    }
+
     // --- Internal ---
 
     _reset() {
@@ -121,17 +137,4 @@ class InputMouse {
         this._pauseRequested = false;
     }
 
-    _requestLock() {
-        if (document.pointerLockElement) {
-            return;
-        }
-        const p = this._canvas.requestPointerLock({ unadjustedMovement: true });
-        if (p) {
-            p.catch((e) => {
-                if (e.name === 'NotSupportedError') {
-                    this._canvas.requestPointerLock();
-                }
-            });
-        }
-    }
 }

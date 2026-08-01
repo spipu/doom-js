@@ -101,7 +101,9 @@ class DoomTranslations {
             'error.storageUnavailable':  {fr: 'Stockage navigateur indisponible',     en: 'Browser storage unavailable'},
             'error.notFound':            {fr: 'WAD introuvable',                      en: 'WAD not found'},
 
-            // --- Game (level chaining modals) ---
+            // --- Game (pause menu + level chaining modals) ---
+            'game.pause.resume':       {fr: 'Reprendre',                             en: 'Resume'},
+            'game.pause.quit':         {fr: 'Quitter le niveau',                     en: 'Leave the level'},
             'game.level.loading':      {fr: 'Chargement du niveau {level}',          en: 'Loading level {level}'},
             'game.level.finished':     {fr: 'Niveau {level} terminé !',              en: 'Level {level} finished!'},
             'game.episode.finished':   {fr: 'Épisode terminé !',                     en: 'Episode finished!'},

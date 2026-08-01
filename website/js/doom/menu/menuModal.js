@@ -100,6 +100,17 @@ class MenuModal {
 
     // --- Internal ---
 
+    // Overlays stack in the display container: only the top-most one may
+    // react to inputs (a nested confirmation suspends the modal beneath it).
+    _isTopOverlay() {
+        if (this._overlay === null) {
+            return false;
+        }
+        const overlays = this._display.getContainer().querySelectorAll('.doom-menu-overlay');
+
+        return (overlays[overlays.length - 1] === this._overlay);
+    }
+
     _showText(message, pulsing) {
         this._createShell(message, 'doom-menu-modal',
             'doom-menu-modal-message ' + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static'));

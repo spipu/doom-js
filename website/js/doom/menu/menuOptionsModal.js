@@ -116,15 +116,9 @@ class MenuOptionsModal extends MenuModal {
     // --- Page stack ---
 
     // Inputs are ignored while the modal is closed, a key capture is running,
-    // or another overlay (reset confirmation…) sits ABOVE this one — only the
-    // top-most overlay of the stack may react.
+    // or another overlay (reset confirmation…) sits ABOVE this one.
     _navBlocked() {
-        if ((this._overlay === null) || (this._captureHandler !== null)) {
-            return true;
-        }
-        const overlays = this._display.getContainer().querySelectorAll('.doom-menu-overlay');
-
-        return (overlays[overlays.length - 1] !== this._overlay);
+        return ((this._captureHandler !== null) || !this._isTopOverlay());
     }
 
     // titleCode, not a resolved label: the breadcrumb is rebuilt from the codes

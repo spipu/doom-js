@@ -12,6 +12,15 @@
         #000;
 }
 
+/* Pause variant: transparent and pinned over the running game, so only the
+   modal overlay (rgba 0.7) darkens the frozen frame underneath. */
+.doom-menu-display-over-game {
+    background: none;
+    position: fixed;
+    inset: 0;
+    margin: auto;
+}
+
 .doom-menu {
     position: absolute;
     inset: 0;
