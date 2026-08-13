@@ -61,9 +61,9 @@ class WadSwitchBuilder {
         if (geom === null) {
             return null;
         }
-        // An invisible USE zone with nothing to fire is dead weight (a visible
-        // panel is always kept — it may be an exit or just cosmetic).
-        if ((slotInfo.invisible === true) && (targets.length === 0) && !isExit) {
+        // A switch with no panel of its own and nothing to fire is dead weight;
+        // a visible panel is always kept — it may be an exit or just cosmetic.
+        if ((geom.textures.length === 0) && (targets.length === 0) && !isExit) {
             return null;
         }
 
@@ -128,6 +128,12 @@ class WadSwitchBuilder {
         if (ti < 0) {
             return null;
         }
+        // A graphic painted on a mover's own face (door panel, riser): a static
+        // quad over it would z-fight at rest and hang in the air once it moves.
+        const moverCode = this._moverCodeForSlot(ld, slotInfo);
+        if (moverCode !== null) {
+            return this._buildMoverZoneGeometry(ld, slotInfo, ti, moverCode);
+        }
         const {width: tw, height: th} = this._bank.getDims(ti);
 
         const [dx1, dy1] = vertexes[ld.v1];
@@ -145,7 +151,7 @@ class WadSwitchBuilder {
         // fire. Fall back to the invisible USE zone; the mover's own riser
         // shows the graphic, so the SW1↔SW2 swap is delegated to its faces.
         if (band.yTopDu <= band.yBotDu) {
-            return this._buildRiserZoneGeometry(ld, slotInfo, ti);
+            return this._buildMoverZoneGeometry(ld, slotInfo, ti, this._anyMoverOn(ld));
         }
 
         // SW2 partner (local index 2, swapped at runtime). A non-SW switch wall
@@ -185,14 +191,12 @@ class WadSwitchBuilder {
         return {textures: [], mesh: zone.mesh, radius: zone.radius, collisionShape: 'none'};
     }
 
-    // Invisible USE zone for a switch whose SW graphic lives on a mover's
-    // riser (zero-height panel at build): the SW1↔SW2 feedback is delegated
-    // to the riser faces of the adjacent built mover, matched at runtime on
-    // the linedef segment by the interaction (remoteSwap).
-    _buildRiserZoneGeometry(ld, slotInfo, ti) {
+    // Invisible USE zone for a switch whose SW graphic lives on a mover's own
+    // face: the SW1↔SW2 feedback is delegated to that mover's faces, matched
+    // at runtime on the linedef segment by the interaction (remoteSwap).
+    _buildMoverZoneGeometry(ld, slotInfo, ti, moverCode) {
         const geom = this._buildUseZoneGeometry(ld);
 
-        const moverCode   = this._riserMoverCode(ld);
         const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
         const ti2         = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
         if (moverCode === null || ti2 < 0) {
@@ -212,20 +216,61 @@ class WadSwitchBuilder {
         return geom;
     }
 
-    // The built mover (rising floor / lift) whose riser draws this linedef's
-    // wall — one of the two sectors of the line.
-    _riserMoverCode(ld) {
+    /**
+     * Built mover whose own mesh draws the face carrying the switch graphic:
+     * the panel of a door (upper band — the face belongs to the sector across
+     * the line, the one whose ceiling moves) or the riser of a floor mover
+     * (lower band, either side). null = a plain static wall.
+     *
+     * @returns {string|null} instance code
+     */
+    _moverCodeForSlot(ld, slotInfo) {
+        if (ld.left < 0) {
+            return null;
+        }
+        const {sidedefs} = this._level;
+        const far  = sidedefs[((slotInfo.side === 'right') ? ld.left : ld.right)].sector;
+        const near = sidedefs[((slotInfo.side === 'right') ? ld.right : ld.left)].sector;
+
+        if (slotInfo.slot === 'upper') {
+            return ((this._builtDoorCodes.has('door_' + far)) ? ('door_' + far) : null);
+        }
+        if (slotInfo.slot === 'lower') {
+            return (this._floorMoverCode(far) ?? this._floorMoverCode(near));
+        }
+
+        return null;
+    }
+
+    _floorMoverCode(si) {
+        if (this._builtRisingCodes.has('risingfloor_' + si)) {
+            return 'risingfloor_' + si;
+        }
+        if (this._builtLiftCodes.has('lift_' + si)) {
+            return 'lift_' + si;
+        }
+        if (this._builtStairCodes.has('stair_' + si)) {
+            return 'stair_' + si;
+        }
+
+        return null;
+    }
+
+    // Last-resort resolution for a panel with no geometry of its own: any
+    // mover touching the line, floors first (the historical riser case).
+    _anyMoverOn(ld) {
         const {sidedefs} = this._level;
         for (const sd of [ld.right, ld.left]) {
             if (sd < 0) {
                 continue;
             }
             const si = sidedefs[sd].sector;
-            if (this._builtRisingCodes.has('risingfloor_' + si)) {
-                return 'risingfloor_' + si;
+            const floorCode = this._floorMoverCode(si);
+            if (floorCode !== null) {
+                return floorCode;
             }
-            if (this._builtLiftCodes.has('lift_' + si)) {
-                return 'lift_' + si;
+            if (this._builtDoorCodes.has('door_' + si)) {
+                return 'door_' + si;
             }
         }
 

@@ -306,6 +306,12 @@ class WadMapAnalyzer {
         const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
 
         const registerDoor = (si, door, forceTrigger) => {
+            // Vanilla carries the activation on each linedef, the sector is only
+            // the target: a remote line (walk zone, switch) drives the door
+            // through its own trigger and must not take the manual press away.
+            if ((doorProps[si] !== undefined) && (doorProps[si].trigger === 'action')) {
+                return;
+            }
             doorSectorIds.add(si);
             doorProps[si] = {
                 speed:        door.speed,
