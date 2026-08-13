@@ -141,10 +141,10 @@ class WadConstants {
         108: {kind: 'open',  speed: 8, trigger: 'proximity', anim: 'round-trip', loop: false, onlyOnce: true,  key: null},
         109: {kind: 'open',  speed: 8, trigger: 'proximity', anim: 'one-way',    loop: false, onlyOnce: true,  key: null},
         // Switch-open doors (29/61/63/103 + blaze 111/112/114/115 + locked
-        // blaze 99/133-137) — 63 is the SR press-on-door exception ('action')
+        // blaze 99/133-137) — 63 is the repeatable (SR) form of the S1 29
         29:  {kind: 'open',  speed: 2, trigger: 'none',      anim: 'round-trip', loop: false, onlyOnce: true,  key: null},
         61:  {kind: 'open',  speed: 2, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: null},
-        63:  {kind: 'open',  speed: 2, trigger: 'action',    anim: 'round-trip', loop: false, onlyOnce: false, key: null},
+        63:  {kind: 'open',  speed: 2, trigger: 'none',      anim: 'round-trip', loop: false, onlyOnce: false, key: null},
         103: {kind: 'open',  speed: 2, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: null},
         111: {kind: 'open',  speed: 8, trigger: 'none',      anim: 'round-trip', loop: false, onlyOnce: true,  key: null},
         112: {kind: 'open',  speed: 8, trigger: 'none',      anim: 'one-way',    loop: false, onlyOnce: true,  key: null},
@@ -493,7 +493,7 @@ class WadConstants {
     // NB: 22 is W1 (raiseToNearestAndChange, P_CrossSpecialLine) — a walk
     // trigger, NOT a switch (it must not appear here).
     static SWITCH_SPECIALS = new Set([
-        11, 23, 45, 51, 60, 61, 62, 122, 123,
+        11, 23, 45, 51, 60, 61, 62, 63, 122, 123,
         7, 9, 21, 29, 41, 43, 49, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
         127,
         18, 20, 131,
@@ -538,6 +538,9 @@ class WadConstants {
         136: {mode: 'timed', minOnMs: 1000, minOffMs: 1000}
     };
     static SWITCH_INTERACTION_DEFAULT = {mode: 'once', minOnMs: null, minOffMs: null};
+
+    // The check below runs at every level build; one report per mistake is enough.
+    static _WARNED_ORPHAN_SWITCHES = new Set();
 
     // S-type specials that end the level (11 = S1 Exit, 51 = S1 Secret Exit)
     static SWITCH_EXIT_SPECIALS = new Set([11, 51]);
@@ -768,6 +771,21 @@ class WadConstants {
         WadConstants.STAIR_SPECIALS              = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, () => true);
         WadConstants.STAIR_SWITCH_SPECIALS       = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'switch'));
         WadConstants.STAIR_WALK_SPECIALS         = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'walk'));
+        WadConstants._warnOrphanSwitchProfiles();
+    }
+
+    // Such a special builds no panel at all: its profile is dead data and the
+    // line is silently inert. Warned, never thrown — a table mistake must not
+    // cost a level.
+    static _warnOrphanSwitchProfiles() {
+        for (const key of Object.keys(WadConstants.SWITCH_INTERACTION_BY_SPECIAL)) {
+            const special = Number(key);
+            if (WadConstants.SWITCH_SPECIALS.has(special) || WadConstants._WARNED_ORPHAN_SWITCHES.has(special)) {
+                continue;
+            }
+            WadConstants._WARNED_ORPHAN_SWITCHES.add(special);
+            console.warn('WadConstants - special [' + special + '] has a switch interaction profile but is not a switch special');
+        }
     }
 
     static {

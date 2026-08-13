@@ -11,8 +11,9 @@
 
 ### Commentaires
 
-* Pas de commentaire inutile : le code doit être écrit assez clairement pour être compris sans commentaire (nommage explicite, méthodes courtes).
+* Pas de commentaire inutile : le code doit être écrit assez clairement pour être compris sans commentaire (nommage explicite, méthodes courtes). Si le code se suffit à lui-même, pas de commentaire — point.
 * N'en mettre que lorsque c'est réellement nécessaire, et uniquement pour le « pourquoi » non déductible du code : écart volontaire par rapport à la source d'origine, contrainte non évidente, piège évité.
+* Un commentaire nécessaire va droit au but : une à deux lignes. Pas de récit du bug corrigé, pas de rappel de l'historique, pas de justification défensive.
 * Jamais de commentaire qui paraphrase le code.
 
 ### Qualité de code
