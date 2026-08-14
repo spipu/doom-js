@@ -131,6 +131,14 @@ class WadTextureBank {
         return {width: this._texList[index].width, height: this._texList[index].height};
     }
 
+    /**
+     * @param {string} name
+     * @returns {int|null} wall texture height in Doom units, null if absent
+     */
+    wallTextureHeight(name) {
+        const index = this.ensureWallTex(name);
+        return ((index >= 0) ? this._texList[index].height : null);
+    }
 
     /**
      * SW1 ↔ SW2 partner of a switch texture (SWITCHES lump, or name substitution).

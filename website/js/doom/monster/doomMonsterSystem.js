@@ -18,6 +18,7 @@ class DoomMonsterSystem {
         this._collision     = null;
         this._damage        = null;
         this._drops         = null;
+        this._bossDeath     = null;
         this._levelData     = null;
         this._sight         = null;
         this._move          = null;
@@ -180,6 +181,16 @@ class DoomMonsterSystem {
     setDrops(catalog) {
         this._drops = catalog;
         return this;
+    }
+
+    // Per-level A_BossDeath rules (DoomBossDeath), set by the world builder.
+    setBossDeath(service) {
+        this._bossDeath = service;
+        return this;
+    }
+
+    countAliveOfDef(def) {
+        return this._monsters.filter((m) => ((m.def === def) && !m.dead)).length;
     }
 
     getMonsters() {
@@ -611,6 +622,12 @@ class DoomMonsterSystem {
         if (action === 'A_Sor1Pain') {
             // dsparil.zs: the pain arms the serpent's chase acceleration
             m.special1 = 20;
+            return;
+        }
+        if (action === 'A_BossDeath') {
+            if (this._bossDeath !== null) {
+                this._bossDeath.onDeath(m.def);
+            }
             return;
         }
         // The Heretic imp unblocks through its own death verbs (hereticimp.zs

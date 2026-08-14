@@ -18,4 +18,11 @@ class DoomMonsterCatalog {
     getMonsterForType(type) {
         return (this._defs[type] ?? null);
     }
+
+    /**
+     * @returns {DoomMonsterDef[]}
+     */
+    getAllDefs() {
+        return Object.values(this._defs);
+    }
 }

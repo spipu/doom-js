@@ -136,6 +136,20 @@ class AbstractGameProfile {
     }
 
     /**
+     * Map actions fired when the last boss of a type dies (vanilla
+     * A_BossDeath). Keyed by the same codes the monster defs carry in their
+     * bossMaps ('E1M8', or 'MAP07-1'/'MAP07-2' when one map hosts two boss
+     * groups — the level name is key.split('-')[0]). Value: {special, tag}
+     * (internal special codes, same vocabulary as the mover tables) or
+     * {exit: true}.
+     *
+     * @returns {object} boss-map code → action
+     */
+    bossActions() {
+        return {};
+    }
+
+    /**
      * Per-game numbers of the shootable-body damage pipeline (gib threshold,
      * default kickback, blood behaviour) — UZDoom gameinfo + P_SpawnBlood.
      *
