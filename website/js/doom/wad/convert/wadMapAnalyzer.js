@@ -109,7 +109,8 @@ class WadMapAnalyzer {
     // strobes (2/3/4 async, 12/13 sync), glow (8), fire flicker (17). maxLight =
     // the sector's own level; minLight = P_FindMinSurroundingLight (darkest
     // neighbour across two-sided lines, capped at the sector's own level) —
-    // strobes fall back to 0 when no neighbour is darker, fire flicker adds +16.
+    // strobes fall back to the converter's light floor when no neighbour is
+    // darker (vanilla drops to 0), fire flicker adds +16.
     _identifyLightSectors() {
         const {linedefs, sidedefs, sectors} = this._level;
 
@@ -136,7 +137,7 @@ class WadMapAnalyzer {
             const maxLight = sectors[si].light;
             let minLight = Math.min(maxLight, minNeighbour[si] ?? maxLight);
             if (effect.type === 'strobe' && minLight === maxLight) {
-                minLight = 0;
+                minLight = WadConstants.SECTOR_LIGHT_MIN;
             }
             if (effect.type === 'fire') {
                 minLight = minLight + WadConstants.LIGHT_FIRE_MIN_OFFSET;

@@ -2,6 +2,10 @@
  * Binary parser of the map lumps of a level (transposition of the parse_*
  * functions of convert_wad.py). All values little-endian; heights, vertex
  * coordinates, texture offsets and sidedef references are SIGNED Int16.
+ *
+ * Only deviation from the raw lumps: a sector's light level is clamped to
+ * WadConstants.SECTOR_LIGHT_MIN, this being the one place it enters the
+ * pipeline (see the constant for the why).
  */
 class WadLevelParser {
     /**
@@ -96,7 +100,10 @@ class WadLevelParser {
                 ch:      dv.getInt16(o + 2, true),
                 ft:      this._readName(dv, o + 4, 8),
                 ct:      this._readName(dv, o + 12, 8),
-                light:   dv.getUint16(o + 20, true),
+                // Single entry point of the sector light: clamping it here is
+                // what lifts every baked face AND the range of every light
+                // thinker downstream (see SECTOR_LIGHT_MIN).
+                light:   Math.max(dv.getUint16(o + 20, true), WadConstants.SECTOR_LIGHT_MIN),
                 special: dv.getUint16(o + 22, true),
                 tag:     dv.getUint16(o + 24, true)
             });
