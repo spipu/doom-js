@@ -26,13 +26,19 @@ class WadMeshBuilder {
     // teleporters and the invisible USE switches: a one-point mesh (getCenter =
     // the zone centre) at the middle of the line, at player-centre height above
     // the front sector floor, with a radius spanning the whole line + margin.
-    static buildLineZone(level, ld) {
+    // The world segment comes back with it, for the consumers whose zone fires
+    // on a CROSSING rather than on proximity (see WadLineCrossing) — they pass
+    // their own, wider margin: reaching the line is a USE range, sampling the
+    // approach to it is not.
+    static buildLineZone(level, ld, margin = WadConstants.DOOR_ACTION_RADIUS) {
         const {vertexes, sidedefs, sectors} = level;
         const SCALE = WadConstants.SCALE;
 
         const [dx1, dy1] = vertexes[ld.v1];
         const [dx2, dy2] = vertexes[ld.v2];
         const fh = ((ld.right >= 0) ? sectors[sidedefs[ld.right].sector].fh : 0);
+        const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
+        const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
         const [cwx, cwz] = WadGeometry.doomToWorld((dx1 + dx2) / 2, (dy1 + dy2) / 2);
         const cwy = fh * SCALE + (WadConstants.PLAYER_HEIGHT / 2);
         const lenWorld = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2) * SCALE;
@@ -40,7 +46,11 @@ class WadMeshBuilder {
         const mesh = WadMeshBuilder.newMesh();
         mesh.points.push([cwx, cwy, cwz]);
 
-        return {mesh: mesh, radius: (lenWorld / 2) + WadConstants.DOOR_ACTION_RADIUS};
+        return {
+            mesh:    mesh,
+            radius:  (lenWorld / 2) + margin,
+            segment: [wx1, wz1, wx2, wz2]
+        };
     }
 
     // Moving top flat of a sector (floor surface at origFh, normal up): one

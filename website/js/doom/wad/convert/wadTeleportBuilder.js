@@ -50,7 +50,7 @@ class WadTeleportBuilder {
         }
 
         const ld = linedefs[tp.ldIdx];
-        const {mesh, radius} = WadMeshBuilder.buildLineZone(this._level, ld);
+        const {mesh, radius, segment} = WadMeshBuilder.buildLineZone(this._level, ld, WadConstants.WALK_ZONE_MARGIN);
 
         const teleportName = 'teleport_' + tp.ldIdx;
         const onlyOnce = WadConstants.TELEPORT_ONCE_BY_SPECIAL[tp.special] ?? false;
@@ -59,6 +59,9 @@ class WadTeleportBuilder {
             code:     teleportName,
             textures: [],
             mesh:     mesh,
+            // Same crossing rule as the walk zones: a pad teleports the player
+            // who walks over its line, not the one standing beside it.
+            crossSegment: segment,
             instanceData: {
                 code:              teleportName,
                 position:          [0, 0, 0],

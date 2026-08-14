@@ -61,7 +61,7 @@ class WadWalkTriggerBuilder {
         // Zone at floor level on the linedef, so a player walking the line
         // crosses it — unlike self-proximity on a raised lift.
         const ld = linedefs[wt.ldIdx];
-        const {mesh, radius} = WadMeshBuilder.buildLineZone(this._level, ld);
+        const {mesh, radius, segment} = WadMeshBuilder.buildLineZone(this._level, ld, WadConstants.WALK_ZONE_MARGIN);
 
         const walkName = 'walk_' + wt.ldIdx;
         // Exits are all W1 (once); other specials carry their own W1/WR flag.
@@ -71,6 +71,9 @@ class WadWalkTriggerBuilder {
             code:     walkName,
             textures: [],
             mesh:     mesh,
+            // Fires on a real crossing, not on proximity (WadLineCrossing) —
+            // outside instanceData: this stays a game-side rule.
+            crossSegment: segment,
             instanceData: {
                 code:              walkName,
                 position:          [0, 0, 0],
