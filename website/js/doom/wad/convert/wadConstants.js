@@ -744,6 +744,17 @@ class WadConstants {
     // full UZDoom curve reads slightly too strong here).
     static LIGHT_DIMINISH_STRENGTH       = 0.8;
 
+    // Floor of a sector's light level, clamped by the converter as it reads the
+    // SECTORS lump — so every surface it bakes, and the range of every light
+    // thinker, are lifted at once and every renderer benefits (the engine knows
+    // nothing of it). An absolute black is something the original never showed:
+    // UZDoom saturates its colormap ramp at 31/32 (shaders/glsl/main.fp), i.e.
+    // 3.125%, and vanilla's darkest colormap still averages 2.9/255. Clamping
+    // the LEVEL rather than the rendered pixel means the diminishing curve above
+    // still applies to it: 40 puts the pixel in the 3-5% band, in the same range
+    // as those two references.
+    static SECTOR_LIGHT_MIN              = 40;
+
     // Parameters for Engine3d.setDepthShading (common to every doom-format
     // game — an engine behaviour, not a per-game profile datum).
     static lightDiminishParams() {
