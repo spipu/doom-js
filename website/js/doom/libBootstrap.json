@@ -1,5 +1,5 @@
 {
-    "version": "v1.483",
+    "version": "v1.485",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -41,6 +41,7 @@
             "/js/doom/wad/gameProfileList.js",
             "/js/doom/wad/convert/wadSpecialTranslator.js",
             "/js/doom/wad/convert/wadGeometry.js",
+            "/js/doom/wad/convert/wadLineCrossing.js",
             "/js/doom/wad/convert/wadTriangulator.js",
             "/js/doom/wad/convert/wadSectorPolygons.js",
             "/js/doom/wad/convert/wadLevelParser.js",

@@ -984,7 +984,10 @@ class WadMapAnalyzer {
     //   targets back down;
     // - a RAISE special (FLOOR_MOVE_UP) whose tag lands on a LIFT walks the
     //   lowered platform back up (E1M5/E1M7 bidirectional plats: 70/98 lower
-    //   it, the 91 ring raises it back) instead of re-lowering it.
+    //   it, the 91 ring raises it back) instead of re-lowering it;
+    // - symmetrically, a LOWER special (FLOOR_MOVE_DOWN) whose tag lands on a
+    //   RISING FLOOR walks it back down — the two-way floor elevators, one line
+    //   per side (E1M8: the 91 wall raises the shaft, the 82 wall lowers it).
     // A closing special caught on an OPENING door is NOT a reverse: the door
     // owns one cycle per special aiming at it, so it starts forward on the
     // cycle the trigger names (doorVariant) — that is what keeps the 30 s
@@ -1002,10 +1005,15 @@ class WadMapAnalyzer {
             return {start: [], reverse: targets.map(rev)};
         }
         const isRaise = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
+        const isLower = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
         const start = [];
         const reverse = [];
         for (const code of targets) {
             if (isRaise && code.startsWith('lift_')) {
+                reverse.push(rev(code));
+                continue;
+            }
+            if (isLower && code.startsWith('risingfloor_')) {
                 reverse.push(rev(code));
                 continue;
             }

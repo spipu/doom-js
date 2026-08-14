@@ -614,6 +614,20 @@ class WadConstants {
     // exactly where it froze.
     static WALK_STOP_SPECIALS = new Set([54, 89, 57, 74]);
 
+    // Longest displacement (world units) still read as a walk step by the
+    // line-crossing guard (WadLineCrossing): the player covers at most ~0.22 m
+    // per frame on foot or on a conveyor, so anything past a metre is a jump —
+    // a teleport arrival, a restored save, or a zone re-entered after walking
+    // around the line's end — and must not count as a crossing.
+    static WALK_CROSS_MAX_STEP = 64 * WadConstants.SCALE;
+
+    // Broadphase margin of a crossing zone, around its line. It is NOT a reach
+    // like DOOR_ACTION_RADIUS: the crossing is only sampled while the player is
+    // inside the circle and the first sample there is a warm-up, so the circle
+    // must hold several frames of approach on the near side — the shortest
+    // lines are 8 map units, and a frame is up to 0.22 m (0.5 m on a stutter).
+    static WALK_ZONE_MARGIN = 128 * WadConstants.SCALE;
+
     // W1 (once) vs WR (repeatable) — carried by the zone instance's onlyOnce.
     // Includes the tagged WALK door specials (2/109 = W1, 86/90 = WR) routed
     // through the same zone mechanism (see _identifyWalkTriggers).

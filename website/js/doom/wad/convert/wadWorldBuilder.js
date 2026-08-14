@@ -119,6 +119,7 @@ class WadWorldBuilder {
             level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
+            this._applyCrossingGuard(wt);
             const spec = wt.interactionSpec;
             const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.doorVariant);
             if (spec.isExit && this._onLevelExit !== null) {
@@ -141,6 +142,7 @@ class WadWorldBuilder {
         const teleporters = new WadTeleportBuilder(level, analysis, landings).buildAll();
         for (const tp of teleporters) {
             this._registerInstance(tp, bank);
+            this._applyCrossingGuard(tp);
             loader.interactions().loadFromData(
                 new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem));
         }
@@ -646,6 +648,17 @@ class WadWorldBuilder {
         if (keyCode) {
             loader.instances().getByCode(built.code).setTriggerCondition((user) => user.hasItem(keyCode));
         }
+    }
+
+    // Walk-over zones and teleport pads fire on a real CROSSING of their
+    // linedef (vanilla P_CrossSpecialLine), not on proximity: the engine zone
+    // keeps its circle as a broadphase and this guard has the last word.
+    _applyCrossingGuard(built) {
+        if (built.crossSegment === undefined) {
+            return;
+        }
+        const crossing = new WadLineCrossing(built.crossSegment);
+        loader.instances().getByCode(built.code).setTriggerCondition((user) => crossing.crossedBy(user));
     }
 
     // A door carrying BOTH a gun face (46) and a manual face (1) — E1M2's
