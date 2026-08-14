@@ -38,6 +38,21 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {};
     }
 
+    // Transcription of the A_BossDeath switch (linuxdoom p_enemy.c): specials
+    // 38 = lowerFloorToLowest, 109 = blazeOpen, 30 = raiseToTexture. E2M8 and
+    // E3M8 fall through to G_ExitLevel — their only exit.
+    bossActions() {
+        return {
+            'E1M8':    {special: 38,  tag: 666},
+            'E2M8':    {exit: true},
+            'E3M8':    {exit: true},
+            'E4M6':    {special: 109, tag: 666},
+            'E4M8':    {special: 38,  tag: 666},
+            'MAP07-1': {special: 38,  tag: 666},
+            'MAP07-2': {special: 30,  tag: 667}
+        };
+    }
+
     bfgDecalShade() {
         return [128, 255, 128];
     }

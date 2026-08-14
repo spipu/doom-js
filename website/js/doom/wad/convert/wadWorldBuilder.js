@@ -48,7 +48,11 @@ class WadWorldBuilder {
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
         new WadSpecialTranslator(this._profile).translate(level);
-        const analysis = new WadMapAnalyzer(level).analyze();
+        const bossActions = this._levelBossActions();
+        const analysis = new WadMapAnalyzer(level, {
+            bossLinedefs:    this._bossVirtualLinedefs(level, bossActions),
+            textureHeightOf: ((name) => bank.wallTextureHeight(name))
+        }).analyze();
         // Sector polygons computed once (reused by the spawn + every thing)
         this._level       = level;
         this._sectorPolys = this._buildSectorPolyCache(level);
@@ -229,6 +233,7 @@ class WadWorldBuilder {
             this._monsterSystem.setLevelData(
                 this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction));
         }
+        const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes);
 
         // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
@@ -238,7 +243,7 @@ class WadWorldBuilder {
             + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
             + stairs.length + ' stairs, '
             + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
-            + teleporters.length + ' teleporters, '
+            + teleporters.length + ' teleporters, ' + bossRules + ' boss rules, '
             + things.count + ' things (' + things.skipped + ' skipped, '
             + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + ')');
     }
@@ -648,6 +653,63 @@ class WadWorldBuilder {
         if (keyCode) {
             loader.instances().getByCode(built.code).setTriggerCondition((user) => user.hasItem(keyCode));
         }
+    }
+
+    // A_BossDeath actions of this level, from the profile — a 'MAP07-1' /
+    // 'MAP07-2' suffix distinguishes two boss groups on one map.
+    _levelBossActions() {
+        const actions = this._profile.bossActions();
+        const result = [];
+        for (const key of Object.keys(actions)) {
+            if (key.split('-')[0] === this._levelName) {
+                result.push({key: key, ...actions[key]});
+            }
+        }
+        return result;
+    }
+
+    // Vanilla fires these actions from code on a dummy line: when no real
+    // mover linedef aims at the tag, a virtual one makes the analyzer build
+    // the mover (E1M8's 666 block has no linedef at all). Where the WAD
+    // carries its own line (MAP07's 666), the author's line wins.
+    _bossVirtualLinedefs(level, bossActions) {
+        const isMover = (sp) => ((WadConstants.DOOR_BY_SPECIAL[sp] !== undefined)
+            || WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(sp)
+            || WadConstants.FLOOR_MOVE_UP_SPECIALS.has(sp));
+        const virtual = [];
+        for (const action of bossActions) {
+            if (action.exit === true) {
+                continue;
+            }
+            if (!level.linedefs.some((ld) => ((ld.tag === action.tag) && isMover(ld.special)))) {
+                virtual.push({special: action.special, tag: action.tag, left: -1, right: -1});
+            }
+        }
+        return virtual;
+    }
+
+    _wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes) {
+        if ((this._monsterSystem === null) || (this._monsterCatalog === null) || (bossActions.length === 0)) {
+            return 0;
+        }
+        const defs = this._monsterCatalog.getAllDefs();
+        const rules = [];
+        for (const action of bossActions) {
+            const targets = ((action.exit === true) ? [] : WadMapAnalyzer.resolveTaggedTargets(level.sectors, action.tag, [
+                {ids: analysis.movingFloorDownIds, prefix: 'lift_',        built: builtLiftCodes},
+                {ids: analysis.risingFloorIds,     prefix: 'risingfloor_', built: builtRisingCodes},
+                {ids: analysis.doorSectorIds,      prefix: 'door_',        built: builtDoorCodes}
+            ]));
+            for (const def of defs) {
+                if (def.getBossMaps().includes(action.key)) {
+                    rules.push({def: def, targets: targets, exit: (action.exit === true)});
+                }
+            }
+        }
+        if (rules.length > 0) {
+            this._monsterSystem.setBossDeath(new DoomBossDeath(this._monsterSystem, rules, this._onLevelExit));
+        }
+        return rules.length;
     }
 
     // Walk-over zones and teleport pads fire on a real CROSSING of their

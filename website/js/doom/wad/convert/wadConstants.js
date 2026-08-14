@@ -423,6 +423,9 @@ class WadConstants {
         // raiseFloor (same action as 5), 47 = EV_DoPlat raiseToNearestAndChange
         // (same action as 20/22/68). Started by DoomGunTriggers, never by a zone.
         24:  {speed: 1,   target: 'lowestCeiling'},
+        // raiseToTexture 30 (W1) / 96 (WR): up by the shortest lower texture
+        // around the sector (P_FindShortestTextureAround)
+        30:  {speed: 1,   target: 'shortestLower'},
         47:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
         56:  {speed: 1,   target: 'lowestCeilingCrush'},
         58:  {speed: 1,   target: 24},
@@ -436,6 +439,7 @@ class WadConstants {
         91:  {speed: 1,   target: 'lowestCeiling'},
         92:  {speed: 1,   target: 24},
         93:  {speed: 1,   target: 24, change: {source: 'front', special: 'copy', at: 'start'}},
+        96:  {speed: 1,   target: 'shortestLower'},
         101: {speed: 1,   target: 'lowestCeiling'},
         119: {speed: 1,   target: 'nextHigher'},
         128: {speed: 1,   target: 'nextHigher'},
@@ -599,11 +603,11 @@ class WadConstants {
     // *_TRIGGER_BY_SPECIAL so the zone drives them (not self-proximity).
     // Walk lifts: 88 (WR), 120 (WR fast), 121 (W1 fast). 122 is S1 fast = a
     // SWITCH lift, not walk (see SWITCH_SPECIALS). Walk floor-lowers: 19/36/37/38
-    // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/56/58/59/119/130 (W1),
-    // 91/92/93/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
+    // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/30/56/58/59/119/130 (W1),
+    // 91/92/93/96/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
     static WALK_TRIGGER_SPECIALS = new Set([
         10, 19, 36, 37, 38, 82, 83, 84, 88, 98, 120, 121,
-        5, 22, 56, 58, 59, 119, 130, 91, 92, 93, 128, 129,
+        5, 22, 30, 56, 58, 59, 119, 130, 91, 92, 93, 96, 128, 129,
         53, 87, 54, 89,
         57, 74
     ]);
@@ -639,8 +643,8 @@ class WadConstants {
         2: true, 4: true, 109: true, 86: false, 90: false,
         105: false, 106: false, 108: true,
         3: true, 16: true, 75: false, 76: false, 107: false, 110: true,
-        5: true, 22: true, 56: true, 58: true, 59: true, 119: true, 130: true,
-        91: false, 92: false, 93: false, 128: false, 129: false,
+        5: true, 22: true, 30: true, 56: true, 58: true, 59: true, 119: true, 130: true,
+        91: false, 92: false, 93: false, 96: false, 128: false, 129: false,
         53: true, 87: false, 54: true, 89: false,
         40: true, 44: true, 72: false,
         6: true, 25: true, 141: true, 73: false, 77: false,

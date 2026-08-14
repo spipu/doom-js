@@ -39,6 +39,19 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
+    // EV_DoFloor(lowerFloor) — to the HIGHEST neighbour, internal special 19 —
+    // on tag 666. The boss per episode is on the defs' bossMaps below.
+    bossActions() {
+        return {
+            'E1M8': {special: 19, tag: 666},
+            'E2M8': {special: 19, tag: 666},
+            'E3M8': {special: 19, tag: 666},
+            'E4M8': {special: 19, tag: 666},
+            'E5M8': {special: 19, tag: 666}
+        };
+    }
+
     // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden
     // E6 is not named there — when the WAD carries its maps it shows up as a
     // bare "Episode 6" (deliberate: without an entry in the episode menu
@@ -355,7 +368,8 @@ class HereticGameProfile extends DefaultGameProfile {
                 // no clash to dodge).
                 code: 'ironlich', name: 'Iron Lich', sprite: 'HEAD',
                 health: 700, radius: 40, height: 72, mass: 325, speed: 6, painChance: 32,
-                flags: {noBlood: true, bossDeath: true},
+                flags: {noBlood: true},
+                bossMaps: ['E1M8', 'E4M8'],
                 dropItems: [{item: 'BlasterAmmo', chance: 84, amount: 10}, {item: 'ArtiEgg', chance: 51, amount: 0}],
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
@@ -368,7 +382,8 @@ class HereticGameProfile extends DefaultGameProfile {
             9: new DoomMonsterDef({
                 code: 'maulotaur', name: 'Maulotaur', sprite: 'MNTR',
                 health: 3000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 25,
-                flags: {boss: true, dropOff: true, noTarget: true, noRadiusDmg: true, bossDeath: true},
+                flags: {boss: true, dropOff: true, noTarget: true, noRadiusDmg: true},
+                bossMaps: ['E2M8', 'E5M8'],
                 params: {damage: 7},
                 dropItems: [{item: 'ArtiSuperHealth', chance: 51}, {item: 'PhoenixRodAmmo', chance: 84, amount: 10}],
                 states: {
@@ -388,15 +403,17 @@ class HereticGameProfile extends DefaultGameProfile {
                 code: 'dsparilSerpent', name: 'D\'Sparil', sprite: 'SRCR',
                 health: 2000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 56,
                 flags: {boss: true, noTarget: true, noRadiusDmg: true},
+                bossMaps: ['E3M8'],
                 states: {
                     spawn:    [['AB', 10, 'A_Look', 'spawn']],
                     see:      [['ABCD', 5, 'A_Sor1Chase', 'see']],
                     pain:     [['Q', 6, 'A_Sor1Pain', 'see']],
                     missile:  [['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
                     missile2: [['S', 10, 'A_FaceTarget'], ['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
-                    // The serpent's death raises Sorcerer2 (unmounted
-                    // D'Sparil, no editor number) — phase D machinery.
-                    death:    [['E', 7], ['F', 7, 'A_Scream'], ['G', 7], ['HIJK', 6], ['L', 25], ['MN', 5], ['O', 4], ['L', 20], ['MN', 5], ['O', 4], ['L', 12], ['P', -1, 'A_SorcererRise']]
+                    // Vanilla ends on A_SorcererRise (Sorcerer2, the unmounted
+                    // phase — not implemented) whose own death fires the boss
+                    // action: until that phase exists, the serpent frees E3M8.
+                    death:    [['E', 7], ['F', 7, 'A_Scream'], ['G', 7], ['HIJK', 6], ['L', 25], ['MN', 5], ['O', 4], ['L', 20], ['MN', 5], ['O', 4], ['L', 12], ['P', -1, 'A_BossDeath']]
                 }
             })
         };

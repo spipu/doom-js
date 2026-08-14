@@ -8,9 +8,23 @@
 class WadMapAnalyzer {
     /**
      * @param {object} level - output of WadLevelParser.parse()
+     * @param {object} options - {bossLinedefs: [{special, tag, left, right}],
+     *                            textureHeightOf: (name) => int|null}
      */
-    constructor(level) {
-        this._level = level;
+    constructor(level, options = null) {
+        this._level           = level;
+        this._bossLinedefs    = (options?.bossLinedefs ?? []);
+        this._textureHeightOf = (options?.textureHeightOf ?? (() => null));
+    }
+
+    // Iteration source of the MOVER passes only (doors, lifts, rising floors):
+    // the real linedefs plus the tagged boss-death actions, which vanilla
+    // fires from code with no linedef at all (A_BossDeath dummy line). Kept
+    // out of level.linedefs so no geometry-reading pass ever sees them.
+    _moverLinedefs() {
+        return ((this._bossLinedefs.length === 0)
+            ? this._level.linedefs
+            : this._level.linedefs.concat(this._bossLinedefs));
     }
 
     analyze() {
@@ -302,7 +316,8 @@ class WadMapAnalyzer {
     // A linedef with a door special controls the sector referenced by its tag
     // (remote door) or by its left sidedef sector (local door, tag == 0).
     _identifyDoors() {
-        const {linedefs, sidedefs, sectors} = this._level;
+        const {sidedefs, sectors} = this._level;
+        const linedefs = this._moverLinedefs();
         const doorSectorIds = new Set();
         const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
 
@@ -503,7 +518,8 @@ class WadMapAnalyzer {
     // --- Lifts / moving floors ---
 
     _identifyLifts(doorSectorIds, donutHoleTargetFh = {}) {
-        const {linedefs, sidedefs, sectors} = this._level;
+        const {sidedefs, sectors} = this._level;
+        const linedefs = this._moverLinedefs();
         const movingFloorDownIds = new Set();
         const liftSectorSpecial  = {};
 
@@ -666,7 +682,8 @@ class WadMapAnalyzer {
     // floor. A sector whose target does not rise above its floor is dropped
     // (no movement in vanilla): its static floor is kept, no dead instance.
     _identifyRisingFloors(doorSectorIds, movingFloorDownIds, instantRaise = {}) {
-        const {linedefs, sectors} = this._level;
+        const {sectors} = this._level;
+        const linedefs = this._moverLinedefs();
         const risingFloorIds        = new Set();
         const risingFloorSpecial    = {};
         const risingFloorTargetFh   = {};
@@ -716,6 +733,28 @@ class WadMapAnalyzer {
         // Fixed delta above the current floor (raiseFloor24/32...)
         if (typeof rule === 'number') {
             return sec.fh + rule;
+        }
+
+        // 'shortestLower' — P_FindShortestTextureAround: up by the smallest
+        // LOWER texture posted on either side of the sector's two-sided
+        // lines; none around = no movement (the caller's target > fh guard).
+        if (rule === 'shortestLower') {
+            let shortest = null;
+            for (const ld of linedefs) {
+                if (ld.right < 0 || ld.left < 0) {
+                    continue;
+                }
+                if (sidedefs[ld.right].sector !== si && sidedefs[ld.left].sector !== si) {
+                    continue;
+                }
+                for (const sd of [sidedefs[ld.right], sidedefs[ld.left]]) {
+                    const h = this._textureHeightOf(sd.lower);
+                    if ((h !== null) && ((shortest === null) || (h < shortest))) {
+                        shortest = h;
+                    }
+                }
+            }
+            return ((shortest !== null) ? (sec.fh + shortest) : sec.fh);
         }
 
         const neighbours = [];
