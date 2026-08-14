@@ -376,16 +376,17 @@ class WadMapAnalyzer {
             }
         }
 
-        // Per-trigger behaviour: collect EVERY open-door anim aimed at each
-        // door, so the builder emits one keyframe variant per anim and the
-        // crossed line's special decides the cycle at start() time (vanilla —
-        // E1M4 tag 1 mixes 12× 90 OWC and 4× 86 open-stay on the same four
-        // doors). Close doors / crushers keep their single structural cycle.
+        // Per-trigger behaviour: collect the anim of EVERY door special aimed at
+        // each door, so the builder emits one cycle per anim and the crossed
+        // line's special decides which one runs (vanilla — E1M4 tag 1 mixes 12×
+        // 90 OWC and 4× 86 open-stay; E1M6 tag 1 mixes an open-stay switch with
+        // a close-wait-open line, and E4M9 tag 2 an opener with a crusher).
+        // Doors registered BY a closing special keep their single cycle.
         for (const ld of linedefs) {
-            if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
+            const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
+            if (door === undefined) {
                 continue;
             }
-            const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             const targets = [];
             if (ld.tag !== 0) {
                 for (let si = 0; si < sectors.length; si++) {
@@ -400,12 +401,12 @@ class WadMapAnalyzer {
                 if (doorProps[si] === undefined || doorProps[si].close === true) {
                     continue;
                 }
-                // Keyed by anim AND speed: two specials sharing the anim but
-                // not the speed (e.g. 4 at 2 and 105 at 8) must stay distinct.
-                doorProps[si].variants[door.anim + '@' + door.speed] = {
-                    anim:     door.anim,
-                    speed:    door.speed,
-                    onlyOnce: door.onlyOnce
+                doorProps[si].variants[WadConstants.doorCycleKey(door.anim, door.speed)] = {
+                    anim:        door.anim,
+                    speed:       door.speed,
+                    onlyOnce:    door.onlyOnce,
+                    loop:        door.loop,
+                    closeMargin: (door.closeMargin ?? 0)
                 };
             }
         }
@@ -983,11 +984,11 @@ class WadMapAnalyzer {
     //   targets back down;
     // - a RAISE special (FLOOR_MOVE_UP) whose tag lands on a LIFT walks the
     //   lowered platform back up (E1M5/E1M7 bidirectional plats: 70/98 lower
-    //   it, the 91 ring raises it back) instead of re-lowering it;
-    // - a close-door line (DOOR_CLOSE_SPECIALS) closes an OPENING door caught
-    //   by the tag in reverse (vanilla: the ceiling simply descends), while the
-    //   dedicated close-door panels (doorProps.close) start forward — their
-    //   keyframes natively descend from the parked-open rest.
+    //   it, the 91 ring raises it back) instead of re-lowering it.
+    // A closing special caught on an OPENING door is NOT a reverse: the door
+    // owns one cycle per special aiming at it, so it starts forward on the
+    // cycle the trigger names (doorVariant) — that is what keeps the 30 s
+    // reopen of 16/76 and the grind of a crusher.
     // Each reverse entry carries a timeScale so the backward playback runs at
     // the VANILLA speed of the reversing special, not at the speed baked into
     // the target's keyframes (a turbo-lowered plat rises back at FLOORSPEED).
@@ -1001,7 +1002,6 @@ class WadMapAnalyzer {
             return {start: [], reverse: targets.map(rev)};
         }
         const isRaise = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
-        const isClose = WadConstants.DOOR_CLOSE_SPECIALS.has(special);
         const start = [];
         const reverse = [];
         for (const code of targets) {
@@ -1009,17 +1009,7 @@ class WadMapAnalyzer {
                 reverse.push(rev(code));
                 continue;
             }
-            const si = ((isClose && code.startsWith('door_')) ? parseInt(code.slice(5), 10) : null);
-            const isOpeningDoor = (
-                (si !== null) &&
-                (analysis.doorProps[si] !== undefined) &&
-                (analysis.doorProps[si].close !== true)
-            );
-            if (isOpeningDoor) {
-                reverse.push(rev(code));
-            } else {
-                start.push(code);
-            }
+            start.push(code);
         }
 
         return {start: start, reverse: reverse};

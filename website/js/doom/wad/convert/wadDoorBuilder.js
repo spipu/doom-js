@@ -169,89 +169,33 @@ class WadDoorBuilder {
         // ceiling raiser (40) rests at the sector's OWN ceiling — a partially
         // open sector keeps its slit — and travels up to ceilH from there.
         const restDu    = ((props.ceilingRaise === true) ? (this._level.sectors[si].ch - floorH) : 0);
-        const travelY   = (ceilH - floorH) * WadConstants.SCALE;
         const speedTics = props.speed;
 
         const radius = ((mesh.points.length > 0)
             ? WadMeshBuilder.xzActionRadius(mesh)
             : WadConstants.DOOR_ACTION_RADIUS);
 
-        const openS = (ceilH - floorH - restDu) / speedTics / 35.0;
-
-        let keyframes;
-        if (props.anim === 'one-way' || props.anim === 'round-trip') {
-            keyframes = this._openCycleKeyframes(props.anim, speedTics, floorH, ceilH, restDu);
-        } else if (props.anim === 'close-stay') {
-            // Closing door: rest = panel parked open above the ceiling
-            // (keyframe 0 at +travelY, applied from finalizeInit), descends to
-            // the floor — or to floor + closeMargin for the crush ceilings
-            // 44/72 (lowerAndCrush stops 8 above the floor) — and stays there.
-            const marginY = props.closeMargin * WadConstants.SCALE;
-            const closeS  = (ceilH - floorH - props.closeMargin) / speedTics / 35.0;
-            keyframes = [
-                {t: 0.0,    translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: closeS, translate: [0, marginY, 0], rotate: [0, 0, 0]}
-            ];
-        } else if (props.anim === 'crusher') {
-            // Crusher (6/25/49/73/77/141): rests OPEN at the sector's own
-            // ceiling (parked keyframe 0, like a closing door) and oscillates
-            // down to floor + 8 and back with no wait at either end
-            // (p_ceilng.c T_MoveCeiling crushAndRaise). loop repeats the cycle;
-            // a stop line (57/74) pauses it in place, start() resumes.
-            const marginY = props.closeMargin * WadConstants.SCALE;
-            const moveS   = (ceilH - floorH - props.closeMargin) / speedTics / 35.0;
-            keyframes = [
-                {t: 0.0,       translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: moveS,     translate: [0, marginY, 0], rotate: [0, 0, 0]},
-                {t: 2 * moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-            ];
-        } else if (props.anim === 'trap-close') {
-            // Sector special 10: closed rest — the cycle opens the panel and
-            // holds it so the close STARTS exactly at the countdown (vanilla:
-            // 30 s after load), then shuts. autoStart plays it at level load;
-            // a USE (the sector's own DR lines) replays the cycle to reopen.
-            keyframes = [
-                {t: 0.0,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: openS,                     translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: props.timerDelayS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: props.timerDelayS + openS, translate: [0, 0, 0],       rotate: [0, 0, 0]}
-            ];
-        } else if (props.anim === 'close-wait-open') {
-            // Close, wait 30 s (close30ThenOpen), reopen to the parked rest.
-            const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS / 35.0;
-            keyframes = [
-                {t: 0.0,                         translate: [0, travelY, 0], rotate: [0, 0, 0]},
-                {t: openS,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: openS + reopenWaitS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: openS + reopenWaitS + openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-            ];
-        } else {
-            // Unknown anim (never produced by the tables): plain round-trip.
-            keyframes = this._openCycleKeyframes('round-trip', speedTics, floorH, ceilH, restDu);
-        }
+        let keyframes = this._cycleKeyframes(props.anim, speedTics, props.closeMargin, floorH, ceilH, restDu, props.timerDelayS);
 
         // Timer door 14: hold the (closed) rest position for the level-load
         // countdown, then run the normal open-wait-close cycle once. The trap
-        // shape (10) consumes its countdown inside its own keyframes above.
+        // shape (10) consumes its countdown inside its own keyframes.
         if (props.timerDelayS > 0 && props.anim !== 'trap-close') {
             keyframes = [keyframes[0], ...keyframes.map((k) => ({...k, t: k.t + props.timerDelayS}))];
         }
 
-        // Per-trigger keyframe variants: when several open-door anims target
-        // this door (E1M4 tag 1: 12× 90 OWC + 4× 86 open-stay), the crossed
-        // line's special picks its cycle at start() time. Only for plain open
-        // doors — the close/crusher/trap cycles are structural (parked panel)
-        // and never mix.
-        let keyframeVariants = null;
+        // One cycle per special aiming at this door, the crossed line picking
+        // its own at start() time: E1M4 tag 1 mixes two open cycles, E1M6 tag 1
+        // an open-stay with a close-wait-open, E4M9 tag 2 an opener with a
+        // crusher. Left out: the doors a closing special registered (single
+        // structural cycle) and the timer doors, whose countdown is baked into
+        // the keyframes above.
         const variantNames = Object.keys(props.variants ?? {});
-        if (!props.close && (props.anim === 'one-way' || props.anim === 'round-trip') && variantNames.length > 1) {
+        let keyframeVariants = null;
+        if (!props.close && (props.timerDelayS === 0) && (variantNames.length > 1)) {
             keyframeVariants = {};
             for (const key of variantNames) {
-                const v = props.variants[key];
-                keyframeVariants[key] = {
-                    keyframes: this._openCycleKeyframes(v.anim, v.speed, floorH, ceilH, restDu),
-                    onlyOnce:  v.onlyOnce
-                };
+                keyframeVariants[key] = this._buildCycle(props.variants[key], floorH, ceilH, restDu);
             }
         }
 
@@ -275,13 +219,81 @@ class WadDoorBuilder {
             crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),
             keyRequired:       props.keyRequired,
             keyframes:         keyframes,
-            keyframeVariants:  keyframeVariants
+            keyframeVariants:  keyframeVariants,
+            defaultVariant:    ((keyframeVariants !== null) ? WadConstants.doorCycleKey(props.anim, speedTics) : null)
         };
+    }
+
+    // One declared cycle: its timeline plus the playback rules that belong to
+    // it — a crusher loops and grinds where the plain door cycle of the same
+    // sector does neither.
+    _buildCycle(variant, floorH, ceilH, restDu) {
+        const press = WadConstants.doorPressProfile(variant.anim, variant.speed, variant.closeMargin);
+
+        return {
+            keyframes:         this._cycleKeyframes(variant.anim, variant.speed, variant.closeMargin, floorH, ceilH, restDu),
+            onlyOnce:          variant.onlyOnce,
+            loop:              variant.loop,
+            blockedBehavior:   press.behavior,
+            blockedSlowFactor: ((press.slow) ? WadConstants.PRESS_SLOW_FACTOR : 1),
+            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null)
+        };
+    }
+
+    // Keyframes of ONE door cycle, from its own rest pose: the open cycles rest
+    // CLOSED, every closing one rests parked open above the ceiling.
+    _cycleKeyframes(anim, speedTics, closeMargin, floorH, ceilH, restDu, timerDelayS = 0) {
+        const travelY = (ceilH - floorH) * WadConstants.SCALE;
+        const marginY = closeMargin * WadConstants.SCALE;
+        const openS   = (ceilH - floorH - restDu) / speedTics / 35.0;
+        const closeS  = (ceilH - floorH - closeMargin) / speedTics / 35.0;
+
+        // Descends to the floor — or to floor + closeMargin for the crush
+        // ceilings 44/72 (lowerAndCrush stops 8 above it) — and stays there.
+        if (anim === 'close-stay') {
+            return [
+                {t: 0.0,    translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: closeS, translate: [0, marginY, 0], rotate: [0, 0, 0]}
+            ];
+        }
+        // Crusher (6/25/49/73/77/141): oscillates down to floor + 8 and back
+        // with no wait at either end (p_ceilng.c T_MoveCeiling crushAndRaise).
+        // loop repeats the cycle; a stop line (57/74) pauses it, start() resumes.
+        if (anim === 'crusher') {
+            return [
+                {t: 0.0,        translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: closeS,     translate: [0, marginY, 0], rotate: [0, 0, 0]},
+                {t: 2 * closeS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
+        }
+        // Sector special 10: closed rest — the cycle opens the panel and holds
+        // it so the close STARTS exactly at the countdown (vanilla: 30 s after
+        // load). autoStart plays it at level load; a USE replays it to reopen.
+        if (anim === 'trap-close') {
+            return [
+                {t: 0.0,                 translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS,               translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: timerDelayS,         translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: timerDelayS + openS, translate: [0, 0, 0],       rotate: [0, 0, 0]}
+            ];
+        }
+        // close30ThenOpen: close, wait 30 s, reopen to the parked rest.
+        if (anim === 'close-wait-open') {
+            const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS / 35.0;
+            return [
+                {t: 0.0,                         translate: [0, travelY, 0], rotate: [0, 0, 0]},
+                {t: openS,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS + reopenWaitS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                {t: openS + reopenWaitS + openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+            ];
+        }
+
+        return this._openCycleKeyframes(anim, speedTics, floorH, ceilH, restDu);
     }
 
     // Open-door cycle from the rest position (restDu — the sector's own
     // ceiling for the ceiling raisers) up to ceilH at the given speed:
-    // 'one-way' = open-stay, 'round-trip' = open-wait-close + 1 s rest.
+    // 'one-way' = open-stay, anything else = open-wait-close + 1 s rest.
     _openCycleKeyframes(anim, speedTics, floorH, ceilH, restDu) {
         const restY   = restDu * WadConstants.SCALE;
         const travelY = (ceilH - floorH) * WadConstants.SCALE;

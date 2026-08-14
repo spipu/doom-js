@@ -113,7 +113,7 @@ class WadSwitchBuilder {
     // walk-trigger builder.
     static doorVariantKey(special) {
         const door = WadConstants.DOOR_BY_SPECIAL[special];
-        return ((door !== undefined) ? door.anim + '@' + door.speed : null);
+        return ((door !== undefined) ? WadConstants.doorCycleKey(door.anim, door.speed) : null);
     }
 
     // Visible switch panel: a textured quad swapping SW1↔SW2 on trigger. Its

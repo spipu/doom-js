@@ -190,6 +190,13 @@ class WadConstants {
         141: {kind: 'close', speed: 1, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8}
     };
 
+    // Name of the cycle a door special drives, and the key its keyframe variant
+    // is declared under: the anim AND the speed, since two specials may share
+    // the anim but not the speed (e.g. 4 at 2 and 105 at 8).
+    static doorCycleKey(anim, speed) {
+        return (anim + '@' + speed);
+    }
+
     // Timer doors (sector specials 10/14) have no linedef special: they get
     // the plain VDOORSPEED manual-door profile, tuned after registration.
     static DOOR_TIMER_DEFAULTS = {kind: 'open', speed: 2, trigger: 'action', anim: 'round-trip', loop: false, onlyOnce: false, key: null};
