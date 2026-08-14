@@ -66,8 +66,9 @@ class InstanceLoader extends AbstractLoader {
         entity._interaction      = data.interaction || null;
         entity._animKeyframes    = data.keyframes || [];
         entity._animVariants     = data.keyframeVariants || null;
-        entity._animMaxTime      = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[entity._animKeyframes.length - 1].t : 0);
-        entity._animTime         = ((entity._animKeyframes.length > 0) ? entity._animKeyframes[0].t : 0);
+        entity._animDefaultVariant = (data.defaultVariant ?? null);
+        // The time bounds are derived from the keyframes: finalizeInit installs
+        // the loaded cycle and computes them.
 
         if (entity._code !== null) {
             this._codeRegistry[entity._code] = entity.getId();

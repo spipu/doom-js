@@ -14,17 +14,21 @@ class Instance extends AbstractLoadedEntity {
         this._prevTransform     = null;
 
         // Animation playback (keyframes-driven)
-        this._animKeyframes     = [];
-        this._animVariants      = null;   // name → {keyframes, onlyOnce}: per-trigger cycles (see start)
-        this._animActiveVariant = null;   // name of the variant currently applied (exportAnimState)
-        this._animTime          = 0;
-        this._animMaxTime       = 0;
-        this._animPlaying       = false;
-        this._animReverse       = false;   // true = keyframes played backward (time decreasing)
-        this._animReverseScale  = 1;       // reverse playback speed factor (see startReverse)
-        this._animLoop          = false;
-        this._animOnlyOnce      = false;
-        this._animDone          = false;
+        this._animKeyframes      = [];
+        // name → {keyframes, onlyOnce, loop?, blockedBehavior?,
+        // blockedSlowFactor?, crushDamage?}: per-trigger cycles (see start)
+        this._animVariants       = null;
+        this._animActiveVariant  = null;
+        this._animDefaultVariant = null;
+        this._baseCycle          = null;
+        this._animTime           = 0;
+        this._animMaxTime        = 0;
+        this._animPlaying        = false;
+        this._animReverse        = false;   // true = keyframes played backward (time decreasing)
+        this._animReverseScale   = 1;       // reverse playback speed factor (see startReverse)
+        this._animLoop           = false;
+        this._animOnlyOnce       = false;
+        this._animDone           = false;
 
         // Trigger / interaction (how the animation is activated)
         this._trigger           = 'none';
@@ -73,6 +77,16 @@ class Instance extends AbstractLoadedEntity {
 
     finalizeInit() {
         this._object = loader.objects().get(this._objectId);
+        // Captured so a variant only has to state its divergences.
+        this._baseCycle = {
+            keyframes:         this._animKeyframes,
+            onlyOnce:          this._animOnlyOnce,
+            loop:              this._animLoop,
+            blockedBehavior:   this._blockedBehavior,
+            blockedSlowFactor: this._blockedSlowFactor,
+            crushDamage:       this._crushDamage,
+        };
+        this._applyCycle(null);
         this._computeWorldCenter();
         // Timer-armed elements (e.g. Doom sector-special doors) play their
         // cycle from level load, independently of the trigger.
@@ -217,24 +231,21 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * Counterpart of exportAnimState. The keyframe variant is re-applied first
-     * (it swaps the timeline), then the raw fields overwrite it. The ride is
-     * restored directly — setRideOn() would recompute the base against the
-     * mover's CURRENT delta, while the saved base already matches the restored
-     * mover pose. The lifecycle hooks are replayed when the restored state
-     * says they already fired: their effects (e.g. a floor texture change)
-     * belong to the animation's progress, not to the freshly rebuilt scene.
+     * Counterpart of exportAnimState. The saved cycle is re-applied first (it
+     * swaps the timeline and its playback rules), then the raw fields overwrite
+     * it. The ride is restored directly — setRideOn() would recompute the base
+     * against the mover's CURRENT delta, while the saved base already matches
+     * the restored mover pose. The lifecycle hooks are replayed when the
+     * restored state says they already fired: their effects (e.g. a floor
+     * texture change) belong to the animation's progress, not to the freshly
+     * rebuilt scene.
      *
      * @param {object} data
      * @param {Instance|null} rideOnInstance resolved from data.rideOnCode by the caller
      */
     importAnimState(data, rideOnInstance = null) {
-        if (data.variant !== null && this._animVariants !== null && this._animVariants[data.variant] !== undefined) {
-            const v = this._animVariants[data.variant];
-            this._animKeyframes     = v.keyframes;
-            this._animMaxTime       = v.keyframes[v.keyframes.length - 1].t;
-            this._animOnlyOnce      = (v.onlyOnce === true);
-            this._animActiveVariant = data.variant;
+        if (this._cycleOf(data.variant) !== null) {
+            this._applyCycle(data.variant);
         }
         this._position         = [...data.position];
         this._rotation         = [...data.rotation];
@@ -534,29 +545,32 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * variant: optional name of a keyframe variant (setKeyframeVariants) to
-     * play — per-trigger cycles (a Doom door tag mixing open-wait-close and
-     * open-stay lines: the crossed line's special decides the cycle). Only
-     * applied at rest: a playing or finished instance ignores the call, so
-     * the variant switch can never teleport a moving panel.
+     * variant: name of the cycle to play (setKeyframeVariants), null = the
+     * default one — the crossed line's special picks it (a door tag mixing
+     * open-stay and close-wait-open lines).
      */
     start(variant = null) {
-        // A finished onlyOnce animation stays finished (re-triggering a done
-        // one-way is a vanilla no-op) — without this, a repeatable trigger
-        // re-firing start() would reset the time while _animDone still blocks
-        // update(), freezing the instance in a zombie state that also locks
-        // out startReverse() (its playing guard). startReverse() clears
-        // _animDone, re-arming start().
-        if (this._animPlaying || this._animDone) {
+        if (this._animPlaying) {
             return;
         }
-        if (variant !== null && this._animVariants !== null && this._animVariants[variant] !== undefined) {
-            const v = this._animVariants[variant];
-            this._animKeyframes     = v.keyframes;
-            this._animMaxTime       = v.keyframes[v.keyframes.length - 1].t;
-            this._animOnlyOnce      = (v.onlyOnce === true);
-            this._animTime          = v.keyframes[0].t;
-            this._animActiveVariant = variant;
+        // Another cycle is a NEW cycle, not the re-trigger of a spent one
+        // (vanilla spawns a fresh thinker), so a done animation accepts it.
+        const wanted    = (variant ?? this._animDefaultVariant);
+        const switching = ((wanted !== this._animActiveVariant) && (this._cycleOf(wanted) !== null));
+        // Re-triggering a done one-way is a vanilla no-op, and it would reset
+        // the time while _animDone still blocks update() — a zombie state that
+        // also locks out startReverse().
+        if (this._animDone && !switching) {
+            return;
+        }
+        if (switching) {
+            // A cycle plays from its first keyframe, so the body must already
+            // sit there: a closing cycle rests OPEN, an opening one CLOSED, and
+            // applying either from the wrong pose teleports the panel.
+            if (!this._poseIsCycleStart(wanted)) {
+                return;
+            }
+            this._applyCycle(wanted);
         }
         this._animPlaying = true;
         if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {
@@ -569,6 +583,48 @@ class Instance extends AbstractLoadedEntity {
 
     setKeyframeVariants(variants) {
         this._animVariants = variants;
+    }
+
+    setDefaultVariant(name) {
+        this._animDefaultVariant = name;
+    }
+
+    _cycleOf(name) {
+        if (name === null) {
+            return this._baseCycle;
+        }
+        return ((this._animVariants !== null) ? (this._animVariants[name] ?? null) : null);
+    }
+
+    _applyCycle(name) {
+        const cycle  = this._cycleOf(name);
+        const frames = cycle.keyframes;
+        this._animKeyframes      = frames;
+        this._animMaxTime        = ((frames.length > 0) ? frames[frames.length - 1].t : 0);
+        this._animTime           = ((frames.length > 0) ? frames[0].t : 0);
+        this._animOnlyOnce       = (cycle.onlyOnce === true);
+        this._animLoop           = (cycle.loop === true);
+        this._animDone           = false;
+        this._blockedBehavior    = (cycle.blockedBehavior ?? this._baseCycle.blockedBehavior);
+        this._blockedSlowFactor  = (cycle.blockedSlowFactor ?? this._baseCycle.blockedSlowFactor);
+        this._crushDamage        = (cycle.crushDamage ?? this._baseCycle.crushDamage);
+        this._animActiveVariant  = name;
+    }
+
+    _poseIsCycleStart(name) {
+        const first = this._cycleOf(name).keyframes[0];
+        if (first === undefined) {
+            return true;
+        }
+        for (let axis = 0; axis < 3; axis++) {
+            if (Math.abs(this._delta.translate[axis] - first.translate[axis]) > Instance.POSE_EPSILON) {
+                return false;
+            }
+            if (Math.abs(this._delta.rotate[axis] - first.rotate[axis]) > Instance.POSE_EPSILON) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Freezes the animation in place (Doom EV_StopPlat stasis): keeps the
@@ -666,3 +722,6 @@ class Instance extends AbstractLoadedEntity {
         };
     }
 }
+
+// Pose tolerance of _poseIsCycleStart (world units / degrees)
+Instance.POSE_EPSILON = 1e-3;
