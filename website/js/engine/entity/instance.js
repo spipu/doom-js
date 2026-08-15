@@ -36,7 +36,7 @@ class Instance extends AbstractLoadedEntity {
         this._triggerPlanar     = false;   // true = proximity tested on XZ only (walk-over lines)
         this._autoStart         = false;   // true = start() once at load (timer-armed elements)
         this._interaction       = null;
-        this._triggerCondition  = null;
+        this._triggerConditions = [];
         this._renderOffset      = null;
         this._renderLight       = 1;
 
@@ -139,16 +139,17 @@ class Instance extends AbstractLoadedEntity {
         this._worldCenter = [p[0], p[1], p[2]];
     }
 
-    // Opaque gate evaluated before a proximity/action trigger may fire (e.g. a
-    // locked door checking the player holds the key). The predicate is supplied
-    // by the game layer; the engine stays generic and only calls it.
-    setTriggerCondition(fn) {
-        this._triggerCondition = fn;
+    // Opaque gates evaluated before a proximity/action trigger may fire (e.g. a
+    // locked door checking the player holds the key). The predicates are
+    // supplied by the game layer; the engine stays generic and ANDs them —
+    // several rules may guard one instance (key + crossing + side).
+    addTriggerCondition(fn) {
+        this._triggerConditions.push(fn);
         return this;
     }
 
     _conditionMet(user) {
-        return ((this._triggerCondition === null) || (this._triggerCondition(user) === true));
+        return this._triggerConditions.every((fn) => (fn(user) === true));
     }
 
     isCollidable() {
@@ -553,6 +554,16 @@ class Instance extends AbstractLoadedEntity {
         if (this._animPlaying) {
             return;
         }
+        // A cycle paused mid-travel (stop line, vanilla stasis) resumes as-is
+        // whatever the trigger asks for: P_ActivateInStasis re-awakens the
+        // parked thinker, it never re-reads the activating line's action.
+        if (this._isPausedMidCycle()) {
+            this._animPlaying = true;
+            if (this._onStart !== null) {
+                this._onStart();
+            }
+            return;
+        }
         // Another cycle is a NEW cycle, not the re-trigger of a spent one
         // (vanilla spawns a fresh thinker), so a done animation accepts it.
         const wanted    = (variant ?? this._animDefaultVariant);
@@ -581,12 +592,11 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
-    setKeyframeVariants(variants) {
-        this._animVariants = variants;
-    }
-
-    setDefaultVariant(name) {
-        this._animDefaultVariant = name;
+    _isPausedMidCycle() {
+        return ((this._animKeyframes.length > 0)
+            && !this._animDone
+            && (this._animTime > this._animKeyframes[0].t)
+            && (this._animTime < this._animMaxTime));
     }
 
     _cycleOf(name) {

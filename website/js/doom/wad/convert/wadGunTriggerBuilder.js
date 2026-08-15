@@ -67,7 +67,7 @@ class WadGunTriggerBuilder {
     _resolveTargets(gt) {
         const families = ((gt.special === 46)
             ? [{ids: this._analysis.doorSectorIds, prefix: 'door_', built: this._builtDoorCodes}]
-            : [{ids: this._analysis.risingFloorIds, prefix: 'risingfloor_', built: this._builtRisingCodes}]);
+            : [WadMapAnalyzer.risingFloorFamily(this._analysis, this._level.sectors, this._builtRisingCodes, gt.special)]);
 
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, gt.tag, families);
     }

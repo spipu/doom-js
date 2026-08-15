@@ -33,10 +33,10 @@ class WadMapAnalyzer {
         const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise);
-        this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
+        const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
-        const floorChange = this._identifyFloorChanges(lifts, rising);
+        const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches();
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
@@ -123,8 +123,10 @@ class WadMapAnalyzer {
     // strobes (2/3/4 async, 12/13 sync), glow (8), fire flicker (17). maxLight =
     // the sector's own level; minLight = P_FindMinSurroundingLight (darkest
     // neighbour across two-sided lines, capped at the sector's own level) —
-    // strobes fall back to the converter's light floor when no neighbour is
-    // darker (vanilla drops to 0), fire flicker adds +16.
+    // strobes fall back to 0 when no neighbour is darker, fire flicker adds
+    // +16. All bounds use the RAW lump values: the SECTOR_LIGHT_MIN floor only
+    // lifts what is baked statically — a dark phase dipping under it is the
+    // visible blink vanilla shows (a raw-40 room still strobes 40↔0).
     _identifyLightSectors() {
         const {linedefs, sidedefs, sectors} = this._level;
 
@@ -138,8 +140,8 @@ class WadMapAnalyzer {
             if (rSi === lSi) {
                 continue;
             }
-            minNeighbour[rSi] = Math.min(minNeighbour[rSi] ?? 255, sectors[lSi].light);
-            minNeighbour[lSi] = Math.min(minNeighbour[lSi] ?? 255, sectors[rSi].light);
+            minNeighbour[rSi] = Math.min(minNeighbour[rSi] ?? 255, sectors[lSi].lightRaw);
+            minNeighbour[lSi] = Math.min(minNeighbour[lSi] ?? 255, sectors[rSi].lightRaw);
         }
 
         const lightSectors = [];
@@ -148,10 +150,10 @@ class WadMapAnalyzer {
             if (effect === undefined) {
                 continue;
             }
-            const maxLight = sectors[si].light;
+            const maxLight = sectors[si].lightRaw;
             let minLight = Math.min(maxLight, minNeighbour[si] ?? maxLight);
             if (effect.type === 'strobe' && minLight === maxLight) {
-                minLight = WadConstants.SECTOR_LIGHT_MIN;
+                minLight = 0;
             }
             if (effect.type === 'fire') {
                 minLight = minLight + WadConstants.LIGHT_FIRE_MIN_OFFSET;
@@ -235,18 +237,20 @@ class WadMapAnalyzer {
 
     // The tagged sector s1 (the "hole"/pillar) LOWERS to the floor of s3 while
     // the untagged ring s2 around it RISES to the same height, both at
-    // FLOORSPEED/2 (the ring's floor texture change is cosmetic, not applied).
-    // s2 = the sector across s1's first linedef; s3 = the sector across s2's
-    // first two-sided linedef whose far side is not s1. The hole rides the
-    // floor-down family with a forced target (holeTargetFh); the ring joins
-    // the rising floors (ringTag lets the switch resolve it — a ring carries
-    // no tag of its own).
+    // FLOORSPEED/2; at the ring's arrival its flat becomes s3's and its sector
+    // special is cleared (T_MoveFloor donutRaise — the raised slime no longer
+    // hurts). s2 = the sector across s1's first linedef; s3 = the sector
+    // across s2's first two-sided linedef whose far side is not s1. The hole
+    // rides the floor-down family with a forced target (holeTargetFh); the
+    // ring joins the rising floors (ringTag lets the switch resolve it — a
+    // ring carries no tag of its own).
     //
     // @returns {{holeTargetFh: object, rings: object, ringTag: object}}
     _identifyDonuts() {
-        const {linedefs, sidedefs, sectors} = this._level;
+        const {sidedefs, sectors} = this._level;
+        const linedefs = this._moverLinedefs();
         const holeTargetFh = {};
-        const rings        = {};   // ring si → target fh
+        const rings        = {};   // ring si → {targetFh, special, modelFlat, modelSpecial}
         const ringTag      = {};   // ring si → trigger tag
 
         const otherSide = (ld, si) => {
@@ -259,7 +263,7 @@ class WadMapAnalyzer {
         };
 
         for (const ld of linedefs) {
-            if (ld.special !== 9 || ld.tag === 0) {
+            if (!WadConstants.isDonutSpecial(ld.special) || (ld.tag === 0)) {
                 continue;
             }
             for (let s1 = 0; s1 < sectors.length; s1++) {
@@ -283,7 +287,8 @@ class WadMapAnalyzer {
                     continue;
                 }
                 holeTargetFh[s1] = sectors[s3].fh;
-                rings[s2]        = sectors[s3].fh;
+                rings[s2]        = {targetFh: sectors[s3].fh, special: ld.special,
+                    modelFlat: sectors[s3].ft, modelSpecial: sectors[s3].special};
                 ringTag[s2]      = ld.tag;
             }
         }
@@ -294,21 +299,38 @@ class WadMapAnalyzer {
     // Ring half of the donuts: joins the rising floors (fh not patched, moving
     // top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
     // does not rise above its own floor is dropped (no movement in vanilla).
+    // Each claimed ring also gets its declared "+change" (the up-table entry:
+    // model flat, special zeroed, at arrival — T_MoveFloor donutRaise).
+    //
+    // @returns {object} claimed ring si → floorChange record
     _mergeDonutRings(donuts, doorSectorIds, movingFloorDownIds, rising) {
         const {sectors} = this._level;
+        const ringChanges = {};
         for (const key of Object.keys(donuts.rings)) {
-            const si = parseInt(key, 10);
-            const targetFh = donuts.rings[key];
+            const si   = parseInt(key, 10);
+            const ring = donuts.rings[key];
             if (doorSectorIds.has(si) || movingFloorDownIds.has(si) || rising.risingFloorIds.has(si)) {
                 continue;
             }
-            if (targetFh <= sectors[si].fh) {
+            if (ring.targetFh <= sectors[si].fh) {
                 continue;
             }
             rising.risingFloorIds.add(si);
-            rising.risingFloorSpecial[si]  = 9;
-            rising.risingFloorTargetFh[si] = targetFh;
+            rising.risingFloorSpecial[si]  = ring.special;
+            rising.risingFloorTargetFh[si] = ring.targetFh;
+            // Up-table entry read directly: floorChangeForSpecial would serve
+            // the HOLE's half of the special (the down entry, no change).
+            const rule = (WadConstants.FLOOR_UP_BY_SPECIAL[ring.special].change ?? null);
+            if (rule !== null) {
+                ringChanges[si] = {
+                    flatName: ring.modelFlat,
+                    special:  WadMapAnalyzer._changeSpecial(rule, ring.modelSpecial),
+                    at:       rule.at
+                };
+            }
         }
+
+        return ringChanges;
     }
 
     // --- Doors ---
@@ -325,13 +347,16 @@ class WadMapAnalyzer {
             // Vanilla carries the activation on each linedef, the sector is only
             // the target: a remote line (walk zone, switch) drives the door
             // through its own trigger and must not take the manual press away.
-            if ((doorProps[si] !== undefined) && (doorProps[si].trigger === 'action')) {
+            // Manual specials keep overwriting each other (last wins), so a
+            // keyed face still locks the door (E1M5's blue door pairs 1 + 26).
+            const trigger = forceTrigger ?? door.trigger;
+            if ((doorProps[si] !== undefined) && (doorProps[si].trigger === 'action') && (trigger !== 'action')) {
                 return;
             }
             doorSectorIds.add(si);
             doorProps[si] = {
                 speed:        door.speed,
-                trigger:      forceTrigger ?? door.trigger,
+                trigger:      trigger,
                 loop:         door.loop,
                 onlyOnce:     door.onlyOnce,
                 anim:         door.anim,
@@ -346,8 +371,9 @@ class WadMapAnalyzer {
                 timerDelayS:  0,
                 autoStart:    false,
                 // Per-trigger anims aimed at this door (filled after the
-                // registration loops): anim name → {speed, onlyOnce}.
-                variants:     {}
+                // registration loops, preserved when the timer-sector pass
+                // re-registers on top): anim name → {speed, onlyOnce}.
+                variants:     (doorProps[si]?.variants ?? {})
             };
         };
 
@@ -799,11 +825,13 @@ class WadMapAnalyzer {
     // sector lines in order). One change per sector: with several change lines
     // on the same tag, the last one wins (same per-element limitation as the
     // doors). Fired at 'start' or at 'complete' of the moving instance.
+    // Seeded with the donut ring changes _mergeDonutRings emitted (a tagged
+    // change line on the same sector wins, like everywhere else).
     //
     // @returns {object} si → {flatName, special (number|null), at}
-    _identifyFloorChanges(lifts, rising) {
+    _identifyFloorChanges(lifts, rising, ringChanges) {
         const {linedefs, sidedefs, sectors} = this._level;
-        const floorChange = {};
+        const floorChange = {...ringChanges};
 
         for (const ld of linedefs) {
             const rule = WadConstants.floorChangeForSpecial(ld.special);
@@ -828,13 +856,19 @@ class WadMapAnalyzer {
                 }
                 floorChange[si] = {
                     flatName: source.ft,
-                    special:  ((rule.special === 'copy') ? source.special : ((rule.special === 'zero') ? 0 : null)),
+                    special:  WadMapAnalyzer._changeSpecial(rule, source.special),
                     at:       rule.at
                 };
             }
         }
 
         return floorChange;
+    }
+
+    // New sector special posted by a "+change" rule: 'copy' takes the source
+    // sector's, 'zero' clears it, 'keep' (null) leaves it untouched.
+    static _changeSpecial(rule, sourceSpecial) {
+        return ((rule.special === 'copy') ? sourceSpecial : ((rule.special === 'zero') ? 0 : null));
     }
 
     // First two-sided neighbour of si whose floor sits at the given height
@@ -1017,6 +1051,30 @@ class WadMapAnalyzer {
         return targets;
     }
 
+    // A sector built as a donut RING: only _mergeDonutRings stamps a
+    // donut special into risingFloorSpecial (same idiom as lightGroupOf).
+    static isDonutRing(analysis, si) {
+        return WadConstants.isDonutSpecial(analysis.risingFloorSpecial[si]);
+    }
+
+    // Rising-floor family for resolveTaggedTargets, shared by every trigger
+    // builder (switch, walk, gun, boss). A donut ring carries no tag of its
+    // own: it resolves by the trigger tag stored at identification, and only
+    // for the donut special itself — vanilla moves the untagged ring from
+    // EV_DoDonut alone, never from another special sharing the tag.
+    static risingFloorFamily(analysis, sectors, built, special) {
+        const ringsWanted = WadConstants.isDonutSpecial(special);
+        return {ids: analysis.risingFloorIds, prefix: 'risingfloor_', built: built,
+            tagOf: (si) => ((WadMapAnalyzer.isDonutRing(analysis, si))
+                ? ((ringsWanted) ? analysis.donutRingTag[si] : null)
+                : sectors[si].tag)};
+    }
+
+    // Sector id baked into a target instance code ('risingfloor_175' → 175).
+    static _sectorOfCode(code, prefix) {
+        return parseInt(code.slice(prefix.length), 10);
+    }
+
     // Splits resolved target codes into {start, reverse} — reverse = played
     // backward via startReverse(). Shared by the switch and walk builders:
     // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
@@ -1027,6 +1085,9 @@ class WadMapAnalyzer {
     // - symmetrically, a LOWER special (FLOOR_MOVE_DOWN) whose tag lands on a
     //   RISING FLOOR walks it back down — the two-way floor elevators, one line
     //   per side (E1M8: the 91 wall raises the shaft, the 82 wall lowers it).
+    //   A ring hit by ITS donut special is exempt: the donut is itself a LOWER
+    //   (the hole descends) yet must START its ring rising (EV_DoDonut, E1M2's
+    //   slime) — any other lower special reaching a ring reverses it normally.
     // A closing special caught on an OPENING door is NOT a reverse: the door
     // owns one cycle per special aiming at it, so it starts forward on the
     // cycle the trigger names (doorVariant) — that is what keeps the 30 s
@@ -1053,8 +1114,12 @@ class WadMapAnalyzer {
                 continue;
             }
             if (isLower && code.startsWith('risingfloor_')) {
-                reverse.push(rev(code));
-                continue;
+                const ringOfThisDonut = (WadConstants.isDonutSpecial(special)
+                    && WadMapAnalyzer.isDonutRing(analysis, WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')));
+                if (!ringOfThisDonut) {
+                    reverse.push(rev(code));
+                    continue;
+                }
             }
             start.push(code);
         }
@@ -1075,11 +1140,11 @@ class WadMapAnalyzer {
     // (from the special it was built with).
     static _targetSpeed(analysis, code) {
         if (code.startsWith('lift_')) {
-            const si = parseInt(code.slice(5), 10);
+            const si = WadMapAnalyzer._sectorOfCode(code, 'lift_');
             return WadConstants.FLOOR_DOWN_BY_SPECIAL[analysis.liftSectorSpecial[si]]?.speed ?? 1;
         }
         if (code.startsWith('risingfloor_')) {
-            const si = parseInt(code.slice(12), 10);
+            const si = WadMapAnalyzer._sectorOfCode(code, 'risingfloor_');
             return WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed ?? 1;
         }
         if (code.startsWith('door_')) {

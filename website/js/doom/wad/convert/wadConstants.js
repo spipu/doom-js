@@ -412,6 +412,8 @@ class WadConstants {
     //    trigger time (p_floor.c raiseFloor24AndChange 59/93 copies floorpic +
     //    special; p_plats.c raiseToNearestAndChange 20/22/68 copies the
     //    floorpic and ZEROES the special; raiseAndChange 66/67 floorpic only).
+    //    source 'donutModel' = the donut's far-side model sector s3, known
+    //    only to the donut identification (never resolved by tag).
     //  - donutRingOnly (9): resolved by the donut identification, not by tag —
     //    excluded from the walk/switch membership set below.
     static FLOOR_UP_BY_SPECIAL = {
@@ -447,8 +449,9 @@ class WadConstants {
         130: {speed: 4,   target: 'nextHigher'},
         131: {speed: 4,   target: 'nextHigher'},
         // Donut ring: the target height comes from the donut identification
-        // (the hole's far-side floor), never from a target rule.
-        9:   {speed: 0.5, target: null, donutRingOnly: true}
+        // (the hole's far-side floor), never from a target rule. Its change is
+        // T_MoveFloor donutRaise: the model's floorpic, special zeroed, at rest.
+        9:   {speed: 0.5, target: null, donutRingOnly: true, change: {source: 'donutModel', special: 'zero', at: 'complete'}}
     };
 
     // Derived membership set — never edit this, edit FLOOR_UP_BY_SPECIAL.
@@ -672,6 +675,15 @@ class WadConstants {
         return ((entry !== undefined) ? (entry.change ?? null) : null);
     }
 
+    // --- Donut (EV_DoDonut) ---
+
+    // True for the donut specials (the 'donutRingOnly' floor-up entries): on a
+    // trigger line it identifies a donut; on a built rising floor's special it
+    // identifies the sector as a donut RING (only _mergeDonutRings stamps it).
+    static isDonutSpecial(special) {
+        return (WadConstants.FLOOR_UP_BY_SPECIAL[special]?.donutRingOnly === true);
+    }
+
     // --- Sector damage (P_PlayerInSpecialSector) ---
 
     // Damage applied to a player standing on the floor of a sector carrying
@@ -769,15 +781,12 @@ class WadConstants {
     // full UZDoom curve reads slightly too strong here).
     static LIGHT_DIMINISH_STRENGTH       = 0.8;
 
-    // Floor of a sector's light level, clamped by the converter as it reads the
-    // SECTORS lump — so every surface it bakes, and the range of every light
-    // thinker, are lifted at once and every renderer benefits (the engine knows
-    // nothing of it). An absolute black is something the original never showed:
-    // UZDoom saturates its colormap ramp at 31/32 (shaders/glsl/main.fp), i.e.
-    // 3.125%, and vanilla's darkest colormap still averages 2.9/255. Clamping
-    // the LEVEL rather than the rendered pixel means the diminishing curve above
-    // still applies to it: 40 puts the pixel in the 3-5% band, in the same range
-    // as those two references.
+    // Floor of a sector's BAKED light level (the parser keeps the raw value in
+    // lightRaw alongside): an absolute black at rest is something the original
+    // never showed — vanilla's darkest colormap still averages 2.9/255, and 40
+    // through the diminishing curve lands in the same 3-5% band. Light thinkers
+    // (strobe, glow, flicker) run on the RAW bounds so their dark phase keeps
+    // its vanilla depth: a transient dip below the floor is the visible blink.
     static SECTOR_LIGHT_MIN              = 40;
 
     // Parameters for Engine3d.setDepthShading (common to every doom-format

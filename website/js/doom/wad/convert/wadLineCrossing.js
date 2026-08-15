@@ -2,7 +2,7 @@
  * Walk-line activation of one zone, vanilla style (P_CrossSpecialLine): the
  * linedef fires when it is CROSSED, not while the player stands near it. The
  * engine zone keeps its proximity circle as a broadphase and defers here
- * through Instance.setTriggerCondition — without that gate a repeatable line
+ * through Instance.addTriggerCondition — without that gate a repeatable line
  * re-fires every frame, which turns a pair of opposite lines (the two walls of
  * a floor elevator, E1M8) into a yo-yo.
  */

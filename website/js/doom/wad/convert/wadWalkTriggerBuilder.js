@@ -52,7 +52,7 @@ class WadWalkTriggerBuilder {
         // An exit line ends the level and ignores its tag (vanilla Doom): no
         // targets, and the zone is kept even though nothing is tag-resolved.
         const isExit  = (wt.isExit === true);
-        const targets = ((isExit) ? [] : this._resolveTargets(wt.tag));
+        const targets = ((isExit) ? [] : this._resolveTargets(wt.tag, wt.special));
         if (targets.length === 0 && !isExit) {
             return null;
         }
@@ -104,10 +104,10 @@ class WadWalkTriggerBuilder {
 
     // Tagged lift + rising-floor + door instances of the same tag (shared
     // resolver — same logic as the switch builder, extended with rising floors).
-    _resolveTargets(tag) {
+    _resolveTargets(tag, special) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, tag, [
             {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
-            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes},
+            WadMapAnalyzer.risingFloorFamily(this._analysis, this._level.sectors, this._builtRisingCodes, special),
             {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
             // Stairs: chained steps resolve by the trigger tag stored per step.
             {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,

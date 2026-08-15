@@ -3,9 +3,9 @@
  * functions of convert_wad.py). All values little-endian; heights, vertex
  * coordinates, texture offsets and sidedef references are SIGNED Int16.
  *
- * Only deviation from the raw lumps: a sector's light level is clamped to
- * WadConstants.SECTOR_LIGHT_MIN, this being the one place it enters the
- * pipeline (see the constant for the why).
+ * Only deviation from the raw lumps: a sector carries both its raw light
+ * (lightRaw) and a display level floored at WadConstants.SECTOR_LIGHT_MIN
+ * (light) — see the constant for the why.
  */
 class WadLevelParser {
     /**
@@ -95,17 +95,19 @@ class WadLevelParser {
         const count = Math.floor(dv.byteLength / 26);
         for (let i = 0; i < count; i++) {
             const o = i * 26;
+            const lightRaw = dv.getUint16(o + 20, true);
             result.push({
-                fh:      dv.getInt16(o, true),
-                ch:      dv.getInt16(o + 2, true),
-                ft:      this._readName(dv, o + 4, 8),
-                ct:      this._readName(dv, o + 12, 8),
-                // Single entry point of the sector light: clamping it here is
-                // what lifts every baked face AND the range of every light
-                // thinker downstream (see SECTOR_LIGHT_MIN).
-                light:   Math.max(dv.getUint16(o + 20, true), WadConstants.SECTOR_LIGHT_MIN),
-                special: dv.getUint16(o + 22, true),
-                tag:     dv.getUint16(o + 24, true)
+                fh:       dv.getInt16(o, true),
+                ch:       dv.getInt16(o + 2, true),
+                ft:       this._readName(dv, o + 4, 8),
+                ct:       this._readName(dv, o + 12, 8),
+                // light = the baked display level, floored (SECTOR_LIGHT_MIN);
+                // lightRaw = the lump value, for the light thinkers' vanilla
+                // bounds — their dark phases may dip under the floor.
+                light:    Math.max(lightRaw, WadConstants.SECTOR_LIGHT_MIN),
+                lightRaw: lightRaw,
+                special:  dv.getUint16(o + 22, true),
+                tag:      dv.getUint16(o + 24, true)
             });
         }
 
