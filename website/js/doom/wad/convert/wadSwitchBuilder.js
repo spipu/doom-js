@@ -217,10 +217,14 @@ class WadSwitchBuilder {
     }
 
     /**
-     * Built mover whose own mesh draws the face carrying the switch graphic:
-     * the panel of a door (upper band — the face belongs to the sector across
-     * the line, the one whose ceiling moves) or the riser of a floor mover
-     * (lower band, either side). null = a plain static wall.
+     * Built mover whose own mesh draws the face carrying the switch graphic AT
+     * REST: the panel of a door (upper band — the face belongs to the sector
+     * across the line, the one whose ceiling moves) or the riser of a lift
+     * (lower band, far side — parked up, its riser spans the step, and a
+     * static panel would hang in the air once it lowers). Up movers (rising
+     * floors, stairs) rest with their risers buried below the floor: their
+     * band keeps its static panel, and the flush-parked case still falls back
+     * through the degenerate-band path. null = a plain static wall.
      *
      * @returns {string|null} instance code
      */
@@ -229,14 +233,13 @@ class WadSwitchBuilder {
             return null;
         }
         const {sidedefs} = this._level;
-        const far  = sidedefs[((slotInfo.side === 'right') ? ld.left : ld.right)].sector;
-        const near = sidedefs[((slotInfo.side === 'right') ? ld.right : ld.left)].sector;
+        const far = sidedefs[((slotInfo.side === 'right') ? ld.left : ld.right)].sector;
 
         if (slotInfo.slot === 'upper') {
             return ((this._builtDoorCodes.has('door_' + far)) ? ('door_' + far) : null);
         }
-        if (slotInfo.slot === 'lower') {
-            return (this._floorMoverCode(far) ?? this._floorMoverCode(near));
+        if ((slotInfo.slot === 'lower') && this._builtLiftCodes.has('lift_' + far)) {
+            return ('lift_' + far);
         }
 
         return null;
@@ -256,8 +259,8 @@ class WadSwitchBuilder {
         return null;
     }
 
-    // Last-resort resolution for a panel with no geometry of its own: any
-    // mover touching the line, floors first (the historical riser case).
+    // Last-resort resolution for a panel with no geometry of its own (flush
+    // parked, degenerate band): any mover touching the line, floors first.
     _anyMoverOn(ld) {
         const {sidedefs} = this._level;
         for (const sd of [ld.right, ld.left]) {
@@ -297,10 +300,7 @@ class WadSwitchBuilder {
     _resolveTargets(ld) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
             {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
-            // Donut rings carry no tag of their own: match them by the trigger
-            // tag stored at identification (same pattern as the stairs below).
-            {ids: this._analysis.risingFloorIds,     prefix: 'risingfloor_', built: this._builtRisingCodes,
-                tagOf: (si) => this._analysis.donutRingTag[si] ?? this._level.sectors[si].tag},
+            WadMapAnalyzer.risingFloorFamily(this._analysis, this._level.sectors, this._builtRisingCodes, ld.special),
             {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
             // Stairs: only the base step carries the trigger tag, so match every
             // step of the staircase by its stored stairStepTag instead.

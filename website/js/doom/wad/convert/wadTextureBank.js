@@ -132,12 +132,16 @@ class WadTextureBank {
     }
 
     /**
+     * Read straight from the pre-indexed TEXTURE1/2 header: this is a metrics
+     * probe (P_FindShortestTextureAround), it must not compose nor register
+     * the texture for rendering.
+     *
      * @param {string} name
      * @returns {int|null} wall texture height in Doom units, null if absent
      */
     wallTextureHeight(name) {
-        const index = this.ensureWallTex(name);
-        return ((index >= 0) ? this._texList[index].height : null);
+        const entry = this._wallTexDir[name];
+        return ((entry !== undefined) ? entry.dv.getUint16(entry.offset + 14, true) : null);
     }
 
     /**

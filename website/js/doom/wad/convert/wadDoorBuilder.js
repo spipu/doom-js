@@ -188,11 +188,12 @@ class WadDoorBuilder {
         // its own at start() time: E1M4 tag 1 mixes two open cycles, E1M6 tag 1
         // an open-stay with a close-wait-open, E4M9 tag 2 an opener with a
         // crusher. Left out: the doors a closing special registered (single
-        // structural cycle) and the timer doors, whose countdown is baked into
-        // the keyframes above.
+        // structural cycle). A timer door keeps its countdown baked into the
+        // base keyframes but still carries the per-special cycles — a close
+        // line aimed at a special-10 trap must not replay the trap cycle.
         const variantNames = Object.keys(props.variants ?? {});
         let keyframeVariants = null;
-        if (!props.close && (props.timerDelayS === 0) && (variantNames.length > 1)) {
+        if (!props.close && (variantNames.length > ((props.timerDelayS > 0) ? 0 : 1))) {
             keyframeVariants = {};
             for (const key of variantNames) {
                 keyframeVariants[key] = this._buildCycle(props.variants[key], floorH, ceilH, restDu);

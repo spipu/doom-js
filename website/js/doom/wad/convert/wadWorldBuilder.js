@@ -233,7 +233,7 @@ class WadWorldBuilder {
             this._monsterSystem.setLevelData(
                 this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction));
         }
-        const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes);
+        const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes);
 
         // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
@@ -606,24 +606,30 @@ class WadWorldBuilder {
             }
             const oldSeq = animBank.flatSequenceLoaderIds(this._level.sectors[si].ft);
             const newSeq = animBank.flatSequenceLoaderIds(change.flatName);
-            if (oldSeq.ids.length === 0 || newSeq.ids.length === 0) {
+            // The flat swap needs both sequences resolved; the special change
+            // does not (vanilla posts sector->special independently of the
+            // floorpic) and must survive an unresolvable flat.
+            const swapFlats = ((oldSeq.ids.length > 0) && (newSeq.ids.length > 0));
+            if (!swapFlats && ((change.special === null) || (damageInteraction === null))) {
                 continue;
             }
-            const newAnim = ((newSeq.ids.length > 1)
+            const newAnim = ((swapFlats && (newSeq.ids.length > 1))
                 ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
                 : null);
             const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftMinAdjFh[si];
             const inst  = loader.instances().getByCode(code);
             const apply = () => {
-                inst.getObject().faceList.forEach((fc) => {
-                    const animated = (fc.animTextures !== null && fc.animTextures !== undefined
-                        && fc.animTextures.ids.some((id) => oldSeq.ids.includes(id)));
-                    if (animated || oldSeq.ids.includes(fc.textureId)) {
-                        fc.textureId    = newSeq.ids[0];
-                        fc.animTextures = newAnim;
-                    }
-                });
-                inst.getObject().invalidateFaceGroups();
+                if (swapFlats) {
+                    inst.getObject().faceList.forEach((fc) => {
+                        const animated = (fc.animTextures !== null && fc.animTextures !== undefined
+                            && fc.animTextures.ids.some((id) => oldSeq.ids.includes(id)));
+                        if (animated || oldSeq.ids.includes(fc.textureId)) {
+                            fc.textureId    = newSeq.ids[0];
+                            fc.animTextures = newAnim;
+                        }
+                    });
+                    inst.getObject().invalidateFaceGroups();
+                }
                 if ((change.special !== null) && (damageInteraction !== null)) {
                     damageInteraction.setSectorSpecial(si, change.special, targetFh * SCALE);
                 }
@@ -651,7 +657,7 @@ class WadWorldBuilder {
     _applyKeyGuard(built) {
         const keyCode = built.instanceData.keyRequired;
         if (keyCode) {
-            loader.instances().getByCode(built.code).setTriggerCondition((user) => user.hasItem(keyCode));
+            loader.instances().getByCode(built.code).addTriggerCondition((user) => user.hasItem(keyCode));
         }
     }
 
@@ -688,21 +694,32 @@ class WadWorldBuilder {
         return virtual;
     }
 
-    _wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes) {
+    _wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
         if ((this._monsterSystem === null) || (this._monsterCatalog === null) || (bossActions.length === 0)) {
             return 0;
         }
         const defs = this._monsterCatalog.getAllDefs();
         const rules = [];
         for (const action of bossActions) {
+            // Same target model as the switch/walk/gun paths: full family list,
+            // reverse split and per-special door cycle.
             const targets = ((action.exit === true) ? [] : WadMapAnalyzer.resolveTaggedTargets(level.sectors, action.tag, [
                 {ids: analysis.movingFloorDownIds, prefix: 'lift_',        built: builtLiftCodes},
-                {ids: analysis.risingFloorIds,     prefix: 'risingfloor_', built: builtRisingCodes},
-                {ids: analysis.doorSectorIds,      prefix: 'door_',        built: builtDoorCodes}
+                WadMapAnalyzer.risingFloorFamily(analysis, level.sectors, builtRisingCodes, action.special),
+                {ids: analysis.doorSectorIds,      prefix: 'door_',        built: builtDoorCodes},
+                {ids: analysis.stairIds, prefix: 'stair_', built: builtStairCodes,
+                    tagOf: (si) => analysis.stairStepTag[si]}
             ]));
+            const split = WadMapAnalyzer.splitReverseTargets(analysis, action.special, targets);
             for (const def of defs) {
                 if (def.getBossMaps().includes(action.key)) {
-                    rules.push({def: def, targets: targets, exit: (action.exit === true)});
+                    rules.push({
+                        def:            def,
+                        targets:        split.start,
+                        reverseTargets: split.reverse,
+                        doorVariant:    WadSwitchBuilder.doorVariantKey(action.special),
+                        exit:           (action.exit === true)
+                    });
                 }
             }
         }
@@ -720,7 +737,7 @@ class WadWorldBuilder {
             return;
         }
         const crossing = new WadLineCrossing(built.crossSegment);
-        loader.instances().getByCode(built.code).setTriggerCondition((user) => crossing.crossedBy(user));
+        loader.instances().getByCode(built.code).addTriggerCondition((user) => crossing.crossedBy(user));
     }
 
     // A door carrying BOTH a gun face (46) and a manual face (1) — E1M2's
@@ -728,7 +745,7 @@ class WadWorldBuilder {
     // USE from the gun side: vanilla P_UseSpecialLine ignores the impact
     // specials. The engine's USE is a radius around the whole door body, so
     // the guard compares the player's distance to the two face sets (the key
-    // guard, when present, is folded into the same predicate).
+    // guard, when present, is a separate condition ANDed by the engine).
     _applyGunSideGuard(built, level) {
         if (built.instanceData.trigger !== 'action') {
             return;
@@ -759,11 +776,9 @@ class WadWorldBuilder {
 
         const minDistSq = (user, faces) => Math.min(...faces.map(
             (f) => WadGeometry.pointSegmentDistSq(user.x, user.z, f[0], f[1], f[2], f[3])));
-        const keyCode = built.instanceData.keyRequired;
-        const sideOk  = (user) => (minDistSq(user, useFaces) <= minDistSq(user, gunFaces));
-        const guard   = ((keyCode) ? ((user) => (user.hasItem(keyCode) && sideOk(user))) : sideOk);
 
-        loader.instances().getByCode(built.code).setTriggerCondition(guard);
+        loader.instances().getByCode(built.code)
+            .addTriggerCondition((user) => (minDistSq(user, useFaces) <= minDistSq(user, gunFaces)));
     }
 
     _buildDefinition(level, bank) {
