@@ -48,21 +48,10 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
     }
 
     triggered(instance) {
-        for (const code of this._targets) {
-            const target = loader.instances().getByCode(code);
-            if (target) {
-                if (this._stop) {
-                    target.pause();
-                } else {
-                    target.start(this._doorVariant);
-                }
-            }
-        }
-        for (const entry of this._reverseTargets) {
-            const target = loader.instances().getByCode(entry.code);
-            if (target) {
-                target.startReverse(entry.timeScale);
-            }
+        if (this._stop) {
+            DoomTriggerTargets.pause(this._targets);
+        } else {
+            DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._doorVariant);
         }
 
         if (this._exitCallback !== null) {

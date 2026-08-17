@@ -214,9 +214,7 @@ class WadDoorBuilder {
             // they carry no proximity radius — same convention as switch-driven lifts.
             interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
-            blockedBehavior:   press.behavior,
-            blockedSlowFactor: ((press.slow) ? WadConstants.PRESS_SLOW_FACTOR : 1),
-            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),
+            ...this._pressFields(press),
             keyRequired:       props.keyRequired,
             keyframes:         keyframes,
             keyframeVariants:  keyframeVariants,
@@ -231,9 +229,17 @@ class WadDoorBuilder {
         const press = WadConstants.doorPressProfile(variant.anim, variant.speed, variant.closeMargin);
 
         return {
-            keyframes:         this._cycleKeyframes(variant.anim, variant.speed, variant.closeMargin, floorH, ceilH, restDu),
-            onlyOnce:          variant.onlyOnce,
-            loop:              variant.loop,
+            keyframes: this._cycleKeyframes(variant.anim, variant.speed, variant.closeMargin, floorH, ceilH, restDu),
+            onlyOnce:  variant.onlyOnce,
+            loop:      variant.loop,
+            ...this._pressFields(press)
+        };
+    }
+
+    // Pressure fields of one cycle, shared by the base descriptor and the
+    // per-special variants.
+    _pressFields(press) {
+        return {
             blockedBehavior:   press.behavior,
             blockedSlowFactor: ((press.slow) ? WadConstants.PRESS_SLOW_FACTOR : 1),
             crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null)

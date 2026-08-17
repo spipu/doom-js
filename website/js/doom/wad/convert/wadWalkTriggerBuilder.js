@@ -95,23 +95,17 @@ class WadWalkTriggerBuilder {
                 stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
                 // Per-trigger door cycle (OWC vs open-stay on the same tag);
                 // null for non-door specials, ignored by variant-less targets.
-                doorVariant:    WadSwitchBuilder.doorVariantKey(wt.special),
+                doorVariant:    WadConstants.doorCycleKeyForSpecial(wt.special),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }
         };
     }
 
-    // Tagged lift + rising-floor + door instances of the same tag (shared
-    // resolver — same logic as the switch builder, extended with rising floors).
     _resolveTargets(tag, special) {
-        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, tag, [
-            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
-            WadMapAnalyzer.risingFloorFamily(this._analysis, this._level.sectors, this._builtRisingCodes, special),
-            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
-            // Stairs: chained steps resolve by the trigger tag stored per step.
-            {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,
-                tagOf: (si) => this._analysis.stairStepTag[si]}
-        ]);
+        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, tag, WadMapAnalyzer.moverFamilies(
+            this._analysis, this._level.sectors,
+            {lifts: this._builtLiftCodes, rising: this._builtRisingCodes, doors: this._builtDoorCodes, stairs: this._builtStairCodes},
+            special));
     }
 }

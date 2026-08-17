@@ -63,12 +63,8 @@ class DoomGunTriggers {
 
     // --- Internal ---
 
-    // Target codes are guaranteed by the builder (filtered on the built-code
-    // sets), same contract as the switch/walk interactions.
     _fire(line) {
-        for (const code of line.targets) {
-            loader.instances().getByCode(code).start(line.doorVariant);
-        }
+        DoomTriggerTargets.fire(line.targets, null, line.doorVariant);
     }
 
 }

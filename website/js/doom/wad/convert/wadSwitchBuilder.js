@@ -100,20 +100,12 @@ class WadSwitchBuilder {
                 reverseTargets: split.reverse,
                 // Per-trigger door cycle (OWC vs open-stay on the same tag);
                 // null for non-door specials, ignored by variant-less targets.
-                doorVariant:    WadSwitchBuilder.doorVariantKey(ld.special),
+                doorVariant:    WadConstants.doorCycleKeyForSpecial(ld.special),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
             }
         };
-    }
-
-    // Per-trigger door cycle key (anim@speed, matching the variant keys of the
-    // door instances); null for non-door specials. Static: shared with the
-    // walk-trigger builder.
-    static doorVariantKey(special) {
-        const door = WadConstants.DOOR_BY_SPECIAL[special];
-        return ((door !== undefined) ? WadConstants.doorCycleKey(door.anim, door.speed) : null);
     }
 
     // Visible switch panel: a textured quad swapping SW1↔SW2 on trigger. Its
@@ -297,15 +289,10 @@ class WadSwitchBuilder {
     // resolver). start() is type-agnostic, so a remote door (trigger 'none')
     // opens exactly like a switch-driven lift or rising floor.
     _resolveTargets(ld) {
-        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, [
-            {ids: this._analysis.movingFloorDownIds, prefix: 'lift_',        built: this._builtLiftCodes},
-            WadMapAnalyzer.risingFloorFamily(this._analysis, this._level.sectors, this._builtRisingCodes, ld.special),
-            {ids: this._analysis.doorSectorIds,      prefix: 'door_',        built: this._builtDoorCodes},
-            // Stairs: only the base step carries the trigger tag, so match every
-            // step of the staircase by its stored stairStepTag instead.
-            {ids: this._analysis.stairIds, prefix: 'stair_', built: this._builtStairCodes,
-                tagOf: (si) => this._analysis.stairStepTag[si]}
-        ]);
+        return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, WadMapAnalyzer.moverFamilies(
+            this._analysis, this._level.sectors,
+            {lifts: this._builtLiftCodes, rising: this._builtRisingCodes, doors: this._builtDoorCodes, stairs: this._builtStairCodes},
+            ld.special));
     }
 
     /**

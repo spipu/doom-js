@@ -197,6 +197,13 @@ class WadConstants {
         return (anim + '@' + speed);
     }
 
+    // Cycle key driven by a door special (null when the special is not a door)
+    // — shared by the switch / walk / gun / boss trigger paths.
+    static doorCycleKeyForSpecial(special) {
+        const door = WadConstants.DOOR_BY_SPECIAL[special];
+        return ((door !== undefined) ? WadConstants.doorCycleKey(door.anim, door.speed) : null);
+    }
+
     // Timer doors (sector specials 10/14) have no linedef special: they get
     // the plain VDOORSPEED manual-door profile, tuned after registration.
     static DOOR_TIMER_DEFAULTS = {kind: 'open', speed: 2, trigger: 'action', anim: 'round-trip', loop: false, onlyOnce: false, key: null};

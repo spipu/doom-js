@@ -34,11 +34,6 @@ class DoomBossDeath {
             }
             return;
         }
-        for (const code of rule.targets) {
-            loader.instances().getByCode(code).start(rule.doorVariant);
-        }
-        for (const entry of rule.reverseTargets) {
-            loader.instances().getByCode(entry.code).startReverse(entry.timeScale);
-        }
+        DoomTriggerTargets.fire(rule.targets, rule.reverseTargets, rule.doorVariant);
     }
 }

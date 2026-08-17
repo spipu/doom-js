@@ -2,10 +2,12 @@
  * Per-level dynamic sector lights (transposition of the p_lights.c thinkers,
  * one step per tic at 35 tics/s): flicker (T_LightFlash), strobe
  * (T_StrobeFlash), glow (T_Glow) and fire flicker (T_FireFlicker). Each light
- * sector drives the brightness factor (current level / baked level) of every
+ * sector drives the brightness factor (current level / RAW rest level) of every
  * face tagged with its lightGroup — static map, instance meshes (doors, lifts,
- * switches…) and sprite billboards. Only the random source deviates from
- * vanilla (Math.random instead of the P_Random table).
+ * switches…) and sprite billboards. The thinker bounds are the raw lump values
+ * while the faces are baked at the SECTOR_LIGHT_MIN-floored level: a dark phase
+ * scales them below the floor, keeping its vanilla depth. Only the random
+ * source deviates from vanilla (Math.random instead of the P_Random table).
  */
 class DoomSectorLightInteraction extends AbstractInteraction {
     /**
@@ -30,7 +32,7 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     }
 
     // Current brightness factor of a light sector (1 for a sector with no light
-    // effect), i.e. current level / baked level — the value applied to its faces.
+    // effect), i.e. current level / raw rest level — the value applied to its faces.
     getFactor(si) {
         const st = this._bySi[si];
         if (st === undefined) {
