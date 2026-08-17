@@ -21,6 +21,7 @@
 * Jamais de copier-coller : factoriser, refactorer, extraire une méthode ou un service commun.
 * Toujours privilégier la qualité de code : une duplication repérée doit être supprimée, pas dupliquée une fois de plus.
 * Mettre à jour `README.md` automatiquement, sans attendre qu'on le demande, dès qu'une modification le rend obsolète : nouvelle fonctionnalité, comportement décrit qui change, nouveau fichier dans l'arborescence.
+* Le `README.md` décrit le **quoi**, jamais le **comment** : 2 à 4 lignes par fonctionnalité (ce que le joueur ou le développeur obtient), une ligne par répertoire dans l'arborescence. Les détails d'implémentation (numéros de specials, formules, études de cas par niveau, justifications de fidélité vanilla) n'y ont pas leur place — ils vivent dans la base documentaire.
 * Respecter les standards de codage en place dans le projet (ci-dessous).
 
 ### Standards de codage
