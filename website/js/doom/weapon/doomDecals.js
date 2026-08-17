@@ -97,7 +97,7 @@ class DoomDecals {
             dst[i]     = shade[0];
             dst[i + 1] = shade[1];
             dst[i + 2] = shade[2];
-            dst[i + 3] = Math.min(255, Math.round(src[i] * gain));   // luminance × gain = coverage
+            dst[i + 3] = Math.min(255, Math.round(src[i] * gain));
         }
         return out;
     }
@@ -119,7 +119,7 @@ class DoomDecals {
         return loader.objects().loadFromData(null, { textures: [texId], points, faces });
     }
 
-    // Mirror a UV set (randomflipx/y): u → 1-u, v → 1-v.
+    // decaldef randomflipx/y.
     _flipUv(uv, fx, fy) {
         return uv.map((c) => [((fx) ? 1 - c[0] : c[0]), ((fy) ? 1 - c[1] : c[1])]);
     }

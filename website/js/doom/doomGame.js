@@ -96,7 +96,7 @@ class DoomGame {
         return (this._items[code] ?? null);
     }
 
-    // --- Pickups (phase 3) ---
+    // --- Pickups ---
 
     // Apply a picked-up thing's effect descriptor to the player. Returns true
     // when something was actually consumed — false leaves the sprite on the
@@ -282,11 +282,8 @@ class DoomGame {
         user.setArmor(0);
     }
 
-    // Debug/test cheat (the 'o' key): hand the player the full kit — every
-    // weapon, every ammo type topped to its current max, all the keys, full
-    // energy and the game's best armour class (profile cheatKitArmor). Reuses
-    // the existing DoomUser grant paths so it stays consistent with the pickup
-    // system (same ammo caps, same fixed 0→200 armour ceiling).
+    // Debug cheat (the 'o' key): full kit through the normal DoomUser grant
+    // paths — same ammo caps and armour ceiling as the pickups.
     _applyCheatFullKit() {
         const user = this._world.getUser();
 

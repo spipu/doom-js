@@ -309,7 +309,7 @@ class WadTextureBank {
             h--;
         }
         const out = new ImageData(w, h);
-        out.data.set(d.subarray(0, w * h * 4));   // dead rows are at the bottom → keep the top h rows
+        out.data.set(d.subarray(0, w * h * 4));
         WadTextureBank._fillTransparentHorizontally(out);
 
         return out;

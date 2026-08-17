@@ -241,8 +241,6 @@ class MenuOptionsModal extends MenuModal {
         return appTranslator.get('device.keyboardMouse');
     }
 
-    // One navigable row per setting: name on the left, current value on the
-    // right.
     _addSettingItem(listEl, def, inputs) {
         let valueEl = null;
         const item = this._nav.addItemIn(listEl, appTranslator.get(def.nameCode), () => {

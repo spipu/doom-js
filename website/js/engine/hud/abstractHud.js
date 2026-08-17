@@ -34,10 +34,8 @@ class AbstractHud {
     update() {
     }
 
-    // Full-screen feedback tint on the HUD container, common to every concrete
-    // HUD (debug and the future graphical one): red while taking damage (or
-    // dead), gold on item pickup, transparent otherwise. Damage takes priority
-    // over the pickup flash. Both flash values live on the User and decay there.
+    // Full-screen feedback tint, common to every concrete HUD; both flash
+    // values live on the User and decay there.
     _applyScreenFlash() {
         if ((this._user === null) || (this._container === null)) {
             return;

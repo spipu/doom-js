@@ -341,7 +341,7 @@ class WadMapAnalyzer {
         const {sidedefs, sectors} = this._level;
         const linedefs = this._moverLinedefs();
         const doorSectorIds = new Set();
-        const doorProps     = {};   // si → {speed, trigger, loop, onlyOnce, anim, keyRequired}
+        const doorProps     = {};   // si → door props (shape in registerDoor)
 
         const registerDoor = (si, door, forceTrigger) => {
             // Vanilla carries the activation on each linedef, the sector is only
@@ -564,7 +564,7 @@ class WadMapAnalyzer {
             }
         }
 
-        // Save original fh and min adjacent fh before patching.
+        // Captured before _patchLiftFloors mutates fh.
         const liftOriginalFh      = {};
         const liftMinAdjFh        = {};
         const liftMaxAdjFh        = {};
@@ -990,7 +990,7 @@ class WadMapAnalyzer {
             const rSd = sidedefs[ld.right];
 
             if (ld.left < 0) {
-                // One-sided: switch graphic on the right middle (unchanged).
+                // One-sided: switch graphic on the right middle.
                 if (!rSd.middle || rSd.middle === '-') {
                     continue;
                 }

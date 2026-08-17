@@ -66,8 +66,7 @@ class InputVirtualGamepad {
         };
 
         // Dead zone per gesture (fraction of the stick travel) and output
-        // sensitivity of the firing gesture — tunable, defaults reproduce the
-        // historic single-constant behaviour.
+        // sensitivity of the firing gesture.
         this._deadZone = {
             move: InputVirtualGamepad.DEAD_ZONE_DEFAULT,
             aim:  InputVirtualGamepad.DEAD_ZONE_DEFAULT,
@@ -508,7 +507,6 @@ class InputVirtualGamepad {
             && (ny >= area.y) && (ny <= (area.y + area.h)));
     }
 
-    // Returns the button name under the normalized point, or null.
     _hitButton(nx, ny) {
         for (const name in InputVirtualGamepad.BUTTONS) {
             if (this._inArea(InputVirtualGamepad.BUTTONS[name], nx, ny)) {
@@ -617,8 +615,7 @@ InputVirtualGamepad.AIM_SPLIT_MARK_WIDTH = 0.1;
 InputVirtualGamepad.STICK_RADIUS_RATIO = 0.12;
 InputVirtualGamepad.KNOB_RATIO         = 0.45;
 // Default dead zone of every gesture, as a fraction of the stick travel — used
-// until the game pushes its own values (setDeadZone), so a page with no
-// settings layer keeps the historic feel.
+// until the game pushes its own values (setDeadZone).
 InputVirtualGamepad.DEAD_ZONE_DEFAULT = 0.15;
 // Rectangular targets, hit-tested in declaration order, all four buttons the
 // same size. They clear the HUD blocks by the same 0.02 margin: the left column

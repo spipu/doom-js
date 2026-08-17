@@ -27,9 +27,7 @@ class DoomEffects {
     // Every frame carries its OWN vanilla anchor (R_ProjectSprite draws a
     // sprite with its left edge at -leftoffset and its top at +topoffset
     // around the mobj point), so frames of different sizes all align on that
-    // point and the runtime frame swap (setObject) never shifts the animation
-    // — without this, frames stayed glued to the first frame's foot line
-    // (bottom-aligned explosions on walls).
+    // point and the runtime frame swap (setObject) never shifts the animation.
     _buildTemplate(bank, spec) {
         const scale  = WadConstants.SCALE;
         const frames = [];

@@ -102,7 +102,6 @@ class WadRisingFloorBuilder {
             const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
 
             if (rSi2 === si && !risingFloorIds.has(lSi2)) {
-                // Floor on right, corridor on left — l_sd + flip=false
                 const lSd2  = sidedefs[ld.left];
                 const lSec2 = sectors[lSi2];
                 const tex = lSd2.lower;
@@ -121,7 +120,6 @@ class WadRisingFloorBuilder {
                     wallLen, tw, th,
                     {xOff: lSd2.xo, yOff: yo, flip: false, light: lSec2.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, lSi2)});
             } else if (lSi2 === si && !risingFloorIds.has(rSi2)) {
-                // Floor on left, corridor on right — r_sd + flip=true
                 const rSd2  = sidedefs[ld.right];
                 const rSec2 = sectors[rSi2];
                 const tex = rSd2.lower;

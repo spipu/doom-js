@@ -153,9 +153,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         ]), gl.STATIC_DRAW);
     }
 
-    // Generic 2D overlay: one textured quad in normalised screen space (0..1,
-    // y downward), drawn over the scene with depth test OFF and tinted by light.
-    // Knows nothing of what it draws (weapon, HUD sprite…) — the caller places it.
+    // One textured quad drawn over the scene, depth test OFF, tinted by light
+    // (contract on Object3dRendererBase.drawScreenSprite).
     drawScreenSprite(engine, texId, x, y, w, h, light) {
         const gl  = engine.scrCtx;
         const tex = ((texId !== null) ? loader.textures().get(texId) : null);
@@ -382,8 +381,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     // Vertex staging buffer, kept and grown instead of reallocated: the level map
-    // alone needs ~300 000 floats, which was a fresh multi-megabyte array every
-    // frame. The caller uploads only the slice it filled.
+    // alone needs ~300 000 floats — a multi-megabyte allocation per frame
+    // otherwise. The caller uploads only the slice it filled.
     _ensureVertexData(floats) {
         if (this._vertexData.length < floats) {
             let size = Math.max(this._vertexData.length, 1024);
@@ -437,10 +436,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     }
 
-    // Premultiplied alpha upload: transparent texels keep RGB (0,0,0) in the
-    // decoded ImageData, so LINEAR filtering used to blend that black into the
-    // opaque edges (grey fringe around sprites/weapons/decals). With RGB×α and
-    // (ONE, ONE_MINUS_SRC_ALPHA) blending the interpolation becomes correct.
+    // Premultiplied alpha upload: with straight alpha, LINEAR filtering blends
+    // the transparent texels' black RGB into the opaque edges (grey fringe);
+    // with RGB×α and (ONE, ONE_MINUS_SRC_ALPHA) the interpolation is correct.
     // Works on a copy: the source ImageData is shared with the software
     // renderers, which expect straight alpha.
     // (UNPACK_PREMULTIPLY_ALPHA_WEBGL is ignored for ArrayBufferView uploads.)

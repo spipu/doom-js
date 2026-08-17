@@ -69,7 +69,6 @@ class HudGameBar extends AbstractHud {
 
         const u = this._user;
 
-        // Health — green bar + value
         const energy    = u.getEnergy();
         const maxEnergy = u.getMaxEnergy();
         this._els.healthFill.style.width = this._ratioPct(energy, maxEnergy);

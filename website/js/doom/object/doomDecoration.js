@@ -8,7 +8,6 @@
  * with a vertical cylinder of that radius (Doom MF_SOLID things); non-solid ones
  * are walked through. ceiling marks the hanging decorations (Doom spawnceiling):
  * they anchor their top to the ceiling instead of their foot to the floor.
- * Phase 1 only uses the inherited sprite + ceiling flag (display).
  */
 class DoomDecoration extends AbstractDoomObject {
     constructor(data) {

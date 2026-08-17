@@ -3,9 +3,6 @@
  * appends the player's Doom equipment — armor, weapons, ammo, items, timed
  * effects — plus the running level identity and secret count. It reads the bound
  * DoomUser directly (no need for the definitions catalog).
- *
- * This is the debug view of the HUD; the HudDoom coordinator toggles between it
- * and the modern graphical HudGameBar via the H key.
  */
 class HudDoomDebug extends HudDebug {
     constructor(engine) {

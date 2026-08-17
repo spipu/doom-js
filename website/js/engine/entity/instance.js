@@ -2,7 +2,6 @@ class Instance extends AbstractLoadedEntity {
     constructor(id, url, callback) {
         super(id, url, callback);
 
-        // 3D object reference
         this._objectId          = null;
         this._object            = null;
 
@@ -122,9 +121,6 @@ class Instance extends AbstractLoadedEntity {
         // A ridden instance re-expresses its base at the new Y (the setRideOn
         // mid-travel invariant), so the next ride sync moves it by the floor's
         // FUTURE delta only instead of snapping it back to the old altitude.
-        // Sound because callers run AFTER the frame's instance update pass:
-        // _syncRide has already applied the mover's current delta — re-basing
-        // against it never swallows a pending one.
         if (this.getRideOn() !== null) {
             this.setRideOn(this._rideOn);
         }
@@ -351,8 +347,6 @@ class Instance extends AbstractLoadedEntity {
         this._rideLastDy = dy;
     }
 
-    // Detach from the moving floor (the body left it) — its Y stops following
-    // the mover's delta.
     clearRide() {
         this._rideOn = null;
     }
@@ -453,8 +447,6 @@ class Instance extends AbstractLoadedEntity {
         return this._renderLight;
     }
 
-    // Transform used by the renderer: the logical transform, shifted by the
-    // render offset when one is set.
     getRenderTransform() {
         const t = this.getTransform();
         if (this._renderOffset === null) {
