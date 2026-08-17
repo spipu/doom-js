@@ -107,8 +107,6 @@ class Inputs {
         return this;
     }
 
-    // The pad only shows when the touch mode is the active one AND no modal
-    // asked for its suppression.
     _applyVirtualPadVisibility() {
         this._virtualGamepad.setVisible(!this._virtualPadSuppressed && (this.getMode() === 'virtualGamepad'));
     }
@@ -267,8 +265,6 @@ class Inputs {
         return this._keyboard.readAction('toggleHud');
     }
 
-    // Cycle to the next weapon. On a pad (physical or virtual) it
-    // comes from the active device.
     readButtonWeaponNext() {
         const pad = this._pad();
         if (pad !== null) {
@@ -277,8 +273,7 @@ class Inputs {
         return this._keyboard.readAction('weaponNext');
     }
 
-    // Cycle to the previous weapon. On a pad it comes from the
-    // active device (the virtual gamepad has no previous binding → false).
+    // The virtual gamepad has no previous binding → false.
     readButtonWeaponPrev() {
         const pad = this._pad();
         if (pad !== null) {
@@ -307,7 +302,6 @@ class Inputs {
         return null;
     }
 
-    // Binary axis from two key states: +1, -1 or 0
     _keyAxis(positive, negative) {
         return ((positive) ? 1 : 0) - ((negative) ? 1 : 0);
     }

@@ -741,7 +741,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         ];
     }
 
-    // Full-kit cheat armour: the Doom blue armour (200 points, absorbs half).
+    // The Doom blue armour.
     cheatKitArmor() {
         return {points: 200, absorb: 0.5};
     }
@@ -760,8 +760,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
-    // Canonical Doom starting loadout: Fist + Pistol owned (Pistol active),
-    // 50 bullets, the fixed 0→200 armour ceiling.
+    // Vanilla start (g_game.c G_PlayerReborn).
     startingLoadout() {
         return {
             weapons:      ['fist', 'pistol'],
@@ -771,8 +770,6 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
-    // HUD layout data: the ARMS panel slots and the key dot colors adapt to
-    // the game through these two tables.
     hudWeaponSlots() {
         return {
             count: 7,

@@ -60,7 +60,6 @@ class DifficultyScreen extends AbstractMenuScreen {
         this._navigator.startNewGame(this._wadMeta, this._episode.firstLevel, skill);
     }
 
-    // Preselect the difficulty already chosen for this session (default 3).
     _selectCurrentSkill() {
         const current = this._navigator.getSelectedDifficulty();
         const index   = this._skills.indexOf(current);

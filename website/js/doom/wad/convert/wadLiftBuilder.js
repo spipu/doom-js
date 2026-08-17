@@ -136,7 +136,7 @@ class WadLiftBuilder {
                 wx1, wz1, wx2, wz2,
                 wallLen: WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2),
                 lowerUnpeg: ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0),
-                flip: !liftOnRight   // lift on right → flip=false, on left → true
+                flip: !liftOnRight
             });
         }
 

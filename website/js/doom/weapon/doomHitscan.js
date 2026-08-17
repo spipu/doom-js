@@ -2,8 +2,7 @@
 // P_LineAttack. Free aim (yaw + pitch, gzdoom mouselook): each ray is cast from
 // the eye through the world; the first surface it meets gets a puff, pulled a
 // little in front of it (vanilla backs the puff off 4 map units). A ray into the
-// sky meets no geometry → no hit → no puff, exactly like Doom. Damage rolls are
-// computed but only matter once there are things to hit.
+// sky meets no geometry → no hit → no puff, exactly like Doom.
 class DoomHitscan {
     constructor(collision, effects, rng, decals, gunTriggers = null, monsters = null, damageModule = null) {
         this._collision   = collision;

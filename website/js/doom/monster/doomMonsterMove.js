@@ -261,10 +261,9 @@ class DoomMonsterMove {
         // Walls and the other bodies' boxes: the slide resolver in test mode —
         // a real obstruction deviates the solved point by centimetres, so it
         // reads as "blocked" (vanilla monster moves never slide). The contact
-        // TOLERANCE matters: a body brushing a wall gets depenetrated by a
-        // hair (~2e-5) on every test, and a zero tolerance froze monsters
-        // walking narrow closets — vanilla P_TryMove tests the destination
-        // POSITION and lets a grazing step through.
+        // TOLERANCE absorbs the ~2e-5 depenetration of a body brushing a wall:
+        // vanilla P_TryMove tests the destination POSITION and lets a grazing
+        // step through.
         const solved = this._collision.resolveWall(pos[0], pos[2], destX - pos[0], destZ - pos[2], r, pos[1], h, step, m.inst);
         if ((Math.abs(solved.x - destX) > DoomMonsterMove.CONTACT_EPSILON) || (Math.abs(solved.z - destZ) > DoomMonsterMove.CONTACT_EPSILON)) {
             return refused;

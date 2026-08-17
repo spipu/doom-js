@@ -1,8 +1,7 @@
 /**
  * A weapon definition. A weapon references the ammo type it consumes
  * (ammoType), it does not own the ammo: the pool of counters lives on
- * DoomUser. perShot/damage are the base numbers the shooting subsystem will
- * consume (fire rate, hitscan/projectile and pellet data will come with it).
+ * DoomUser.
  */
 class DoomWeapon extends AbstractDoomObject {
     constructor(data) {

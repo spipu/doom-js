@@ -1,7 +1,6 @@
 /**
- * Generic runtime switch interaction, replacing the switch_N.js files that
- * convert_wad.py generated: swaps the SW1/SW2 texture of the switch face and
- * starts the target instances (lifts, floors) on trigger.
+ * Generic runtime switch interaction: swaps the SW1/SW2 texture of the switch
+ * face and starts the target instances (lifts, floors) on trigger.
  */
 class DoomSwitchInteraction extends SwitchInteraction {
     /**
@@ -24,8 +23,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
         this._doorVariant    = (doorVariant ?? null);
-        // Actual local texture indices of the panel: rest = SW1 face, swap =
-        // SW2 partner (null on an invisible USE zone or a non-SW wall).
+        // null on an invisible USE zone or a non-SW wall.
         this._restIndex      = (restIndex ?? null);
         this._swapIndex      = (swapIndex ?? null);
         this._exitCallback   = null;

@@ -297,8 +297,6 @@ class User {
     }
 
     takeDamage(delta) {
-        // Armor absorbs a fraction of the hit and is consumed point per point
-        // of the amount it absorbs; the rest goes to energy.
         if ((this._armor > 0) && (this._armorAbsorb > 0)) {
             const absorbed = Math.min(this._armor, delta * this._armorAbsorb);
             this._armor -= absorbed;
@@ -630,8 +628,7 @@ class User {
         // on the player is resolved by rolling the mover back
         // (resolveObjectPlayerBlockage), NOT by clamping the player under it —
         // a feet-level clamp would push the player through the floor before
-        // the rollback runs. Upward clearance during a move is checked before
-        // displacing (step 3) and by the jump path (step 7).
+        // the rollback runs.
 
         // 11. Crouch animation
         const crouchDelta = this._crouchSpeed * dt_s;

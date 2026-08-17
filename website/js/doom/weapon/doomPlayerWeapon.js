@@ -201,9 +201,8 @@ class DoomPlayerWeapon {
             case 'fireHitscanFlash2':        this._aFireHitscanFlash('flash2'); break;
             case 'fireProjectiles':          this._aFireProjectiles();   break;
             case 'fireProjectilesRandFlash': this._aFireProjectilesRandFlash(); break;
-            // No-op: muzzle-flash extralight (no white screen flash, unlike a
-            // wrong earlier attempt) and reload sounds (no audio yet). The state
-            // timing and the flash sprite are still played.
+            // No-op: muzzle-flash extralight and reload sounds (no audio yet).
+            // The state timing and the flash sprite are still played.
             case 'light1':
             case 'light2':
             case 'bfgSound':
@@ -263,10 +262,8 @@ class DoomPlayerWeapon {
         }
     }
 
-    // Weapons without a muzzle flash (the whole Heretic arsenal) simply have
-    // no flash entry — never set a psprite state on an undefined key, nor on
-    // a key the def does not define (a flash verb on a flashless weapon is
-    // inert, never a crash).
+    // The whole Heretic arsenal has no flash entry: a flash verb on a
+    // flashless weapon is inert.
     _showFlash(flashKey) {
         if ((flashKey !== undefined) && (this._def().getState(flashKey) !== null)) {
             this._setState(this._flashPsp, flashKey);

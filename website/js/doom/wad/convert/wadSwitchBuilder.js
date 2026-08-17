@@ -168,10 +168,9 @@ class WadSwitchBuilder {
             {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, band.lightSi)});
 
         // remapLocalTextures orders the LOCAL indices by ascending bank index:
-        // when the SW2 texture entered the bank before the SW1 (e.g. used as a
-        // plain decoration elsewhere), local 1 is the SW2 — so the actual local
-        // positions are computed here and carried to the interaction instead of
-        // assuming the historic "SW1=1, SW2=2" contract.
+        // the SW2 may have entered the bank before the SW1 (used as a plain
+        // decoration elsewhere), so the actual local positions are computed
+        // here and carried to the interaction.
         const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
         const restIndex = localIndices.indexOf(ti) + 1;

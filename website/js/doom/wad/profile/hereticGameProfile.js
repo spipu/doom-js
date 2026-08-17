@@ -1,7 +1,7 @@
 /**
  * Heretic profile. The tables below are transcribed from the UZDoom sources
  * (wadsrc/static/xlat/heretic.txt vs base.txt, defines.i speed units = 1/8
- * Doom unit per tic) — never from memory. Divergent specials are remapped to
+ * Doom unit per tic). Divergent specials are remapped to
  * SYNTHETIC internal codes (>= 1000, unreachable by vanilla WAD data, see
  * WadConstants) so the Doom pipeline stays byte-identical.
  */
@@ -68,7 +68,7 @@ class HereticGameProfile extends DefaultGameProfile {
 
     // Heretic world things: editor numbers, sprite frames, radii and flags
     // transcribed from the UZDoom sources (mapinfo/heretic.txt DoomEdNums +
-    // zscript/actors/heretic/ and actors/raven/) — never from memory.
+    // zscript/actors/heretic/ and actors/raven/).
     // Monsters live in monsterDefs(); starts, ambient-sound things
     // (41/42/1200-1209), generators (43/52/74), BossSpot (56) and the Bridge
     // (118) are absent on purpose (silent skip). Inventory artifacts with no
@@ -149,8 +149,7 @@ class HereticGameProfile extends DefaultGameProfile {
             75:   {kind: 'pickup', sprite: 'INVSA0', effect: {item: 'invisibility'}},
             33:   {kind: 'pickup', sprite: 'TRCHA0', frames: DoomThingCatalog.animFrames('TRCH', 'ABC'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'torch'}},
             35:   {kind: 'pickup', sprite: 'SPMPA0', effect: {item: 'superMap'}},
-            // --- Inventory artifacts with no transposable effect: visible,
-            // --- never consumed (effect null)
+            // --- Inert inventory artifacts ---
             30:   {kind: 'pickup', sprite: 'EGGCA0', effect: null},
             34:   {kind: 'pickup', sprite: 'FBMBE0', effect: null},
             36:   {kind: 'pickup', sprite: 'ATLPA0', effect: null},

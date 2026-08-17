@@ -4,8 +4,7 @@
  * Every screen shares the same skeleton (title, panel, subtitle, selectable
  * list, status, back button) and the same selection model on its list items,
  * provided by MenuListNavigation (mouse hover, keyboard and gamepad all drive
- * one single highlighted entry). Screens with a parent screen override
- * _onBack().
+ * one single highlighted entry).
  */
 
 class AbstractMenuScreen {
@@ -90,7 +89,6 @@ class AbstractMenuScreen {
         return {panel: panel, listEl: this._addElement('div', 'doom-menu-list', panel)};
     }
 
-    // Skeleton of the WAD sub-screens: subtitle "<wad title> — <label>".
     _buildWadPanel(wadMeta, subtitleLabel) {
         return this._buildPanel(this._wadTitle(wadMeta) + ' — ' + subtitleLabel);
     }
@@ -116,8 +114,6 @@ class AbstractMenuScreen {
 
     // --- Selectable list ---
 
-    // Selectable list entry with its label; the returned item can carry extra
-    // children (an infos line, a delete button...).
     _addListItem(listEl, labelText, onActivate) {
         return this._nav.addItemIn(listEl, labelText, onActivate);
     }
@@ -131,7 +127,6 @@ class AbstractMenuScreen {
         return MenuDom.addText(listEl, 'doom-menu-empty', text);
     }
 
-    // Empties a list and forgets its selectable entries (used before a rebuild).
     _clearList(listEl) {
         listEl.innerHTML = '';
         this._nav.clear();

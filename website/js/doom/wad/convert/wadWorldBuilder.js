@@ -228,7 +228,7 @@ class WadWorldBuilder {
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         await this._yield();
 
-        // Level data the monster AI consumes at runtime (phase C)
+        // Level data the monster AI consumes at runtime
         if (this._monsterSystem !== null) {
             this._monsterSystem.setLevelData(
                 this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction));

@@ -15,9 +15,6 @@
  * point) also lives here so it shows over BOTH views; it follows the
  * display.crosshair setting live (read every frame — a toggle from the help
  * modal applies without reloading).
- *
- * DoomGame keeps the same fluent wiring (new HudDoom(engine).bindUser()…): the
- * binds are forwarded to the relevant sub-view(s).
  */
 class HudDoom extends AbstractHud {
     constructor(engine) {

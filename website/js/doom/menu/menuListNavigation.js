@@ -102,9 +102,8 @@ class MenuListNavigation {
         return this;
     }
 
-    // Standard navigable entry: builds the item + label in the list and
-    // registers it — the one-stop helper shared by the screens and the
-    // modal pages. The returned item can carry extra children.
+    // The returned item can carry extra children (an infos line, a delete
+    // button...).
     addItemIn(listEl, labelText, onActivate) {
         const item = MenuDom.addListItem(listEl, labelText);
         this.addItem(item, onActivate);
@@ -180,10 +179,8 @@ class MenuListNavigation {
         }
     }
 
-    // Clamped at both ends — no wrap-around: pressing down on the last entry
-    // keeps the selection there. Up on the FIRST entry moves the highlight to
-    // the side button (when the screen has one), down from the button comes
-    // back to the list.
+    // Clamped at both ends — no wrap-around; up on the first entry reaches
+    // the side button.
     moveSelection(delta) {
         if (this._onSide) {
             if (delta > 0) {

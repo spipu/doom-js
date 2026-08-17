@@ -211,16 +211,10 @@ class Collision {
         if ((ejectX === 0) && (ejectZ === 0)) {
             return boxed;
         }
-        // The box ejection is a displacement like any other, so it goes through
-        // the wall resolution too. Left as a raw teleport it can cross a wall:
-        // it pushes along the axis of least penetration, by up to
-        // boxRadius + bodyRadius, and a body pinned against a wall by a monster
-        // walking into it gets shoved straight to the other side (the next
-        // frame's depenetration then keeps it there, since the far side has
-        // become the nearest one). Resolving it makes the body slide ALONG the
-        // wall instead, which is what being squeezed should feel like. Any
-        // overlap the wall prevents us from clearing is left for the following
-        // frames — resolving once here keeps this bounded.
+        // The box ejection goes through the wall resolution too: applied raw
+        // it can shove a squeezed body through a wall; resolved, the body
+        // slides ALONG it. Any overlap the wall prevents us from clearing is
+        // left for the following frames — resolving once here keeps this bounded.
         count = this._gatherWalls(res.x, res.z, ejectX, ejectZ, r, tris, true);
         return this._resolveWallFrom(res.x, res.z, ejectX, ejectZ, r, feetY, h, tris, count, stepHeight);
     }
@@ -345,7 +339,7 @@ class Collision {
     // Step 8 — after riding and the player's movement: crush pressure (the
     // pinch depends on the player's final position) and the riding leftovers
     // of solid movers (a platform push that squeezed the player into one —
-    // original behaviour, the mover's own move was already handled at 5b).
+    // the mover's own move was already handled at 5b).
     resolveObjectPlayerBlockage(user) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {

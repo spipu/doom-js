@@ -398,8 +398,8 @@ class WadConstants {
     // One COMPLETE entry per floor-up special (one-way raise toward a target).
     // Unlike the floor-down family, the static floor is NOT patched: the moving
     // top-flat sits at the WAD floor height and rises. All are driven by a
-    // walk-trigger zone or a switch (trigger 'none' on the instance). G1/GR gun
-    // variants (24, 47) are not handled yet (they need weapon fire). Fields:
+    // walk-trigger zone, a switch or an impact line (trigger 'none' on the
+    // instance). Fields:
     //  - speed: Doom units/tic — FLOORSPEED = 1, raiseFloorTurbo 129/130/131 =
     //    4, the EV_DoPlat raise-and-change variants 20/22/66/67/68 =
     //    PLATSPEED/2 = 0.5, donut ring 9 = FLOORSPEED/2 (EV_DoDonut).

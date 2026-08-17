@@ -52,9 +52,8 @@ class DoomUser extends User {
         return this._activeWeapon;
     }
 
-    // Cycle to the next owned weapon, in declaration (canonical) order, wrapping
-    // back to the first at the end. Drives the single-key weapon switch; no-op
-    // when nothing is owned. An unknown active weapon lands on the first owned.
+    // Declaration (canonical) order; an unknown active weapon lands on the
+    // first owned.
     nextWeapon() {
         const owned = this.getOwnedWeaponCodes();
         if (owned.length === 0) {
@@ -65,7 +64,6 @@ class DoomUser extends User {
         return this;
     }
 
-    // Cycle to the previous owned weapon (same order, wrapping the other way).
     // An unknown active weapon lands on the last owned.
     previousWeapon() {
         const owned = this.getOwnedWeaponCodes();

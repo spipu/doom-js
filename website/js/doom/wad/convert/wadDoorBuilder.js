@@ -43,7 +43,6 @@ class WadDoorBuilder {
             return null;
         }
 
-        // The door sector must have at least one boundary edge
         let hasBounds = false;
         for (const ld of linedefs) {
             if ((ld.right >= 0 && sidedefs[ld.right].sector === si)

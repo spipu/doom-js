@@ -877,7 +877,7 @@ class DoomMonsterSystem {
                 // A momentum move is a real move (P_TryMove): the sector index
                 // follows, and a LIVE skidding body still fires the special
                 // lines it crosses (a blast-slid corpse crossing a teleport
-                // stays put — refused deviation, documented).
+                // stays put — refused deviation).
                 const sec = this._levelData.findSector(solved.x / SCALE, solved.z / SCALE);
                 if (sec !== null) {
                     m.si = sec.si;
