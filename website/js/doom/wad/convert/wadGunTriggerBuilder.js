@@ -60,7 +60,7 @@ class WadGunTriggerBuilder {
             once:        (WadConstants.GUN_BY_SPECIAL[gt.special].once === true),
             used:        false,
             targets:     targets,
-            doorVariant: WadSwitchBuilder.doorVariantKey(gt.special)
+            doorVariant: WadConstants.doorCycleKeyForSpecial(gt.special)
         };
     }
 

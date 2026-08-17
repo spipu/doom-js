@@ -83,12 +83,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._swapFaces(instance, this._swapIndex);
         this._applyRemoteSwap(true);
 
-        for (const code of this._targets) {
-            loader.instances().getByCode(code).start(this._doorVariant);
-        }
-        for (const entry of this._reverseTargets) {
-            loader.instances().getByCode(entry.code).startReverse(entry.timeScale);
-        }
+        DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._doorVariant);
 
         if (this._exitCallback !== null) {
             this._exitCallback(this._exitSecret);

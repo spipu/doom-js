@@ -141,7 +141,15 @@ class WadTextureBank {
      */
     wallTextureHeight(name) {
         const entry = this._wallTexDir[name];
-        return ((entry !== undefined) ? entry.dv.getUint16(entry.offset + 14, true) : null);
+        return ((entry !== undefined) ? WadTextureBank._headerDims(entry).height : null);
+    }
+
+    // TEXTURE1/2 header metrics of a directory entry (width at +12, height at +14).
+    static _headerDims(entry) {
+        return {
+            width:  entry.dv.getUint16(entry.offset + 12, true),
+            height: entry.dv.getUint16(entry.offset + 14, true)
+        };
     }
 
     /**
@@ -196,8 +204,7 @@ class WadTextureBank {
 
         const dv = entry.dv;
         const o  = entry.offset;
-        const w  = dv.getUint16(o + 12, true);
-        const h  = dv.getUint16(o + 14, true);
+        const {width: w, height: h} = WadTextureBank._headerDims(entry);
         const pc = dv.getUint16(o + 20, true);
 
         const image = new ImageData(w, h);

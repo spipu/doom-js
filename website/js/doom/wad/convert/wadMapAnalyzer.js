@@ -370,9 +370,10 @@ class WadMapAnalyzer {
                 // (timer doors, sector specials 10/14).
                 timerDelayS:  0,
                 autoStart:    false,
-                // Per-trigger anims aimed at this door (filled after the
+                // Per-trigger cycles aimed at this door (filled after the
                 // registration loops, preserved when the timer-sector pass
-                // re-registers on top): anim name → {speed, onlyOnce}.
+                // re-registers on top): cycle key → {anim, speed, onlyOnce,
+                // loop, closeMargin}.
                 variants:     (doorProps[si]?.variants ?? {})
             };
         };
@@ -834,6 +835,12 @@ class WadMapAnalyzer {
         const floorChange = {...ringChanges};
 
         for (const ld of linedefs) {
+            // The donut change (source 'donutModel') is resolved against the
+            // model sector s3 by _mergeDonutRings only — served here, a donut
+            // line would stamp the FRONT sector's flat on the whole tag.
+            if (WadConstants.isDonutSpecial(ld.special)) {
+                continue;
+            }
             const rule = WadConstants.floorChangeForSpecial(ld.special);
             if (rule === null || ld.tag === 0 || ld.right < 0) {
                 continue;
@@ -1070,6 +1077,20 @@ class WadMapAnalyzer {
                 : sectors[si].tag)};
     }
 
+    // Complete mover-family list for resolveTaggedTargets, shared by every
+    // full trigger path (switch, walk, boss death). The stairs resolve by the
+    // trigger tag stored per step — only the base carries the sector tag.
+    // built = {lifts, rising, doors, stairs} (built-code sets).
+    static moverFamilies(analysis, sectors, built, special) {
+        return [
+            {ids: analysis.movingFloorDownIds, prefix: 'lift_',        built: built.lifts},
+            WadMapAnalyzer.risingFloorFamily(analysis, sectors, built.rising, special),
+            {ids: analysis.doorSectorIds,      prefix: 'door_',        built: built.doors},
+            {ids: analysis.stairIds, prefix: 'stair_', built: built.stairs,
+                tagOf: (si) => analysis.stairStepTag[si]}
+        ];
+    }
+
     // Sector id baked into a target instance code ('risingfloor_175' → 175).
     static _sectorOfCode(code, prefix) {
         return parseInt(code.slice(prefix.length), 10);
@@ -1148,7 +1169,7 @@ class WadMapAnalyzer {
             return WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed ?? 1;
         }
         if (code.startsWith('door_')) {
-            const si = parseInt(code.slice(5), 10);
+            const si = WadMapAnalyzer._sectorOfCode(code, 'door_');
             return ((analysis.doorProps[si] !== undefined) ? analysis.doorProps[si].speed : 2);
         }
 

@@ -138,7 +138,9 @@ class Instance extends AbstractLoadedEntity {
     // Opaque gates evaluated before a proximity/action trigger may fire (e.g. a
     // locked door checking the player holds the key). The predicates are
     // supplied by the game layer; the engine stays generic and ANDs them —
-    // several rules may guard one instance (key + crossing + side).
+    // several rules may guard one instance (key + crossing + side). The AND
+    // short-circuits: a STATEFUL predicate (e.g. a line-crossing sampler) must
+    // be registered last, or an earlier false gate starves its sampling.
     addTriggerCondition(fn) {
         this._triggerConditions.push(fn);
         return this;
@@ -538,9 +540,9 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * variant: name of the cycle to play (setKeyframeVariants), null = the
-     * default one — the crossed line's special picks it (a door tag mixing
-     * open-stay and close-wait-open lines).
+     * variant: name of the cycle to play (keyframeVariants of the loaded
+     * data), null = the default one — the crossed line's special picks it
+     * (a door tag mixing open-stay and close-wait-open lines).
      */
     start(variant = null) {
         if (this._animPlaying) {
