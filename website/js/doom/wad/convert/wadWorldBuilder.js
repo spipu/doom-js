@@ -69,8 +69,7 @@ class WadWorldBuilder {
         for (const door of doors) {
             this._registerInstance(door, bank);
             builtDoorCodes.add(door.code);
-            this._applyKeyGuard(door);
-            this._applyGunSideGuard(door, level);
+            this._applyDoorUseGuard(door, level);
         }
         await this._yield();
 
@@ -490,16 +489,13 @@ class WadWorldBuilder {
             if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
                 const props = analysis.doorProps[si];
                 doorFloorH[si] = analysis.doorHeights[si].floorH;
-                // Monster-usable = the vanilla P_UseSpecialLine whitelist net
-                // effect: the plain manual door (special 1) only — repeatable
-                // action trigger, keyless, D_SLOW speed (the blaze DR 117 is
-                // excluded), never close/ceiling kinds.
+                // Monster-usable as soon as ONE face is a plain manual door
+                // (the analyzer accumulates it per face): a keyed face on the
+                // same sector does not lock the free one out.
                 moverCodes[si] = {
                     kind:       'door',
                     code:       'door_' + si,
-                    monsterUse: ((props.trigger === 'action') && (props.onlyOnce !== true)
-                        && ((props.keyRequired ?? null) === null) && (props.close !== true)
-                        && (props.ceilingRaise !== true) && (props.speed === 2))
+                    monsterUse: (props.monsterUse === true)
                 };
             }
         }
@@ -650,10 +646,11 @@ class WadWorldBuilder {
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
-    // Locked elements (DR/D1 key doors, locked-blaze switches 99/133-137) only
-    // fire if the player holds the key: the engine calls this opaque predicate
-    // before the trigger (the runtime user is a DoomUser), like vanilla
-    // EV_DoLockedDoor checking the keys at USE time.
+    // Locked switches (the blaze 99/133-137) only fire if the player holds the
+    // key: the engine calls this opaque predicate before the trigger (the
+    // runtime user is a DoomUser), like vanilla EV_DoLockedDoor checking the
+    // keys at USE time. A switch is one linedef, so its key needs no face
+    // arbitration — doors go through _applyDoorUseGuard instead.
     _applyKeyGuard(built) {
         const keyCode = built.instanceData.keyRequired;
         if (keyCode) {
@@ -739,45 +736,71 @@ class WadWorldBuilder {
         loader.instances().getByCode(built.code).addTriggerCondition((user) => crossing.crossedBy(user));
     }
 
-    // A door carrying BOTH a gun face (46) and a manual face (1) — E1M2's
-    // shootable door is usable from its corridor side only — must not open on
-    // USE from the gun side: vanilla P_UseSpecialLine ignores the impact
-    // specials. The engine's USE is a radius around the whole door body, so
-    // the guard compares the player's distance to the two face sets (the key
-    // guard, when present, is a separate condition ANDed by the engine).
-    _applyGunSideGuard(built, level) {
+    /**
+     * USE rules of a manual door, which vanilla carries per LINEDEF while the
+     * engine offers one radius around the whole body. The nearest OPENING of
+     * the door (its two-sided faces — the jambs are walls nobody presses
+     * through) stands in for the line P_UseSpecialLine would pick, and it alone
+     * answers:
+     *  - a face carrying no manual door special answers nothing, so a door
+     *    whose special sits on one linedef only is not openable from the other
+     *    corridor (E1M2's tag-7 door: by hand from its own side, by its switch
+     *    from anywhere else), and a shootable face (46) stays deaf to USE —
+     *    vanilla ignores the impact specials there (E1M2's vent door);
+     *  - it is usable from its FRONT side alone (`if (side) return false`);
+     *  - it demands the key IT carries, so a sector mixing a locked face and a
+     *    free one keeps both (E1M7's yellow doors open freely from inside,
+     *    E3M7's red ones stay locked from the corridor).
+     * A door with no usable opening keeps the plain radius: its press is the
+     * timer-sector cycle replay, which no linedef declares.
+     */
+    _applyDoorUseGuard(built, level) {
         if (built.instanceData.trigger !== 'action') {
             return;
         }
         const si = Number(built.code.split('_')[1]);
-        const gunFaces = [];
-        const useFaces = [];
+        const faces = [];
         for (const ld of level.linedefs) {
-            const touches = ((ld.right >= 0 && level.sidedefs[ld.right].sector === si)
-                || (ld.left >= 0 && level.sidedefs[ld.left].sector === si));
-            if (!touches) {
+            if ((ld.right < 0) || (ld.left < 0)) {
+                continue;
+            }
+            if ((level.sidedefs[ld.right].sector !== si) && (level.sidedefs[ld.left].sector !== si)) {
                 continue;
             }
             const [dx1, dy1] = level.vertexes[ld.v1];
             const [dx2, dy2] = level.vertexes[ld.v2];
             const [x1, z1] = WadGeometry.doomToWorld(dx1, dy1);
             const [x2, z2] = WadGeometry.doomToWorld(dx2, dy2);
-            if (WadConstants.GUN_SPECIALS.has(ld.special)) {
-                gunFaces.push([x1, z1, x2, z2]);
-            }
-            if (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'action') {
-                useFaces.push([x1, z1, x2, z2]);
-            }
+            const door   = WadConstants.DOOR_BY_SPECIAL[ld.special];
+            const usable = (door?.trigger === 'action');
+            faces.push({x1: x1, z1: z1, x2: x2, z2: z2,
+                usable: usable, key: ((usable) ? (door.key ?? null) : null)});
         }
-        if (gunFaces.length === 0 || useFaces.length === 0) {
+        if (!faces.some((face) => (face.usable === true))) {
             return;
         }
 
-        const minDistSq = (user, faces) => Math.min(...faces.map(
-            (f) => WadGeometry.pointSegmentDistSq(user.x, user.z, f[0], f[1], f[2], f[3])));
+        loader.instances().getByCode(built.code).addTriggerCondition((user) => {
+            let nearest = null;
+            let bestSq  = Infinity;
+            for (const face of faces) {
+                const d2 = WadGeometry.pointSegmentDistSq(user.x, user.z, face.x1, face.z1, face.x2, face.z2);
+                if (d2 < bestSq) {
+                    bestSq  = d2;
+                    nearest = face;
+                }
+            }
+            if (nearest.usable !== true) {
+                return false;
+            }
+            // Front side only: cross < 0 is the right sidedef (see
+            // _nearestSideSector), i.e. the face vanilla lets a press through.
+            if (WadGeometry.cross2d([nearest.x1, nearest.z1], [nearest.x2, nearest.z2], [user.x, user.z]) > 0) {
+                return false;
+            }
 
-        loader.instances().getByCode(built.code)
-            .addTriggerCondition((user) => (minDistSq(user, useFaces) <= minDistSq(user, gunFaces)));
+            return ((nearest.key === null) || user.hasItem(nearest.key));
+        });
     }
 
     _buildDefinition(level, bank) {

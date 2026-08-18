@@ -186,13 +186,16 @@ class WadDoorBuilder {
         // One cycle per special aiming at this door, the crossed line picking
         // its own at start() time: E1M4 tag 1 mixes two open cycles, E1M6 tag 1
         // an open-stay with a close-wait-open, E4M9 tag 2 an opener with a
-        // crusher. Left out: the doors a closing special registered (single
-        // structural cycle). A timer door keeps its countdown baked into the
-        // base keyframes but still carries the per-special cycles — a close
-        // line aimed at a special-10 trap must not replay the trap cycle.
-        const variantNames = Object.keys(props.variants ?? {});
+        // crusher. Declared only when a special asks for something OTHER than
+        // the base timeline; the doors a closing special registered keep their
+        // single structural cycle. A timer door's base carries the level-load
+        // countdown and no special declares it, so its default stays null —
+        // start() then falls back to that base instead of a variant.
+        const baseKey       = WadConstants.doorCycleKey(props.anim, speedTics);
+        const variantNames  = Object.keys(props.variants ?? {});
+        const baseIsVariant = variantNames.includes(baseKey);
         let keyframeVariants = null;
-        if (!props.close && (variantNames.length > ((props.timerDelayS > 0) ? 0 : 1))) {
+        if (!props.close && variantNames.some((key) => (key !== baseKey))) {
             keyframeVariants = {};
             for (const key of variantNames) {
                 keyframeVariants[key] = this._buildCycle(props.variants[key], floorH, ceilH, restDu);
@@ -215,10 +218,9 @@ class WadDoorBuilder {
             interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
             ...this._pressFields(press),
-            keyRequired:       props.keyRequired,
             keyframes:         keyframes,
             keyframeVariants:  keyframeVariants,
-            defaultVariant:    ((keyframeVariants !== null) ? WadConstants.doorCycleKey(props.anim, speedTics) : null)
+            defaultVariant:    (((keyframeVariants !== null) && baseIsVariant) ? baseKey : null)
         };
     }
 

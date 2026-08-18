@@ -4,8 +4,8 @@
  * coordinates, texture offsets and sidedef references are SIGNED Int16.
  *
  * Only deviation from the raw lumps: a sector carries both its raw light
- * (lightRaw) and a display level floored at WadConstants.SECTOR_LIGHT_MIN
- * (light) — see the constant for the why.
+ * (lightRaw) and the display level WadConstants.sectorLightLevel maps it to
+ * (light) — see that method for the why.
  */
 class WadLevelParser {
     /**
@@ -101,10 +101,10 @@ class WadLevelParser {
                 ch:       dv.getInt16(o + 2, true),
                 ft:       this._readName(dv, o + 4, 8),
                 ct:       this._readName(dv, o + 12, 8),
-                // light = the baked display level, floored (SECTOR_LIGHT_MIN);
+                // light = the baked display level (WadConstants.sectorLightLevel);
                 // lightRaw = the lump value, for the light thinkers' vanilla
-                // bounds — their dark phases may dip under the floor.
-                light:    Math.max(lightRaw, WadConstants.SECTOR_LIGHT_MIN),
+                // bounds — they convert their own steps through the same curve.
+                light:    WadConstants.sectorLightLevel(lightRaw),
                 lightRaw: lightRaw,
                 special:  dv.getUint16(o + 22, true),
                 tag:      dv.getUint16(o + 24, true)
