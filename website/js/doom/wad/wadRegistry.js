@@ -17,11 +17,12 @@ class WadRegistry {
     }
 
     /**
-     * @returns {Promise<object[]>} metadata sorted by date of addition
+     * @returns {Promise<object[]>} metadata sorted by name (natural order:
+     *                              doom2 before doom10)
      */
     async getList() {
         const list = await this._storage.listMeta();
-        list.sort((a, b) => a.addedAt - b.addedAt);
+        list.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
 
         return list;
     }

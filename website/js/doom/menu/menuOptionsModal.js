@@ -7,10 +7,10 @@
  * the screens), entering a topic pushes a page, and the title shows the
  * breadcrumb of the stack ("Options > Contrôles"). The bottom-right button
  * reads "Retour" everywhere in options mode (the root closes back to the WAD
- * menu) and "Fermer" on the direct About popup; Backspace / gamepad circle
- * follow the same back path.
+ * menu) and "Fermer" on the direct About popup; Escape, Backspace and the
+ * gamepad circle follow the same back path.
  */
-class MenuOptionsModal extends MenuModal {
+class MenuOptionsModal extends AbstractMenuListModal {
     static get DEVICE_REFRESH_MS() {
         return 500;
     }
@@ -40,7 +40,6 @@ class MenuOptionsModal extends MenuModal {
     constructor(display) {
         super(display);
 
-        this._nav            = new MenuListNavigation(() => this._onBack(), () => this._navBlocked());
         this._titleEl        = null;
         this._bodyEl         = null;
         this._actionButton   = null;
@@ -51,21 +50,7 @@ class MenuOptionsModal extends MenuModal {
         this._captureHandler = null;
         this._restoreIndex   = null;
         this._layoutMap      = null;
-        this._onClose        = null;
         this._mode           = null;
-    }
-
-    /**
-     * Hook fired once the modal is closed. The screen underneath is NOT rebuilt
-     * while the modal covers it, so a setting changed here (the language, the
-     * size units…) would leave it stale: its owner re-renders it from here.
-     *
-     * @param {function} callback
-     */
-    setOnClose(callback) {
-        this._onClose = callback;
-
-        return this;
     }
 
     show() {
@@ -82,39 +67,19 @@ class MenuOptionsModal extends MenuModal {
     _open(mode, titleCode, builder) {
         this._mode = mode;
         this._loadLayoutMap();
-        // The page title reuses the screens' subtitle design (uppercase,
-        // left-aligned, red underline) instead of the centred modal message.
-        const {modal, messageEl} = this._createShell('', 'doom-menu-modal doom-menu-modal-wide doom-menu-modal-options', 'doom-menu-subtitle');
-        this._titleEl = messageEl;
-        this._bodyEl  = MenuDom.addElement(modal, 'div', 'doom-menu-modal-options-body');
-
-        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        this._actionButton = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
-            this._onBack();
-        });
-
-        this._nav.attach();
-        this._stack = [];
+        const {titleEl, bodyEl, button} = this._openShell('', appTranslator.get('menu.close'));
+        this._titleEl      = titleEl;
+        this._bodyEl       = bodyEl;
+        this._actionButton = button;
+        this._stack        = [];
         this._pushPage(titleCode, builder);
 
         return this;
     }
 
-    close() {
-        // _createShell() closes a not-yet-opened modal before building the
-        // shell: the owner's onClose only makes sense after a real display.
-        const wasOpen = (this._overlay !== null);
-
+    _teardown() {
         this._stopKeyCapture();
         this._clearPageTimer();
-        this._nav.detach().clear();
-        super.close();
-
-        if (wasOpen && (this._onClose !== null)) {
-            this._onClose();
-        }
-
-        return this;
     }
 
     // --- Page stack ---
@@ -184,7 +149,7 @@ class MenuOptionsModal extends MenuModal {
     // Wipes every saved setting after a nested confirmation (its overlay
     // stacks above this modal and suspends our navigation, DOM-detected).
     _confirmReset() {
-        new MenuModal(this._display).confirm(appTranslator.get('help.resetConfirm'), () => {
+        this._confirm(appTranslator.get('help.resetConfirm'), () => {
             doomSettings.resetAll().applyToInputs(new Inputs()).applyToTranslator(appTranslator);
             this._renderPage();
         }, null, appTranslator.get('menu.back'));
@@ -248,8 +213,10 @@ class MenuOptionsModal extends MenuModal {
                 this._startKeyCapture(def, inputs);
                 return;
             }
-            this._stepSettingValue(def, inputs, valueEl);
-        });
+            this._stepSettingValue(def, inputs, valueEl, 1);
+        }, ((def.type === 'char') ? null : (dir) => {
+            this._stepSettingValue(def, inputs, valueEl, dir);
+        }));
         valueEl = MenuDom.addText(item, 'doom-menu-item-value', this._settingValueText(def));
 
         return item;
@@ -258,10 +225,10 @@ class MenuOptionsModal extends MenuModal {
     // The language is the one value that rewrites the WHOLE page — its own row
     // included — so the page is rebuilt instead of patched, keeping the
     // selection where it was.
-    _stepSettingValue(def, inputs, valueEl) {
+    _stepSettingValue(def, inputs, valueEl, dir) {
         const next = ((def.type === 'bool')
             ? !(doomSettings.get(def.key) === true)
-            : doomSettings.nextListValue(def));
+            : doomSettings.nextListValue(def, dir));
 
         doomSettings.set(def.key, next).applyToInputs(inputs).applyToTranslator(appTranslator);
 

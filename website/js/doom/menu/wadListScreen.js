@@ -26,12 +26,10 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
-        const aboutButton = MenuDom.addButton(this._container, 'doom-menu-help-button', '?', () => {
+        const aboutButton = MenuDom.addButton(this._container, 'doom-menu-button doom-menu-help-button', '?', () => {
             this._openAbout();
         });
-        this._nav.setSideButton(aboutButton, () => {
-            this._openAbout();
-        });
+        this._nav.setSideButton(aboutButton);
 
         this._buildAddForm(panel);
 
@@ -51,13 +49,14 @@ class WadListScreen extends AbstractMenuScreen {
         this._urlInput.addEventListener('keydown', (event) => {
             if ((event.code === 'Enter') || (event.code === 'NumpadEnter')) {
                 event.preventDefault();
-                this._onAddUrl();
+                addUrlButton.click();
             }
         });
 
-        this._buttons.push(this._addButton(appTranslator.get('menu.wad.addUrl'), () => {
+        const addUrlButton = this._addButton(appTranslator.get('menu.wad.addUrl'), () => {
             this._onAddUrl();
-        }, form));
+        }, form);
+        this._buttons.push(addUrlButton);
 
         this._fileInput = this._addElement('input', 'doom-menu-file-input', form);
         this._fileInput.type = 'file';
@@ -98,13 +97,11 @@ class WadListScreen extends AbstractMenuScreen {
             this._onSelectWad(meta);
         });
 
-        this._addListItemInfos(item, this._formatSize(meta.size) + ' — ' + MenuDom.formatDate(meta.addedAt));
+        this._addListItemInfos(item, MenuDom.formatSize(meta.size) + ' — ' + MenuDom.formatDate(meta.addedAt));
 
-        const deleteButton = MenuDom.addButton(item, 'doom-menu-item-delete', '✕', (event) => {
-            event.stopPropagation();
+        MenuDom.addDeleteButton(item, appTranslator.get('menu.wad.delete'), () => {
             this._onDeleteWad(meta);
         });
-        deleteButton.title = appTranslator.get('menu.wad.delete');
     }
 
     // --- Handlers ---
@@ -165,10 +162,8 @@ class WadListScreen extends AbstractMenuScreen {
         this._navigator.openWadMenu(meta);
     }
 
-    // The ? button only shows the About page (the options live in the menu of
-    // a selected WAD). Rebuilt on close, like every screen under a modal.
     _openAbout() {
-        new MenuOptionsModal(this._display).setOnClose(() => this.show()).showAbout();
+        this._openModal(new MenuOptionsModal(this._display)).showAbout();
     }
 
     // --- Internal ---

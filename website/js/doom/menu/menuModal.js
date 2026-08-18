@@ -8,6 +8,7 @@ class MenuModal {
     constructor(display) {
         this._display = display;
         this._overlay = null;
+        this._nav     = null;
     }
 
     /**
@@ -24,15 +25,18 @@ class MenuModal {
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
 
-        MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-secondary', cancelLabel, () => {
+        const cancelButton = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-secondary', cancelLabel, () => {
             this.close();
         });
 
-        MenuDom.addButton(actions, 'doom-menu-button', confirmLabel, () => {
+        const confirmButton = MenuDom.addButton(actions, 'doom-menu-button', confirmLabel, () => {
             this.close();
             onConfirm();
         });
 
+        // Confirm preselected (the user just asked for the action); every
+        // back input plays the cancel button.
+        this._attachButtonsNav([cancelButton, confirmButton], cancelButton, 1);
         this._dismissOnOverlayClick(() => this.close());
 
         return this;
@@ -76,7 +80,8 @@ class MenuModal {
             }
         };
 
-        MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.back'), dismiss);
+        const button = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.back'), dismiss);
+        this._attachButtonsNav([button], button, 0);
         this._dismissOnOverlayClick(dismiss);
 
         return this;
@@ -101,15 +106,19 @@ class MenuModal {
 
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
 
-        MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
+        const button = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.close'), () => {
             this.close();
             onClose();
         });
+        this._attachButtonsNav([button], button, 0);
 
         return this;
     }
 
     close() {
+        if (this._nav !== null) {
+            this._nav.detach().clear();
+        }
         if (this._overlay !== null) {
             this._overlay.remove();
             this._overlay = null;
@@ -126,9 +135,8 @@ class MenuModal {
         if (this._overlay === null) {
             return false;
         }
-        const overlays = this._display.getContainer().querySelectorAll('.doom-menu-overlay');
 
-        return (overlays[overlays.length - 1] === this._overlay);
+        return MenuDom.isTopOverlay(this._display.getContainer(), this._overlay);
     }
 
     _showText(message, pulsing) {
@@ -144,6 +152,18 @@ class MenuModal {
                 action();
             }
         });
+    }
+
+    // Horizontal navigation over a buttons row (Left/Right + hover select,
+    // Enter/pad-validate clicks, every back input plays backButton).
+    _attachButtonsNav(buttons, backButton, selected) {
+        this._nav = new MenuListNavigation(() => backButton.click(), () => !this._isTopOverlay())
+            .setEscapeAsBack(true)
+            .setHorizontal(true);
+        for (const button of buttons) {
+            this._nav.addButtonItem(button);
+        }
+        this._nav.attach().selectIndex(selected);
     }
 
     // Fresh overlay + modal + message shell, shared by every modal flavour.

@@ -207,11 +207,11 @@ class DoomSettings {
      * @param {object} def - a 'list' definition
      * @returns {string} the new code
      */
-    nextListValue(def) {
+    nextListValue(def, dir = 1) {
         const codes = def.values.map((item) => item.code);
         const index = codes.indexOf(this.get(def.key));
 
-        return codes[((index + 1) % codes.length)];
+        return codes[((index + dir + codes.length) % codes.length)];
     }
 
     /**
