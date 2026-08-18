@@ -709,6 +709,11 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {gibFactor: 1, defKickback: 100, bloodTemplate: 'blood', bloodDamageAdvance: true};
     }
 
+    // The vanilla S_GIBS pool (actor.zs GenericCrush).
+    crushedCorpseSprite() {
+        return 'POL5A0';
+    }
+
     // The three Doom projectiles (MT_ROCKET / MT_PLASMA / MT_BFG, info.c):
     // speed in map units/tic, splash = the rocket's A_Explode 128. The
     // in-flight alpha follows gzdoom (PlasmaBall/BFGBall: RenderStyle "Add",

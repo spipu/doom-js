@@ -161,6 +161,17 @@ class AbstractGameProfile {
     }
 
     /**
+     * Sprite lump a corpse ground by a mover turns into (the vanilla S_GIBS
+     * pool, UZDoom Actor::Grind → GenericCrush). null = this game has none
+     * and a crushed corpse keeps its own sprite.
+     *
+     * @returns {string|null}
+     */
+    crushedCorpseSprite() {
+        return null;
+    }
+
+    /**
      * Pickup templates of the monsters' DropItems: zscript item name →
      * {sprite, effect} (fixed effect) or {sprite, ammoType} (the amount comes
      * from each monster's dropItems entry).

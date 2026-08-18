@@ -44,7 +44,10 @@ class DoomMonsterDamage {
      *
      * @param {object} record DoomMonsterSystem record
      * @param {number} amount rolled damage
-     * @param {object} opts   {point?, srcX?, srcZ?, kickback?, noBlood?}
+     * @param {object} opts   {point?, srcX?, srcZ?, kickback?, noBlood?,
+     *                         noRetarget?} — noRetarget = sourceless damage
+     *                         (a crusher): vanilla P_DamageMobj with a NULL
+     *                         source never turns the victim on anyone.
      */
     damage(record, amount, opts = {}) {
         const def = record.def;
@@ -71,7 +74,7 @@ class DoomMonsterDamage {
         // on its attacker (solo: the player) even without a pain flinch — a
         // spawn-state monster jumps straight to its See state (the pain roll
         // above may already have moved it, the guard covers that).
-        if (record.threshold === 0) {
+        if ((opts.noRetarget !== true) && (record.threshold === 0)) {
             record.target    = this._user;
             record.threshold = DoomMonsterDamage.BASE_THRESHOLD;
             if (record.stateKey.startsWith('spawn') && (def.getState('see0') !== null)) {

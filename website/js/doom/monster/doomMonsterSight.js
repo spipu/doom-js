@@ -129,16 +129,22 @@ class DoomMonsterSight {
 
     // Current vertical opening of a two-sided line, in map units.
     _openingOf(line) {
-        const a = this._effHeights(line.siR);
-        const b = this._effHeights(line.siL);
+        const a = this.effectiveHeights(line.siR);
+        const b = this.effectiveHeights(line.siL);
         return (Math.min(a.ch, b.ch) - Math.max(a.fh, b.fh));
     }
 
-    // Effective heights of a sector: the static (post-patch) values, corrected
-    // by the live offset of its mover instance — a door's ceiling is its panel
-    // bottom (closed rest = floor), a lift/rising floor/stair top rests at the
-    // original height and carries the instance's current Y delta.
-    _effHeights(si) {
+    /**
+     * Effective heights of a sector, in map units: the static (post-patch)
+     * values, corrected by the live offset of its mover instance — a door's
+     * ceiling is its panel bottom (closed rest = floor), a lift/rising
+     * floor/stair top rests at the original height and carries the instance's
+     * current Y delta. Public: the mover pressure pass measures the gap a
+     * body must fit in with the same formula the sound flood uses.
+     *
+     * @returns {{fh: number, ch: number}}
+     */
+    effectiveHeights(si) {
         let fh = ((this._restFh[si] !== undefined) ? this._restFh[si] : this._sectors[si].fh);
         let ch = this._sectors[si].ch;
         const mover = this._mover(si);
