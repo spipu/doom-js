@@ -346,8 +346,42 @@ class WadWorldBuilder {
             this._game.setKillsTotal(killsTotal);
         }
         this._registerMonsterDrops(things, spriteBank);
+        this._registerCrushedCorpseView(spriteBank);
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
+    }
+
+    // Flattened-corpse billboard (vanilla S_GIBS pool, what a corpse ground by
+    // a mover turns into), built INSIDE the batch like the drop templates.
+    // Probed quietly: a profile without one (Heretic) or a WAD lacking the
+    // sprite leaves the corpses untouched.
+    _registerCrushedCorpseView(spriteBank) {
+        if (this._monsterSystem === null) {
+            return;
+        }
+        const lump = this._profile.crushedCorpseSprite();
+        if ((lump === null) || !spriteBank.has(lump)) {
+            this._monsterSystem.setCrushedCorpseView(null);
+            return;
+        }
+        this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump)));
+    }
+
+    // Floor-anchored fullbright sprite billboard, shared by the batch
+    // templates (drop pickups, crushed corpse): the sprite offset overflow
+    // hangs above the floor, never below.
+    _groundSpriteBillboard(spr) {
+        const geo = WadGeometry.spriteBillboardData(spr);
+        return loader.objects().loadBillboardFromData(null, {
+            billboard:     true,
+            textures:      [spr.loaderId],
+            halfWidth:     geo.halfWidth,
+            height:        geo.height,
+            anchorOffsetX: geo.anchorOffsetX,
+            anchorOffsetY: Math.max(0, spr.topOffset - spr.height) * WadConstants.SCALE,
+            anchorTop:     false,
+            light:         255
+        });
     }
 
     // Pickup templates for everything this level's monsters can drop, built
@@ -360,7 +394,6 @@ class WadWorldBuilder {
             return;
         }
         const types   = this._profile.dropItemTypes();
-        const scale   = WadConstants.SCALE;
         const catalog = {};
         for (const t of things) {
             if (t.kind !== 'monster') {
@@ -376,21 +409,11 @@ class WadWorldBuilder {
                 if (spr === null) {
                     continue;
                 }
-                const geo    = WadGeometry.spriteBillboardData(spr);
                 const effect = ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (d.amount ?? 0)});
                 const code   = 'drop_' + d.item + '_' + (d.amount ?? 'x');
                 catalog[key] = {
                     code:  code,
-                    objId: loader.objects().loadBillboardFromData(null, {
-                        billboard:     true,
-                        textures:      [spr.loaderId],
-                        halfWidth:     geo.halfWidth,
-                        height:        geo.height,
-                        anchorOffsetX: geo.anchorOffsetX,
-                        anchorOffsetY: Math.max(0, spr.topOffset - spr.height) * scale,
-                        anchorTop:     false,
-                        light:         255
-                    })
+                    objId: this._groundSpriteBillboard(spr)
                 };
                 loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._game));
             }

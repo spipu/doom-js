@@ -244,6 +244,9 @@ class WadConstants {
     static CRUSH_DAMAGE             = 10;
     static CRUSH_DAMAGE_WINDOW_TICS = 4;
     static PRESS_SLOW_FACTOR        = 0.125;
+    // P_KillMobj does height >>= 2: a corpse only pinches (and grinds)
+    // below a quarter of its living height.
+    static CORPSE_HEIGHT_DIVISOR    = 4;
 
     static crushDamageDescriptor() {
         return {

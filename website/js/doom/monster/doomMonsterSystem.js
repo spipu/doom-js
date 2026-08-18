@@ -35,6 +35,7 @@ class DoomMonsterSystem {
         // Dropped pickups spawned at runtime ({key, inst}): they carry no
         // instance code, so a save must re-spawn them explicitly.
         this._droppedRecords = [];
+        this._pressure       = new DoomMoverPressure();
     }
 
     /**
@@ -74,6 +75,7 @@ class DoomMonsterSystem {
             inFloat:      false,
             respawnClock: 0,
             noKillCount:  false,
+            crushedFlat:  false,
             blend:        null,
             snapRender:   false,
             walkStepped:  false,
@@ -102,6 +104,7 @@ class DoomMonsterSystem {
         if (this._sight === null) {
             this._sight = new DoomMonsterSight(this._collision, this._levelData);
         }
+        this._pressure.setSight(this._sight).setCollision(this._collision);
         if ((this._move === null) && (this._rng !== null) && (this._user !== null)) {
             this._move = new DoomMonsterMove(this._collision, this._user, this._rng, this._levelData);
             this._move.setPostMove((m, fromX, fromZ, toX, toZ) => {
@@ -140,6 +143,7 @@ class DoomMonsterSystem {
     // re-resolves its current sector through it).
     setLevelData(data) {
         this._levelData = data;
+        this._pressure.setMovers(data.moverCodes);
         this._wireModules();
         // First lighting of the bodies already added: their views are baked
         // fullbright, so none may reach a draw unlit.
@@ -169,6 +173,7 @@ class DoomMonsterSystem {
 
     setDamageModule(damageModule) {
         this._damage = damageModule;
+        this._pressure.setDamageModule(damageModule);
         return this;
     }
 
@@ -180,6 +185,11 @@ class DoomMonsterSystem {
     // keyed 'item|amount' (an interaction cannot register at runtime).
     setDrops(catalog) {
         this._drops = catalog;
+        return this;
+    }
+
+    setCrushedCorpseView(objId) {
+        this._pressure.setCrushedView(objId);
         return this;
     }
 
@@ -225,6 +235,7 @@ class DoomMonsterSystem {
             // Consumed walk/teleport lines of the monsters (deterministic
             // build order) — owned here, where they are crossed.
             lines:    (this._levelData.monsterLines ?? []).map((line) => line.used),
+            crushStalled: this._pressure.exportStalled(),
         };
     }
 
@@ -270,6 +281,8 @@ class DoomMonsterSystem {
         for (let i = 0; i < lines.length && i < data.lines.length; i++) {
             lines[i].used = data.lines[i];
         }
+
+        this._pressure.importStalled(data.crushStalled ?? []);
     }
 
     _exportRecord(m) {
@@ -296,6 +309,7 @@ class DoomMonsterSystem {
             inFloat:        m.inFloat,
             respawnClock:   m.respawnClock,
             noKillCount:    m.noKillCount,
+            crushedFlat:    m.crushedFlat,
             hasBox:         ((this._collision !== null) && this._collision.hasBoxFor(m.inst)),
         };
     }
@@ -324,6 +338,7 @@ class DoomMonsterSystem {
         m.inFloat      = rec.inFloat;
         m.respawnClock = rec.respawnClock;
         m.noKillCount  = rec.noKillCount;
+        this._pressure.restoreFlat(m, rec.crushedFlat);
         m.blend        = null;
         m.snapRender   = false;
         if (this._collision !== null) {
@@ -351,6 +366,10 @@ class DoomMonsterSystem {
         for (const m of this._monsters) {
             m.env.integrate(dt / 1000);
         }
+        // Mover motion is a FRAME fact (the animations advance in World.update):
+        // read it once here so every tic drained below sees the same state —
+        // sampled per tic, a slow frame would miss the movement on most tics.
+        this._pressure.refreshMotion();
         this._timeAcc += dt;
         while (this._timeAcc >= DoomMonsterSystem.MS_PER_TIC) {
             this._timeAcc -= DoomMonsterSystem.MS_PER_TIC;
@@ -447,6 +466,7 @@ class DoomMonsterSystem {
 
     _stepTic() {
         this._ticCount++;
+        this._pressure.pressureTic(this._monsters, this._ticCount);
         const kept = [];
         for (const m of this._monsters) {
             const before   = m.inst.getTransform().position;
@@ -1070,6 +1090,11 @@ class DoomMonsterSystem {
     }
 
     _refreshView(m) {
+        // A ground corpse shows the gibs pool whatever its state machine says
+        // (it keeps running to its terminal frame for the nightmare respawn).
+        if (m.crushedFlat) {
+            return;
+        }
         const state = m.def.getState(m.stateKey);
         const views = m.frames[DoomMonsterDef.viewKey(state.getSprite(), state.getFrame())];
         if (views === undefined) {

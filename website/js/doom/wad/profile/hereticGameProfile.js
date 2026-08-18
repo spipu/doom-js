@@ -646,6 +646,12 @@ class HereticGameProfile extends DefaultGameProfile {
         return {gibFactor: 0.5, defKickback: 150, bloodTemplate: 'blood', bloodDamageAdvance: false};
     }
 
+    // heretic.wad has no POL5 (UZDoom's Grind then draws nothing; vanilla
+    // Heretic kept the corpse sprite, only shrunk): the corpse stays as-is.
+    crushedCorpseSprite() {
+        return null;
+    }
+
     // The Heretic projectiles (zscript actors, PL1): speed in map units/tic.
     // The mace ball flies straight 16 tics then drops (A_MacePL1Check:
     // gravity 1/8, horizontal speed rescaled to 7, vertical halved) — no
