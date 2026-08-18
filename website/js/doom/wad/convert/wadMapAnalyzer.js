@@ -124,9 +124,8 @@ class WadMapAnalyzer {
     // the sector's own level; minLight = P_FindMinSurroundingLight (darkest
     // neighbour across two-sided lines, capped at the sector's own level) —
     // strobes fall back to 0 when no neighbour is darker, fire flicker adds
-    // +16. All bounds use the RAW lump values: the SECTOR_LIGHT_MIN floor only
-    // lifts what is baked statically — a dark phase dipping under it is the
-    // visible blink vanilla shows (a raw-40 room still strobes 40↔0).
+    // +16. All bounds stay in the RAW lump domain, like vanilla; the interaction
+    // converts each step through WadConstants.sectorLightLevel when it renders.
     _identifyLightSectors() {
         const {linedefs, sidedefs, sectors} = this._level;
 
@@ -347,8 +346,10 @@ class WadMapAnalyzer {
             // Vanilla carries the activation on each linedef, the sector is only
             // the target: a remote line (walk zone, switch) drives the door
             // through its own trigger and must not take the manual press away.
-            // Manual specials keep overwriting each other (last wins), so a
-            // keyed face still locks the door (E1M5's blue door pairs 1 + 26).
+            // Manual specials keep overwriting each other (last wins) — these
+            // props describe the door BODY; what each FACE demands (its key) is
+            // rebuilt from the linedefs by the world builder, so a sector mixing
+            // a keyed face and a free one keeps both rules.
             const trigger = forceTrigger ?? door.trigger;
             if ((doorProps[si] !== undefined) && (doorProps[si].trigger === 'action') && (trigger !== 'action')) {
                 return;
@@ -360,7 +361,6 @@ class WadMapAnalyzer {
                 loop:         door.loop,
                 onlyOnce:     door.onlyOnce,
                 anim:         door.anim,
-                keyRequired:  door.key,
                 close:        (door.kind === 'close'),
                 ceilingRaise: (door.kind === 'ceilingRaise'),
                 // Doom units left above the floor at the end of a close
@@ -370,6 +370,11 @@ class WadMapAnalyzer {
                 // (timer doors, sector specials 10/14).
                 timerDelayS:  0,
                 autoStart:    false,
+                // True once ANY face is a door a monster may bump open (the net
+                // effect of the vanilla P_UseSpecialLine whitelist: the plain
+                // repeatable keyless manual door). Accumulated, never
+                // overwritten — one keyed face does not lock the free one out.
+                monsterUse:   ((doorProps[si]?.monsterUse === true) || WadMapAnalyzer._monsterUsableDoor(door, trigger)),
                 // Per-trigger cycles aimed at this door (filled after the
                 // registration loops, preserved when the timer-sector pass
                 // re-registers on top): cycle key → {anim, speed, onlyOnce,
@@ -480,6 +485,14 @@ class WadMapAnalyzer {
         }
 
         return {doorSectorIds: doorSectorIds, doorProps: doorProps};
+    }
+
+    // Net effect of the vanilla P_UseSpecialLine whitelist for a monster: the
+    // plain manual door (special 1) — repeatable action trigger, keyless,
+    // D_SLOW, opening (the blaze 117 and the one-shot 31 are out).
+    static _monsterUsableDoor(door, trigger) {
+        return ((trigger === 'action') && (door.onlyOnce !== true)
+            && ((door.key ?? null) === null) && (door.kind === 'open') && (door.speed === 2));
     }
 
     // floor_h = max(own fh, min adjacent fh), ceil_h = min adjacent non-sky ch -

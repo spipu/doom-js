@@ -12,16 +12,10 @@ class DoomTriggerTargets {
      */
     static fire(targets, reverseTargets, doorVariant = null) {
         for (const code of targets) {
-            const target = loader.instances().getByCode(code);
-            if (target) {
-                target.start(doorVariant);
-            }
+            loader.instances().getByCode(code).start(doorVariant);
         }
         for (const entry of (reverseTargets ?? [])) {
-            const target = loader.instances().getByCode(entry.code);
-            if (target) {
-                target.startReverse(entry.timeScale);
-            }
+            loader.instances().getByCode(entry.code).startReverse(entry.timeScale);
         }
     }
 
@@ -29,10 +23,7 @@ class DoomTriggerTargets {
     // EV_StopPlat stasis) instead of starting them.
     static pause(targets) {
         for (const code of targets) {
-            const target = loader.instances().getByCode(code);
-            if (target) {
-                target.pause();
-            }
+            loader.instances().getByCode(code).pause();
         }
     }
 }

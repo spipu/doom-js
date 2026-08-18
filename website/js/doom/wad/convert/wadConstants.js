@@ -788,13 +788,32 @@ class WadConstants {
     // full UZDoom curve reads slightly too strong here).
     static LIGHT_DIMINISH_STRENGTH       = 0.8;
 
-    // Floor of a sector's BAKED light level (the parser keeps the raw value in
-    // lightRaw alongside): an absolute black at rest is something the original
-    // never showed — vanilla's darkest colormap still averages 2.9/255, and 40
-    // through the diminishing curve lands in the same 3-5% band. Light thinkers
-    // (strobe, glow, flicker) run on the RAW bounds so their dark phase keeps
-    // its vanilla depth: a transient dip below the floor is the visible blink.
+    // Floor the rendered sector light converges to: an absolute black is
+    // something the original never showed — vanilla's darkest colormap still
+    // averages 2.9/255, and 40 through the diminishing curve lands in the same
+    // 3-5% band.
     static SECTOR_LIGHT_MIN              = 40;
+    // Knee of sectorLightLevel. The higher, the closer the curve hugs the raw
+    // level: at 4 it is already within 1% from 96 up, so only the near-black
+    // end is lifted and the contrast between rooms is left alone.
+    static SECTOR_LIGHT_KNEE             = 4;
+
+    /**
+     * Rendered level of a raw sector light — the SINGLE conversion every light
+     * goes through, whether it is baked once by the parser or stepped every tic
+     * by a light thinker. A soft knee rather than a clamp: max(raw, MIN) would
+     * flatten every level below the floor onto it, which erases the gradation
+     * between a pitch-dark room and a dim one; this stays strictly increasing.
+     *
+     * @param {number} raw 0..255 from the SECTORS lump
+     * @returns {number} MIN..255
+     */
+    static sectorLightLevel(raw) {
+        const knee = WadConstants.SECTOR_LIGHT_KNEE;
+        const lit  = Math.pow(Math.pow(raw, knee) + Math.pow(WadConstants.SECTOR_LIGHT_MIN, knee), 1 / knee);
+
+        return Math.min(255, lit);
+    }
 
     // Parameters for Engine3d.setDepthShading (common to every doom-format
     // game — an engine behaviour, not a per-game profile datum).

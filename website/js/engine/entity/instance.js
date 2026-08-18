@@ -138,16 +138,22 @@ class Instance extends AbstractLoadedEntity {
     // Opaque gates evaluated before a proximity/action trigger may fire (e.g. a
     // locked door checking the player holds the key). The predicates are
     // supplied by the game layer; the engine stays generic and ANDs them —
-    // several rules may guard one instance (key + crossing + side). The AND
-    // short-circuits: a STATEFUL predicate (e.g. a line-crossing sampler) must
-    // be registered last, or an earlier false gate starves its sampling.
+    // several rules may guard one instance (key + crossing + side).
     addTriggerCondition(fn) {
         this._triggerConditions.push(fn);
         return this;
     }
 
+    // Every predicate runs, whatever the ones before answered: a STATEFUL gate
+    // (a line-crossing sampler) must keep sampling even while another one
+    // refuses, or it reads a stale position the frame the refusal lifts.
     _conditionMet(user) {
-        return this._triggerConditions.every((fn) => (fn(user) === true));
+        let met = true;
+        for (const fn of this._triggerConditions) {
+            const ok = (fn(user) === true);
+            met = (met && ok);
+        }
+        return met;
     }
 
     isCollidable() {

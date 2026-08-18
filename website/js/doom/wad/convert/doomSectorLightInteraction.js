@@ -2,12 +2,15 @@
  * Per-level dynamic sector lights (transposition of the p_lights.c thinkers,
  * one step per tic at 35 tics/s): flicker (T_LightFlash), strobe
  * (T_StrobeFlash), glow (T_Glow) and fire flicker (T_FireFlicker). Each light
- * sector drives the brightness factor (current level / RAW rest level) of every
- * face tagged with its lightGroup — static map, instance meshes (doors, lifts,
- * switches…) and sprite billboards. The thinker bounds are the raw lump values
- * while the faces are baked at the SECTOR_LIGHT_MIN-floored level: a dark phase
- * scales them below the floor, keeping its vanilla depth. Only the random
- * source deviates from vanilla (Math.random instead of the P_Random table).
+ * sector drives the brightness factor of every face tagged with its lightGroup
+ * — static map, instance meshes (doors, lifts, switches…) and sprite
+ * billboards. The thinker steps on the RAW lump bounds, like vanilla, and both
+ * ends of the factor go through WadConstants.sectorLightLevel: the faces are
+ * baked through that same curve, so the ratio moves the rendered level exactly
+ * where the curve puts it — a dark phase lands ON the floor instead of black,
+ * and a room whose rest level already sits there keeps a narrow but non-zero
+ * swing. Only the random source deviates from vanilla (Math.random instead of
+ * the P_Random table).
  */
 class DoomSectorLightInteraction extends AbstractInteraction {
     /**
@@ -32,13 +35,18 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     }
 
     // Current brightness factor of a light sector (1 for a sector with no light
-    // effect), i.e. current level / raw rest level — the value applied to its faces.
+    // effect) — the value applied to its faces, which carry the rest level.
     getFactor(si) {
         const st = this._bySi[si];
-        if (st === undefined) {
-            return 1;
-        }
-        return ((st.maxLight > 0) ? (st.light / st.maxLight) : 1);
+
+        return ((st !== undefined) ? DoomSectorLightInteraction._factorOf(st) : 1);
+    }
+
+    // Both ends converted by the shared curve, so the factor times the baked
+    // rest level lands on sectorLightLevel(current). The curve never returns
+    // less than SECTOR_LIGHT_MIN, so the division is always safe.
+    static _factorOf(st) {
+        return (WadConstants.sectorLightLevel(st.light) / WadConstants.sectorLightLevel(st.maxLight));
     }
 
     triggered(instance) {
@@ -64,7 +72,7 @@ class DoomSectorLightInteraction extends AbstractInteraction {
             for (let t = 0; t < tics; t++) {
                 this._stepTic(st);
             }
-            const factor = ((st.maxLight > 0) ? (st.light / st.maxLight) : 1);
+            const factor = DoomSectorLightInteraction._factorOf(st);
             for (const obj of this._targets) {
                 obj.setGroupLightFactor(st.si, factor);
             }
