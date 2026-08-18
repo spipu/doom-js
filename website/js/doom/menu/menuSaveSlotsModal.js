@@ -7,7 +7,7 @@
  * "Back" button (same path as Backspace / the gamepad back button) closes
  * back to the owner in both modes.
  */
-class MenuSaveSlotsModal extends MenuModal {
+class MenuSaveSlotsModal extends AbstractMenuListModal {
     static MODE_LOAD = 'load';
     static MODE_SAVE = 'save';
 
@@ -17,10 +17,8 @@ class MenuSaveSlotsModal extends MenuModal {
     constructor(display) {
         super(display);
 
-        this._nav         = new MenuListNavigation(() => this.close(), () => !this._isTopOverlay());
         this._mode        = MenuSaveSlotsModal.MODE_LOAD;
         this._wadMeta     = null;
-        this._onClose     = null;
         this._onLoad      = null;
         this._saveContext = null;
         this._slots       = {};
@@ -40,16 +38,6 @@ class MenuSaveSlotsModal extends MenuModal {
      */
     setWad(wadMeta) {
         this._wadMeta = wadMeta;
-
-        return this;
-    }
-
-    /**
-     * Hook fired once the modal is closed — the owner re-renders itself
-     * (same contract as MenuOptionsModal).
-     */
-    setOnClose(callback) {
-        this._onClose = callback;
 
         return this;
     }
@@ -90,30 +78,8 @@ class MenuSaveSlotsModal extends MenuModal {
 
         const titleCode = ((this._mode === MenuSaveSlotsModal.MODE_SAVE) ? 'menu.save.titleSave' : 'menu.save.titleLoad');
         const title = WadRegistry.displayTitle(this._wadMeta) + ' — ' + appTranslator.get(titleCode);
-        const {modal} = this._createShell(title,
-            'doom-menu-modal doom-menu-modal-wide doom-menu-modal-options', 'doom-menu-subtitle');
-        this._bodyEl = MenuDom.addElement(modal, 'div', 'doom-menu-modal-options-body');
-
-        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.back'), () => {
-            this.close();
-        });
-
-        this._nav.attach();
+        this._bodyEl = this._openShell(title, appTranslator.get('menu.back')).bodyEl;
         this._renderList();
-
-        return this;
-    }
-
-    close() {
-        const wasOpen = (this._overlay !== null);
-
-        this._nav.detach().clear();
-        super.close();
-
-        if (wasOpen && (this._onClose !== null)) {
-            this._onClose();
-        }
 
         return this;
     }
@@ -151,11 +117,9 @@ class MenuSaveSlotsModal extends MenuModal {
         const item = this._nav.addItemIn(listEl, label, action);
         MenuDom.addText(item, 'doom-menu-item-value', MenuDom.formatDate(meta.savedAt, true));
 
-        const deleteButton = MenuDom.addButton(item, 'doom-menu-item-delete', '✕', (event) => {
-            event.stopPropagation();
+        MenuDom.addDeleteButton(item, appTranslator.get('menu.save.delete'), () => {
             this._confirmDelete(slot);
         });
-        deleteButton.title = appTranslator.get('menu.save.delete');
     }
 
     _loadSlot(meta) {
@@ -167,7 +131,7 @@ class MenuSaveSlotsModal extends MenuModal {
     }
 
     _confirmOverwrite(slot) {
-        new MenuModal(this._display).confirm(appTranslator.get('menu.save.overwriteConfirm', {n: slot}), () => {
+        this._confirm(appTranslator.get('menu.save.overwriteConfirm', {n: slot}), () => {
             this._doSave(slot);
         });
     }
@@ -181,7 +145,7 @@ class MenuSaveSlotsModal extends MenuModal {
     }
 
     _confirmDelete(slot) {
-        new MenuModal(this._display).confirm(appTranslator.get('menu.save.deleteConfirm', {n: slot}), () => {
+        this._confirm(appTranslator.get('menu.save.deleteConfirm', {n: slot}), () => {
             doomSaveStore.remove(this._wadMeta.id, slot)
                 .then(() => this._refresh())
                 .catch((error) => this._showStorageError(error));

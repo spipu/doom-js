@@ -119,6 +119,12 @@
     background: rgba(231, 76, 60, 0.18);
 }
 
+/* Press feedback: a beat brighter than the selection, before the action. */
+.doom-menu-item-pressed {
+    border-color: #E74C3C;
+    background: rgba(231, 76, 60, 0.45);
+}
+
 .doom-menu-item-label {
     flex: 1;
     font-size: 1em;
@@ -138,23 +144,21 @@
     letter-spacing: 0.1em;
 }
 
-.doom-menu-item-delete {
+/* Geometry only: the visual states come from doom-menu-button (whose later
+   rules the doubled class outweighs). Sized as a comfortable touch target,
+   still under the row height so lists keep their rhythm. */
+.doom-menu-button.doom-menu-item-delete {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.6em;
-    height: 1.6em;
-    background: none;
-    border: 0.06em solid rgba(192, 57, 43, 0.4);
-    border-radius: 0.2em;
-    color: #C0392B;
+    width: 2em;
+    height: 2em;
+    padding: 0;
     font-size: 0.85em;
-    cursor: pointer;
-}
-
-.doom-menu-item-delete:hover {
-    background: rgba(192, 57, 43, 0.25);
+    /* Single glyph: the button letter-spacing would trail it off-centre. */
+    letter-spacing: 0;
+    line-height: 1;
 }
 
 /* Shown but not selectable (an empty save slot on the load list). */
@@ -208,7 +212,9 @@
     display: none;
 }
 
-/* --- Buttons (same gradient as the loading bar) --- */
+/* --- Buttons (same gradient as the loading bar) ---
+   Three shared states: dimmed at rest, full on hover or keyboard/gamepad
+   focus, brighter while pressed (the press feedback of MenuDom.addButton). */
 
 .doom-menu-button {
     background: linear-gradient(to right, #8E2A1E, #E74C3C);
@@ -221,15 +227,22 @@
     text-transform: uppercase;
     padding: 0.8em 1.4em;
     cursor: pointer;
+    filter: brightness(70%);
 }
 
-.doom-menu-button:hover {
-    filter: brightness(130%);
+.doom-menu-button:hover,
+.doom-menu-button-focus {
+    filter: brightness(100%);
 }
 
 .doom-menu-button:disabled {
     filter: grayscale(1);
     cursor: default;
+}
+
+.doom-menu-button-pressed,
+.doom-menu-button-pressed:hover {
+    filter: brightness(130%);
 }
 
 .doom-menu-actions {
@@ -337,6 +350,7 @@
 
 /* --- About button (?) + options modal --- */
 
+/* Geometry only: the visual states come from doom-menu-button. */
 .doom-menu-help-button {
     position: absolute;
     top: 0.4em;
@@ -348,23 +362,8 @@
     justify-content: center;
     padding: 0;
     line-height: 1;
-    background: none;
-    border: 0.04em solid rgba(192, 57, 43, 0.5);
-    border-radius: 0.15em;
-    color: rgba(255, 255, 255, 0.75);
+    letter-spacing: 0;
     font-size: 1.65em;
-    cursor: pointer;
-}
-
-.doom-menu-help-button:hover {
-    background: rgba(192, 57, 43, 0.15);
-}
-
-/* Keyboard/gamepad highlight of the side button (Right from the WAD list). */
-.doom-menu-button-focus {
-    background: rgba(231, 76, 60, 0.25);
-    border-color: rgba(231, 76, 60, 0.9);
-    color: #FFF;
 }
 
 /* Tall column layout: the body grows, the actions stick to the bottom right.

@@ -620,7 +620,12 @@ class DoomGame {
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning) {
             if (this._paused) {
-                this._leavePause();
+                // A stacked modal (options, save slots, confirm) handles the
+                // Escape key itself as one step back: the toggle only leaves
+                // the pause from its root.
+                if (this._pauseModal.isAtRoot()) {
+                    this._leavePause();
+                }
             } else {
                 this._enterPause();
             }

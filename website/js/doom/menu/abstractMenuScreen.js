@@ -19,7 +19,8 @@ class AbstractMenuScreen {
         this._statusEl    = null;
         this._footerEl    = null;
         this._footerTimer = null;
-        this._nav         = new MenuListNavigation(() => this._onBack(), () => this._navBlocked());
+        this._nav         = new MenuListNavigation(() => this._onBack(), () => this._navBlocked())
+            .setEscapeAsBack(true);
     }
 
     show() {
@@ -73,7 +74,7 @@ class AbstractMenuScreen {
             return true;
         }
 
-        return (displayContainer.querySelector('.doom-menu-overlay') !== null);
+        return MenuDom.hasOverlay(displayContainer);
     }
 
     // --- Shared skeleton ---
@@ -103,13 +104,18 @@ class AbstractMenuScreen {
         return this._statusEl;
     }
 
-    // Right-aligned actions row with the standard back button.
-    _addBackButton(panel) {
+    // Right-aligned actions row with the standard back button; the label may
+    // be overridden (the WAD menu reads "Quit {wad}" on the same button).
+    // Registered as the navigation's bottom target: Down past the list lands
+    // on it, and every back input plays it (press feedback included).
+    _addBackButton(panel, label = null) {
         const actions = this._addElement('div', 'doom-menu-actions', panel);
-
-        return this._addButton(appTranslator.get('menu.back'), () => {
+        const button  = this._addButton((label ?? appTranslator.get('menu.back')), () => {
             this._onBack();
         }, actions);
+        this._nav.setBottomButton(button);
+
+        return button;
     }
 
     // --- Selectable list ---
@@ -168,6 +174,12 @@ class AbstractMenuScreen {
         return new MenuModal(this._display).confirm(message, onConfirm);
     }
 
+    // Opens a modal over this screen, re-rendered on close: a setting changed
+    // under the modal (language, units…) must reach the covered screen.
+    _openModal(modal) {
+        return modal.setOnClose(() => this.show());
+    }
+
     // --- Status / error helpers ---
 
     _setStatus(message) {
@@ -213,17 +225,4 @@ class AbstractMenuScreen {
         this._setError(appTranslator.get(codes[code]) + ((detail !== null) ? ' (' + detail + ')' : ''));
     }
 
-    // --- Format helpers ---
-
-    _formatSize(bytes) {
-        const decimal = (value) => new Intl.NumberFormat(appTranslator.getLocale(), {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(value);
-        if (bytes >= 1048576) {
-            return decimal(bytes / 1048576) + ' ' + appTranslator.get('unit.megabyte');
-        }
-        if (bytes >= 1024) {
-            return decimal(bytes / 1024) + ' ' + appTranslator.get('unit.kilobyte');
-        }
-
-        return bytes + ' ' + appTranslator.get('unit.byte');
-    }
 }

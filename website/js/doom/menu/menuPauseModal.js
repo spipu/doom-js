@@ -8,20 +8,20 @@
  * through its provider whenever a stacked modal closes (the language may have
  * changed).
  */
-class MenuPauseModal extends MenuModal {
+class MenuPauseModal extends AbstractMenuListModal {
     /**
      * @param {MenuDisplay} display
      */
     constructor(display) {
         super(display);
 
-        this._nav           = new MenuListNavigation(() => this._resume(), () => !this._isTopOverlay());
+        // The game loop owns the Escape key at the pause root (its toggle).
+        this._nav.setEscapeAsBack(false);
         this._onResume      = null;
         this._onQuit        = null;
         this._titleProvider = null;
-        this._optionsModal  = null;
         this._saveContext   = null;
-        this._slotsModal    = null;
+        this._stacked       = {options: null, slots: null};
     }
 
     /**
@@ -78,19 +78,35 @@ class MenuPauseModal extends MenuModal {
         return this;
     }
 
-    close() {
-        if (this._optionsModal !== null) {
-            this._optionsModal.setOnClose(null).close();
-            this._optionsModal = null;
+    _teardown() {
+        for (const key of Object.keys(this._stacked)) {
+            if (this._stacked[key] !== null) {
+                this._stacked[key].setOnClose(null).close();
+                this._stacked[key] = null;
+            }
         }
-        if (this._slotsModal !== null) {
-            this._slotsModal.setOnClose(null).close();
-            this._slotsModal = null;
-        }
-        this._nav.detach().clear();
-        super.close();
+    }
 
-        return this;
+    // Stacked child modal, silenced by the top-overlay rule until it closes;
+    // the pause is then fully re-rendered — a language change must reach its
+    // title and entries.
+    _openStacked(key, modal) {
+        this._stacked[key] = modal.setOnClose(() => {
+            this._stacked[key] = null;
+            this.show();
+        });
+
+        return modal;
+    }
+
+    // The game's Escape toggle only leaves the pause from its root: a stacked
+    // modal handles Escape itself (one step back).
+    isAtRoot() {
+        return this._isTopOverlay();
+    }
+
+    _onBack() {
+        this._resume();
     }
 
     // --- Internal ---
@@ -101,16 +117,8 @@ class MenuPauseModal extends MenuModal {
         }
     }
 
-    // Stacked over this modal, whose navigation goes silent until it closes
-    // (top-most overlay rule); the pause modal is then fully re-rendered — a
-    // language change must reach its title and entries.
     _openOptions() {
-        this._optionsModal = new MenuOptionsModal(this._display)
-            .setOnClose(() => {
-                this._optionsModal = null;
-                this.show();
-            })
-            .show();
+        this._openStacked('options', new MenuOptionsModal(this._display)).show();
     }
 
     // The save entry stays visible while dead, but only opens an information
@@ -123,21 +131,16 @@ class MenuPauseModal extends MenuModal {
         this._openSlots(MenuSaveSlotsModal.MODE_SAVE);
     }
 
-    // Save slots stacked like the options modal; loading a slot replaces the
-    // running game (the game closes this modal on its way out). show() is
-    // async (it reads the slots): the modal is kept BEFORE calling it, so
-    // close() always holds the modal and never a promise.
+    // Loading a slot replaces the running game (the game closes this modal on
+    // its way out). show() is async (it reads the slots): the modal is memoed
+    // BEFORE calling it, so close() always holds the modal, never a promise.
     _openSlots(mode) {
-        this._slotsModal = new MenuSaveSlotsModal(this._display)
+        this._openStacked('slots', new MenuSaveSlotsModal(this._display)
             .setMode(mode)
             .setWad(this._saveContext.wadMeta)
             .setSaveContext(this._saveContext)
-            .setOnLoad((saveMeta) => this._saveContext.onLoad(saveMeta))
-            .setOnClose(() => {
-                this._slotsModal = null;
-                this.show();
-            });
-        this._slotsModal.show();
+            .setOnLoad((saveMeta) => this._saveContext.onLoad(saveMeta)))
+            .show();
     }
 
     _quit() {
