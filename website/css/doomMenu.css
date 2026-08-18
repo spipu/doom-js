@@ -80,6 +80,9 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    /* Vertical cushion: an entry border flush with the clip edge gets eaten
+       by fractional em positions (sub-pixel borders on phones). */
+    padding: 0.1em 0;
     margin-bottom: 0.7em;
     scrollbar-width: thin;
     scrollbar-color: rgba(192, 57, 43, 0.4) transparent;
@@ -101,7 +104,7 @@
     padding: 0.45em 0.6em;
     margin-bottom: 0.25em;
     background: rgba(255, 255, 255, 0.04);
-    border: 0.04em solid transparent;
+    border: max(0.04em, 1px) solid transparent;
     border-radius: 0.2em;
     cursor: pointer;
     color: #FFF;

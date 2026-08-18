@@ -220,14 +220,17 @@ class MenuListNavigation {
         if (list === null) {
             return;
         }
+        // Aligned on the list's vertical padding, not its clip edge: an entry
+        // border flush with the edge gets eaten by fractional em positions.
+        const inset    = parseFloat(getComputedStyle(list).paddingTop);
         const listRect = list.getBoundingClientRect();
         const itemRect = el.getBoundingClientRect();
-        if (itemRect.top < listRect.top) {
-            list.scrollTop += (itemRect.top - listRect.top);
+        if (itemRect.top < (listRect.top + inset)) {
+            list.scrollTop += (itemRect.top - listRect.top - inset);
             return;
         }
-        if (itemRect.bottom > listRect.bottom) {
-            list.scrollTop += (itemRect.bottom - listRect.bottom);
+        if (itemRect.bottom > (listRect.bottom - inset)) {
+            list.scrollTop += (itemRect.bottom - listRect.bottom + inset);
         }
     }
 
