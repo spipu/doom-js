@@ -239,10 +239,13 @@ class DoomGame {
         }
         // Pickup heal (catalog data — Doom's berserk, vanilla P_GivePower
         // pw_strength): the heal happens BEFORE the already-owned check, so
-        // every sphere re-heals and is consumed even when already held.
+        // every sphere re-heals and is consumed even when already held — and
+        // each pickup restarts the fading red wash (PowerStrength resets its
+        // EffectTics on re-pickup).
         if (def.getPickupHeal() !== null) {
             user.giveItem(code);
             user.addEnergy(def.getPickupHeal(), def.getPickupHeal());
+            user.addEffect('berserkFlash', WadConstants.BERSERK_FLASH_MS);
             return true;
         }
         // Key or permanent power-up: a key already held leaves the sprite.

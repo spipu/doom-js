@@ -95,6 +95,41 @@ class HudDoom extends AbstractHud {
         this._debug.setVisible(this._mode === 'debug');
     }
 
+    // The ONE aggregation of every screen tint, composited like UZDoom's
+    // V_AddPlayerBlend (v_blend.cpp, same order): the powerup layers first —
+    // radiation suit (RADIATIONPAL green, solid until 4*32 remaining tics
+    // then strobing), berserk red wash fading out — then the pickup pulse
+    // (BONUS gold) and the damage/death reds merged in: a decaying red fades
+    // back into the layers it was mixed with instead of dipping through
+    // transparent. Future powerup tints (invulnerability) slot in as extra
+    // layers.
+    _computeScreenTint() {
+        const palette = WadConstants.SCREEN_FLASH_PALETTE;
+        const blend   = [0, 0, 0, 0];
+        const radMs   = this._user.getEffects()['radiation'];
+        if (radMs !== undefined) {
+            if (WadConstants.powerupTintVisible(WadConstants.msToTics(radMs))) {
+                AbstractHud.addBlend(blend, WadConstants.RADSUIT_SCREEN_TINT.rgb, WadConstants.RADSUIT_SCREEN_TINT.alpha);
+            }
+        }
+        const berserkMs = this._user.getEffects()['berserkFlash'];
+        if (berserkMs !== undefined) {
+            const elapsedTics = WadConstants.BERSERK_FLASH_TICS - WadConstants.msToTics(berserkMs);
+            AbstractHud.addBlend(blend, WadConstants.BERSERK_FLASH_RGB, WadConstants.berserkFlashAlpha(elapsedTics));
+        }
+        if (this._user.getPickupFlash() > 0) {
+            AbstractHud.addBlend(blend, palette.pickup.rgb, Math.min(palette.pickup.maxAlpha, this._user.getPickupFlash()));
+        }
+        if (this._user.getEnergyFlash() > 0) {
+            AbstractHud.addBlend(blend, palette.damage.rgb, Math.min(palette.damage.maxAlpha, this._user.getEnergyFlash()));
+        }
+        if (this._user.isDead()) {
+            AbstractHud.addBlend(blend, palette.death.rgb, palette.death.alpha);
+        }
+
+        return ((blend[3] > 0) ? AbstractHud.rgba(blend, blend[3]) : null);
+    }
+
     // A plain cross centred on the view point (where free-aim shots land):
     // a full-size wrapper carries the cqh unit (container-type like the game
     // bar root, letterbox proportional), holding one horizontal and one

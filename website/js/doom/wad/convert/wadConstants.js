@@ -781,6 +781,44 @@ class WadConstants {
     // P_PlayerInSpecialSector credits it once and clears the special)
     static SECTOR_SECRET_SPECIAL = 9;
 
+    // --- Screen feedback tints (st_stuff.c ST_doPaletteStuff) ---
+
+    // Full-screen flash colors of the HUD tint aggregation: death and damage
+    // use the PAIN red palettes, the pickup pulse the BONUS gold ones.
+    static SCREEN_FLASH_PALETTE = {
+        death:  {rgb: [255, 0, 0], alpha: 0.5},
+        damage: {rgb: [255, 0, 0], maxAlpha: 0.6},
+        pickup: {rgb: [215, 186, 69], maxAlpha: 0.35}
+    };
+
+    // Radiation-suit ambient tint: vanilla shows RADIATIONPAL (palette 13),
+    // UZDoom blends PowerIronFeet as "00 ff 00" at 0.125 (powerups.zs).
+    static RADSUIT_SCREEN_TINT = {rgb: [0, 255, 0], alpha: 0.125};
+
+    // End-of-powerup blink (ST_doPaletteStuff): the tint stays solid above
+    // 4*32 remaining tics, then strobes on the 8-tic bit of the countdown.
+    static POWERUP_BLINK_THRESHOLD_TICS = 128;
+
+    static powerupTintVisible(remainingTics) {
+        return ((remainingTics > WadConstants.POWERUP_BLINK_THRESHOLD_TICS)
+            || ((Math.trunc(remainingTics) & 8) !== 0));
+    }
+
+    // Berserk pickup red wash (PowerStrength.GetBlend, powerups.zs): the
+    // "ff 00 00" blend starts at 0.5 × 128/256 and fades out over 1024 tics.
+    static BERSERK_FLASH_RGB  = [255, 0, 0];
+    static BERSERK_FLASH_TICS = 1024;
+    static BERSERK_FLASH_MS   = WadConstants.BERSERK_FLASH_TICS * WadConstants.SECONDS_PER_TIC * 1000;
+
+    static berserkFlashAlpha(elapsedTics) {
+        const cnt = 128 - (Math.trunc(elapsedTics) >> 3);
+        return ((cnt > 0) ? (0.5 * cnt / 256) : 0);
+    }
+
+    static msToTics(ms) {
+        return ((ms / 1000) / WadConstants.SECONDS_PER_TIC);
+    }
+
     // --- Sector pushes (wind / conveyor floors) ---
 
     // Player push of a SECTOR special, in map units per tic. kind 'wind' =
