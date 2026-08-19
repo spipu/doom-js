@@ -20,23 +20,36 @@ class WadLineCrossing {
      * True when the actor moved across the line since the previous call.
      */
     crossedBy(user) {
+        return (this.crossingSideBy(user) !== null);
+    }
+
+    /**
+     * Side of the line the actor CAME FROM when it crossed since the previous
+     * call: null when no crossing, else 0 (front) / 1 (back). Vanilla hands
+     * the origin side to the specials (P_TryMove passes oldside).
+     */
+    crossingSideBy(user) {
         const fromX = this._lastX;
         const fromZ = this._lastZ;
         this._lastX = user.getCenterX();
         this._lastZ = user.getCenterZ();
         if (fromX === null) {
-            return false;
+            return null;
         }
         // Sampling only happens while the player is inside the zone circle, so
         // two consecutive samples may sit far apart (zone left and re-entered,
         // teleport arrival, restored save): the straight segment between them
         // would cross lines the player never walked through.
         if (Math.hypot(this._lastX - fromX, this._lastZ - fromZ) > WadConstants.WALK_CROSS_MAX_STEP) {
-            return false;
+            return null;
+        }
+        if (!WadGeometry.segmentsCross(
+            fromX, fromZ, this._lastX, this._lastZ,
+            this._segment[0], this._segment[1], this._segment[2], this._segment[3])) {
+            return null;
         }
 
-        return WadGeometry.segmentsCross(
-            fromX, fromZ, this._lastX, this._lastZ,
+        return WadGeometry.pointOnLineSide(fromX, fromZ,
             this._segment[0], this._segment[1], this._segment[2], this._segment[3]);
     }
 

@@ -73,6 +73,16 @@ class WadGeometry {
         return (((90 - value) % 360) + 360) % 360;
     }
 
+    // P_PointOnLineSide (p_maputl.c): 0 when the point sits on the FRONT side
+    // of the directed line v1→v2 (its right side), 1 on the back side — the
+    // exactly-on-line case lands on the back, like vanilla. Space-agnostic:
+    // doomToWorld keeps the handedness, so Doom and world XZ agree.
+    static pointOnLineSide(px, py, x1, y1, x2, y2) {
+        const cross = ((x2 - x1) * (py - y1)) - ((y2 - y1) * (px - x1));
+
+        return ((cross < 0) ? 0 : 1);
+    }
+
     // Proper 2D segment intersection (walk-line crossings).
     static segmentsCross(ax, ay, bx, by, cx, cy, dx, dy) {
         const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);

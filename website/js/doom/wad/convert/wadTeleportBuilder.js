@@ -60,8 +60,11 @@ class WadTeleportBuilder {
             textures: [],
             mesh:     mesh,
             // Same crossing rule as the walk zones: a pad teleports the player
-            // who walks over its line, not the one standing beside it.
-            crossSegment: segment,
+            // who walks over its line, not the one standing beside it. Front
+            // side only — EV_Teleport refuses the back of the line, "so you
+            // can get out of the teleporter".
+            crossSegment:   segment,
+            crossFrontOnly: true,
             instanceData: {
                 code:              teleportName,
                 position:          [0, 0, 0],
