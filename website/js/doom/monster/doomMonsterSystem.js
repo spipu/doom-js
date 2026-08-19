@@ -1027,7 +1027,11 @@ class DoomMonsterSystem {
                     zone.stop();
                 }
             }
-            this._monsterTeleport(m, line.landing);
+            // EV_Teleport fires from the FRONT side only, so a body walking
+            // off the landing pad is let out instead of bounced back.
+            if (WadGeometry.pointOnLineSide(ax, ay, line.x1, line.y1, line.x2, line.y2) === 0) {
+                this._monsterTeleport(m, line.landing);
+            }
         }
     }
 

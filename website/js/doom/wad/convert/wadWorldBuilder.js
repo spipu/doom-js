@@ -756,7 +756,25 @@ class WadWorldBuilder {
             return;
         }
         const crossing = new WadLineCrossing(built.crossSegment);
-        loader.instances().getByCode(built.code).addTriggerCondition((user) => crossing.crossedBy(user));
+        const instance = loader.instances().getByCode(built.code);
+        if (built.crossFrontOnly !== true) {
+            instance.addTriggerCondition((user) => crossing.crossedBy(user));
+            return;
+        }
+        // A back-side crossing never fires (EV_Teleport), but it still spends
+        // a W1 line: vanilla clears the special whatever the outcome
+        // (p_spec.c case 39), same rule as the monster path.
+        const spendOnRefuse = (built.instanceData.onlyOnce === true);
+        instance.addTriggerCondition((user) => {
+            const side = crossing.crossingSideBy(user);
+            if (side === 0) {
+                return true;
+            }
+            if ((side === 1) && spendOnRefuse) {
+                instance.stop();
+            }
+            return false;
+        });
     }
 
     /**
