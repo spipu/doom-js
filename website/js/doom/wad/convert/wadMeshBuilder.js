@@ -245,7 +245,9 @@ class WadMeshBuilder {
 
         const tris = preTris;
 
-        const flatUv = (idx) => [polyLocal[idx][0] / 64.0, -polyLocal[idx][1] / 64.0];
+        // Vanilla maps flats as v = -y/64 (R_MapPlane); Object3d.fcAdd flips V
+        // (1 - v) at load, so the vanilla minus is authored as +y here.
+        const flatUv = (idx) => [polyLocal[idx][0] / 64.0, polyLocal[idx][1] / 64.0];
 
         for (const [a, b, cIdx] of tris) {
             let face;
