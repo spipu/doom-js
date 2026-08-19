@@ -54,8 +54,11 @@ class WadLiftBuilder {
 
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         // The riser band must span the full travel amplitude: when the plat
-        // sits at maxFh, its skirt still has to reach down to minFh.
-        this._buildRisers(mesh, si, origFh, origFh - (maxFh - minFh));
+        // sits at its highest point (maxFh, or a raise-cycle top above it),
+        // its skirt still has to reach down to minFh.
+        const raiseTops  = Object.values(this._analysis.liftRaiseVariants[si] ?? {}).map((r) => r.targetFh);
+        const highestFh  = Math.max(maxFh, ...raiseTops);
+        this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh));
 
         if (mesh.points.length === 0) {
             return null;
@@ -167,8 +170,8 @@ class WadLiftBuilder {
         const radius = WadMeshBuilder.xzActionRadius(mesh);
 
         const travelY = (origFh - minFh) * WadConstants.SCALE;
-        const moveS   = (origFh - minFh) / (speed * 35.0);
-        const waitS   = WadConstants.LIFT_WAIT_TICS / 35.0;
+        const moveS   = WadConstants.moveDurationS(origFh - minFh, speed);
+        const waitS   = WadConstants.LIFT_WAIT_TICS * WadConstants.SECONDS_PER_TIC;
 
         // Every floor-down element is driven externally (switch / walk zone),
         // never by self-proximity — the instance trigger is always 'none'.
@@ -178,21 +181,16 @@ class WadLiftBuilder {
         const onlyOnce = floor.onlyOnce;
 
         let keyframes;
-        if (anim === 'one-way') {
-            keyframes = [
-                {t: 0.0,   translate: [0, 0, 0],        rotate: [0, 0, 0]},
-                {t: moveS, translate: [0, -travelY, 0], rotate: [0, 0, 0]}
-            ];
-        } else if (anim === 'perpetual') {
+        if (anim === 'perpetual') {
             // Looping cycle through the full low↔high amplitude, starting at
             // the rest position (down first, like most vanilla plats). Zero-
             // length segments (rest position AT an end of the travel) are
             // skipped to keep the keyframes strictly increasing.
             const relLow  = -(origFh - minFh) * WadConstants.SCALE;
             const relHigh = (maxFh - origFh) * WadConstants.SCALE;
-            const downS   = (origFh - minFh) / (speed * 35.0);
-            const fullS   = (maxFh - minFh) / (speed * 35.0);
-            const topS    = (maxFh - origFh) / (speed * 35.0);
+            const downS   = WadConstants.moveDurationS(origFh - minFh, speed);
+            const fullS   = WadConstants.moveDurationS(maxFh - minFh, speed);
+            const topS    = WadConstants.moveDurationS(maxFh - origFh, speed);
             let t = 0.0;
             keyframes = [{t: t, translate: [0, 0, 0], rotate: [0, 0, 0]}];
             if (downS > 0) {
@@ -210,14 +208,7 @@ class WadLiftBuilder {
                 keyframes.push({t: t, translate: [0, 0, 0], rotate: [0, 0, 0]});
             }
         } else {
-            const tRest = moveS + waitS + moveS;
-            keyframes = [
-                {t: 0.0,           translate: [0, 0, 0],        rotate: [0, 0, 0]},
-                {t: moveS,         translate: [0, -travelY, 0], rotate: [0, 0, 0]},
-                {t: moveS + waitS, translate: [0, -travelY, 0], rotate: [0, 0, 0]},
-                {t: tRest,         translate: [0, 0, 0],        rotate: [0, 0, 0]},
-                {t: tRest + 1.0,   translate: [0, 0, 0],        rotate: [0, 0, 0]}
-            ];
+            keyframes = WadLiftBuilder._liftKeyframes(anim, 0, -travelY, moveS, waitS);
         }
 
         return {
@@ -231,8 +222,88 @@ class WadLiftBuilder {
             interactionRadius: ((trigger === 'none') ? null : radius),
             damage:            null,
             // Lift blocked while rising = go back down and re-wait (T_PlatRaise)
-            blockedBehavior:   WadConstants.floorDownPressBehavior(anim),
-            keyframes:         keyframes
+            ...WadConstants.pressCycleFields(WadConstants.floorDownPressProfile(anim)),
+            keyframes:         keyframes,
+            keyframeVariants:  this._buildRaiseVariants(si, origFh, minFh, anim, speed, waitS),
+            defaultVariant:    null
+        };
+    }
+
+    // Timeline of the lift's own shape between two poses: a one-way lower
+    // stays at the low end, a round-trip waits there and comes back up. The
+    // base cycle runs it on 0 ↔ −travel, a ':then' cycle on the raised span.
+    static _liftKeyframes(anim, topY, lowY, moveS, waitS) {
+        if (anim === 'one-way') {
+            return [
+                {t: 0.0,   translate: [0, topY, 0], rotate: [0, 0, 0]},
+                {t: moveS, translate: [0, lowY, 0], rotate: [0, 0, 0]}
+            ];
+        }
+        const tUp = moveS + waitS + moveS;
+
+        return [
+            {t: 0.0,           translate: [0, topY, 0], rotate: [0, 0, 0]},
+            {t: moveS,         translate: [0, lowY, 0], rotate: [0, 0, 0]},
+            {t: moveS + waitS, translate: [0, lowY, 0], rotate: [0, 0, 0]},
+            {t: tUp,           translate: [0, topY, 0], rotate: [0, 0, 0]},
+            {t: tUp + 1.0,     translate: [0, topY, 0], rotate: [0, 0, 0]}
+        ];
+    }
+
+    // Named raise cycles of a hybrid lift (analysis.liftRaiseVariants), one
+    // pair per raise special: the raise leg, then a ':then' cycle on the
+    // raised span that the completed raise installs as the new default — the
+    // plain lift presses that follow run between the raised top and the low
+    // point, since vanilla plats compute their high from the LIVE floor.
+    _buildRaiseVariants(si, origFh, minFh, anim, speed, waitS) {
+        const raises = this._analysis.liftRaiseVariants[si];
+        if (raises === undefined) {
+            return null;
+        }
+        const variants = {};
+        for (const [key, raise] of Object.entries(raises)) {
+            const thenKey = (key + ':then');
+            variants[key]     = this._buildRaiseCycle(raise, origFh, thenKey);
+            variants[thenKey] = this._buildPostRaiseCycle(raise, origFh, minFh, anim, speed, waitS);
+        }
+
+        return variants;
+    }
+
+    // The raise leg starts at the pose the analyzer baked (the lift's actual
+    // resting pose — the pose gate of start() arbitrates), with the
+    // rising-floor boarding delay. onlyOnce: a same-variant restart would
+    // snap the floor back to the start pose.
+    _buildRaiseCycle(raise, origFh, thenKey) {
+        const SCALE  = WadConstants.SCALE;
+        const startY = (raise.startFh - origFh) * SCALE;
+        const endY   = (raise.targetFh - origFh) * SCALE;
+        const moveS  = WadConstants.moveDurationS(raise.targetFh - raise.startFh, raise.speed);
+
+        return {
+            keyframes:          WadConstants.raiseLegKeyframes(startY, endY, moveS),
+            onlyOnce:           true,
+            loop:               false,
+            nextDefaultVariant: thenKey,
+            ...WadConstants.pressCycleFields(WadConstants.floorUpPressProfile(raise.special))
+        };
+    }
+
+    // The lift's own shape replayed on the raised span (targetFh ↔ minFh) at
+    // the lift's own speed. A round-trip starts and ends on the raised top, so
+    // its same-variant replay is safe (first pose = last pose); a one-way
+    // lower is once — its raise special re-arms it by switching cycles.
+    _buildPostRaiseCycle(raise, origFh, minFh, anim, speed, waitS) {
+        const SCALE = WadConstants.SCALE;
+        const topY  = (raise.targetFh - origFh) * SCALE;
+        const lowY  = (minFh - origFh) * SCALE;
+        const moveS = WadConstants.moveDurationS(raise.targetFh - minFh, speed);
+
+        return {
+            keyframes: WadLiftBuilder._liftKeyframes(anim, topY, lowY, moveS, waitS),
+            onlyOnce:  (anim === 'one-way'),
+            loop:      false,
+            ...WadConstants.pressCycleFields(WadConstants.floorDownPressProfile(anim))
         };
     }
 }

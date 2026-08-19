@@ -25,7 +25,7 @@ class WadGunTriggerBuilder {
     }
 
     /**
-     * @returns {object[]} [{x1, z1, x2, z2, once, used, targets, doorVariant}]
+     * @returns {object[]} [{x1, z1, x2, z2, once, used, targets, cycleVariant}]
      */
     buildAll() {
         const result = [];
@@ -60,7 +60,7 @@ class WadGunTriggerBuilder {
             once:        (WadConstants.GUN_BY_SPECIAL[gt.special].once === true),
             used:        false,
             targets:     targets,
-            doorVariant: WadConstants.doorCycleKeyForSpecial(gt.special)
+            cycleVariant: WadConstants.cycleKeyForSpecial(gt.special)
         };
     }
 

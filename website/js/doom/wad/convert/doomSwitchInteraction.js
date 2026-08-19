@@ -13,16 +13,16 @@ class DoomSwitchInteraction extends SwitchInteraction {
      *                                       BACKWARD (lower-back 45, close lines shutting
      *                                       an opening door, raise lines lifting a lowered
      *                                       plat) — timeScale keeps the vanilla reverse speed
-     * @param {string|null} doorVariant    - per-trigger door cycle key (anim@speed)
+     * @param {string|null} cycleVariant    - per-trigger cycle key (door anim@speed or lift raise:*)
      * @param {int|null}    restIndex      - local texture index of the SW1 face
      * @param {int|null}    swapIndex      - local texture index of the SW2 partner
      */
-    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets, doorVariant, restIndex, swapIndex) {
+    constructor(code, targets, mode, minOnTime, minOffTime, reverseTargets, cycleVariant, restIndex, swapIndex) {
         super(code);
 
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
-        this._doorVariant    = (doorVariant ?? null);
+        this._cycleVariant   = (cycleVariant ?? null);
         // null on an invisible USE zone or a non-SW wall.
         this._restIndex      = (restIndex ?? null);
         this._swapIndex      = (swapIndex ?? null);
@@ -83,7 +83,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._swapFaces(instance, this._swapIndex);
         this._applyRemoteSwap(true);
 
-        DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._doorVariant);
+        DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant);
 
         if (this._exitCallback !== null) {
             this._exitCallback(this._exitSecret);

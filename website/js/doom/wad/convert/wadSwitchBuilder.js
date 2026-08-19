@@ -98,9 +98,10 @@ class WadSwitchBuilder {
                 swapIndex:      (geom.swapIndex ?? null),
                 targets:        split.start,
                 reverseTargets: split.reverse,
-                // Per-trigger door cycle (OWC vs open-stay on the same tag);
-                // null for non-door specials, ignored by variant-less targets.
-                doorVariant:    WadConstants.doorCycleKeyForSpecial(ld.special),
+                // Per-trigger cycle key (door OWC vs open-stay, lift raise);
+                // null when the special names none, ignored by targets that
+                // do not declare it.
+                cycleVariant:   WadConstants.cycleKeyForSpecial(ld.special),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
@@ -311,8 +312,15 @@ class WadSwitchBuilder {
         const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
 
         if (slotInfo.slot === 'middle') {
-            const hDoom = rSec.ch - rSec.fh;
-            return {sd: rSd, yBotDu: rSec.fh, yTopDu: rSec.ch,
+            // A switch inside a DOOR sector spans the door's OPEN heights,
+            // like the static one-sided door walls (DOORTRAK rule): hidden
+            // inside the closed shutter, revealed when it opens (MAP20's
+            // SW1GARG alcove) — the door slab has no face on a one-sided edge.
+            const doorH = this._analysis.doorHeights[rSd.sector];
+            const yBot  = ((doorH !== undefined) ? doorH.floorH : rSec.fh);
+            const yTop  = ((doorH !== undefined) ? doorH.ceilH : rSec.ch);
+            const hDoom = yTop - yBot;
+            return {sd: rSd, yBotDu: yBot, yTopDu: yTop,
                 yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
         }
 

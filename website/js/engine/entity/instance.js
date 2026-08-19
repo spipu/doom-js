@@ -15,7 +15,9 @@ class Instance extends AbstractLoadedEntity {
         // Animation playback (keyframes-driven)
         this._animKeyframes      = [];
         // name → {keyframes, onlyOnce, loop?, blockedBehavior?,
-        // blockedSlowFactor?, crushDamage?}: per-trigger cycles (see start)
+        // blockedSlowFactor?, crushDamage?, nextDefaultVariant?}: per-trigger
+        // cycles (see start); nextDefaultVariant hands the default over on
+        // completion, so later null-variant triggers run the follow-up cycle.
         this._animVariants       = null;
         this._animActiveVariant  = null;
         this._animDefaultVariant = null;
@@ -221,17 +223,18 @@ class Instance extends AbstractLoadedEntity {
      */
     exportAnimState() {
         return {
-            position:     [...this._position],
-            rotation:     [...this._rotation],
-            time:         this._animTime,
-            playing:      this._animPlaying,
-            reverse:      this._animReverse,
-            reverseScale: this._animReverseScale,
-            done:         this._animDone,
-            variant:      this._animActiveVariant,
-            rideOnCode:   ((this._rideOn !== null) ? this._rideOn.getCode() : null),
-            rideBaseY:    this._rideBaseY,
-            rideLastDy:   this._rideLastDy,
+            position:       [...this._position],
+            rotation:       [...this._rotation],
+            time:           this._animTime,
+            playing:        this._animPlaying,
+            reverse:        this._animReverse,
+            reverseScale:   this._animReverseScale,
+            done:           this._animDone,
+            variant:        this._animActiveVariant,
+            defaultVariant: this._animDefaultVariant,
+            rideOnCode:     ((this._rideOn !== null) ? this._rideOn.getCode() : null),
+            rideBaseY:      this._rideBaseY,
+            rideLastDy:     this._rideLastDy,
         };
     }
 
@@ -252,6 +255,9 @@ class Instance extends AbstractLoadedEntity {
         if (this._cycleOf(data.variant) !== null) {
             this._applyCycle(data.variant);
         }
+        // A default handed over by a completed cycle (nextDefaultVariant) is
+        // state, not derived — older saves without the field keep the loaded one.
+        this._animDefaultVariant = (data.defaultVariant ?? this._animDefaultVariant);
         this._position         = [...data.position];
         this._rotation         = [...data.rotation];
         this._animTime         = data.time;
@@ -566,8 +572,16 @@ class Instance extends AbstractLoadedEntity {
         }
         // Another cycle is a NEW cycle, not the re-trigger of a spent one
         // (vanilla spawns a fresh thinker), so a done animation accepts it.
-        const wanted    = (variant ?? this._animDefaultVariant);
-        const switching = ((wanted !== this._animActiveVariant) && (this._cycleOf(wanted) !== null));
+        // One trigger key is broadcast to every tagged target whatever its
+        // family: a key this instance does not declare falls back to its
+        // default cycle, exactly like a null-variant trigger.
+        let wanted = (variant ?? this._animDefaultVariant);
+        let cycle  = this._cycleOf(wanted);
+        if ((wanted !== null) && (cycle === null)) {
+            wanted = this._animDefaultVariant;
+            cycle  = this._cycleOf(wanted);
+        }
+        const switching = ((wanted !== this._animActiveVariant) && (cycle !== null));
         // Re-triggering a done one-way is a vanilla no-op, and it would reset
         // the time while _animDone still blocks update() — a zombie state that
         // also locks out startReverse().
@@ -691,6 +705,10 @@ class Instance extends AbstractLoadedEntity {
         this._animPlaying = false;
         if (this._animOnlyOnce) {
             this._animDone = true;
+        }
+        const cycle = this._cycleOf(this._animActiveVariant);
+        if ((cycle !== null) && ((cycle.nextDefaultVariant ?? null) !== null)) {
+            this._animDefaultVariant = cycle.nextDefaultVariant;
         }
         if (this._onComplete !== null) {
             this._onComplete();
