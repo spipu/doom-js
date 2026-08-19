@@ -105,7 +105,7 @@ class WadWorldBuilder {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
             const spec = sw.interactionSpec;
-            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.doorVariant, spec.restIndex, spec.swapIndex);
+            const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
             if (spec.remoteSwap) {
                 interaction.setRemoteSwap(spec.remoteSwap);
             }
@@ -124,7 +124,7 @@ class WadWorldBuilder {
             this._registerInstance(wt, bank);
             this._applyCrossingGuard(wt);
             const spec = wt.interactionSpec;
-            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.doorVariant);
+            const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.cycleVariant);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -724,7 +724,7 @@ class WadWorldBuilder {
         const rules = [];
         for (const action of bossActions) {
             // Same target model as the switch/walk/gun paths: full family list,
-            // reverse split and per-special door cycle.
+            // reverse split and per-special cycle key.
             const targets = ((action.exit === true) ? [] : WadMapAnalyzer.resolveTaggedTargets(level.sectors, action.tag, WadMapAnalyzer.moverFamilies(
                 analysis, level.sectors,
                 {lifts: builtLiftCodes, rising: builtRisingCodes, doors: builtDoorCodes, stairs: builtStairCodes},
@@ -736,7 +736,7 @@ class WadWorldBuilder {
                         def:            def,
                         targets:        split.start,
                         reverseTargets: split.reverse,
-                        doorVariant:    WadConstants.doorCycleKeyForSpecial(action.special),
+                        cycleVariant:   WadConstants.cycleKeyForSpecial(action.special),
                         exit:           (action.exit === true)
                     });
                 }

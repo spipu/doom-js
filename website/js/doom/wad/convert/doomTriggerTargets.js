@@ -8,11 +8,11 @@ class DoomTriggerTargets {
     /**
      * @param {string[]}    targets        - instance codes to start
      * @param {object[]|null} reverseTargets - {code, timeScale} played backward
-     * @param {string|null} doorVariant    - per-trigger door cycle key
+     * @param {string|null} cycleVariant    - per-trigger cycle key (door or lift-raise)
      */
-    static fire(targets, reverseTargets, doorVariant = null) {
+    static fire(targets, reverseTargets, cycleVariant = null) {
         for (const code of targets) {
-            loader.instances().getByCode(code).start(doorVariant);
+            loader.instances().getByCode(code).start(cycleVariant);
         }
         for (const entry of (reverseTargets ?? [])) {
             loader.instances().getByCode(entry.code).startReverse(entry.timeScale);

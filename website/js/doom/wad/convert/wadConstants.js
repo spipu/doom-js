@@ -204,6 +204,38 @@ class WadConstants {
         return ((door !== undefined) ? WadConstants.doorCycleKey(door.anim, door.speed) : null);
     }
 
+    // Cycle key of a lift-raise special ('raise:512@1'), null for the others —
+    // no door anim contains 'raise:', so the two key families never collide.
+    // A raise special gets a NAMED cycle on the lift it targets only when its
+    // destination can outrun the lift's rest position: the fixed deltas
+    // (raiseFloor 24/32/512) and the crush raise (absolute ceiling − 8). The
+    // relative targets 'lowestCeiling'/'nextHigher'/'shortestLower' keep the
+    // reverse playback (E1M5/E1M7 bidirectional plats).
+    static floorRaiseCycleKey(special) {
+        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special];
+        if ((rule === undefined)
+            || ((typeof rule.target !== 'number') && (rule.target !== 'lowestCeilingCrush'))) {
+            return null;
+        }
+
+        return ('raise:' + rule.target + '@' + rule.speed);
+    }
+
+    // Cycle key driven by a special, whatever the mover family it aims at.
+    static cycleKeyForSpecial(special) {
+        return (WadConstants.doorCycleKeyForSpecial(special) ?? WadConstants.floorRaiseCycleKey(special));
+    }
+
+    // Pressure fields of one animation cycle, from a press profile — shared by
+    // the door builder (base + variants) and the lift raise cycles.
+    static pressCycleFields(press) {
+        return {
+            blockedBehavior:   press.behavior,
+            blockedSlowFactor: ((press.slow) ? WadConstants.PRESS_SLOW_FACTOR : 1),
+            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null)
+        };
+    }
+
     // Timer doors (sector specials 10/14) have no linedef special: they get
     // the plain VDOORSPEED manual-door profile, tuned after registration.
     static DOOR_TIMER_DEFAULTS = {kind: 'open', speed: 2, trigger: 'action', anim: 'round-trip', loop: false, onlyOnce: false, key: null};
@@ -285,9 +317,15 @@ class WadConstants {
         return ((anim === 'round-trip') ? 'reverse' : 'stall');
     }
 
-    // Rising floors: only the crush targets 56/65 (lowestCeilingCrush) carry
-    // the vanilla crush flag (EV_DoFloor raiseFloorCrush) — continue + damage,
-    // never slowed (floors have no 1/8 rule). Others stall (move undone).
+    // Full press profile of a floor-down shape — the {behavior, slow, damage}
+    // contract shared with doorPressProfile / floorUpPressProfile.
+    static floorDownPressProfile(anim) {
+        return {behavior: WadConstants.floorDownPressBehavior(anim), slow: false, damage: false};
+    }
+
+    // Rising floors: only the crush targets 55/56/65/94 (lowestCeilingCrush)
+    // carry the vanilla crush flag (EV_DoFloor raiseFloorCrush) — continue +
+    // damage, never slowed (floors have no 1/8 rule). Others stall (move undone).
     static floorUpPressProfile(special) {
         const entry = WadConstants.FLOOR_UP_BY_SPECIAL[special];
         if ((entry !== undefined) && (entry.target === 'lowestCeilingCrush')) {
@@ -483,6 +521,23 @@ class WadConstants {
     // a rising floor waits this long before moving, so a player who fired the
     // trigger next to the platform has time to step onto it and ride up.
     static FLOOR_UP_START_DELAY_S = 1.0;
+
+    // Travel time (s) of one mover leg: Doom units at a vanilla speed (u/tic).
+    static moveDurationS(deltaDu, speedPerTic) {
+        return (deltaDu / speedPerTic) * WadConstants.SECONDS_PER_TIC;
+    }
+
+    // Raise-leg timeline shared by the rising floors and the lift raise
+    // cycles: hold the boarding delay, then one ramp to the target.
+    static raiseLegKeyframes(startY, endY, moveS) {
+        const delayS = WadConstants.FLOOR_UP_START_DELAY_S;
+
+        return [
+            {t: 0.0,            translate: [0, startY, 0], rotate: [0, 0, 0]},
+            {t: delayS,         translate: [0, startY, 0], rotate: [0, 0, 0]},
+            {t: delayS + moveS, translate: [0, endY, 0],   rotate: [0, 0, 0]}
+        ];
+    }
 
     // --- Gun (impact) triggers — p_spec.c P_ShootSpecialLine ---
 

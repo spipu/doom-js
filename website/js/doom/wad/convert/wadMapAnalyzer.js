@@ -32,6 +32,7 @@ class WadMapAnalyzer {
         const doors = this._identifyDoors();
         const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
+        const liftRaiseVariants = this._identifyLiftRaises(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise);
         const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
@@ -53,6 +54,7 @@ class WadMapAnalyzer {
             liftOriginalFh:        lifts.liftOriginalFh,
             liftMinAdjFh:          lifts.liftMinAdjFh,
             liftMaxAdjFh:          lifts.liftMaxAdjFh,
+            liftRaiseVariants:     liftRaiseVariants,
             risingFloorIds:        rising.risingFloorIds,
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
@@ -712,6 +714,51 @@ class WadMapAnalyzer {
         }
     }
 
+    // Raise specials aimed at a NON-PERPETUAL lift become named cycles on it,
+    // like the per-special door cycles: vanilla computes mover destinations
+    // from the LIVE sector, so a raise may push a plat above its rest and the
+    // lift then cycles on the raised span (MAP30's 140 + 62). Only the
+    // eligible targets qualify (see WadConstants.floorRaiseCycleKey).
+    // The baked start pose is the one the sector actually rests at when the
+    // raise fires: a one-way lower rests LOWERED (MAP20's 36 then 94, E2M4's
+    // 23 then 58), a round-trip lift rests at its original height (MAP30) —
+    // a fixed delta then raises from that pose, like vanilla from the live
+    // floor. Heights come from liftOriginalFh — _patchLiftFloors already
+    // rewrote sectors[si].fh (the crush target only reads ceilings, safe to
+    // share). liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
+    _identifyLiftRaises(lifts) {
+        const {sectors} = this._level;
+        const liftRaiseVariants = {};
+        for (const ld of this._moverLinedefs()) {
+            const key = WadConstants.floorRaiseCycleKey(ld.special);
+            if ((ld.tag === 0) || (key === null)) {
+                continue;
+            }
+            const rule = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
+            for (const si of lifts.movingFloorDownIds) {
+                if ((sectors[si].tag !== ld.tag)
+                    || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si])) {
+                    continue;
+                }
+                const liftAnim = WadConstants.FLOOR_DOWN_BY_SPECIAL[lifts.liftSectorSpecial[si]].anim;
+                const numeric  = (typeof rule.target === 'number');
+                const startFh  = ((liftAnim === 'one-way') ? lifts.liftMinAdjFh[si] : lifts.liftOriginalFh[si]);
+                const targetFh = ((numeric) ? (startFh + rule.target) : this._risingFloorTarget(si, ld.special));
+                if (targetFh <= startFh) {
+                    continue;
+                }
+                (liftRaiseVariants[si] = (liftRaiseVariants[si] ?? {}))[key] = {
+                    special:  ld.special,
+                    speed:    rule.speed,
+                    startFh:  startFh,
+                    targetFh: targetFh
+                };
+            }
+        }
+
+        return liftRaiseVariants;
+    }
+
     // Rising floors: the floor moves UP once toward a target when its trigger
     // fires (walk-zone or switch). Unlike lifts, fh is NOT patched — the static
     // floor stays at its WAD height and the moving top-flat (built by
@@ -1124,7 +1171,7 @@ class WadMapAnalyzer {
     //   slime) — any other lower special reaching a ring reverses it normally.
     // A closing special caught on an OPENING door is NOT a reverse: the door
     // owns one cycle per special aiming at it, so it starts forward on the
-    // cycle the trigger names (doorVariant) — that is what keeps the 30 s
+    // cycle the trigger names (cycleVariant) — that is what keeps the 30 s
     // reopen of 16/76 and the grind of a crusher.
     // Each reverse entry carries a timeScale so the backward playback runs at
     // the VANILLA speed of the reversing special, not at the speed baked into
@@ -1138,12 +1185,21 @@ class WadMapAnalyzer {
         if (WadConstants.SWITCH_REVERSE_SPECIALS.has(special)) {
             return {start: [], reverse: targets.map(rev)};
         }
-        const isRaise = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
-        const isLower = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
+        const isRaise  = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
+        const isLower  = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
+        const raiseKey = WadConstants.floorRaiseCycleKey(special);
         const start = [];
         const reverse = [];
         for (const code of targets) {
             if (isRaise && code.startsWith('lift_')) {
+                // A raise carrying a NAMED cycle on this lift starts forward
+                // on it (same idiom as the door cycles, speed baked in); the
+                // relative raises keep the reverse playback.
+                const liftSi = WadMapAnalyzer._sectorOfCode(code, 'lift_');
+                if ((raiseKey !== null) && (analysis.liftRaiseVariants[liftSi]?.[raiseKey] !== undefined)) {
+                    start.push(code);
+                    continue;
+                }
                 reverse.push(rev(code));
                 continue;
             }

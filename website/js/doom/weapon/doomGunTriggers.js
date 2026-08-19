@@ -15,7 +15,7 @@ class DoomGunTriggers {
     }
 
     /**
-     * @param {object[]} lines [{x1, z1, x2, z2, once, used, targets, doorVariant}]
+     * @param {object[]} lines [{x1, z1, x2, z2, once, used, targets, cycleVariant}]
      */
     constructor(lines) {
         this._lines = lines;
@@ -64,7 +64,7 @@ class DoomGunTriggers {
     // --- Internal ---
 
     _fire(line) {
-        DoomTriggerTargets.fire(line.targets, null, line.doorVariant);
+        DoomTriggerTargets.fire(line.targets, null, line.cycleVariant);
     }
 
 }

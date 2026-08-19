@@ -162,14 +162,8 @@ class WadRisingFloorBuilder {
         } else {
             // A static pre-frame delays the raise so the player can step onto
             // the platform (FLOOR_UP_START_DELAY_S).
-            const speed  = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
-            const moveS  = delta / (speed * 35.0);
-            const delayS = WadConstants.FLOOR_UP_START_DELAY_S;
-            keyframes = [
-                {t: 0.0,            translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: delayS,         translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: delayS + moveS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-            ];
+            const speed = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
+            keyframes = WadConstants.raiseLegKeyframes(0, travelY, WadConstants.moveDurationS(delta, speed));
         }
 
         const press = WadConstants.floorUpPressProfile(special);
@@ -184,8 +178,7 @@ class WadRisingFloorBuilder {
             collisionShape:    'faces',
             interactionRadius: null,
             damage:            null,
-            blockedBehavior:   press.behavior,
-            crushDamage:       ((press.damage) ? WadConstants.crushDamageDescriptor() : null),
+            ...WadConstants.pressCycleFields(press),
             keyframes:         keyframes
         };
     }

@@ -11,7 +11,7 @@ class DoomBossDeath {
      * @param {DoomMonsterSystem} monsters
      * @param {object[]}          rules - [{def, targets: [instance codes],
      *                                    reverseTargets: [{code, timeScale}],
-     *                                    doorVariant: string|null, exit}]
+     *                                    cycleVariant: string|null, exit}]
      * @param {function|null}     exitCallback
      */
     constructor(monsters, rules, exitCallback) {
@@ -34,6 +34,6 @@ class DoomBossDeath {
             }
             return;
         }
-        DoomTriggerTargets.fire(rule.targets, rule.reverseTargets, rule.doorVariant);
+        DoomTriggerTargets.fire(rule.targets, rule.reverseTargets, rule.cycleVariant);
     }
 }
