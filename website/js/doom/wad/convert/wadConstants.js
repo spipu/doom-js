@@ -410,9 +410,10 @@ class WadConstants {
     // top-flat sits at the WAD floor height and rises. All are driven by a
     // walk-trigger zone, a switch or an impact line (trigger 'none' on the
     // instance). Fields:
-    //  - speed: Doom units/tic — FLOORSPEED = 1, raiseFloorTurbo 129/130/131 =
-    //    4, the EV_DoPlat raise-and-change variants 20/22/66/67/68 =
-    //    PLATSPEED/2 = 0.5, donut ring 9 = FLOORSPEED/2 (EV_DoDonut).
+    //  - speed: Doom units/tic — FLOORSPEED = 1, raiseFloorTurbo
+    //    129/130/131/132 = 4, the EV_DoPlat raise-and-change variants
+    //    14/15/20/22/66/67/68/95 = PLATSPEED/2 = 0.5, donut ring 9 =
+    //    FLOORSPEED/2 (EV_DoDonut).
     //  - target: number = fixed delta in Doom units above the current floor;
     //    'lowestCeiling' = P_FindLowestCeilingSurrounding clamped to the own
     //    ceiling ('lowestCeilingCrush' = same minus 8, raiseFloorCrush);
@@ -420,14 +421,19 @@ class WadConstants {
     //    strictly above; no candidate = no movement).
     //  - change: "+change" floors — flat texture / sector special swapped at
     //    trigger time (p_floor.c raiseFloor24AndChange 59/93 copies floorpic +
-    //    special; p_plats.c raiseToNearestAndChange 20/22/68 copies the
-    //    floorpic and ZEROES the special; raiseAndChange 66/67 floorpic only).
+    //    special; p_plats.c raiseToNearestAndChange 20/22/68/95 copies the
+    //    floorpic and ZEROES the special; raiseAndChange 14/15/66/67 floorpic
+    //    only).
     //    source 'donutModel' = the donut's far-side model sector s3, known
     //    only to the donut identification (never resolved by tag).
     //  - donutRingOnly (9): resolved by the donut identification, not by tag —
     //    excluded from the walk/switch membership set below.
     static FLOOR_UP_BY_SPECIAL = {
         5:   {speed: 1,   target: 'lowestCeiling'},
+        // S1 raiseAndChange 32/24 (p_switch.c case 14/15) — the one-use twins
+        // of the SR pair 67/66.
+        14:  {speed: 0.5, target: 32, change: {source: 'front', special: 'keep', at: 'start'}},
+        15:  {speed: 0.5, target: 24, change: {source: 'front', special: 'keep', at: 'start'}},
         18:  {speed: 1,   target: 'nextHigher'},
         20:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
         22:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
@@ -439,6 +445,7 @@ class WadConstants {
         // around the sector (P_FindShortestTextureAround)
         30:  {speed: 1,   target: 'shortestLower'},
         47:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
+        55:  {speed: 1,   target: 'lowestCeilingCrush'},
         56:  {speed: 1,   target: 'lowestCeilingCrush'},
         58:  {speed: 1,   target: 24},
         59:  {speed: 1,   target: 24, change: {source: 'front', special: 'copy', at: 'start'}},
@@ -451,6 +458,8 @@ class WadConstants {
         91:  {speed: 1,   target: 'lowestCeiling'},
         92:  {speed: 1,   target: 24},
         93:  {speed: 1,   target: 24, change: {source: 'front', special: 'copy', at: 'start'}},
+        94:  {speed: 1,   target: 'lowestCeilingCrush'},
+        95:  {speed: 0.5, target: 'nextHigher', change: {source: 'front', special: 'zero', at: 'start'}},
         96:  {speed: 1,   target: 'shortestLower'},
         101: {speed: 1,   target: 'lowestCeiling'},
         119: {speed: 1,   target: 'nextHigher'},
@@ -458,6 +467,9 @@ class WadConstants {
         129: {speed: 4,   target: 'nextHigher'},
         130: {speed: 4,   target: 'nextHigher'},
         131: {speed: 4,   target: 'nextHigher'},
+        132: {speed: 4,   target: 'nextHigher'},
+        // S1 raiseFloor512 (p_floor.c): plain FLOORSPEED, fixed +512 delta.
+        140: {speed: 1,   target: 512},
         // Donut ring: the target height comes from the donut identification
         // (the hole's far-side floor), never from a target rule. Its change is
         // T_MoveFloor donutRaise: the model's floorpic, special zeroed, at rest.
@@ -520,7 +532,7 @@ class WadConstants {
         11, 23, 45, 51, 60, 61, 62, 63, 122, 123,
         7, 9, 21, 29, 41, 43, 49, 64, 65, 66, 67, 68, 69, 70, 71, 101, 102, 103, 111, 112, 113,
         127,
-        18, 20, 131,
+        14, 15, 18, 20, 55, 131, 132, 140,
         114, 115, 99, 133, 134, 135, 136, 137,
         42, 50, 113, 116
     ]);
@@ -558,6 +570,7 @@ class WadConstants {
         115: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         116: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         123: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
+        132: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         134: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         136: {mode: 'timed', minOnMs: 1000, minOffMs: 1000}
     };
@@ -617,10 +630,10 @@ class WadConstants {
     // Walk lifts: 88 (WR), 120 (WR fast), 121 (W1 fast). 122 is S1 fast = a
     // SWITCH lift, not walk (see SWITCH_SPECIALS). Walk floor-lowers: 19/36/37/38
     // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/30/56/58/59/119/130 (W1),
-    // 91/92/93/96/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
+    // 91/92/93/94/95/96/128/129 (WR) — see FLOOR_MOVE_UP_SPECIALS.
     static WALK_TRIGGER_SPECIALS = new Set([
         10, 19, 36, 37, 38, 82, 83, 84, 88, 98, 120, 121,
-        5, 22, 30, 56, 58, 59, 119, 130, 91, 92, 93, 96, 128, 129,
+        5, 22, 30, 56, 58, 59, 119, 130, 91, 92, 93, 94, 95, 96, 128, 129,
         53, 87, 54, 89,
         57, 74
     ]);
@@ -657,7 +670,7 @@ class WadConstants {
         105: false, 106: false, 108: true,
         3: true, 16: true, 75: false, 76: false, 107: false, 110: true,
         5: true, 22: true, 30: true, 56: true, 58: true, 59: true, 119: true, 130: true,
-        91: false, 92: false, 93: false, 96: false, 128: false, 129: false,
+        91: false, 92: false, 93: false, 94: false, 95: false, 96: false, 128: false, 129: false,
         53: true, 87: false, 54: true, 89: false,
         40: true, 44: true, 72: false,
         6: true, 25: true, 141: true, 73: false, 77: false,
