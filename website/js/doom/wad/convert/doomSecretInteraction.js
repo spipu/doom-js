@@ -7,13 +7,16 @@
  */
 class DoomSecretInteraction extends AbstractInteraction {
     /**
-     * @param {object[]} zones - [{si, outers (doom-coord polygons), floorY (world)}]
-     * @param {DoomGame} game
+     * @param {object[]}      zones    - [{si, floorY (world), outers?}]
+     * @param {DoomGame}      game
+     * @param {function|null} sectorAt - (doomX, doomY) → si|null (BSP); null = the
+     *                                   zones carry polygon outers and test them
      */
-    constructor(zones, game) {
+    constructor(zones, game, sectorAt = null) {
         super();
-        this._zones = zones;
-        this._game  = game;
+        this._zones    = zones;
+        this._game     = game;
+        this._sectorAt = sectorAt;
         // Deterministic identity of each zone (the build order), so a save can
         // record which secrets are still pending across a level rebuild.
         this._zones.forEach((zone, index) => {
@@ -48,10 +51,19 @@ class DoomSecretInteraction extends AbstractInteraction {
 
         const doomX = user.x / WadConstants.SCALE;
         const doomZ = user.z / WadConstants.SCALE;
+        // Feet on the sector floor, like the damage sectors (vanilla checks
+        // mo->z == floorheight before crediting the secret)
+        if (this._sectorAt !== null) {
+            const si  = this._sectorAt(doomX, doomZ);
+            const idx = this._zones.findIndex((zone) => (zone.si === si));
+            if ((idx >= 0) && (Math.abs(user.y - this._zones[idx].floorY) <= 0.02)) {
+                this._zones.splice(idx, 1);
+                this._game.addSecretFound();
+            }
+            return;
+        }
         for (let i = 0; i < this._zones.length; i++) {
             const zone = this._zones[i];
-            // Feet on the sector floor, like the damage sectors (vanilla checks
-            // mo->z == floorheight before crediting the secret)
             if (Math.abs(user.y - zone.floorY) > 0.02) {
                 continue;
             }

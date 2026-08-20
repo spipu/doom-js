@@ -311,22 +311,18 @@ class WadStaticMapBuilder {
     // --- Flats ---
 
     _buildFlats(mesh) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const {sectors} = this._level;
         const {doorSectorIds, movingFloorDownIds, risingFloorIds, stairIds} = this._analysis;
 
         for (let si = 0; si < sectors.length; si++) {
             const sec = sectors[si];
-            const polys = WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes);
-            if (polys.length === 0) {
-                continue;
-            }
 
             if (doorSectorIds.has(si)) {
                 // Ceiling-raiser also claimed as a moving floor (40): the lift's
                 // moving top-flat covers the floor — only the ceiling side is
                 // door-handled, so skip the static floor flat (z-fighting).
                 if (!movingFloorDownIds.has(si)) {
-                    this._buildDoorSectorFlat(mesh, si, sec, polys);
+                    this._buildDoorSectorFlat(mesh, si, sec);
                 }
                 continue;
             }
@@ -343,23 +339,21 @@ class WadStaticMapBuilder {
             const flatScroll = (WadConstants.SECTOR_FLAT_SCROLL_BY_SPECIAL[sec.special] ?? 0);
             const uScroll    = ((flatScroll !== 0) ? (-flatScroll / WadConstants.SECONDS_PER_TIC / 64) : 0);
 
-            for (const p of polys) {
-                // Skip the static floor for lifts, rising floors AND stairs — in
-                // every case a moving top-flat covers it (otherwise z-fighting).
-                if (!movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
-                    if (floorSky) {
-                        // Sky floor (MAP20's exit pit): vanilla draws the SKY
-                        // there (R_Subsector floorpic == skyflatnum) — the flat
-                        // stays solid but invisible, the sky shows through.
-                        WadMeshBuilder.addFlatQuad(mesh, -1, p.outer, sec.fh, true, sec.light, p.holes, null, 0, true);
-                    } else if (ft >= 0) {
-                        WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si), uScroll);
-                    }
+            // Skip the static floor for lifts, rising floors AND stairs — in
+            // every case a moving top-flat covers it (otherwise z-fighting).
+            if (!movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
+                if (floorSky) {
+                    // Sky floor (MAP20's exit pit): vanilla draws the SKY
+                    // there (R_Subsector floorpic == skyflatnum) — the flat
+                    // stays solid but invisible, the sky shows through.
+                    WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, sec.fh, true, sec.light, {collisionOnly: true});
+                } else if (ft >= 0) {
+                    WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light, {lightGroup: this._lightGroupOf(si), uScroll: uScroll});
                 }
-                // Sky flats skipped — outdoor areas have no ceiling geometry
-                if (ct >= 0) {
-                    WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, sec.ch, false, sec.light, p.holes, this._lightGroupOf(si));
-                }
+            }
+            // Sky flats skipped — outdoor areas have no ceiling geometry
+            if (ct >= 0) {
+                WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, sec.ch, false, sec.light, {lightGroup: this._lightGroupOf(si)});
             }
         }
     }
@@ -369,14 +363,11 @@ class WadStaticMapBuilder {
     // so the threshold sits at its real height and the step up to it is rendered
     // as a riser on the door line. The ceiling is omitted — the door instance
     // covers it.
-    _buildDoorSectorFlat(mesh, si, sec, polys) {
+    _buildDoorSectorFlat(mesh, si, sec) {
         const ft = this._bank.ensureFlatTex(sec.ft);
         if (ft < 0) {
             return;
         }
-
-        for (const p of polys) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si));
-        }
+        WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light, {lightGroup: this._lightGroupOf(si)});
     }
 }

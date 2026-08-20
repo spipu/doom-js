@@ -144,11 +144,8 @@ class WadDoorBuilder {
     }
 
     // Bottom flat: ceiling flat of the door sector, visible from below when
-    // the panel rises. No top flat (z-fight with the static ceiling). Holes
-    // preserved (a ring-shaped sector must not cover the inner one).
+    // the panel rises. No top flat (z-fight with the static ceiling).
     _buildBottomFlat(mesh, si, sec, floorH) {
-        const {vertexes, linedefs, sidedefs} = this._level;
-
         if (sec.ct.startsWith('F_SKY')) {
             return;
         }
@@ -156,10 +153,8 @@ class WadDoorBuilder {
         if (ct < 0) {
             return;
         }
-
-        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ct, p.outer, floorH, false, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(this._analysis, si));
-        }
+        WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, floorH, false, sec.light,
+            {lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si)});
     }
 
     _buildInstanceData(doorName, si, floorH, ceilH, mesh) {

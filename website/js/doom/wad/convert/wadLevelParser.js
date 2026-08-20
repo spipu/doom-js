@@ -37,7 +37,8 @@ class WadLevelParser {
             sidedefs: this._parseSidedefs(lumps.SIDEDEFS),
             sectors:  sectors,
             things:   this._parseThings(lumps.THINGS),
-            reject:   this._parseReject(lumps.REJECT, sectors.length)
+            reject:   this._parseReject(lumps.REJECT, sectors.length),
+            bsp:      this._parseBsp(lumps.SEGS, lumps.SSECTORS, lumps.NODES)
         };
     }
 
@@ -143,6 +144,62 @@ class WadLevelParser {
             return null;
         }
         return new Uint8Array(dv.buffer, dv.byteOffset, needed);
+    }
+
+    // BSP lumps (SEGS/SSECTORS/NODES) for the subsector flat triangulation.
+    // Optional and untrusted like REJECT: any missing/empty lump, a size that
+    // is not a whole record count, or an extended-nodes magic (ZDoom XNOD/
+    // ZNOD, DeePBSP xNd4) yields null and the builders fall back to the
+    // linedef-chain polygons.
+    _parseBsp(segsDv, ssectorsDv, nodesDv) {
+        if ((segsDv === undefined) || (ssectorsDv === undefined) || (nodesDv === undefined)) {
+            return null;
+        }
+        if ((segsDv.byteLength === 0) || (ssectorsDv.byteLength === 0) || (nodesDv.byteLength === 0)) {
+            return null;
+        }
+        if ((segsDv.byteLength % 12 !== 0) || (ssectorsDv.byteLength % 4 !== 0) || (nodesDv.byteLength % 28 !== 0)) {
+            return null;
+        }
+        if (nodesDv.byteLength >= 4) {
+            const magic = String.fromCharCode(nodesDv.getUint8(0), nodesDv.getUint8(1), nodesDv.getUint8(2), nodesDv.getUint8(3));
+            if ((magic === 'XNOD') || (magic === 'ZNOD') || (magic === 'xNd4')) {
+                return null;
+            }
+        }
+
+        const segs = [];
+        for (let i = 0; i < segsDv.byteLength / 12; i++) {
+            const o = i * 12;
+            segs.push({
+                v1:        segsDv.getUint16(o, true),
+                v2:        segsDv.getUint16(o + 2, true),
+                linedef:   segsDv.getUint16(o + 6, true),
+                direction: segsDv.getInt16(o + 8, true)
+            });
+        }
+        const ssectors = [];
+        for (let i = 0; i < ssectorsDv.byteLength / 4; i++) {
+            const o = i * 4;
+            ssectors.push({
+                segCount: ssectorsDv.getUint16(o, true),
+                firstSeg: ssectorsDv.getUint16(o + 2, true)
+            });
+        }
+        const nodes = [];
+        for (let i = 0; i < nodesDv.byteLength / 28; i++) {
+            const o = i * 28;
+            nodes.push({
+                x:          nodesDv.getInt16(o, true),
+                y:          nodesDv.getInt16(o + 2, true),
+                dx:         nodesDv.getInt16(o + 4, true),
+                dy:         nodesDv.getInt16(o + 6, true),
+                rightChild: nodesDv.getUint16(o + 24, true),
+                leftChild:  nodesDv.getUint16(o + 26, true)
+            });
+        }
+
+        return {segs: segs, ssectors: ssectors, nodes: nodes};
     }
 
     _readName(dv, offset, length) {

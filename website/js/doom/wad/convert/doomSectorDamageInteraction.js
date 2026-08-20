@@ -10,15 +10,19 @@
  */
 class DoomSectorDamageInteraction extends AbstractInteraction {
     /**
-     * @param {object[]}      zones        - [{si, outers (doom-coord polygons), floorY (world), special}]
+     * @param {object[]}      zones        - [{si, floorY (world), special, outers?}]
      *                                       — includes the "+change" target sectors, whose
      *                                       special (and floor height) can mutate at runtime
      * @param {function|null} exitCallback - normal exit callback (special 11)
+     * @param {function|null} sectorAt     - (doomX, doomY) → si|null (BSP); null = the
+     *                                       zones carry polygon outers and test them
      */
-    constructor(zones, exitCallback) {
+    constructor(zones, exitCallback, sectorAt = null) {
         super();
         this._zones        = zones;
         this._exitCallback = exitCallback;
+        this._sectorAt     = sectorAt;
+        this._zonesBySi    = new Map(zones.map((zone) => [zone.si, zone]));
         // One free-running clock per distinct window size (the vanilla
         // leveltime masks): damage only lands on a boundary crossing, never
         // on zone entry — walking through fast enough costs nothing. Sizes
@@ -110,6 +114,10 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
     _zoneUnderUser(user) {
         const doomX = user.x / WadConstants.SCALE;
         const doomZ = user.z / WadConstants.SCALE;
+        if (this._sectorAt !== null) {
+            const zone = this._zonesBySi.get(this._sectorAt(doomX, doomZ));
+            return (((zone !== undefined) && (Math.abs(user.y - zone.floorY) <= 0.02)) ? zone : null);
+        }
         for (const zone of this._zones) {
             if (Math.abs(user.y - zone.floorY) > 0.02) {
                 continue;

@@ -15,14 +15,21 @@
  */
 class DoomSectorPushInteraction extends AbstractInteraction {
     /**
-     * @param {object[]}          zones    [{si, outers (doom-coord polygons), floorY (world),
-     *                                     push: {kind, dx, dz}|null, friction: {friction}|null}]
+     * @param {object[]}          zones    [{si, floorY (world), push: {kind, dx, dz}|null,
+     *                                     friction: {friction}|null, outers?}]
      * @param {DoomMonsterSystem} monsters
+     * @param {function|null}     sectorAt (doomX, doomY) → si|null (BSP); null = the
+     *                                     zones carry polygon outers and test them
      */
-    constructor(zones, monsters = null) {
+    constructor(zones, monsters = null, sectorAt = null) {
         super();
-        this._zones    = zones;
-        this._monsters = monsters;
+        this._zones     = zones;
+        this._monsters  = monsters;
+        this._sectorAt  = sectorAt;
+        this._zonesBySi = new Map(zones.map((zone) => [zone.si, zone]));
+        if (sectorAt !== null) {
+            return;
+        }
         // Cheap AABB of every zone (doom coords): the per-frame monster sweep
         // rejects far bodies before any point-in-polygon test.
         for (const zone of this._zones) {
@@ -59,31 +66,16 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         const doomZ  = user.z / WadConstants.SCALE;
         // map units per tic → metres per second
         const toMs   = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
-        for (const zone of this._zones) {
-            if (!this._inZone(zone, doomX, doomZ)) {
-                continue;
+        if (this._sectorAt !== null) {
+            const zone = this._zonesBySi.get(this._sectorAt(doomX, doomZ));
+            if (zone !== undefined) {
+                this._applyToUser(zone, user, forces, toMs);
             }
-            const height = user.y - zone.floorY;
-            const onFloor = (Math.abs(height) <= 0.02);
-            // Carry tolerance above the sector floor: straddling a ledge, the
-            // collision cylinder props the player on the lip of the previous
-            // (higher) floor while the centre already sits in the carry sector
-            // — feet up to stepHeight above still get grabbed (the current
-            // pulls them down onto it). Vanilla's strict feet==floor test
-            // never meets this case at its original carry speeds; at the
-            // modern slow east speeds the residual glide (~0.16 m) is shorter
-            // than the straddle band (0.25 m) and stranded the player there.
-            const carried = (user.isOnGround() === true)
-                && (height >= -0.02) && (height <= user.getStepHeight());
-            if (zone.push !== null) {
-                if (zone.push.kind === 'wind') {
-                    forces.addThrust(zone.push.dx * toMs, zone.push.dz * toMs);
-                } else if (carried) {
-                    forces.addCarry(zone.push.dx * toMs, zone.push.dz * toMs);
+        } else {
+            for (const zone of this._zones) {
+                if (this._inZone(zone, doomX, doomZ)) {
+                    this._applyToUser(zone, user, forces, toMs);
                 }
-            }
-            if ((zone.friction !== null) && onFloor) {
-                forces.setGroundFriction(zone.friction.friction);
             }
         }
 
@@ -92,35 +84,69 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         }
     }
 
+    _applyToUser(zone, user, forces, toMs) {
+        const height = user.y - zone.floorY;
+        const onFloor = (Math.abs(height) <= 0.02);
+        // Carry tolerance above the sector floor: straddling a ledge, the
+        // collision cylinder props the player on the lip of the previous
+        // (higher) floor while the centre already sits in the carry sector
+        // — feet up to stepHeight above still get grabbed (the current
+        // pulls them down onto it). Vanilla's strict feet==floor test
+        // never meets this case at its original carry speeds; at the
+        // modern slow east speeds the residual glide (~0.16 m) is shorter
+        // than the straddle band (0.25 m) and stranded the player there.
+        const carried = (user.isOnGround() === true)
+            && (height >= -0.02) && (height <= user.getStepHeight());
+        if (zone.push !== null) {
+            if (zone.push.kind === 'wind') {
+                forces.addThrust(zone.push.dx * toMs, zone.push.dz * toMs);
+            } else if (carried) {
+                forces.addCarry(zone.push.dx * toMs, zone.push.dz * toMs);
+            }
+        }
+        if ((zone.friction !== null) && onFloor) {
+            forces.setGroundFriction(zone.friction.friction);
+        }
+    }
+
     // Same rules for every monster record, corpses included (they drift):
     // wind at any height, carry and friction with the feet on the sector
     // floor (straddle band like the player, boxes prop bodies on lips too).
     _feedMonsters(toMs) {
-        const step = WadConstants.ACTOR_STEP_HEIGHT;
         for (const m of this._monsters.getMonsters()) {
             const pos   = m.inst.getTransform().position;
             const doomX = pos[0] / WadConstants.SCALE;
             const doomZ = pos[2] / WadConstants.SCALE;
+            if (this._sectorAt !== null) {
+                const zone = this._zonesBySi.get(this._sectorAt(doomX, doomZ));
+                if (zone !== undefined) {
+                    this._applyToMonster(zone, m, pos, toMs);
+                }
+                continue;
+            }
             for (const zone of this._zones) {
                 if ((doomX < zone.bbox[0]) || (doomX > zone.bbox[2]) || (doomZ < zone.bbox[1]) || (doomZ > zone.bbox[3])) {
                     continue;
                 }
-                if (!this._inZone(zone, doomX, doomZ)) {
-                    continue;
-                }
-                const height  = pos[1] - zone.floorY;
-                const grounded = ((height >= -0.02) && (height <= step));
-                if (zone.push !== null) {
-                    if (zone.push.kind === 'wind') {
-                        m.env.addThrust(zone.push.dx * toMs, zone.push.dz * toMs);
-                    } else if (grounded) {
-                        m.env.addCarry(zone.push.dx * toMs, zone.push.dz * toMs);
-                    }
-                }
-                if ((zone.friction !== null) && (Math.abs(height) <= 0.02)) {
-                    m.env.setGroundFriction(zone.friction.friction);
+                if (this._inZone(zone, doomX, doomZ)) {
+                    this._applyToMonster(zone, m, pos, toMs);
                 }
             }
+        }
+    }
+
+    _applyToMonster(zone, m, pos, toMs) {
+        const height   = pos[1] - zone.floorY;
+        const grounded = ((height >= -0.02) && (height <= WadConstants.ACTOR_STEP_HEIGHT));
+        if (zone.push !== null) {
+            if (zone.push.kind === 'wind') {
+                m.env.addThrust(zone.push.dx * toMs, zone.push.dz * toMs);
+            } else if (grounded) {
+                m.env.addCarry(zone.push.dx * toMs, zone.push.dz * toMs);
+            }
+        }
+        if ((zone.friction !== null) && (Math.abs(height) <= 0.02)) {
+            m.env.setGroundFriction(zone.friction.friction);
         }
     }
 
