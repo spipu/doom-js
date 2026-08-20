@@ -669,6 +669,11 @@ class WadConstants {
     static ACTOR_FLOAT_SPEED = 4 * WadConstants.SCALE;
     static ORIG_FRICTION     = 0.90625;
 
+    // Feet-on-the-sector-floor tolerance (world units) of the runtime sector
+    // effects (damage / secret / carry / friction): vanilla tests
+    // mo->z == floorheight exactly; our float heights need a hair of slack.
+    static ON_FLOOR_TOLERANCE = 0.02;
+
     // Doom thing type of a teleport landing (destination marker, not rendered).
     static TELEPORT_LANDING_THING = 14;
 

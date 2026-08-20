@@ -100,17 +100,23 @@ class WadMeshBuilder {
         if (convexPolyDoom.length < 3) {
             return;
         }
-        let polyLocal = convexPolyDoom;
-        let xz = polyLocal.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
-        if (WadGeometry.polygonAreaSign(xz) > 0) {
-            xz        = [...xz].reverse();
-            polyLocal = [...polyLocal].reverse();
-        }
+        const o = WadMeshBuilder._orientFlat(
+            convexPolyDoom.map((v) => WadGeometry.doomToWorld(v[0], v[1])), convexPolyDoom);
         const tris = [];
-        for (let i = 1; i < xz.length - 1; i++) {
+        for (let i = 1; i < o.xz.length - 1; i++) {
             tris.push([0, i, i + 1]);
         }
-        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, o.xz, o.poly, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
+    }
+
+    // Flat winding convention (triangulate() and the fans expect it): reverse
+    // a counter-clockwise world-XZ polygon, keeping the Doom-coord twin in step.
+    static _orientFlat(xz, polyDoom) {
+        if (WadGeometry.polygonAreaSign(xz) <= 0) {
+            return {xz: xz, poly: polyDoom};
+        }
+
+        return {xz: [...xz].reverse(), poly: [...polyDoom].reverse()};
     }
 
     /**
@@ -236,16 +242,13 @@ class WadMeshBuilder {
         // native hole support — otherwise the missing triangles show as holes in
         // both the floor and the ceiling (same merged polygon feeds both).
         if (holes && holes.length > 0) {
-            let merged   = WadTriangulator.mergeHolesIntoPolygon(polyLocal, holes);
-            let xzMerged = merged.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
-            if (WadGeometry.polygonAreaSign(xzMerged) > 0) {
-                xzMerged = [...xzMerged].reverse();
-                merged   = [...merged].reverse();
-            }
-            const legacyTris = WadTriangulator.triangulate(xzMerged);
-            if (legacyTris.length >= xzMerged.length - 2) {
-                polyLocal = merged;
-                xz        = xzMerged;
+            const merged = WadTriangulator.mergeHolesIntoPolygon(polyLocal, holes);
+            const o = WadMeshBuilder._orientFlat(
+                merged.map((v) => WadGeometry.doomToWorld(v[0], v[1])), merged);
+            const legacyTris = WadTriangulator.triangulate(o.xz);
+            if (legacyTris.length >= o.xz.length - 2) {
+                polyLocal = o.poly;
+                xz        = o.xz;
                 preTris   = legacyTris;
             } else {
                 const outerXz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
@@ -266,10 +269,9 @@ class WadMeshBuilder {
         // Simple polygon path: triangulate() requires CCW winding, reverse CW
         // polygons. Skipped when the holes path above already produced preTris.
         if (preTris === null) {
-            if (WadGeometry.polygonAreaSign(xz) > 0) {
-                xz        = [...xz].reverse();
-                polyLocal = [...polyLocal].reverse();
-            }
+            const o = WadMeshBuilder._orientFlat(xz, polyLocal);
+            xz        = o.xz;
+            polyLocal = o.poly;
             const legacyTris = WadTriangulator.triangulate(xz);
             if (legacyTris.length >= xz.length - 2) {
                 preTris = legacyTris;
@@ -297,22 +299,15 @@ class WadMeshBuilder {
         const flatUv = (idx) => [polyLocal[idx][0] / 64.0, polyLocal[idx][1] / 64.0];
 
         for (const [a, b, cIdx] of tris) {
-            let face;
-            if (isFloor) {
-                // CCW polygon → swap [a,b,c] to [a,c,b] for an upward-facing normal
-                face = {
-                    pts:     [base + a + 1, base + cIdx + 1, base + b + 1],
-                    color:   [c, c, c],
-                    texture: texIdx + 1,
-                    map:     [flatUv(a), flatUv(cIdx), flatUv(b)]
-                };
-            } else {
-                face = {
-                    pts:     [base + a + 1, base + b + 1, base + cIdx + 1],
-                    color:   [c, c, c],
-                    texture: texIdx + 1,
-                    map:     [flatUv(a), flatUv(b), flatUv(cIdx)]
-                };
+            // CCW polygon → floors swap [a,b,c] to [a,c,b] for an upward normal
+            const order = ((isFloor) ? [a, cIdx, b] : [a, b, cIdx]);
+            const face  = {
+                pts:   order.map((idx) => (base + idx + 1)),
+                color: [c, c, c]
+            };
+            if (texIdx >= 0) {
+                face.texture = texIdx + 1;
+                face.map     = order.map(flatUv);
             }
             if (lightGroup !== null) {
                 face.lightGroup = lightGroup;

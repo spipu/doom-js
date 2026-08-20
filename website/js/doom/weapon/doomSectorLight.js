@@ -21,16 +21,18 @@ class DoomSectorLight {
     }
 
     /**
-     * @param {object[]}      sectorPolys      polygon cache (fallback lookup)
+     * @param {object[]}      sectorPolys      polygon cache (fallback lookup) — released
+     *                                         when the BSP path makes it unreachable
      * @param {object|null}   lightInteraction live flicker/strobe factors
      * @param {function|null} sectorAt         (doomX, doomY) → si|null (BSP)
-     * @param {number[]|null} sectorLights     si → light, for the BSP path
+     * @param {object[]|null} sectors          live parsed sectors, for the BSP path
      */
-    constructor(sectorPolys, lightInteraction = null, sectorAt = null, sectorLights = null) {
-        this._polys        = sectorPolys;
-        this._lights       = lightInteraction;
-        this._sectorAtFn   = sectorAt;
-        this._sectorLights = sectorLights;
+    constructor(sectorPolys, lightInteraction = null, sectorAt = null, sectors = null) {
+        this._usesBsp    = ((sectorAt !== null) && (sectors !== null));
+        this._polys      = ((this._usesBsp) ? [] : sectorPolys);
+        this._lights     = lightInteraction;
+        this._sectorAtFn = sectorAt;
+        this._sectors    = sectors;
     }
 
     // Weapon light factor (0..1) at a world position; 1 (fullbright) when the
@@ -55,9 +57,9 @@ class DoomSectorLight {
     // smallest containing sector polygon (nested sectors), matching
     // WadWorldBuilder._findSector.
     _sectorAt(doomX, doomY) {
-        if ((this._sectorAtFn !== null) && (this._sectorLights !== null)) {
+        if (this._usesBsp) {
             const si = this._sectorAtFn(doomX, doomY);
-            return ((si !== null) ? {si: si, light: this._sectorLights[si]} : null);
+            return ((si !== null) ? {si: si, light: this._sectors[si].light} : null);
         }
         let bestArea = null;
         let best     = null;
