@@ -331,7 +331,8 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            const ft = this._bank.ensureFlatTex(sec.ft);
+            const floorSky = sec.ft.startsWith('F_SKY');
+            const ft = ((floorSky) ? -1 : this._bank.ensureFlatTex(sec.ft));
             const hasSky = sec.ct.startsWith('F_SKY');
             const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
@@ -345,8 +346,15 @@ class WadStaticMapBuilder {
             for (const p of polys) {
                 // Skip the static floor for lifts, rising floors AND stairs — in
                 // every case a moving top-flat covers it (otherwise z-fighting).
-                if (ft >= 0 && !movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
-                    WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si), uScroll);
+                if (!movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
+                    if (floorSky) {
+                        // Sky floor (MAP20's exit pit): vanilla draws the SKY
+                        // there (R_Subsector floorpic == skyflatnum) — the flat
+                        // stays solid but invisible, the sky shows through.
+                        WadMeshBuilder.addFlatQuad(mesh, -1, p.outer, sec.fh, true, sec.light, p.holes, null, 0, true);
+                    } else if (ft >= 0) {
+                        WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, sec.fh, true, sec.light, p.holes, this._lightGroupOf(si), uScroll);
+                    }
                 }
                 // Sky flats skipped — outdoor areas have no ceiling geometry
                 if (ct >= 0) {
