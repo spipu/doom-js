@@ -157,9 +157,11 @@ class WadWorldBuilder {
         // Sector membership test of the runtime zone interactions: with a BSP
         // it is the tree itself (exact, unclosed sectors included) and EVERY
         // sector carrying the special becomes a zone; without it the polygon
-        // outers stay both the filter and the runtime test.
-        const sectorAt = (((level.bspTree ?? null) !== null)
-            ? ((doomX, doomY) => level.bspTree.findSector(doomX, doomY))
+        // outers stay both the filter and the runtime test. The closure
+        // captures the TREE only, so the parsed level can be collected.
+        const bspTree  = level.bspTree;
+        const sectorAt = ((bspTree !== null)
+            ? ((doomX, doomY) => bspTree.findSector(doomX, doomY))
             : null);
 
         // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
@@ -174,8 +176,8 @@ class WadWorldBuilder {
                 zone.special = special;
             });
         let damageInteraction = null;
-        if (damageZones.length > 0) {
-            damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit, sectorAt);
+        if (damageZones.list.length > 0) {
+            damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit);
             loader.interactions().loadFromData(damageInteraction);
         }
 
@@ -190,8 +192,8 @@ class WadWorldBuilder {
                 zone.push     = (WadConstants.SECTOR_PUSH_BY_SPECIAL[special] ?? null);
                 zone.friction = (WadConstants.SECTOR_FRICTION_BY_SPECIAL[special] ?? null);
             });
-        if (pushZones.length > 0) {
-            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem, sectorAt));
+        if (pushZones.list.length > 0) {
+            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem));
         }
 
         // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
@@ -208,15 +210,15 @@ class WadWorldBuilder {
         const secretZones = this._sectorZones(analysis, sectorAt,
             (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
         if (this._game !== null) {
-            this._game.setSecretsTotal(secretZones.length);
-            if (secretZones.length > 0) {
-                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game, sectorAt));
+            this._game.setSecretsTotal(secretZones.list.length);
+            if (secretZones.list.length > 0) {
+                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
             }
             // Hand over the sector-light lookup (else the poly cache is dropped);
             // used to shade the weapon view sprite by the player's sector, pulsing
             // with the sector's light effect via the interaction's live factor.
             this._game.setSectorLight(new DoomSectorLight(this._sectorPolys, lightInteraction,
-                sectorAt, level.sectors.map((s) => s.light)));
+                sectorAt, level.sectors));
         }
 
         // "+change" floors: swap the moving top-flat texture (and the sector's
@@ -246,6 +248,10 @@ class WadWorldBuilder {
             + teleporters.length + ' teleporters, ' + bossRules + ' boss rules, '
             + things.count + ' things (' + things.skipped + ' skipped, '
             + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + ')');
+
+        if (bspTree !== null) {
+            bspTree.releaseBuildData();
+        }
     }
 
     // --- Internal ---
@@ -985,11 +991,12 @@ class WadWorldBuilder {
         return cache;
     }
 
-    // Zones of the runtime sector interactions (damage / push / secret). With
-    // a BSP every sector carrying the special is a zone (membership is the
-    // tree, so the unclosed sectors the polygon cache dropped are back in —
-    // secret total included); without it, the cache stays the filter and the
-    // zones carry their polygon outers for the runtime test.
+    // Zones of the runtime sector interactions (damage / push / secret),
+    // behind the shared DoomSectorZones locator. With a BSP every sector
+    // carrying the special is a zone (membership is the tree, so the unclosed
+    // sectors the polygon cache dropped are back in — secret total included);
+    // without it, the cache stays the filter and the zones carry their polygon
+    // outers for the runtime test.
     _sectorZones(analysis, sectorAt, predicate, decorate) {
         const zones = [];
         const pushZone = (si, fh, special, outers) => {
@@ -1012,7 +1019,7 @@ class WadWorldBuilder {
                 pushZone(s.si, s.fh, s.special, s.outers);
             }
         }
-        return zones;
+        return new DoomSectorZones(zones, sectorAt);
     }
 
     // Find the sector at a point. BSP path first (R_PointInSubsector — the
@@ -1023,7 +1030,7 @@ class WadWorldBuilder {
     // beyond which the caller drops the thing rather than mis-placing it.
     // Returns {si, fh, ch, light, tag} (Doom units) or null.
     _findSector(doomX, doomY) {
-        const bsp = (this._level.bspTree ?? null);
+        const bsp = this._level.bspTree;
         if (bsp !== null) {
             const si = bsp.findSector(doomX, doomY);
             if (si !== null) {

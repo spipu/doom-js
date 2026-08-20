@@ -7,41 +7,35 @@
  */
 class DoomSecretInteraction extends AbstractInteraction {
     /**
-     * @param {object[]}      zones    - [{si, floorY (world), outers?}]
-     * @param {DoomGame}      game
-     * @param {function|null} sectorAt - (doomX, doomY) → si|null (BSP); null = the
-     *                                   zones carry polygon outers and test them
+     * @param {DoomSectorZones} zones - [{si, floorY (world)}] behind the shared locator
+     * @param {DoomGame}        game
      */
-    constructor(zones, game, sectorAt = null) {
+    constructor(zones, game) {
         super();
-        this._zones    = zones;
-        this._game     = game;
-        this._sectorAt = sectorAt;
-        // Deterministic identity of each zone (the build order), so a save can
-        // record which secrets are still pending across a level rebuild.
-        this._zones.forEach((zone, index) => {
-            zone.buildIndex = index;
-        });
+        this._zones = zones;
+        this._game  = game;
     }
 
     get code() {
         return 'secretSectors';
     }
 
+    // Zone identity in a save: the sector index — stable whatever lookup mode
+    // (BSP or polygon fallback) enumerated the zones at rebuild.
     exportState() {
-        return {pending: this._zones.map((zone) => zone.buildIndex)};
+        return {pending: this._zones.list.map((zone) => zone.si)};
     }
 
     importState(state) {
         const pending = new Set(state.pending);
-        this._zones = this._zones.filter((zone) => pending.has(zone.buildIndex));
+        this._zones.retain((zone) => pending.has(zone.si));
     }
 
     triggered(instance) {
     }
 
     update(dt) {
-        if (this._zones.length === 0) {
+        if (this._zones.list.length === 0) {
             return;
         }
         const user = loader.world().get().getUser();
@@ -49,31 +43,13 @@ class DoomSecretInteraction extends AbstractInteraction {
             return;
         }
 
-        const doomX = user.x / WadConstants.SCALE;
-        const doomZ = user.z / WadConstants.SCALE;
         // Feet on the sector floor, like the damage sectors (vanilla checks
         // mo->z == floorheight before crediting the secret)
-        if (this._sectorAt !== null) {
-            const si  = this._sectorAt(doomX, doomZ);
-            const idx = this._zones.findIndex((zone) => (zone.si === si));
-            if ((idx >= 0) && (Math.abs(user.y - this._zones[idx].floorY) <= 0.02)) {
-                this._zones.splice(idx, 1);
-                this._game.addSecretFound();
-            }
-            return;
-        }
-        for (let i = 0; i < this._zones.length; i++) {
-            const zone = this._zones[i];
-            if (Math.abs(user.y - zone.floorY) > 0.02) {
-                continue;
-            }
-            for (const outer of zone.outers) {
-                if (WadGeometry.pointInPolygon2d(doomX, doomZ, outer)) {
-                    this._zones.splice(i, 1);
-                    this._game.addSecretFound();
-                    return;
-                }
-            }
+        const zone = this._zones.zoneAt(user.x / WadConstants.SCALE, user.z / WadConstants.SCALE,
+            (z) => (Math.abs(user.y - z.floorY) <= WadConstants.ON_FLOOR_TOLERANCE));
+        if (zone !== null) {
+            this._zones.remove(zone);
+            this._game.addSecretFound();
         }
     }
 }

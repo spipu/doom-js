@@ -10,19 +10,16 @@
  */
 class DoomSectorDamageInteraction extends AbstractInteraction {
     /**
-     * @param {object[]}      zones        - [{si, floorY (world), special, outers?}]
-     *                                       — includes the "+change" target sectors, whose
-     *                                       special (and floor height) can mutate at runtime
-     * @param {function|null} exitCallback - normal exit callback (special 11)
-     * @param {function|null} sectorAt     - (doomX, doomY) → si|null (BSP); null = the
-     *                                       zones carry polygon outers and test them
+     * @param {DoomSectorZones} zones        - [{si, floorY (world), special}] behind the
+     *                                        shared locator — includes the "+change" target
+     *                                        sectors, whose special (and floor height) can
+     *                                        mutate at runtime
+     * @param {function|null}   exitCallback - normal exit callback (special 11)
      */
-    constructor(zones, exitCallback, sectorAt = null) {
+    constructor(zones, exitCallback) {
         super();
         this._zones        = zones;
         this._exitCallback = exitCallback;
-        this._sectorAt     = sectorAt;
-        this._zonesBySi    = new Map(zones.map((zone) => [zone.si, zone]));
         // One free-running clock per distinct window size (the vanilla
         // leveltime masks): damage only lands on a boundary crossing, never
         // on zone entry — walking through fast enough costs nothing. Sizes
@@ -100,35 +97,17 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
      * absent from the zones (never damaging, before or after).
      */
     setSectorSpecial(si, special, floorY) {
-        for (const zone of this._zones) {
-            if (zone.si === si) {
-                zone.special = special;
-                zone.floorY  = floorY;
-                return;
-            }
+        const zone = this._zones.bySi(si);
+        if (zone !== null) {
+            zone.special = special;
+            zone.floorY  = floorY;
         }
     }
 
     // Damage only applies with the feet ON the sector floor (an airborne or
     // riding player is safe, like vanilla's mo->z != floorheight check).
     _zoneUnderUser(user) {
-        const doomX = user.x / WadConstants.SCALE;
-        const doomZ = user.z / WadConstants.SCALE;
-        if (this._sectorAt !== null) {
-            const zone = this._zonesBySi.get(this._sectorAt(doomX, doomZ));
-            return (((zone !== undefined) && (Math.abs(user.y - zone.floorY) <= 0.02)) ? zone : null);
-        }
-        for (const zone of this._zones) {
-            if (Math.abs(user.y - zone.floorY) > 0.02) {
-                continue;
-            }
-            for (const outer of zone.outers) {
-                if (WadGeometry.pointInPolygon2d(doomX, doomZ, outer)) {
-                    return zone;
-                }
-            }
-        }
-
-        return null;
+        return this._zones.zoneAt(user.x / WadConstants.SCALE, user.z / WadConstants.SCALE,
+            (zone) => (Math.abs(user.y - zone.floorY) <= WadConstants.ON_FLOOR_TOLERANCE));
     }
 }

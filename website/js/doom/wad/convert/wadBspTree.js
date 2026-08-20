@@ -24,9 +24,21 @@ class WadBspTree {
             return null;
         }
         const {segs, ssectors, nodes} = bsp;
+        // Above NF_SUBSECTOR records the root index itself would parse as a
+        // leaf reference (the vanilla format cannot address them anyway).
+        if (nodes.length > WadBspTree.NF_SUBSECTOR) {
+            return null;
+        }
         for (const seg of segs) {
             if ((seg.v1 >= level.vertexes.length) || (seg.v2 >= level.vertexes.length)
                 || (seg.linedef >= level.linedefs.length)) {
+                return null;
+            }
+            // The carve clips along the linedef's own vertexes (exact line),
+            // so they must be in range too (hexen-format LINEDEFS parsed as
+            // doom yield garbage indexes — that WAD falls back gracefully).
+            const ld = level.linedefs[seg.linedef];
+            if ((ld.v1 >= level.vertexes.length) || (ld.v2 >= level.vertexes.length)) {
                 return null;
             }
         }
@@ -36,9 +48,12 @@ class WadBspTree {
             }
         }
         for (const n of nodes) {
+            if ((n.dx === 0) && (n.dy === 0)) {
+                return null;
+            }
             for (const child of [n.rightChild, n.leftChild]) {
-                if ((child & 0x8000) !== 0) {
-                    if ((child & 0x7fff) >= ssectors.length) {
+                if (WadBspTree._isLeaf(child)) {
+                    if (WadBspTree._leafIndex(child) >= ssectors.length) {
                         return null;
                     }
                 } else if (child >= nodes.length) {
@@ -55,6 +70,7 @@ class WadBspTree {
     constructor(level, bsp) {
         this._level             = level;
         this._bsp               = bsp;
+        this._nodes             = bsp.nodes;
         this._sectorOfSubsector = bsp.ssectors.map((ss) => this._attributeSector(ss));
         this._sectorPolys       = level.sectors.map(() => []);
     }
@@ -62,41 +78,61 @@ class WadBspTree {
     /**
      * Convex polygons ([x, y] Doom units) covering the sector, one per
      * subsector. Empty for a sector the BSP never reaches (callers fall back
-     * to the chain polygons for it).
+     * to the chain polygons for it), and after releaseBuildData.
      */
     polysOfSector(si) {
-        return this._sectorPolys[si];
+        return ((this._sectorPolys !== null) ? this._sectorPolys[si] : []);
     }
 
     /**
-     * R_PointInSubsector (r_main.c): iterative descent, cross >= 0 = left
-     * child (vanilla back side). Returns the sector index, or null on a
+     * The carved polygons and the raw lumps only serve the build; findSector
+     * needs the nodes and the subsector→sector table alone. Dropping the rest
+     * frees the parsed level for collection once the world is built (the
+     * sectorAt closures hold this tree for the whole level lifetime).
+     */
+    releaseBuildData() {
+        this._level       = null;
+        this._bsp         = null;
+        this._sectorPolys = null;
+    }
+
+    /**
+     * R_PointInSubsector (r_main.c): iterative descent, on-line goes to the
+     * left child (vanilla back side). Returns the sector index, or null on a
      * subsector no seg could attribute (the polygon fallback decides).
      */
     findSector(x, y) {
-        const nodes = this._bsp.nodes;
-        let child = nodes.length - 1;
-        while ((child & 0x8000) === 0) {
-            const n = nodes[child];
-            const left = (((y - n.y) * n.dx - (x - n.x) * n.dy) >= 0);
-            child = ((left) ? n.leftChild : n.rightChild);
+        let child = this._nodes.length - 1;
+        while (!WadBspTree._isLeaf(child)) {
+            const n    = this._nodes[child];
+            const back = (WadGeometry.pointOnLineSide(x, y, n.x, n.y, n.x + n.dx, n.y + n.dy) === 1);
+            child = ((back) ? n.leftChild : n.rightChild);
         }
-        const si = this._sectorOfSubsector[child & 0x7fff];
+        const si = this._sectorOfSubsector[WadBspTree._leafIndex(child)];
         return ((si >= 0) ? si : null);
     }
 
     // --- Internal ---
 
+    static _isLeaf(child) {
+        return ((child & WadBspTree.NF_SUBSECTOR) !== 0);
+    }
+
+    static _leafIndex(child) {
+        return (child & (WadBspTree.NF_SUBSECTOR - 1));
+    }
+
     // The subsector's sector: first seg whose sidedef (front for direction 0,
-    // back for 1) is valid — iterated, one corrupt seg must not drop the leaf.
+    // back for 1) points to a real sector — iterated, one corrupt seg must not
+    // drop the leaf.
     _attributeSector(ss) {
-        const {linedefs, sidedefs} = this._level;
+        const {linedefs, sidedefs, sectors} = this._level;
         const segs = this._bsp.segs;
         for (let i = 0; i < ss.segCount; i++) {
             const seg = segs[ss.firstSeg + i];
             const ld  = linedefs[seg.linedef];
             const sd  = ((seg.direction === 0) ? ld.right : ld.left);
-            if ((sd >= 0) && (sd < sidedefs.length)) {
+            if ((sd >= 0) && (sd < sidedefs.length) && (sidedefs[sd].sector < sectors.length)) {
                 return sidedefs[sd].sector;
             }
         }
@@ -118,8 +154,8 @@ class WadBspTree {
         if (poly.length < 3) {
             return;
         }
-        if ((child & 0x8000) !== 0) {
-            const ssIdx = (child & 0x7fff);
+        if (WadBspTree._isLeaf(child)) {
+            const ssIdx = WadBspTree._leafIndex(child);
             const si = this._sectorOfSubsector[ssIdx];
             if (si < 0) {
                 return;
@@ -225,6 +261,10 @@ class WadBspTree {
         return out;
     }
 }
+
+// Vanilla NF_SUBSECTOR (doomdata.h): bit 15 of a node child marks a leaf,
+// the low 15 bits are the subsector index.
+WadBspTree.NF_SUBSECTOR = 0x8000;
 
 // Clipping tolerance (map units), minimum polygon area (map units²) and
 // minimum polygon width (map units): the on-line band and the sliver guards

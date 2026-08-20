@@ -5,14 +5,16 @@
  * render) plus a DoomTeleportInteraction that moves the player to the landing.
  *
  * The destination is the thing type 14 in the sector of the same tag, resolved
- * by WadWorldBuilder and passed in as landingsByTag (tag → {x, y, z, yaw} world).
+ * by WadWorldBuilder and passed in as landingsByTag (tag → {x, y, topY, z, yaw}
+ * world — y is the build-time floor, topY the sector ceiling the live ONFLOORZ
+ * search starts from).
  * A teleporter whose tag has no landing is skipped.
  */
 class WadTeleportBuilder {
     /**
      * @param {object}         level
      * @param {object}         analysis
-     * @param {object}         landingsByTag - tag → {x, y, z, yaw} (world coords)
+     * @param {object}         landingsByTag - tag → {x, y, topY, z, yaw} (world coords)
      */
     constructor(level, analysis, landingsByTag) {
         this._level         = level;
