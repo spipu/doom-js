@@ -861,7 +861,7 @@ class WadWorldBuilder {
         let background = WadConstants.DEFAULT_BACKGROUND;
         if (skyIdx >= 0) {
             const loaderId = bank.getLoaderId(skyIdx);
-            sky = {loaderId: loaderId, wrap: skyPolicy.wrap};
+            sky = {loaderId: loaderId, wrap: skyPolicy.wrap, capBottom: this._skyCapColor(loaderId, 'bottom')};
             background = this._skyCapColor(loaderId);
         }
 
@@ -890,19 +890,21 @@ class WadWorldBuilder {
         };
     }
 
-    // Solid "cap" colour used as the scene background (shows above/below the sky
-    // band and in the CPU full renderer's sky holes). Vanilla Doom has no such
-    // field — derive it like modern ports from the average of the sky texture's
-    // top row, so the seam with the sky top is smooth.
-    _skyCapColor(loaderId) {
+    // Solid "cap" colours derived like modern ports from the sky texture rows
+    // (vanilla Doom has no such field): the TOP row average is the scene
+    // background (above the sky band, CPU sky holes), the BOTTOM row average
+    // fills below the horizon (sky floors, looking down past the band) — so
+    // both seams with the texture stay smooth.
+    _skyCapColor(loaderId, row = 'top') {
         const tex = loader.textures().get(loaderId);
         const d = tex.data;
         const w = tex.width;
+        const rowStart = ((row === 'bottom') ? (4 * w * (tex.height - 1)) : 0);
         let r = 0;
         let g = 0;
         let b = 0;
         for (let x = 0; x < w; x++) {
-            const p = 4 * x;   // row 0 (top of the image)
+            const p = rowStart + 4 * x;
             r += d[p];
             g += d[p + 1];
             b += d[p + 2];

@@ -84,8 +84,13 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.pitch,  engine._viewPitch * DEG);
         gl.uniform1f(loc.fov,    engine.fov);
         gl.uniform1f(loc.wrap,   engine.sky.wrap);
-        const cap = engine.background;   // sky cap colour (= scene background), above and below the band
-        gl.uniform3f(loc.cap, cap[0] / 255, cap[1] / 255, cap[2] / 255);
+        // Cap colours above and below the textured band: top = the scene
+        // background, bottom = the sky's own bottom cap when it declares one
+        // (looking down past the band, e.g. through a sky floor).
+        const cap  = engine.background;
+        const capB = (engine.sky.capBottom ?? cap);
+        gl.uniform3f(loc.cap,  cap[0] / 255, cap[1] / 255, cap[2] / 255);
+        gl.uniform3f(loc.capB, capB[0] / 255, capB[1] / 255, capB[2] / 255);
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, tex));
@@ -108,7 +113,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         `, `
             precision mediump float;
             uniform sampler2D u_sky;
-            uniform vec3  u_cap;
+            uniform vec3  u_cap, u_capB;
             uniform float u_w, u_h, u_yaw, u_pitch, u_fov, u_wrap;
             const float PI = 3.14159265;
             const float EL_MAX  = 0.6;    // elevation (rad) the texture spans
@@ -126,9 +131,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 float el = asin(clamp(rp.y, -1.0, 1.0));                 // 0 = horizon
                 float u  = fract(az * u_wrap / (2.0 * PI));
                 float vv = (el + EL_DOWN) / EL_MAX;                       // texture bottom sits EL_DOWN below the horizon → 1 texture top
-                vec3 col = texture2D(u_sky, vec2(u, 1.0 - clamp(vv, 0.0, 1.0))).rgb;
-                col = mix(col, u_cap, smoothstep(0.7, 1.0, vv));         // fade up into the cap (top)
-                col = ((vv < 0.0) ? u_cap : col);                        // below the lowered texture bottom: background, sharp (like GZDoom)
+                // Below the band the texture is MIRRORED downward (GZDoom's
+                // lower sky dome — sky floors show sky, not a flat cap), and
+                // each side fades into its own cap when looking steeply.
+                float vs = abs(vv);
+                vec3 col = texture2D(u_sky, vec2(u, 1.0 - clamp(vs, 0.0, 1.0))).rgb;
+                col = mix(col, ((vv < 0.0) ? u_capB : u_cap), smoothstep(0.7, 1.0, vs));
                 gl_FragColor = vec4(col, 1.0);
             }
         `);
@@ -137,6 +145,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             aPos:   gl.getAttribLocation( this._skyProgram, 'a_pos'),
             sky:    gl.getUniformLocation(this._skyProgram, 'u_sky'),
             cap:    gl.getUniformLocation(this._skyProgram, 'u_cap'),
+            capB:   gl.getUniformLocation(this._skyProgram, 'u_capB'),
             w:      gl.getUniformLocation(this._skyProgram, 'u_w'),
             h:      gl.getUniformLocation(this._skyProgram, 'u_h'),
             yaw:    gl.getUniformLocation(this._skyProgram, 'u_yaw'),

@@ -174,8 +174,10 @@ class WadMeshBuilder {
      * @param {int|null}   lightGroup
      * @param {number}     uScrollUvPerSec  UV drift of the flat per second
      *                     (scrolling lava/conveyor floors; 0 = static)
+     * @param {boolean}    collisionOnly - solid but never drawn (sky floors:
+     *                     the cylindrical sky shows through)
      */
-    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null, uScrollUvPerSec = 0) {
+    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null, uScrollUvPerSec = 0, collisionOnly = false) {
         if (polyVerts2d.length < 3) {
             return;
         }
@@ -272,6 +274,9 @@ class WadMeshBuilder {
             }
             if (uScrollUvPerSec !== 0) {
                 face.uvScroll = {u: uScrollUvPerSec, v: 0};
+            }
+            if (collisionOnly) {
+                face.collisionOnly = true;
             }
             mesh.faces.push(face);
         }
