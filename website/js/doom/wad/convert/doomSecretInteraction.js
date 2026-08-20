@@ -45,8 +45,7 @@ class DoomSecretInteraction extends AbstractInteraction {
 
         // Feet on the sector floor, like the damage sectors (vanilla checks
         // mo->z == floorheight before crediting the secret)
-        const zone = this._zones.zoneAt(user.x / WadConstants.SCALE, user.z / WadConstants.SCALE,
-            (z) => (Math.abs(user.y - z.floorY) <= WadConstants.ON_FLOOR_TOLERANCE));
+        const zone = this._zones.zoneUnderFeet(user.x, user.y, user.z);
         if (zone !== null) {
             this._zones.remove(zone);
             this._game.addSecretFound();

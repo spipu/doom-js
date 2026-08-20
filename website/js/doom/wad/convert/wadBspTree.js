@@ -47,7 +47,11 @@ class WadBspTree {
                 return null;
             }
         }
-        for (const n of nodes) {
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            // A zero-length partition would descend the WRONG side (vanilla
+            // R_PointOnSide special-cases dx == 0 to the front, our cross
+            // lands on the back) and carve overlapping flats — reject.
             if ((n.dx === 0) && (n.dy === 0)) {
                 return null;
             }
@@ -56,7 +60,10 @@ class WadBspTree {
                     if (WadBspTree._leafIndex(child) >= ssectors.length) {
                         return null;
                     }
-                } else if (child >= nodes.length) {
+                } else if (child >= i) {
+                    // Vanilla nodebuilders emit children before their parent
+                    // (the root is last): a forward or self reference means a
+                    // cyclic/garbage lump — the descent would never terminate.
                     return null;
                 }
             }
@@ -86,9 +93,10 @@ class WadBspTree {
 
     /**
      * The carved polygons and the raw lumps only serve the build; findSector
-     * needs the nodes and the subsector→sector table alone. Dropping the rest
-     * frees the parsed level for collection once the world is built (the
-     * sectorAt closures hold this tree for the whole level lifetime).
+     * needs the nodes and the subsector→sector table alone. Frees the carved
+     * per-subsector polygons and this tree's own level/lump references — the
+     * parsed level itself stays alive through the monster system's runtime
+     * findSector (its polygon fallback needs it).
      */
     releaseBuildData() {
         this._level       = null;
@@ -140,12 +148,7 @@ class WadBspTree {
     }
 
     _carveAll() {
-        const {vertexes} = this._level;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const [x, y] of vertexes) {
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-        }
+        const [minX, minY, maxX, maxY] = WadGeometry.pointsBbox(this._level.vertexes);
         const bbox = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]];
         this._carve(this._bsp.nodes.length - 1, bbox);
     }

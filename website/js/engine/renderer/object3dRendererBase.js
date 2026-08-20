@@ -22,10 +22,11 @@ class Object3dRendererBase {
     }
 
     // Draw a textured quad in normalised screen space (x, y top-left, w, h in
-    // 0..1; y downward), over the scene without depth, tinted by light (0..1).
-    // Generic 2D overlay primitive; only the WebGL renderer implements it (the
-    // CPU renderers skip it, like the sky).
-    drawScreenSprite(engine, texId, x, y, w, h, light) {
+    // 0..1; y downward), over the scene without depth, tinted by light (0..1)
+    // and faded by alpha (0..1, 1 = opaque). Generic 2D overlay primitive;
+    // only the WebGL renderer implements it (the CPU renderers skip it, like
+    // the sky).
+    drawScreenSprite(engine, texId, x, y, w, h, light, alpha = 1) {
         // no-op by default
     }
 

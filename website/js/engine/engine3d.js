@@ -7,6 +7,7 @@ class Engine3d {
         this.background = [0, 0, 0];
         this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
         this.depthShading = null;     // depth-based light attenuation curve params, or null
+        this.lightOverride = null;    // global light floor 0..1 (scene-wide fullbright), or null
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
         this.textureSmoothing = true; // texture filter: smoothed, or raw texels
@@ -106,6 +107,15 @@ class Engine3d {
     // the sky. Game-agnostic.
     setDepthShading(params) {
         this.depthShading = params;
+        return this;
+    }
+
+    // Global light floor (0..1, null = off): every face is lit at least to
+    // this level and the depth shading is bypassed while it is set — a scene-
+    // wide "fullbright" primitive (vision power-ups, debug). Applied by the
+    // WebGL renderer only, like the depth shading. Game-agnostic.
+    setLightOverride(value) {
+        this.lightOverride = value;
         return this;
     }
 

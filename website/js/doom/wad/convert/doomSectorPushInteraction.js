@@ -38,11 +38,9 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         // river; vanilla Heretic would freeze it with the player think).
         const user = loader.world().get().getUser();
         const forces = user.getExternalForces();
-        const doomX  = user.x / WadConstants.SCALE;
-        const doomZ  = user.z / WadConstants.SCALE;
         // map units per tic → metres per second
         const toMs   = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
-        this._zones.eachZoneAt(doomX, doomZ, (zone) => {
+        this._zones.eachZoneAt(user.x, user.z, (zone) => {
             const height = user.y - zone.floorY;
             // Carry tolerance above the sector floor: straddling a ledge, the
             // collision cylinder props the player on the lip of the previous
@@ -65,15 +63,21 @@ class DoomSectorPushInteraction extends AbstractInteraction {
     // Same rules for every monster record, corpses included (they drift):
     // wind at any height, carry and friction with the feet on the sector
     // floor (straddle band like the player, boxes prop bodies on lips too).
+    // One callback shared across the whole sweep — the current monster rides
+    // the captured locals.
     _feedMonsters(toMs) {
+        let pos = null;
+        let env = null;
+        const apply = (zone) => {
+            const height   = pos[1] - zone.floorY;
+            const grounded = ((height >= -WadConstants.ON_FLOOR_TOLERANCE)
+                && (height <= WadConstants.ACTOR_STEP_HEIGHT));
+            this._applyForces(zone, env, height, grounded, toMs);
+        };
         for (const m of this._monsters.getMonsters()) {
-            const pos = m.inst.getTransform().position;
-            this._zones.eachZoneAt(pos[0] / WadConstants.SCALE, pos[2] / WadConstants.SCALE, (zone) => {
-                const height   = pos[1] - zone.floorY;
-                const grounded = ((height >= -WadConstants.ON_FLOOR_TOLERANCE)
-                    && (height <= WadConstants.ACTOR_STEP_HEIGHT));
-                this._applyForces(zone, m.env, height, grounded, toMs);
-            });
+            pos = m.inst.getTransform().position;
+            env = m.env;
+            this._zones.eachZoneAt(pos[0], pos[2], apply);
         }
     }
 

@@ -83,6 +83,16 @@ class WadGeometry {
         return ((cross < 0) ? 0 : 1);
     }
 
+    // Axis-aligned bounding box of a point list: [minX, minY, maxX, maxY].
+    static pointsBbox(points, bbox = [Infinity, Infinity, -Infinity, -Infinity]) {
+        for (const [x, y] of points) {
+            bbox[0] = Math.min(bbox[0], x); bbox[2] = Math.max(bbox[2], x);
+            bbox[1] = Math.min(bbox[1], y); bbox[3] = Math.max(bbox[3], y);
+        }
+
+        return bbox;
+    }
+
     // Proper 2D segment intersection (walk-line crossings).
     static segmentsCross(ax, ay, bx, by, cx, cy, dx, dy) {
         const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);

@@ -129,4 +129,30 @@ class WadSectorPolygons {
             return {outer: outer, holes: ((own.length > 0) ? own : null)};
         });
     }
+
+    /**
+     * Point-in-sector over a polygon cache ([{outers, ...}]): the SMALLEST
+     * containing outer wins — the cache outers keep the holes inside, so a
+     * nested sector is contained by its parent's outer too and only the area
+     * tie-break picks it. The shared no-BSP lookup (thing placement, weapon
+     * sector light). Returns the cache entry, or null.
+     */
+    static smallestContaining(sectorPolys, doomX, doomY) {
+        let bestArea = null;
+        let best     = null;
+        for (const sec of sectorPolys) {
+            for (const outer of sec.outers) {
+                if (!WadGeometry.pointInPolygon2d(doomX, doomY, outer)) {
+                    continue;
+                }
+                const area = Math.abs(WadGeometry.polygonAreaSign(outer));
+                if ((bestArea === null) || (area < bestArea)) {
+                    bestArea = area;
+                    best     = sec;
+                }
+            }
+        }
+
+        return best;
+    }
 }

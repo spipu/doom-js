@@ -162,9 +162,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         ]), gl.STATIC_DRAW);
     }
 
-    // One textured quad drawn over the scene, depth test OFF, tinted by light
-    // (contract on Object3dRendererBase.drawScreenSprite).
-    drawScreenSprite(engine, texId, x, y, w, h, light) {
+    // One textured quad drawn over the scene, depth test OFF, tinted by light,
+    // faded by alpha (contract on Object3dRendererBase.drawScreenSprite). The
+    // scene-wide light override floors the tint here too — the overlay is part
+    // of the scene (view sprites), so a fullbright scene lights it as well.
+    drawScreenSprite(engine, texId, x, y, w, h, light, alpha = 1) {
+        light = Math.max(light, (engine.lightOverride ?? 0));
         const gl  = engine.scrCtx;
         const tex = ((texId !== null) ? loader.textures().get(texId) : null);
         if (!gl || !tex) {
@@ -194,6 +197,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, tex));
         gl.uniform1i(loc.tex, 0);
         gl.uniform1f(loc.light, light);
+        gl.uniform1f(loc.alpha, alpha);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.enable(gl.DEPTH_TEST);
     }
@@ -210,14 +214,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         `, `
             precision mediump float;
             uniform sampler2D u_tex;
-            uniform float u_light;
+            uniform float u_light, u_alpha;
             varying vec2 v_uv;
             void main() {
                 vec4 t = texture2D(u_tex, v_uv);
                 if (t.a < 0.5) {
                     discard;
                 }
-                gl_FragColor = vec4(t.rgb * u_light, t.a);
+                // Premultiplied output (the frame blends ONE, ONE_MINUS_SRC_ALPHA)
+                gl_FragColor = vec4(t.rgb * u_light * u_alpha, t.a * u_alpha);
             }
         `);
 
@@ -226,6 +231,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             aUv:   gl.getAttribLocation( this._overlayProgram, 'a_uv'),
             tex:   gl.getUniformLocation(this._overlayProgram, 'u_tex'),
             light: gl.getUniformLocation(this._overlayProgram, 'u_light'),
+            alpha: gl.getUniformLocation(this._overlayProgram, 'u_alpha'),
         };
 
         this._overlayVbo = gl.createBuffer();
@@ -257,7 +263,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.far,  engine.zBuffer.getFar());
 
         // Depth shading curve — read every draw so a toggle applies instantly.
-        const ds = ((engine.depthShading !== null) ? engine.depthShading : this._dsNeutral);
+        // An active light override (> 0) floors every face's light in the
+        // shader AND bypasses the curve (a fullbright scene has no distance
+        // attenuation).
+        const ov = ((((engine.lightOverride ?? 0) > 0)) ? engine.lightOverride : null);
+        const ds = (((engine.depthShading !== null) && (ov === null)) ? engine.depthShading : this._dsNeutral);
         gl.uniform1f(loc.dsVis,      ds.visibility);
         gl.uniform1f(loc.dsVisMax,   ds.visibilityMax);
         gl.uniform1f(loc.dsBase,     ds.shadeBase);
@@ -330,6 +340,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
             gl.uniform1f(loc.alpha, group.alpha);
             gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
+            // Additive groups (energy glows) carry their own light — flooring
+            // them would oversaturate the accumulation, so they keep theirs.
+            gl.uniform1f(loc.lightFloor, (((ov !== null) && !group.blendAdd) ? ov : 0));
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
@@ -500,6 +513,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform int       u_hasTex;
             uniform float     u_alpha;
             uniform int       u_clampV;
+            uniform float     u_lightFloor;
             uniform float     u_dsVis, u_dsVisMax, u_dsBase, u_dsScale, u_dsRamp, u_dsStrength;
             varying vec3 v_color;
             varying vec2 v_uv;
@@ -508,6 +522,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             void main() {
                 vec3  col;
                 float a;
+                vec4  t   = vec4(0.0);
+                vec3  lit = v_color;
                 if (u_hasTex == 1) {
                     vec2 uv;
                     if (u_clampV == 1) {
@@ -516,14 +532,25 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     } else {
                         uv = fract(v_uv);
                     }
-                    vec4 t  = texture2D(u_tex, uv);
+                    t = texture2D(u_tex, uv);
                     if (t.a < 0.5) {
                         discard;
                     }
-                    col = min(v_color * t.rgb, vec3(1.0));
+                } else {
+                    lit = lit / 255.0;
+                }
+                // Scene-wide light floor (engine.setLightOverride, 0 = off):
+                // lifts the vertex LIGHT to the floor before the texture
+                // applies — hue-preserving scale, a black face goes grey.
+                if (u_lightFloor > 0.0) {
+                    float m = max(lit.r, max(lit.g, lit.b));
+                    lit = ((m > 0.0) ? (lit * max(1.0, u_lightFloor / m)) : vec3(u_lightFloor));
+                }
+                if (u_hasTex == 1) {
+                    col = min(lit * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
                 } else {
-                    col = min(v_color / 255.0, vec3(1.0));
+                    col = min(lit, vec3(1.0));
                     a   = u_alpha;
                 }
                 // Depth shading (engine.setDepthShading): the pixel darkens
@@ -557,6 +584,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             hasTex:     gl.getUniformLocation(this._program, 'u_hasTex'),
             alpha:      gl.getUniformLocation(this._program, 'u_alpha'),
             clampV:     gl.getUniformLocation(this._program, 'u_clampV'),
+            lightFloor: gl.getUniformLocation(this._program, 'u_lightFloor'),
             dsVis:      gl.getUniformLocation(this._program, 'u_dsVis'),
             dsVisMax:   gl.getUniformLocation(this._program, 'u_dsVisMax'),
             dsBase:     gl.getUniformLocation(this._program, 'u_dsBase'),

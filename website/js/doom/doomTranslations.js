@@ -134,6 +134,14 @@ class DoomTranslations {
             'hud.armor':               {fr: 'AR',                                    en: 'AR'},
             'hud.ammo':                {fr: 'MUNITIONS',                             en: 'AMMO'},
 
+            // Running power-up effects (one shared label per effect, whatever
+            // the game's item name — user decision)
+            'effect.berserk':          {fr: 'Berserk',                               en: 'Berserk'},
+            'effect.invulnerability':  {fr: 'Invulnérabilité',                       en: 'Invulnerability'},
+            'effect.radiationSuit':    {fr: 'Anti-radiations',                       en: 'Radiation suit'},
+            'effect.light':            {fr: 'Vision de nuit',                        en: 'Night vision'},
+            'effect.invisibility':     {fr: 'Invisibilité',                          en: 'Invisibility'},
+
             // --- Units (byte sizes) ---
             'unit.megabyte':           {fr: 'Mo',                                    en: 'MB'},
             'unit.kilobyte':           {fr: 'Ko',                                    en: 'KB'},

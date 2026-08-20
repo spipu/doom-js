@@ -119,10 +119,9 @@ class DoomUser extends User {
         return this;
     }
 
-    // Invulnerability fully blocks damage while active. The other timed effects
-    // are state-only for now: radiation (anti-sludge) waits on sector damage,
-    // invisibility on enemy targeting, light on a full-bright render hook —
-    // none of those systems exist yet (see .source/next-steps.md).
+    // Invulnerability fully blocks damage while active (the other timed
+    // effects are consumed by their own systems: sector damage, the screen
+    // tints, the light override, the weapon alpha).
     takeDamage(delta) {
         if (this.hasEffect('invulnerability')) {
             return;
@@ -138,6 +137,15 @@ class DoomUser extends User {
 
     hasEffect(code) {
         return (this._effects[code] !== undefined);
+    }
+
+    // Running AND outside the blink-off phases of the vanilla end-of-powerup
+    // strobe (ST_doPaletteStuff) — the single visibility rule shared by the
+    // screen tints, the HUD countdown lines, the light override and the
+    // weapon alpha.
+    isEffectVisible(code) {
+        const remainingMs = this._effects[code];
+        return ((remainingMs !== undefined) && WadConstants.powerupVisibleMs(remainingMs));
     }
 
     updateEffects(dt) {

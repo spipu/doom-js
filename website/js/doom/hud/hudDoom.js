@@ -96,20 +96,18 @@ class HudDoom extends AbstractHud {
     }
 
     // The ONE aggregation of every screen tint, composited like UZDoom's
-    // V_AddPlayerBlend (v_blend.cpp, same order): the powerup layers first —
-    // radiation suit (RADIATIONPAL green, solid until 4*32 remaining tics
-    // then strobing), berserk red wash fading out — then the pickup pulse
-    // (BONUS gold) and the damage/death reds merged in: a decaying red fades
-    // back into the layers it was mixed with instead of dipping through
-    // transparent. Future powerup tints (invulnerability) slot in as extra
-    // layers.
+    // V_AddPlayerBlend (v_blend.cpp, same order): the powerup layers first
+    // (POWERUP_SCREEN_TINTS — radiation green, invulnerability gold — solid
+    // until 4*32 remaining tics then strobing), berserk red wash fading out,
+    // then the pickup pulse (BONUS gold) and the damage/death reds merged in:
+    // a decaying red fades back into the layers it was mixed with instead of
+    // dipping through transparent.
     _computeScreenTint() {
         const palette = WadConstants.SCREEN_FLASH_PALETTE;
         const blend   = [0, 0, 0, 0];
-        const radMs   = this._user.getEffects()['radiation'];
-        if (radMs !== undefined) {
-            if (WadConstants.powerupTintVisible(WadConstants.msToTics(radMs))) {
-                AbstractHud.addBlend(blend, WadConstants.RADSUIT_SCREEN_TINT.rgb, WadConstants.RADSUIT_SCREEN_TINT.alpha);
+        for (const [code, tint] of HudDoom.POWERUP_TINT_ENTRIES) {
+            if (this._user.isEffectVisible(code)) {
+                AbstractHud.addBlend(blend, tint.rgb, tint.alpha);
             }
         }
         const berserkMs = this._user.getEffects()['berserkFlash'];
@@ -158,3 +156,5 @@ class HudDoom extends AbstractHud {
         this._crosshair.appendChild(vertical);
     }
 }
+
+HudDoom.POWERUP_TINT_ENTRIES = Object.entries(WadConstants.POWERUP_SCREEN_TINTS);

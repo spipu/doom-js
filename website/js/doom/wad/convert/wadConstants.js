@@ -796,15 +796,47 @@ class WadConstants {
         pickup: {rgb: [215, 186, 69], maxAlpha: 0.35}
     };
 
-    // Radiation-suit ambient tint: vanilla shows RADIATIONPAL (palette 13),
-    // UZDoom blends PowerIronFeet as "00 ff 00" at 0.125 (powerups.zs).
-    static RADSUIT_SCREEN_TINT = {rgb: [0, 255, 0], alpha: 0.125};
+    // Ambient tint of a running power-up (effect code → blend layer):
+    //  - radiation: vanilla RADIATIONPAL (palette 13), UZDoom blends
+    //    PowerIronFeet as "00 ff 00" at 0.125 (powerups.zs);
+    //  - invulnerability: deliberate deviation from the vanilla
+    //    INVERSECOLORMAP (user decision) — one golden wash for every game.
+    static POWERUP_SCREEN_TINTS = {
+        radiation:       {rgb: [0, 255, 0],   alpha: 0.125},
+        invulnerability: {rgb: [255, 200, 0], alpha: 0.25}
+    };
 
-    // End-of-powerup blink (ST_doPaletteStuff): the tint stays solid above
+    // HUD line shown while the effect runs (label code → doomTranslations);
+    // effects absent from this table (berserkFlash…) get no line.
+    static EFFECT_HUD_LABELS = {
+        invulnerability: 'effect.invulnerability',
+        radiation:       'effect.radiationSuit',
+        light:           'effect.light',
+        invisibility:    'effect.invisibility'
+    };
+
+    // Same, for the PERMANENT power-ups carried as items (whole level, no
+    // countdown). The map items (computerMap / superMap) stay out on purpose:
+    // their effect is a no-op without an automap (user decision).
+    static PERMANENT_ITEM_HUD_LABELS = {
+        berserk: 'effect.berserk'
+    };
+
+    // Partial invisibility: the weapon in hand fades to this alpha (GZDoom
+    // renders the owner's psprites translucent under MF_SHADOW).
+    static INVISIBILITY_WEAPON_ALPHA = 0.33;
+
+    // Night vision (light visor / torch): scene-wide light floor pushed to
+    // Engine3d.setLightOverride — 1 = full bright, the vanilla colormap 0.
+    static NIGHT_VISION_LIGHT = 1;
+
+    // End-of-powerup blink (ST_doPaletteStuff): the effect stays solid above
     // 4*32 remaining tics, then strobes on the 8-tic bit of the countdown.
+    // Fed by the ms-based effect clocks (DoomUser.getEffects()).
     static POWERUP_BLINK_THRESHOLD_TICS = 128;
 
-    static powerupTintVisible(remainingTics) {
+    static powerupVisibleMs(remainingMs) {
+        const remainingTics = WadConstants.msToTics(remainingMs);
         return ((remainingTics > WadConstants.POWERUP_BLINK_THRESHOLD_TICS)
             || ((Math.trunc(remainingTics) & 8) !== 0));
     }

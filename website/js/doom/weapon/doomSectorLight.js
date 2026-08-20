@@ -21,15 +21,15 @@ class DoomSectorLight {
     }
 
     /**
-     * @param {object[]}      sectorPolys      polygon cache (fallback lookup) — released
+     * @param {object[]}      sectorPolys      polygon cache (fallback lookup) — dropped
      *                                         when the BSP path makes it unreachable
      * @param {object|null}   lightInteraction live flicker/strobe factors
      * @param {function|null} sectorAt         (doomX, doomY) → si|null (BSP)
      * @param {object[]|null} sectors          live parsed sectors, for the BSP path
      */
     constructor(sectorPolys, lightInteraction = null, sectorAt = null, sectors = null) {
-        this._usesBsp    = ((sectorAt !== null) && (sectors !== null));
-        this._polys      = ((this._usesBsp) ? [] : sectorPolys);
+        const usesBsp    = ((sectorAt !== null) && (sectors !== null));
+        this._polys      = ((usesBsp) ? null : sectorPolys);
         this._lights     = lightInteraction;
         this._sectorAtFn = sectorAt;
         this._sectors    = sectors;
@@ -53,28 +53,15 @@ class DoomSectorLight {
         return Math.min(1, floor + (slope * faceLight));
     }
 
-    // BSP lookup when available (the vanilla R_PointInSubsector answer), else
-    // smallest containing sector polygon (nested sectors), matching
-    // WadWorldBuilder._findSector.
+    // BSP lookup when available (the vanilla R_PointInSubsector answer; the
+    // polygon cache is dropped then), else the shared smallest-containing
+    // walk over the cache — the same rule as WadWorldBuilder._findSector.
     _sectorAt(doomX, doomY) {
-        if (this._usesBsp) {
+        if (this._polys === null) {
             const si = this._sectorAtFn(doomX, doomY);
             return ((si !== null) ? {si: si, light: this._sectors[si].light} : null);
         }
-        let bestArea = null;
-        let best     = null;
-        for (const sec of this._polys) {
-            for (const outer of sec.outers) {
-                if (!WadGeometry.pointInPolygon2d(doomX, doomY, outer)) {
-                    continue;
-                }
-                const area = Math.abs(WadGeometry.polygonAreaSign(outer));
-                if ((bestArea === null) || (area < bestArea)) {
-                    bestArea = area;
-                    best     = sec;
-                }
-            }
-        }
-        return best;
+
+        return WadSectorPolygons.smallestContaining(this._polys, doomX, doomY);
     }
 }

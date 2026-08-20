@@ -107,7 +107,6 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
     // Damage only applies with the feet ON the sector floor (an airborne or
     // riding player is safe, like vanilla's mo->z != floorheight check).
     _zoneUnderUser(user) {
-        return this._zones.zoneAt(user.x / WadConstants.SCALE, user.z / WadConstants.SCALE,
-            (zone) => (Math.abs(user.y - zone.floorY) <= WadConstants.ON_FLOOR_TOLERANCE));
+        return this._zones.zoneUnderFeet(user.x, user.y, user.z);
     }
 }
