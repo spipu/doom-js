@@ -866,7 +866,13 @@ class WadConstants {
         // 0.5625 m) at the vanilla gravity: v = sqrt(2 * 19.141 * 0.5625).
         maxJumpVelocity: 4.640,
         maxSlopeAngle:   50,
-        moveSpeed:       0.0045,
+        // Run by default (cl_run), tuned to ~2/3 of the vanilla forwardmove 50
+        // (≈ 0.0091): deliberate deviation — the jump (absent from vanilla)
+        // extends the reach, so the run-across gaps stay crossable (playtested
+        // on MAP20's alcove) at a tamer top speed. The walk-slow modifier
+        // halves it, and a partial analog deflection covers everything in
+        // between.
+        moveSpeed:       0.006,
         stepHeight:      0.375,
         // Kill plane: below every real map floor — falling out of the map
         // (through a geometry hole) kills the player instead of falling forever.
