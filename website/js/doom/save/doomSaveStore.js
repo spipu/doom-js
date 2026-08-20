@@ -8,7 +8,7 @@
  */
 class DoomSaveStore {
     static MAX_SLOTS      = 5;
-    static FORMAT_VERSION = 1;
+    static FORMAT_VERSION = 2;
 
     constructor() {
         this._database = null;

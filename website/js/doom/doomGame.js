@@ -704,6 +704,7 @@ class DoomGame {
             this._decals.update(dt);
         }
         this._applyDisplaySettings();
+        this._pushEffectDisplay(this._world.getUser());
         this._engine.displayWorld(this._world);
         this._screen.update();
 
@@ -724,6 +725,14 @@ class DoomGame {
             (on) => this._engine.setTextureSmoothing(on));
     }
 
+    // Engine-facing state of the running effects, re-derived every frame:
+    // night vision (Doom light visor / Heretic torch) = scene-wide light
+    // floor, blinking through the vanilla end-of-powerup window.
+    _pushEffectDisplay(user) {
+        this._engine.setLightOverride(((user.isEffectVisible('light'))
+            ? WadConstants.NIGHT_VISION_LIGHT : null));
+    }
+
     _pushDisplaySetting(current, wanted, apply) {
         if (wanted !== current) {
             apply(wanted);
@@ -740,8 +749,12 @@ class DoomGame {
     // original game puts them.
     _drawWeaponOverlay(renderer, engine) {
         const k = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
+        // Partial invisibility: the weapon in hand fades out, flashing back
+        // solid through the vanilla end-of-powerup blink.
+        const alpha = ((this._world.getUser().isEffectVisible('invisibility'))
+            ? WadConstants.INVISIBILITY_WEAPON_ALPHA : 1);
         for (const spr of this._playerWeapon.getViewSprites()) {
-            renderer.drawScreenSprite(engine, spr.texId, 0.5 + (spr.x - 0.5) * k, spr.y, spr.w * k, spr.h, spr.light);
+            renderer.drawScreenSprite(engine, spr.texId, 0.5 + (spr.x - 0.5) * k, spr.y, spr.w * k, spr.h, spr.light, alpha);
         }
     }
 

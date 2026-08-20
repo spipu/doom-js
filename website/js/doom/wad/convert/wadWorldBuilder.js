@@ -157,8 +157,7 @@ class WadWorldBuilder {
         // Sector membership test of the runtime zone interactions: with a BSP
         // it is the tree itself (exact, unclosed sectors included) and EVERY
         // sector carrying the special becomes a zone; without it the polygon
-        // outers stay both the filter and the runtime test. The closure
-        // captures the TREE only, so the parsed level can be collected.
+        // outers stay both the filter and the runtime test.
         const bspTree  = level.bspTree;
         const sectorAt = ((bspTree !== null)
             ? ((doomX, doomY) => bspTree.findSector(doomX, doomY))
@@ -1038,20 +1037,7 @@ class WadWorldBuilder {
                 return {si: si, fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
             }
         }
-        let bestArea  = null;
-        let contained = null;
-        for (const sec of this._sectorPolys) {
-            for (const outer of sec.outers) {
-                if (!WadGeometry.pointInPolygon2d(doomX, doomY, outer)) {
-                    continue;
-                }
-                const area = Math.abs(WadGeometry.polygonAreaSign(outer));
-                if (bestArea === null || area < bestArea) {
-                    bestArea  = area;
-                    contained = sec;
-                }
-            }
-        }
+        const contained = WadSectorPolygons.smallestContaining(this._sectorPolys, doomX, doomY);
         if (contained !== null) {
             return {si: contained.si, fh: contained.fh, ch: contained.ch, light: contained.light, tag: contained.tag};
         }

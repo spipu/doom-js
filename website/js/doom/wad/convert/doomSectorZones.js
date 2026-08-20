@@ -15,10 +15,13 @@ class DoomSectorZones {
     constructor(zones, sectorAt = null) {
         this._zones    = zones;
         this._sectorAt = sectorAt;
-        this._bySi     = ((sectorAt !== null) ? new Map(zones.map((zone) => [zone.si, zone])) : null);
+        this._bySi     = new Map(zones.map((zone) => [zone.si, zone]));
         if (sectorAt === null) {
             for (const zone of zones) {
-                zone.bbox = DoomSectorZones._bboxOf(zone.outers);
+                zone.bbox = [Infinity, Infinity, -Infinity, -Infinity];
+                for (const outer of zone.outers) {
+                    WadGeometry.pointsBbox(outer, zone.bbox);
+                }
             }
         }
     }
@@ -28,11 +31,26 @@ class DoomSectorZones {
     }
 
     bySi(si) {
-        if (this._bySi !== null) {
-            return (this._bySi.get(si) ?? null);
+        return (this._bySi.get(si) ?? null);
+    }
+
+    /**
+     * The zone under an actor's FEET (world coordinates): containing the
+     * position AND with the actor standing on its floor — the vanilla
+     * mo->z == floorheight gate of the damage and secret sectors. Zones
+     * failing the floor gate do not stop the search (nested outers overlap
+     * in polygon mode).
+     */
+    zoneUnderFeet(worldX, worldY, worldZ) {
+        const doomX = worldX / WadConstants.SCALE;
+        const doomY = worldZ / WadConstants.SCALE;
+        const onFloor = (zone) => (Math.abs(worldY - zone.floorY) <= WadConstants.ON_FLOOR_TOLERANCE);
+        if (this._sectorAt !== null) {
+            const zone = this._bySi.get(this._sectorAt(doomX, doomY));
+            return (((zone !== undefined) && onFloor(zone)) ? zone : null);
         }
         for (const zone of this._zones) {
-            if (zone.si === si) {
+            if (this._containsPoint(zone, doomX, doomY) && onFloor(zone)) {
                 return zone;
             }
         }
@@ -40,24 +58,12 @@ class DoomSectorZones {
         return null;
     }
 
-    /**
-     * First zone containing the point and passing match (BSP mode: the point's
-     * own sector zone or none). Zones failing match do not stop the search.
-     */
-    zoneAt(doomX, doomY, match = null) {
-        let found = null;
-        this.eachZoneAt(doomX, doomY, (zone) => {
-            if ((found === null) && ((match === null) || match(zone))) {
-                found = zone;
-            }
-        });
-
-        return found;
-    }
-
-    // Every zone containing the point — at most one in BSP mode, every
-    // containing outer in polygon mode (nested sectors overlap there).
-    eachZoneAt(doomX, doomY, callback) {
+    // Every zone containing the point (world coordinates) — at most one in
+    // BSP mode, every containing outer in polygon mode (nested sectors
+    // overlap there).
+    eachZoneAt(worldX, worldZ, callback) {
+        const doomX = worldX / WadConstants.SCALE;
+        const doomY = worldZ / WadConstants.SCALE;
         if (this._sectorAt !== null) {
             const zone = this._bySi.get(this._sectorAt(doomX, doomY));
             if (zone !== undefined) {
@@ -66,11 +72,7 @@ class DoomSectorZones {
             return;
         }
         for (const zone of this._zones) {
-            if ((doomX < zone.bbox[0]) || (doomX > zone.bbox[2])
-                || (doomY < zone.bbox[1]) || (doomY > zone.bbox[3])) {
-                continue;
-            }
-            if (this._inOuters(zone, doomX, doomY)) {
+            if (this._containsPoint(zone, doomX, doomY)) {
                 callback(zone);
             }
         }
@@ -81,9 +83,7 @@ class DoomSectorZones {
         if (idx >= 0) {
             this._zones.splice(idx, 1);
         }
-        if (this._bySi !== null) {
-            this._bySi.delete(zone.si);
-        }
+        this._bySi.delete(zone.si);
     }
 
     retain(predicate) {
@@ -94,7 +94,11 @@ class DoomSectorZones {
         }
     }
 
-    _inOuters(zone, doomX, doomY) {
+    _containsPoint(zone, doomX, doomY) {
+        if ((doomX < zone.bbox[0]) || (doomX > zone.bbox[2])
+            || (doomY < zone.bbox[1]) || (doomY > zone.bbox[3])) {
+            return false;
+        }
         for (const outer of zone.outers) {
             if (WadGeometry.pointInPolygon2d(doomX, doomY, outer)) {
                 return true;
@@ -102,17 +106,5 @@ class DoomSectorZones {
         }
 
         return false;
-    }
-
-    static _bboxOf(outers) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const outer of outers) {
-            for (const [x, y] of outer) {
-                minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-                minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-            }
-        }
-
-        return [minX, minY, maxX, maxY];
     }
 }

@@ -14,11 +14,12 @@
 class HudGameBar extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._game    = null;
-        this._root    = null;
-        this._els     = {};
-        this._keyEls  = {};
-        this._armsEls = {};
+        this._game      = null;
+        this._root      = null;
+        this._els       = {};
+        this._keyEls    = {};
+        this._armsEls   = {};
+        this._effectEls = {};
     }
 
     // The weapon slots and the key set are per-game data: both come from the
@@ -85,6 +86,7 @@ class HudGameBar extends AbstractHud {
         this._updateAmmo(u);
         this._updateArms(u);
         this._updateKeys(u);
+        this._updateEffects(u);
 
         if (this._game !== null) {
             this._els.secretsValue.innerText = this._game.getSecretsFound() + '/' + this._game.getSecretsTotal();
@@ -140,6 +142,32 @@ class HudGameBar extends AbstractHud {
         return ((appTranslator.has(translationCode)) ? appTranslator.get(translationCode) : weapon.getName());
     }
 
+    // One line per running power-up: timed ones with a M:SS countdown,
+    // blinking through the vanilla end-of-powerup window in sync with their
+    // screen effect; permanent ones (berserk — the vanilla status-bar face's
+    // job) label only. The blink hides without collapsing (visibility), so
+    // the stack keeps its height.
+    _updateEffects(u) {
+        const effects = u.getEffects();
+        for (const def of HudGameBar.EFFECT_LINE_DEFS) {
+            const el          = this._effectEls[def.code];
+            const remainingMs = effects[def.code];
+            const active      = ((def.timed) ? (remainingMs !== undefined) : u.hasItem(def.code));
+            el.style.display = ((active) ? 'block' : 'none');
+            if (!active) {
+                continue;
+            }
+            if (def.timed) {
+                const seconds = Math.ceil(remainingMs / 1000);
+                el.innerText = appTranslator.get(def.labelCode) + ' '
+                    + Math.trunc(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+                el.style.visibility = ((u.isEffectVisible(def.code)) ? 'visible' : 'hidden');
+            } else {
+                el.innerText = appTranslator.get(def.labelCode);
+            }
+        }
+    }
+
     _updateKeys(u) {
         const keyColors = this._keyColors();
         const owned     = new Set(u.getItemCodes());
@@ -155,6 +183,20 @@ class HudGameBar extends AbstractHud {
 
     _buildHealthArmor() {
         const block = this._createEl('div', this._cornerStyle({ bottom: '1em', left: '1em' }));
+
+        // Running power-up effects, one line each, stacked above the bars —
+        // pre-built in table order and toggled per frame, like the key pips.
+        this._els.effects = this._createEl('div', {
+            marginBottom: '0.35em', fontSize: '0.8em', fontWeight: '700'
+        });
+        for (const def of HudGameBar.EFFECT_LINE_DEFS) {
+            const el = this._createEl('div', {
+                display: 'none', color: '#ffd75e', textShadow: '0 0 0.2em #000'
+            });
+            this._effectEls[def.code] = el;
+            this._els.effects.appendChild(el);
+        }
+        block.appendChild(this._els.effects);
 
         const health = this._buildBarRow(appTranslator.get('hud.health'), '#5dd35d');
         this._els.healthFill  = health.fill;
@@ -304,3 +346,10 @@ class HudGameBar extends AbstractHud {
         return el;
     }
 }
+
+// Effect-line order: the timed effects first, then the permanent
+// item-carried ones.
+HudGameBar.EFFECT_LINE_DEFS = [
+    ...Object.entries(WadConstants.EFFECT_HUD_LABELS).map(([code, labelCode]) => ({code, labelCode, timed: true})),
+    ...Object.entries(WadConstants.PERMANENT_ITEM_HUD_LABELS).map(([code, labelCode]) => ({code, labelCode, timed: false}))
+];
