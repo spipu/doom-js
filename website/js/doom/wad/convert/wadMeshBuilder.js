@@ -53,22 +53,64 @@ class WadMeshBuilder {
         };
     }
 
-    // Moving top flat of a sector (floor surface at origFh, normal up): one
-    // quad per outer polygon, holes preserved (a ring-shaped platform must not
-    // cover the inner sector). Shared by the lift and rising-floor builders;
-    // the stair builder keeps its own raw-chains variant (see there).
+    // Moving top flat of a sector (floor surface at origFh, normal up).
+    // Shared by the lift and rising-floor builders; the stair builder keeps
+    // its own raw-chains variant (see there).
     static addSectorTopFlat(mesh, level, bank, analysis, si, origFh) {
-        const {vertexes, linedefs, sidedefs, sectors} = level;
-
-        const sec = sectors[si];
+        const sec = level.sectors[si];
         const ft = bank.ensureFlatTex(sec.ft);
         if (ft < 0) {
             return;
         }
+        WadMeshBuilder.addSectorFlat(mesh, level, ft, si, origFh, true, sec.light,
+            {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si)});
+    }
 
-        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, ft, p.outer, origFh, true, sec.light, p.holes, WadMapAnalyzer.lightGroupOf(analysis, si));
+    /**
+     * Full floor or ceiling flat of a sector: the BSP subsector fans when the
+     * level carries a usable tree (correct even on UNCLOSED sectors, and a
+     * ring's inner void simply has no subsector — no holes needed), else the
+     * linedef-chain polygons with their holes (the fallback also nets the rare
+     * sector the carve dropped to epsilon).
+     */
+    static addSectorFlat(mesh, level, texIdx, si, yHeight, isFloor, light, options = {}) {
+        const lightGroup = (options.lightGroup ?? null);
+        const uScroll    = (options.uScroll ?? 0);
+        const collisionOnly = (options.collisionOnly === true);
+
+        const bspPolys = ((level.bspTree ?? null) !== null) ? level.bspTree.polysOfSector(si) : [];
+        if (bspPolys.length > 0) {
+            for (const poly of bspPolys) {
+                WadMeshBuilder.addConvexFlat(mesh, texIdx, poly, yHeight, isFloor, light, lightGroup, uScroll, collisionOnly);
+            }
+            return;
         }
+        const {vertexes, linedefs, sidedefs} = level;
+        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
+            WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, light, p.holes, lightGroup, uScroll, collisionOnly);
+        }
+    }
+
+    /**
+     * One CONVEX flat polygon fanned from its first vertex ((numlines - 2)
+     * triangles, GZDoom hw_vertexbuilder) — the per-subsector path, no
+     * triangulator involved.
+     */
+    static addConvexFlat(mesh, texIdx, convexPolyDoom, yHeight, isFloor, light = 128, lightGroup = null, uScrollUvPerSec = 0, collisionOnly = false) {
+        if (convexPolyDoom.length < 3) {
+            return;
+        }
+        let polyLocal = convexPolyDoom;
+        let xz = polyLocal.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
+        if (WadGeometry.polygonAreaSign(xz) > 0) {
+            xz        = [...xz].reverse();
+            polyLocal = [...polyLocal].reverse();
+        }
+        const tris = [];
+        for (let i = 1; i < xz.length - 1; i++) {
+            tris.push([0, i, i + 1]);
+        }
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
     }
 
     /**
@@ -182,8 +224,6 @@ class WadMeshBuilder {
             return;
         }
 
-        const c = Math.trunc(light);
-
         let xz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
         let polyLocal = [...polyVerts2d];
         let preTris   = null;
@@ -240,12 +280,17 @@ class WadMeshBuilder {
             }
         }
 
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, preTris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
+    }
+
+    // Shared emitter of triangulated flat faces (points, UVs, winding, flags)
+    // — fed by addFlatQuad (chain polygons) and addConvexFlat (BSP fans).
+    static _emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly) {
+        const c = Math.trunc(light);
         const base = mesh.points.length;
         for (const [x, z] of xz) {
             mesh.points.push([x, yHeight * WadConstants.SCALE, z]);
         }
-
-        const tris = preTris;
 
         // Vanilla maps flats as v = -y/64 (R_MapPlane); Object3d.fcAdd flips V
         // (1 - v) at load, so the vanilla minus is authored as +y here.

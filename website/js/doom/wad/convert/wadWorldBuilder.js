@@ -47,6 +47,9 @@ class WadWorldBuilder {
         const animBank = new WadAnimationBank(this._wadFile, bank, this._profile).init();
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
+        // BSP tree (null on missing/foreign lumps → chain-polygon fallback):
+        // subsector flats stay correct on UNCLOSED sectors (MAP21 sector 50).
+        level.bspTree = WadBspTree.build(level);
         new WadSpecialTranslator(this._profile).translate(level);
         const bossActions = this._levelBossActions();
         const analysis = new WadMapAnalyzer(level, {
@@ -151,23 +154,28 @@ class WadWorldBuilder {
         }
         await this._yield();
 
+        // Sector membership test of the runtime zone interactions: with a BSP
+        // it is the tree itself (exact, unclosed sectors included) and EVERY
+        // sector carrying the special becomes a zone; without it the polygon
+        // outers stay both the filter and the runtime test.
+        const sectorAt = (((level.bspTree ?? null) !== null)
+            ? ((doomX, doomY) => level.bspTree.findSector(doomX, doomY))
+            : null);
+
         // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
         // polling the player's sector every 32-tic window. The "+change" target
         // sectors are included too (their special mutates at runtime); a lift's
         // zone sits at the ORIGINAL floor (the platform rests up, the static fh
         // is patched down).
-        const damageZones = this._sectorPolys
-            .filter((s) => (WadConstants.SECTOR_DAMAGE_BY_SPECIAL[s.special] !== undefined)
-                || (analysis.floorChange[s.si] !== undefined))
-            .map((s) => ({
-                si:      s.si,
-                outers:  s.outers,
-                floorY:  (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE,
-                special: s.special
-            }));
+        const damageZones = this._sectorZones(analysis, sectorAt,
+            (si, special) => ((WadConstants.SECTOR_DAMAGE_BY_SPECIAL[special] !== undefined)
+                || (analysis.floorChange[si] !== undefined)),
+            (zone, special) => {
+                zone.special = special;
+            });
         let damageInteraction = null;
         if (damageZones.length > 0) {
-            damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit);
+            damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit, sectorAt);
             loader.interactions().loadFromData(damageInteraction);
         }
 
@@ -175,18 +183,15 @@ class WadWorldBuilder {
         // per-level interaction feeding the player's ActorExternalForces each
         // frame. Same zone shape as the damage interaction; the tables are
         // empty outside the game profiles that fill them (Heretic).
-        const pushZones = this._sectorPolys
-            .filter((s) => (WadConstants.SECTOR_PUSH_BY_SPECIAL[s.special] !== undefined)
-                || (WadConstants.SECTOR_FRICTION_BY_SPECIAL[s.special] !== undefined))
-            .map((s) => ({
-                si:       s.si,
-                outers:   s.outers,
-                floorY:   (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE,
-                push:     (WadConstants.SECTOR_PUSH_BY_SPECIAL[s.special] ?? null),
-                friction: (WadConstants.SECTOR_FRICTION_BY_SPECIAL[s.special] ?? null)
-            }));
+        const pushZones = this._sectorZones(analysis, sectorAt,
+            (si, special) => ((WadConstants.SECTOR_PUSH_BY_SPECIAL[special] !== undefined)
+                || (WadConstants.SECTOR_FRICTION_BY_SPECIAL[special] !== undefined)),
+            (zone, special) => {
+                zone.push     = (WadConstants.SECTOR_PUSH_BY_SPECIAL[special] ?? null);
+                zone.friction = (WadConstants.SECTOR_FRICTION_BY_SPECIAL[special] ?? null);
+            });
         if (pushZones.length > 0) {
-            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem));
+            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem, sectorAt));
         }
 
         // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
@@ -200,22 +205,18 @@ class WadWorldBuilder {
 
         // Secret sectors (special 9): the level total is a game stat, each
         // secret is credited once when the player stands on its floor.
-        const secretZones = this._sectorPolys
-            .filter((s) => (s.special === WadConstants.SECTOR_SECRET_SPECIAL))
-            .map((s) => ({
-                si:     s.si,
-                outers: s.outers,
-                floorY: (analysis.liftOriginalFh[s.si] ?? s.fh) * WadConstants.SCALE
-            }));
+        const secretZones = this._sectorZones(analysis, sectorAt,
+            (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
         if (this._game !== null) {
             this._game.setSecretsTotal(secretZones.length);
             if (secretZones.length > 0) {
-                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
+                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game, sectorAt));
             }
             // Hand over the sector-light lookup (else the poly cache is dropped);
             // used to shade the weapon view sprite by the player's sector, pulsing
             // with the sector's light effect via the interaction's live factor.
-            this._game.setSectorLight(new DoomSectorLight(this._sectorPolys, lightInteraction));
+            this._game.setSectorLight(new DoomSectorLight(this._sectorPolys, lightInteraction,
+                sectorAt, level.sectors.map((s) => s.light)));
         }
 
         // "+change" floors: swap the moving top-flat texture (and the sector's
@@ -984,12 +985,52 @@ class WadWorldBuilder {
         return cache;
     }
 
-    // Find the sector at a point: smallest containing outer polygon (nested
-    // sectors). If none contains it (point on a boundary / imperfect polygon),
-    // fall back to the nearest sector within THING_SECTOR_MAX_DIST; beyond that
-    // return null so the caller drops the thing rather than mis-placing it.
+    // Zones of the runtime sector interactions (damage / push / secret). With
+    // a BSP every sector carrying the special is a zone (membership is the
+    // tree, so the unclosed sectors the polygon cache dropped are back in —
+    // secret total included); without it, the cache stays the filter and the
+    // zones carry their polygon outers for the runtime test.
+    _sectorZones(analysis, sectorAt, predicate, decorate) {
+        const zones = [];
+        const pushZone = (si, fh, special, outers) => {
+            if (!predicate(si, special)) {
+                return;
+            }
+            const zone = {si: si, floorY: (analysis.liftOriginalFh[si] ?? fh) * WadConstants.SCALE};
+            if (outers !== null) {
+                zone.outers = outers;
+            }
+            if (decorate !== null) {
+                decorate(zone, special);
+            }
+            zones.push(zone);
+        };
+        if (sectorAt !== null) {
+            this._level.sectors.forEach((sec, si) => pushZone(si, sec.fh, sec.special, null));
+        } else {
+            for (const s of this._sectorPolys) {
+                pushZone(s.si, s.fh, s.special, s.outers);
+            }
+        }
+        return zones;
+    }
+
+    // Find the sector at a point. BSP path first (R_PointInSubsector — the
+    // vanilla answer, O(log n), correct on unclosed sectors); its null
+    // (unattributed leaf) and the no-BSP case fall back to the polygon walk:
+    // smallest containing outer (nested sectors — the cache's outers keep the
+    // holes inside), then the nearest sector within THING_SECTOR_MAX_DIST,
+    // beyond which the caller drops the thing rather than mis-placing it.
     // Returns {si, fh, ch, light, tag} (Doom units) or null.
     _findSector(doomX, doomY) {
+        const bsp = (this._level.bspTree ?? null);
+        if (bsp !== null) {
+            const si = bsp.findSector(doomX, doomY);
+            if (si !== null) {
+                const sec = this._level.sectors[si];
+                return {si: si, fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
+            }
+        }
         let bestArea  = null;
         let contained = null;
         for (const sec of this._sectorPolys) {
