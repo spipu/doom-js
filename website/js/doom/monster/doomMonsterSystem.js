@@ -1052,8 +1052,12 @@ class DoomMonsterSystem {
                 this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
             }
         }
+        // ONFLOORZ: the landing sector may be a mover — the floor is resolved
+        // live from the sector ceiling, landing.y is only the build fallback.
+        const floorY = this._collision.getFloor(landing.x, landing.z, m.inst.getCollisionRadius(), landing.topY);
+        const destY  = ((floorY !== -Infinity) ? floorY : landing.y);
         const pos = m.inst.getTransform().position;
-        m.inst.translate(landing.x - pos[0], landing.y - pos[1], landing.z - pos[2]);
+        m.inst.translate(landing.x - pos[0], destY - pos[1], landing.z - pos[2]);
         this._collision.syncBoxFor(m.inst);
         m.snapRender = true;
         m.facing     = WadGeometry.doomAngleYaw(landing.yaw);

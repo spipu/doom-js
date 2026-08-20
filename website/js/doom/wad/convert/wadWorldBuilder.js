@@ -935,8 +935,12 @@ class WadWorldBuilder {
     }
 
     // Teleport landings: every thing type 14, mapped by the tag of the sector
-    // that contains it, to a world-space destination {x, y, z, yaw}. The y is
-    // the landing floor + a snap margin (the interaction snaps to the floor).
+    // that contains it, to a world-space destination {x, y, topY, z, yaw}.
+    // The arrival height is resolved LIVE at teleport time (EV_Teleport lands
+    // at ONFLOORZ — the landing sector may be a mover): topY = the sector
+    // ceiling, the search top for the runtime floor lookup (never patched,
+    // never below its floor); y = the build-time floor + snap margin, kept as
+    // the fallback when no floor answers.
     _buildTeleportLandings(level) {
         const SCALE = WadConstants.SCALE;
         const landings = {};
@@ -949,10 +953,11 @@ class WadWorldBuilder {
                 continue;
             }
             landings[sec.tag] = {
-                x:   t.x * SCALE,
-                y:   sec.fh * SCALE + 0.3,
-                z:   t.y * SCALE,
-                yaw: WadGeometry.doomAngleYaw(t.angle)
+                x:    t.x * SCALE,
+                y:    sec.fh * SCALE + 0.3,
+                topY: sec.ch * SCALE,
+                z:    t.y * SCALE,
+                yaw:  WadGeometry.doomAngleYaw(t.angle)
             };
         }
         return landings;

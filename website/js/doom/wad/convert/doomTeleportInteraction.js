@@ -36,9 +36,10 @@ class DoomTeleportInteraction extends AbstractInteraction {
         user.yaw = dest.yaw;
         user.syncPositionTracking();
 
-        // Snap onto the landing sector floor (dest.y is the search ceiling),
-        // exactly like DoomGame._applySpawnOverride.
-        const floorY = world.getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
+        // Land at ONFLOORZ (EV_Teleport): the landing sector may be a mover,
+        // so the floor is resolved LIVE, searched from the sector's ceiling —
+        // dest.y is only the build-time fallback set above.
+        const floorY = world.getCollision().getFloor(user.x, user.z, user.getRadius(), dest.topY);
         if (floorY !== -Infinity) {
             user.y = floorY;
         }
