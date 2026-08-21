@@ -226,6 +226,18 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
+    // The MF_COUNTITEM things of info.c: the two bonuses, the two spheres and
+    // the power-ups. Deliberate deviation from the zscript, which dropped the
+    // flag on RadSuit (doomartifacts.zs) — the original counts it, and so do
+    // we (user decision).
+    countedItemTypes() {
+        return new Set([
+            2014, 2015,                    // health bonus, armor bonus
+            2013, 83,                      // soulsphere, megasphere
+            2022, 2023, 2024, 2025, 2026, 2045
+        ]);
+    }
+
     // Shared state blocks of the variant families (the spectre is a demon,
     // the hell knight is a baron): one transcription each.
     _demonStates() {

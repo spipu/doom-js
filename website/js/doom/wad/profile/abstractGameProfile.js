@@ -204,6 +204,19 @@ class AbstractGameProfile {
     }
 
     /**
+     * THING editor numbers that count towards the level's item score (vanilla
+     * MF_COUNTITEM): the bonuses and power-ups only, never weapons, ammo,
+     * medikits, armors or keys. In vanilla these same things also carry
+     * ALWAYSPICKUP, so a counted item is consumed and counted even when it
+     * gives nothing — the pickup path relies on that coincidence.
+     *
+     * @returns {Set<number>}
+     */
+    countedItemTypes() {
+        return new Set();
+    }
+
+    /**
      * Per-skill gameplay rules, transcribed from the game's UZDoom MAPINFO
      * skill blocks. Skill 0 is our own "Labyrinth but no monster" mode: the
      * skill-1 world (spawn filter, ammo, damage) with monsters disabled.

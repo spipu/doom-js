@@ -8,15 +8,17 @@
  */
 class DoomPickupInteraction extends AbstractInteraction {
     /**
-     * @param {string}   code   - unique interaction code, shared with the Instance
-     * @param {object}   effect - pickup effect descriptor from the profile's thing types
-     * @param {DoomGame} game   - exposes applyPickup(user, effect)
+     * @param {string}   code       - unique interaction code, shared with the Instance
+     * @param {object}   effect     - pickup effect descriptor from the profile's thing types
+     * @param {DoomGame} game       - exposes applyPickup(user, effect)
+     * @param {boolean}  countsItem - counts towards the level's item score
      */
-    constructor(code, effect, game) {
+    constructor(code, effect, game, countsItem = false) {
         super();
-        this._code   = code;
-        this._effect = effect;
-        this._game   = game;
+        this._code       = code;
+        this._effect     = effect;
+        this._game       = game;
+        this._countsItem = (countsItem === true);
     }
 
     get code() {
@@ -25,9 +27,19 @@ class DoomPickupInteraction extends AbstractInteraction {
 
     triggered(instance) {
         const user = loader.world().get().getUser();
-        if (this._game.applyPickup(user, this._effect)) {
-            user.flashPickup();
-            loader.instances().scheduleRemoval(instance);
+        // A counted item is taken whatever it gives: the vanilla MF_COUNTITEM
+        // things all carry ALWAYSPICKUP too, so an armor bonus at 200 vanishes
+        // and still scores. An artifact with no effect wired yet is the one
+        // exception — it would disappear for nothing. Everything else keeps the
+        // refusal rule above.
+        const alwaysPickup = (this._countsItem && ((this._effect ?? null) !== null));
+        if (!this._game.applyPickup(user, this._effect) && !alwaysPickup) {
+            return;
         }
+        if (this._countsItem) {
+            this._game.addItem();
+        }
+        user.flashPickup();
+        loader.instances().scheduleRemoval(instance);
     }
 }

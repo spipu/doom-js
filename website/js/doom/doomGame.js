@@ -18,6 +18,10 @@ class DoomGame {
         this._secretsTotal      = 0;
         this._killsCount        = 0;
         this._killsTotal        = 0;
+        this._itemsFound        = 0;
+        this._itemsTotal        = 0;
+        this._levelTimeMs       = 0;
+        this._levelClockLast    = null;
         this._pauseWasDown      = true;
         this._cheatWasDown      = false;
         this._hudWasDown        = false;
@@ -425,6 +429,45 @@ class DoomGame {
         return this._killsTotal;
     }
 
+    // --- Level items (the vanilla MF_COUNTITEM bonuses and power-ups) ---
+
+    setItemsTotal(total) {
+        this._itemsTotal = total;
+    }
+
+    addItem() {
+        this._itemsFound++;
+    }
+
+    getItemsFound() {
+        return this._itemsFound;
+    }
+
+    getItemsTotal() {
+        return this._itemsTotal;
+    }
+
+    // Time spent in the level, pauses excluded (vanilla leveltime).
+    getLevelTimeMs() {
+        return this._levelTimeMs;
+    }
+
+    // Real time between two frames — NOT the engine delta, which is clamped to
+    // 50 ms to keep a long frame from breaking the physics and would make this
+    // clock lag whenever the game dips below 20 fps. The frozen frames (pause,
+    // end-of-level tally) keep the stamp fresh without accumulating, so their
+    // duration simply never enters the total. A gap too long to be a rendered
+    // frame is a backgrounded tab, where requestAnimationFrame stops: the world
+    // did not advance either, so that time is not play time.
+    _tickLevelClock(timestamp) {
+        const now = ((typeof timestamp === 'number') ? timestamp : performance.now());
+        const step = ((this._levelClockLast !== null) ? (now - this._levelClockLast) : 0);
+        if (!this._paused && !this._transitioning && (step > 0) && (step <= DoomGame.LEVEL_CLOCK_MAX_STEP_MS)) {
+            this._levelTimeMs += step;
+        }
+        this._levelClockLast = now;
+    }
+
     // --- Save / load ---
 
     /**
@@ -458,9 +501,13 @@ class DoomGame {
             gunTriggers:  this._gunTriggers,
             secretsFound: this._secretsFound,
             killsCount:   this._killsCount,
-            setCounters:  (secretsFound, killsCount) => {
+            itemsFound:   this._itemsFound,
+            levelTimeMs:  this._levelTimeMs,
+            setCounters:  (secretsFound, killsCount, itemsFound, levelTimeMs) => {
                 this._secretsFound = secretsFound;
                 this._killsCount   = killsCount;
+                this._itemsFound   = itemsFound;
+                this._levelTimeMs  = levelTimeMs;
             },
         };
     }
@@ -491,12 +538,17 @@ class DoomGame {
             this._carriedState = this._world.getUser().exportState();
         }
 
-        // Secrets and kills are level stats (vanilla totalsecret/totalkills):
-        // reset on every level, the totals are pushed back by the world builder.
+        // Secrets, kills and items are level stats (vanilla totalsecret /
+        // totalkills / totalitems): reset on every level, the totals are
+        // pushed back by the world builder.
         this._secretsFound = 0;
         this._secretsTotal = 0;
         this._killsCount   = 0;
         this._killsTotal   = 0;
+        this._itemsFound   = 0;
+        this._itemsTotal   = 0;
+        this._levelTimeMs  = 0;
+        this._levelClockLast = null;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -661,6 +713,7 @@ class DoomGame {
         if (!this._running) {
             return;
         }
+        this._tickLevelClock(timestamp);
 
         // Pause button (press edge): toggle the pause menu over the frozen
         // game — read every frame, paused included, to keep the edge state.
@@ -683,7 +736,9 @@ class DoomGame {
         // reads are consuming), no time step — just redraw the same image (a
         // resize would otherwise wipe the canvas) under the pause overlay.
         // Display settings stay live: the stacked options modal can toggle them.
-        if (this._paused) {
+        // The end-of-level tally freezes the same way: the player reads it at
+        // leisure and the level clock stops with the world.
+        if (this._paused || this._transitioning) {
             this._applyDisplaySettings();
             this._engine.displayWorld(this._world);
             this._screen.update();
@@ -949,10 +1004,10 @@ class DoomGame {
     }
 
     /**
-     * Called by an exit interaction (switch 11/51 or walk-over 52/124): level
-     * finished modal, then after 2 seconds, loading modal + next level (or back
-     * to the menu after the last level of the WAD). The secret flag routes to
-     * the secret level instead of the sequential one.
+     * Called by an exit interaction (switch 11/51 or walk-over 52/124): the
+     * end-of-level tally, then the next level on the player's press (or back to
+     * the menu after the last level of the WAD). The secret flag routes to the
+     * secret level instead of the sequential one.
      */
     _onLevelExit(secret = false) {
         if (this._transitioning) {
@@ -965,18 +1020,65 @@ class DoomGame {
         // (null = end of game → back to the menu).
         const nextLevel = this._mapInfo.nextLevelName(this._levelName, secret === true);
 
-        const display = new MenuDisplay('screen').init();
+        // The tally waits for a press: the mouse has to go back to the browser
+        // (a pointer-locked canvas swallows every click on the button) and the
+        // virtual pad out of the way, exactly like the pause.
+        this._inputs.releaseMouse().setVirtualPadVisible(false);
+
+        // Over the game like the pause: the tally now waits for a press, so the
+        // frozen level stays visible behind it instead of a black screen.
+        const display = new MenuDisplay('screen').init(true);
         const modal = new MenuModal(display);
-        let message = appTranslator.get('game.level.finished', {level: this._levelName});
+        let title = appTranslator.get('game.level.finished', {level: this._levelName});
         if (nextLevel === null) {
             const endCode = ((/^E\dM\d$/.test(this._levelName)) ? 'game.episode.finished' : 'game.finished');
-            message = appTranslator.get(endCode);
+            title = appTranslator.get(endCode);
         }
-        modal.showMessage(message);
+        const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
 
-        setTimeout(() => {
+        modal.tally(title, this._tallyLines(), appTranslator.get(buttonCode), () => {
             this._startNextLevel(display, modal, nextLevel);
-        }, 2000);
+        });
+    }
+
+    // The three vanilla scores plus the level clock. A score with nothing to
+    // find on this level reads "none" instead of a meaningless 0/0.
+    _tallyLines() {
+        const score = (code, found, total) => ({
+            label: appTranslator.get(code),
+            value: ((total <= 0)
+                ? appTranslator.get('game.tally.none')
+                : found + '/' + total + ' (' + DoomGame.formatPercent(found, total) + ')')
+        });
+
+        return [
+            {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(this._levelTimeMs)},
+            score('game.tally.kills',   this._killsCount,   this._killsTotal),
+            score('game.tally.items',   this._itemsFound,   this._itemsTotal),
+            score('game.tally.secrets', this._secretsFound, this._secretsTotal)
+        ];
+    }
+
+    // Elapsed time as M:SS (H:MM:SS past the hour) — the colon reads the same
+    // in every language, only the percent sign needs the locale.
+    static formatDuration(ms) {
+        const total   = Math.max(0, Math.floor(ms / 1000));
+        const seconds = String(total % 60).padStart(2, '0');
+        const minutes = Math.floor(total / 60) % 60;
+        const hours   = Math.floor(total / 3600);
+
+        return ((hours > 0)
+            ? (hours + ':' + String(minutes).padStart(2, '0') + ':' + seconds)
+            : (minutes + ':' + seconds));
+    }
+
+    // Truncated like the vanilla integer division: 199 items out of 200 must
+    // read 99 %, never the 100 % a rounded ratio would show.
+    static formatPercent(found, total) {
+        const percent = Math.floor((found * 100) / total);
+
+        return new Intl.NumberFormat(appTranslator.getLocale(), {style: 'percent', maximumFractionDigits: 0})
+            .format(percent / 100);
     }
 
     async _startNextLevel(display, modal, nextLevel) {
@@ -1011,3 +1113,7 @@ class DoomGame {
 
 // The 320x200 psprite canvas was authored for a 4:3 display.
 DoomGame.PSPRITE_ASPECT = 4 / 3;
+
+// Longest gap between two frames the level clock still counts (ms): well above
+// the slowest playable frame, well below a tab switch.
+DoomGame.LEVEL_CLOCK_MAX_STEP_MS = 1000;

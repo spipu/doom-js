@@ -283,6 +283,10 @@ class WadWorldBuilder {
         const billboardIds        = {};
         const monsterBillboardIds = {};
         let   killsTotal          = 0;
+        let   itemsTotal          = 0;
+        // vanilla total_items: fixed at load from the MAP things alone, so the
+        // drops spawned later can never inflate it (P_SpawnMobj).
+        const countedItems = this._profile.countedItemTypes();
         for (let i = 0; i < things.length; i++) {
             const t = things[i];
             if (t.kind === 'monster') {
@@ -313,8 +317,12 @@ class WadWorldBuilder {
                     lightGroup:    lightGroup
                 });
             }
-            const isPickup = (t.kind === 'pickup');
-            const code     = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
+            const isPickup   = (t.kind === 'pickup');
+            const countsItem = (isPickup && countedItems.has(t.type));
+            const code       = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
+            if (countsItem) {
+                itemsTotal++;
+            }
             // A thing standing on a moving floor spawns at the floor's ORIGINAL
             // height (the sector fh was patched to the low position for the
             // static map) and rides the floor instance (vanilla: things follow
@@ -345,11 +353,12 @@ class WadWorldBuilder {
             // A pickup with no game (catalog-less build) keeps the sprite but
             // never fires — harmless. With a game, wire its effect interaction.
             if (isPickup && (this._game !== null)) {
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, t.effect, this._game));
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, t.effect, this._game, countsItem));
             }
         }
         if (this._game !== null) {
             this._game.setKillsTotal(killsTotal);
+            this._game.setItemsTotal(itemsTotal);
         }
         this._registerMonsterDrops(things, spriteBank);
         this._registerCrushedCorpseView(spriteBank);

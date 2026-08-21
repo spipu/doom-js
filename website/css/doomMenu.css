@@ -341,6 +341,42 @@
     gap: 0.8em;
 }
 
+.doom-menu-modal-tally {
+    width: 36%;
+}
+
+.doom-menu-tally {
+    margin-bottom: 1.4em;
+    border-top: 0.06em solid rgba(192, 57, 43, 0.35);
+}
+
+.doom-menu-tally-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1.2em;
+    padding: 0.55em 0.2em;
+    border-bottom: 0.06em solid rgba(192, 57, 43, 0.2);
+}
+
+.doom-menu-tally-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.doom-menu-tally-value {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9em;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.doom-menu-button-block {
+    width: 100%;
+}
+
 .doom-menu-button-secondary {
     background: none;
     border: 0.1em solid rgba(192, 57, 43, 0.5);

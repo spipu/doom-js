@@ -16,7 +16,8 @@
 class DoomGameSnapshot {
     /**
      * @param {object} context - {wadId, levelCode, skill, user, rng, monsters,
-     *                            gunTriggers, secretsFound, killsCount, setCounters}
+     *                            gunTriggers, secretsFound, killsCount,
+     *                            itemsFound, levelTimeMs, setCounters}
      * @returns {object} JSON-safe snapshot
      */
     capture(context) {
@@ -39,6 +40,8 @@ class DoomGameSnapshot {
             stats: {
                 secretsFound: context.secretsFound,
                 killsCount:   context.killsCount,
+                itemsFound:   context.itemsFound,
+                levelTimeMs:  context.levelTimeMs,
             },
             rng:          context.rng.getIndex(),
             instances:    this._captureInstances(),
@@ -54,7 +57,11 @@ class DoomGameSnapshot {
      * restored earlier by DoomGame (it replaces the loadout branch of _init).
      */
     apply(context, snapshot) {
-        context.setCounters(snapshot.stats.secretsFound, snapshot.stats.killsCount);
+        // itemsFound and levelTimeMs postdate FORMAT_VERSION 2: absent from the
+        // saves written before them, and the version is compared strictly
+        // (bumping it would throw every existing save away).
+        context.setCounters(snapshot.stats.secretsFound, snapshot.stats.killsCount,
+            (snapshot.stats.itemsFound ?? 0), (snapshot.stats.levelTimeMs ?? 0));
         this._applyInstances(snapshot.instances, context.collision);
         this._applyInteractions(snapshot.interactions);
         if ((context.gunTriggers !== null) && (snapshot.gunTriggers !== null)) {
