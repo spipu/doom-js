@@ -300,7 +300,7 @@ class Engine3d {
     }
 
     drawObject(obj) {
-        obj.ptTransform(this.viewMatrix);
+        obj.ptTransform(this.viewMatrix, this.zBuffer.getNear());
         obj.ptProjection(this);
         this._renderer.draw(obj, this);
         return this;
