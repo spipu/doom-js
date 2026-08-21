@@ -1052,6 +1052,7 @@ class DoomMonsterSystem {
         const ay = fromZ / S;
         const bx = toX / S;
         const by = toZ / S;
+        let teleported = false;
         for (const line of lines) {
             if (line.used) {
                 continue;
@@ -1083,13 +1084,12 @@ class DoomMonsterSystem {
                 }
             }
             // EV_Teleport fires from the FRONT side only, so a body walking
-            // off the landing pad is let out instead of bounced back.
-            if (WadGeometry.pointOnLineSide(ax, ay, line.x1, line.y1, line.x2, line.y2) === 0) {
-                // A successful teleport invalidates the step segment: stop, or
-                // a step clipping two linedefs of one pad would teleport twice.
-                if (this._monsterTeleport(m, line.landing)) {
-                    return;
-                }
+            // off the landing pad is let out instead of bounced back. One
+            // teleport per step: the segment is stale for the OTHER teleport
+            // lines of the pad, but the zone lines it crossed still fire
+            // (vanilla walks the whole spechit list).
+            if (!teleported && (WadGeometry.pointOnLineSide(ax, ay, line.x1, line.y1, line.x2, line.y2) === 0)) {
+                teleported = this._monsterTeleport(m, line.landing);
             }
         }
     }

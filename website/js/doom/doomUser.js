@@ -16,13 +16,70 @@ class DoomUser extends User {
         this._ammo         = {};   // code -> count
         this._ammoMax      = {};   // code -> max
         this._items        = new Set();
-        this._effects      = {};   // code -> remaining time (ms)
-        this._damageFactor = 1;    // skill-derived, set by DoomGame per level
+        this._effects        = {};   // code -> remaining time (ms)
+        this._damageFactor   = 1;    // skill-derived, set by DoomGame per level
+        this._controlFreezeS = 0;
     }
 
     setDamageFactor(factor) {
         this._damageFactor = factor;
         return this;
+    }
+
+    // P_Teleport freeze (reactiontime, Player.TeleportFreezeTime): movement,
+    // turning and jumping are ignored while the timer runs — the player
+    // watches the arrival fog. Firing stays allowed, like vanilla. Transient
+    // by design: not part of the saved state.
+    freezeControls(seconds) {
+        this._controlFreezeS = seconds;
+        return this;
+    }
+
+    isControlFrozen() {
+        return (this._controlFreezeS > 0);
+    }
+
+    beginFrame(deltaTime) {
+        super.beginFrame(deltaTime);
+        if (this._controlFreezeS > 0) {
+            this._controlFreezeS -= deltaTime / 1000;
+        }
+    }
+
+    move(scale) {
+        if (this.isControlFrozen()) {
+            return;
+        }
+        super.move(scale);
+    }
+
+    strafe(scale) {
+        if (this.isControlFrozen()) {
+            return;
+        }
+        super.strafe(scale);
+    }
+
+    lookMouse(dx, dy) {
+        if (this.isControlFrozen()) {
+            return;
+        }
+        super.lookMouse(dx, dy);
+    }
+
+    pressJump() {
+        if (this.isControlFrozen()) {
+            return;
+        }
+        super.pressJump();
+    }
+
+    // releaseJump stays open: swallowing it would leave the jump held.
+    setCrouch(bool) {
+        if (this.isControlFrozen()) {
+            return;
+        }
+        super.setCrouch(bool);
     }
 
     // --- Weapons ---

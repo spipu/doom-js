@@ -318,6 +318,17 @@ class User {
         return this._externalForces;
     }
 
+    // Discontinuous displacement (teleport, respawn): the body keeps no
+    // momentum, no environmental push and no pending fall from the old spot.
+    haltMotion() {
+        this._vx             = 0;
+        this._vz             = 0;
+        this._vy             = 0;
+        this._fallPeakY      = null;
+        this._externalForces = new ActorExternalForces();
+        return this;
+    }
+
     // --- Input ---
     beginFrame(deltaTime) {
         this._deltaTime = deltaTime;

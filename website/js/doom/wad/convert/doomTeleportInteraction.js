@@ -9,12 +9,14 @@ class DoomTeleportInteraction extends AbstractInteraction {
      * @param {string}            code        - unique interaction code, shared with the Instance
      * @param {object}            destination - {x, y, z, yaw} in world coordinates
      * @param {DoomMonsterSystem} monsters    - telefrag pool (a player teleport stomps)
+     * @param {DoomGame}          game        - effect spawner source (teleport fog)
      */
-    constructor(code, destination, monsters = null) {
+    constructor(code, destination, monsters = null, game = null) {
         super();
         this._code        = code;
         this._destination = destination;
         this._monsters    = monsters;
+        this._game        = game;
         this._cooldown    = 0;
     }
 
@@ -29,6 +31,9 @@ class DoomTeleportInteraction extends AbstractInteraction {
         const world = loader.world().get();
         const user  = world.getUser();
         const dest  = this._destination;
+        const fromX = user.x;
+        const fromY = user.y;
+        const fromZ = user.z;
 
         user.x   = dest.x;
         user.y   = dest.y;
@@ -43,6 +48,9 @@ class DoomTeleportInteraction extends AbstractInteraction {
         if (floorY !== -Infinity) {
             user.y = floorY;
         }
+        // P_Teleport thing->vel = 0: no drift through the freeze (airborne or
+        // icy arrivals), and no fall billed across the two rooms.
+        user.haltMotion();
 
         // P_TeleportMove: a PLAYER arrival always stomps — any live body
         // overlapping the landing takes the 10000 telefrag (guaranteed gib).
@@ -60,6 +68,16 @@ class DoomTeleportInteraction extends AbstractInteraction {
                 }
             }
         }
+
+        if (this._game !== null) {
+            const effects = this._game.getEffects();
+            if (effects !== null) {
+                effects.spawnTeleportFogs(fromX, fromY, fromZ, user.x, user.y, user.z,
+                    WadGeometry.doomAngleYaw(user.yaw));
+            }
+            this._game.startTeleZoom();
+        }
+        user.freezeControls(WadConstants.TELEPORT_FREEZE_TICS * WadConstants.SECONDS_PER_TIC);
 
         this._cooldown = WadConstants.TELEPORT_COOLDOWN_MS;
     }
