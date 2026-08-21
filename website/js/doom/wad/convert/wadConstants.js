@@ -684,6 +684,19 @@ class WadConstants {
     // (EV_Teleport: angle.ToVector(20), so the fog is not hidden in the body).
     static TELEPORT_FOG_AHEAD = 20;
 
+    // Tics the player's controls stay frozen after a teleport
+    // (Player.TeleportFreezeTime, vanilla reactiontime = 18).
+    static TELEPORT_FREEZE_TICS = 18;
+
+    // Doom player field of view (horizontal degrees) and the ZDoom telezoom:
+    // a teleport arrival jumps the FOV by the boost (capped), then CheckFOV
+    // eases it back per tic by max(STEP_MIN, diff × STEP_FACTOR).
+    static PLAYER_FOV = 90;
+    static TELEZOOM_FOV_BOOST = 45;
+    static TELEZOOM_FOV_MAX = 175;
+    static TELEZOOM_STEP_MIN = 7;
+    static TELEZOOM_STEP_FACTOR = 0.025;
+
     // --- Walk triggers (W1/WR) ---
 
     // Walk-over linedefs that activate a REMOTE tagged element (lift/floor/door)

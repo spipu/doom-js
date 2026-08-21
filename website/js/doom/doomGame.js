@@ -42,6 +42,8 @@ class DoomGame {
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
         this._depthShadingOn  = null;    // last display states pushed to the engine (null = never)
         this._texSmoothingOn  = null;
+        this._fov             = WadConstants.PLAYER_FOV;   // current Doom FOV (telezoom eases it back)
+        this._fovTicAcc       = 0;
         this._rng             = new DoomRandom();
 
         // Per-game policy + shared immutable definitions (the per-player state
@@ -353,6 +355,46 @@ class DoomGame {
         this._gunTriggers = gunTriggers;
     }
 
+    // Transient effect spawner — built after the world, so build-time
+    // consumers (teleport interactions) read it lazily at trigger time.
+    getEffects() {
+        return this._effects;
+    }
+
+    // ZDoom telezoom (deliberate borrow, cvar telezoom): a teleport arrival
+    // widens the FOV instantly, then _updateTeleZoom eases it back per tic.
+    startTeleZoom() {
+        this._fov       = Math.min(WadConstants.TELEZOOM_FOV_MAX, WadConstants.PLAYER_FOV + WadConstants.TELEZOOM_FOV_BOOST);
+        this._fovTicAcc = 0;
+        this._applyFov();
+    }
+
+    // CheckFOV ease-back: max(TELEZOOM_STEP_MIN, diff × TELEZOOM_STEP_FACTOR)
+    // degrees per tic, snapping once the gap drops under the minimum step.
+    _updateTeleZoom(dt) {
+        if (this._fov === WadConstants.PLAYER_FOV) {
+            return;
+        }
+        const msPerTic = WadConstants.SECONDS_PER_TIC * 1000;
+        this._fovTicAcc += dt;
+        while (this._fovTicAcc >= msPerTic) {
+            this._fovTicAcc -= msPerTic;
+            const diff = this._fov - WadConstants.PLAYER_FOV;
+            if (Math.abs(diff) < WadConstants.TELEZOOM_STEP_MIN) {
+                this._fov = WadConstants.PLAYER_FOV;
+                break;
+            }
+            const step = Math.max(WadConstants.TELEZOOM_STEP_MIN, Math.abs(diff) * WadConstants.TELEZOOM_STEP_FACTOR);
+            this._fov += ((diff > 0) ? -step : step);
+        }
+        this._applyFov();
+    }
+
+    // The engine's fov parameter is the half-angle of the projection.
+    _applyFov() {
+        this._engine.setFov(this._fov / 2);
+    }
+
     addSecretFound() {
         this._secretsFound++;
     }
@@ -559,7 +601,9 @@ class DoomGame {
         doomSettings.applyToInputs(this._inputs);
 
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
-        this._engine.setFov(45.0);
+        this._fov       = WadConstants.PLAYER_FOV;
+        this._fovTicAcc = 0;
+        this._applyFov();
         this._engine.setZBuffer(0.1, 100);
         // The engine is recreated on each level: re-arm the display settings.
         this._depthShadingOn = null;
@@ -704,6 +748,7 @@ class DoomGame {
             this._decals.update(dt);
         }
         this._applyDisplaySettings();
+        this._updateTeleZoom(dt);
         this._pushEffectDisplay(this._world.getUser());
         this._engine.displayWorld(this._world);
         this._screen.update();

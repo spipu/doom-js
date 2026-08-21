@@ -150,7 +150,7 @@ class WadWorldBuilder {
             this._registerInstance(tp, bank);
             this._applyCrossingGuard(tp);
             loader.interactions().loadFromData(
-                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem));
+                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem, this._game));
         }
         await this._yield();
 
