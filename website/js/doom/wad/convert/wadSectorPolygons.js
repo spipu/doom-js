@@ -10,6 +10,18 @@ class WadSectorPolygons {
      * @returns {number[][]}
      */
     static buildSectorPolygons(sectorId, linedefs, sidedefs, vertexes) {
+        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs).chains;
+    }
+
+    /**
+     * Same walk, plus how many chains ended in a DEAD END instead of closing
+     * back on their first vertex. An open chain is not a contour: the sector's
+     * linedefs do not describe its shape (doom2 MAP21's sector 50 has 2
+     * linedefs and 4 loose endpoints), and its flats need the BSP carve.
+     *
+     * @returns {{chains: number[][], openCount: number}}
+     */
+    static buildChains(sectorId, linedefs, sidedefs) {
         const edges = [];
         for (const ld of linedefs) {
             if (ld.right >= 0 && ld.right < sidedefs.length) {
@@ -25,7 +37,7 @@ class WadSectorPolygons {
         }
 
         if (edges.length === 0) {
-            return [];
+            return {chains: [], openCount: 0};
         }
 
         // Adjacency: start vertex → list of end vertices
@@ -40,6 +52,7 @@ class WadSectorPolygons {
         // Walk chains greedily, consuming each directed edge at most once
         const used = new Set();
         const chains = [];
+        let openCount = 0;
         for (const [startA, startB] of edges) {
             if (used.has(startA + ',' + startB)) {
                 continue;
@@ -47,6 +60,7 @@ class WadSectorPolygons {
             const chain = [startA, startB];
             used.add(startA + ',' + startB);
             let cur = startB;
+            let closed = false;
             while (true) {
                 const nexts = (adj.get(cur) ?? []).filter((v) => !used.has(cur + ',' + v));
                 if (nexts.length === 0) {
@@ -55,6 +69,7 @@ class WadSectorPolygons {
                 const nxt = nexts[0];
                 used.add(cur + ',' + nxt);
                 if (nxt === chain[0]) {
+                    closed = true;
                     break;
                 }
                 chain.push(nxt);
@@ -62,10 +77,13 @@ class WadSectorPolygons {
             }
             if (chain.length >= 3) {
                 chains.push(chain);
+                if (!closed) {
+                    openCount++;
+                }
             }
         }
 
-        return chains;
+        return {chains, openCount};
     }
 
     /**
@@ -118,7 +136,28 @@ class WadSectorPolygons {
      * @returns {{outer: number[][], holes: number[][][]|null}[]}
      */
     static outersWithHoles(si, linedefs, sidedefs, vertexes) {
-        const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
+        return WadSectorPolygons._outersOf(
+            WadSectorPolygons.buildChains(si, linedefs, sidedefs).chains, vertexes);
+    }
+
+    /**
+     * Same outers, but null when the sector's chains do not ALL close: such a
+     * boundary is unusable and only the BSP carve can shape the flats. Where
+     * they do close (all but 42 sectors over the five Doom-format IWADs) the
+     * sector has a SINGLE exact boundary, so two neighbouring flats cannot
+     * disagree — which per-subsector carving does.
+     *
+     * @returns {{outer: number[][], holes: number[][][]|null}[]|null}
+     */
+    static closedOutersWithHoles(si, linedefs, sidedefs, vertexes) {
+        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs);
+        if ((chains.length === 0) || (openCount > 0)) {
+            return null;
+        }
+        return WadSectorPolygons._outersOf(chains, vertexes);
+    }
+
+    static _outersOf(chains, vertexes) {
         if (chains.length === 0) {
             return [];
         }

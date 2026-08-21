@@ -67,17 +67,28 @@ class WadMeshBuilder {
     }
 
     /**
-     * Full floor or ceiling flat of a sector: the BSP subsector fans when the
-     * level carries a usable tree (correct even on UNCLOSED sectors, and a
-     * ring's inner void simply has no subsector — no holes needed), else the
-     * linedef-chain polygons with their holes (the fallback also nets the rare
-     * sector the carve dropped to epsilon).
+     * Full floor or ceiling flat of a sector, from its linedef-chain polygons
+     * and their holes (without the holes a ring sector would get a solid disc
+     * over the inner one). A sector whose chains do not close has no usable
+     * contour: it takes the BSP subsector fans instead, which is what the
+     * carve was added for — the chains stay the shape of everything else,
+     * because ONE boundary per sector cannot disagree with itself, while two
+     * carved neighbours can (E1M2 sector 142 lost a 227-unit sliver of
+     * ceiling to a linedef line prolonged past its seg).
      */
     static addSectorFlat(mesh, level, texIdx, si, yHeight, isFloor, light, options = {}) {
         const lightGroup = (options.lightGroup ?? null);
         const uScroll    = (options.uScroll ?? 0);
         const collisionOnly = (options.collisionOnly === true);
+        const {vertexes, linedefs, sidedefs} = level;
 
+        const chainPolys = WadSectorPolygons.closedOutersWithHoles(si, linedefs, sidedefs, vertexes);
+        if (chainPolys !== null) {
+            for (const p of chainPolys) {
+                WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, light, p.holes, lightGroup, uScroll, collisionOnly);
+            }
+            return;
+        }
         const bspPolys = ((level.bspTree ?? null) !== null) ? level.bspTree.polysOfSector(si) : [];
         if (bspPolys.length > 0) {
             for (const poly of bspPolys) {
@@ -85,7 +96,7 @@ class WadMeshBuilder {
             }
             return;
         }
-        const {vertexes, linedefs, sidedefs} = level;
+        // Neither closes nor carves: the open chains are all this sector has.
         for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
             WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, light, p.holes, lightGroup, uScroll, collisionOnly);
         }
