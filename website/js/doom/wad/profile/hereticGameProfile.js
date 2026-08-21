@@ -618,7 +618,7 @@ class HereticGameProfile extends DefaultGameProfile {
     // sparks glow (RenderStyle Add, default alpha). The claw impact is
     // BlasterPuff's Crash branch (FX17 ABCDE, the Spawn branch is its
     // powered-mode in-flight puff).
-    weaponEffectTemplates() {
+    effectTemplates() {
         return [
             {name: 'staffPuff',       sprite: 'PUF3', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 1,   additive: false},
             {name: 'gauntletPuff',    sprite: 'PUF1', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 0.8, additive: false},
@@ -635,7 +635,9 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false},
             // Heretic blood (BLOD lumps): no damage-staged start and no
             // shortened first tics (Doom-family quirks only).
-            {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false}
+            {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false},
+            // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
+            {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
         ];
     }
 
@@ -659,7 +661,7 @@ class HereticGameProfile extends DefaultGameProfile {
     // shot carries the A_Explode 128 splash and leaves its FX04 puff trail.
     // The additive shots (bolts, hellstaff) are RenderStyle "Add" with the
     // default actor alpha (1.0) in the zscript — same value as their death
-    // frames in weaponEffectTemplates.
+    // frames in effectTemplates.
     projectileDefs() {
         return [
             {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   impactDamage: 10, alpha: 1, additive: true,  decalType: 'cbowmark'},

@@ -680,6 +680,10 @@ class WadConstants {
     // Cooldown (ms) after a teleport before the same pad may fire again.
     static TELEPORT_COOLDOWN_MS = 1000;
 
+    // Doom units the arrival fog spawns ahead of the teleported actor
+    // (EV_Teleport: angle.ToVector(20), so the fog is not hidden in the body).
+    static TELEPORT_FOG_AHEAD = 20;
+
     // --- Walk triggers (W1/WR) ---
 
     // Walk-over linedefs that activate a REMOTE tagged element (lift/floor/door)
