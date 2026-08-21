@@ -24,6 +24,11 @@
 * Le `README.md` décrit le **quoi**, jamais le **comment** : 2 à 4 lignes par fonctionnalité (ce que le joueur ou le développeur obtient), une ligne par répertoire dans l'arborescence. Les détails d'implémentation (numéros de specials, formules, études de cas par niveau, justifications de fidélité vanilla) n'y ont pas leur place — ils vivent dans la base documentaire.
 * Respecter les standards de codage en place dans le projet (ci-dessous).
 
+### Messages de commit
+
+* Une phrase courte de description, rien de plus : pas de longs messages détaillant chaque modification.
+* Pas de mention de co-auteur Claude (pas de ligne `Co-Authored-By`).
+
 ### Standards de codage
 
 * Une classe par fichier, nom de fichier en camelCase identique à la classe (`doomMonsterSystem.js` → `DoomMonsterSystem`), préfixé par son domaine (`Wad*`, `Doom*`, `Input*`).
