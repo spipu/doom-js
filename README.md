@@ -212,9 +212,8 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
+* **Episode & game finale texts**: an episode, MAP30 or the end of a WAD drops straight back to the menu, while the original tells you the story between its chapters. That text belongs in a modal styled like the level tally, with a "continue" button at the bottom — not the 1993 presentation, and no Doom II cast call.
 * **Automap**: nothing today, which also leaves the two map power-ups sitting inert in the thing catalogs.
-* **Episode & game finale screens**: an episode, MAP30 or the end of a WAD currently drops straight back to the menu, without the narrative text screens or the Doom II cast call.
-* **Screen melt between levels**: the vanilla wipe, once the tally and finale screens exist to be wiped into.
 * **Monster attacks**: monsters chase, hurt nobody and die politely — their melee and missile states are transcribed but no attack verb fires. The pieces they need (damage pipeline, projectiles, line of sight) are already in place, so this is the one gap that turns the world into a game.
 * **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
 * **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
