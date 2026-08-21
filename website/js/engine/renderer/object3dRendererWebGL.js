@@ -496,12 +496,21 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             varying float v_light;
             varying float v_depth;
             void main() {
-                float z  = ((a_pos.z == 0.0) ? 1e-5 : a_pos.z);
-                float xn = 2.0 * (u_sx * a_pos.x / z - u_ox) / u_w - 1.0;
-                float yn = 1.0 - 2.0 * (-u_sy * a_pos.y / z - u_oy) / u_h;
+                // Linear clip coordinates (no division by z), and vertices
+                // pushed off the camera plane sign-preservingly: a w near 0
+                // overflows the rasterizer guard band (software GL included)
+                // and smears corrupt depth wedges over the screen. The nudge
+                // only moves geometry that the near plane clips anyway.
+                float z  = a_pos.z;
+                float e  = u_near * 0.5;
+                if (abs(z) < e) {
+                    z = ((z < 0.0) ? -e : e);
+                }
+                float xc = 2.0 * (u_sx * a_pos.x - u_ox * z) / u_w - z;
+                float yc = z + 2.0 * (u_sy * a_pos.y + u_oy * z) / u_h;
                 float A  = (u_far + u_near) / (u_far - u_near);
                 float B  = -2.0 * u_far * u_near / (u_far - u_near);
-                gl_Position = vec4(xn * z, yn * z, A * z + B, z);
+                gl_Position = vec4(xc, yc, A * z + B, z);
                 v_color = a_color;
                 v_uv    = a_uv;
                 v_light = a_light;

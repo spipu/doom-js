@@ -97,10 +97,21 @@ class Billboard extends Object3d {
     // cross(up, anchorDir), horizontal and facing the camera. The face normal is
     // set toward the camera so back-face culling keeps the quad (cull test is
     // normal·pt >= 0).
-    ptTransform(m) {
+    ptTransform(m, minZ = 0) {
         const px = m.v[3][0];
         const py = m.v[3][1];
         const pz = m.v[3][2];
+
+        // R_ProjectSprite MINZ: an anchor at or behind the near plane would
+        // yaw the quad almost edge-on through the camera plane — a giant
+        // smeared wedge writing near depth over the scene. Vanilla drops the
+        // sprite entirely; the collapsed quad has no area to rasterize.
+        if (pz < minZ) {
+            for (let k = 0; k < 4; k++) {
+                this._setPt(k, 0, 0, 0);
+            }
+            return this;
+        }
 
         // World up in camera space (normalised).
         let ux = m.v[1][0];
