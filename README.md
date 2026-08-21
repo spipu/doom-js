@@ -210,6 +210,20 @@ function animate(timestamp) {
 
 After any file change, increment the `version` field of the `libBootstrap.json` of the modified library (engine, doom, or the demo's definition JSON). This drives both the PWA cache refresh and the classic-mode cache busting.
 
+## Todo - Next steps
+
+* **Level tally & item score**: items found are not counted anywhere, and a finished level shows a plain modal instead of the vanilla intermission — kills / items / secrets percentages, level time against the par time.
+* **Automap**: nothing today, which also leaves the two map power-ups sitting inert in the thing catalogs.
+* **Episode & game finale screens**: an episode, MAP30 or the end of a WAD currently drops straight back to the menu, without the narrative text screens or the Doom II cast call.
+* **Screen melt between levels**: the vanilla wipe, once the tally and finale screens exist to be wiped into.
+* **Monster attacks**: monsters chase, hurt nobody and die politely — their melee and missile states are transcribed but no attack verb fires. The pieces they need (damage pipeline, projectiles, line of sight) are already in place, so this is the one gap that turns the world into a game.
+* **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
+* **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
+* **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
+* **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
+* **Vanilla polish pass**: the small fidelity gaps knowingly left aside — no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports.
+* **Rendering performance & quality options**: the game is hardwired to the WebGL renderer with no quality settings; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
+
 ## License
 
 This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics taken from UZDoom), which is distributed under the GPL v3 with its own LICENSE.md and attribution README. Removing that directory yields a 100% MIT distribution.
