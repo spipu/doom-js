@@ -44,7 +44,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **HUD**: a modern DOM/CSS HUD in the screen corners — health, armor, ammo, keys, secrets `★ x/y`, kills `☠ x/y`, ARMS panel and active weapon name — adapting to the loaded game. **H** toggles a textual debug overlay; an optional crosshair is settable live.
 - **Weapon switching**: **F** / **G** on the keyboard, shoulder buttons 4/5 on a gamepad, or the HUD's top-right tap zone on the virtual pad.
 - **Sector effects**: damaging floors (with the E1M8 finale rule), "+change" floor mutations, scrolling walls, the vanilla dynamic light thinkers, UZDoom-style distance light diminishing and a sector light floor (the original never renders absolute black), a live texture-smoothing toggle, secret counting, and the Heretic pushes — winds, conveyors, scrolling lava, inertial ice — applied to the player and every monster.
-- **Level chaining**: exits (switch or walk-over) chain to the next level with the vanilla progression rules (secret exits included), overridable by a `UMAPINFO` lump; episode ends, MAP30 and the end of the WAD return to the menu.
+- **Level chaining**: exits (switch or walk-over) chain to the next level with the vanilla progression rules (secret exits included), overridable by a `UMAPINFO` lump; episode ends, MAP30 and the end of the WAD return to the menu. A finished level freezes on its tally — time spent, enemies, items and secrets, each as *found / total* and a percentage — and waits for you to ask for the next level.
 - **Build error modal**: a failed level build shows its cause and drops back to the WAD list.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look, both analog).
 - **Touch controls**: touch-only devices get a virtual gamepad laid out for a **4-finger claw grip** — a dynamic move stick in the bottom-left quadrant, the whole right half as a floating aim stick split into an *aim* band and an *aim + fire* band (the mode is locked per gesture), jump/crouch and the menu top-left, use bottom-right, and the weapon-switch zone top-right. Each gesture has its own settable dead zone, and the firing gesture a settable aim sensitivity.
@@ -212,7 +212,6 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Level tally & item score**: items found are not counted anywhere, and a finished level shows a plain modal instead of the vanilla intermission — kills / items / secrets percentages, level time against the par time.
 * **Automap**: nothing today, which also leaves the two map power-ups sitting inert in the thing catalogs.
 * **Episode & game finale screens**: an episode, MAP30 or the end of a WAD currently drops straight back to the menu, without the narrative text screens or the Doom II cast call.
 * **Screen melt between levels**: the vanilla wipe, once the tally and finale screens exist to be wiped into.

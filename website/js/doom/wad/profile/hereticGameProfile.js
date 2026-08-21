@@ -183,6 +183,15 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // COUNTITEM of the Raven zscript: super map, shadowsphere, tome of power,
+    // time bomb, bag of holding — the ring of invulnerability and the torch
+    // are NOT counted. The tome of power and the time bomb carry no effect yet
+    // (no Heretic inventory), so they stay on the ground and out of the score;
+    // the total states what the map holds, it is not trimmed to look reachable.
+    countedItemTypes() {
+        return new Set([35, 75, 86, 34, 8]);
+    }
+
     // Shared state blocks of the variant families (ghosts = base monsters
     // with translucency, leaders swap the attack): one transcription each.
     _podDef() {

@@ -35,7 +35,8 @@ class WadThingBuilder {
     /**
      * @returns {object[]} {key, texIds, animDuration, halfWidth, height,
      *                      anchorOffsetX, anchorOffsetY, anchorTop, si, light,
-     *                      position:[x,y,z], kind, solid, radius, effect}
+     *                      position:[x,y,z], type (THING editor number),
+     *                      kind, solid, radius, effect}
      */
     buildAll() {
         const result   = [];
@@ -178,6 +179,7 @@ class WadThingBuilder {
             si:            sect.si,
             light:         sect.light,
             position:      WadGeometry.doomToWorld(thing.x, thing.y, baseH),
+            type:          thing.type,
             kind:          desc.kind,
             solid:         desc.solid,
             radius:        desc.radius,

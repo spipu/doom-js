@@ -115,6 +115,36 @@ class MenuModal {
         return this;
     }
 
+    /**
+     * End-of-level tally: the level's closing sentence as a title, one line per
+     * score (label on the left, value on the right) and a single full-width
+     * button. Not dismissable by clicking outside — the player has to press it.
+     *
+     * @param {string}   title
+     * @param {object[]} lines  - [{label, value}], value already formatted
+     * @param {string}   label  - button label
+     * @param {function} action
+     */
+    tally(title, lines, label, action) {
+        const {modal} = this._createShell(title, 'doom-menu-modal doom-menu-modal-tally', 'doom-menu-modal-message');
+
+        const body = MenuDom.addElement(modal, 'div', 'doom-menu-tally');
+        for (const line of lines) {
+            const row = MenuDom.addElement(body, 'div', 'doom-menu-tally-line');
+            MenuDom.addText(row, 'doom-menu-tally-label', line.label);
+            MenuDom.addText(row, 'doom-menu-tally-value', line.value);
+        }
+
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
+        const button = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-block', label, () => {
+            this.close();
+            action();
+        });
+        this._attachButtonsNav([button], button, 0);
+
+        return this;
+    }
+
     close() {
         if (this._nav !== null) {
             this._nav.detach().clear();

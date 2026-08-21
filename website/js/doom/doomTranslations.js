@@ -128,6 +128,13 @@ class DoomTranslations {
             'game.level.finished':     {fr: 'Niveau {level} terminé !',              en: 'Level {level} finished!'},
             'game.episode.finished':   {fr: 'Épisode terminé !',                     en: 'Episode finished!'},
             'game.finished':           {fr: 'Partie terminée !',                     en: 'Game over!'},
+            'game.tally.time':         {fr: 'Temps',                                 en: 'Time'},
+            'game.tally.kills':        {fr: 'Ennemis',                               en: 'Kills'},
+            'game.tally.items':        {fr: 'Objets',                                en: 'Items'},
+            'game.tally.secrets':      {fr: 'Secrets',                               en: 'Secrets'},
+            'game.tally.none':         {fr: 'aucun',                                 en: 'none'},
+            'game.tally.next':         {fr: 'Niveau suivant',                        en: 'Next level'},
+            'game.tally.menu':         {fr: 'Retour au menu',                        en: 'Back to menu'},
 
             // --- HUD ---
             'hud.health':              {fr: 'PV',                                    en: 'HP'},
