@@ -17,6 +17,7 @@ class DoomMonsterSystem {
         this._user          = null;
         this._collision     = null;
         this._damage        = null;
+        this._effects       = null;
         this._drops         = null;
         this._bossDeath     = null;
         this._levelData     = null;
@@ -177,6 +178,12 @@ class DoomMonsterSystem {
 
     getDamageModule() {
         return this._damage;
+    }
+
+    // Transient effect spawner (DoomEffects), consumed by the teleport fog.
+    setEffects(effects) {
+        this._effects = effects;
+        return this;
     }
 
     // Drop pickup templates prepared in the batch by the world builder,
@@ -1078,7 +1085,11 @@ class DoomMonsterSystem {
             // EV_Teleport fires from the FRONT side only, so a body walking
             // off the landing pad is let out instead of bounced back.
             if (WadGeometry.pointOnLineSide(ax, ay, line.x1, line.y1, line.x2, line.y2) === 0) {
-                this._monsterTeleport(m, line.landing);
+                // A successful teleport invalidates the step segment: stop, or
+                // a step clipping two linedefs of one pad would teleport twice.
+                if (this._monsterTeleport(m, line.landing)) {
+                    return;
+                }
             }
         }
     }
@@ -1091,7 +1102,7 @@ class DoomMonsterSystem {
         const spot = this._spotOccupancy(landing.x, landing.z, m.inst.getCollisionRadius(), m);
         if ((spot.blockers.length > 0) || spot.playerBlocks) {
             if (this._levelData.levelName !== 'MAP30') {
-                return;
+                return false;
             }
             for (const other of spot.blockers) {
                 this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
@@ -1104,7 +1115,10 @@ class DoomMonsterSystem {
         // live from the sector ceiling, landing.y is only the build fallback.
         const floorY = this._collision.getFloor(landing.x, landing.z, m.inst.getCollisionRadius(), landing.topY);
         const destY  = ((floorY !== -Infinity) ? floorY : landing.y);
-        const pos = m.inst.getTransform().position;
+        const pos   = m.inst.getTransform().position;
+        const fromX = pos[0];
+        const fromY = pos[1];
+        const fromZ = pos[2];
         m.inst.translate(landing.x - pos[0], destY - pos[1], landing.z - pos[2]);
         this._collision.syncBoxFor(m.inst);
         m.snapRender = true;
@@ -1119,6 +1133,10 @@ class DoomMonsterSystem {
         }
         this._resolveRide(m);
         this._refreshView(m);
+        if (this._effects !== null) {
+            this._effects.spawnTeleportFogs(fromX, fromY, fromZ, landing.x, destY, landing.z, m.facing);
+        }
+        return true;
     }
 
     _zoneInstance(code) {

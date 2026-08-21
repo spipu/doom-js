@@ -683,13 +683,13 @@ class DefaultGameProfile extends AbstractGameProfile {
         return catalog;
     }
 
-    // Transient weapon effects (P_SpawnPuff + the projectile death frames from
+    // Transient effects (P_SpawnPuff + the projectile death frames from
     // info.c). alpha/additive follow gzdoom: the rocket blast is opaque smoke,
     // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), the puff is
     // translucent (0.4 — user setting; gzdoom's BulletPuff is Alpha 0.5,
     // doommisc.zs), floats up 1 map unit/tic and starts a melee hit at frame C
     // (meleeStart 2, no bright spark).
-    weaponEffectTemplates() {
+    effectTemplates() {
         return [
             {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, meleeStart: 2},
             {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
@@ -698,7 +698,9 @@ class DefaultGameProfile extends AbstractGameProfile {
             {name: 'bfgSprayHit',   sprite: 'BFE2', letters: ['A', 'B', 'C', 'D'],           frameTics: [8, 8, 8, 8],       alpha: 0.75, rise: 0, additive: true},
             // P_SpawnBlood: momz 2 under mobj gravity (1/tic²); big hits show
             // the full splash, weaker ones start deeper in (monsterDamageRules).
-            {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false}
+            {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false},
+            // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
+            {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
         ];
     }
 

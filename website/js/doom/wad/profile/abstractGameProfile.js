@@ -342,15 +342,18 @@ class AbstractGameProfile {
     }
 
     /**
-     * Transient weapon effect templates (hitscan puffs, projectile
-     * explosions/impacts): short sprite animations built once per level in
-     * the load batch. rise is the upward drift in map units/tic (0 = static);
-     * meleeStart is the frame index a melee hit starts the puff at.
+     * Transient effect templates (hitscan puffs, projectile explosions,
+     * blood, teleport fog): short sprite animations built once per level in
+     * the load batch. rise is the upward drift in map units/tic (0 = static),
+     * gravity its per-tic decay; shorten opts out of the Doom first-frame tic
+     * cut; meleeStart is the frame index a melee hit starts the puff at;
+     * spawnHeight lifts the spawn point (gameinfo telefogheight, Doom units).
      *
-     * @returns {object[]} [{name, sprite, letters, frameTics, alpha, rise, additive, meleeStart?}]
+     * @returns {object[]} [{name, sprite, letters, frameTics, alpha, rise,
+     *                       additive, gravity?, shorten?, meleeStart?, spawnHeight?}]
      */
-    weaponEffectTemplates() {
-        this._generateException('weaponEffectTemplates must be implemented');
+    effectTemplates() {
+        this._generateException('effectTemplates must be implemented');
         return [];
     }
 

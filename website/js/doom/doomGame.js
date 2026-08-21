@@ -506,7 +506,7 @@ class DoomGame {
         // in _init, consumed by hitscan, projectiles and the bodies' own
         // A_Explode (barrels).
         this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._gameProfile.monsterDamageRules(), this);
-        this._monsters.setDamageModule(this._monsterDamage);
+        this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
         this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile, this._monsters, this._monsterDamage);
 
         loader.setCallback(() => {
