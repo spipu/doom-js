@@ -373,9 +373,12 @@ class WadWorldBuilder {
         this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump)));
     }
 
-    // Floor-anchored fullbright sprite billboard, shared by the batch
-    // templates (drop pickups, crushed corpse): the sprite offset overflow
-    // hangs above the floor, never below.
+    // Floor-anchored sprite billboard, shared by the batch templates (drop
+    // pickups, crushed corpse): the sprite offset overflow hangs above the
+    // floor, never below. Baked fullbright with no light group like the
+    // monster views: the spawn sector is unknown here, so the monster system
+    // pushes the sector lighting per instance (the crushed corpse keeps its
+    // monster's instance and inherits it).
     _groundSpriteBillboard(spr) {
         const geo = WadGeometry.spriteBillboardData(spr);
         return loader.objects().loadBillboardFromData(null, {

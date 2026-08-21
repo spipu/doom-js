@@ -160,9 +160,7 @@ class DoomMonsterSystem {
         if ((this._sight === null) || (this._user === null)) {
             return;
         }
-        const S   = WadConstants.SCALE;
-        const sec = this._levelData.findSector(this._user.x / S, this._user.z / S);
-        this._sight.noiseAlert(this._user, ((sec !== null) ? sec.si : null));
+        this._sight.noiseAlert(this._user, this._sectorIndexAt(this._user.x, this._user.z));
     }
 
     // Catalog key of one dropItems entry — shared with the world builder,
@@ -217,13 +215,14 @@ class DoomMonsterSystem {
         const monsters = this._monsters.map((m) => this._exportRecord(m));
         const drops    = [];
         for (const drop of this._droppedRecords) {
-            if (loader.instances().get(drop.inst.getId()) === undefined) {
+            if (this._isDropGone(drop)) {
                 continue;   // picked up since it fell
             }
             const pos  = drop.inst.getTransform().position;
             const ride = drop.inst.getRideOn();
             drops.push({
                 key:        drop.key,
+                si:         drop.si,
                 position:   [...pos],
                 rideOnCode: ((ride !== null) ? ride.getCode() : null),
             });
@@ -274,7 +273,11 @@ class DoomMonsterSystem {
         this._droppedRecords = [];
         for (const drop of data.drops) {
             const ride = ((drop.rideOnCode !== null) ? loader.instances().getByCode(drop.rideOnCode) : null);
-            this._spawnDropAt(drop.key, drop.position[0], drop.position[1], drop.position[2], ride);
+            // Saves predating the si field re-resolve it from the position.
+            const si   = ((drop.si !== undefined)
+                ? drop.si
+                : this._sectorIndexAt(drop.position[0], drop.position[2]));
+            this._spawnDropAt(drop.key, drop.position[0], drop.position[1], drop.position[2], ride, si);
         }
 
         const lines = (this._levelData.monsterLines ?? []);
@@ -380,6 +383,27 @@ class DoomMonsterSystem {
             this._applyRenderBlend(m);
             this._applyRenderLight(m);
         }
+        this._refreshDropLight();
+    }
+
+    // A drop never moves sector, so _pushRenderLight only recomputes while its
+    // sector runs a light effect. Picked-up drops leave a despawned instance
+    // behind: purge their records here.
+    _refreshDropLight() {
+        for (let i = this._droppedRecords.length - 1; i >= 0; i--) {
+            const drop = this._droppedRecords[i];
+            if (this._isDropGone(drop)) {
+                this._droppedRecords.splice(i, 1);
+                continue;
+            }
+            this._pushRenderLight(drop, false);
+        }
+    }
+
+    // Picked up: DoomPickupInteraction scheduled the instance's removal.
+    // Identity-checked so a reused id can never pass for the drop.
+    _isDropGone(drop) {
+        return (loader.instances().get(drop.inst.getId()) !== drop.inst);
     }
 
     // Light of the sector the body CURRENTLY stands in, times that sector's
@@ -391,17 +415,23 @@ class DoomMonsterSystem {
     // sector, its state switched fullbright, or its sector runs a light effect.
     // A body standing still in a steadily-lit room is lit once and never again.
     _applyRenderLight(m) {
-        const bright = m.def.getState(m.stateKey).isBright();
-        if ((m.renderLight !== null) && (m.litSi === m.si) && (m.litBright === bright)
-            && !this._hasLightEffect(m.si)) {
+        this._pushRenderLight(m, m.def.getState(m.stateKey).isBright());
+    }
+
+    // Shared by monster and drop records ({inst, si, renderLight, litSi,
+    // litBright}) — both views are baked fullbright, the instance carries
+    // the sector lighting.
+    _pushRenderLight(rec, bright) {
+        if ((rec.renderLight !== null) && (rec.litSi === rec.si) && (rec.litBright === bright)
+            && !this._hasLightEffect(rec.si)) {
             return;
         }
-        m.litSi     = m.si;
-        m.litBright = bright;
-        const wanted = ((bright) ? 1 : this._sectorLight(m.si));
-        if (wanted !== m.renderLight) {
-            m.renderLight = wanted;
-            m.inst.setRenderLight(wanted);
+        rec.litSi     = rec.si;
+        rec.litBright = bright;
+        const wanted = ((bright) ? 1 : this._sectorLight(rec.si));
+        if (wanted !== rec.renderLight) {
+            rec.renderLight = wanted;
+            rec.inst.setRenderLight(wanted);
         }
     }
 
@@ -417,6 +447,16 @@ class DoomMonsterSystem {
             return 1;
         }
         return (this._levelData.sectors[si].light / 255) * this._levelData.lightFactorOf(si);
+    }
+
+    // Sector index under a world position, null when no sector claims it.
+    _sectorIndexAt(x, z) {
+        if (this._levelData === null) {
+            return null;
+        }
+        const S   = WadConstants.SCALE;
+        const sec = this._levelData.findSector(x / S, z / S);
+        return ((sec !== null) ? sec.si : null);
     }
 
     // Arm the render glide after a tic that moved the body: from its previous
@@ -795,9 +835,7 @@ class DoomMonsterSystem {
     // Player sector, resolved at most once per tic (REJECT needs both ends).
     _userSector() {
         if (this._userSiTic !== this._ticCount) {
-            const S   = WadConstants.SCALE;
-            const sec = this._levelData.findSector(this._user.x / S, this._user.z / S);
-            this._userSi    = ((sec !== null) ? sec.si : null);
+            this._userSi    = this._sectorIndexAt(this._user.x, this._user.z);
             this._userSiTic = this._ticCount;
         }
         return this._userSi;
@@ -820,12 +858,13 @@ class DoomMonsterSystem {
                 continue;
             }
             // A drop released on a moving floor rides it, like its owner did
-            // (a clip left on a lift goes up and down with it).
-            this._spawnDropAt(key, pos[0], pos[1], pos[2], m.inst.getRideOn());
+            // (a clip left on a lift goes up and down with it). It inherits
+            // the corpse's tracked sector, so both are lit alike.
+            this._spawnDropAt(key, pos[0], pos[1], pos[2], m.inst.getRideOn(), m.si);
         }
     }
 
-    _spawnDropAt(key, x, y, z, rideInstance) {
+    _spawnDropAt(key, x, y, z, rideInstance, si) {
         const tpl = this._drops[key];
         if (tpl === undefined) {
             return;
@@ -847,7 +886,16 @@ class DoomMonsterSystem {
         if (rideInstance !== null) {
             inst.setRideOn(rideInstance);
         }
-        this._droppedRecords.push({key: key, inst: inst});
+        const drop = {
+            key:         key,
+            inst:        inst,
+            si:          si,
+            renderLight: null,
+            litSi:       null,
+            litBright:   false
+        };
+        this._pushRenderLight(drop, false);
+        this._droppedRecords.push(drop);
     }
 
     // Bodies in motion (P_XYMovement / P_ZMovement at 35 Hz): the blast thrust
@@ -898,9 +946,9 @@ class DoomMonsterSystem {
                 // follows, and a LIVE skidding body still fires the special
                 // lines it crosses (a blast-slid corpse crossing a teleport
                 // stays put — refused deviation).
-                const sec = this._levelData.findSector(solved.x / SCALE, solved.z / SCALE);
-                if (sec !== null) {
-                    m.si = sec.si;
+                const si = this._sectorIndexAt(solved.x, solved.z);
+                if (si !== null) {
+                    m.si = si;
                 }
                 if (!m.dead) {
                     this._crossLines(m, fromX, fromZ, solved.x, solved.z);
@@ -1065,10 +1113,9 @@ class DoomMonsterSystem {
         m.velZ = 0;
         m.velY = 0;
         m.env  = new ActorExternalForces();
-        const S   = WadConstants.SCALE;
-        const sec = this._levelData.findSector(landing.x / S, landing.z / S);
-        if (sec !== null) {
-            m.si = sec.si;
+        const si = this._sectorIndexAt(landing.x, landing.z);
+        if (si !== null) {
+            m.si = si;
         }
         this._resolveRide(m);
         this._refreshView(m);
