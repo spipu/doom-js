@@ -8,8 +8,8 @@
  *
  * It shows the same information as the classic Doom status bar, minus the face.
  * Values are read from the bound DoomUser; the active weapon's ammo type and
- * name come from the DoomGame weapon catalog. Sizes scale with the rendered
- * display height (engine.scrHeight), like HudDebug.
+ * name come from the DoomGame weapon catalog. Sizes are expressed in cqh on a
+ * size container, so the whole bar follows the letterbox height.
  */
 class HudGameBar extends AbstractHud {
     constructor(engine) {

@@ -25,7 +25,6 @@ class DoomTranslations {
             'menu.storageUnavailable': {fr: 'Stockage navigateur indisponible — impossible de gérer les WADs.',
                                         en: 'Browser storage unavailable — WADs cannot be managed.'},
 
-            // WAD list
             'menu.wad.title':          {fr: 'Fichiers WAD',                          en: 'WAD files'},
             'menu.wad.empty':          {fr: 'Aucun WAD — ajoutez-en un ci-dessous',  en: 'No WAD — add one below'},
             'menu.wad.urlPlaceholder': {fr: 'https://exemple.com/fichier.wad',       en: 'https://example.com/file.wad'},
@@ -71,7 +70,6 @@ class DoomTranslations {
             'menu.episode.reading':    {fr: 'Lecture du WAD...',                     en: 'Reading the WAD...'},
             'menu.episode.empty':      {fr: 'Aucun niveau trouvé dans ce WAD',       en: 'No level found in this WAD'},
 
-            // Difficulty
             'menu.difficulty.title':   {fr: 'Difficulté',                            en: 'Difficulty'},
             'menu.difficulty.skill':   {fr: 'Niveau {skill}',                        en: 'Level {skill}'},
 
@@ -136,7 +134,6 @@ class DoomTranslations {
             'game.tally.next':         {fr: 'Niveau suivant',                        en: 'Next level'},
             'game.tally.menu':         {fr: 'Retour au menu',                        en: 'Back to menu'},
 
-            // --- HUD ---
             'hud.health':              {fr: 'PV',                                    en: 'HP'},
             'hud.armor':               {fr: 'AR',                                    en: 'AR'},
             'hud.ammo':                {fr: 'MUNITIONS',                             en: 'AMMO'},

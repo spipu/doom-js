@@ -8,8 +8,8 @@
  * ScreenManager drives a single HUD (init + setRatio + update every frame), so
  * the toggle lives here rather than by re-binding the screen: both sub-views
  * init() their own DOM root into the same overlay container, and only the active
- * one is updated (the inactive one is hidden via setVisible). The full-screen
- * damage/pickup flash is applied once here, on the shared container.
+ * one is updated (the inactive one is hidden via setVisible). Every full-screen
+ * tint is composited once here, on the shared container (_computeScreenTint).
  *
  * The aiming crosshair (a plain cross of two crossing bars, centred on the view
  * point) also lives here so it shows over BOTH views; it follows the

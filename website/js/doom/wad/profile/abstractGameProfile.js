@@ -184,8 +184,6 @@ class AbstractGameProfile {
     }
 
     /**
-     * Decoration definitions of this game's things.
-     *
      * @returns {object} code → DoomDecoration
      */
     thingDecorations() {

@@ -76,7 +76,6 @@ class HereticGameProfile extends DefaultGameProfile {
     // visible pickups with a null effect: never consumed, they stay.
     thingDecorations() {
         return {
-            // Floor obstacles (solid)
             serpentTorch:    new DoomDecoration({code: 'serpentTorch',    name: 'Serpent torch',      sprite: 'SRTCA0', solid: true,  radius: 12 * WadConstants.SCALE}),
             smallPillar:     new DoomDecoration({code: 'smallPillar',     name: 'Small pillar',       sprite: 'SMPLA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             stalagmiteSmall: new DoomDecoration({code: 'stalagmiteSmall', name: 'Small stalagmite',   sprite: 'STGSA0', solid: true,  radius: 8 * WadConstants.SCALE}),
@@ -92,7 +91,6 @@ class HereticGameProfile extends DefaultGameProfile {
             keyGizmoYellow:  new DoomDecoration({code: 'keyGizmoYellow',  name: 'Yellow key gizmo',   sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
             // Wall torch (+NOGRAVITY, sits against a wall at floor height)
             wallTorch:       new DoomDecoration({code: 'wallTorch',       name: 'Wall torch',         sprite: 'WTRHA0', solid: false, radius: 0}),
-            // Ceiling-hung
             skullHang70:     new DoomDecoration({code: 'skullHang70',     name: 'Hanging skull 70',   sprite: 'SKH1A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
             skullHang60:     new DoomDecoration({code: 'skullHang60',     name: 'Hanging skull 60',   sprite: 'SKH2A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
             skullHang45:     new DoomDecoration({code: 'skullHang45',     name: 'Hanging skull 45',   sprite: 'SKH3A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
