@@ -234,7 +234,7 @@ class WadTextureBank {
         }
         const count = dv.getUint32(0, true);
         for (let i = 0; i < count; i++) {
-            this._pnames.push(this._readName(dv, 4 + i * 8, 8));
+            this._pnames.push(WadFile.readName(dv, 4 + i * 8, 8).toUpperCase());
         }
     }
 
@@ -263,7 +263,7 @@ class WadTextureBank {
             const count = dv.getUint32(0, true);
             for (let i = 0; i < count; i++) {
                 const offset = dv.getUint32(4 + i * 4, true);
-                const name = this._readName(dv, offset, 8);
+                const name = WadFile.readName(dv, offset, 8).toUpperCase();
                 if (this._wallTexDir[name] === undefined) {
                     this._wallTexDir[name] = {dv: dv, offset: offset};
                     this._wallNames.push(name);
@@ -287,8 +287,8 @@ class WadTextureBank {
         }
         let i = 0;
         while (i + 20 <= dv.byteLength) {
-            const n1 = this._readName(dv, i, 9);
-            const n2 = this._readName(dv, i + 9, 9);
+            const n1 = WadFile.readName(dv, i, 9).toUpperCase();
+            const n2 = WadFile.readName(dv, i + 9, 9).toUpperCase();
             if (n1 === '') {
                 break;
             }
@@ -384,16 +384,4 @@ class WadTextureBank {
         }
     }
 
-    _readName(dv, offset, length) {
-        let name = '';
-        for (let i = 0; i < length; i++) {
-            const charCode = dv.getUint8(offset + i);
-            if (charCode === 0) {
-                break;
-            }
-            name += String.fromCharCode(charCode);
-        }
-
-        return name.toUpperCase();
-    }
 }

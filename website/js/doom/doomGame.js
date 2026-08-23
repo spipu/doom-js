@@ -14,14 +14,6 @@ class DoomGame {
         this._skill             = 3;
         this._carriedState      = null;
         this._restoreSnapshot   = null;
-        this._secretsFound      = 0;
-        this._secretsTotal      = 0;
-        this._killsCount        = 0;
-        this._killsTotal        = 0;
-        this._itemsFound        = 0;
-        this._itemsTotal        = 0;
-        this._levelTimeMs       = 0;
-        this._levelClockLast    = null;
         this._pauseWasDown      = true;
         this._cheatWasDown      = false;
         this._hudWasDown        = false;
@@ -33,6 +25,7 @@ class DoomGame {
         this._pauseDisplay      = null;
         this._pauseModal        = null;
         this._animateCallback   = this._animate.bind(this);
+        this._resetLevelStats();   // declares the per-level counters and clock
 
         // Weapon firing (built per level)
         this._playerWeapon    = null;
@@ -429,6 +422,20 @@ class DoomGame {
         return this._killsTotal;
     }
 
+    // Level stats (vanilla totalsecret / totalkills / totalitems + leveltime):
+    // scoped to ONE level, so they are cleared on every start — the totals are
+    // pushed back by the world builder as it registers the things.
+    _resetLevelStats() {
+        this._secretsFound   = 0;
+        this._secretsTotal   = 0;
+        this._killsCount     = 0;
+        this._killsTotal     = 0;
+        this._itemsFound     = 0;
+        this._itemsTotal     = 0;
+        this._levelTimeMs    = 0;
+        this._levelClockLast = null;
+    }
+
     // --- Level items (the vanilla MF_COUNTITEM bonuses and power-ups) ---
 
     setItemsTotal(total) {
@@ -437,19 +444,6 @@ class DoomGame {
 
     addItem() {
         this._itemsFound++;
-    }
-
-    getItemsFound() {
-        return this._itemsFound;
-    }
-
-    getItemsTotal() {
-        return this._itemsTotal;
-    }
-
-    // Time spent in the level, pauses excluded (vanilla leveltime).
-    getLevelTimeMs() {
-        return this._levelTimeMs;
     }
 
     // Real time between two frames — NOT the engine delta, which is clamped to
@@ -538,17 +532,7 @@ class DoomGame {
             this._carriedState = this._world.getUser().exportState();
         }
 
-        // Secrets, kills and items are level stats (vanilla totalsecret /
-        // totalkills / totalitems): reset on every level, the totals are
-        // pushed back by the world builder.
-        this._secretsFound = 0;
-        this._secretsTotal = 0;
-        this._killsCount   = 0;
-        this._killsTotal   = 0;
-        this._itemsFound   = 0;
-        this._itemsTotal   = 0;
-        this._levelTimeMs  = 0;
-        this._levelClockLast = null;
+        this._resetLevelStats();
 
         this._teardownLevel();
         loader.beginBatch();

@@ -823,22 +823,6 @@ class WadConstants {
         invulnerability: {rgb: [255, 200, 0], alpha: 0.25}
     };
 
-    // HUD line shown while the effect runs (label code → doomTranslations);
-    // effects absent from this table (berserkFlash…) get no line.
-    static EFFECT_HUD_LABELS = {
-        invulnerability: 'effect.invulnerability',
-        radiation:       'effect.radiationSuit',
-        light:           'effect.light',
-        invisibility:    'effect.invisibility'
-    };
-
-    // Same, for the PERMANENT power-ups carried as items (whole level, no
-    // countdown). The map items (computerMap / superMap) stay out on purpose:
-    // their effect is a no-op without an automap (user decision).
-    static PERMANENT_ITEM_HUD_LABELS = {
-        berserk: 'effect.berserk'
-    };
-
     // Partial invisibility: the weapon in hand fades to this alpha (GZDoom
     // renders the owner's psprites translucent under MF_SHADOW).
     static INVISIBILITY_WEAPON_ALPHA = 0.33;

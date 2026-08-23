@@ -89,7 +89,8 @@ class WadMeshBuilder {
             }
             return;
         }
-        const bspPolys = ((level.bspTree ?? null) !== null) ? level.bspTree.polysOfSector(si) : [];
+        const bspTree  = (level.bspTree ?? null);
+        const bspPolys = ((bspTree !== null) ? bspTree.polysOfSector(si) : []);
         if (bspPolys.length > 0) {
             for (const poly of bspPolys) {
                 WadMeshBuilder.addConvexFlat(mesh, texIdx, poly, yHeight, isFloor, light, lightGroup, uScroll, collisionOnly);

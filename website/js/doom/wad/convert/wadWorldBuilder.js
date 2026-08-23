@@ -30,6 +30,8 @@ class WadWorldBuilder {
         this._profile        = options.profile ?? new DoomGameProfile();
         this._monsterCatalog = options.monsterCatalog ?? null;
         this._monsterSystem  = options.monsterSystem ?? null;
+        this._level          = null;
+        this._sectorPolys    = null;   // walked on demand, see _sectorPolyCache
     }
 
     /**
@@ -56,10 +58,8 @@ class WadWorldBuilder {
             bossLinedefs:    this._bossVirtualLinedefs(level, bossActions),
             textureHeightOf: ((name) => bank.wallTextureHeight(name))
         }).analyze();
-        // Sector polygons computed once (reused by the spawn + every thing)
         this._level       = level;
-        this._sectorPolys = this._buildSectorPolyCache(level);
-        await this._yield();
+        this._sectorPolys = null;   // walked on demand, see _sectorPolyCache
 
         // Static map
         const mapData = new WadStaticMapBuilder(level, analysis, bank, animBank).build();
@@ -213,10 +213,13 @@ class WadWorldBuilder {
             if (secretZones.list.length > 0) {
                 loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
             }
-            // Hand over the sector-light lookup (else the poly cache is dropped);
-            // used to shade the weapon view sprite by the player's sector, pulsing
-            // with the sector's light effect via the interaction's live factor.
-            this._game.setSectorLight(new DoomSectorLight(this._sectorPolys, lightInteraction,
+            // Sector-light lookup: shades the weapon view sprite by the
+            // player's sector, pulsing with the sector's light effect through
+            // the interaction's live factor. It locates the player through the
+            // BSP when there is one, and only falls back on the polygon cache
+            // (built on demand) otherwise.
+            this._game.setSectorLight(new DoomSectorLight(
+                ((sectorAt !== null) ? null : this._sectorPolyCache()), lightInteraction,
                 sectorAt, level.sectors));
         }
 
@@ -983,8 +986,24 @@ class WadWorldBuilder {
         return landings;
     }
 
-    // Precompute every sector's outer polygons + floor/ceiling/light once, so
-    // _findSector is a cheap point test per thing instead of rebuilding polygons.
+    /**
+     * Sector outer polygons + floor/ceiling/light, walked once and memoized:
+     * _findSector is then a cheap point test per thing instead of rebuilding
+     * polygons. Lazy on purpose — with a usable BSP the tree answers every
+     * containment query (sectorAt) and this cache is only the fallback path,
+     * so building it up front would walk every sector's linedef chains for
+     * nothing on every level.
+     *
+     * @returns {object[]} [{si, fh, ch, light, tag, special, outers}]
+     */
+    _sectorPolyCache() {
+        if (this._sectorPolys === null) {
+            this._sectorPolys = this._buildSectorPolyCache(this._level);
+        }
+
+        return this._sectorPolys;
+    }
+
     _buildSectorPolyCache(level) {
         const {vertexes, linedefs, sidedefs, sectors} = level;
         const cache = [];
@@ -1026,7 +1045,7 @@ class WadWorldBuilder {
         if (sectorAt !== null) {
             this._level.sectors.forEach((sec, si) => pushZone(si, sec.fh, sec.special, null));
         } else {
-            for (const s of this._sectorPolys) {
+            for (const s of this._sectorPolyCache()) {
                 pushZone(s.si, s.fh, s.special, s.outers);
             }
         }
@@ -1049,7 +1068,7 @@ class WadWorldBuilder {
                 return {si: si, fh: sec.fh, ch: sec.ch, light: sec.light, tag: sec.tag};
             }
         }
-        const contained = WadSectorPolygons.smallestContaining(this._sectorPolys, doomX, doomY);
+        const contained = WadSectorPolygons.smallestContaining(this._sectorPolyCache(), doomX, doomY);
         if (contained !== null) {
             return {si: contained.si, fh: contained.fh, ch: contained.ch, light: contained.light, tag: contained.tag};
         }

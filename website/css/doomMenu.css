@@ -298,10 +298,6 @@
     animation: doomMenuPulse 1.2s ease-in-out infinite;
 }
 
-.doom-menu-modal-static {
-    margin-bottom: 0;
-}
-
 .doom-menu-modal-wide {
     width: 75%;
 }

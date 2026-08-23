@@ -2,39 +2,12 @@
  * Lift / moving floor instances builder (transposition of the lift generation
  * phase of convert_wad.py main()).
  */
-class WadLiftBuilder {
-    /**
-     * @param {object}           level
-     * @param {object}           analysis
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
-     */
-    constructor(level, analysis, bank, animBank) {
-        this._level    = level;
-        this._analysis = analysis;
-        this._bank     = bank;
-        this._animBank = animBank;
+class WadLiftBuilder extends AbstractMoverBuilder {
+    _sectorIds() {
+        return this._analysis.movingFloorDownIds;
     }
 
-    /**
-     * @returns {object[]} [{code, textures (bank indices), mesh, instanceData}]
-     */
-    buildAll() {
-        const result = [];
-        const sortedIds = [...this._analysis.movingFloorDownIds].sort((a, b) => a - b);
-        for (const si of sortedIds) {
-            const lift = this._buildLift(si);
-            if (lift !== null) {
-                result.push(lift);
-            }
-        }
-
-        return result;
-    }
-
-    // --- Internal ---
-
-    _buildLift(si) {
+    _buildOne(si) {
         const {liftOriginalFh, liftMinAdjFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
         const origFh = liftOriginalFh[si];
         const minFh  = liftMinAdjFh[si];
@@ -60,17 +33,14 @@ class WadLiftBuilder {
         const highestFh  = Math.max(maxFh, ...raiseTops);
         this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh));
 
-        if (mesh.points.length === 0) {
+        const textures = this._meshTextures(mesh);
+        if (textures === null) {
             return null;
         }
 
-        const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces);
-        const groups = this._animBank.buildAnimGroups(localIndices);
-        WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
-
         return {
             code:         liftName,
-            textures:     groups.newList,
+            textures:     textures,
             mesh:         mesh,
             instanceData: this._buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh)
         };

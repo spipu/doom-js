@@ -81,9 +81,9 @@ class WadLevelParser {
             result.push({
                 xo:     dv.getInt16(o, true),
                 yo:     dv.getInt16(o + 2, true),
-                upper:  this._readName(dv, o + 4, 8),
-                lower:  this._readName(dv, o + 12, 8),
-                middle: this._readName(dv, o + 20, 8),
+                upper:  WadFile.readName(dv, o + 4, 8).toUpperCase(),
+                lower:  WadFile.readName(dv, o + 12, 8).toUpperCase(),
+                middle: WadFile.readName(dv, o + 20, 8).toUpperCase(),
                 sector: dv.getUint16(o + 28, true)
             });
         }
@@ -100,8 +100,8 @@ class WadLevelParser {
             result.push({
                 fh:       dv.getInt16(o, true),
                 ch:       dv.getInt16(o + 2, true),
-                ft:       this._readName(dv, o + 4, 8),
-                ct:       this._readName(dv, o + 12, 8),
+                ft:       WadFile.readName(dv, o + 4, 8).toUpperCase(),
+                ct:       WadFile.readName(dv, o + 12, 8).toUpperCase(),
                 // light = the baked display level (WadConstants.sectorLightLevel);
                 // lightRaw = the lump value, for the light thinkers' vanilla
                 // bounds — they convert their own steps through the same curve.
@@ -202,16 +202,4 @@ class WadLevelParser {
         return {segs: segs, ssectors: ssectors, nodes: nodes};
     }
 
-    _readName(dv, offset, length) {
-        let name = '';
-        for (let i = 0; i < length; i++) {
-            const charCode = dv.getUint8(offset + i);
-            if (charCode === 0) {
-                break;
-            }
-            name += String.fromCharCode(charCode);
-        }
-
-        return name.toUpperCase();
-    }
 }

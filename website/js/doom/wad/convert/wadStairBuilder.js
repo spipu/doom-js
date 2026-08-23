@@ -14,39 +14,12 @@
  * The instances are trigger:'none' — they are start()ed together by the switch
  * (7/127) or the walk-zone (8/100); the staggered travel gives the ripple.
  */
-class WadStairBuilder {
-    /**
-     * @param {object}           level
-     * @param {object}           analysis
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
-     */
-    constructor(level, analysis, bank, animBank) {
-        this._level    = level;
-        this._analysis = analysis;
-        this._bank     = bank;
-        this._animBank = animBank;
+class WadStairBuilder extends AbstractMoverBuilder {
+    _sectorIds() {
+        return this._analysis.stairIds;
     }
 
-    /**
-     * @returns {object[]} [{code, textures (bank indices), mesh, instanceData}]
-     */
-    buildAll() {
-        const result = [];
-        const sortedIds = [...this._analysis.stairIds].sort((a, b) => a - b);
-        for (const si of sortedIds) {
-            const stair = this._buildStair(si);
-            if (stair !== null) {
-                result.push(stair);
-            }
-        }
-
-        return result;
-    }
-
-    // --- Internal ---
-
-    _buildStair(si) {
+    _buildOne(si) {
         const sec     = this._level.sectors[si];
         const info    = this._analysis.stairInfo[si];
         const origFh  = sec.fh;
@@ -62,17 +35,14 @@ class WadStairBuilder {
         this._buildTopFlat(mesh, si, sec, origFh);
         this._buildStairRisers(mesh, si, origFh, targetFh, delta);
 
-        if (mesh.points.length === 0) {
+        const textures = this._meshTextures(mesh);
+        if (textures === null) {
             return null;
         }
 
-        const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces);
-        const groups = this._animBank.buildAnimGroups(localIndices);
-        WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
-
         return {
             code:         stairName,
-            textures:     groups.newList,
+            textures:     textures,
             mesh:         mesh,
             instanceData: this._buildInstanceData(stairName, info.special, delta)
         };

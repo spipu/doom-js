@@ -1,5 +1,5 @@
 {
-    "version": "v1.559",
+    "version": "v1.562",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -55,7 +55,8 @@
             "/js/doom/wad/convert/wadMeshBuilder.js",
             "/js/doom/wad/convert/wadMapAnalyzer.js",
             "/js/doom/wad/convert/wadStaticMapBuilder.js",
-            "/js/doom/wad/convert/wadDoorBuilder.js",
+            "/js/doom/wad/convert/abstractMoverBuilder.js",
+        "/js/doom/wad/convert/wadDoorBuilder.js",
             "/js/doom/wad/convert/wadLiftBuilder.js",
             "/js/doom/wad/convert/wadRisingFloorBuilder.js",
             "/js/doom/wad/convert/wadStairBuilder.js",
