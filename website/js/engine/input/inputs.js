@@ -334,7 +334,6 @@ class Inputs {
         if (pad !== null) {
             return pad.readJoy2Y() * this._stickLookSpeed * dt * factor;
         }
-        // The look keys keep a keyboard fallback (pointer lock is broken in some VMs)
         const keys = this._keyAxis(this._keyboard.readAction('lookDown'), this._keyboard.readAction('lookUp')) * this._keyLookSpeed * dt;
         return (keys + this._mouse.readDeltaY()) * factor;
     }

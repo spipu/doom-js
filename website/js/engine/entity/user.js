@@ -272,7 +272,7 @@ class User {
     }
 
     // Brief golden screen pulse on item pickup (Doom bonuscount). Decays in
-    // updateMove like the damage flash; the HUD renders it under the red one.
+    // updateMove like the damage flash; the HUD composites the two.
     flashPickup() {
         this._pickupFlash = Math.max(this._pickupFlash, 0.5);
         return this;

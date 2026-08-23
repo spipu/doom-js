@@ -150,5 +150,4 @@ AppTranslator.LOCALES = {
     en: 'en-GB'
 };
 
-// Global instance, like appBootstrap and loader.
 const appTranslator = new AppTranslator();

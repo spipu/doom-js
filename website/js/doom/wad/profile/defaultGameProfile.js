@@ -63,7 +63,6 @@ class DefaultGameProfile extends AbstractGameProfile {
     // table; animated things list their frames + duration per entry.
     thingDecorations() {
         return {
-            // Floor obstacles (solid)
             floorLamp:     new DoomDecoration({code: 'floorLamp',     name: 'Floor lamp',         sprite: 'COLUA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             techColumn:    new DoomDecoration({code: 'techColumn',    name: 'Tall techno column', sprite: 'ELECA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             candelabra:    new DoomDecoration({code: 'candelabra',    name: 'Candelabra',         sprite: 'CBRAA0', solid: true,  radius: 16 * WadConstants.SCALE}),
@@ -92,7 +91,6 @@ class DefaultGameProfile extends AbstractGameProfile {
             shortRedTorch: new DoomDecoration({code: 'shortRedTorch', name: 'Short red torch',    sprite: 'SMRTA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             tallTechLamp:  new DoomDecoration({code: 'tallTechLamp',  name: 'Tall techno lamp',   sprite: 'TLMPA0', solid: true,  radius: 16 * WadConstants.SCALE}),
             shortTechLamp: new DoomDecoration({code: 'shortTechLamp', name: 'Short techno lamp',  sprite: 'TLP2A0', solid: true,  radius: 16 * WadConstants.SCALE}),
-            // Floor decorations (non-solid)
             candle:        new DoomDecoration({code: 'candle',        name: 'Candle',             sprite: 'CANDA0', solid: false, radius: 0}),
             gibs:          new DoomDecoration({code: 'gibs',          name: 'Bloody mess',        sprite: 'PLAYW0', solid: false, radius: 0}),
             deadPlayer:    new DoomDecoration({code: 'deadPlayer',    name: 'Dead player',        sprite: 'PLAYN0', solid: false, radius: 0}),
