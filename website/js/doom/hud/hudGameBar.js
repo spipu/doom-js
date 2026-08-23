@@ -347,9 +347,15 @@ class HudGameBar extends AbstractHud {
     }
 }
 
-// Effect-line order: the timed effects first, then the permanent
-// item-carried ones.
+// One line per power-up, in display order: the timed effects first (labelled
+// countdown), then the permanent ones carried as items. An effect absent from
+// this table gets no line (berserkFlash, a screen tint with no status of its
+// own); so do the map items, whose effect is a no-op without an automap (user
+// decision). The labels are translation codes served by doomTranslations.
 HudGameBar.EFFECT_LINE_DEFS = [
-    ...Object.entries(WadConstants.EFFECT_HUD_LABELS).map(([code, labelCode]) => ({code, labelCode, timed: true})),
-    ...Object.entries(WadConstants.PERMANENT_ITEM_HUD_LABELS).map(([code, labelCode]) => ({code, labelCode, timed: false}))
+    {code: 'invulnerability', labelCode: 'effect.invulnerability', timed: true},
+    {code: 'radiation',       labelCode: 'effect.radiationSuit',   timed: true},
+    {code: 'light',           labelCode: 'effect.light',           timed: true},
+    {code: 'invisibility',    labelCode: 'effect.invisibility',    timed: true},
+    {code: 'berserk',         labelCode: 'effect.berserk',         timed: false}
 ];

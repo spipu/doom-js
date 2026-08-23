@@ -120,8 +120,8 @@ class WadAnimationBank {
                 break;
             }
             const isFlat    = (typeByte === 0);
-            const lastName  = this._readName(dv, i + 1, 9);
-            const firstName = this._readName(dv, i + 10, 9);
+            const lastName  = WadFile.readName(dv, i + 1, 9).toUpperCase();
+            const firstName = WadFile.readName(dv, i + 10, 9).toUpperCase();
             const speedTics = dv.getUint32(i + 19, true);
             i += 23;
 
@@ -140,16 +140,4 @@ class WadAnimationBank {
         return sequences;
     }
 
-    _readName(dv, offset, length) {
-        let name = '';
-        for (let i = 0; i < length; i++) {
-            const charCode = dv.getUint8(offset + i);
-            if (charCode === 0) {
-                break;
-            }
-            name += String.fromCharCode(charCode);
-        }
-
-        return name.toUpperCase();
-    }
 }

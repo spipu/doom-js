@@ -9,39 +9,12 @@
  * adjacent corridor floor at rest, it emerges as the origFh→origFh+delta step
  * once the floor has risen.
  */
-class WadRisingFloorBuilder {
-    /**
-     * @param {object}           level
-     * @param {object}           analysis
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
-     */
-    constructor(level, analysis, bank, animBank) {
-        this._level    = level;
-        this._analysis = analysis;
-        this._bank     = bank;
-        this._animBank = animBank;
+class WadRisingFloorBuilder extends AbstractMoverBuilder {
+    _sectorIds() {
+        return this._analysis.risingFloorIds;
     }
 
-    /**
-     * @returns {object[]} [{code, textures (bank indices), mesh, instanceData}]
-     */
-    buildAll() {
-        const result = [];
-        const sortedIds = [...this._analysis.risingFloorIds].sort((a, b) => a - b);
-        for (const si of sortedIds) {
-            const floor = this._buildRisingFloor(si);
-            if (floor !== null) {
-                result.push(floor);
-            }
-        }
-
-        return result;
-    }
-
-    // --- Internal ---
-
-    _buildRisingFloor(si) {
+    _buildOne(si) {
         const sec     = this._level.sectors[si];
         const special = this._analysis.risingFloorSpecial[si] ?? 58;
         const origFh  = sec.fh;
@@ -58,17 +31,14 @@ class WadRisingFloorBuilder {
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         this._buildRisers(mesh, si, origFh, baseFh);
 
-        if (mesh.points.length === 0) {
+        const textures = this._meshTextures(mesh);
+        if (textures === null) {
             return null;
         }
 
-        const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces);
-        const groups = this._animBank.buildAnimGroups(localIndices);
-        WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
-
         return {
             code:         floorName,
-            textures:     groups.newList,
+            textures:     textures,
             mesh:         mesh,
             instanceData: this._buildInstanceData(floorName, special, delta, this._analysis.risingFloorInstantIds.has(si))
         };

@@ -109,29 +109,6 @@ class DoomUser extends User {
         return this._activeWeapon;
     }
 
-    // Declaration (canonical) order; an unknown active weapon lands on the
-    // first owned.
-    nextWeapon() {
-        const owned = this.getOwnedWeaponCodes();
-        if (owned.length === 0) {
-            return this;
-        }
-        const index = owned.indexOf(this._activeWeapon);
-        this._activeWeapon = owned[(index + 1) % owned.length];
-        return this;
-    }
-
-    // An unknown active weapon lands on the last owned.
-    previousWeapon() {
-        const owned = this.getOwnedWeaponCodes();
-        if (owned.length === 0) {
-            return this;
-        }
-        const index = owned.indexOf(this._activeWeapon);
-        this._activeWeapon = owned[((index <= 0) ? owned.length - 1 : index - 1)];
-        return this;
-    }
-
     // --- Ammo (shared pool by type) ---
     setAmmoMax(type, max) {
         this._ammoMax[type] = max;

@@ -1232,17 +1232,35 @@ class DoomMonsterSystem {
     // Ray parameter against one 2D circle (entry point, clamped to the origin
     // when it starts inside), or null when the ray misses or leaves it behind.
     _rayCircle(ox, oz, dx, dz, cx, cz, r) {
-        const ex   = ox - cx;
-        const ez   = oz - cz;
-        const a    = dx * dx + dz * dz;
+        const span = DoomMonsterSystem._circleSpan(ox - cx, oz - cz, dx, dz, r);
+
+        return ((span !== null) ? span.near : null);
+    }
+
+    // Entry and exit parameters of the ray on the XZ circle (entry clamped to
+    // the origin when the ray starts inside), or null when it misses or the
+    // circle is entirely behind. The quadratic of both ray tests.
+    static _circleSpan(ex, ez, dx, dz, r) {
+        const a = dx * dx + dz * dz;
+        if (a < DoomMonsterSystem.RAY_MIN_XZ) {
+            // No XZ direction (a shot straight up or down): the quadratic
+            // degenerates to 0/0. The cylinder test owns that case through its
+            // cap branch, the flat circle test simply has no answer.
+            return null;
+        }
         const b    = 2 * (ex * dx + ez * dz);
         const c    = ex * ex + ez * ez - r * r;
         const disc = b * b - 4 * a * c;
         if (disc < 0) {
             return null;
         }
-        const sq = Math.sqrt(disc);
-        return ((((-b + sq) / (2 * a)) >= 0) ? Math.max(0, (-b - sq) / (2 * a)) : null);
+        const sq  = Math.sqrt(disc);
+        const far = (-b + sq) / (2 * a);
+        if (far < 0) {
+            return null;
+        }
+
+        return {near: Math.max(0, (-b - sq) / (2 * a)), far: far};
     }
 
     // Ray parameter against one vertical cylinder, or null. Solved on the XZ
@@ -1253,7 +1271,7 @@ class DoomMonsterSystem {
         const ex = ox - cx;
         const ez = oz - cz;
         const a  = dx * dx + dz * dz;
-        if (a < 1e-9) {
+        if (a < DoomMonsterSystem.RAY_MIN_XZ) {
             // Straight vertical shot: hit only when already over the body.
             if ((ex * ex + ez * ez) > r * r) {
                 return null;
@@ -1261,18 +1279,12 @@ class DoomMonsterSystem {
             const tCap = (((dy > 0) ? yBottom : yTop) - oy) / dy;
             return ((tCap >= 0) ? tCap : null);
         }
-        const b    = 2 * (ex * dx + ez * dz);
-        const c    = ex * ex + ez * ez - r * r;
-        const disc = b * b - 4 * a * c;
-        if (disc < 0) {
+        const span = DoomMonsterSystem._circleSpan(ex, ez, dx, dz, r);
+        if (span === null) {
             return null;
         }
-        const sq    = Math.sqrt(disc);
-        const tNear = Math.max(0, (-b - sq) / (2 * a));
-        const tFar  = (-b + sq) / (2 * a);
-        if (tFar < 0) {
-            return null;
-        }
+        const tNear = span.near;
+        const tFar  = span.far;
         const yNear = oy + dy * tNear;
         if ((yNear >= yBottom) && (yNear <= yTop)) {
             return tNear;
@@ -1288,6 +1300,11 @@ class DoomMonsterSystem {
 }
 
 DoomMonsterSystem.MS_PER_TIC = 1000 / 35;
+
+// Below this squared XZ length a ray direction counts as purely vertical: the
+// ray/circle quadratic has no solution there (0/0), the cylinder answers on its
+// caps instead.
+DoomMonsterSystem.RAY_MIN_XZ = 1e-9;
 // Vanilla P_XYMovement stop threshold (0x1000/65536, map units/tic) — the
 // decay/step/float numbers live in WadConstants (shared with the locomotion)
 DoomMonsterSystem.STOPSPEED = 0.0625;

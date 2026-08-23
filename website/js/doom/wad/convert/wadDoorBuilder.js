@@ -2,39 +2,12 @@
  * Door instances builder (transposition of the door generation phase of
  * convert_wad.py main()): world-space geometry + instance data with keyframes.
  */
-class WadDoorBuilder {
-    /**
-     * @param {object}           level
-     * @param {object}           analysis
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
-     */
-    constructor(level, analysis, bank, animBank) {
-        this._level    = level;
-        this._analysis = analysis;
-        this._bank     = bank;
-        this._animBank = animBank;
+class WadDoorBuilder extends AbstractMoverBuilder {
+    _sectorIds() {
+        return this._analysis.doorSectorIds;
     }
 
-    /**
-     * @returns {object[]} [{code, textures (bank indices), mesh, instanceData}]
-     */
-    buildAll() {
-        const result = [];
-        const sortedIds = [...this._analysis.doorSectorIds].sort((a, b) => a - b);
-        for (const si of sortedIds) {
-            const door = this._buildDoor(si);
-            if (door !== null) {
-                result.push(door);
-            }
-        }
-
-        return result;
-    }
-
-    // --- Internal ---
-
-    _buildDoor(si) {
+    _buildOne(si) {
         const {linedefs, sidedefs, sectors} = this._level;
         const {doorHeights} = this._analysis;
         const sec = sectors[si];
@@ -62,13 +35,14 @@ class WadDoorBuilder {
         this._buildPanels(mesh, si, floorH);
         this._buildBottomFlat(mesh, si, sec, floorH);
 
-        const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces);
-        const groups = this._animBank.buildAnimGroups(localIndices);
-        WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
+        const textures = this._meshTextures(mesh);
+        if (textures === null) {
+            return null;
+        }
 
         return {
             code:         doorName,
-            textures:     groups.newList,
+            textures:     textures,
             mesh:         mesh,
             instanceData: this._buildInstanceData(doorName, si, floorH, ceilH, mesh)
         };

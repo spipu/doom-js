@@ -153,12 +153,19 @@ class WadFile {
         return result;
     }
 
-    // --- Internal ---
-
-    _readName(offset, length) {
+    /**
+     * NUL-terminated fixed-width name of the WAD binary formats (lump
+     * directory, but also every name field of the map lumps: textures, flats,
+     * animation entries). Static: the converter parsers read their own
+     * DataView, they have no WadFile instance.
+     *
+     * @param {DataView} dv
+     * @returns {string} raw, unchanged case
+     */
+    static readName(dv, offset, length) {
         let name = '';
         for (let i = 0; i < length; i++) {
-            const charCode = this._view.getUint8(offset + i);
+            const charCode = dv.getUint8(offset + i);
             if (charCode === 0) {
                 break;
             }
@@ -166,6 +173,12 @@ class WadFile {
         }
 
         return name;
+    }
+
+    // --- Internal ---
+
+    _readName(offset, length) {
+        return WadFile.readName(this._view, offset, length);
     }
 
     _lumpView(lump) {

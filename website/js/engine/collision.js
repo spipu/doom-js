@@ -119,7 +119,9 @@ class Collision {
     // static world) — lets a body standing there follow a moving floor.
     getFloorInfo(px, pz, r, maxSearchY = Infinity) {
         const found = this._findFloor(px, pz, r, maxSearchY, Collision.DYN_NEAR);
-        return {y: found.y, instance: (found.tri ? (found.tri.instance ?? null) : null)};
+        const tri   = found.tri;
+
+        return {y: found.y, instance: ((tri !== null) ? (tri.instance ?? null) : null)};
     }
 
     getCeiling(px, pz, r, headY) {

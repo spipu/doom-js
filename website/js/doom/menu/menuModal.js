@@ -49,17 +49,10 @@ class MenuModal {
      * @param {string} message
      */
     showLoading(message) {
-        return this._showText(message, true);
-    }
+        this._createShell(message, 'doom-menu-modal',
+            'doom-menu-modal-message doom-menu-modal-loading');
 
-    /**
-     * Simple message modal: without buttons and not closable by clicking.
-     * Closed programmatically via close().
-     *
-     * @param {string} message
-     */
-    showMessage(message) {
-        return this._showText(message, false);
+        return this;
     }
 
     /**
@@ -167,13 +160,6 @@ class MenuModal {
         }
 
         return MenuDom.isTopOverlay(this._display.getContainer(), this._overlay);
-    }
-
-    _showText(message, pulsing) {
-        this._createShell(message, 'doom-menu-modal',
-            'doom-menu-modal-message ' + ((pulsing) ? 'doom-menu-modal-loading' : 'doom-menu-modal-static'));
-
-        return this;
     }
 
     _dismissOnOverlayClick(action) {
