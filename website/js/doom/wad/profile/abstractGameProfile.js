@@ -353,6 +353,18 @@ class AbstractGameProfile {
     }
 
     /**
+     * Transcribed finale-text catalog of this game, merged into the translator
+     * at app startup. Its codes are namespaced by this profile's code
+     * ('finale.doom.E1TEXT'), so a game whose WAD carries its own texts
+     * (Freedoom, through DEHACKED) declares none and falls back on them.
+     *
+     * @returns {string|null} catalog URL, null when the game ships no text
+     */
+    finaleAssets() {
+        return null;
+    }
+
+    /**
      * Transient effect templates (hitscan puffs, projectile explosions,
      * blood, teleport fog): short sprite animations built once per level in
      * the load batch. rise is the upward drift in map units/tic (0 = static),

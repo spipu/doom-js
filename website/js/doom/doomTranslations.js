@@ -89,8 +89,8 @@ class DoomTranslations {
                                         en: 'Spipu-Doom converts and runs your Doom WAD files on the fly, entirely in the browser: WebGL rendering, FPS physics, moving elements and weapons faithful to the original game.'},
             'help.about.author':       {fr: 'Développé par Spipu (Laurent Minguet).',
                                         en: 'Developed by Spipu (Laurent Minguet).'},
-            'help.about.licence':      {fr: 'Licence MIT — à l\'exception des graphismes de decals d\'impact, repris d\'UZDoom sous licence GPL v3.',
-                                        en: 'MIT licence — except the impact decal graphics, taken from UZDoom under the GPL v3 licence.'},
+            'help.about.licence':      {fr: 'Licence MIT — à l\'exception des graphismes de decals d\'impact et des textes de fin de chapitre, repris d\'UZDoom sous licence GPL v3.',
+                                        en: 'MIT licence — except the impact decal graphics and the end-of-chapter texts, taken from UZDoom under the GPL v3 licence.'},
             'help.about.wads':         {fr: 'Aucun fichier WAD n\'est fourni. Utilisez un WAD libre comme Freedoom, ou vos propres fichiers dont vous détenez les droits — Doom et ses données de jeu restent la propriété de leurs ayants droit.',
                                         en: 'No WAD file is shipped. Use a free WAD such as Freedoom, or your own files that you hold the rights to — Doom and its game data remain the property of their rights holders.'},
             'help.about.copyright':    {fr: '© 2024-{year} Spipu.',                  en: '© 2024-{year} Spipu.'},
@@ -133,6 +133,8 @@ class DoomTranslations {
             'game.tally.none':         {fr: 'aucun',                                 en: 'none'},
             'game.tally.next':         {fr: 'Niveau suivant',                        en: 'Next level'},
             'game.tally.menu':         {fr: 'Retour au menu',                        en: 'Back to menu'},
+            // Leaves the tally for the story text, which carries the real next action
+            'game.finale.continue':    {fr: 'Continuer',                             en: 'Continue'},
 
             'hud.health':              {fr: 'PV',                                    en: 'HP'},
             'hud.armor':               {fr: 'AR',                                    en: 'AR'},

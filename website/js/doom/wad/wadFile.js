@@ -175,6 +175,23 @@ class WadFile {
         return name;
     }
 
+    /**
+     * Whole content of a text lump (UMAPINFO, DEHACKED) as a string, byte for
+     * byte. Static for the same reason as readName: the parsers hold a
+     * DataView, not a WadFile.
+     *
+     * @param {DataView} dv
+     * @returns {string}
+     */
+    static lumpText(dv) {
+        let text = '';
+        for (let i = 0; i < dv.byteLength; i++) {
+            text += String.fromCharCode(dv.getUint8(i));
+        }
+
+        return text;
+    }
+
     // --- Internal ---
 
     _readName(offset, length) {

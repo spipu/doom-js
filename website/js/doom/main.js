@@ -42,6 +42,9 @@ function loadApp()
     // before the first level is built.
     doomDecalTextures.load();
 
+    // Same for the games' finale texts, merged into the catalog above.
+    doomFinaleTexts.load();
+
     // Every Doom level builds a DoomUser (player + equipment) instead of the
     // generic engine User.
     loader.world().setUserClass(DoomUser);

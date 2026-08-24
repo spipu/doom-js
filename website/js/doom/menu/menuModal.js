@@ -138,6 +138,28 @@ class MenuModal {
         return this;
     }
 
+    /**
+     * Story text of the end of a chapter (or of the game), shown after the
+     * tally. The text IS the message of the shell — no title, the tally just
+     * announced the end of the level. Like the tally, it waits for its button.
+     *
+     * @param {string}   text
+     * @param {string}   label  - button label
+     * @param {function} action
+     */
+    finale(text, label, action) {
+        const {modal} = this._createShell(text, 'doom-menu-modal doom-menu-modal-finale', 'doom-menu-finale');
+
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
+        const button = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-block', label, () => {
+            this.close();
+            action();
+        });
+        this._attachButtonsNav([button], button, 0);
+
+        return this;
+    }
+
     close() {
         if (this._nav !== null) {
             this._nav.detach().clear();

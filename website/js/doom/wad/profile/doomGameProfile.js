@@ -15,6 +15,10 @@ class DoomGameProfile extends DefaultGameProfile {
         return (wadFile.getLump('M_DOOM') !== null);
     }
 
+    finaleAssets() {
+        return '/assets/uzdoom/doom/text/finale.json';
+    }
+
     // Episode titles of Doom 1 (UZDoom mapinfo/doom1.txt episode blocks).
     // Doom 2 (MAPxx) has none: its single episode only shows its number.
     episodeNames() {

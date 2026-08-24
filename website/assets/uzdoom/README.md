@@ -6,13 +6,20 @@ licensed under the **GNU General Public License v3** (see `LICENSE.md` in this
 directory for the full text).
 
 - **Source project**: UZDoom — https://github.com/UZDoom/uzdoom
-- **Origin path in that repo**: `wadsrc/static/graphics/`
+- **Origin paths in that repo**: `wadsrc/static/graphics/` (the `sprite/`
+  directories below), `libraries/Translation/games/<game>/{en_US,fr}.po` (the
+  `text/` ones).
 - **Copyright**: the ZDoom / GZDoom / UZDoom contributors (Marisa Heit,
-  Christoph Oelckers et al.).
+  Christoph Oelckers et al.) for the graphics and the French translations; the
+  original English texts are id Software's and Raven Software's, UZDoom being
+  the vehicle under which they are redistributed here.
 
-These are impact decal graphics (bullet chips and explosion scorches), which do
-not exist in the Doom IWADs and cannot be reproduced faithfully by procedural
-generation.
+Two kinds of files: impact decal graphics (bullet chips and explosion
+scorches), which do not exist in the Doom IWADs and cannot be reproduced
+faithfully by procedural generation; and the end-of-chapter story texts, which
+live in the game executables rather than in the IWADs, so a WAD alone cannot
+provide them. A WAD that carries its own (Freedoom, in its `DEHACKED` lump)
+always wins over these.
 
 ## Files (`doom/sprite/`)
 
@@ -34,6 +41,24 @@ generation.
 
 (The Hellstaff and Phoenix Rod reuse `doom/sprite/plasma1.png` /
 `plasma2.png` / `scorch1.png`, already loaded by the Doom profile.)
+
+## Files (`doom/text/`, `heretic/text/`)
+
+`finale.json` — the story text shown between two chapters and at the end of the
+game, as a translation catalog (`{code: {fr, en}}`) merged straight into the
+app's own. Its codes are namespaced by game profile, matching the cluster codes
+of the vanilla `mapinfo` (`finale.doom.E1TEXT` … `C6TEXT`,
+`finale.heretic.HE1TEXT` … `HE5TEXT`).
+
+| File | Codes | Covers |
+|---|---|---|
+| `doom/text/finale.json` | `E1TEXT`…`E4TEXT`, `C1TEXT`…`C6TEXT` | Doom, Doom II |
+| `heretic/text/finale.json` | `HE1TEXT`…`HE5TEXT` | Heretic |
+
+Transcribed verbatim, line breaks included. The game drops the ones inside a
+paragraph when it displays them (the modal reflows on its own), and applies
+that same rule to the texts a WAD provides — so the choice lives in the code,
+not in this transcription.
 
 ## Licensing consequence
 

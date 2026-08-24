@@ -35,7 +35,19 @@ class HereticGameProfile extends DefaultGameProfile {
             // Hidden episode 6 loops forever (UZDoom mapinfo/heretic.txt:
             // E6M1→E6M2→E6M3→E6M1, both exits). E6M1/E6M2 already chain by
             // lump order; only the loop-back needs an explicit route.
-            explicitRoutes: {E6M3: {next: 'E6M1', nextsecret: 'E6M1'}}
+            explicitRoutes: {E6M3: {next: 'E6M1', nextsecret: 'E6M1'}},
+            // One cluster per episode (UZDoom mapinfo/heretic.txt): the hidden
+            // episode 6 has none — it loops, so it never ends on a text.
+            // Heretic has no MAPxx maps, hence no range table.
+            clusters: {
+                byEpisode:  true,
+                byMapRange: [],
+                byMapExact: {},
+                texts: {
+                    1: {exit: 'HE1TEXT'}, 2: {exit: 'HE2TEXT'}, 3: {exit: 'HE3TEXT'},
+                    4: {exit: 'HE4TEXT'}, 5: {exit: 'HE5TEXT'}
+                }
+            }
         };
     }
 
@@ -50,6 +62,10 @@ class HereticGameProfile extends DefaultGameProfile {
             'E4M8': {special: 19, tag: 666},
             'E5M8': {special: 19, tag: 666}
         };
+    }
+
+    finaleAssets() {
+        return '/assets/uzdoom/heretic/text/finale.json';
     }
 
     // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden

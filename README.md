@@ -45,6 +45,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Weapon switching**: **F** / **G** on the keyboard, shoulder buttons 4/5 on a gamepad, or the HUD's top-right tap zone on the virtual pad.
 - **Sector effects**: damaging floors (with the E1M8 finale rule), "+change" floor mutations, scrolling walls, the vanilla dynamic light thinkers, UZDoom-style distance light diminishing and a sector light floor (the original never renders absolute black), a live texture-smoothing toggle, secret counting, and the Heretic pushes — winds, conveyors, scrolling lava, inertial ice — applied to the player and every monster.
 - **Level chaining**: exits (switch or walk-over) chain to the next level with the vanilla progression rules (secret exits included), overridable by a `UMAPINFO` lump; episode ends, MAP30 and the end of the WAD return to the menu. A finished level freezes on its tally — time spent, enemies, items and secrets, each as *found / total* and a percentage — and waits for you to ask for the next level.
+- **Story texts**: closing a chapter shows the game's own text after the tally, in the same modal style — the four Doom episodes, Doom II's six cluster texts (between chapters and on entering the secret levels), Heretic's five. A WAD telling its own story is always preferred: `UMAPINFO` per-map texts first, then the `DEHACKED` strings a WAD substitutes (which is how Freedoom shows its own), then the game's transcribed catalog, the only one translated.
 - **Build error modal**: a failed level build shows its cause and drops back to the WAD list.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look, both analog).
 - **Touch controls**: touch-only devices get a virtual gamepad laid out for a **4-finger claw grip** — a dynamic move stick in the bottom-left quadrant, the whole right half as a floating aim stick split into an *aim* band and an *aim + fire* band (the mode is locked per gesture), jump/crouch and the menu top-left, use bottom-right, and the weapon-switch zone top-right. Each gesture has its own settable dead zone, and the firing gesture a settable aim sensitivity.
@@ -107,7 +108,7 @@ website/
 ├── index.html                Spipu-Doom shell (PWA)
 ├── appServiceWorker.js       Service Worker — cache-first, offline (must stay at webroot: SW scope)
 ├── css/                      Shell + menu styles
-├── assets/uzdoom/            UZDoom impact-decal graphics (GPL v3 — own LICENSE.md + README.md)
+├── assets/uzdoom/            UZDoom impact-decal graphics + finale texts (GPL v3 — own LICENSE.md + README.md)
 ├── _examples/                Simple demos + their assets and bootstrap definitions
 └── js/
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
@@ -117,6 +118,7 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (fr + en)
+│   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
@@ -212,7 +214,6 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Episode & game finale texts**: an episode, MAP30 or the end of a WAD drops straight back to the menu, while the original tells you the story between its chapters. That text belongs in a modal styled like the level tally, with a "continue" button at the bottom — not the 1993 presentation, and no Doom II cast call.
 * **Automap**: nothing today, which also leaves the two map power-ups sitting inert in the thing catalogs.
 * **Monster attacks**: monsters chase, hurt nobody and die politely — their melee and missile states are transcribed but no attack verb fires. The pieces they need (damage pipeline, projectiles, line of sight) are already in place, so this is the one gap that turns the world into a game.
 * **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
@@ -224,4 +225,4 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## License
 
-This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics taken from UZDoom), which is distributed under the GPL v3 with its own LICENSE.md and attribution README. Removing that directory yields a 100% MIT distribution.
+This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), which is distributed under the GPL v3 with its own LICENSE.md and attribution README. Removing that directory yields a 100% MIT distribution.
