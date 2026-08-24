@@ -38,8 +38,11 @@ class DoomGame {
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
-        this._depthShadingOn  = null;    // last display states pushed to the engine (null = never)
+        this._depthShadingOn  = null;    // last states pushed to the engine / player (null = never)
         this._texSmoothingOn  = null;
+        this._fallDamageOn    = null;
+        this._jumpOn          = null;
+        this._crouchOn        = null;
         this._fov             = WadConstants.PLAYER_FOV;   // current Doom FOV (telezoom eases it back)
         this._fovTicAcc       = 0;
         this._rng             = new DoomRandom();
@@ -643,10 +646,14 @@ class DoomGame {
         this._fovTicAcc = 0;
         this._applyFov();
         this._engine.setZBuffer(0.1, 100);
-        // The engine is recreated on each level: re-arm the display settings.
+        // The engine and the player are rebuilt on each level: re-arm every
+        // memoized setting so all of them are pushed onto the fresh pair.
         this._depthShadingOn = null;
         this._texSmoothingOn = null;
-        this._applyDisplaySettings();
+        this._fallDamageOn   = null;
+        this._jumpOn         = null;
+        this._crouchOn       = null;
+        this._applySettings();
 
         this._hud = new HudDoom(this._engine)
             .bindUser(this._world.getUser())
@@ -725,7 +732,7 @@ class DoomGame {
         // The end-of-level tally freezes the same way: the player reads it at
         // leisure and the level clock stops with the world.
         if (this._paused || this._transitioning) {
-            this._applyDisplaySettings();
+            this._applySettings();
             this._engine.displayWorld(this._world);
             this._screen.update();
             requestAnimationFrame(this._animateCallback);
@@ -788,7 +795,7 @@ class DoomGame {
         if (this._decals !== null) {
             this._decals.update(dt);
         }
-        this._applyDisplaySettings();
+        this._applySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay(this._world.getUser());
         this._engine.displayWorld(this._world);
@@ -797,18 +804,32 @@ class DoomGame {
         requestAnimationFrame(this._animateCallback);
     }
 
-    // display.* settings pushed to the engine when they change (read every
-    // frame — a toggle from the Display help page applies live, like the
-    // crosshair). The diminishing curve constants live in WadConstants.
-    _applyDisplaySettings() {
-        this._depthShadingOn = this._pushDisplaySetting(
+    // display.* and game.* settings pushed to the engine and to the player
+    // when they change (read every frame — a toggle from the options, which
+    // the pause menu reaches mid-level, applies live). The diminishing curve
+    // constants live in WadConstants.
+    _applySettings() {
+        const user = this._world.getUser();
+        this._depthShadingOn = this._pushSetting(
             this._depthShadingOn,
             doomSettings.getDisplayDistanceShading(),
             (on) => this._engine.setDepthShading(((on) ? WadConstants.lightDiminishParams() : null)));
-        this._texSmoothingOn = this._pushDisplaySetting(
+        this._texSmoothingOn = this._pushSetting(
             this._texSmoothingOn,
             doomSettings.getDisplayTextureSmoothing(),
             (on) => this._engine.setTextureSmoothing(on));
+        this._fallDamageOn = this._pushSetting(
+            this._fallDamageOn,
+            doomSettings.getGameFallDamage(),
+            (on) => user.setFallDamage(on));
+        this._jumpOn = this._pushSetting(
+            this._jumpOn,
+            doomSettings.getGameJump(),
+            (on) => user.setJumpAllowed(on));
+        this._crouchOn = this._pushSetting(
+            this._crouchOn,
+            doomSettings.getGameCrouch(),
+            (on) => user.setCrouchAllowed(on));
     }
 
     // Engine-facing state of the running effects, re-derived every frame:
@@ -819,7 +840,7 @@ class DoomGame {
             ? WadConstants.NIGHT_VISION_LIGHT : null));
     }
 
-    _pushDisplaySetting(current, wanted, apply) {
+    _pushSetting(current, wanted, apply) {
         if (wanted !== current) {
             apply(wanted);
         }

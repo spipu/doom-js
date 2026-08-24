@@ -900,6 +900,8 @@ class WadWorldBuilder {
                 maxSlopeAngle:   defaults.maxSlopeAngle,
                 moveSpeed:       defaults.moveSpeed,
                 stepHeight:      defaults.stepHeight,
+                fallSafeFactor:  defaults.fallSafeFactor,
+                fallMaxFactor:   defaults.fallMaxFactor,
                 voidKillY:       defaults.voidKillY
             },
             background: background,

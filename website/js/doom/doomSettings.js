@@ -49,6 +49,14 @@ class DoomSettings {
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
+            // Gameplay rules ('game.' prefix = the "Jeu" help page). None of
+            // the three exists in vanilla Doom: fall damage stays OFF to match
+            // it, while jumping and crouching are offered on — they cost
+            // nothing to a player who ignores them, unlike damage he never
+            // asked for.
+            {key: 'game.fall_damage',             nameCode: 'settings.game.fallDamage',            type: 'bool', default: false},
+            {key: 'game.jump',                    nameCode: 'settings.game.jump',                  type: 'bool', default: true},
+            {key: 'game.crouch',                  nameCode: 'settings.game.crouch',                type: 'bool', default: true},
             // Per-device look options.
             {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
@@ -339,6 +347,18 @@ class DoomSettings {
 
     getDisplayTextureSmoothing() {
         return (this.get('display.texture_smoothing') === true);
+    }
+
+    getGameFallDamage() {
+        return (this.get('game.fall_damage') === true);
+    }
+
+    getGameJump() {
+        return (this.get('game.jump') === true);
+    }
+
+    getGameCrouch() {
+        return (this.get('game.crouch') === true);
     }
 }
 

@@ -19,6 +19,11 @@ class DoomUser extends User {
         this._effects        = {};   // code -> remaining time (ms)
         this._damageFactor   = 1;    // skill-derived, set by DoomGame per level
         this._controlFreezeS = 0;
+        // Jumping and crouching are ours, not the engine's: vanilla Doom has
+        // neither, so the two keys are simply not listened to when the player
+        // turns them off (game.jump / game.crouch settings).
+        this._jumpAllowed    = true;
+        this._crouchAllowed  = true;
     }
 
     setDamageFactor(factor) {
@@ -37,6 +42,16 @@ class DoomUser extends User {
 
     isControlFrozen() {
         return (this._controlFreezeS > 0);
+    }
+
+    setJumpAllowed(allowed) {
+        this._jumpAllowed = (allowed === true);
+        return this;
+    }
+
+    setCrouchAllowed(allowed) {
+        this._crouchAllowed = (allowed === true);
+        return this;
     }
 
     beginFrame(deltaTime) {
@@ -68,18 +83,21 @@ class DoomUser extends User {
     }
 
     pressJump() {
-        if (this.isControlFrozen()) {
+        if (this.isControlFrozen() || !this._jumpAllowed) {
             return;
         }
         super.pressJump();
     }
 
     // releaseJump stays open: swallowing it would leave the jump held.
+
+    // A forbidden crouch asks to STAND, never just ignores the call: the
+    // setting may go off while the player is down, and he must come back up.
     setCrouch(bool) {
         if (this.isControlFrozen()) {
             return;
         }
-        super.setCrouch(bool);
+        super.setCrouch(bool && this._crouchAllowed);
     }
 
     // --- Weapons ---

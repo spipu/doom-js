@@ -27,6 +27,12 @@ class User {
         this._maxEnergy        = maxEnergy;
         this._moveSpeed        = 0.003;
         this._turnSpeed        = 0.1;
+        // Fall damage: on by default, its two thresholds expressed as multiples
+        // of the actor height — nothing billed below the safe one, the full
+        // energy bar at the max one. A game with another scale overrides them.
+        this._fallDamage       = true;
+        this._fallSafeFactor   = 2.5;
+        this._fallMaxFactor    = 10;
 
         // Physics state
         this._vy             = 0;
@@ -135,6 +141,21 @@ class User {
 
     setMaxSlopeAngle(deg) {
         this._maxSlopeAngle = deg;
+        return this;
+    }
+
+    setFallDamage(enabled) {
+        this._fallDamage = (enabled === true);
+        return this;
+    }
+
+    setFallSafeFactor(v) {
+        this._fallSafeFactor = v;
+        return this;
+    }
+
+    setFallMaxFactor(v) {
+        this._fallMaxFactor = v;
         return this;
     }
 
@@ -411,13 +432,19 @@ class User {
             return;
         }
         const fallDist = this._fallPeakY - this.y;
-        const safeH    = this._height * 2.5;
-        const maxH     = this._height * 10;
-        if (fallDist > safeH) {
-            const ratio = Math.min(1, (fallDist - safeH) / (maxH - safeH));
-            this.takeDamage(ratio * this._maxEnergy);
-        }
+        // Cleared whatever follows: kept, the next fall would measure from
+        // this one's peak and bill the two together.
         this._fallPeakY = null;
+        if (!this._fallDamage) {
+            return;
+        }
+        const safeH = this._height * this._fallSafeFactor;
+        const maxH  = this._height * this._fallMaxFactor;
+        if (fallDist <= safeH) {
+            return;
+        }
+        const ratio = Math.min(1, (fallDist - safeH) / (maxH - safeH));
+        this.takeDamage(ratio * this._maxEnergy);
     }
 
     // --- Physics ---
