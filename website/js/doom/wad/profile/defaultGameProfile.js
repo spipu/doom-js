@@ -28,7 +28,21 @@ class DefaultGameProfile extends AbstractGameProfile {
             mapEndSlot:         'MAP30',
             // Per-map route overrides {name: {next, nextsecret}} — pattern
             // exceptions like the Heretic hidden-episode loop
-            explicitRoutes:     {}
+            explicitRoutes:     {},
+            // Story clusters (UZDoom mapinfo/doom1.txt + mapinfo/doom2.txt):
+            // the CODE of the text shown on leaving the cluster's last map, or
+            // on entering it. ExMy and MAPxx share the table — id numbered the
+            // Doom II clusters from 5 so the two families never collide.
+            clusters: {
+                byEpisode:  true,                                 // ExMy → cluster = episode digit
+                byMapRange: [[6, 5], [11, 6], [20, 7], [30, 8]],  // MAPxx up to n → cluster
+                byMapExact: {MAP31: 9, MAP32: 10},
+                texts: {
+                    1: {exit: 'E1TEXT'}, 2: {exit: 'E2TEXT'}, 3: {exit: 'E3TEXT'}, 4: {exit: 'E4TEXT'},
+                    5: {exit: 'C1TEXT'}, 6: {exit: 'C2TEXT'}, 7: {exit: 'C3TEXT'}, 8: {exit: 'C4TEXT'},
+                    9: {enter: 'C5TEXT'}, 10: {enter: 'C6TEXT'}
+                }
+            }
         };
     }
 

@@ -369,6 +369,30 @@
     white-space: nowrap;
 }
 
+/* Story text between two chapters. Capped like the options modal, so a long
+   text scrolls inside the modal instead of growing it past the screen. */
+.doom-menu-modal-finale {
+    width: 70%;
+    max-height: 85%;
+    display: flex;
+    flex-direction: column;
+}
+
+.doom-menu-finale {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin-bottom: 1.4em;
+    padding-right: 0.6em;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1em;
+    letter-spacing: 0.05em;
+    line-height: 1.75;
+    text-align: left;
+    /* The catalog keeps the paragraph breaks; each paragraph reflows. */
+    white-space: pre-line;
+}
+
 .doom-menu-button-block {
     width: 100%;
 }

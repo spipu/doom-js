@@ -1,5 +1,6 @@
 /**
- * Per-map progression of a WAD — the single owner of "which level comes next".
+ * Per-map progression of a WAD — the single owner of "which level comes next"
+ * and of "which story text closes a chapter" (see finaleFor).
  *
  * Every level of the WAD gets a default entry synthesized from the vanilla
  * engine rules (G_DoCompleted applied to the level names, since the original
@@ -23,9 +24,11 @@
  * entry without nextsecret routes its secret exit to the NORMAL target, per
  * spec — even on a map with a natural secret exit; a target absent from the
  * WAD is ignored with a warning), endgame / endpic / endbunny / endcast
- * (end of game: both exits → null), levelname (HUD display). Every other
- * key is parsed and skipped. The spec does not define comments, but real
- * lumps carry C-style ones — // and slash-star blocks are tolerated.
+ * (end of game: both exits → null), levelname (HUD display), intertext /
+ * intertextsecret (the story text of each exit, "-" for none — a map the lump
+ * describes ignores the cluster texts entirely). Every other key is parsed and
+ * skipped. The spec does not define comments, but real lumps carry C-style
+ * ones — // and slash-star blocks are tolerated.
  */
 class WadMapInfo {
     /**
@@ -40,7 +43,10 @@ class WadMapInfo {
             this._entries[name] = {
                 next:       this._vanillaNext(name, false),
                 nextsecret: this._vanillaNext(name, true),
-                levelname:  null
+                levelname:  null,
+                // True once a UMAPINFO block described the map: it then owns
+                // its finale text and the cluster ones no longer apply.
+                umapinfo:   false
             };
         }
 
@@ -49,7 +55,7 @@ class WadMapInfo {
             return;
         }
         try {
-            this._overlayLump(WadMapInfo._lumpText(lump));
+            this._overlayLump(WadFile.lumpText(lump));
         } catch (error) {
             // A malformed lump must not break the level conversion: the maps
             // overlaid so far are kept, the defaults cover the rest.
@@ -78,6 +84,84 @@ class WadMapInfo {
      */
     levelNameFor(levelCode) {
         return (this._entries[levelCode]?.levelname ?? null);
+    }
+
+    /**
+     * Story text shown after this level's tally, transcription of the vanilla
+     * rule (UZDoom FLevelLocals::CreateIntermission):
+     *  - end of game → the exit text of the CURRENT cluster;
+     *  - otherwise, next level in ANOTHER cluster → the enter text of that
+     *    cluster, or failing that the exit text of the current one;
+     *  - same cluster → nothing, the chapter is not over.
+     * A map described in UMAPINFO carries its own text instead and ignores the
+     * clusters entirely.
+     *
+     * @param {string}  current
+     * @param {boolean} secret true when leaving through a secret exit
+     * @returns {{text: string}|{code: string}|null} a literal text (the WAD's
+     *          own, untranslatable), a code to resolve, or no finale at all
+     */
+    finaleFor(current, secret) {
+        const entry = this._entries[current];
+        if (entry === undefined) {
+            return null;
+        }
+        if (entry.umapinfo === true) {
+            const text = ((secret === true) ? entry.intertextsecret : entry.intertext);
+
+            return ((typeof text === 'string') ? {text: text} : null);
+        }
+
+        const clusters = (this._rules.clusters ?? null);
+        if (clusters === null) {
+            return null;
+        }
+        const cluster = this._clusterOf(current);
+        const exit    = (clusters.texts[cluster]?.exit ?? null);
+        const next    = this.nextLevelName(current, secret);
+        if (next === null) {
+            return WadMapInfo._finaleCode(exit);
+        }
+        const nextCluster = this._clusterOf(next);
+        if (nextCluster === cluster) {
+            return null;
+        }
+
+        return WadMapInfo._finaleCode(clusters.texts[nextCluster]?.enter ?? exit);
+    }
+
+    // --- Clusters ---
+
+    static _finaleCode(code) {
+        return ((code !== null) ? {code: code} : null);
+    }
+
+    // Cluster of a level, from the profile's rules applied to the name
+    // patterns — same split as _vanillaNext: the per-game slots come from the
+    // profile, the pattern mechanics live here. null = outside every cluster
+    // (an unrecognized name shows no text, and never matches another one).
+    _clusterOf(name) {
+        const clusters = this._rules.clusters;
+        const upper    = name.toUpperCase();
+        if (clusters.byMapExact[upper] !== undefined) {
+            return clusters.byMapExact[upper];
+        }
+        const episodic = upper.match(/^E(\d)M\d$/);
+        if (episodic !== null) {
+            return ((clusters.byEpisode === true) ? Number(episodic[1]) : null);
+        }
+        const doom2 = upper.match(/^MAP(\d{2})$/);
+        if (doom2 === null) {
+            return null;
+        }
+        const number = Number(doom2[1]);
+        for (const [last, cluster] of clusters.byMapRange) {
+            if (number <= last) {
+                return cluster;
+            }
+        }
+
+        return null;
     }
 
     // --- Vanilla defaults ---
@@ -126,14 +210,6 @@ class WadMapInfo {
 
     // --- UMAPINFO lump ---
 
-    static _lumpText(view) {
-        let text = '';
-        for (let i = 0; i < view.byteLength; i++) {
-            text += String.fromCharCode(view.getUint8(i));
-        }
-        return text;
-    }
-
     // Sequence of MAP blocks: MAP <name> { key = value[, value…] … }
     _overlayLump(text) {
         const tokens = WadMapInfo._tokenize(text);
@@ -161,6 +237,7 @@ class WadMapInfo {
     _overlayBlock(tokens, i, mapName) {
         const entry = (this._entries[mapName] ?? {next: null, nextsecret: null, levelname: null});
         const seen  = {nextsecret: false, end: false};
+        entry.umapinfo = true;
         while ((i < tokens.length) && (tokens[i].type !== '}')) {
             const key = tokens[i];
             const equal = tokens[i + 1];
@@ -215,6 +292,11 @@ class WadMapInfo {
         }
         if (key === 'levelname') {
             entry.levelname = first;
+        }
+        // Story text of this map's normal / secret exit, one string per line;
+        // a lone "-" states that this exit shows none.
+        if ((key === 'intertext') || (key === 'intertextsecret')) {
+            entry[key] = ((first === '-') ? null : values.join('\n'));
         }
         // endgame=false only overrides a hard-coded default end (none in this
         // engine, so it stays a no-op); the end* screens all end the game.

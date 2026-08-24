@@ -9,6 +9,7 @@ class DoomGame {
         this._wadFile           = null;
         this._wadMeta           = null;
         this._mapInfo           = null;
+        this._dehackedStrings   = null;
         this._levelName         = null;
         this._spawnOverride     = null;
         this._skill             = 3;
@@ -514,6 +515,7 @@ class DoomGame {
         this._gameProfile = new GameProfileList().getForWad(wadFile);
         this._buildCatalogs();
         this._mapInfo     = new WadMapInfo(wadFile, this._gameProfile);
+        this._dehackedStrings = new WadDehackedStrings(wadFile);
         this._levelName   = levelName;
         this._spawnOverride = spawnOverride;
         if (wadMeta !== null) {
@@ -1020,9 +1022,39 @@ class DoomGame {
         }
         const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
 
-        modal.tally(title, this._tallyLines(), appTranslator.get(buttonCode), () => {
-            this._startNextLevel(display, modal, nextLevel);
+        // The story text comes after the tally (vanilla order): the tally then
+        // only offers to move on, and the text carries the real next action.
+        const finaleText = this._finaleText(secret === true);
+        const tallyCode  = ((finaleText !== null) ? 'game.finale.continue' : buttonCode);
+
+        modal.tally(title, this._tallyLines(), appTranslator.get(tallyCode), () => {
+            if (finaleText === null) {
+                this._startNextLevel(display, modal, nextLevel);
+                return;
+            }
+            modal.finale(finaleText, appTranslator.get(buttonCode), () => {
+                this._startNextLevel(display, modal, nextLevel);
+            });
         });
+    }
+
+    /**
+     * Story text closing this level, or null when the chapter is not over.
+     * The three layers the vanilla engine stacks, in order: the WAD's own text
+     * (UMAPINFO, untranslatable), the WAD's replacement of the vanilla string
+     * (DEHACKED — how Freedoom tells its own story), then the game's
+     * transcribed catalog, which is the only translated one.
+     */
+    _finaleText(secret) {
+        const finale = this._mapInfo.finaleFor(this._levelName, secret);
+        if (finale === null) {
+            return null;
+        }
+        const text = ((finale.text !== undefined)
+            ? finale.text
+            : (this._dehackedStrings.get(finale.code) ?? doomFinaleTexts.get(this._gameProfile.getCode(), finale.code)));
+
+        return ((text !== null) ? DoomFinaleTexts.reflow(text) : null);
     }
 
     // The three vanilla scores plus the level clock. A score with nothing to
