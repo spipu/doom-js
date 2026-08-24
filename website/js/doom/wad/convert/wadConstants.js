@@ -912,6 +912,11 @@ class WadConstants {
         // between.
         moveSpeed:       0.006,
         stepHeight:      0.375,
+        // Fall damage thresholds (multiples of the player height): nothing
+        // under 277 map units, the full bar at 1663 — the engine's own
+        // defaults are far too harsh for the scale Doom maps are built at.
+        fallSafeFactor:  5,
+        fallMaxFactor:   30,
         // Kill plane: below every real map floor — falling out of the map
         // (through a geometry hole) kills the player instead of falling forever.
         voidKillY:       -100

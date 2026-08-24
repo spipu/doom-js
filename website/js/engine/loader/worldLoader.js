@@ -93,6 +93,12 @@ class WorldLoader {
         if (dataUser.voidKillY       !== undefined) {
             user.setVoidKillY(dataUser.voidKillY);
         }
+        if (dataUser.fallSafeFactor  !== undefined) {
+            user.setFallSafeFactor(dataUser.fallSafeFactor);
+        }
+        if (dataUser.fallMaxFactor   !== undefined) {
+            user.setFallMaxFactor(dataUser.fallMaxFactor);
+        }
 
         return user;
     }

@@ -140,7 +140,8 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
     _buildRoot() {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildDisplay()));
+        this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildSettingsPage('display.')));
+        this._nav.addItemIn(list, appTranslator.get('help.game'), () => this._pushPage('help.game', () => this._buildSettingsPage('game.')));
         this._nav.addItemIn(list, appTranslator.get('help.controls'), () => this._pushPage('help.controls', () => this._buildControls()));
         this._nav.addItemIn(list, appTranslator.get('help.reset'), () => this._confirmReset());
         this._nav.selectFirst();
@@ -183,12 +184,13 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, MenuOptionsModal.DEVICE_REFRESH_MS);
     }
 
-    // Display options page: every 'display.' setting, same rows as the
-    // controls page — device-agnostic, so no device line nor refresh timer.
-    _buildDisplay() {
+    // Device-agnostic settings page (display, gameplay): every setting of one
+    // prefix, same rows as the controls page — no device line, no refresh
+    // timer, nothing to adapt to the active input.
+    _buildSettingsPage(prefix) {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        for (const def of doomSettings.getDefinitions('display.')) {
+        for (const def of doomSettings.getDefinitions(prefix)) {
             this._addSettingItem(list, def, inputs);
         }
         this._nav.selectFirst();
