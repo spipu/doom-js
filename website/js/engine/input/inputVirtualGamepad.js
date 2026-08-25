@@ -6,13 +6,9 @@
  *
  * The layout is built for a 4-finger claw grip: the thumbs hold the bottom
  * corners (move, aim/fire — the constant actions), the index fingers the top
- * ones (jump/crouch, menu, weapon switch), which is what makes "move + jump"
- * genuinely simultaneous. Hence two placements that look odd but are not:
- *   - jump / crouch sit in the top-LEFT corner, never at mid-height of the left
- *     edge: that band is the thumb's extension zone, so the index finger could
- *     not reach them while the thumb drives the stick.
- *   - use sits on the right, near the aim thumb: it is pressed while exploring,
- *     i.e. while not firing, so that thumb is free to leave the aim zone.
+ * ones (menu, weapon switch), which is what makes "move + jump" genuinely
+ * simultaneous. Jump, crouch and use are stacked on the right edge: all three
+ * are pressed while not firing, so the aim thumb is free to reach them.
  *
  * Aim and fire share one gesture: the right half is a floating stick whose
  * LOWER band aims silently and UPPER band aims and fires. The mode is decided
@@ -258,7 +254,7 @@ class InputVirtualGamepad {
         glyph.style.fontSize      = '8cqh';
         glyph.style.lineHeight    = '1';
         glyph.style.pointerEvents = 'none';
-        glyph.textContent         = '⊕';
+        glyph.textContent         = '⌖';
         mark.appendChild(glyph);
 
         band.appendChild(mark);
@@ -311,7 +307,14 @@ class InputVirtualGamepad {
         el.style.fontSize       = (layout.font ?? (layout.h * 100 * 0.55)) + 'cqh';
         el.style.padding        = ((dashed) ? '0.3em' : '0');
         el.style.pointerEvents  = 'none';
-        el.textContent          = layout.label;
+        // Flex centres the line box, never the ink: nudgeX / nudgeY (em) shift
+        // the label alone, so the button box stays put.
+        const label = document.createElement('div');
+        label.textContent = layout.label;
+        if (layout.nudgeX || layout.nudgeY) {
+            label.style.transform = 'translate(' + (layout.nudgeX ?? 0) + 'em, ' + (layout.nudgeY ?? 0) + 'em)';
+        }
+        el.appendChild(label);
         el.dataset.idleBackground = el.style.background;
         overlay.appendChild(el);
         return el;
@@ -603,12 +606,10 @@ InputVirtualGamepad.STICK_HINTS = {
     aim:  {x: 0.830, y: 0.698}
 };
 // Aim zone (right half, right thumb) and the height fraction of it that also
-// fires: above the split = aim + fire, below = aim only.
+// fires: above the split = aim + fire, below = aim only. 0.498 and not 0.5, so
+// its marker keeps the button gap above the column below it.
 InputVirtualGamepad.AIM_AREA       = {x: 0.5, y: 0, w: 0.5, h: 1};
-InputVirtualGamepad.AIM_FIRE_SPLIT = 0.5;
-// Length of the dash marking that split, as a fraction of the zone width: only
-// its right end is drawn (a full-width rule reads as scenery, not as a marker).
-InputVirtualGamepad.AIM_SPLIT_MARK_WIDTH = 0.1;
+InputVirtualGamepad.AIM_FIRE_SPLIT = 0.498;
 // Stick radius (fraction of the display height) at which a stick saturates, and
 // the knob size as a fraction of the base — _setKnob derives its deflection
 // offset from that ratio.
@@ -618,16 +619,22 @@ InputVirtualGamepad.KNOB_RATIO         = 0.45;
 // until the game pushes its own values (setDeadZone).
 InputVirtualGamepad.DEAD_ZONE_DEFAULT = 0.15;
 // Rectangular targets, hit-tested in declaration order, all four buttons the
-// same size. They clear the HUD blocks by the same 0.02 margin: the left column
-// (jump above crouch) starts below the counters block (keys / secrets / kills,
-// which ends at y 0.18) and use sits above the ammo block (which starts at y
-// 0.86); menu sits beside the counters. The weapon zone keeps its original
-// top-right rectangle (one tap = next weapon), drawn dashed over the HUD's
-// ARMS panel.
+// same size. The right column (jump, crouch, use) sits as low as the HUD
+// allows: below it the ammo block starts at y 0.86. Menu clears the counters
+// block, which ends at y 0.18; the weapon zone is drawn dashed over the ARMS
+// panel (one tap = next weapon).
 InputVirtualGamepad.BUTTONS = {
     pause:      {x: 0.128, y: 0.020, w: 0.079, h: 0.112, label: '≡'},
-    jump:       {x: 0.019, y: 0.200, w: 0.079, h: 0.112, label: '↑'},
-    crouch:     {x: 0.019, y: 0.328, w: 0.079, h: 0.112, label: '↓'},
-    action:     {x: 0.902, y: 0.728, w: 0.079, h: 0.112, label: '☝︎'},
+    jump:       {x: 0.902, y: 0.506, w: 0.079, h: 0.112, label: '↑'},
+    crouch:     {x: 0.902, y: 0.626, w: 0.079, h: 0.112, label: '↓'},
+    // Nudged onto the hand's ink centroid, which the eye reads as its centre.
+    action:     {x: 0.902, y: 0.746, w: 0.079, h: 0.112, label: '🖐︎', nudgeX: 0.075, nudgeY: 0.154},
     weaponNext: {x: 0.700, y: 0.000, w: 0.300, h: 0.150, label: '⇆', dashed: true, font: 5}
 };
+
+InputVirtualGamepad.COLUMN_EDGE_MARGIN = 1 - (InputVirtualGamepad.BUTTONS.action.x + InputVirtualGamepad.BUTTONS.action.w);
+// Dash marking the aim/fire split, as a fraction of the aim zone width: from
+// the screen edge to one column margin left of the buttons, so it frames them
+// instead of reading as scenery — which a full-width rule does.
+InputVirtualGamepad.AIM_SPLIT_MARK_WIDTH =
+    (1 - (InputVirtualGamepad.BUTTONS.action.x - InputVirtualGamepad.COLUMN_EDGE_MARGIN)) / InputVirtualGamepad.AIM_AREA.w;
