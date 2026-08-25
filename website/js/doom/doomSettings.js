@@ -285,6 +285,8 @@ class DoomSettings {
         inputs.setVirtualPadDeadZone('aim', this.getVirtualPadAimDeadZone());
         inputs.setVirtualPadDeadZone('fire', this.getVirtualPadFireDeadZone());
         inputs.setVirtualPadSensitivity(this.getVirtualPadFireSensitivity());
+        inputs.setVirtualPadJumpAllowed(this.getGameJump());
+        inputs.setVirtualPadCrouchAllowed(this.getGameCrouch());
 
         return this;
     }

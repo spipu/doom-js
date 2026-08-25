@@ -70,6 +70,9 @@ class InputVirtualGamepad {
         };
         this._fireSensitivity = 1;
 
+        // Buttons the game may take away (canJump / canCrouch)
+        this._buttonAllowed = {jump: true, crouch: true};
+
         // touch identifier -> control owned by that finger
         this._touches = new Map();
 
@@ -130,6 +133,24 @@ class InputVirtualGamepad {
     setFireSensitivity(factor) {
         this._fireSensitivity = factor;
         return this;
+    }
+
+    /**
+     * Offers the jump button, or takes it away when the game forbids jumping:
+     * a hidden target stops answering touches too. The state lives on the
+     * instance, so the overlay rebuilt for the next level comes back the same.
+     *
+     * @param {boolean} allowed
+     */
+    canJump(allowed) {
+        return this._allowButton('jump', allowed);
+    }
+
+    /**
+     * @param {boolean} allowed
+     */
+    canCrouch(allowed) {
+        return this._allowButton('crouch', allowed);
     }
 
     readJoy1X() {
@@ -207,6 +228,9 @@ class InputVirtualGamepad {
         this._buttonEls = {};
         for (const name in InputVirtualGamepad.BUTTONS) {
             this._buttonEls[name] = this._createRect(overlay, InputVirtualGamepad.BUTTONS[name]);
+        }
+        for (const name in this._buttonAllowed) {
+            this._applyButtonAllowed(name);
         }
 
         overlay.addEventListener('touchstart',  this._onTouchStart, { passive: false });
@@ -520,11 +544,30 @@ class InputVirtualGamepad {
 
     _hitButton(nx, ny) {
         for (const name in InputVirtualGamepad.BUTTONS) {
+            if (this._buttonAllowed[name] === false) {
+                continue;
+            }
             if (this._inArea(InputVirtualGamepad.BUTTONS[name], nx, ny)) {
                 return name;
             }
         }
         return null;
+    }
+
+    _allowButton(name, allowed) {
+        this._buttonAllowed[name] = (allowed === true);
+        this._buttons[name]       = false;
+        this._applyButtonAllowed(name);
+
+        return this;
+    }
+
+    // No-op before the overlay is built (like _setButtonPressed).
+    _applyButtonAllowed(name) {
+        if (this._buttonEls === null) {
+            return;
+        }
+        this._buttonEls[name].style.display = ((this._buttonAllowed[name]) ? 'flex' : 'none');
     }
 
     // Deflection from the finger's OWN origin (both sticks are relative), the

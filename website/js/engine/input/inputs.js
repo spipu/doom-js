@@ -159,6 +159,19 @@ class Inputs {
         return this;
     }
 
+    // Jump and crouch targets of the virtual pad. Only that device is
+    // concerned: a physical pad and a keyboard have fixed buttons, and the
+    // game already refuses the move itself.
+    setVirtualPadJumpAllowed(allowed) {
+        this._virtualGamepad.canJump(allowed);
+        return this;
+    }
+
+    setVirtualPadCrouchAllowed(allowed) {
+        this._virtualGamepad.canCrouch(allowed);
+        return this;
+    }
+
     readJoy1X() {
         const pad = this._pad();
         if (pad !== null) {
