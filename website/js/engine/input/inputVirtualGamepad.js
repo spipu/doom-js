@@ -250,11 +250,10 @@ class InputVirtualGamepad {
         glyph.style.bottom        = '0';
         glyph.style.transform     = 'translateX(-50%)';
         glyph.style.color         = this._color.btnLabel;
-        glyph.style.fontFamily    = 'monospace';
-        glyph.style.fontSize      = '8cqh';
-        glyph.style.lineHeight    = '1';
+        glyph.style.height        = InputVirtualGamepad.AIM_MARK_ICON_SIZE + 'cqh';
+        glyph.style.aspectRatio   = '1 / 1';
         glyph.style.pointerEvents = 'none';
-        glyph.textContent         = '⌖';
+        glyph.innerHTML           = InputVirtualGamepad.iconSvg('aim');
         mark.appendChild(glyph);
 
         band.appendChild(mark);
@@ -283,6 +282,16 @@ class InputVirtualGamepad {
         }
     }
 
+    // Icons are drawn here, never taken from the system font: a font without a
+    // text glyph for an emoji renders it in colour (iOS), and the metrics of a
+    // glyph differ per platform. currentColor carries the label colour.
+    static iconSvg(name) {
+        const icon = InputVirtualGamepad.ICONS[name];
+
+        return '<svg viewBox="' + (icon.viewBox ?? '0 0 24 24') + '" width="100%" height="100%"'
+            + ' fill="currentColor" aria-hidden="true">' + icon.shapes + '</svg>';
+    }
+
     // The `dashed` variant is the weapon zone: a transparent outline over the
     // HUD's ARMS panel, its glyph tucked in a corner so it never sits on the
     // panel's slot numbers. The idle background is stored on the element, since
@@ -297,24 +306,19 @@ class InputVirtualGamepad {
         el.style.height         = (layout.h * 100) + '%';
         el.style.boxSizing      = 'border-box';
         el.style.border         = '0.5cqh ' + ((dashed) ? 'dashed' : 'solid') + ' ' + this._color.btnBorder;
-        el.style.borderRadius   = ((dashed) ? '0.6em' : '0.4em');
+        el.style.borderRadius   = ((dashed) ? '3cqh' : '2.5cqh');
         el.style.background     = ((dashed) ? 'transparent' : this._color.btnFill);
         el.style.color          = this._color.btnLabel;
         el.style.display        = 'flex';
         el.style.alignItems     = ((dashed) ? 'flex-end' : 'center');
         el.style.justifyContent = ((dashed) ? 'flex-start' : 'center');
-        el.style.fontFamily     = 'monospace';
-        el.style.fontSize       = (layout.font ?? (layout.h * 100 * 0.55)) + 'cqh';
-        el.style.padding        = ((dashed) ? '0.3em' : '0');
+        el.style.padding        = ((dashed) ? '1.5cqh' : '0');
         el.style.pointerEvents  = 'none';
-        // Flex centres the line box, never the ink: nudgeX / nudgeY (em) shift
-        // the label alone, so the button box stays put.
-        const label = document.createElement('div');
-        label.textContent = layout.label;
-        if (layout.nudgeX || layout.nudgeY) {
-            label.style.transform = 'translate(' + (layout.nudgeX ?? 0) + 'em, ' + (layout.nudgeY ?? 0) + 'em)';
-        }
-        el.appendChild(label);
+        const icon = document.createElement('div');
+        icon.style.height      = ((layout.iconScale ?? 0.5) * layout.h * 100) + 'cqh';
+        icon.style.aspectRatio = '1 / 1';
+        icon.innerHTML         = InputVirtualGamepad.iconSvg(layout.icon);
+        el.appendChild(icon);
         el.dataset.idleBackground = el.style.background;
         overlay.appendChild(el);
         return el;
@@ -618,18 +622,44 @@ InputVirtualGamepad.KNOB_RATIO         = 0.45;
 // Default dead zone of every gesture, as a fraction of the stick travel — used
 // until the game pushes its own values (setDeadZone).
 InputVirtualGamepad.DEAD_ZONE_DEFAULT = 0.15;
+// Icon drawings, each centred on its ink centroid inside its 24×24 box (the
+// hand's box is offset to achieve it). iconScale is the icon's height as a
+// fraction of its button's.
+InputVirtualGamepad.ICONS = {
+    jump:   {shapes: '<path d="M12 3 L18.6 11.2 H14.7 V20.6 H9.3 V11.2 H5.4 Z"/>'},
+    crouch: {shapes: '<path d="M12 21 L5.4 12.8 H9.3 V3.4 H14.7 V12.8 H18.6 Z"/>'},
+    menu:   {shapes: '<rect x="4" y="6.2" width="16" height="2.6" rx="1.3"/>'
+                   + '<rect x="4" y="10.7" width="16" height="2.6" rx="1.3"/>'
+                   + '<rect x="4" y="15.2" width="16" height="2.6" rx="1.3"/>'},
+    action: {viewBox: '-0.22 -0.58 24 24',
+             shapes: '<rect x="7.0" y="2.0" width="2.9" height="9.6" rx="1.45" transform="rotate(-8 8.45 11.6)"/>'
+                   + '<rect x="10.0" y="1.2" width="2.9" height="9.8" rx="1.45" transform="rotate(-1.5 11.45 11.6)"/>'
+                   + '<rect x="13.05" y="2.0" width="2.9" height="9.0" rx="1.45" transform="rotate(4.5 14.5 11.6)"/>'
+                   + '<rect x="16.2" y="4.0" width="2.7" height="7.6" rx="1.35" transform="rotate(10 17.55 11.6)"/>'
+                   + '<rect x="4.2" y="9.6" width="2.9" height="7.4" rx="1.45" transform="rotate(-37 5.65 17)"/>'
+                   + '<rect x="6.6" y="11.4" width="12.4" height="8.6" rx="3.6"/>'},
+    weapon: {shapes: '<rect x="3.5" y="7.4" width="13" height="2.5" rx="1.25"/>'
+                   + '<path d="M15.8 4.9 L21.2 8.65 L15.8 12.4 Z"/>'
+                   + '<rect x="7.5" y="14.1" width="13" height="2.5" rx="1.25"/>'
+                   + '<path d="M8.2 11.6 L2.8 15.35 L8.2 19.1 Z"/>'},
+    aim:    {shapes: '<circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+                   + '<path d="M12 1.5 V22.5 M1.5 12 H22.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'}
+};
+
+// Height of the aim/fire split marker's icon, in cqh.
+InputVirtualGamepad.AIM_MARK_ICON_SIZE = 5.5;
+
 // Rectangular targets, hit-tested in declaration order, all four buttons the
 // same size. The right column (jump, crouch, use) sits as low as the HUD
 // allows: below it the ammo block starts at y 0.86. Menu clears the counters
 // block, which ends at y 0.18; the weapon zone is drawn dashed over the ARMS
 // panel (one tap = next weapon).
 InputVirtualGamepad.BUTTONS = {
-    pause:      {x: 0.128, y: 0.020, w: 0.079, h: 0.112, label: '≡'},
-    jump:       {x: 0.902, y: 0.506, w: 0.079, h: 0.112, label: '↑'},
-    crouch:     {x: 0.902, y: 0.626, w: 0.079, h: 0.112, label: '↓'},
-    // Nudged onto the hand's ink centroid, which the eye reads as its centre.
-    action:     {x: 0.902, y: 0.746, w: 0.079, h: 0.112, label: '🖐︎', nudgeX: 0.075, nudgeY: 0.154},
-    weaponNext: {x: 0.700, y: 0.000, w: 0.300, h: 0.150, label: '⇆', dashed: true, font: 5}
+    pause:      {x: 0.128, y: 0.020, w: 0.079, h: 0.112, icon: 'menu'},
+    jump:       {x: 0.902, y: 0.506, w: 0.079, h: 0.112, icon: 'jump'},
+    crouch:     {x: 0.902, y: 0.626, w: 0.079, h: 0.112, icon: 'crouch'},
+    action:     {x: 0.902, y: 0.746, w: 0.079, h: 0.112, icon: 'action'},
+    weaponNext: {x: 0.700, y: 0.000, w: 0.300, h: 0.150, icon: 'weapon', dashed: true, iconScale: 0.28}
 };
 
 InputVirtualGamepad.COLUMN_EDGE_MARGIN = 1 - (InputVirtualGamepad.BUTTONS.action.x + InputVirtualGamepad.BUTTONS.action.w);
