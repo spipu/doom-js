@@ -70,7 +70,6 @@ class InputVirtualGamepad {
         };
         this._fireSensitivity = 1;
 
-        // Buttons the game may take away (canJump / canCrouch)
         this._buttonAllowed = {jump: true, crouch: true};
 
         // touch identifier -> control owned by that finger
@@ -136,9 +135,9 @@ class InputVirtualGamepad {
     }
 
     /**
-     * Offers the jump button, or takes it away when the game forbids jumping:
-     * a hidden target stops answering touches too. The state lives on the
-     * instance, so the overlay rebuilt for the next level comes back the same.
+     * Takes the jump button away when the game forbids jumping: a hidden
+     * target stops answering touches too, and the state survives the overlay
+     * rebuilt for the next level.
      *
      * @param {boolean} allowed
      */
@@ -146,9 +145,6 @@ class InputVirtualGamepad {
         return this._allowButton('jump', allowed);
     }
 
-    /**
-     * @param {boolean} allowed
-     */
     canCrouch(allowed) {
         return this._allowButton('crouch', allowed);
     }
@@ -557,17 +553,19 @@ class InputVirtualGamepad {
     _allowButton(name, allowed) {
         this._buttonAllowed[name] = (allowed === true);
         this._buttons[name]       = false;
+        this._setButtonPressed(name, false);
         this._applyButtonAllowed(name);
 
         return this;
     }
 
-    // No-op before the overlay is built (like _setButtonPressed).
+    // Visibility rather than display: the target keeps the geometry the
+    // (DOM-independent) hit test reads, so the two never disagree.
     _applyButtonAllowed(name) {
         if (this._buttonEls === null) {
             return;
         }
-        this._buttonEls[name].style.display = ((this._buttonAllowed[name]) ? 'flex' : 'none');
+        this._buttonEls[name].style.visibility = ((this._buttonAllowed[name]) ? 'visible' : 'hidden');
     }
 
     // Deflection from the finger's OWN origin (both sticks are relative), the
