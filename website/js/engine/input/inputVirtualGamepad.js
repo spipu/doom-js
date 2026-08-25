@@ -43,7 +43,7 @@ class InputVirtualGamepad {
             stickKnob:  'rgba(220, 60, 50, 0.55)',  // stick thumb knob
             btnBorder:  'rgba(220, 60, 50, 0.8)',   // button outline, idle
             btnFill:    'rgba(220, 60, 50, 0.18)',  // button background, idle
-            btnLabel:   'rgba(255, 220, 210, 0.9)', // button glyph
+            btnLabel:   'rgba(255, 220, 210, 0.9)', // button icon
             btnDownBorder: 'rgba(255, 130, 120, 1)', // button outline, pressed
             btnDownFill:   'rgba(220, 60, 50, 0.6)', // button background, pressed
             bandBorder:    'rgba(220, 60, 50, 0.45)', // fire/aim boundary
@@ -192,8 +192,8 @@ class InputVirtualGamepad {
         overlay.style.zIndex        = '10';
         overlay.style.touchAction   = 'none';
         overlay.style.userSelect    = 'none';
-        // Container reference so the labels size against the display height
-        // (cqh), keeping target size and font coherent in letterbox.
+        // Container reference so every target and icon sizes against the
+        // display height (cqh), staying coherent in letterbox.
         overlay.style.containerType = 'size';
 
         this._buildAimBand(overlay);
@@ -219,7 +219,7 @@ class InputVirtualGamepad {
     }
 
     // The fire band marker: the boundary between "aim" and "aim + fire" is
-    // invisible by nature, so it gets a glyph and a short dash at its right end
+    // invisible by nature, so it gets an icon and a short dash at its right end
     // — without them a player cannot tell why a shot goes off sometimes only.
     // No fill and no full-width rule: over half the screen, either veils the
     // scene.
@@ -244,17 +244,14 @@ class InputVirtualGamepad {
         mark.style.borderBottom  = '0.4cqh dashed ' + this._color.bandBorder;
         mark.style.pointerEvents = 'none';
 
-        const glyph = document.createElement('div');
-        glyph.style.position      = 'absolute';
-        glyph.style.left          = '50%';
-        glyph.style.bottom        = '0';
-        glyph.style.transform     = 'translateX(-50%)';
-        glyph.style.color         = this._color.btnLabel;
-        glyph.style.height        = InputVirtualGamepad.AIM_MARK_ICON_SIZE + 'cqh';
-        glyph.style.aspectRatio   = '1 / 1';
-        glyph.style.pointerEvents = 'none';
-        glyph.innerHTML           = InputVirtualGamepad.iconSvg('aim');
-        mark.appendChild(glyph);
+        const marker = this._createIconBox('aim', InputVirtualGamepad.AIM_MARK_ICON_SIZE);
+        marker.style.position      = 'absolute';
+        marker.style.left          = '50%';
+        marker.style.bottom        = '0';
+        marker.style.transform     = 'translateX(-50%)';
+        marker.style.color         = this._color.btnLabel;
+        marker.style.pointerEvents = 'none';
+        mark.appendChild(marker);
 
         band.appendChild(mark);
         overlay.appendChild(band);
@@ -282,6 +279,16 @@ class InputVirtualGamepad {
         }
     }
 
+    // Square box holding one icon, its side given in cqh.
+    _createIconBox(name, sizeCqh) {
+        const box = document.createElement('div');
+        box.style.height      = sizeCqh + 'cqh';
+        box.style.aspectRatio = '1 / 1';
+        box.innerHTML         = InputVirtualGamepad.iconSvg(name);
+
+        return box;
+    }
+
     // Icons are drawn here, never taken from the system font: a font without a
     // text glyph for an emoji renders it in colour (iOS), and the metrics of a
     // glyph differ per platform. currentColor carries the label colour.
@@ -293,7 +300,7 @@ class InputVirtualGamepad {
     }
 
     // The `dashed` variant is the weapon zone: a transparent outline over the
-    // HUD's ARMS panel, its glyph tucked in a corner so it never sits on the
+    // HUD's ARMS panel, its icon tucked in a corner so it never sits on the
     // panel's slot numbers. The idle background is stored on the element, since
     // releasing a press has to restore that exact value.
     _createRect(overlay, layout) {
@@ -314,11 +321,8 @@ class InputVirtualGamepad {
         el.style.justifyContent = ((dashed) ? 'flex-start' : 'center');
         el.style.padding        = ((dashed) ? '1.5cqh' : '0');
         el.style.pointerEvents  = 'none';
-        const icon = document.createElement('div');
-        icon.style.height      = ((layout.iconScale ?? 0.5) * layout.h * 100) + 'cqh';
-        icon.style.aspectRatio = '1 / 1';
-        icon.innerHTML         = InputVirtualGamepad.iconSvg(layout.icon);
-        el.appendChild(icon);
+        const scale = (layout.iconScale ?? InputVirtualGamepad.ICON_SCALE_DEFAULT);
+        el.appendChild(this._createIconBox(layout.icon, scale * layout.h * 100));
         el.dataset.idleBackground = el.style.background;
         overlay.appendChild(el);
         return el;
@@ -622,9 +626,8 @@ InputVirtualGamepad.KNOB_RATIO         = 0.45;
 // Default dead zone of every gesture, as a fraction of the stick travel — used
 // until the game pushes its own values (setDeadZone).
 InputVirtualGamepad.DEAD_ZONE_DEFAULT = 0.15;
-// Icon drawings, each centred on its ink centroid inside its 24×24 box (the
-// hand's box is offset to achieve it). iconScale is the icon's height as a
-// fraction of its button's.
+// Icon drawings, each centred on its ink centroid inside its 24×24 box — the
+// hand's box is offset to achieve it, the symmetrical ones need nothing.
 InputVirtualGamepad.ICONS = {
     jump:   {shapes: '<path d="M12 3 L18.6 11.2 H14.7 V20.6 H9.3 V11.2 H5.4 Z"/>'},
     crouch: {shapes: '<path d="M12 21 L5.4 12.8 H9.3 V3.4 H14.7 V12.8 H18.6 Z"/>'},
@@ -646,7 +649,9 @@ InputVirtualGamepad.ICONS = {
                    + '<path d="M12 1.5 V22.5 M1.5 12 H22.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'}
 };
 
-// Height of the aim/fire split marker's icon, in cqh.
+// Icon side as a fraction of its button's height, and the height of the
+// aim/fire split marker's own icon in cqh (it has no button).
+InputVirtualGamepad.ICON_SCALE_DEFAULT = 0.5;
 InputVirtualGamepad.AIM_MARK_ICON_SIZE = 5.5;
 
 // Rectangular targets, hit-tested in declaration order, all four buttons the
