@@ -25,6 +25,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         return 'webgl';
     }
 
+    needsProjection() {
+        return false;
+    }
+
     isAvailable() {
         try {
             const canvas = document.createElement('canvas');
