@@ -110,14 +110,7 @@ class WadGeometry {
      * Shortest distance from point (px, py) to the segment (ax, ay)-(bx, by).
      */
     static distanceToSegment(px, py, ax, ay, bx, by) {
-        const dx = bx - ax;
-        const dy = by - ay;
-        const len2 = dx * dx + dy * dy;
-        let t = ((len2 > 0) ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0);
-        t = Math.max(0, Math.min(1, t));
-        const cx = ax + t * dx;
-        const cy = ay + t * dy;
-        return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+        return Math.sqrt(WadGeometry.pointSegmentDistSq(px, py, ax, ay, bx, by));
     }
 
     static pointInTriangle(p, a, b, c) {

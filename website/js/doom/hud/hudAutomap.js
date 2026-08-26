@@ -24,15 +24,16 @@ class HudAutomap extends AbstractHud {
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role] = [];
         }
-        this._root    = null;
-        this._canvas  = null;
-        this._ctx     = null;
-        this._visible = false;
-        this._width   = 0;
-        this._height  = 0;
-        this._scale   = 1;
-        this._originX = 0;
-        this._originY = 0;
+        this._root      = null;
+        this._canvas    = null;
+        this._ctx       = null;
+        this._visible   = false;
+        this._width     = 0;
+        this._height    = 0;
+        this._scale     = 1;
+        this._lineWidth = 1;
+        this._originX   = 0;
+        this._originY   = 0;
     }
 
     bindGame(game) {
@@ -129,7 +130,6 @@ class HudAutomap extends AbstractHud {
             return;
         }
         this._ctx.clearRect(0, 0, this._width, this._height);
-        this._ctx.lineWidth = Math.max(1, this._height * HudAutomap.LINE_WIDTH_RATIO);
         this._collect();
         this._strokeBuckets();
         this._strokeLocked();
@@ -167,9 +167,10 @@ class HudAutomap extends AbstractHud {
         const boxW   = this._width - 2 * padX;
         const boxH   = this._height - padTop - this._height * HudAutomap.PADDING_RATIO;
 
-        this._scale   = Math.min(boxW / spanX, boxH / spanY);
-        this._originX = padX + (boxW - spanX * this._scale) / 2 - bounds[0] * this._scale;
-        this._originY = padTop + (boxH + spanY * this._scale) / 2 + bounds[1] * this._scale;
+        this._lineWidth = Math.max(1, this._height * HudAutomap.LINE_WIDTH_RATIO);
+        this._scale     = Math.min(boxW / spanX, boxH / spanY);
+        this._originX   = padX + (boxW - spanX * this._scale) / 2 - bounds[0] * this._scale;
+        this._originY   = padTop + (boxH + spanY * this._scale) / 2 + bounds[1] * this._scale;
     }
 
     _sx(doomX) {
@@ -206,6 +207,7 @@ class HudAutomap extends AbstractHud {
             if (lines.length === 0) {
                 continue;
             }
+            this._ctx.lineWidth   = this._lineWidth;
             this._ctx.strokeStyle = AbstractHud.rgba(this._colors[role], 1);
             this._ctx.beginPath();
             for (const line of lines) {
@@ -217,8 +219,10 @@ class HudAutomap extends AbstractHud {
     }
 
     // One stroke each: a handful of locked lines per level, each in the colour
-    // of the key it demands, or the profile's flat one for a key without.
+    // of the key it demands, or the profile's flat one for a key without. Drawn
+    // thicker so the door one is looking for stands out of the plan.
     _strokeLocked() {
+        this._ctx.lineWidth = (this._lineWidth * HudAutomap.LOCKED_WIDTH_FACTOR);
         for (const line of this._locked) {
             this._ctx.strokeStyle = (this._keys[line.keyCode] ?? AbstractHud.rgba(this._colors.locked, 1));
             this._ctx.beginPath();
@@ -249,14 +253,16 @@ class HudAutomap extends AbstractHud {
 
 // Panel: quasi fullscreen, and the framing margins inside it (the top one also
 // clears the title).
-HudAutomap.INSET_PERCENT     = 2;
-HudAutomap.PADDING_RATIO     = 0.03;
-HudAutomap.PADDING_TOP_RATIO = 0.08;
-HudAutomap.BACKGROUND_ALPHA  = 0.75;
-// Stroke width and player marker, as fractions of the panel height.
-HudAutomap.LINE_WIDTH_RATIO  = 0.0018;
-HudAutomap.PLAYER_SIZE_RATIO = 0.016;
-HudAutomap.PLAYER_MIN_PX     = 6;
+HudAutomap.INSET_PERCENT       = 2;
+HudAutomap.PADDING_RATIO       = 0.03;
+HudAutomap.PADDING_TOP_RATIO   = 0.08;
+HudAutomap.BACKGROUND_ALPHA    = 0.75;
+// Stroke width and player marker, as fractions of the panel height; a locked
+// door is stroked thicker than the rest.
+HudAutomap.LINE_WIDTH_RATIO    = 0.0018;
+HudAutomap.LOCKED_WIDTH_FACTOR = 2;
+HudAutomap.PLAYER_SIZE_RATIO   = 0.016;
+HudAutomap.PLAYER_MIN_PX       = 6;
 // Deliberate deviation: vanilla draws the player in `yourcolor` (white) and
 // keeps this green for the things, which we never show.
 HudAutomap.PLAYER_RGB        = [0x74, 0xfc, 0x6c];

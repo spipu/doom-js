@@ -28,6 +28,7 @@ class DoomAutomapReveal {
         this._heights = heights;
         this._ranges  = [];       // covered angular spans, sorted and disjoint
         this._blocked = false;
+        this._rangeSq = (WadConstants.AUTOMAP_REVEAL_RANGE * WadConstants.AUTOMAP_REVEAL_RANGE);
         this._x       = 0;
         this._y       = 0;
     }
@@ -94,12 +95,20 @@ class DoomAutomapReveal {
             return;
         }
         const line = this._byLdIdx[seg.ldIdx];
-        if (line !== undefined) {
+        if ((line !== undefined) && this._inRange(seg)) {
             line.seen = true;
         }
         if (this._isSolid(seg)) {
             this._addSafe(start, end);
         }
+    }
+
+    // Sight range, measured to the nearest point of the seg: a long wall is
+    // memorised as soon as one part of it is close enough, the flag being per
+    // linedef anyway. Only the marking is limited — an out-of-range wall still
+    // occludes, and what it hides is farther still.
+    _inRange(seg) {
+        return (WadGeometry.pointSegmentDistSq(this._x, this._y, seg.x1, seg.y1, seg.x2, seg.y2) <= this._rangeSq);
     }
 
     // hw_CheckClip: a one-sided seg, or a two-sided one whose opening is closed

@@ -772,15 +772,20 @@ class HereticGameProfile extends DefaultGameProfile {
         return {blueKey: '#3d7bff', yellowKey: '#ffd23d', greenKey: '#3ddd66'};
     }
 
-    // am_map.cpp RavenColors — the parchment set of Heretic and Hexen.
+    // Heretic's hues, but inverted onto a dark ground: am_map.cpp RavenColors
+    // draws dark ink (wall 75,50,16 · ceiling step 103,59,31) on an OPAQUE
+    // parchment (0x6c5440), which only reads because that ground is perfectly
+    // flat. Over our translucent panel the same set measures 1.3:1 and 1.0:1
+    // against the composited ground, and no colour at all — black included —
+    // can pass 3:1 over a parchment. Here every role clears 3:1.
     automapColors() {
         return {
-            background: [0x6c, 0x54, 0x40],
-            wall:       [75, 50, 16],
-            floorStep:  [208, 176, 133],
-            ceilStep:   [103, 59, 31],
-            locked:     [103, 59, 31],
-            notSeen:    [0x00, 0x00, 0x00]
+            background: [26, 18, 12],
+            wall:       [222, 200, 160],
+            floorStep:  [208, 140, 48],
+            ceilStep:   [188, 84, 48],
+            locked:     [188, 84, 48],
+            notSeen:    [110, 102, 94]
         };
     }
 

@@ -771,6 +771,12 @@ class WadConstants {
     // Doom picture-column format sentinel
     static PATCH_END_COLUMN = 0xFF;
 
+    // --- Automap ---
+
+    // Sight range (Doom units) beyond which a wall in view is not memorised.
+    // Our own rule: vanilla reveals whatever the renderer draws, however far.
+    static AUTOMAP_REVEAL_RANGE = 20 / WadConstants.SCALE;
+
     // --- Floor texture/type change (the "+change" specials) ---
 
     // The "+change" rules live on the floor entries themselves (field 'change'
