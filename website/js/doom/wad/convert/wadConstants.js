@@ -889,11 +889,19 @@ class WadConstants {
 
     // --- Pickups ---
 
-    // Proximity radius (metres) at which a pickup is collected — vanilla exact:
-    // every pickup has a logical radius of 20 units and touches at item radius
-    // + player radius = 36 units (p_map.c PIT_CheckThing → P_TouchSpecialThing),
-    // regardless of the sprite's visual width. Fixed for all pickups.
-    static PICKUP_RADIUS = 36 / 64;
+    // Ground footprint (metres) of a pickup's touch cylinder. Vanilla tests a
+    // SQUARE of half-side 36 (item radius 20 + player radius 16, p_map.cpp
+    // PIT_CheckThing); we keep a round footprint and take 40, close to the
+    // circle of equal area (40.6) — the same amount of reach, minus the corners.
+    // Fixed for all pickups, whatever the sprite's visual width.
+    static PICKUP_RADIUS = 40 / 64;
+
+    // How far below the player's feet a pickup still gets collected
+    // (P_TouchSpecialThing: min(-32, -special->Height), and Doom items are 16
+    // tall, so the 32 branch always wins). Above, the reach is PLAYER_HEIGHT,
+    // crouched included: vanilla has no crouch, and shrinking it would punish a
+    // move whose whole point is to fit under things.
+    static PICKUP_REACH_BELOW = 32 / 64;
 
     // --- Player / world defaults ---
 

@@ -76,7 +76,7 @@ class WadTeleportBuilder {
                 onlyOnce:          onlyOnce,
                 collisionShape:    'none',
                 interactionRadius: radius,
-                triggerPlanar:     true,   // walk-over line: fire on XZ crossing, any height
+                interactionShape:  'planar',   // walk-over line: fire on XZ crossing, any height
                 damage:            null,
                 interaction:       teleportName,
                 keyframes:         []

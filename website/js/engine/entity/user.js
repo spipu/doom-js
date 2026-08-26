@@ -799,6 +799,10 @@ class User {
         return this.y + this.getCurrentHeight() * 0.5;
     }
 
+    getFeetY() {
+        return this.y;
+    }
+
     getCenterZ() {
         return this.z;
     }

@@ -877,17 +877,20 @@ class DoomMonsterSystem {
             return;
         }
         const dropId = loader.instances().spawnFromData(null, {
-            code:              null,
-            object:            tpl.objId,
-            position:          [x, y, z],
-            rotation:          [0, 0, 0],
-            trigger:           'proximity',
-            loop:              false,
-            onlyOnce:          false,
-            collisionShape:    'none',
-            interactionRadius: WadConstants.PICKUP_RADIUS,
-            interaction:       tpl.code,
-            keyframes:         []
+            code:                  null,
+            object:                tpl.objId,
+            position:              [x, y, z],
+            rotation:              [0, 0, 0],
+            trigger:               'proximity',
+            loop:                  false,
+            onlyOnce:              false,
+            collisionShape:        'none',
+            interactionRadius:     WadConstants.PICKUP_RADIUS,
+            interactionShape:      'cylinder',
+            interactionReachBelow: WadConstants.PICKUP_REACH_BELOW,
+            interactionReachAbove: WadConstants.PLAYER_HEIGHT,
+            interaction:           tpl.code,
+            keyframes:             []
         });
         const inst = loader.instances().get(dropId);
         if (rideInstance !== null) {
