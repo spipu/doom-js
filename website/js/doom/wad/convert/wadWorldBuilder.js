@@ -334,22 +334,28 @@ class WadWorldBuilder {
             const ride = this._resolveThingFloor(t, analysis, builtFloorCodes);
             const position = [t.position[0], t.position[1] + ride.liftY, t.position[2]];
             loader.instances().loadFromData(null, {
-                code:              code,
-                object:            billboardIds[objKey],
-                position:          position,
-                rotation:          [0, 0, 0],
-                trigger:           ((isPickup) ? 'proximity' : 'none'),
-                loop:              false,
+                code:                  code,
+                object:                billboardIds[objKey],
+                position:              position,
+                rotation:              [0, 0, 0],
+                trigger:               ((isPickup) ? 'proximity' : 'none'),
+                loop:                  false,
                 // Not onlyOnce: an un-consumed pickup (full health, owned weapon)
                 // must stay grabbable when the player returns — it re-tests every
                 // frame it is overlapped (like Doom's P_TouchSpecialThing) and is
                 // despawned only once actually consumed.
-                onlyOnce:          false,
-                collisionShape:    ((t.solid) ? 'box' : 'none'),
-                collisionRadius:   t.radius,
-                interactionRadius: ((isPickup) ? WadConstants.PICKUP_RADIUS : null),
-                interaction:       ((isPickup) ? code : null),
-                keyframes:         []
+                onlyOnce:              false,
+                collisionShape:        ((t.solid) ? 'box' : 'none'),
+                collisionRadius:       t.radius,
+                // A pickup reaches in a cylinder, so a key on a ledge is taken
+                // from the floor below: vanilla never mixes the footprint with
+                // the vertical reach (PIT_CheckThing / P_TouchSpecialThing).
+                interactionRadius:     ((isPickup) ? WadConstants.PICKUP_RADIUS : null),
+                interactionShape:      ((isPickup) ? 'cylinder' : 'sphere'),
+                interactionReachBelow: ((isPickup) ? WadConstants.PICKUP_REACH_BELOW : 0),
+                interactionReachAbove: ((isPickup) ? WadConstants.PLAYER_HEIGHT : 0),
+                interaction:           ((isPickup) ? code : null),
+                keyframes:             []
             });
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));

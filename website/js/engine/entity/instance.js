@@ -32,14 +32,19 @@ class Instance extends AbstractLoadedEntity {
         this._animDone           = false;
 
         // Trigger / interaction (how the animation is activated)
-        this._trigger           = 'none';
-        this._interactionRadius = null;
-        this._triggerPlanar     = false;   // true = proximity tested on XZ only (walk-over lines)
-        this._autoStart         = false;   // true = start() once at load (timer-armed elements)
-        this._interaction       = null;
-        this._triggerConditions = [];
-        this._renderOffset      = null;
-        this._renderLight       = 1;
+        this._trigger                = 'none';
+        this._interactionRadius      = null;
+        // Shape of the proximity test around the radius: 'sphere' measures in
+        // 3D, 'planar' on XZ only (walk-over lines fire at any height), and
+        // 'cylinder' pairs the XZ circle with a vertical reach window.
+        this._interactionShape       = 'sphere';
+        this._interactionReachBelow  = 0;
+        this._interactionReachAbove  = 0;
+        this._autoStart              = false;   // true = start() once at load (timer-armed elements)
+        this._interaction            = null;
+        this._triggerConditions      = [];
+        this._renderOffset           = null;
+        this._renderLight            = 1;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -377,7 +382,7 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
-    // dt in ms, user must expose getCenterX/Y/Z(), action = E key state
+    // dt in ms, user must expose getCenterX/Y/Z() and getFeetY(), action = E key state
     update(dt, user, action) {
         this._syncRide();
         if (this._animKeyframes.length === 0 && this._interaction === null) {
@@ -512,21 +517,36 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
+    /**
+     * Reach of a proximity/action trigger, per interaction shape. A cylinder
+     * keeps the two axes apart: the vertical window is measured from this
+     * instance's live base (so a body riding a lift follows it) to the user's
+     * feet, and the radius stays a plain ground footprint — where a sphere lets
+     * a tall target eat into the horizontal reach.
+     */
+    _inInteractionRange(user) {
+        const dx    = user.getCenterX() - this._worldCenter[0];
+        const dz    = user.getCenterZ() - this._worldCenter[2];
+        const radSq = (this._interactionRadius * this._interactionRadius);
+        if (this._interactionShape === 'cylinder') {
+            if (((dx * dx) + (dz * dz)) > radSq) {
+                return false;
+            }
+            const delta = (this._position[1] + this._delta.translate[1]) - user.getFeetY();
+
+            return ((delta <= this._interactionReachAbove) && (delta >= -this._interactionReachBelow));
+        }
+        const dy = ((this._interactionShape === 'planar') ? 0 : (user.getCenterY() - this._worldCenter[1]));
+
+        return (((dx * dx) + (dy * dy) + (dz * dz)) <= radSq);
+    }
+
     _checkTrigger(user, action) {
         if (this._trigger === 'none' || this._animPlaying) {
             return false;
         }
 
-        // Planar triggers (walk-over lines) ignore Y: crossing the line fires it
-        // regardless of the player's height — they may stand on a raised lift or
-        // down in the pit. Other triggers (switches, doors) keep the 3D sphere.
-        const dx = user.getCenterX() - this._worldCenter[0];
-        const dy = ((this._triggerPlanar) ? 0 : (user.getCenterY() - this._worldCenter[1]));
-        const dz = user.getCenterZ() - this._worldCenter[2];
-        const inRange = (
-            (this._interactionRadius !== null) &&
-            (Math.sqrt(dx * dx + dy * dy + dz * dz) <= this._interactionRadius)
-        );
+        const inRange = ((this._interactionRadius !== null) && this._inInteractionRange(user));
 
         switch (this._trigger) {
             case 'always':

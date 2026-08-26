@@ -57,7 +57,9 @@ class InstanceLoader extends AbstractLoader {
         entity._collisionShape   = (data.collisionShape ?? 'none');
         entity._collisionRadius  = (data.collisionRadius ?? null);
         entity._interactionRadius = (data.interactionRadius ?? null);
-        entity._triggerPlanar    = (data.triggerPlanar === true);
+        entity._interactionShape = (data.interactionShape ?? 'sphere');
+        entity._interactionReachBelow = (data.interactionReachBelow ?? 0);
+        entity._interactionReachAbove = (data.interactionReachAbove ?? 0);
         entity._autoStart        = (data.autoStart === true);
         entity._damage           = data.damage || null;
         entity._blockedBehavior  = (data.blockedBehavior ?? 'stall');
