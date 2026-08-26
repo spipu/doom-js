@@ -202,12 +202,12 @@ class HudAutomap extends AbstractHud {
     }
 
     _strokeBuckets() {
+        this._ctx.lineWidth = this._lineWidth;
         for (const role of HudAutomap.STROKE_ROLES) {
             const lines = this._buckets[role];
             if (lines.length === 0) {
                 continue;
             }
-            this._ctx.lineWidth   = this._lineWidth;
             this._ctx.strokeStyle = AbstractHud.rgba(this._colors[role], 1);
             this._ctx.beginPath();
             for (const line of lines) {

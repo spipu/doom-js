@@ -297,9 +297,10 @@ class AbstractGameProfile {
 
     /**
      * Automap palette of this game, one entry per colour role of the drawing
-     * ladder (see DoomAutomap.roleOf) plus the panel background. Transcribed
-     * from the engine's own colorsets (am_map.cpp DoomColors / RavenColors):
-     * there the table is picked by GAME, never carried by the WAD.
+     * ladder (see DoomAutomap.roleOf) plus the panel background. Picked by
+     * GAME like the engine's own colorsets (am_map.cpp), never carried by the
+     * WAD; a profile may depart from them, since our panel is translucent
+     * where the engine draws on an opaque ground.
      *
      * @returns {object} role → [r, g, b]
      */
