@@ -34,13 +34,13 @@ class DoomMoverPressure {
     constructor() {
         this._movers      = [];
         this._crushedView = null;
-        this._sight       = null;
+        this._heights     = null;
         this._damage      = null;
         this._collision   = null;
     }
 
-    setSight(sight) {
-        this._sight = sight;
+    setHeights(heights) {
+        this._heights = heights;
         return this;
     }
 
@@ -111,7 +111,7 @@ class DoomMoverPressure {
 
     // The per-tic pass (see the class doc for the behaviour table).
     pressureTic(monsters, ticCount) {
-        if ((this._sight === null) || (this._movers.length === 0)) {
+        if ((this._heights === null) || (this._movers.length === 0)) {
             return;
         }
         for (const mv of this._movers) {
@@ -123,7 +123,7 @@ class DoomMoverPressure {
                 continue;
             }
             const inst     = this._moverInstance(mv);
-            const heights  = this._sight.effectiveHeights(mv.si);
+            const heights  = this._heights.effectiveHeights(mv.si);
             const gap      = heights.ch - heights.fh;
             const behavior = inst.getBlockedBehavior();
             let pinched = false;
@@ -208,7 +208,7 @@ class DoomMoverPressure {
     // (killed or walked out); start() picks the cycle back up exactly where
     // it froze.
     _maybeResumeStalled(mv, monsters) {
-        const heights = this._sight.effectiveHeights(mv.si);
+        const heights = this._heights.effectiveHeights(mv.si);
         const gap     = heights.ch - heights.fh;
         for (const m of monsters) {
             if (this._pinchedLive(m, mv, gap)) {

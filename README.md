@@ -42,13 +42,14 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Player equipment & pickups**: weapons / shared ammo pool / keys / timed effects / armor, with the vanilla pickup rules (a full item stays on the ground, weapons hand out ammo, armor classes); weapons, ammo and armor persist across levels, keys and effects reset. Locked doors require their key. Every power-up with a live effect shows a labelled line above the health bar (timed ones with a countdown, berserk permanently) and its own screen feedback: golden wash for invulnerability, green tint for the radiation suit, scene-wide night vision for the light visor and Heretic torch, translucent weapon for partial invisibility — each blinking through the vanilla end-of-effect warning.
 - **Weapons**: the nine Doom weapons and the eight Heretic weapons fire through a generic verb machine — every table (states, spreads, puffs, decals, projectiles, fallback order) is profile data from the original sources. Vanilla psprite behaviour (bob, eased switching, refire, Heretic hold loops), free-aim hitscans, projectiles with fans / ballistic drops / bounces (the Firemace is fully alive), persistent impact decals that ride moving walls, and a view sprite shaded by the sector light. On death the weapon drops out of view.
 - **HUD**: a modern DOM/CSS HUD in the screen corners — health, armor, ammo, keys, secrets `★ x/y`, kills `☠ x/y`, ARMS panel and active weapon name — adapting to the loaded game. **H** toggles a textual debug overlay; an optional crosshair is settable live.
+- **Automap**: a translucent plan of the level over the running game — you keep playing under it, the virtual pad stays on top. Fixed framing on the whole level, north up, the player as a green arrow, and the colour code of the loaded game (walls, floor and ceiling steps, each locked door in the colour of the key it wants). It reveals itself exactly like the original: a wall is remembered when it is really seen, so a room behind a closed door stays dark until the door opens — and a map power-up greys in everything still unseen, which is what those two items now do. Absent on a WAD whose BSP is unusable.
 - **Weapon switching**: **F** / **G** on the keyboard, shoulder buttons 4/5 on a gamepad, or the HUD's top-right tap zone on the virtual pad.
 - **Sector effects**: damaging floors (with the E1M8 finale rule), "+change" floor mutations, scrolling walls, the vanilla dynamic light thinkers, UZDoom-style distance light diminishing and a sector light floor (the original never renders absolute black), a live texture-smoothing toggle, secret counting, and the Heretic pushes — winds, conveyors, scrolling lava, inertial ice — applied to the player and every monster.
 - **Level chaining**: exits (switch or walk-over) chain to the next level with the vanilla progression rules (secret exits included), overridable by a `UMAPINFO` lump; episode ends, MAP30 and the end of the WAD return to the menu. A finished level freezes on its tally — time spent, enemies, items and secrets, each as *found / total* and a percentage — and waits for you to ask for the next level.
 - **Story texts**: closing a chapter shows the game's own text after the tally, in the same modal style — the four Doom episodes, Doom II's six cluster texts (between chapters and on entering the secret levels), Heretic's five. A WAD telling its own story is always preferred: `UMAPINFO` per-map texts first, then the `DEHACKED` strings a WAD substitutes (which is how Freedoom shows its own), then the game's transcribed catalog, the only one translated.
 - **Build error modal**: a failed level build shows its cause and drops back to the WAD list.
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look, both analog).
-- **Touch controls**: touch-only devices get a virtual gamepad laid out for a **4-finger claw grip** — a dynamic move stick in the bottom-left quadrant, the whole right half as a floating aim stick split into an *aim* band and an *aim + fire* band (the mode is locked per gesture), jump/crouch/use stacked on the right edge, the menu top-left, and the weapon-switch zone top-right. Each gesture has its own settable dead zone, and the firing gesture a settable aim sensitivity. The jump and crouch targets disappear when the Game options forbid the move, and stop answering touches with them.
+- **Touch controls**: touch-only devices get a virtual gamepad laid out for a **4-finger claw grip** — a dynamic move stick in the bottom-left quadrant, the whole right half as a floating aim stick split into an *aim* band and an *aim + fire* band (the mode is locked per gesture), jump/crouch/use stacked on the right edge, the menu and the map top-left, and the weapon-switch zone top-right. Each gesture has its own settable dead zone, and the firing gesture a settable aim sensitivity. The jump and crouch targets disappear when the Game options forbid the move, and stop answering touches with them.
 - **Menu footer**: every menu screen shows the aggregated version, the webapp stats and the copyright.
 - **Options modal & persistent settings**: a Display page (language, crosshair, distance shading, texture smoothing), a Game page (fall damage, off by default to match the original, plus jumping and crouching, on), a Controls page that adapts to the active input device — including **full keyboard remapping**, one key per action — and a confirmed reset; everything persists in IndexedDB.
 - **Translation (fr / en)**: every user-facing text goes through a translation catalog addressed by code; locale-dependent formats (sizes, dates, percents) go through `Intl`. The language is a persisted setting defaulting to English; proper nouns are never translated.
@@ -80,6 +81,7 @@ Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY
 | ESC | Button 9 | Pause menu over the frozen game (not remappable) |
 | F / G | Buttons 4 / 5 | Previous / next weapon (wrapping) |
 | H | — | Toggle the game HUD ↔ debug overlay (keyboard only) |
+| Tab | D-pad up | Show / hide the automap over the game |
 | Left Alt | — | Walk slowly (sticks do it through partial deflection) |
 | IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | O | — | Debug cheat (not remappable): grant the full kit |
@@ -123,7 +125,8 @@ website/
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, damage, boss deaths
-    │   ├── hud/                 Game HUD + debug overlay
+    │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
+    │   ├── hud/                 Game HUD + debug overlay + automap layer
     │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, save slots)
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
@@ -214,7 +217,6 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Automap**: nothing today, which also leaves the two map power-ups sitting inert in the thing catalogs.
 * **Monster attacks**: monsters chase, hurt nobody and die politely — their melee and missile states are transcribed but no attack verb fires. The pieces they need (damage pipeline, projectiles, line of sight) are already in place, so this is the one gap that turns the world into a game.
 * **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
 * **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.

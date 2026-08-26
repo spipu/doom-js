@@ -172,6 +172,13 @@ class Inputs {
         return this;
     }
 
+    // A level with no map must not show a target that answers nothing. The
+    // keyboard and the physical pad need none: their key stays inert.
+    setVirtualPadMapAllowed(allowed) {
+        this._virtualGamepad.canMap(allowed);
+        return this;
+    }
+
     readJoy1X() {
         const pad = this._pad();
         if (pad !== null) {
@@ -276,6 +283,14 @@ class Inputs {
     // Reads the keyboard directly so gamepad / virtual gamepad never trigger it.
     readButtonToggleHud() {
         return this._keyboard.readAction('toggleHud');
+    }
+
+    readButtonMap() {
+        const pad = this._pad();
+        if (pad !== null) {
+            return pad.readButtonMap();
+        }
+        return this._keyboard.readAction('map');
     }
 
     readButtonWeaponNext() {

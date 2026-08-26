@@ -825,6 +825,19 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {blueKey: '#3d7bff', yellowKey: '#ffd23d', redKey: '#ff4444'};
     }
 
+    // am_map.cpp DoomColors. `locked` is only the fallback of a key with no HUD
+    // colour: a locked line normally takes the colour of the key it demands.
+    automapColors() {
+        return {
+            background: [0x00, 0x00, 0x00],
+            wall:       [0xfc, 0x00, 0x00],
+            floorStep:  [0xbc, 0x78, 0x48],
+            ceilStep:   [0xfc, 0xfc, 0x00],
+            locked:     [0xfc, 0xfc, 0x00],
+            notSeen:    [0x6c, 0x6c, 0x6c]
+        };
+    }
+
     // Vanilla Doom hardcoded animation sequences (p_spec.c, 8 tics per frame),
     // used when the WAD has no ANIMATED lump.
     vanillaAnimSequences() {

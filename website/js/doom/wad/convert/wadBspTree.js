@@ -56,8 +56,8 @@ class WadBspTree {
                 return null;
             }
             for (const child of [n.rightChild, n.leftChild]) {
-                if (WadBspTree._isLeaf(child)) {
-                    if (WadBspTree._leafIndex(child) >= ssectors.length) {
+                if (WadBspTree.isLeaf(child)) {
+                    if (WadBspTree.leafIndex(child) >= ssectors.length) {
                         return null;
                     }
                 } else if (child >= i) {
@@ -111,24 +111,26 @@ class WadBspTree {
      */
     findSector(x, y) {
         let child = this._nodes.length - 1;
-        while (!WadBspTree._isLeaf(child)) {
+        while (!WadBspTree.isLeaf(child)) {
             const n    = this._nodes[child];
             const back = (WadGeometry.pointOnLineSide(x, y, n.x, n.y, n.x + n.dx, n.y + n.dy) === 1);
             child = ((back) ? n.leftChild : n.rightChild);
         }
-        const si = this._sectorOfSubsector[WadBspTree._leafIndex(child)];
+        const si = this._sectorOfSubsector[WadBspTree.leafIndex(child)];
         return ((si >= 0) ? si : null);
     }
 
-    // --- Internal ---
-
-    static _isLeaf(child) {
+    // Leaf encoding of a node child: part of the lump format this class owns,
+    // and the map reveal walks the same nodes.
+    static isLeaf(child) {
         return ((child & WadBspTree.NF_SUBSECTOR) !== 0);
     }
 
-    static _leafIndex(child) {
+    static leafIndex(child) {
         return (child & (WadBspTree.NF_SUBSECTOR - 1));
     }
+
+    // --- Internal ---
 
     // The subsector's sector: first seg whose sidedef (front for direction 0,
     // back for 1) points to a real sector — iterated, one corrupt seg must not
@@ -157,8 +159,8 @@ class WadBspTree {
         if (poly.length < 3) {
             return;
         }
-        if (WadBspTree._isLeaf(child)) {
-            const ssIdx = WadBspTree._leafIndex(child);
+        if (WadBspTree.isLeaf(child)) {
+            const ssIdx = WadBspTree.leafIndex(child);
             const si = this._sectorOfSubsector[ssIdx];
             if (si < 0) {
                 return;

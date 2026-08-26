@@ -21,6 +21,9 @@ class InputKeyboard {
             weaponNext:  'KeyG',
             walkSlow:    'AltLeft',
             toggleHud:   'KeyH',
+            // Layout-independent, unlike a letter: 'KeyM' is the QWERTY
+            // position, which prints ',' on AZERTY.
+            map:         'Tab',
             // Keyboard look fallback ("fake mouse", pointer lock broken in
             // some VMs): +/- deltas on both axes.
             lookUp:      'KeyI',
@@ -46,6 +49,11 @@ class InputKeyboard {
             // from page JS (see the DEFAULT_MAPPING warning).
             const typing = ((e.target instanceof HTMLInputElement) || (e.target instanceof HTMLTextAreaElement));
             if (e.ctrlKey && !typing && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
+                e.preventDefault();
+            }
+            // Tab would walk the browser focus, and a focused button then eats
+            // the next Enter as a native re-click.
+            if ((e.code === 'Tab') && !typing) {
                 e.preventDefault();
             }
         });

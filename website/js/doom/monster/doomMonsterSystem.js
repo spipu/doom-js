@@ -103,9 +103,9 @@ class DoomMonsterSystem {
             return;
         }
         if (this._sight === null) {
-            this._sight = new DoomMonsterSight(this._collision, this._levelData);
+            this._sight = new DoomMonsterSight(this._collision, this._levelData, this._levelData.heights);
         }
-        this._pressure.setSight(this._sight).setCollision(this._collision);
+        this._pressure.setHeights(this._levelData.heights).setCollision(this._collision);
         if ((this._move === null) && (this._rng !== null) && (this._user !== null)) {
             this._move = new DoomMonsterMove(this._collision, this._user, this._rng, this._levelData);
             this._move.setPostMove((m, fromX, fromZ, toX, toZ) => {

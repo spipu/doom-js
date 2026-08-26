@@ -140,6 +140,7 @@ class DoomTranslations {
             'hud.health':              {fr: 'PV',                                    en: 'HP'},
             'hud.armor':               {fr: 'AR',                                    en: 'AR'},
             'hud.ammo':                {fr: 'MUNITIONS',                             en: 'AMMO'},
+            'hud.automap':             {fr: 'Carte',                                 en: 'Map'},
 
             // Running power-up effects (one shared label per effect, whatever
             // the game's item name — user decision)
@@ -220,6 +221,7 @@ class DoomTranslations {
             'settings.keyboard.weaponNext':       {fr: 'Arme suivante',                en: 'Next weapon'},
             'settings.keyboard.walkSlow':         {fr: 'Marcher lentement',            en: 'Walk slowly'},
             'settings.keyboard.toggleHud':        {fr: 'Afficher le HUD de debug',     en: 'Show the debug HUD'},
+            'settings.keyboard.map':              {fr: 'Afficher la carte',            en: 'Show the map'},
             'settings.keyboard.lookDown':         {fr: 'Fausse souris - Y+',           en: 'Fake mouse - Y+'},
             'settings.keyboard.lookUp':           {fr: 'Fausse souris - Y-',           en: 'Fake mouse - Y-'},
             'settings.keyboard.lookRight':        {fr: 'Fausse souris - X+',           en: 'Fake mouse - X+'},

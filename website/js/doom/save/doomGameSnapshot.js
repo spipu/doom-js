@@ -47,6 +47,7 @@ class DoomGameSnapshot {
             instances:    this._captureInstances(),
             interactions: this._captureInteractions(),
             gunTriggers:  ((context.gunTriggers !== null) ? context.gunTriggers.exportState() : null),
+            automap:      ((context.automap !== null) ? context.automap.exportState() : null),
             monsters:     context.monsters.exportState(),
         };
     }
@@ -66,6 +67,10 @@ class DoomGameSnapshot {
         this._applyInteractions(snapshot.interactions);
         if ((context.gunTriggers !== null) && (snapshot.gunTriggers !== null)) {
             context.gunTriggers.importState(snapshot.gunTriggers);
+        }
+        // A save with no map state restarts blank, like the counters above.
+        if (context.automap !== null) {
+            context.automap.importState(snapshot.automap ?? null);
         }
         context.monsters.importState(snapshot.monsters);
         loader.instances().flushRemovals();
