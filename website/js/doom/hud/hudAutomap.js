@@ -3,10 +3,11 @@
  * stops for it — the player can keep walking with the map open, and the virtual
  * pad stays on top of it.
  *
- * Fixed framing: the whole level is fitted once per level, north up, never
- * centred on the player, so the map reads like a paper plan rather than a
- * radar. Only the walls and the player are drawn (vanilla shows the things
- * under the IDDT cheat alone).
+ * Fixed framing: the whole level is fitted once per level, never centred on the
+ * player, so the map reads like a paper plan rather than a radar — north up,
+ * or north to the right when turning the plan a quarter fills the panel better
+ * (see _layout). Only the walls and the player are drawn (vanilla shows the
+ * things under the IDDT cheat alone).
  *
  * The lines are stroked one path per colour: a path per line would mean
  * thousands of canvas state changes per frame, where the level's few colour
@@ -32,8 +33,8 @@ class HudAutomap extends AbstractHud {
         this._height    = 0;
         this._scale     = 1;
         this._lineWidth = 1;
-        this._originX   = 0;
-        this._originY   = 0;
+        this._mapX      = [1, 0, 0];
+        this._mapY      = [0, -1, 0];
     }
 
     bindGame(game) {
@@ -157,7 +158,17 @@ class HudAutomap extends AbstractHud {
         return true;
     }
 
-    // Ratio preserved: a stretched plan reads false.
+    /**
+     * Ratio preserved: a stretched plan reads false. The plan is turned a
+     * quarter when that fits BIGGER, which in a landscape panel means a level
+     * taller than wide — it would otherwise waste both side margins. The
+     * criterion is the fitted scale itself rather than the level's shape: it is
+     * what we actually want, and it holds whatever the panel's proportions.
+     *
+     * The mapping is kept as the coefficients of Doom → panel, so the quarter
+     * turn costs no test per drawn point: [xFactor, yFactor, offset] per screen
+     * axis, north to the RIGHT once turned.
+     */
     _layout() {
         const bounds = this._automap.getBounds();
         const spanX  = Math.max(bounds[2] - bounds[0], 1);
@@ -168,18 +179,40 @@ class HudAutomap extends AbstractHud {
         const boxH   = this._height - padTop - this._height * HudAutomap.PADDING_RATIO;
 
         this._lineWidth = Math.max(1, this._height * HudAutomap.LINE_WIDTH_RATIO);
-        this._scale     = Math.min(boxW / spanX, boxH / spanY);
-        this._originX   = padX + (boxW - spanX * this._scale) / 2 - bounds[0] * this._scale;
-        this._originY   = padTop + (boxH + spanY * this._scale) / 2 + bounds[1] * this._scale;
+
+        const upright = Math.min(boxW / spanX, boxH / spanY);
+        const turned  = Math.min(boxW / spanY, boxH / spanX);
+        const quarter = (turned > upright);
+        this._scale   = ((quarter) ? turned : upright);
+
+        const usedW = ((quarter) ? spanY : spanX) * this._scale;
+        const usedH = ((quarter) ? spanX : spanY) * this._scale;
+        const left  = padX + (boxW - usedW) / 2;
+        const top   = padTop + (boxH - usedH) / 2;
+        if (quarter) {
+            this._mapX = [0, this._scale, left - bounds[1] * this._scale];
+            this._mapY = [this._scale, 0, top - bounds[0] * this._scale];
+            return;
+        }
+        // Doom's +y is north, the canvas' +y goes down.
+        this._mapX = [this._scale, 0, left - bounds[0] * this._scale];
+        this._mapY = [0, -this._scale, top + bounds[3] * this._scale];
     }
 
-    _sx(doomX) {
-        return (this._originX + doomX * this._scale);
+    _screenX(doomX, doomY) {
+        return ((this._mapX[0] * doomX) + (this._mapX[1] * doomY) + this._mapX[2]);
     }
 
-    // Doom's +y is north, the canvas' +y goes down.
-    _sy(doomY) {
-        return (this._originY - doomY * this._scale);
+    _screenY(doomX, doomY) {
+        return ((this._mapY[0] * doomX) + (this._mapY[1] * doomY) + this._mapY[2]);
+    }
+
+    // Screen direction of a Doom heading, unit length: the mapping's linear
+    // part without its scale, so a marker drawn in pixels turns with the plan.
+    _screenDir(angle) {
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        return [(((this._mapX[0] * cos) + (this._mapX[1] * sin)) / this._scale),
+            (((this._mapY[0] * cos) + (this._mapY[1] * sin)) / this._scale)];
     }
 
     _collect() {
@@ -211,8 +244,8 @@ class HudAutomap extends AbstractHud {
             this._ctx.strokeStyle = AbstractHud.rgba(this._colors[role], 1);
             this._ctx.beginPath();
             for (const line of lines) {
-                this._ctx.moveTo(this._sx(line.x1), this._sy(line.y1));
-                this._ctx.lineTo(this._sx(line.x2), this._sy(line.y2));
+                this._ctx.moveTo(this._screenX(line.x1, line.y1), this._screenY(line.x1, line.y1));
+                this._ctx.lineTo(this._screenX(line.x2, line.y2), this._screenY(line.x2, line.y2));
             }
             this._ctx.stroke();
         }
@@ -226,25 +259,28 @@ class HudAutomap extends AbstractHud {
         for (const line of this._locked) {
             this._ctx.strokeStyle = (this._keys[line.keyCode] ?? AbstractHud.rgba(this._colors.locked, 1));
             this._ctx.beginPath();
-            this._ctx.moveTo(this._sx(line.x1), this._sy(line.y1));
-            this._ctx.lineTo(this._sx(line.x2), this._sy(line.y2));
+            this._ctx.moveTo(this._screenX(line.x1, line.y1), this._screenY(line.x1, line.y1));
+            this._ctx.lineTo(this._screenX(line.x2, line.y2), this._screenY(line.x2, line.y2));
             this._ctx.stroke();
         }
     }
 
     // The marker size does NOT follow the fitting factor: on a wide level that
-    // would shrink it to nothing.
+    // would shrink it to nothing. Its heading goes through _screenDir, so it
+    // turns with the plan.
     _drawPlayer() {
-        const x     = this._sx(this._user.getCameraX() / WadConstants.SCALE);
-        const y     = this._sy(this._user.getCameraZ() / WadConstants.SCALE);
+        const doomX = this._user.getCameraX() / WadConstants.SCALE;
+        const doomY = this._user.getCameraZ() / WadConstants.SCALE;
+        const x     = this._screenX(doomX, doomY);
+        const y     = this._screenY(doomX, doomY);
         const angle = WadGeometry.doomAngleYaw(this._user.yaw) * DEG_TO_RAD;
         const size  = Math.max(HudAutomap.PLAYER_MIN_PX, this._height * HudAutomap.PLAYER_SIZE_RATIO);
 
         this._ctx.fillStyle = AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1);
         this._ctx.beginPath();
         for (const [distance, offset] of HudAutomap.PLAYER_SHAPE) {
-            const a = angle + offset;
-            this._ctx.lineTo(x + Math.cos(a) * size * distance, y - Math.sin(a) * size * distance);
+            const [dirX, dirY] = this._screenDir(angle + offset);
+            this._ctx.lineTo(x + dirX * size * distance, y + dirY * size * distance);
         }
         this._ctx.closePath();
         this._ctx.fill();
