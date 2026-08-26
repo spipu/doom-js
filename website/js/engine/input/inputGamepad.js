@@ -109,6 +109,11 @@ class InputGamepad {
         return this._button(5);
     }
 
+    // Silent on a non-standard pad, where the d-pad is a hat axis (readDpadUp).
+    readButtonMap() {
+        return this.readDpadUp();
+    }
+
     // D-pad up/down, only trusted on the standard mapping (buttons 12/13).
     // Raw layouts expose the d-pad as a hat axis on other slots, where 12/13
     // may be unrelated physical buttons — there, the caller falls back on the

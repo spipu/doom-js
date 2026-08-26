@@ -58,6 +58,7 @@ class InputVirtualGamepad {
             action:     false,
             fire:       false,
             pause:      false,
+            map:        false,
             weaponNext: false
         };
 
@@ -70,7 +71,9 @@ class InputVirtualGamepad {
         };
         this._fireSensitivity = 1;
 
-        this._buttonAllowed = {jump: true, crouch: true};
+        // The map target ships hidden: unlike jumping and crouching, no game
+        // has a map until it asks for one.
+        this._buttonAllowed = {jump: true, crouch: true, map: false};
 
         // touch identifier -> control owned by that finger
         this._touches = new Map();
@@ -135,9 +138,9 @@ class InputVirtualGamepad {
     }
 
     /**
-     * Takes the jump button away when the game forbids jumping: a hidden
-     * target stops answering touches too, and the state survives the overlay
-     * rebuilt for the next level.
+     * Takes a button away when the game has nothing for it: a hidden target
+     * stops answering touches too, and the state survives the overlay rebuilt
+     * for the next level.
      *
      * @param {boolean} allowed
      */
@@ -147,6 +150,10 @@ class InputVirtualGamepad {
 
     canCrouch(allowed) {
         return this._allowButton('crouch', allowed);
+    }
+
+    canMap(allowed) {
+        return this._allowButton('map', allowed);
     }
 
     readJoy1X() {
@@ -183,6 +190,10 @@ class InputVirtualGamepad {
 
     readButtonPause() {
         return this._buttons.pause;
+    }
+
+    readButtonMap() {
+        return this._buttons.map;
     }
 
     // The top-right zone cycles to the next weapon. There is no previous
@@ -687,7 +698,11 @@ InputVirtualGamepad.ICONS = {
                    + '<rect x="7.5" y="14.1" width="13" height="2.5" rx="1.25"/>'
                    + '<path d="M8.2 11.6 L2.8 15.35 L8.2 19.1 Z"/>'},
     aim:    {shapes: '<circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/>'
-                   + '<path d="M12 1.5 V22.5 M1.5 12 H22.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'}
+                   + '<path d="M12 1.5 V22.5 M1.5 12 H22.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'},
+    // Strokes and not a filled shape: the creases would vanish into the fill.
+    map:    {shapes: '<path d="M3.2 6.2 L9 4.4 L15 6.6 L20.8 4.6 V17.8 L15 19.8 L9 17.6 L3.2 19.6 Z"'
+                   + ' fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
+                   + '<path d="M9 4.4 V17.6 M15 6.6 V19.8" fill="none" stroke="currentColor" stroke-width="1.4"/>'}
 };
 
 // Icon side as a fraction of its button's height, and the height of the
@@ -702,6 +717,9 @@ InputVirtualGamepad.AIM_MARK_ICON_SIZE = 5.5;
 // panel (one tap = next weapon).
 InputVirtualGamepad.BUTTONS = {
     pause:      {x: 0.128, y: 0.020, w: 0.079, h: 0.112, icon: 'menu'},
+    // Right of the menu: on its left it would sit on the HUD's keys / secrets /
+    // kills block.
+    map:        {x: 0.216, y: 0.020, w: 0.079, h: 0.112, icon: 'map'},
     jump:       {x: 0.902, y: 0.506, w: 0.079, h: 0.112, icon: 'jump'},
     crouch:     {x: 0.902, y: 0.626, w: 0.079, h: 0.112, icon: 'crouch'},
     action:     {x: 0.902, y: 0.746, w: 0.079, h: 0.112, icon: 'action'},

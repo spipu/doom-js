@@ -21,21 +21,17 @@
  */
 class DoomMonsterSight {
     /**
-     * @param {Collision} collision
-     * @param {object}    levelData DoomMonsterSystem level data: {sectorGraph,
-     *                    reject, numSectors, findSector, sectors, doorFloorH,
-     *                    restFh, moverCodes}
+     * @param {Collision}         collision
+     * @param {object}            levelData DoomMonsterSystem level data:
+     *                            {sectorGraph, reject, numSectors, findSector…}
+     * @param {DoomSectorHeights} heights   live sector heights
      */
-    constructor(collision, levelData) {
+    constructor(collision, levelData, heights) {
         this._collision      = collision;
         this._graph          = levelData.sectorGraph;
         this._reject         = levelData.reject;
         this._numSectors     = levelData.numSectors;
-        this._sectors        = levelData.sectors;
-        this._doorFloorH     = levelData.doorFloorH;
-        this._restFh         = levelData.restFh;
-        this._moverCodes     = levelData.moverCodes;
-        this._moverCache     = {};
+        this._heights        = heights;
         this._soundTarget    = new Array(levelData.numSectors).fill(null);
         this._soundTraversed = new Array(levelData.numSectors).fill(0);
         this._floodStamp     = new Array(levelData.numSectors).fill(0);
@@ -129,45 +125,8 @@ class DoomMonsterSight {
 
     // Current vertical opening of a two-sided line, in map units.
     _openingOf(line) {
-        const a = this.effectiveHeights(line.siR);
-        const b = this.effectiveHeights(line.siL);
+        const a = this._heights.effectiveHeights(line.siR);
+        const b = this._heights.effectiveHeights(line.siL);
         return (Math.min(a.ch, b.ch) - Math.max(a.fh, b.fh));
-    }
-
-    /**
-     * Effective heights of a sector, in map units: the static (post-patch)
-     * values, corrected by the live offset of its mover instance — a door's
-     * ceiling is its panel bottom (closed rest = floor), a lift/rising
-     * floor/stair top rests at the original height and carries the instance's
-     * current Y delta. Public: the mover pressure pass measures the gap a
-     * body must fit in with the same formula the sound flood uses.
-     *
-     * @returns {{fh: number, ch: number}}
-     */
-    effectiveHeights(si) {
-        let fh = ((this._restFh[si] !== undefined) ? this._restFh[si] : this._sectors[si].fh);
-        let ch = this._sectors[si].ch;
-        const mover = this._mover(si);
-        if (mover !== null) {
-            const dy = mover.inst.getTransform().deltaTranslate[1] / WadConstants.SCALE;
-            if (mover.kind === 'door') {
-                ch = this._doorFloorH[si] + dy;
-            } else {
-                fh = fh + dy;
-            }
-        }
-        return {fh: fh, ch: ch};
-    }
-
-    // Lazy mover resolution: the builder only lists codes it actually built,
-    // so getByCode never throws here.
-    _mover(si) {
-        if (this._moverCache[si] === undefined) {
-            const entry = this._moverCodes[si];
-            this._moverCache[si] = ((entry !== undefined)
-                ? {kind: entry.kind, inst: loader.instances().getByCode(entry.code)}
-                : null);
-        }
-        return this._moverCache[si];
     }
 }

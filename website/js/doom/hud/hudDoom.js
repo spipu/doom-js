@@ -21,6 +21,7 @@ class HudDoom extends AbstractHud {
         super(engine);
         this._debug     = new HudDoomDebug(engine);
         this._game      = new HudGameBar(engine);
+        this._automap   = new HudAutomap(engine);
         this._mode      = 'game';
         this._crosshair = null;
     }
@@ -29,6 +30,7 @@ class HudDoom extends AbstractHud {
         this._user = user;
         this._debug.bindUser(user);
         this._game.bindUser(user);
+        this._automap.bindUser(user);
         return this;
     }
 
@@ -44,6 +46,13 @@ class HudDoom extends AbstractHud {
     bindGame(game) {
         this._debug.bindGame(game);
         this._game.bindGame(game);
+        this._automap.bindGame(game);
+        return this;
+    }
+
+    // Level automap, absent when the WAD carries no usable BSP.
+    bindAutomap(automap) {
+        this._automap.bindAutomap(automap);
         return this;
     }
 
@@ -61,6 +70,7 @@ class HudDoom extends AbstractHud {
         this._ratio = ratio;
         this._debug.setRatio(ratio);
         this._game.setRatio(ratio);
+        this._automap.setRatio(ratio);
         return this;
     }
 
@@ -69,6 +79,9 @@ class HudDoom extends AbstractHud {
         this._debug.init(container);
         this._game.init(container);
         this._buildCrosshair(container);
+        // Last, so the map covers the whole HUD; the virtual pad, with its own
+        // z-index in the display, still comes over it.
+        this._automap.init(container);
         this._applyVisibility();
     }
 
@@ -78,6 +91,12 @@ class HudDoom extends AbstractHud {
         this._applyVisibility();
     }
 
+    // The map is a layer of its own, not a third view: it shows over whichever
+    // view is active.
+    toggleAutomap() {
+        this._automap.toggle();
+    }
+
     update() {
         this._applyScreenFlash();
         if (this._crosshair !== null) {
@@ -85,9 +104,10 @@ class HudDoom extends AbstractHud {
         }
         if (this._mode === 'game') {
             this._game.update();
-            return;
+        } else {
+            this._debug.update();
         }
-        this._debug.update();
+        this._automap.update();
     }
 
     _applyVisibility() {

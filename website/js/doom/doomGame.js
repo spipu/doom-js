@@ -18,6 +18,7 @@ class DoomGame {
         this._pauseWasDown      = true;
         this._cheatWasDown      = false;
         this._hudWasDown        = false;
+        this._mapWasDown        = false;
         this._weaponNextWasDown = false;
         this._weaponPrevWasDown = false;
         this._running           = false;
@@ -38,6 +39,7 @@ class DoomGame {
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
+        this._automap         = null;    // level automap (null when the WAD has no usable BSP)
         this._depthShadingOn  = null;    // last states pushed to the engine / player (null = never)
         this._texSmoothingOn  = null;
         this._fallDamageOn    = null;
@@ -97,6 +99,21 @@ class DoomGame {
 
     getItem(code) {
         return (this._items[code] ?? null);
+    }
+
+    /**
+     * True while the player holds an item revealing the whole map. Data-driven
+     * so every game follows: Doom's computer map and Heretic's map scroll both
+     * declare `effect: 'map'`.
+     */
+    hasMapPowerup(user) {
+        for (const code of Object.keys(this._items)) {
+            if ((this._items[code].getEffect() === 'map') && user.hasItem(code)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // --- Pickups ---
@@ -356,6 +373,10 @@ class DoomGame {
         this._gunTriggers = gunTriggers;
     }
 
+    setAutomap(automap) {
+        this._automap = automap;
+    }
+
     // Transient effect spawner — built after the world, so build-time
     // consumers (teleport interactions) read it lazily at trigger time.
     getEffects() {
@@ -497,6 +518,7 @@ class DoomGame {
             rng:          this._rng,
             monsters:     this._monsters,
             gunTriggers:  this._gunTriggers,
+            automap:      this._automap,
             secretsFound: this._secretsFound,
             killsCount:   this._killsCount,
             itemsFound:   this._itemsFound,
@@ -538,6 +560,9 @@ class DoomGame {
         }
 
         this._resetLevelStats();
+        // The builder only sets one when it can: a BSP-less level must not
+        // inherit the previous map.
+        this._automap = null;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -640,6 +665,8 @@ class DoomGame {
         // The devices are re-bound to the new screen on each level
         this._inputs.bindScreen(this._screen);
         doomSettings.applyToInputs(this._inputs);
+        // Not a setting but a property of the level: no map, no touch target.
+        this._inputs.setVirtualPadMapAllowed(this._automap !== null);
 
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._fov       = WadConstants.PLAYER_FOV;
@@ -662,6 +689,9 @@ class DoomGame {
             .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._mapInfo.levelNameFor(this._levelName))
             .addDescription('(c)2026 Spipu')
         ;
+        if (this._automap !== null) {
+            this._hud.bindAutomap(this._automap);
+        }
 
         this._screen.bindHud(this._hud);
 
@@ -753,6 +783,13 @@ class DoomGame {
         }
         this._hudWasDown = hudDown;
 
+        // Map toggle (press edge): a layer, the game keeps running under it.
+        const mapDown = this._inputs.readButtonMap();
+        if (mapDown && !this._mapWasDown) {
+            this._hud.toggleAutomap();
+        }
+        this._mapWasDown = mapDown;
+
         if (this._playerWeapon !== null) {
             const weaponNextDown = this._inputs.readButtonWeaponNext();
             if (weaponNextDown && !this._weaponNextWasDown) {
@@ -776,6 +813,11 @@ class DoomGame {
         const dt = this._engine.getDeltaTime();
         this._world.update(dt, this._inputs);
         this._world.getUser().updateEffects(dt);
+        // Vanilla marks its lines from the renderer, so the map memorises what
+        // the player sees whether it is on screen or not.
+        if (this._automap !== null) {
+            this._automap.reveal(this._world.getUser(), this._fov / 2);
+        }
         if (this._playerWeapon !== null) {
             const user = this._world.getUser();
             if (this._sectorLight !== null) {

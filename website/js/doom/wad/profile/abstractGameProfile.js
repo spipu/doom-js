@@ -296,6 +296,19 @@ class AbstractGameProfile {
     }
 
     /**
+     * Automap palette of this game, one entry per colour role of the drawing
+     * ladder (see DoomAutomap.roleOf) plus the panel background. Transcribed
+     * from the engine's own colorsets (am_map.cpp DoomColors / RavenColors):
+     * there the table is picked by GAME, never carried by the WAD.
+     *
+     * @returns {object} role → [r, g, b]
+     */
+    automapColors() {
+        this._generateException('automapColors must be implemented');
+        return {};
+    }
+
+    /**
      * Hardcoded texture/flat animation sequences of this game's engine, used
      * when the WAD carries no ANIMATED lump (the lump always wins).
      *

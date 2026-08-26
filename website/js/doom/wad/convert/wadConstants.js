@@ -760,7 +760,13 @@ class WadConstants {
     static ML_BLOCKMONSTERS = 0x02;
     static ML_DONTPEGTOP    = 0x08;
     static ML_DONTPEGBOTTOM = 0x10;
+    // Automap-only flags: SECRET draws the line as a solid wall and changes
+    // nothing to the gameplay, DONTDRAW hides it whatever the player knows,
+    // MAPPED is a line the WAD ships already revealed.
+    static ML_SECRET        = 0x20;
     static ML_SOUNDBLOCK    = 0x40;
+    static ML_DONTDRAW      = 0x80;
+    static ML_MAPPED        = 0x100;
 
     // Doom picture-column format sentinel
     static PATCH_END_COLUMN = 0xFF;

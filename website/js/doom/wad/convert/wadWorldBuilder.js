@@ -232,11 +232,12 @@ class WadWorldBuilder {
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         await this._yield();
 
-        // Level data the monster AI consumes at runtime
+        // One height service for the monsters and the map, carried by this data.
+        const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction);
         if (this._monsterSystem !== null) {
-            this._monsterSystem.setLevelData(
-                this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction));
+            this._monsterSystem.setLevelData(levelData);
         }
+        this._registerAutomap(level, levelData.heights);
         const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes);
 
         // World + user
@@ -514,15 +515,25 @@ class WadWorldBuilder {
         }
     }
 
-    // Level data of the monster AI: sector graph, REJECT table, sector
-    // resolver over the polygon cache (kept alive by the closure, like the
-    // sector-light handoff), the effective-height inputs of the sound flood
-    // (static sector heights, door panel floors, resting floor heights of the
-    // patched lifts), the mover instance code of every moving sector (codes
-    // only listed when actually built: getByCode never throws downstream),
-    // and the lines a monster may fire by CROSSING them during a walk step
-    // (vanilla P_CrossSpecialLine: the shared walk zones 4/10/88, consumed
-    // for everyone, and the teleports — 39/97 shared, 125/126 monster-only).
+    // The reveal IS a BSP walk, so no valid nodes means no map. The tree's
+    // presence is the validity gate: it checked the lumps.
+    _registerAutomap(level, heights) {
+        if ((this._game === null) || (level.bspTree === null)) {
+            return;
+        }
+        this._game.setAutomap(new DoomAutomap(new WadAutomapBuilder(level).build(), heights));
+    }
+
+    // Level data of the monster AI, plus the sector-height service built from
+    // it: sector graph, REJECT table, sector resolver over the polygon cache
+    // (kept alive by the closure, like the sector-light handoff), the
+    // effective-height inputs of the sound flood (static sector heights, door
+    // panel floors, resting floor heights of the patched lifts), the mover
+    // instance code of every moving sector (codes only listed when actually
+    // built: getByCode never throws downstream), and the lines a monster may
+    // fire by CROSSING them during a walk step (vanilla P_CrossSpecialLine:
+    // the shared walk zones 4/10/88, consumed for everyone, and the teleports
+    // — 39/97 shared, 125/126 monster-only).
     _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction) {
         const doorFloorH = {};
         const moverCodes = {};
@@ -578,7 +589,7 @@ class WadWorldBuilder {
             });
         }
 
-        return {
+        const data = {
             sectorGraph:  analysis.sectorGraph,
             reject:       level.reject,
             numSectors:   level.sectors.length,
@@ -597,6 +608,10 @@ class WadWorldBuilder {
             // sector or state change.
             hasLightEffect: ((si) => analysis.lightSectorIds.has(si))
         };
+        // The sound flood, the mover pressure and the map share this instance.
+        data.heights = new DoomSectorHeights(data);
+
+        return data;
     }
 
     // Moving floor under a thing: the built lift / rising-floor / stair

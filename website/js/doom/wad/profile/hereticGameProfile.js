@@ -772,6 +772,18 @@ class HereticGameProfile extends DefaultGameProfile {
         return {blueKey: '#3d7bff', yellowKey: '#ffd23d', greenKey: '#3ddd66'};
     }
 
+    // am_map.cpp RavenColors — the parchment set of Heretic and Hexen.
+    automapColors() {
+        return {
+            background: [0x6c, 0x54, 0x40],
+            wall:       [75, 50, 16],
+            floorStep:  [208, 176, 133],
+            ceilStep:   [103, 59, 31],
+            locked:     [103, 59, 31],
+            notSeen:    [0x00, 0x00, 0x00]
+        };
+    }
+
     // Heretic hardcoded animation sequences with their engine speeds
     // (UZDoom filter/game-heretic/animated.lmp) — heretic.wad has no
     // ANIMATED lump, these always apply.
