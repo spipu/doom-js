@@ -9,6 +9,13 @@ class Object3dRendererBase {
         return true;
     }
 
+    // Whether this renderer reads the screen-space projection (Object3d.pt2d):
+    // the CPU rasterizers do, a GPU renderer projects in its own shader and the
+    // engine then skips the per-vertex pass entirely.
+    needsProjection() {
+        return true;
+    }
+
     initCanvas(canvas) {
         return canvas.getContext('2d');
     }
