@@ -29,12 +29,10 @@ class Inputs {
         return 0.8;
     }
 
-    /**
-     * Creates and owns all the concrete input devices. Soft singleton:
-     * InputKeyboard can only exist once per page, so new Inputs() returns
-     * the already existing instance instead of creating a second one
-     * (the menu creates a new DoomGame on each level launch).
-     */
+    // Creates and owns all the concrete input devices. Soft singleton:
+    // InputKeyboard can only exist once per page, so new Inputs() returns
+    // the already existing instance instead of creating a second one
+    // (the menu creates a new DoomGame on each level launch).
     constructor() {
         if (Inputs_private) {
             return Inputs_private;
@@ -77,19 +75,15 @@ class Inputs {
         return this;
     }
 
-    /**
-     * Releases the mouse pointer lock if held — the game calls it when a
-     * level is left for the menus (a gamepad pause can leave it engaged).
-     */
+    // Releases the mouse pointer lock if held — the game calls it when a
+    // level is left for the menus (a gamepad pause can leave it engaged).
     releaseMouse() {
         this._mouse.releaseLock();
         return this;
     }
 
-    /**
-     * Grabs the mouse pointer lock back — the game calls it on a user gesture
-     * (resuming from the pause menu); fails silently without one.
-     */
+    // Grabs the mouse pointer lock back — the game calls it on a user gesture
+    // (resuming from the pause menu); fails silently without one.
     grabMouse() {
         this._mouse.requestLock();
         return this;
@@ -118,10 +112,8 @@ class Inputs {
         return this._mode;
     }
 
-    /**
-     * Name (Gamepad.id) of the active physical gamepad, null when the
-     * current mode is not 'gamepad'.
-     */
+    // Name (Gamepad.id) of the active physical gamepad, null when the
+    // current mode is not 'gamepad'.
     getGamepadName() {
         return ((this._mode === 'gamepad') ? this._gamepad.getName() : null);
     }

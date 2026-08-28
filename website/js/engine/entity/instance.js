@@ -220,12 +220,10 @@ class Instance extends AbstractLoadedEntity {
         this._computeWorldCenter();
     }
 
-    /**
-     * Plain-data snapshot of the mutable animation/transform state, restorable
-     * by importAnimState after a deterministic rebuild of the same scene. The
-     * ridden floor is referenced by its code (a reference would not survive
-     * serialization); the interpolation delta is derived, so it is not exported.
-     */
+    // Plain-data snapshot of the mutable animation/transform state, restorable
+    // by importAnimState after a deterministic rebuild of the same scene. The
+    // ridden floor is referenced by its code (a reference would not survive
+    // serialization); the interpolation delta is derived, so it is not exported.
     exportAnimState() {
         return {
             position:       [...this._position],
@@ -350,14 +348,12 @@ class Instance extends AbstractLoadedEntity {
         this._crushActive = active;
     }
 
-    /**
-     * Stand this instance on a moving floor instance: its Y (and derived world
-     * centre) follows the floor's animation delta each frame — a pickup on a
-     * lowering pillar rides down with it. The base is expressed at the
-     * floor's rest pose: an instance attached MID-TRAVEL (a decal shot on a
-     * moving platform) already contains the current delta in its position,
-     * and must not be shifted by it a second time on the next sync.
-     */
+    // Stand this instance on a moving floor instance: its Y (and derived world
+    // centre) follows the floor's animation delta each frame — a pickup on a
+    // lowering pillar rides down with it. The base is expressed at the
+    // floor's rest pose: an instance attached MID-TRAVEL (a decal shot on a
+    // moving platform) already contains the current delta in its position,
+    // and must not be shifted by it a second time on the next sync.
     setRideOn(floorInstance) {
         const dy = floorInstance.getTransform().deltaTranslate[1];
 
@@ -428,12 +424,10 @@ class Instance extends AbstractLoadedEntity {
         return this._animDone;
     }
 
-    /**
-     * Purely visual position offset consumed at DRAW time only (the physics
-     * body never moves): game code smoothing stepped logical motion — actors
-     * advancing by teleport-steps at a fixed tick rate — hands the shrinking
-     * gap to the renderer here. Null when unused (zero cost).
-     */
+    // Purely visual position offset consumed at DRAW time only (the physics
+    // body never moves): game code smoothing stepped logical motion — actors
+    // advancing by teleport-steps at a fixed tick rate — hands the shrinking
+    // gap to the renderer here. Null when unused (zero cost).
     setRenderOffset(dx, dy, dz) {
         this._renderOffset = [dx, dy, dz];
     }
@@ -453,11 +447,9 @@ class Instance extends AbstractLoadedEntity {
         return Math.sqrt(o[0]*o[0] + o[1]*o[1] + o[2]*o[2]);
     }
 
-    /**
-     * Light multiplier consumed at DRAW time only (1 = baked colours
-     * untouched): two instances sharing one object may be lit differently, so
-     * a moving body can follow the lighting of the area it crosses.
-     */
+    // Light multiplier consumed at DRAW time only (1 = baked colours
+    // untouched): two instances sharing one object may be lit differently, so
+    // a moving body can follow the lighting of the area it crosses.
     setRenderLight(factor) {
         this._renderLight = factor;
     }
@@ -483,13 +475,11 @@ class Instance extends AbstractLoadedEntity {
         };
     }
 
-    /**
-     * Fire this trigger zone programmatically for a non-player actor (game
-     * code detecting its own crossings): same consumption path as the player
-     * proximity check — start(), notify the interaction, and a zero-keyframe
-     * zone stops immediately, so a once-only line is consumed for everyone.
-     * No-op on a spent or busy zone. Returns true when it fired.
-     */
+    // Fire this trigger zone programmatically for a non-player actor (game
+    // code detecting its own crossings): same consumption path as the player
+    // proximity check — start(), notify the interaction, and a zero-keyframe
+    // zone stops immediately, so a once-only line is consumed for everyone.
+    // No-op on a spent or busy zone. Returns true when it fired.
     fireZoneTrigger() {
         if (this._trigger === 'none' || this._animDone || this._animPlaying) {
             return false;
@@ -517,13 +507,11 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
-    /**
-     * Reach of a proximity/action trigger, per interaction shape. A cylinder
-     * keeps the two axes apart: the vertical window is measured from this
-     * instance's live base (so a body riding a lift follows it) to the user's
-     * feet, and the radius stays a plain ground footprint — where a sphere lets
-     * a tall target eat into the horizontal reach.
-     */
+    // Reach of a proximity/action trigger, per interaction shape. A cylinder
+    // keeps the two axes apart: the vertical window is measured from this
+    // instance's live base (so a body riding a lift follows it) to the user's
+    // feet, and the radius stays a plain ground footprint — where a sphere lets
+    // a tall target eat into the horizontal reach.
     _inInteractionRange(user) {
         const dx    = user.getCenterX() - this._worldCenter[0];
         const dz    = user.getCenterZ() - this._worldCenter[2];
@@ -571,11 +559,9 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
-    /**
-     * variant: name of the cycle to play (keyframeVariants of the loaded
-     * data), null = the default one — the crossed line's special picks it
-     * (a door tag mixing open-stay and close-wait-open lines).
-     */
+    // variant: name of the cycle to play (keyframeVariants of the loaded
+    // data), null = the default one — the crossed line's special picks it
+    // (a door tag mixing open-stay and close-wait-open lines).
     start(variant = null) {
         if (this._animPlaying) {
             return;
@@ -678,15 +664,13 @@ class Instance extends AbstractLoadedEntity {
         this._animPlaying = false;
     }
 
-    /**
-     * Replay the keyframes backward from the current position. No-op while
-     * playing or when already back at the first keyframe. Clears _animDone so
-     * a finished one-way animation can be walked back; reaching the origin
-     * re-arms start() (the element is genuinely at rest again). timeScale
-     * slows (< 1) or speeds up the reverse playback relative to the forward
-     * timeline — a floor lowered at turbo speed may legally rise back at the
-     * (slower) speed of the raise special that reverses it.
-     */
+    // Replay the keyframes backward from the current position. No-op while
+    // playing or when already back at the first keyframe. Clears _animDone so
+    // a finished one-way animation can be walked back; reaching the origin
+    // re-arms start() (the element is genuinely at rest again). timeScale
+    // slows (< 1) or speeds up the reverse playback relative to the forward
+    // timeline — a floor lowered at turbo speed may legally rise back at the
+    // (slower) speed of the raise special that reverses it.
     startReverse(timeScale = 1) {
         if (this._animPlaying || this._animKeyframes.length === 0) {
             return;

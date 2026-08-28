@@ -58,14 +58,12 @@ class SpatialGrid {
             out, n);
     }
 
-    /**
-     * Cells crossed by a ray, walked one by one (DDA) instead of taking the
-     * bounding box of the whole segment — over a long shot the box covers a
-     * large part of the level while the walk visits a handful of cells.
-     *
-     * The direction is the 3D one: only its XZ part drives the walk, and the
-     * distance travelled on the plane is maxDist scaled by that part.
-     */
+    // Cells crossed by a ray, walked one by one (DDA) instead of taking the
+    // bounding box of the whole segment — over a long shot the box covers a
+    // large part of the level while the walk visits a handful of cells.
+    //
+    // The direction is the 3D one: only its XZ part drives the walk, and the
+    // distance travelled on the plane is maxDist scaled by that part.
     queryRay(ox, oz, dx, dz, maxDist, out, n = 0) {
         if (this.isEmpty()) {
             return n;

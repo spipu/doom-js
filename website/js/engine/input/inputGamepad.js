@@ -52,9 +52,7 @@ class InputGamepad {
         return (this._index !== null);
     }
 
-    /**
-     * Human-readable name of the active pad (Gamepad.id), null without one.
-     */
+    // Human-readable name of the active pad (Gamepad.id), null without one.
     getName() {
         const pad = this._getPad();
 

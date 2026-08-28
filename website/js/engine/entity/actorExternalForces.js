@@ -59,6 +59,15 @@ class ActorExternalForces {
         this._groundFriction = null;
     }
 
+    // One-shot velocity kick in m/s (a blow, a blast), poured straight into
+    // the momentum channel and decaying with it. Unlike addThrust it is NOT
+    // re-asserted per frame, so it must bypass the thrust accumulator that
+    // beginFrame clears.
+    addImpulse(x, z) {
+        this._velX += x;
+        this._velZ += z;
+    }
+
     // Advance the environment velocity by dtS seconds. Closed form of the
     // per-tick recurrence `vel = vel * DECAY + thrust` — exact for any frame
     // duration, no tick accumulator needed.

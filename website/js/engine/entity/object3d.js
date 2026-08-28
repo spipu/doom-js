@@ -15,11 +15,9 @@ class Object3d extends AbstractLoadedEntity {
         this._faceGroupsVersion = 0;
     }
 
-    /**
-     * Signals that the faces' texture assignment changed (a switch swapping
-     * SW1↔SW2, a "+change" floor swapping its flat). Renderers may cache how they
-     * batch faces by draw state; this is what tells them to rebuild it.
-     */
+    // Signals that the faces' texture assignment changed (a switch swapping
+    // SW1↔SW2, a "+change" floor swapping its flat). Renderers may cache how they
+    // batch faces by draw state; this is what tells them to rebuild it.
     invalidateFaceGroups() {
         this._faceGroupsVersion++;
     }
