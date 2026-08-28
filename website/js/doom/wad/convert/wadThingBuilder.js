@@ -29,6 +29,7 @@ class WadThingBuilder {
         this._skipped      = 0;
         this._filtered     = 0;
         this._monsterCount = 0;
+        this._bossSpots    = [];
         this._paddedFrames = {};   // anim key → padded frame view
     }
 
@@ -44,6 +45,7 @@ class WadThingBuilder {
         this._skipped      = 0;
         this._filtered     = 0;
         this._monsterCount = 0;
+        this._bossSpots    = [];
 
         // Skill bit for the chosen difficulty (Doom P_SpawnMapThing): a thing is
         // present only if its flags carry this bit. The profile's skill rules
@@ -83,6 +85,13 @@ class WadThingBuilder {
 
             const desc = this._catalog.getThingForType(thing.type);
             if (desc === null) {
+                continue;
+            }
+
+            // Boss teleport spots are gathered whole, before any filtering:
+            // vanilla registers every BossSpot of the map regardless of skill.
+            if (desc.kind === 'bossSpot') {
+                this._bossSpots.push({x: thing.x, y: thing.y, angle: thing.angle});
                 continue;
             }
 
@@ -270,6 +279,12 @@ class WadThingBuilder {
         });
 
         return {texIds, width: w, height: h, leftOffset: left, topOffset: top};
+    }
+
+    // Boss teleport spots of the map, in DOOM coordinates (call after
+    // buildAll) — where D'Sparil reappears between two volleys.
+    getBossSpots() {
+        return this._bossSpots;
     }
 
     // Number of mapped things dropped because no sector was found (call after buildAll).

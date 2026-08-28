@@ -54,9 +54,10 @@ class HereticGameProfile extends DefaultGameProfile {
     // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
     // EV_DoFloor(lowerFloor) — to the HIGHEST neighbour, internal special 19 —
     // on tag 666. The boss per episode is on the defs' bossMaps below.
-    // Nothing is born mid-fight in this bestiary (no pain elemental).
+    // Born mid-fight: D'Sparil rising out of his dying mount, and the
+    // disciples his spawners hatch.
     runtimeSpawnTypes() {
-        return [];
+        return ['dsparil', 'disciple'];
     }
 
     bossActions() {
@@ -166,6 +167,8 @@ class HereticGameProfile extends DefaultGameProfile {
             // --- Artifacts with a transposable immediate effect ---
             84:   {kind: 'pickup', sprite: 'INVUA0', frames: DoomThingCatalog.animFrames('INVU', 'ABCD'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'invulnerability'}},
             75:   {kind: 'pickup', sprite: 'INVSA0', effect: {item: 'invisibility'}},
+            // BossSpot: pas un corps, seulement une position où D'Sparil resurgit.
+            56:   {kind: 'bossSpot'},
             33:   {kind: 'pickup', sprite: 'TRCHA0', frames: DoomThingCatalog.animFrames('TRCH', 'ABC'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'torch'}},
             35:   {kind: 'pickup', sprite: 'SPMPA0', effect: {item: 'superMap'}},
             // --- Inert inventory artifacts ---
@@ -464,21 +467,45 @@ class HereticGameProfile extends DefaultGameProfile {
                     death:      [['F', 6, 'A_MinotaurDeath'], ['G', 5], ['H', 6, 'A_Scream'], ['I', 5], ['J', 6], ['K', 5], ['L', 6], ['M', 5, 'A_NoBlocking'], ['N', 6], ['O', 5], ['P', 6], ['Q', 5], ['R', 6], ['S', 5], ['T', -1, 'A_BossDeath']]
                 }
             }),
+            // No editor number: A_SorcererRise alone brings him into the world,
+            // so he is keyed by name (a numeric lookup never reaches him).
+            sorcerer2: new DoomMonsterDef({
+                code: 'dsparil', name: 'D\'Sparil', sprite: 'SOR2',
+                health: 3500, radius: 16, height: 70, mass: 300, speed: 14, painChance: 32,
+                flags: {boss: true, dropOff: true, noTarget: true, noRadiusDmg: true},
+                bossMaps: ['E3M8'],
+                spriteOverrides: {death: 'SDTH', deathLoop: 'SDTH'},
+                states: {
+                    spawn:     [['MN', 10, 'A_Look', 'spawn']],
+                    see:       [['MNOP', 4, 'A_Chase', 'see']],
+                    // Entered by A_SorcererRise: he pulls himself up, then chases.
+                    rise:      [['AB', 4], ['C', 4], ['DEF', 4], ['G', 12, null, 'see']],
+                    pain:      [['Q', 3], ['Q', 6, 'A_Pain', 'see']],
+                    missile:   [['R', 9, HereticGameProfile.SORCERER2_DECIDE], ['S', 9, 'A_FaceTarget'],
+                        ['T', 20, HereticGameProfile.SORCERER2_ATTACK, 'see']],
+                    teleport:  [['LKJIHG', 6, null, 'see']],
+                    death:     [['A', 8, ['A_Sor2DthInit', {loops: 7}]], ['B', 8], ['C', 8, 'A_Scream', 'deathLoop']],
+                    // The middle of the animation replays seven times before
+                    // the bones settle and the map action fires.
+                    deathLoop: [['DE', 7], ['F', 7, ['A_Sor2DthLoop', {state: 'deathLoop0'}]], ['G', 6], ['H', 6], ['I', 18],
+                        ['J', 6, 'A_NoBlocking'], ['K', 6], ['LMN', 6], ['O', -1, 'A_BossDeath']]
+                }
+            }),
             7: new DoomMonsterDef({
                 code: 'dsparilSerpent', name: 'D\'Sparil', sprite: 'SRCR',
                 health: 2000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 56,
                 flags: {boss: true, noTarget: true, noRadiusDmg: true, dontGib: true},
-                bossMaps: ['E3M8'],
                 states: {
                     spawn:    [['AB', 10, 'A_Look', 'spawn']],
                     see:      [['ABCD', 5, 'A_Sor1Chase', 'see']],
                     pain:     [['Q', 6, 'A_Sor1Pain', 'see']],
                     missile:  [['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, HereticGameProfile.SERPENT_ATTACK, 'see']],
                     missile2: [['S', 10, 'A_FaceTarget'], ['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, HereticGameProfile.SERPENT_ATTACK, 'see']],
-                    // Vanilla ends on A_SorcererRise (Sorcerer2, the unmounted
-                    // phase — not implemented) whose own death fires the boss
-                    // action: until that phase exists, the serpent frees E3M8.
-                    death:    [['E', 7], ['F', 7, 'A_Scream'], ['G', 7], ['HIJK', 6], ['L', 25], ['MN', 5], ['O', 4], ['L', 20], ['MN', 5], ['O', 4], ['L', 12], ['P', -1, 'A_BossDeath']]
+                    // The mount does not end the fight: its last frame stands
+                    // D'Sparil up out of it (A_SorcererRise), and HIS death
+                    // fires the map action.
+                    death:    [['E', 7], ['F', 7, 'A_Scream'], ['G', 7], ['HIJK', 6], ['L', 25], ['MN', 5], ['O', 4], ['L', 20], ['MN', 5], ['O', 4], ['L', 12],
+                        ['P', -1, ['A_SorcererRise', {spawn: 'dsparil', state: 'rise0'}]]]
                 }
             })
         };
@@ -717,7 +744,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'whirlwindDeath',      sprite: 'FX07', letters: ['G', 'F', 'E', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4, rise: 0, additive: false},
             {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
             {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false},
-            {name: 'minotaurFloorFire',   sprite: 'FX13', letters: ['D', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [4, 4, 5, 5, 5, 5, 4, 4, 4], alpha: 1, rise: 0, additive: false},
+            {name: 'sorcerer2FX1Death',   sprite: 'FX16', letters: ['G', 'H', 'I', 'J', 'K', 'L'],      frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
             {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
         ];
@@ -776,12 +803,20 @@ class HereticGameProfile extends DefaultGameProfile {
             {kind: 'whirlwind',      sprite: 'FX07', letters: ['D', 'E', 'F', 'G', 'A', 'B', 'C'], speed: 10, flightTics: 3, explosion: 'whirlwindDeath', splashDamage: 0, impactDamage: 0, alpha: 0.4, additive: false,
                 seek: {threshold: 10, turnMax: 30, everyTics: 3}, ripper: {damage: 3, damageEvery: 8, shove: 2, lift: 0.3}, lifeTics: 700},
             {kind: 'minotaurFX1',    sprite: 'FX12', letters: ['A', 'B'],           speed: 20, fastSpeed: 26, flightTics: 6, explosion: 'minotaurFX1Death',   splashDamage: 0,  impactDamage: 3, alpha: 1, additive: false},
-            // MinotaurFX2 crawls along the floor sowing MinotaurFX3 flames. The
-            // flames are drawn (trail) but do not burn: a standing 128-damage
-            // mine every other tic has no equivalent in our missile model, so
-            // the shot keeps only its own A_Explode (24).
-            {kind: 'minotaurFX2',    sprite: 'FX13', letters: ['A'],                speed: 14, fastSpeed: 20, flightTics: 2, explosion: 'minotaurFX2Death',   splashDamage: 24, impactDamage: 4, alpha: 1, additive: false,
-                floorHugger: true, trailEffect: 'minotaurFloorFire', trailEveryTics: 2}
+            // MinotaurFX2 crawls along the floor and sows a MinotaurFX3 beside
+            // itself every other tic (A_MntrFloorFire, scattered ±4 units).
+            {kind: 'minotaurFX2',    sprite: 'FX13', letters: ['A'],                speed: 14, fastSpeed: 20, flightTics: 2, explosion: 'minotaurFX2Death',   splashDamage: 24,  impactDamage: 4, alpha: 1, additive: false,
+                floorHugger: true, trailKind: 'minotaurFX3', trailEveryTics: 2, trailScatter: 4},
+            // The fire it leaves: it goes nowhere, burns out in 40 tics, and
+            // takes a whole room with it if anyone treads on it first.
+            {kind: 'minotaurFX3',    sprite: 'FX13', letters: ['D', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], speed: 0, flightTics: 4, explosion: 'minotaurFX2Death', splashDamage: 128, impactDamage: 4, alpha: 1, additive: false,
+                contactRadius: 8, lifeTics: 40},
+            // D'Sparil's blue bolt: a light touch that bursts for 80 to 111.
+            {kind: 'sorcerer2FX1',   sprite: 'FX16', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 3, explosion: 'sorcerer2FX1Death', splashDamage: {min: 80, max: 111}, impactDamage: 1, alpha: 1, additive: true},
+            // The spawner he throws to his flanks: it drifts, then hatches a
+            // disciple where it flies and burns out (A_GenWizard).
+            {kind: 'sorcerer2FX2',   sprite: 'FX11', letters: ['A', 'B'],           speed: 6,                 flightTics: 5, explosion: 'wizardFX1Death',    splashDamage: 0, impactDamage: 10, alpha: 1, additive: true,
+                spawnMonster: {kind: 'disciple', afterTics: 40, retryTics: 10, fog: 'teleportFog'}}
         ];
     }
 
@@ -1124,4 +1159,27 @@ HereticGameProfile.SERPENT_ATTACK = ['A_Srcr1Attack', {
     height:     48,
     angles:     [0, -3, 3],
     againState: 'missile20'
+}];
+
+// A_Srcr2Decide (dsparil.zs): the odds of blinking to another BossSpot, read
+// off eighths of his health, WORST first — at full strength he stands his
+// ground, and the more he bleeds the more he runs. A spot must lie at least
+// 128 units away.
+HereticGameProfile.SORCERER2_DECIDE = ['A_Srcr2Decide', {
+    chances:       [192, 120, 120, 120, 64, 64, 32, 16, 0],
+    minDistance:   128,
+    teleportState: 'teleport0'
+}];
+
+// A_Srcr2Attack: 20 × (1..8) in reach, else the blue bolt — or, twice as often
+// under half his life, the two spawners that hatch disciples at his flanks.
+HereticGameProfile.SORCERER2_ATTACK = ['A_Srcr2Attack', {
+    damage:          {base: 20, dice: 8},
+    kind:            'sorcerer2FX1',
+    height:          48,
+    spawnerKind:     'sorcerer2FX2',
+    spawnerHeight:   48,
+    spawnAngles:     [-45, 45],
+    spawnChance:     48,
+    hurtSpawnChance: 96
 }];

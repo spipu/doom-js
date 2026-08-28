@@ -753,6 +753,36 @@ class DoomMonsterSystem {
         return true;
     }
 
+    /**
+     * The first live body standing on a spot — the overlap answer traceRay
+     * cannot give, because a mine never moves along a segment. This is how the
+     * maulotaur's floor fire knows it has been trodden on.
+     *
+     * @param {object} opts {exclude?, immuneTo?, includePlayer?}
+     * @returns {{ref, point}|null}
+     */
+    bodyAt(x, z, radius, opts = {}) {
+        const exclude  = (opts.exclude ?? null);
+        const immuneTo = (opts.immuneTo ?? null);
+        for (const m of this._monsters) {
+            if (m.dead || (m === exclude)
+                || ((immuneTo !== null) && !DoomMonsterDamage.canAttackHurt(m, immuneTo))) {
+                continue;
+            }
+            const pos = m.inst.getTransform().position;
+            if (WadGeometry.boxesOverlap2d(x, z, radius, pos[0], pos[2], m.inst.getCollisionRadius())) {
+                return {ref: m, point: m.inst.getWorldCenter()};
+            }
+        }
+        const u = this._user;
+        if ((opts.includePlayer === true) && (u !== null) && !u.isDead()
+            && (u !== exclude) && WadGeometry.boxesOverlap2d(x, z, radius, u.x, u.z, u.getRadius())) {
+            return {ref: u, point: [u.x, u.y + u.getCurrentHeight() / 2, u.z]};
+        }
+
+        return null;
+    }
+
     // P_CheckPosition against the live bodies and the player (the world
     // geometry validated these spots at map load) — shared by the nightmare
     // respawn (any occupancy refuses) and the monster teleport (MAP30 stomps).
@@ -843,14 +873,34 @@ class DoomMonsterSystem {
         const z   = parentPos[2] + Math.sin(rad) * prestep;
         const y   = parentPos[1] + lift;
 
-        const spot = this._spotOccupancy(x, z, radius, parent);
-        if ((spot.blockers.length > 0) || spot.playerBlocks) {
+        return this.spawnBodyAt(kind, x, y, z, angle, {exclude: parent});
+    }
+
+    /**
+     * A body born at an explicit spot: the wizard a D'Sparil spawner hatches,
+     * the sorcerer rising out of his dying mount. Returns null when the space
+     * is taken, which is what keeps a spawner flying until it finds room.
+     *
+     * @param {object} opts {exclude?: a body that does not block the spot,
+     *                       state?: the state key it starts in, free?: skip
+     *                       the occupancy test (the sorcerer replaces its own
+     *                       corpse, so it always fits)}
+     * @returns {object|null} the fresh record
+     */
+    spawnBodyAt(kind, x, y, z, angle, opts = {}) {
+        const template = ((this._spawnables !== null) ? (this._spawnables[kind] ?? null) : null);
+        if (template === null) {
             return null;
         }
-        const si = this._sectorIndexAt(x, z);
-
-        return this._spawnBody({
-            code:      parent.code + '_s' + (this._runtimeSeq++),
+        const radius = template.def.getRadius() * WadConstants.SCALE;
+        if (opts.free !== true) {
+            const spot = this._spotOccupancy(x, z, radius, (opts.exclude ?? null));
+            if ((spot.blockers.length > 0) || spot.playerBlocks) {
+                return null;
+            }
+        }
+        const fresh = this._spawnBody({
+            code:      'runtime_' + kind + '_' + (this._runtimeSeq++),
             spawnKind: kind,
             def:       template.def,
             frames:    template.frames,
@@ -858,9 +908,37 @@ class DoomMonsterSystem {
             position:  [x, y, z],
             facing:    angle,
             flags:     0,
-            si:        si,
+            si:        this._sectorIndexAt(x, z),
             spawn:     null
         });
+        if ((fresh !== null) && (opts.state !== undefined)) {
+            this.enterState(fresh, opts.state);
+        }
+
+        return fresh;
+    }
+
+    /**
+     * DSparilTeleport: the sorcerer vanishes and reappears on a BossSpot at
+     * least `minDistance` map units away, leaving a fade behind him. Without
+     * spots on the map (or with nowhere far enough) he simply stays put.
+     *
+     * @returns {boolean} true when he moved
+     */
+    teleportToBossSpot(m, minDistance) {
+        const spots = (this._levelData.bossSpots ?? []);
+        if (spots.length === 0) {
+            return false;
+        }
+        const pos  = m.inst.getTransform().position;
+        const far  = minDistance * WadConstants.SCALE;
+        const away = spots.filter((s) => (Math.hypot(s.x - pos[0], s.z - pos[2]) >= far));
+        if (away.length === 0) {
+            return false;
+        }
+        const spot = away[this._rng.next() % away.length];
+
+        return this._monsterTeleport(m, {x: spot.x, y: spot.y, z: spot.z, yaw: spot.angle, topY: Infinity});
     }
 
     // The one place a record and its engine instance come into being outside

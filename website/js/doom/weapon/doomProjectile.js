@@ -119,6 +119,19 @@ class DoomProjectileSystem {
             // Floor-hugging shot (Heretic MinotaurFX2, +FLOORHUGGER): it never
             // rises, never dives, and its trail is left ON the floor.
             floorHugger:      (spec.floorHugger === true),
+            // A_GenWizard: a shot that hatches a body instead of exploding —
+            // {kind, afterTics, retryTics}. It keeps flying while the spot is
+            // taken, which is exactly what vanilla's spawner does.
+            spawnMonster:     (spec.spawnMonster ?? null),
+            // A standing shot (MinotaurFX3): it never travels, so no segment
+            // ever crosses a body — it goes off on whoever OVERLAPS it, within
+            // this radius in map units.
+            contactRadius:    (spec.contactRadius ?? 0) * scale,
+            // Projectiles sown along the flight instead of a mere effect (the
+            // floor fire the maulotaur's crawling flame leaves behind), at
+            // trailEveryTics, scattered by trailScatter map units.
+            trailKind:        (spec.trailKind ?? null),
+            trailScatter:     (spec.trailScatter ?? 0) * scale,
             // +THRUGHOST: the shot passes through Heretic's phantoms.
             thruGhost:        (spec.thruGhost === true),
         };
@@ -373,6 +386,22 @@ class DoomProjectileSystem {
                     {exclude: p.owner, includePlayer: !DoomActorRef.isPlayer(p.owner), immuneTo: p.owner,
                         thruGhost: p.def.thruGhost})
                 : null);
+            if ((p.def.spawnMonster !== null) && this._tryHatch(p)) {
+                loader.instances().scheduleRemoval(inst);
+                continue;
+            }
+            // A standing fire goes off on whoever walks into it.
+            if (p.def.contactRadius > 0) {
+                const trodden = ((this._monsters !== null)
+                    ? this._monsters.bodyAt(p.x, p.z, p.def.contactRadius,
+                        {exclude: p.owner, includePlayer: true, immuneTo: p.owner})
+                    : null);
+                if (trodden !== null) {
+                    this._hitFlesh(p, trodden);
+                    loader.instances().scheduleRemoval(inst);
+                    continue;
+                }
+            }
             if (flesh !== null) {
                 if (p.def.ripper === null) {
                     this._hitFlesh(p, flesh);
@@ -396,9 +425,11 @@ class DoomProjectileSystem {
                 // tic 0 (that would drop a puff in the player's eye; vanilla state
                 // actions only run from the first state transition). The cadence
                 // is profile data; a def without it stays inert.
-                if ((p.def.trailEffect !== null) && (p.def.trailEveryTics > 0)
-                    && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
-                    this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
+                if ((p.def.trailEveryTics > 0) && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
+                    if (p.def.trailEffect !== null) {
+                        this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
+                    }
+                    this._sowTrail(p);
                 }
 
                 p.x += p.vx;
@@ -425,6 +456,47 @@ class DoomProjectileSystem {
             kept.push(p);
         }
         this._active = kept;
+    }
+
+    /**
+     * A_GenWizard: past afterTics the shot tries, every retryTics, to hatch
+     * its body where it flies. A taken spot just delays it — the spawner flies
+     * on and tries again a little further.
+     *
+     * @returns {boolean} true when the body hatched and the shot is spent
+     */
+    _tryHatch(p) {
+        const spec = p.def.spawnMonster;
+        if ((this._monsters === null) || (p.tics < spec.afterTics)
+            || (((p.tics - spec.afterTics) % spec.retryTics) !== 0)) {
+            return false;
+        }
+        // Vanilla drops the body by half its height so it lands on its feet.
+        const born = this._monsters.spawnBodyAt(spec.kind, p.x, p.y, p.z, p.yaw, {exclude: p.owner});
+        if (born === null) {
+            return false;
+        }
+        born.target = ((p.owner !== null) ? p.owner.target : null);
+        this._effects.spawn(spec.fog, p.x, p.y, p.z);
+        this._effects.spawn(p.def.explosion, p.x, p.y, p.z);
+
+        return true;
+    }
+
+    // A_MntrFloorFire: the crawling flame drops a standing fire beside itself,
+    // scattered a little, which burns where it lands until somebody treads on
+    // it. The fires belong to the shot's owner, so they never bite it back.
+    _sowTrail(p) {
+        const def = ((p.def.trailKind !== null) ? this._defs[p.def.trailKind] : null);
+        if ((def === null) || (def === undefined)) {
+            return;
+        }
+        const scatter = p.def.trailScatter;
+        this._spawnRaw(def,
+            p.x + (this._rng.nextDiff() / 255) * scatter,
+            p.y,
+            p.z + (this._rng.nextDiff() / 255) * scatter,
+            0, 0, 0, p.owner);
     }
 
     // Ballistic projectiles (Heretic MaceFX1): fly straight for
@@ -592,9 +664,13 @@ class DoomProjectileSystem {
     // Death effect + A_Explode blast + the def's shooter-side spray (BFG).
     _detonate(p, ex, ey, ez) {
         this._effects.spawn(p.def.explosion, ex, ey, ez);
-        if ((p.def.splashDamage > 0) && (this._damage !== null)) {
-            this._damage.radiusAttack(ex, ey, ez, p.def.splashDamage, p.def.splashDamage,
-                {kickback: p.def.kickback, source: p.owner});
+        // A_Explode's damage doubles as its reach; D'Sparil's bolt rolls it
+        // fresh on every burst (A_Explode(random(80,111))).
+        const blast = ((typeof p.def.splashDamage === 'number')
+            ? p.def.splashDamage
+            : this._rng.damageRoll(p.def.splashDamage));
+        if ((blast > 0) && (this._damage !== null)) {
+            this._damage.radiusAttack(ex, ey, ez, blast, blast, {kickback: p.def.kickback, source: p.owner});
         }
         // The spray is the player's BFG alone: it fans from the shooter, and
         // no monster in either bestiary carries one.

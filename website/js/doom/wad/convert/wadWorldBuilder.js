@@ -370,16 +370,61 @@ class WadWorldBuilder {
         }
         this._registerMonsterDrops(things, spriteBank);
         this._registerCrushedCorpseView(spriteBank);
-        this._registerRuntimeSpawnables(spriteBank);
+        this._registerRuntimeSpawnables(spriteBank, monsterBillboardIds);
+
+        this._bossSpots = builder.getBossSpots().map((s) => {
+            const sect = this._findSector(s.x, s.y);
+            const pos  = WadGeometry.doomToWorld(s.x, s.y, ((sect !== null) ? sect.fh : 0));
+
+            return {x: pos[0], y: pos[1], z: pos[2], angle: s.angle};
+        });
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
     }
 
-    // Views of the monsters this game spawns mid-fight (the pain elemental's
-    // lost souls), built INSIDE the batch like every other template: a body
-    // born during a fight has no chance to load a sprite. A type absent from
-    // the WAD is simply not spawnable — the spitting verb then does nothing.
-    _registerRuntimeSpawnables(spriteBank) {
+    /**
+     * Billboard OBJECT per (sprite view, alpha, ceiling anchor), deduplicated
+     * across the level. The alpha and the ceiling flag belong in the key: the
+     * spectre shares the demon's SARG lumps and the Heretic ghosts share their
+     * base monsters', and the flag decides which end of the quad is anchored.
+     *
+     * @returns {object} view key → array of object ids (one per rotation)
+     */
+    _monsterBillboards(frames, alpha, ceiling, billboardIds) {
+        const scale = WadConstants.SCALE;
+        const out   = {};
+        for (const viewKey of Object.keys(frames)) {
+            out[viewKey] = frames[viewKey].map((spr) => {
+                const objKey = spr.loaderId + '|' + alpha + '|' + ceiling;
+                if (billboardIds[objKey] === undefined) {
+                    const geo  = WadGeometry.spriteBillboardData(spr);
+                    const sink = spr.topOffset - spr.height;
+                    billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
+                        billboard:     true,
+                        textures:      [spr.loaderId],
+                        halfWidth:     geo.halfWidth,
+                        height:        geo.height,
+                        anchorOffsetX: geo.anchorOffsetX,
+                        anchorOffsetY: ((ceiling) ? sink : Math.max(0, sink)) * scale,
+                        anchorTop:     ceiling,
+                        light:         255,
+                        alpha:         alpha
+                    });
+                }
+
+                return billboardIds[objKey];
+            });
+        }
+
+        return out;
+    }
+
+    // Views of the monsters this game spawns mid-fight (the elemental's lost
+    // souls, D'Sparil rising out of his mount), built INSIDE the batch like
+    // every other template — a body born during a fight has no chance to load
+    // a sprite. They go through the SAME billboard construction as the placed
+    // bodies: the monster system spawns instances, which want object ids.
+    _registerRuntimeSpawnables(spriteBank, billboardIds) {
         if ((this._monsterSystem === null) || (this._monsterCatalog === null)) {
             return;
         }
@@ -389,9 +434,12 @@ class WadWorldBuilder {
             if (def === null) {
                 continue;
             }
-            const frames = DoomMonsterFrames.build(def, spriteBank);
-            if (frames !== null) {
-                catalog[code] = {def: def, frames: frames};
+            const views = DoomMonsterFrames.build(def, spriteBank);
+            if (views !== null) {
+                catalog[code] = {
+                    def:    def,
+                    frames: this._monsterBillboards(views, def.getAlpha(), def.isCeiling(), billboardIds)
+                };
             }
         }
         this._monsterSystem.setSpawnables(catalog);
@@ -481,30 +529,8 @@ class WadWorldBuilder {
     // DoomMonsterSystem pushes its lighting per instance from the sector it
     // currently stands in. Baking the spawn sector here would freeze it.
     _registerMonsterThing(t, i, analysis, builtFloorCodes, billboardIds) {
-        const scale = WadConstants.SCALE;
 
-        const frames = {};
-        for (const viewKey of Object.keys(t.frames)) {
-            frames[viewKey] = t.frames[viewKey].map((spr) => {
-                const objKey = spr.loaderId + '|' + t.alpha + '|' + t.def.isCeiling();
-                if (billboardIds[objKey] === undefined) {
-                    const geo  = WadGeometry.spriteBillboardData(spr);
-                    const sink = spr.topOffset - spr.height;
-                    billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
-                        billboard:     true,
-                        textures:      [spr.loaderId],
-                        halfWidth:     geo.halfWidth,
-                        height:        geo.height,
-                        anchorOffsetX: geo.anchorOffsetX,
-                        anchorOffsetY: ((t.def.isCeiling()) ? sink : Math.max(0, sink)) * scale,
-                        anchorTop:     t.def.isCeiling(),
-                        light:         255,
-                        alpha:         t.alpha
-                    });
-                }
-                return billboardIds[objKey];
-            });
-        }
+        const frames = this._monsterBillboards(t.frames, t.alpha, t.def.isCeiling(), billboardIds);
 
         const code  = 'monster_' + i;
         const ride  = this._resolveThingFloor(t, analysis, builtFloorCodes);
@@ -626,6 +652,8 @@ class WadWorldBuilder {
             restFh:       analysis.liftOriginalFh,
             moverCodes:   moverCodes,
             monsterLines: monsterLines,
+            // Where a boss teleports to (Heretic BossSpot, thing 56).
+            bossSpots:    (this._bossSpots ?? []),
             levelName:    this._levelName,
             // Live brightness factor of a sector (1 without a light effect),
             // the very source the weapon shading reads.

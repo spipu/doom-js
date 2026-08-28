@@ -204,6 +204,64 @@ class DoomMonsterAttack {
         this._system.enterState(m, args.againState);
     }
 
+    // A_SorcererRise: the mount dies and the sorcerer stands up out of it, on
+    // the very spot, already awake and holding the same grudge.
+    _sorcererRise(m, args) {
+        this._system.noBlocking(m);
+        const pos   = m.inst.getTransform().position;
+        const risen = this._system.spawnBodyAt(args.spawn, pos[0], pos[1], pos[2], m.facing,
+            {exclude: m, free: true, state: args.state});
+        if (risen !== null) {
+            risen.target = m.target;
+        }
+    }
+
+    // A_Srcr2Decide: he blinks away to another BossSpot. The odds are read off
+    // eighths of his health — untouched he never budges, and the more he bleeds
+    // the harder he is to pin down.
+    _sorcererDecide(m, args) {
+        const step  = Math.max(1, Math.trunc(m.def.getHealth() / args.chances.length));
+        const index = Math.min(args.chances.length - 1, Math.trunc(m.health / step));
+        if ((this._rng.next() < args.chances[index]) && this._system.teleportToBossSpot(m, args.minDistance)) {
+            this._system.enterState(m, args.teleportState);
+        }
+    }
+
+    // A_Srcr2Attack: a crushing blow in reach; at range either the blue bolt
+    // or, twice as often once he is under half his life, the pair of spawners
+    // that hatch disciples on his flanks.
+    _sorcererAttack(m, args) {
+        if (m.target === null) {
+            return;
+        }
+        this.faceTarget(m);
+        if (this.checkMeleeRange(m)) {
+            this._hit(m, this._rng.damageRoll(args.damage));
+            return;
+        }
+        const chance = ((m.health < (m.def.getHealth() / 2)) ? args.hurtSpawnChance : args.spawnChance);
+        if (this._rng.next() < chance) {
+            for (const offset of args.spawnAngles) {
+                this._fire(m, args.spawnerKind, {height: args.spawnerHeight, angleOffset: offset});
+            }
+            return;
+        }
+        this._missile(m, args.kind, args);
+    }
+
+    // A_Sor2DthInit / A_Sor2DthLoop: his death drags on — the middle of the
+    // animation replays a set number of times before the bones settle.
+    _deathLoopInit(m, args) {
+        m.special1 = args.loops;
+    }
+
+    _deathLoop(m, args) {
+        m.special1--;
+        if (m.special1 > 0) {
+            this._system.enterState(m, args.state);
+        }
+    }
+
     // A_LichAttack: melee in reach, else one of three shots drawn against the
     // distance — ice ball, fire column or whirlwind (close 20/40/40, far
     // 60/20/20 beyond eight cells).
@@ -517,6 +575,12 @@ DoomMonsterAttack.VERBS = {
     A_ImpMsAttack:             '_impCharge',
     A_MinotaurDecide:          '_minotaurDecide',
     A_MinotaurCharge:          '_minotaurCharge',
+    // D'Sparil's second phase
+    A_SorcererRise:            '_sorcererRise',
+    A_Srcr2Decide:             '_sorcererDecide',
+    A_Srcr2Attack:             '_sorcererAttack',
+    A_Sor2DthInit:             '_deathLoopInit',
+    A_Sor2DthLoop:             '_deathLoop',
     // Spawners and the archvile's hellfire
     A_PainAttack:              '_painAttack',
     A_PainDie:                 '_painDie',
