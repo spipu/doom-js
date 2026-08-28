@@ -482,7 +482,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                     missile: [['D', 5, 'A_FaceTarget'], ['E', 5, 'A_FaceTarget'], ['F', 5, 'A_FaceTarget', null, true], ['F', 0, ['A_PainAttack', {spawn: 'lostsoul'}], 'see', true]],
                     pain:    [['G', 6], ['G', 6, 'A_Pain', 'see']],
                     // A_PainDie bursts into lost souls: no corpse.
-                    death:   [['H', 8, null, null, true], ['I', 8, 'A_Scream', null, true], ['JK', 8, null, null, true], ['L', 8, ['A_PainDie', {spawn: 'lostsoul'}], null, true], ['M', 8, null, null, true]],
+                    death:   [['H', 8, null, null, true], ['I', 8, 'A_Scream', null, true], ['JK', 8, null, null, true], ['L', 8, ['A_PainDie', {spawn: 'lostsoul', spawnAngles: [90, 180, 270]}], null, true], ['M', 8, null, null, true]],
                     raise:   [['MLKJIH', 8, null, 'see']]
                 }
             }),

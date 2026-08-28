@@ -842,7 +842,7 @@ class WadConstants {
     // these SECTOR specials, once per windowTics window. leak = radiation-suit
     // leak chance out of 256 per window (0 = full protection, 5 = the Doom
     // super-damage leak, 256 = the suit never protects — e.g. Heretic lava).
-    // 11 = E1M8 finale (unprotected damage + normal exit at ≤ 10 health).
+    // 11 = E1M8 finale (unprotected damage + normal exit at the exit health).
     static SECTOR_DAMAGE_BY_SPECIAL = {
         7:  {damage: 5,  windowTics: 32, leak: 0},
         5:  {damage: 10, windowTics: 32, leak: 0},
@@ -850,6 +850,10 @@ class WadConstants {
         16: {damage: 20, windowTics: 32, leak: 5},
         11: {damage: 20, windowTics: 32, leak: 0}
     };
+
+    // Health at or under which the E1M8 finale sector ends the level
+    // (p_spec.c P_PlayerInSpecialSector case 11).
+    static SECTOR_DAMAGE_EXIT_HEALTH = 10;
 
     // Secret sector (P_SpawnSpecials counts it in totalsecret, then
     // P_PlayerInSpecialSector credits it once and clears the special)

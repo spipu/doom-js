@@ -167,7 +167,7 @@ class HereticGameProfile extends DefaultGameProfile {
             // --- Artifacts with a transposable immediate effect ---
             84:   {kind: 'pickup', sprite: 'INVUA0', frames: DoomThingCatalog.animFrames('INVU', 'ABCD'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'invulnerability'}},
             75:   {kind: 'pickup', sprite: 'INVSA0', effect: {item: 'invisibility'}},
-            // BossSpot: pas un corps, seulement une position où D'Sparil resurgit.
+            // BossSpot: not a body, only a spot D'Sparil reappears on.
             56:   {kind: 'bossSpot'},
             33:   {kind: 'pickup', sprite: 'TRCHA0', frames: DoomThingCatalog.animFrames('TRCH', 'ABC'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'torch'}},
             35:   {kind: 'pickup', sprite: 'SPMPA0', effect: {item: 'superMap'}},
@@ -1154,11 +1154,15 @@ HereticGameProfile.MINOTAUR_DECIDE = ['A_MinotaurDecide', {
 // A_Srcr1Attack (dsparil.zs): one fireball while healthy, three once past a
 // third of its life — and then it may chain a second volley.
 HereticGameProfile.SERPENT_ATTACK = ['A_Srcr1Attack', {
-    damage:     {base: 8, dice: 8},
-    kind:       'sorcererFX1',
-    height:     48,
-    angles:     [0, -3, 3],
-    againState: 'missile20'
+    damage:      {base: 8, dice: 8},
+    kind:        'sorcererFX1',
+    height:      48,
+    angles:      [0, -3, 3],
+    // Fractions of its full health: the fan starts under two thirds, the
+    // chained second volley under one third (dsparil.zs Srcr1Attack).
+    fanBelow:    {num: 2, den: 3},
+    doubleBelow: {num: 1, den: 3},
+    againState:  'missile20'
 }];
 
 // A_Srcr2Decide (dsparil.zs): the odds of blinking to another BossSpot, read

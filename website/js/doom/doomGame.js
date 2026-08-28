@@ -174,7 +174,7 @@ class DoomGame {
         const def = this.getWeapon(code);
         // Unknown weapon, or one whose sprites are absent from this WAD (e.g. the
         // super shotgun in Doom 1): not handed out.
-        if (def === null || !this.isWeaponAvailable(code)) {
+        if ((def === null) || !this.isWeaponAvailable(code)) {
             return false;
         }
         let gaveWeapon = false;

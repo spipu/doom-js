@@ -307,8 +307,8 @@ class DoomProjectileSystem {
             dropped:   p.dropped,
             bounces:   p.bounces,
             growTics:  p.growTics,
-            ownerCode: DoomMonsterSystem._targetCode(p.owner),
-            seekCode:  DoomMonsterSystem._targetCode(p.seekTarget)
+            ownerCode: DoomMonsterSystem.actorCode(p.owner),
+            seekCode:  DoomMonsterSystem.actorCode(p.seekTarget)
         }));
     }
 
