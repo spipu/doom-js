@@ -87,6 +87,7 @@ class DoomMonsterSystem {
             // MF_SKULLFLY: the body is charging, so it no longer walks — it
             // flies until it slams into something.
             charging:     false,
+            invulnerable: false,
             renderLight:  null,   // last factor pushed to the instance (null = never)
             litSi:        null,   // sector and bright flag the light was resolved for
             litBright:    false,
@@ -422,6 +423,7 @@ class DoomMonsterSystem {
             justAttacked:   m.justAttacked,
             justHit:        m.justHit,
             charging:       m.charging,
+            invulnerable:   m.invulnerable,
             inFloat:        m.inFloat,
             respawnClock:   m.respawnClock,
             noKillCount:    m.noKillCount,
@@ -456,6 +458,7 @@ class DoomMonsterSystem {
         m.justAttacked = (rec.justAttacked === true);
         m.justHit      = (rec.justHit === true);
         m.charging     = (rec.charging === true);
+        m.invulnerable = (rec.invulnerable === true);
         m.inFloat      = rec.inFloat;
         m.respawnClock = rec.respawnClock;
         m.noKillCount  = rec.noKillCount;
@@ -816,13 +819,20 @@ class DoomMonsterSystem {
         }
         const parentPos = parent.inst.getTransform().position;
         const radius    = template.def.getRadius() * WadConstants.SCALE;
-        const height    = template.def.getHeight() * WadConstants.SCALE;
         const lift      = DoomMonsterSystem.SPAWN_LIFT * WadConstants.SCALE;
 
-        // Too close to the ceiling to fit one: vanilla just sinks a little.
-        const ceiling = this._collision.getCeiling(parentPos[0], parentPos[2],
-            parent.inst.getCollisionRadius(), parentPos[1] + lift);
-        if ((parentPos[1] + lift + height) > ceiling) {
+        // A_PainShootSkull measures the room against the SPITTER's own head
+        // plus the lift, never the spat body's: an elemental with its skull in
+        // the ceiling spits nothing and SINKS instead, which is what drags it
+        // back down into the room.
+        const parentTop = parentPos[1] + parent.def.getHeight() * WadConstants.SCALE;
+        const ceiling   = this._collision.getCeiling(parentPos[0], parentPos[2],
+            parent.inst.getCollisionRadius(), parentPos[1] + 0.01);
+        if ((parentTop + lift) > ceiling) {
+            if (parent.def.getFlags().float === true) {
+                parent.velY    -= DoomMonsterSystem.SPAWN_BLOCKED_SINK;
+                parent.inFloat  = true;
+            }
             return null;
         }
 
@@ -894,10 +904,13 @@ class DoomMonsterSystem {
     // A_SkullAttack: the body stops walking and becomes a charge — velocity
     // straight at the target, slope closed over the distance it will take to
     // cross. DoomMonsterMove drives it from there until it slams.
-    startCharge(m, speedUnitsPerTic) {
+    startCharge(m, speedUnitsPerTic, invulnerable = false) {
         if (m.target === null) {
             return;
         }
+        // Heretic's maulotaur cannot be touched while it runs (A_MinotaurDecide
+        // arms it, A_MinotaurCharge lifts it at the end of the run).
+        m.invulnerable = invulnerable;
         if (this._attack !== null) {
             this._attack.faceTarget(m);
         }
@@ -914,7 +927,8 @@ class DoomMonsterSystem {
 
     // The charge is over (it slammed, or the maulotaur's run timed out).
     stopCharge(m) {
-        m.charging = false;
+        m.charging     = false;
+        m.invulnerable = false;
         m.velX = 0;
         m.velZ = 0;
         m.velY = 0;
@@ -1088,7 +1102,28 @@ class DoomMonsterSystem {
                 }
             }
         }
-        return this._checkSight(m);
+        if (!this._checkSight(m)) {
+            return false;
+        }
+
+        return this._spotsShadow(m, dx, dz);
+    }
+
+    // The blur sphere half of P_LookForPlayers: a body nobody can quite make
+    // out is never spotted while it creeps at a distance, and even standing in
+    // the open it is only noticed on a draw of SHADOW_SPOT_CHANCE or more —
+    // which is what buys the player those few seconds of peace.
+    _spotsShadow(m, dx, dz) {
+        if (!DoomActorRef.isShadow(this._user)) {
+            return true;
+        }
+        const sneakSpeed = WadConstants.SHADOW_SNEAK_SPEED * WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
+        if ((Math.hypot(dx, dz) > (WadConstants.SHADOW_SNEAK_RANGE * WadConstants.SCALE))
+            && (this._user.getRealVelocityXZ() < sneakSpeed)) {
+            return false;
+        }
+
+        return (this._rng.next() >= WadConstants.SHADOW_SPOT_CHANCE);
     }
 
     // A_Chase (p_enemy.cpp A_DoChase) — and the order of its steps IS the
@@ -1454,11 +1489,12 @@ class DoomMonsterSystem {
             }
         }
 
-        // Gravity — a LIVE floater holds its altitude here (its vertical life
-        // is the float logic); everything else falls to its floor. A void
-        // below (no floor at all) freezes the body instead of dropping it
-        // through the world.
-        if ((m.def.getFlags().float === true) && !m.dead) {
+        // Gravity — a LIVE +NOGRAVITY body holds its altitude (a floater's
+        // vertical life is the float logic, Commander Keen simply hangs from
+        // his ceiling); everything else falls to its floor. A void below (no
+        // floor at all) freezes the body instead of dropping it through the
+        // world. Death clears the flag, like vanilla: a corpse always falls.
+        if ((m.def.getFlags().noGravity === true) && !m.dead) {
             return;
         }
         const floorY = this._collision.getFloor(pos[0], pos[2], r, pos[1] + 0.01);
@@ -1707,9 +1743,14 @@ class DoomMonsterSystem {
     traceRay(ox, oy, oz, dx, dy, dz, maxDist, opts = {}) {
         const exclude  = (opts.exclude ?? null);
         const immuneTo = (opts.immuneTo ?? null);
+        // +THRUGHOST (the knight's axes, the lich's ice ball, the Heretic
+        // weapons): the shot goes clean through a phantom, which is the whole
+        // point of the ghost variants.
+        const thruGhost = (opts.thruGhost === true);
         let best = null;
         const consider = (ref, cx, cz, radius, feetY, topY) => {
-            if ((ref === exclude) || ((immuneTo !== null) && !DoomMonsterDamage.canAttackHurt(ref, immuneTo))) {
+            if ((ref === exclude) || (thruGhost && DoomActorRef.isGhost(ref))
+                || ((immuneTo !== null) && !DoomMonsterDamage.canAttackHurt(ref, immuneTo))) {
                 return;
             }
             const t = this._rayCylinder(ox, oy, oz, dx, dy, dz, cx, cz, radius, feetY, topY);
@@ -1848,6 +1889,8 @@ DoomMonsterSystem.STATE_CHAIN_GUARD = 64;
 // A_PainShootSkull: the spat body appears 8 units up and `4 + 1.5 × (both
 // radii)` in front, clear of its parent.
 DoomMonsterSystem.SPAWN_LIFT    = 8;
+// A_PainShootSkull: an elemental with no headroom sinks by this much per try
+DoomMonsterSystem.SPAWN_BLOCKED_SINK = 2;
 DoomMonsterSystem.SPAWN_PRESTEP = 4;
 // How a save names the player as somebody's target (no instance code carries it).
 DoomMonsterSystem.PLAYER_TARGET_CODE = '@player';

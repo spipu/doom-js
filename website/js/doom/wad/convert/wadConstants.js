@@ -694,6 +694,17 @@ class WadConstants {
     // Horizontal spread of a monster bullet, in degrees per Random2 unit
     // (Random2 * (22.5/256), A_PosAttack and friends).
     static MONSTER_BULLET_SPREAD = 22.5 / 256;
+    // MF_SHADOW (partial invisibility): what a body nobody can quite see costs
+    // its attacker. A_Face deviates by Random2 × 45/256 degrees, a missile's
+    // flat velocity turns by Random2 × 22.5/256 (shadowinlines.h), and
+    // P_LookForPlayers refuses to spot one that stands further than
+    // SHADOW_SNEAK_RANGE while creeping under SHADOW_SNEAK_SPEED — and, even
+    // in the open, fails the roll unless it draws under SHADOW_SPOT_CHANCE.
+    static SHADOW_FACE_SPREAD    = 45 / 256;
+    static SHADOW_MISSILE_SPREAD = 22.5 / 256;
+    static SHADOW_SNEAK_RANGE    = 128;
+    static SHADOW_SNEAK_SPEED    = 5;
+    static SHADOW_SPOT_CHANCE    = 225;
     // A_SkullAttack default charge speed (map units/tic) and the mode's own
     // stop threshold — a charging body slams instead of shooting.
     static SKULL_CHARGE_SPEED = 20;

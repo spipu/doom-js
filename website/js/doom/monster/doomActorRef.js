@@ -90,6 +90,25 @@ class DoomActorRef {
         ];
     }
 
+    // MF_SHADOW: a body nobody can quite make out — the player under a blur
+    // sphere, and Heretic's ghosts. Everything aiming at one pays for it
+    // (faceTarget, the missile launch, and A_Look's detection roll).
+    static isShadow(ref) {
+        if (ref === null) {
+            return false;
+        }
+
+        return ((DoomActorRef.isPlayer(ref))
+            ? ref.hasEffect('invisibility')
+            : (ref.def.getFlags().shadow === true));
+    }
+
+    // MF3_GHOST: a Heretic phantom, which a +THRUGHOST shot passes clean
+    // through instead of hitting.
+    static isGhost(ref) {
+        return (DoomActorRef.isMonster(ref) && (ref.def.getFlags().ghost === true));
+    }
+
     // Species of a body, the key of the vanilla infighting rule
     // (P_ProjectileImmune): the player belongs to none, so nothing ever spares
     // them. A monster inherits its def's code, so the two spectres of a pair

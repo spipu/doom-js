@@ -217,7 +217,7 @@ class HereticGameProfile extends DefaultGameProfile {
         return new DoomMonsterDef({
             code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
             health: 45, radius: 16, height: 54, speed: 0, painChance: 255,
-            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noCorpseThrust: true},
+            flags: {countsKill: false, noBlood: true, dontGib: true, dropOff: true, alwaysSpawn: true, noCorpseThrust: true},
             params: {explode: {damage: 128, distance: 128}},
             states: {
                 spawn: [['A', 10, null, 'spawn']],
@@ -317,14 +317,14 @@ class HereticGameProfile extends DefaultGameProfile {
             66: new DoomMonsterDef({
                 code: 'gargoyle', name: 'Gargoyle', sprite: 'IMPX',
                 health: 40, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 params: this._gargoyleParams(false),
                 states: this._gargoyleStates(false)
             }),
             5: new DoomMonsterDef({
                 code: 'gargoyleLeader', name: 'Fire Gargoyle', sprite: 'IMPX',
                 health: 80, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 params: this._gargoyleParams(true),
                 states: this._gargoyleStates(true)
             }),
@@ -345,7 +345,7 @@ class HereticGameProfile extends DefaultGameProfile {
             69: new DoomMonsterDef({
                 code: 'golemGhost', name: 'Golem Ghost', sprite: 'MUMM', alpha: 0.4,
                 health: 80, radius: 22, height: 62, mass: 75, speed: 12, painChance: 128,
-                flags: {ghost: true},
+                flags: {ghost: true, shadow: true},
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
                 params: this._golemParams(false, true),
                 states: this._golemStates(false)
@@ -353,7 +353,7 @@ class HereticGameProfile extends DefaultGameProfile {
             46: new DoomMonsterDef({
                 code: 'golemLeaderGhost', name: 'Nitrogolem Ghost', sprite: 'MUMM', alpha: 0.4,
                 health: 100, radius: 22, height: 62, mass: 75, speed: 12, painChance: 64,
-                flags: {ghost: true},
+                flags: {ghost: true, shadow: true},
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
                 params: this._golemParams(true, true),
                 states: this._golemStates(true)
@@ -368,7 +368,7 @@ class HereticGameProfile extends DefaultGameProfile {
             65: new DoomMonsterDef({
                 code: 'undeadWarriorGhost', name: 'Undead Warrior Ghost', sprite: 'KNIG', alpha: 0.4,
                 health: 200, radius: 24, height: 78, mass: 150, speed: 12, painChance: 100,
-                flags: {ghost: true},
+                flags: {ghost: true, shadow: true},
                 dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 5}],
                 params: this._undeadWarriorParams(),
                 states: this._undeadWarriorStates()
@@ -376,7 +376,7 @@ class HereticGameProfile extends DefaultGameProfile {
             15: new DoomMonsterDef({
                 code: 'disciple', name: 'Disciple of D\'Sparil', sprite: 'WZRD',
                 health: 180, radius: 16, height: 68, speed: 12, painChance: 64,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 dropItems: [{item: 'BlasterAmmo', chance: 84, amount: 10}, {item: 'ArtiTomeOfPower', chance: 4, amount: 0}],
                 params: {melee: {base: 4, dice: 8}, missile: 'wizardFX1'},
                 states: {
@@ -467,7 +467,7 @@ class HereticGameProfile extends DefaultGameProfile {
             7: new DoomMonsterDef({
                 code: 'dsparilSerpent', name: 'D\'Sparil', sprite: 'SRCR',
                 health: 2000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 56,
-                flags: {boss: true, noTarget: true, noRadiusDmg: true},
+                flags: {boss: true, noTarget: true, noRadiusDmg: true, dontGib: true},
                 bossMaps: ['E3M8'],
                 states: {
                     spawn:    [['AB', 10, 'A_Look', 'spawn']],
@@ -747,10 +747,10 @@ class HereticGameProfile extends DefaultGameProfile {
     projectileDefs() {
         return [
             {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   impactDamage: 10, alpha: 1, additive: true,  decalType: 'cbowmark'},
-            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   impactDamage: 2,  alpha: 1, additive: true,  decalType: 'cbowmark2'},
+            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   impactDamage: 2,  alpha: 1, additive: true,  decalType: 'cbowmark2', thruGhost: true},
             {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   impactDamage: 3,  alpha: 1, additive: true,  decalType: 'hornscorch'},
-            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, impactDamage: 20, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4},
-            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 2, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}},
+            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, impactDamage: 20, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4, thruGhost: true},
+            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 2, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}, thruGhost: true},
             // The rare lobbed ball (28/256 of A_FireMacePL1 shots): flat launch
             // at Speed 10 + pitch-driven vertical kick, gravity 0.125 from the
             // first tic, same death frames as the normal ball. Bounces while
@@ -762,14 +762,14 @@ class HereticGameProfile extends DefaultGameProfile {
             // The monsters' shots (zscript/actors/heretic/*.zs, raven/minotaur.zs).
             {kind: 'hereticImpBall', sprite: 'FX10', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 20, flightTics: 6, explosion: 'hereticImpBallDeath', splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
             {kind: 'mummyFX1',       sprite: 'FX15', letters: ['A', 'B', 'C', 'B'], speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'mummyFX1Death',      splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true,  seek: {threshold: 10, turnMax: 20, everyTics: 10}},
-            {kind: 'knightAxe',      sprite: 'SPAX', letters: ['A', 'B', 'C'],      speed: 9,  fastSpeed: 18, flightTics: 3, explosion: 'knightAxeDeath',     splashDamage: 0, impactDamage: 2,  alpha: 1,   additive: false},
-            {kind: 'redAxe',         sprite: 'RAXE', letters: ['A', 'B'],           speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'redAxeDeath',        splashDamage: 0, impactDamage: 7,  alpha: 1,   additive: false},
+            {kind: 'knightAxe',      sprite: 'SPAX', letters: ['A', 'B', 'C'],      speed: 9,  fastSpeed: 18, flightTics: 3, explosion: 'knightAxeDeath',     splashDamage: 0, impactDamage: 2,  alpha: 1,   additive: false, thruGhost: true},
+            {kind: 'redAxe',         sprite: 'RAXE', letters: ['A', 'B'],           speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'redAxeDeath',        splashDamage: 0, impactDamage: 7,  alpha: 1,   additive: false, thruGhost: true},
             {kind: 'beastBall',      sprite: 'FRB1', letters: ['A', 'B', 'C'],      speed: 12, fastSpeed: 20, flightTics: 4, explosion: 'beastBallDeath',     splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true},
             {kind: 'snakeProjA',     sprite: 'SNFX', letters: ['A', 'B', 'C', 'D'], speed: 14, fastSpeed: 20, flightTics: 5, explosion: 'snakeProjADeath',    splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
             {kind: 'snakeProjB',     sprite: 'SNFX', letters: ['J', 'K'],           speed: 14, fastSpeed: 20, flightTics: 6, explosion: 'snakeProjBDeath',    splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
             {kind: 'wizardFX1',      sprite: 'FX11', letters: ['A', 'B'],           speed: 18, fastSpeed: 24, flightTics: 6, explosion: 'wizardFX1Death',     splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
             {kind: 'sorcererFX1',    sprite: 'FX14', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 6, explosion: 'sorcererFX1Death',   splashDamage: 0, impactDamage: 10, alpha: 1,   additive: true},
-            {kind: 'headFX1',        sprite: 'FX05', letters: ['A', 'B', 'C'],      speed: 13, fastSpeed: 20, flightTics: 6, explosion: 'headFX1Death',       splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
+            {kind: 'headFX1',        sprite: 'FX05', letters: ['A', 'B', 'C'],      speed: 13, fastSpeed: 20, flightTics: 6, explosion: 'headFX1Death',       splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true,  thruGhost: true},
             {kind: 'headFX3',        sprite: 'FX06', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 18, flightTics: 4, explosion: 'headFX3Death',       splashDamage: 0, impactDamage: 5,  alpha: 1,   additive: true, growRise: 9},
             // The whirlwind is no ball: it passes THROUGH its victim and
             // grinds them for as long as it lasts (Whirlwind::DoSpecialDamage).
@@ -1110,6 +1110,7 @@ HereticGameProfile.MINOTAUR_DECIDE = ['A_MinotaurDecide', {
     chargeSpeed:   13,
     chargeTics:    17,
     chargeState:   'charge0',
+    chargeInvulnerable: true,
     hammerMax:     9 * 64,
     hammerChance:  220,
     hammerState:   'hammer0'
