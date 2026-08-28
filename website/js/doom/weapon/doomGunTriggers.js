@@ -21,10 +21,8 @@ class DoomGunTriggers {
         this._lines = lines;
     }
 
-    /**
-     * Shot trace in world coords: from the muzzle to the impact point (or the
-     * range end when nothing was hit).
-     */
+    // Shot trace in world coords: from the muzzle to the impact point (or the
+    // range end when nothing was hit).
     onTrace(x1, z1, x2, z2) {
         const dx  = x2 - x1;
         const dz  = z2 - z1;
@@ -47,10 +45,8 @@ class DoomGunTriggers {
         }
     }
 
-    /**
-     * Burnt-out flags of the registered lines, in their (deterministic) build
-     * order — the only mutable state of the system.
-     */
+    // Burnt-out flags of the registered lines, in their (deterministic) build
+    // order — the only mutable state of the system.
     exportState() {
         return this._lines.map((line) => line.used);
     }

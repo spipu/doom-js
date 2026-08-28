@@ -1,5 +1,7 @@
-// One psprite animation frame (mirror of a states[] entry in info.c): which
-// sprite lump to show, how long, which action to run, and where to go next.
+/**
+ * One psprite animation frame (mirror of a states[] entry in info.c): which
+ * sprite lump to show, how long, which action to run, and where to go next.
+ */
 class DoomWeaponState {
     constructor(sprite, frame, tics, action, next, bright) {
         this._sprite = sprite;

@@ -1,18 +1,20 @@
-// Persistent wall impact decals (UZDoom / GZDoom feature; vanilla Doom has none).
-// A shot on a wall leaves a mark that stays: a small bullet chip, a large rocket
-// scorch, a plasma burn, or a BFG flash over a scorch. Faithful to UZDoom's
-// decaldef.txt: per-weapon graphic + scale + shade, a FIFO cap on permanent
-// decals, and the BFG lightning fading away (animator GoAway2) over a permanent
-// lower scorch.
-//
-// A decal is a flat textured quad glued to the wall — a normal Object3d (NOT a
-// camera-facing Billboard): its orientation is baked into the instance yaw, from
-// the wall normal. Textures + quad templates are built ONCE per level inside the
-// load batch (a runtime object/texture registration would re-fire the loader);
-// each impact only spawns an Instance (spawnFromData, no loader re-check).
-//
-// Sizes match UZDoom exactly: on-wall size (map units) = PNG pixels × decaldef
-// scale, converted to world units by WadConstants.SCALE.
+/**
+ * Persistent wall impact decals (UZDoom / GZDoom feature; vanilla Doom has none).
+ * A shot on a wall leaves a mark that stays: a small bullet chip, a large rocket
+ * scorch, a plasma burn, or a BFG flash over a scorch. Faithful to UZDoom's
+ * decaldef.txt: per-weapon graphic + scale + shade, a FIFO cap on permanent
+ * decals, and the BFG lightning fading away (animator GoAway2) over a permanent
+ * lower scorch.
+ *
+ * A decal is a flat textured quad glued to the wall — a normal Object3d (NOT a
+ * camera-facing Billboard): its orientation is baked into the instance yaw, from
+ * the wall normal. Textures + quad templates are built ONCE per level inside the
+ * load batch (a runtime object/texture registration would re-fire the loader);
+ * each impact only spawns an Instance (spawnFromData, no loader re-check).
+ *
+ * Sizes match UZDoom exactly: on-wall size (map units) = PNG pixels × decaldef
+ * scale, converted to world units by WadConstants.SCALE.
+ */
 class DoomDecals {
     // The decal set (graphics, scales, shades) is per-game data: it comes from
     // the game profile's decalTemplates(), a shade of 'bfg' resolving to its

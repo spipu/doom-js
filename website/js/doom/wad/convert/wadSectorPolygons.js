@@ -120,9 +120,7 @@ class WadSectorPolygons {
         return {outers: outers, holes: holes};
     }
 
-    /**
-     * Return the holes geometrically inside the given outer polygon.
-     */
+    // Return the holes geometrically inside the given outer polygon.
     static assignHoles(outer, holes) {
         return holes.filter((h) => WadGeometry.pointInPolygon2d(h[0][0], h[0][1], outer));
     }
@@ -169,13 +167,11 @@ class WadSectorPolygons {
         });
     }
 
-    /**
-     * Point-in-sector over a polygon cache ([{outers, ...}]): the SMALLEST
-     * containing outer wins — the cache outers keep the holes inside, so a
-     * nested sector is contained by its parent's outer too and only the area
-     * tie-break picks it. The shared no-BSP lookup (thing placement, weapon
-     * sector light). Returns the cache entry, or null.
-     */
+    // Point-in-sector over a polygon cache ([{outers, ...}]): the SMALLEST
+    // containing outer wins — the cache outers keep the holes inside, so a
+    // nested sector is contained by its parent's outer too and only the area
+    // tie-break picks it. The shared no-BSP lookup (thing placement, weapon
+    // sector light). Returns the cache entry, or null.
     static smallestContaining(sectorPolys, doomX, doomY) {
         let bestArea = null;
         let best     = null;

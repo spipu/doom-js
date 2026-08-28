@@ -100,11 +100,9 @@ class WadAnimationBank {
 
     // --- Internal ---
 
-    /**
-     * Parse a Boom ANIMATED lump: 23-byte records, type(1) + last(9) + first(9)
-     * + speed(4), type 0xFF = end marker, 0 = flat, 1 = wall texture.
-     * first→last ranges are expanded on the ordered name lists from the WAD.
-     */
+    // Parse a Boom ANIMATED lump: 23-byte records, type(1) + last(9) + first(9)
+    // + speed(4), type 0xFF = end marker, 0 = flat, 1 = wall texture.
+    // first→last ranges are expanded on the ordered name lists from the WAD.
     _parseAnimatedLump(dv) {
         const flatNames = this._bank.getOrderedFlatNames();
         const wallNames = this._bank.getOrderedWallNames();

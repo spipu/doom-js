@@ -33,11 +33,9 @@ class DoomAutomapReveal {
         this._y             = 0;
     }
 
-    /**
-     * One pass from the player's spot, in Doom units and Doom angles. The
-     * window is the game's CURRENT field of view, so a telezoom arrival reveals
-     * exactly as wide as it renders.
-     */
+    // One pass from the player's spot, in Doom units and Doom angles. The
+    // window is the game's CURRENT field of view, so a telezoom arrival reveals
+    // exactly as wide as it renders.
     revealFrom(doomX, doomY, viewAngle, halfWindow) {
         this._x = doomX;
         this._y = doomY;

@@ -158,17 +158,15 @@ class HudAutomap extends AbstractHud {
         return true;
     }
 
-    /**
-     * Ratio preserved: a stretched plan reads false. The plan is turned a
-     * quarter when that fits BIGGER, which in a landscape panel means a level
-     * taller than wide — it would otherwise waste both side margins. The
-     * criterion is the fitted scale itself rather than the level's shape: it is
-     * what we actually want, and it holds whatever the panel's proportions.
-     *
-     * The mapping is kept as the coefficients of Doom → panel, so the quarter
-     * turn costs no test per drawn point: [xFactor, yFactor, offset] per screen
-     * axis, north to the RIGHT once turned.
-     */
+    // Ratio preserved: a stretched plan reads false. The plan is turned a
+    // quarter when that fits BIGGER, which in a landscape panel means a level
+    // taller than wide — it would otherwise waste both side margins. The
+    // criterion is the fitted scale itself rather than the level's shape: it is
+    // what we actually want, and it holds whatever the panel's proportions.
+    //
+    // The mapping is kept as the coefficients of Doom → panel, so the quarter
+    // turn costs no test per drawn point: [xFactor, yFactor, offset] per screen
+    // axis, north to the RIGHT once turned.
     _layout() {
         const bounds = this._automap.getBounds();
         const spanX  = Math.max(bounds[2] - bounds[0], 1);

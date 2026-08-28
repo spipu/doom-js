@@ -1,9 +1,11 @@
-// Full weapon definition: fire behaviour + the psprite state machine, ported
-// state-for-state from the game sources (d_items.c / info.c / p_pspr.c for
-// Doom, the zscript actors for Heretic). A state tuple is [frame, tics,
-// action, next, bright?] (bright forces fullbright on a single main state);
-// the "main" group renders the weapon sprite, the "flash" group the
-// (fullbright) muzzle-flash sprite. All values come from the game profile.
+/**
+ * Full weapon definition: fire behaviour + the psprite state machine, ported
+ * state-for-state from the game sources (d_items.c / info.c / p_pspr.c for
+ * Doom, the zscript actors for Heretic). A state tuple is [frame, tics,
+ * action, next, bright?] (bright forces fullbright on a single main state);
+ * the "main" group renders the weapon sprite, the "flash" group the
+ * (fullbright) muzzle-flash sprite. All values come from the game profile.
+ */
 class DoomWeaponDef extends DoomWeapon {
     constructor(data) {
         // perShot (inherited) carries the ammo spent per shot (1, 2 for the SSG,

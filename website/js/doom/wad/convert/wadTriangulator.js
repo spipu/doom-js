@@ -3,11 +3,9 @@
  * (transposition of convert_wad.py — earcut/Eberly algorithm).
  */
 class WadTriangulator {
-    /**
-     * Return true if vertex i is a convex ear of polygon poly (CCW winding).
-     * Coordinate-duplicate vertices (bridge seam copies) are skipped in the
-     * interior test so the duplicated seam doesn't block valid ears.
-     */
+    // Return true if vertex i is a convex ear of polygon poly (CCW winding).
+    // Coordinate-duplicate vertices (bridge seam copies) are skipped in the
+    // interior test so the duplicated seam doesn't block valid ears.
     static isEar(poly, i) {
         const count = poly.length;
         const a = poly[(i - 1 + count) % count];
@@ -34,11 +32,9 @@ class WadTriangulator {
         return true;
     }
 
-    /**
-     * Ear-clipping triangulation. polygon = [[x,z], ...] must be CCW.
-     * Returns a list of [i, j, k] index triples into the original polygon array.
-     * Stops early on degenerate polygons.
-     */
+    // Ear-clipping triangulation. polygon = [[x,z], ...] must be CCW.
+    // Returns a list of [i, j, k] index triples into the original polygon array.
+    // Stops early on degenerate polygons.
     static triangulate(polygon) {
         const poly = [...polygon];
         const tris = [];
@@ -71,10 +67,8 @@ class WadTriangulator {
         return tris;
     }
 
-    /**
-     * Merge hole polygons into the outer polygon via bridge cuts.
-     * Both bridge vertices are duplicated (earcut splitPolygon convention).
-     */
+    // Merge hole polygons into the outer polygon via bridge cuts.
+    // Both bridge vertices are duplicated (earcut splitPolygon convention).
     static mergeHolesIntoPolygon(outer, holes) {
         let result = [...outer];
 
