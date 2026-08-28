@@ -501,6 +501,44 @@ class DoomMonsterAttack {
         this._system.startCharge(m, (args.speed ?? WadConstants.SKULL_CHARGE_SPEED));
     }
 
+    // A_BrainSpit: the eye sends a cube to the next target spot. The rotation
+    // and the skipping (EasyBossBrain) belong to the level's brain, so this
+    // verb only carries the shot.
+    _brainSpit(m, args) {
+        if ((this._system.getBossBrain() === null) || (this._projectiles === null)) {
+            return;
+        }
+        const spot = this._system.getBossBrain().nextTarget();
+        if (spot === null) {
+            return;   // skipped spit (easy skills), or a map with no targets
+        }
+        this._projectiles.spawnAtSpot((args.kind ?? m.def.getParams().missile), m, spot, {height: args.height});
+    }
+
+    // A_BrainScream: the brain's death lays a line of harmless explosions in
+    // front of it, each lifted at random and started a few tics in, so the row
+    // goes off raggedly instead of in one flash.
+    _brainScream(m, args) {
+        if (this._effects === null) {
+            return;
+        }
+        const pos = m.inst.getTransform().position;
+        const S   = WadConstants.SCALE;
+        for (let x = args.fromX; x < args.toX; x += args.stepX) {
+            this._effects.spawn(args.effect,
+                pos[0] + x * S,
+                pos[1] + (this._rng.next() / 255) * args.liftMax * S,
+                pos[2] + args.aheadY * S,
+                {skipTics: this._rng.next() % args.startJitterTics});
+        }
+    }
+
+    // A_BrainDie: the level is over (Level.ExitLevel). The normal exit, so the
+    // tally and the story text come up exactly as through a switch.
+    _brainDie() {
+        this._system.exitLevel();
+    }
+
     // --- Internals ---
 
     // A fraction of a health pool, multiplied BEFORE dividing like the source
@@ -594,6 +632,12 @@ DoomMonsterAttack.VERBS = {
     A_Srcr2Attack:             '_sorcererAttack',
     A_Sor2DthInit:             '_deathLoopInit',
     A_Sor2DthLoop:             '_deathLoop',
+    // The Icon of Sin (A_BrainAwake and A_BrainPain are sounds alone;
+    // A_BrainExplode chains one more blast from a scream explosion's own death
+    // frames, which our effects — plain animations — do not have)
+    A_BrainSpit:               '_brainSpit',
+    A_BrainScream:             '_brainScream',
+    A_BrainDie:                '_brainDie',
     // Spawners and the archvile's hellfire
     A_PainAttack:              '_painAttack',
     A_PainDie:                 '_painDie',

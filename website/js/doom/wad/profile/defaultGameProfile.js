@@ -70,10 +70,29 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
-    // The pain elemental spits lost souls that were never placed on the map,
-    // so their views have to be built with the level.
+    // Bodies that appear without ever being placed on the map: the lost soul a
+    // pain elemental spits, and everything the Icon of Sin sends down in a cube
+    // (bossCubeSpawns). Their views are built with the level — a runtime spawn
+    // has no second chance to load a sprite.
     runtimeSpawnTypes() {
-        return ['lostsoul'];
+        return ['lostsoul'].concat(DefaultGameProfile.BOSS_CUBE_SPAWNS.map((entry) => entry.kind));
+    }
+
+    /**
+     * What a boss cube hatches, as the vanilla weighted ladder over a 0..255
+     * roll (SpawnFly): the first entry whose `below` exceeds the roll wins, the
+     * last one catches everything above. Transcribed from bossbrain.zs.
+     *
+     * @returns {object[]} [{below, kind}] in rising order
+     */
+    bossCubeSpawns() {
+        return DefaultGameProfile.BOSS_CUBE_SPAWNS;
+    }
+
+    // mapinfo/doom2.txt (and tnt/plutonia): only the Icon of Sin's arena lets
+    // a teleporting monster stomp — the cubes land on occupied spots.
+    monsterTelefragMaps() {
+        return ['MAP30'];
     }
 
     bfgDecalShade() {
@@ -143,6 +162,10 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     thingTypes() {
         return {
+            // --- Icon of Sin plumbing ---
+            // BossTarget: not a body, only a spot the boss cubes are sent to,
+            // taken in map order (the eye rotates through them).
+            87:   {kind: 'spot', group: 'bossTarget'},
             // --- Weapons ---
             2001: {kind: 'pickup', sprite: 'SHOTA0', effect: {weapon: 'shotgun'}},
             82:   {kind: 'pickup', sprite: 'SGN2A0', effect: {weapon: 'supershotgun'}},
@@ -561,7 +584,25 @@ class DefaultGameProfile extends AbstractGameProfile {
                 states: {
                     spawn: [['A', -1]],
                     pain:  [['B', 36, 'A_BrainPain', 'spawn']],
-                    death: [['A', 100, 'A_BrainScream'], ['AA', 10], ['A', -1, 'A_BrainDie']]
+                    // Its scream lays a line of harmless explosions, then
+                    // A_BrainDie ends the level (Level.ExitLevel).
+                    death: [['A', 100, DefaultGameProfile.BRAIN_SCREAM], ['AA', 10], ['A', -1, 'A_BrainDie']]
+                }
+            }),
+            // The eye watches for the player, then spits a cube every 150
+            // tics, forever. +NOBLOCKMAP: nothing collides with it. Deviation:
+            // vanilla's +NOSECTOR also keeps it out of the draw, we do show its
+            // sprite — on MAP30 it stands sealed behind the boss wall.
+            89: new DoomMonsterDef({
+                code: 'bosseye', name: 'Boss Eye', sprite: 'SSWV',
+                health: 1000, radius: 20, height: 32, mass: 10000000, speed: 0, painChance: 0,
+                flags: {countsKill: false, noBlockmap: true, noGravity: true, noTarget: true},
+                params: {missile: 'spawnShot'},
+                states: {
+                    spawn: [['A', 10, 'A_Look', 'spawn']],
+                    // See: the awake shout, then the spit loop (Wait = stay on
+                    // the last state, so the cube comes every 150 tics).
+                    see:   [['A', 181, 'A_BrainAwake'], ['A', 150, 'A_BrainSpit', 'see1']]
                 }
             })
         };
@@ -761,6 +802,14 @@ class DefaultGameProfile extends AbstractGameProfile {
             {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
             {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: false},
             {name: 'tracerSmoke',      sprite: 'PUFF', letters: ['A', 'B', 'A', 'B', 'C'], frameTics: [4, 4, 4, 4, 4], alpha: 0.5, rise: 1, additive: false},
+            // SpawnFire: the pillar a boss cube hatches in (same FIRE sprite as
+            // the archvile's, its own 8-frame animation).
+            {name: 'spawnFire',        sprite: 'FIRE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+                frameTics: [4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: true},
+            // A_BrainScream lays these along a line: the rocket's own explosion
+            // frames, with the damage disabled (SetDamage(0) in the source).
+            {name: 'brainExplosion',   sprite: 'MISL', letters: ['B', 'C', 'D'], frameTics: [10, 10, 10],
+                alpha: 1, rise: 0, additive: false},
             {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
                 frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true},
             {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
@@ -801,7 +850,11 @@ class DefaultGameProfile extends AbstractGameProfile {
             // A_Tracer: the smoke and the course correction both run one tic in
             // four, which is why the revenant's shot swerves in visible steps.
             {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: false,
-                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4}
+                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4},
+            // The Icon of Sin's cube (SpawnShot): +NOCLIP, so it crosses the
+            // whole map untouched and hatches on the spot it was aimed at.
+            {kind: 'spawnShot',   sprite: 'BOSF', letters: ['A', 'B', 'C', 'D'], speed: 10,       flightTics: 3, explosion: null,               splashDamage: 0, impactDamage: 0,  alpha: 1, additive: false,
+                hatchAtSpot: {fog: 'spawnFire', telefrag: true}}
         ];
     }
 
@@ -975,6 +1028,38 @@ class DefaultGameProfile extends AbstractGameProfile {
         ];
     }
 }
+
+// A_BrainScream (bossbrain.zs): a line of explosions from x −196 to +320 in
+// steps of 8, laid 320 units in FRONT of the brain, each one lifted by a random
+// height and started a few tics into its animation. Deviation: vanilla lifts
+// them to an ABSOLUTE height (128 + 2 × random), we lift them above the brain
+// itself, so a PWAD that hangs its brain elsewhere still gets its line.
+DefaultGameProfile.BRAIN_SCREAM = ['A_BrainScream', {
+    effect:    'brainExplosion',
+    fromX:     -196,
+    toX:       320,
+    stepX:     8,
+    aheadY:    -320,
+    liftMax:   512,
+    startJitterTics: 8
+}];
+
+// SpawnFly (bossbrain.zs): the probability ladder of a boss cube, decreasing
+// likelihood. `below` is the exclusive upper bound of the 0..255 roll, so an
+// entry weighs (its bound − the previous one) out of 256.
+DefaultGameProfile.BOSS_CUBE_SPAWNS = [
+    {below: 50,  kind: 'imp'},
+    {below: 90,  kind: 'demon'},
+    {below: 120, kind: 'spectre'},
+    {below: 130, kind: 'painelemental'},
+    {below: 160, kind: 'cacodemon'},
+    {below: 162, kind: 'archvile'},
+    {below: 172, kind: 'revenant'},
+    {below: 192, kind: 'arachnotron'},
+    {below: 222, kind: 'mancubus'},
+    {below: 246, kind: 'hellknight'},
+    {below: 256, kind: 'baron'}
+];
 
 // A_PosAttack / A_SPosAttack / A_CPosAttack all fire the same 3 × (1..5)
 // bullet, and every hitscan monster of the bestiary uses one of them.

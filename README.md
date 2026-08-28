@@ -36,7 +36,8 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Sky**: rendered as a WebGL dome (azimuth/elevation mapping, vanilla wrap), mirrored below the horizon so sky floors show sky, each side fading into its own cap colour; the CPU renderers show the cap in the sky holes.
 - **World things as sprites**: every non-enemy THING is a camera-facing billboard, lit by its sector, animated where Doom animates it, floor- or ceiling-anchored. Solid decorations block with Doom-style square hitboxes; pickups stay walk-through.
 - **Monsters**: the full Doom/Doom 2 and Heretic bestiaries (35 definitions transcribed from the UZDoom actors) spawn with their eight vanilla rotation views, block, animate at 35 Hz, and are lit by the sector they currently stand in. They take damage from every player attack channel through a faithful `P_DamageMobj` pipeline — blood, pain, death and gib animations, vanilla kickback that shoves monsters and corpses around, item drops, chain-exploding barrels and pods — and kills are tallied on the HUD (`☠ x/y`). Movers press them like the player (`P_ChangeSector`): a crusher deals its 10 hp / 4 tics and grinds a corpse into a gib pool, a door closing on a monster reopens, and a stall mover waits against the body and resumes when it clears.
-- **Monster attacks**: every attack of both bestiaries fires — claws and bites, bullet volleys with the vanilla spread, the fifteen monster missiles with their own speeds and death animations, the mancubus and disciple fans, the lost soul's charge, the pain elemental's spat souls, the archvile's hellfire and its resurrections, the iron lich's three shots and the maulotaur's run. Decisions follow `A_DoChase`: melee reach is the vanilla arm plus the victim's radius, and a shot is a jet against the distance, so the further you stand the rarer it comes. **Infighting** works both ways — a monster hurt by another turns on it, and two of one species never wound each other. The Doom II Icon of Sin is the one attack left out.
+- **Monster attacks**: every attack of both bestiaries fires — claws and bites, bullet volleys with the vanilla spread, the fifteen monster missiles with their own speeds and death animations, the mancubus and disciple fans, the lost soul's charge, the pain elemental's spat souls, the archvile's hellfire and its resurrections, the iron lich's three shots and the maulotaur's run. Decisions follow `A_DoChase`: melee reach is the vanilla arm plus the victim's radius, and a shot is a jet against the distance, so the further you stand the rarer it comes. **Infighting** works both ways — a monster hurt by another turns on it, and two of one species never wound each other.
+- **Icon of Sin**: Doom II's MAP30 fights back. The eye behind the wall spits a cube every few seconds at the spawn spots of the arena, in map order — one spit in two on the easy skills; the cube flies straight through the level and hatches a monster on arrival, drawn on the vanilla ladder that runs from imps to the odd archvile, telefragging whoever stands on the spot. Shooting the brain apart ends the game in a wall of explosions.
 - **Monster AI**: vanilla wake-up (sight cone, sound flood through the sector graph, deaf *ambush* flag), vanilla chase (8-direction steps, stair climbing, dropoff refusal, opening manual doors), floaters, BOOM environmental physics (wind/conveyors/ice), complete skill 5 (fast states, instant reaction, nightmare respawn), and render-interpolated motion. Every teleport — player or monster — flashes the vanilla teleport fog at both the departure and the arrival spot. The death of the last boss of a map fires its map action (`A_BossDeath`): E1M8's barons lower the final block, MAP07's mancubi and arachnotrons move their floors, E2M8/E3M8 end on the boss's death.
 - **Single-player thing filtering**: vanilla flag rules — multiplayer-only things dropped, skill bits honoured.
 - **Player physics**: vanilla Doom metrics (gravity, 24-unit steps, GZDoom jump height), smoothed camera on stairs, a kill plane under the map, fall damage on thresholds the game sets and can switch off, jumping and crouching the game can refuse outright, and `ML_BLOCKING` lines honoured (they stop bodies at any height, never shots or sight).
@@ -121,11 +122,11 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (fr + en)
-│   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
+    │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
-    │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths
+    │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer
     │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, save slots)
@@ -218,7 +219,6 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Icon of Sin**: Doom II's MAP30 has no boss — the spitter cubes, the spawn targets and the final wall are the one attack chantier left out.
 * **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
 * **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.

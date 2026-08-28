@@ -233,10 +233,11 @@ class WadWorldBuilder {
         // One height service for the monsters and the map, carried by this data.
         const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction);
         if (this._monsterSystem !== null) {
-            this._monsterSystem.setLevelData(levelData);
+            this._monsterSystem.setLevelData(levelData).setExitCallback(this._onLevelExit);
         }
         this._registerAutomap(level, levelData.heights);
         const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes);
+        this._wireBossBrain();
 
         // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
@@ -372,12 +373,17 @@ class WadWorldBuilder {
         this._registerCrushedCorpseView(spriteBank);
         this._registerRuntimeSpawnables(spriteBank, monsterBillboardIds);
 
-        this._bossSpots = builder.getBossSpots().map((s) => {
-            const sect = this._findSector(s.x, s.y);
-            const pos  = WadGeometry.doomToWorld(s.x, s.y, ((sect !== null) ? sect.fh : 0));
+        // Every spot group of the map, moved to world coordinates once.
+        this._spots = {};
+        const spots = builder.getSpots();
+        for (const group of Object.keys(spots)) {
+            this._spots[group] = spots[group].map((s) => {
+                const sect = this._findSector(s.x, s.y);
+                const pos  = WadGeometry.doomToWorld(s.x, s.y, ((sect !== null) ? sect.fh : 0));
 
-            return {x: pos[0], y: pos[1], z: pos[2], angle: s.angle};
-        });
+                return {x: pos[0], y: pos[1], z: pos[2], angle: s.angle};
+            });
+        }
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
     }
@@ -543,7 +549,9 @@ class WadWorldBuilder {
             trigger:         'none',
             loop:            false,
             onlyOnce:        false,
-            collisionShape:  'box',
+            // +NOBLOCKMAP (the Icon of Sin's eye): a body nothing collides
+            // with — it blocks neither the player nor a shot.
+            collisionShape:  ((t.def.getFlags().noBlockmap === true) ? 'none' : 'box'),
             collisionRadius: t.radius,
             keyframes:       []
         });
@@ -652,9 +660,13 @@ class WadWorldBuilder {
             restFh:       analysis.liftOriginalFh,
             moverCodes:   moverCodes,
             monsterLines: monsterLines,
-            // Where a boss teleports to (Heretic BossSpot, thing 56).
-            bossSpots:    (this._bossSpots ?? []),
+            // Positions the game aims at, by group: where D'Sparil reappears
+            // ('bossSpot'), where the Icon of Sin sends its cubes ('bossTarget').
+            spots:        (this._spots ?? {}),
             levelName:    this._levelName,
+            // mapinfo `allowmonstertelefrags`: on this map a teleporting
+            // monster stomps whoever holds its arrival spot.
+            monstersTelefrag: this._profile.monsterTelefragMaps().includes(this._levelName),
             // Live brightness factor of a sector (1 without a light effect),
             // the very source the weapon shading reads.
             lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1)),
@@ -805,6 +817,19 @@ class WadWorldBuilder {
             }
         }
         return virtual;
+    }
+
+    // The Icon of Sin's bookkeeping, on the levels that carry its target spots
+    // (MAP30 and any PWAD doing the same): the rotation of those spots and the
+    // weighted draw of what a cube hatches.
+    _wireBossBrain() {
+        const targets = ((this._spots ?? {}).bossTarget ?? []);
+        if ((this._monsterSystem === null) || (targets.length === 0)) {
+            return;
+        }
+        const skillRule = (this._profile.skillRules()[this._skill] ?? null);
+        this._monsterSystem.setBossBrain(new DoomBossBrain(
+            targets, this._profile.bossCubeSpawns(), (skillRule?.easyBossBrain === true)));
     }
 
     _wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {

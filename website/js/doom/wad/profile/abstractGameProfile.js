@@ -150,6 +150,17 @@ class AbstractGameProfile {
     }
 
     /**
+     * Maps where a teleporting MONSTER stomps whoever holds its arrival spot
+     * instead of staying put (mapinfo `allowmonstertelefrags`): the Icon of
+     * Sin's arena needs it, nothing else does.
+     *
+     * @returns {string[]} level names
+     */
+    monsterTelefragMaps() {
+        return [];
+    }
+
+    /**
      * Monster types this game spawns at RUNTIME rather than from the map
      * (the pain elemental's lost souls): their views have to be built with the
      * level, since a body born mid-fight has no chance to load a sprite.
