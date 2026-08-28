@@ -339,6 +339,21 @@ class User {
         return this._externalForces;
     }
 
+    /**
+     * A blow that throws the body off the ground (a blast under the feet): it
+     * replaces the vertical velocity the way a jump does, and arms the fall
+     * bookkeeping so the landing is billed like any other.
+     *
+     * @param {number} velocity m/s, positive upward
+     */
+    applyVerticalImpulse(velocity) {
+        this._vy = velocity;
+        if (velocity > 0) {
+            this._startFall();
+        }
+        return this;
+    }
+
     // Discontinuous displacement (teleport, respawn): the body keeps no
     // momentum, no environmental push and no pending fall from the old spot.
     haltMotion() {

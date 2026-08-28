@@ -85,9 +85,7 @@ class InputKeyboard {
         return this;
     }
 
-    /**
-     * True while the key bound to the action is held ('' or unknown: never).
-     */
+    // True while the key bound to the action is held ('' or unknown: never).
     readAction(action) {
         const code = this._mapping[action];
         if ((code === undefined) || (code === '')) {
@@ -97,10 +95,8 @@ class InputKeyboard {
         return this._keys.has(code);
     }
 
-    /**
-     * True while the given physical key code is held, whatever the mapping
-     * (fixed engine keys like the debug cheat).
-     */
+    // True while the given physical key code is held, whatever the mapping
+    // (fixed engine keys like the debug cheat).
     readKey(code) {
         return this._keys.has(code);
     }

@@ -72,11 +72,9 @@ class Engine3d {
         return this._deltaTime;
     }
 
-    /**
-     * Forgets the last frame timestamp: the next calculateDeltaTime returns a
-     * zero delta and the scene clock stays put — call it when resuming after
-     * a pause, so the frozen time does not leak into the first live frame.
-     */
+    // Forgets the last frame timestamp: the next calculateDeltaTime returns a
+    // zero delta and the scene clock stays put — call it when resuming after
+    // a pause, so the frozen time does not leak into the first live frame.
     resetDeltaClock() {
         this._deltaLast = null;
         return this;
@@ -330,19 +328,17 @@ class Engine3d {
         return this;
     }
 
-    /**
-     * Frustum test of an instance's bounding sphere, in camera space (z = depth
-     * ahead, x = right, y = up — the convention the projection already imposes).
-     * Rejects what the camera cannot see BEFORE any per-vertex work: on a busy
-     * level most instances are behind the player or off to the sides, and each
-     * one costs a transform pass, a VBO fill and a draw call.
-     *
-     * The render offset (game-driven draw-time smoothing) is absorbed into the
-     * radius rather than into the centre: the composed transform applies the
-     * position translation before the rotations, so an offset added to it does
-     * not come out as a pure world translation. Bounding it is exact enough and
-     * costs nothing.
-     */
+    // Frustum test of an instance's bounding sphere, in camera space (z = depth
+    // ahead, x = right, y = up — the convention the projection already imposes).
+    // Rejects what the camera cannot see BEFORE any per-vertex work: on a busy
+    // level most instances are behind the player or off to the sides, and each
+    // one costs a transform pass, a VBO fill and a draw call.
+    //
+    // The render offset (game-driven draw-time smoothing) is absorbed into the
+    // radius rather than into the centre: the composed transform applies the
+    // position translation before the rotations, so an offset added to it does
+    // not come out as a pure world translation. Bounding it is exact enough and
+    // costs nothing.
     isInView(instance) {
         const c = instance.getWorldCenter();
         const m = this.viewMatrix.v;

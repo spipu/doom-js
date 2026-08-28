@@ -44,11 +44,9 @@ class AbstractHud {
         this._container.style.backgroundColor = (this._computeScreenTint() ?? 'transparent');
     }
 
-    /**
-     * Aggregates every tint source into one CSS color (null = none). Default:
-     * death > decaying damage flash > decaying pickup pulse, with neutral
-     * engine colors; the flash values live on the User and decay there.
-     */
+    // Aggregates every tint source into one CSS color (null = none). Default:
+    // death > decaying damage flash > decaying pickup pulse, with neutral
+    // engine colors; the flash values live on the User and decay there.
     _computeScreenTint() {
         if (this._user.isDead()) {
             return AbstractHud.rgba([255, 0, 0], 0.5);

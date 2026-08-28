@@ -757,18 +757,16 @@ class Collision {
         return this._scanCeilings(px, pz, r, headY, tris, count);
     }
 
-    /**
-     * Candidate triangles of a circle query on the given face slot ('floors' |
-     * 'ceilings'), appended into `out`; returns how many. The static colliders
-     * answer through their spatial index, the dynamic ones stay linear (a
-     * handful of triangles each, rebuilt every frame). Static go FIRST: a height
-     * tie must keep the static winner, which carries no owning instance.
-     *
-     * dynamics picks the movers — DYN_NONE (static world only), DYN_NEAR (those
-     * whose broadphase circle is reached, minus a crush mover pressing the
-     * player: its ceiling leaves his queries), DYN_ALL (everything, so a
-     * pressing mover still counts in the pinch gap).
-     */
+    // Candidate triangles of a circle query on the given face slot ('floors' |
+    // 'ceilings'), appended into `out`; returns how many. The static colliders
+    // answer through their spatial index, the dynamic ones stay linear (a
+    // handful of triangles each, rebuilt every frame). Static go FIRST: a height
+    // tie must keep the static winner, which carries no owning instance.
+    //
+    // dynamics picks the movers — DYN_NONE (static world only), DYN_NEAR (those
+    // whose broadphase circle is reached, minus a crush mover pressing the
+    // player: its ceiling leaves his queries), DYN_ALL (everything, so a
+    // pressing mover still counts in the pinch gap).
     _gather(slot, px, pz, r, out, dynamics) {
         let n = 0;
         for (const sc of this._static) {
@@ -795,20 +793,18 @@ class Collision {
         return n;
     }
 
-    /**
-     * Candidate wall triangles of a swept circle, appended into `out`. Movers
-     * join in for the player's own movement — except a crush mover pressing him
-     * (vanilla lateral escape) — but never for the platform-riding drift, which
-     * resolves against the static world alone.
-     *
-     * The queried band is the sweep widened by the travel length AND by twice
-     * the radius, not just by the radius: the resolution slides along what it
-     * hits (so a wall met only after a deflection must already be in the set)
-     * and the depenetration pass can push the circle out by up to one radius
-     * before it even starts moving. A body buried DEEPER than its own radius
-     * inside a block could still be walked past the band, but the physics never
-     * lets one get there.
-     */
+    // Candidate wall triangles of a swept circle, appended into `out`. Movers
+    // join in for the player's own movement — except a crush mover pressing him
+    // (vanilla lateral escape) — but never for the platform-riding drift, which
+    // resolves against the static world alone.
+    //
+    // The queried band is the sweep widened by the travel length AND by twice
+    // the radius, not just by the radius: the resolution slides along what it
+    // hits (so a wall met only after a deflection must already be in the set)
+    // and the depenetration pass can push the circle out by up to one radius
+    // before it even starts moving. A body buried DEEPER than its own radius
+    // inside a block could still be walked past the band, but the physics never
+    // lets one get there.
     _gatherWalls(cx, cz, vx, vz, r, out, includeMovers) {
         const margin = 2 * r + Math.sqrt(vx * vx + vz * vz);
         let n = 0;

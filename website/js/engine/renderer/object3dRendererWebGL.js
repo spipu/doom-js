@@ -363,18 +363,16 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.depthMask(true);
     }
 
-    /**
-     * Faces of an object grouped by draw state (texture / animation set / face
-     * opacity / clamp / additive), opaque groups first then translucent ones —
-     * alpha faces discard their transparent pixels in the shader, so depth is
-     * written only where the texture is opaque.
-     *
-     * Cached per object: the grouping walks every face and builds a string key
-     * for each, which on the level map means tens of thousands of key builds per
-     * frame for a partition that almost never changes. It is rebuilt only when
-     * the object reports a new face-groups version (a switch swapping SW1↔SW2,
-     * a "+change" floor swapping its flat).
-     */
+    // Faces of an object grouped by draw state (texture / animation set / face
+    // opacity / clamp / additive), opaque groups first then translucent ones —
+    // alpha faces discard their transparent pixels in the shader, so depth is
+    // written only where the texture is opaque.
+    //
+    // Cached per object: the grouping walks every face and builds a string key
+    // for each, which on the level map means tens of thousands of key builds per
+    // frame for a partition that almost never changes. It is rebuilt only when
+    // the object reports a new face-groups version (a switch swapping SW1↔SW2,
+    // a "+change" floor swapping its flat).
     _groupsFor(obj) {
         const cached = this._groupCache.get(obj);
         if ((cached !== undefined) && (cached.version === obj.getFaceGroupsVersion())) {
