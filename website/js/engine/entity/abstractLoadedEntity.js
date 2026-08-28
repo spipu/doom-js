@@ -11,6 +11,17 @@ class AbstractLoadedEntity {
         return this._id;
     }
 
+    /**
+     * Registry name of the entity, set by the loader that registers it (an
+     * entity loaded by URL alone keeps a null code).
+     *
+     * @param {string|null} code
+     */
+    setCode(code) {
+        this._code = code;
+        return this;
+    }
+
     getCode() {
         return this._code;
     }

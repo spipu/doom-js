@@ -95,7 +95,7 @@ class AbstractLoader {
         this._entities[entity.getId()] = entity;
         if (code !== null) {
             this._codeRegistry[code] = entity.getId();
-            entity._code = code;
+            entity.setCode(code);
         }
         return entity;
     }

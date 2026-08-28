@@ -11,8 +11,8 @@ class Engine3d {
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
         this.textureSmoothing = true; // texture filter: smoothed, or raw texels
-        this._viewYaw   = 0;          // cached in setCamera for the sky pass
-        this._viewPitch = 0;
+        this.viewYaw    = 0;          // cached in setCamera for the sky pass
+        this.viewPitch  = 0;
         this.viewMatrix = new Matrix();
         this.fov        = 0.0;
         // Frustum half-slopes, filled by preComputeViewport. Infinite until then
@@ -38,7 +38,9 @@ class Engine3d {
         this._deltaLast        = null;
         this._currentTimestamp = 0;
         this._fpsLastCheck     = null;
-        this._sceneMs          = 0;
+        // Scene clock (ms), advanced by calculateDeltaTime: what the renderers
+        // resolve an animated texture's current frame against.
+        this.sceneMs           = 0;
 
         this.viewMatrix.identity();
 
@@ -64,7 +66,7 @@ class Engine3d {
         this._currentTimestamp = timestamp;
         this._deltaTime = ((this._deltaLast === null) ? 0 : Math.min(timestamp - this._deltaLast, 50));
         this._deltaLast = timestamp;
-        this._sceneMs  += Math.round(this._deltaTime);
+        this.sceneMs  += Math.round(this._deltaTime);
         return this;
     }
 
@@ -272,8 +274,8 @@ class Engine3d {
 
 
     setCamera(user) {
-        this._viewYaw   = user.yaw;
-        this._viewPitch = user.pitch;
+        this.viewYaw   = user.yaw;
+        this.viewPitch = user.pitch;
         this.matrixIdentity();
         this.matrixRotateX(user.pitch);
         this.matrixRotateZ(user.getStrafeLean());

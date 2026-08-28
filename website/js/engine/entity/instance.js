@@ -378,6 +378,54 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
+    /**
+     * Fill the instance from its descriptor — the ONE place that knows the
+     * shape of an `.instance.json` (or of the equivalent object a runtime
+     * spawn hands over). It lives here rather than in the loader: the fields
+     * belong to the instance, and a loader poking them from outside would tie
+     * every future field to a second file.
+     *
+     * The time bounds are NOT derived here: finalizeInit installs the loaded
+     * cycle and computes them.
+     *
+     * @param {object} data {code, object (loader id or url), position, rotation,
+     *                       trigger, loop, onlyOnce, collisionShape,
+     *                       collisionRadius, interactionRadius,
+     *                       interactionShape, interactionReachBelow,
+     *                       interactionReachAbove, autoStart, damage,
+     *                       blockedBehavior, blockedSlowFactor, crushDamage,
+     *                       interaction, keyframes, keyframeVariants,
+     *                       defaultVariant}
+     */
+    populate(data) {
+        // Null, never undefined: runtime spawns (effects, projectiles, decals)
+        // omit the key, and every consumer tests the code against null.
+        this.setCode(data.code ?? null);
+        this._objectId                = ((typeof data.object === 'number') ? data.object : loader.objects().load(data.object));
+        this._position                = data.position;
+        this._rotation                = data.rotation;
+        this._trigger                 = data.trigger;
+        this._animLoop                = (data.loop === true);
+        this._animOnlyOnce            = (data.onlyOnce === true);
+        this._collisionShape          = (data.collisionShape ?? 'none');
+        this._collisionRadius         = (data.collisionRadius ?? null);
+        this._interactionRadius       = (data.interactionRadius ?? null);
+        this._interactionShape        = (data.interactionShape ?? 'sphere');
+        this._interactionReachBelow   = (data.interactionReachBelow ?? 0);
+        this._interactionReachAbove   = (data.interactionReachAbove ?? 0);
+        this._autoStart               = (data.autoStart === true);
+        this._damage                  = (data.damage || null);
+        this._blockedBehavior         = (data.blockedBehavior ?? 'stall');
+        this._blockedSlowFactor       = (data.blockedSlowFactor ?? 1);
+        this._crushDamage             = (data.crushDamage ?? null);
+        this._interaction             = (data.interaction || null);
+        this._animKeyframes           = (data.keyframes || []);
+        this._animVariants            = (data.keyframeVariants || null);
+        this._animDefaultVariant      = (data.defaultVariant ?? null);
+
+        return this;
+    }
+
     // dt in ms, user must expose getCenterX/Y/Z() and getFeetY(), action = E key state
     update(dt, user, action) {
         this._syncRide();

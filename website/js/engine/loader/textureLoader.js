@@ -17,7 +17,7 @@ class TextureLoader extends AbstractLoader {
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
 
-            entity._imageData = ctx.getImageData(0, 0, img.width, img.height);
+            entity.setImageData(ctx.getImageData(0, 0, img.width, img.height));
             entity.setLoaded();
         };
 
@@ -25,6 +25,6 @@ class TextureLoader extends AbstractLoader {
     }
 
     _populateFromData(entity, imageData) {
-        entity._imageData = imageData;
+        entity.setImageData(imageData);
     }
 }

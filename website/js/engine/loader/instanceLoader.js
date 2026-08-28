@@ -43,37 +43,12 @@ class InstanceLoader extends AbstractLoader {
         return new Instance(id, url, callback);
     }
 
-    // data.object: url string (loaded via Object3dLoader) or number (already loaded object id)
+    // The instance reads its own descriptor (Instance.populate); the loader
+    // only owns the code registry it maintains for getByCode.
     _populateFromData(entity, data) {
-        // Null, never undefined: runtime spawns (effects, projectiles, decals)
-        // omit the key, and every consumer tests the code against null.
-        entity._code             = (data.code ?? null);
-        entity._objectId         = ((typeof data.object === 'number') ? data.object : loader.objects().load(data.object));
-        entity._position         = data.position;
-        entity._rotation         = data.rotation;
-        entity._trigger          = data.trigger;
-        entity._animLoop         = (data.loop === true);
-        entity._animOnlyOnce     = (data.onlyOnce === true);
-        entity._collisionShape   = (data.collisionShape ?? 'none');
-        entity._collisionRadius  = (data.collisionRadius ?? null);
-        entity._interactionRadius = (data.interactionRadius ?? null);
-        entity._interactionShape = (data.interactionShape ?? 'sphere');
-        entity._interactionReachBelow = (data.interactionReachBelow ?? 0);
-        entity._interactionReachAbove = (data.interactionReachAbove ?? 0);
-        entity._autoStart        = (data.autoStart === true);
-        entity._damage           = data.damage || null;
-        entity._blockedBehavior  = (data.blockedBehavior ?? 'stall');
-        entity._blockedSlowFactor = (data.blockedSlowFactor ?? 1);
-        entity._crushDamage      = (data.crushDamage ?? null);
-        entity._interaction      = data.interaction || null;
-        entity._animKeyframes    = data.keyframes || [];
-        entity._animVariants     = data.keyframeVariants || null;
-        entity._animDefaultVariant = (data.defaultVariant ?? null);
-        // The time bounds are derived from the keyframes: finalizeInit installs
-        // the loaded cycle and computes them.
-
-        if (entity._code !== null) {
-            this._codeRegistry[entity._code] = entity.getId();
+        entity.populate(data);
+        if (entity.getCode() !== null) {
+            this._codeRegistry[entity.getCode()] = entity.getId();
         }
     }
 }

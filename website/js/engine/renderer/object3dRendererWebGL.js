@@ -84,8 +84,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
         gl.uniform1f(loc.w,      engine.scrWidth);
         gl.uniform1f(loc.h,      engine.scrHeight);
-        gl.uniform1f(loc.yaw,    engine._viewYaw * DEG);
-        gl.uniform1f(loc.pitch,  engine._viewPitch * DEG);
+        gl.uniform1f(loc.yaw,    engine.viewYaw * DEG);
+        gl.uniform1f(loc.pitch,  engine.viewPitch * DEG);
         gl.uniform1f(loc.fov,    engine.fov);
         gl.uniform1f(loc.wrap,   engine.sky.wrap);
         // Cap colours above and below the textured band: top = the scene
@@ -292,7 +292,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 }
                 // Scroll baked into the per-frame VBO: the fract() wrap in the
                 // fragment shader absorbs the (already wrapped) offset.
-                const scroll = this._uvScrollOffset(fc, engine._sceneMs);
+                const scroll = this._uvScrollOffset(fc, engine.sceneMs);
                 const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
                 // Light level (0..1) fed to the depth shading curve: max of the
                 // face colour (before the ambient of _pointColor) times the live
@@ -326,7 +326,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.depthMask(true);
             }
-            const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine._sceneMs);
+            const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine.sceneMs);
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
@@ -393,10 +393,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 groups.get(key).faces.push(k);
             }
         };
-        collect(obj._opaqueFaces);
+        collect(obj.opaqueFaces);
         const opaque = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
         groups.clear();
-        collect(obj._alphaFaces);
+        collect(obj.alphaFaces);
         const alpha = [...groups.values()].sort((a, b) => b.alpha - a.alpha);
 
         const built = [...opaque, ...alpha];

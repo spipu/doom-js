@@ -9,8 +9,13 @@ class Object3d extends AbstractLoadedEntity {
         this.faceList      = [];
         this.faceCount     = 0;
         this._textureIds   = [];
-        this._opaqueFaces  = [];
-        this._alphaFaces   = [];
+        // Face indices sorted by pass, filled by finalizeInit: the opaque ones
+        // first, then those the renderer blends last. Public like the rest of
+        // the geometry data (pt3d, faceList…), which the renderers read every
+        // frame — walking these two lists is what keeps the alpha pass behind
+        // the solid one.
+        this.opaqueFaces   = [];
+        this.alphaFaces    = [];
         this._groupLightFactors = {};
         this._faceGroupsVersion = 0;
     }
@@ -176,15 +181,15 @@ class Object3d extends AbstractLoadedEntity {
             this._localNormals[k*3+2] = nz;
         }
 
-        this._opaqueFaces = [];
-        this._alphaFaces  = [];
+        this.opaqueFaces = [];
+        this.alphaFaces  = [];
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
             if (fc.collisionOnly === true) {
                 continue;
             }
             fc.isAlpha = ((fc.alpha < 1) || (fc.blendAdd === true) || (fc.textureId !== null && loader.textures().get(fc.textureId).isAlpha()));
-            ((fc.isAlpha) ? this._alphaFaces : this._opaqueFaces).push(k);
+            ((fc.isAlpha) ? this.alphaFaces : this.opaqueFaces).push(k);
         }
     }
 
