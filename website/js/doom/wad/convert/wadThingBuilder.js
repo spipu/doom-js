@@ -187,33 +187,11 @@ class WadThingBuilder {
         };
     }
 
-    // World descriptor of one placed monster. Every spawn frame carries its
-    // full rotation set (1 or 8 raw sprite-bank entries): the world builder
-    // pre-builds one shared billboard per (frame, rotation) — no padded common
-    // canvas, each view keeps its own vanilla anchor (the doomEffects pattern).
+    // World descriptor of one placed monster.
     _buildMonsterEntry(thing, def, sect) {
-        // The spawn views are the monster's body: without them the monster is
-        // dropped. The walk/hurt/death views are optional (freedoom gaps): a
-        // state whose views are missing just keeps showing the previous ones —
-        // but the See letters MUST be collected here, else the walk animation
-        // freezes on the last shared letter (uneven frame durations).
-        const frames = {};
-        for (const pair of def.getFramePairs(['spawn'])) {
-            const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
-            if (views === null) {
-                return null;
-            }
-            frames[DoomMonsterDef.viewKey(pair.sprite, pair.frame)] = views;
-        }
-        for (const pair of def.getFramePairs(['see', 'pain', 'death', 'xdeath'])) {
-            const viewKey = DoomMonsterDef.viewKey(pair.sprite, pair.frame);
-            if (frames[viewKey] !== undefined) {
-                continue;
-            }
-            const views = this._spriteBank.getFrameRotations(pair.sprite, pair.frame);
-            if (views !== null) {
-                frames[viewKey] = views;
-            }
+        const frames = DoomMonsterFrames.build(def, this._spriteBank);
+        if (frames === null) {
+            return null;
         }
 
         const baseH = ((def.isCeiling()) ? sect.ch : sect.fh);

@@ -5,11 +5,12 @@
  * sprite prefix + frame letter and the consumer resolves the rotation lump.
  */
 class DoomMonsterState {
-    constructor(sprite, frame, tics, action, next, bright, fast) {
+    constructor(sprite, frame, tics, action, args, next, bright, fast) {
         this._sprite = sprite;
         this._frame  = frame;
         this._tics   = tics;
         this._action = action;
+        this._args   = args;
         this._next   = next;
         this._bright = bright;
         this._fast   = fast;
@@ -29,6 +30,12 @@ class DoomMonsterState {
 
     getAction() {
         return this._action;
+    }
+
+    // Parameters the state line passes to its action (null when it takes the
+    // verb's defaults) — the zscript argument list, transcribed.
+    getArgs() {
+        return this._args;
     }
 
     getNext() {

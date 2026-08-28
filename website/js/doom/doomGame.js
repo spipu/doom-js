@@ -60,6 +60,7 @@ class DoomGame {
         this._monsterCatalog = null;
         this._monsters       = null;   // runtime monster system (built per level)
         this._monsterDamage  = null;   // shared damage pipeline (built per level)
+        this._monsterAttack  = null;   // monster attack layer (built per level)
         this._skillTable     = null;
         this._buildCatalogs();
     }
@@ -101,11 +102,9 @@ class DoomGame {
         return (this._items[code] ?? null);
     }
 
-    /**
-     * True while the player holds an item revealing the whole map. Data-driven
-     * so every game follows: Doom's computer map and Heretic's map scroll both
-     * declare `effect: 'map'`.
-     */
+    // True while the player holds an item revealing the whole map. Data-driven
+    // so every game follows: Doom's computer map and Heretic's map scroll both
+    // declare `effect: 'map'`.
     hasMapPowerup(user) {
         for (const code of Object.keys(this._items)) {
             if ((this._items[code].getEffect() === 'map') && user.hasItem(code)) {
@@ -439,6 +438,12 @@ class DoomGame {
         this._killsCount++;
     }
 
+    // A_VileChase put a body back on its feet: vanilla Revive raises the level
+    // total with it, so the ratio stays honest when it is killed again.
+    addKillTotal() {
+        this._killsTotal++;
+    }
+
     getKillsCount() {
         return this._killsCount;
     }
@@ -489,19 +494,15 @@ class DoomGame {
 
     // --- Save / load ---
 
-    /**
-     * Arms the next startFromWad to restore a saved game on top of the rebuilt
-     * level (see DoomGameSnapshot). Consumed by _init.
-     */
+    // Arms the next startFromWad to restore a saved game on top of the rebuilt
+    // level (see DoomGameSnapshot). Consumed by _init.
     setRestoreSnapshot(snapshot) {
         this._restoreSnapshot = snapshot;
         return this;
     }
 
-    /**
-     * Snapshot of the running level (save game) — captured while the game is
-     * frozen under the pause menu, so the state is coherent.
-     */
+    // Snapshot of the running level (save game) — captured while the game is
+    // frozen under the pause menu, so the state is coherent.
     captureSnapshot() {
         return new DoomGameSnapshot().capture(this._snapshotContext());
     }
@@ -517,6 +518,7 @@ class DoomGame {
             collision:    this._world.getCollision(),
             rng:          this._rng,
             monsters:     this._monsters,
+            projectiles:  this._projectiles,
             gunTriggers:  this._gunTriggers,
             automap:      this._automap,
             secretsFound: this._secretsFound,
@@ -616,6 +618,11 @@ class DoomGame {
         this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._gameProfile.monsterDamageRules(), this);
         this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
         this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile, this._monsters, this._monsterDamage);
+        this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
+        // The attack layer: the gates A_Chase decides on, and every A_* verb of
+        // the bestiary. Its channels are wired in _init, once the world exists.
+        this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
+        this._monsters.setAttack(this._monsterAttack);
 
         loader.setCallback(() => {
             this._init();
@@ -709,6 +716,7 @@ class DoomGame {
         this._monsterDamage.setWorld(this._world.getCollision(), this._world.getUser());
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
+        this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
         if (this._world.getUser().getActiveWeapon() !== null) {
             this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
             this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
@@ -1052,12 +1060,10 @@ class DoomGame {
         }
     }
 
-    /**
-     * Called by an exit interaction (switch 11/51 or walk-over 52/124): the
-     * end-of-level tally, then the next level on the player's press (or back to
-     * the menu after the last level of the WAD). The secret flag routes to the
-     * secret level instead of the sequential one.
-     */
+    // Called by an exit interaction (switch 11/51 or walk-over 52/124): the
+    // end-of-level tally, then the next level on the player's press (or back to
+    // the menu after the last level of the WAD). The secret flag routes to the
+    // secret level instead of the sequential one.
     _onLevelExit(secret = false) {
         if (this._transitioning) {
             return;
@@ -1101,13 +1107,11 @@ class DoomGame {
         });
     }
 
-    /**
-     * Story text closing this level, or null when the chapter is not over.
-     * The three layers the vanilla engine stacks, in order: the WAD's own text
-     * (UMAPINFO, untranslatable), the WAD's replacement of the vanilla string
-     * (DEHACKED — how Freedoom tells its own story), then the game's
-     * transcribed catalog, which is the only translated one.
-     */
+    // Story text closing this level, or null when the chapter is not over.
+    // The three layers the vanilla engine stacks, in order: the WAD's own text
+    // (UMAPINFO, untranslatable), the WAD's replacement of the vanilla string
+    // (DEHACKED — how Freedoom tells its own story), then the game's
+    // transcribed catalog, which is the only translated one.
     _finaleText(secret) {
         const finale = this._mapInfo.finaleFor(this._levelName, secret);
         if (finale === null) {

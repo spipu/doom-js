@@ -1,12 +1,15 @@
 /**
- * Shared damage pipeline of the shootable bodies (monsters, barrels): every
- * player attack channel (hitscan, projectile impact, radius blast) lands here.
- * Faithful port of the P_DamageMobj chain — blood, health, kickback thrust,
- * pain roll or death (gibbed past the game's gib threshold) — with the
- * per-game numbers coming from profile.monsterDamageRules().
+ * Shared damage pipeline of every body that can be hurt — monsters, barrels
+ * and the player alike: each attack channel (hitscan, melee, projectile
+ * impact, radius blast) lands here. Faithful port of the P_DamageMobj chain —
+ * blood, health, kickback thrust, pain roll or death (gibbed past the game's
+ * gib threshold) — plus the ReactToDamage tail that wakes the victim and turns
+ * it on its attacker. The per-game numbers come from
+ * profile.monsterDamageRules().
  *
- * The module never moves anything: the thrust only feeds the record's
- * velocity, integrated by DoomMonsterSystem at 35 Hz.
+ * The module never moves anything: a monster's thrust feeds its record's
+ * velocity (integrated by DoomMonsterSystem at 35 Hz), the player's feeds the
+ * engine's own perturbation channel — one formula, two owners.
  */
 class DoomMonsterDamage {
     /**
@@ -38,72 +41,121 @@ class DoomMonsterDamage {
         return ((chance >= 256) || (this._rng.next() <= chance));
     }
 
+    // CanAttackHurt (p_map.cpp) at the default infighting setting: a MISSILE
+    // never wounds a body of its owner's species, and nothing ever spares the
+    // player. It is called from PIT_CheckThing alone, so it rules the missiles
+    // and them only — a chaingunner's spray does tear through its own kin.
+    static canAttackHurt(victim, shooter) {
+        if ((shooter === null) || DoomActorRef.isPlayer(victim) || DoomActorRef.isPlayer(shooter)) {
+            return true;
+        }
+
+        return (DoomActorRef.species(victim) !== DoomActorRef.species(shooter));
+    }
+
     /**
      * Hurt one body. A corpse still bleeds and takes thrust (sliding bodies)
      * but no longer loses health.
      *
-     * @param {object} record DoomMonsterSystem record
+     * @param {object} victim DoomMonsterSystem record, or the DoomUser
      * @param {number} amount rolled damage
-     * @param {object} opts   {point?, srcX?, srcZ?, kickback?, noBlood?,
-     *                         noRetarget?} — noRetarget = sourceless damage
-     *                         (a crusher): vanilla P_DamageMobj with a NULL
-     *                         source never turns the victim on anyone.
+     * @param {object} opts   {point?, source?, srcX?, srcZ?, kickback?,
+     *                         noBlood?, noRetarget?} — source is the attacking
+     *                         body (it becomes the victim's new target and
+     *                         gives the thrust its direction); noRetarget =
+     *                         sourceless damage (a crusher), which vanilla
+     *                         P_DamageMobj never turns the victim on anyone for.
      */
-    damage(record, amount, opts = {}) {
-        const def = record.def;
-        if ((opts.noBlood !== true) && (def.getFlags().noBlood !== true)) {
-            const at = (opts.point ?? record.inst.getWorldCenter());
-            this._spawnBlood(at[0], at[1], at[2], amount);
-        }
-        this._thrust(record, amount, opts);
-        if (record.dead) {
+    damage(victim, amount, opts = {}) {
+        if (DoomActorRef.isPlayer(victim)) {
+            this._damagePlayer(victim, amount, opts);
             return;
         }
-        record.health -= amount;
-        if (record.health <= 0) {
-            this._kill(record);
+        const def = victim.def;
+        if ((opts.noBlood !== true) && (def.getFlags().noBlood !== true)) {
+            const at = (opts.point ?? victim.inst.getWorldCenter());
+            this._spawnBlood(at[0], at[1], at[2], amount);
+        }
+        this._thrust(victim, amount, opts);
+        if (victim.dead) {
+            return;
+        }
+        victim.health -= amount;
+        if (victim.health <= 0) {
+            this._kill(victim);
             return;
         }
         if ((this._rng.next() < def.getPainChance()) && (def.getState('pain0') !== null)) {
-            this._monsters.enterState(record, 'pain0');
+            this._monsters.enterState(victim, 'pain0');
+            // MF_JUSTHIT: the flinch lets P_CheckMissileRange fire back at once.
+            victim.justHit = true;
         }
         // "we're awake now" (P_DamageMobj): the attack-gate delay is cleared
         // by any hit, whatever the pain roll said.
-        record.reactiontime = 0;
-        // P_DamageMobj wake: past its target lock, any damage turns the victim
-        // on its attacker (solo: the player) even without a pain flinch — a
-        // spawn-state monster jumps straight to its See state (the pain roll
-        // above may already have moved it, the guard covers that).
-        if ((opts.noRetarget !== true) && (record.threshold === 0)) {
-            record.target    = this._user;
-            record.threshold = DoomMonsterDamage.BASE_THRESHOLD;
-            if (record.stateKey.startsWith('spawn') && (def.getState('see0') !== null)) {
-                this._monsters.enterState(record, 'see0');
-            }
+        victim.reactiontime = 0;
+        this._retarget(victim, opts);
+    }
+
+    // ReactToDamage's target switch: a damaged body turns on whoever hit it —
+    // the player, or another monster (infighting). Species plays NO part here
+    // (OkayToSwitchTarget only refuses it under +NOINFIGHTSPECIES, which no
+    // monster of either bestiary carries): two zombies really do turn on each
+    // other, and what keeps a crowd from tearing itself apart over one stray
+    // fireball is the MISSILE immunity, not this rule.
+    _retarget(victim, opts) {
+        const source = (opts.source ?? null);
+        if ((opts.noRetarget === true) || (source === null) || (source === victim)) {
+            return;
+        }
+        // MF3_NOTARGET (the archvile, the maulotaur, D'Sparil): a body nobody
+        // may aim at is never adopted, so its blast starts no fight with it.
+        if (DoomActorRef.isMonster(source) && (source.def.getFlags().noTarget === true)) {
+            return;
+        }
+        // A lock still running keeps the current target — but a blow from that
+        // very target refreshes it instead of being ignored.
+        if ((victim.target !== source) && (victim.threshold !== 0)) {
+            return;
+        }
+        victim.target    = source;
+        victim.threshold = DoomMonsterDamage.BASE_THRESHOLD;
+        if (victim.stateKey.startsWith('spawn') && (victim.def.getState('see0') !== null)) {
+            this._monsters.enterState(victim, 'see0');
         }
     }
 
+    // The player half of P_DamageMobj: the armour, the skill factor and the
+    // invulnerability live on DoomUser, the kickback is the shared formula.
+    _damagePlayer(user, amount, opts) {
+        if (user.isDead()) {
+            return;
+        }
+        user.takeDamage(amount);
+        this._thrust(user, amount, opts);
+    }
+
     /**
-     * Explosion at a world point (rocket, barrel, phoenix…): the player keeps
-     * the vanilla Chebyshev falloff, every live body in range takes the same
-     * — with a wall line-of-sight check — plus the blast thrust.
+     * Explosion at a world point (rocket, barrel, phoenix…): every live body
+     * in range takes the vanilla Chebyshev falloff behind a line-of-sight
+     * check, plus the blast thrust. The player goes through the same path as
+     * the monsters — A_Explode never spared the shooter either.
      *
      * @param {number} x, y, z    world explosion point
      * @param {number} damage     bomb damage
      * @param {number} distance   bomb reach (map units)
-     * @param {object} opts       {kickback?, exclude?} exclude = the exploding record
+     * @param {object} opts       {kickback?, exclude?, source?} exclude = the exploding record
      */
     radiusAttack(x, y, z, damage, distance, opts = {}) {
-        const SCALE = WadConstants.SCALE;
+        const SCALE    = WadConstants.SCALE;
+        const kickback = (opts.kickback ?? this._rules.defKickback);
+        const source   = (opts.source ?? null);
 
-        // Player: distance from the blast in map units, minus his radius (16),
-        // behind the same sight check as every other victim (P_CheckSight).
         const pdx   = Math.abs(this._user.x - x) / SCALE;
         const pdz   = Math.abs(this._user.z - z) / SCALE;
-        const pDist = Math.max(0, Math.max(pdx, pdz) - 16);
+        const pDist = Math.max(0, Math.max(pdx, pdz) - (this._user.getRadius() / SCALE));
         if ((pDist < distance) && (damage - pDist > 0)
             && this._blastReaches(x, y, z, this._user.getCameraX(), this._user.getCameraY(), this._user.getCameraZ())) {
-            this._user.takeDamage(damage - pDist);
+            this.damage(this._user, damage - pDist, {srcX: x, srcZ: z, source: source, kickback: kickback});
         }
 
         for (const m of this._monsters.getMonsters()) {
@@ -123,7 +175,7 @@ class DoomMonsterDamage {
             }
             // No blood on blast victims: vanilla only bleeds on direct hits
             // (P_LineAttack / missile impact), never from P_RadiusAttack.
-            this.damage(m, damage - mDist, {srcX: x, srcZ: z, noBlood: true, kickback: (opts.kickback ?? this._rules.defKickback)});
+            this.damage(m, damage - mDist, {srcX: x, srcZ: z, source: source, noBlood: true, kickback: kickback});
         }
     }
 
@@ -142,28 +194,100 @@ class DoomMonsterDamage {
         return (wall === null);
     }
 
-    // ApplyKickback (interaction.zs): thrust = clamp(damage × 0.125 × kickback
-    // / mass, 0, 32) map units/tic away from the source. The vanilla "fall
-    // forwards" flourish is skipped. Applies to corpses too (blast-slid
-    // bodies, user decision) — except the noCorpseThrust defs (an exploding
-    // barrel must not glide away mid-explosion).
-    _thrust(record, damage, opts) {
-        if (record.dead && (record.def.getFlags().noCorpseThrust === true)) {
+    // ApplyKickback (interaction.zs): thrust away from the source, in map units
+    // per tic, clamped to 32 — clamp(damage × 0.125 × kickback / mass, 0, 32).
+    // The vanilla "fall forwards" flourish is skipped. Applies to corpses too
+    // (blast-slid bodies, user decision) — except the noCorpseThrust defs (an
+    // exploding barrel must not glide away mid-explosion).
+    _thrust(victim, damage, opts) {
+        const isPlayer = DoomActorRef.isPlayer(victim);
+        if (!isPlayer && victim.dead && (victim.def.getFlags().noCorpseThrust === true)) {
             return;
         }
         const kickback = (opts.kickback ?? this._rules.defKickback);
-        if ((kickback <= 0) || (opts.srcX === undefined)) {
+        const from     = this._sourcePos(opts);
+        if ((kickback <= 0) || (from === null)) {
             return;
         }
-        const mass   = record.def.getMass();
+        const mass   = ((isPlayer) ? WadConstants.PLAYER_MASS : victim.def.getMass());
         const thrust = Math.min(32, (damage * 0.125 * kickback) / ((mass > 0) ? mass : 1));
         if (thrust < 0.01) {
             return;
         }
-        const pos = record.inst.getTransform().position;
-        const ang = Math.atan2(pos[2] - opts.srcZ, pos[0] - opts.srcX);
-        record.velX += Math.cos(ang) * thrust;
-        record.velZ += Math.sin(ang) * thrust;
+        const ang = Math.atan2(DoomActorRef.z(victim) - from.z, DoomActorRef.x(victim) - from.x);
+        if (!isPlayer) {
+            victim.velX += Math.cos(ang) * thrust;
+            victim.velZ += Math.sin(ang) * thrust;
+            return;
+        }
+        // The player's momentum lives in the engine's perturbation channel,
+        // whose decay IS the vanilla friction — map units/tic become m/s there.
+        const speed = thrust * WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
+        victim.getExternalForces().addImpulse(Math.cos(ang) * speed, Math.sin(ang) * speed);
+    }
+
+    // Being caught in a funnel (Whirlwind::DoSpecialDamage): the victim is
+    // spun on the spot, shoved sideways at random and lifted a little. Amounts
+    // are the vanilla maxima, in map units per tic.
+    spin(victim, shove, lift) {
+        const turn = this._rng.nextDiff() * (360 / 4096);
+        const dx   = (this._rng.nextDiff() / 128) * shove;
+        const dz   = (this._rng.nextDiff() / 128) * shove;
+        if (!DoomActorRef.isPlayer(victim)) {
+            victim.facing = (((victim.facing + turn) % 360) + 360) % 360;
+            victim.velX  += dx;
+            victim.velZ  += dz;
+            // A boss keeps its feet on the ground (the funnel never lifts one).
+            if (victim.def.getFlags().boss !== true) {
+                victim.velY = Math.min(victim.velY + lift, DoomMonsterDamage.SPIN_MAX_LIFT);
+            }
+            return;
+        }
+        victim.yaw = (((victim.yaw + turn) % 360) + 360) % 360;
+        const perSecond = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
+        victim.getExternalForces().addImpulse(dx * perSecond, dz * perSecond);
+        victim.applyVerticalImpulse(Math.min(lift, DoomMonsterDamage.SPIN_MAX_LIFT) * perSecond);
+    }
+
+    /**
+     * The vertical half of a blow: the archvile's hellfire throws its victim
+     * straight up (A_VileAttack — Vel.Z = thrust × 1000 / mass, map units per
+     * tic). A monster carries its own vertical velocity; the player's lives in
+     * the engine's physics.
+     *
+     * @param {number} thrust the verb's thrust factor (1 for the archvile)
+     */
+    launch(victim, thrust) {
+        const isPlayer = DoomActorRef.isPlayer(victim);
+        const mass     = ((isPlayer) ? WadConstants.PLAYER_MASS : victim.def.getMass());
+        const velocity = (thrust * 1000) / Math.max(1, mass);
+        if (!isPlayer) {
+            victim.velY = velocity;
+            return;
+        }
+        victim.applyVerticalImpulse(velocity * WadConstants.SCALE / WadConstants.SECONDS_PER_TIC);
+    }
+
+    // Where the blow came from: an explicit point (a blast) or the attacking
+    // body's own position. null when nothing says — the victim is not pushed.
+    _sourcePos(opts) {
+        if (opts.srcX !== undefined) {
+            return {x: opts.srcX, z: opts.srcZ};
+        }
+        const source = (opts.source ?? null);
+        if (source === null) {
+            return null;
+        }
+
+        return {x: DoomActorRef.x(source), z: DoomActorRef.z(source)};
+    }
+
+    // A_VileChase put a body back on its feet: vanilla Revive raises the level
+    // total with it, so the ☠ ratio stays honest when it is killed again.
+    reviveCounted(record) {
+        if ((record.def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._game !== null)) {
+            this._game.addKillTotal();
+        }
     }
 
     _kill(record) {
@@ -195,3 +319,5 @@ class DoomMonsterDamage {
 
 // Vanilla BASETHRESHOLD (p_inter.c): the target lock set on every wake-by-damage
 DoomMonsterDamage.BASE_THRESHOLD = 100;
+// Ceiling the whirlwind lifts a body to (Whirlwind::DoSpecialDamage), u/tic
+DoomMonsterDamage.SPIN_MAX_LIFT  = 12;

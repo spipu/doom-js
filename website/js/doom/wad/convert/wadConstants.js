@@ -668,6 +668,35 @@ class WadConstants {
     static ACTOR_STEP_HEIGHT = 24 * WadConstants.SCALE;
     static ACTOR_FLOAT_SPEED = 4 * WadConstants.SCALE;
     static ORIG_FRICTION     = 0.90625;
+    // MaxDropOffHeight (actor.zs): a walker refuses to overhang a deeper drop,
+    // and walks away from one it already overhangs (P_NewChaseDir).
+    static ACTOR_DROPOFF_HEIGHT = 24 * WadConstants.SCALE;
+
+    // --- Monster attacks (p_enemy.cpp / p_mobj.cpp / actor.zs defaults) ---
+
+    // MeleeRange = 64 - MELEEDELTA(20): the reach is this PLUS the victim's
+    // radius (P_CheckMeleeRange), never the plain distance between centres.
+    static ACTOR_MELEE_RANGE = 44;
+    // MinMissileChance / MissileChanceMult defaults of the attack-decision jet.
+    static MIN_MISSILE_CHANCE   = 200;
+    static MISSILE_CHANCE_MULT  = 1;
+    // P_CheckMissileRange: the distance is measured minus 64, and a monster
+    // with no melee state fires from further out (an extra -128).
+    static MISSILE_RANGE_BIAS    = 64;
+    static MISSILE_NO_MELEE_BIAS = 128;
+    // P_SpawnMissile: a missile leaves 32 units above the shooter's feet and
+    // flies along the feet→feet vector (monsters have no free aim).
+    static MISSILE_SPAWN_HEIGHT = 32;
+    // A monster's hitscan leaves its body centre plus AttackOffset
+    // (actorinlines.h: 8 for a non-player), and reaches MISSILERANGE.
+    static MONSTER_ATTACK_Z_OFFSET = 8;
+    static MONSTER_ATTACK_RANGE    = 2048;
+    // Horizontal spread of a monster bullet, in degrees per Random2 unit
+    // (Random2 * (22.5/256), A_PosAttack and friends).
+    static MONSTER_BULLET_SPREAD = 22.5 / 256;
+    // A_SkullAttack default charge speed (map units/tic) and the mode's own
+    // stop threshold — a charging body slams instead of shooting.
+    static SKULL_CHARGE_SPEED = 20;
 
     // Feet-on-the-sector-floor tolerance (world units) of the runtime sector
     // effects (damage / secret / carry / friction): vanilla tests
@@ -910,6 +939,10 @@ class WadConstants {
     // in level design (e.g. E1M4 raised floor, gap 160-104=56). Our engine's
     // vertical clearance is stricter, so the margin restores those passages.
     static PLAYER_HEIGHT = 0.866;
+
+    // Vanilla PlayerPawn Mass: the divisor of the kickback formula, so a shot
+    // shoves the player exactly as far as it shoves a body of equal mass.
+    static PLAYER_MASS = 100;
 
     static USER_DEFAULTS = {
         maxEnergy:       100,
