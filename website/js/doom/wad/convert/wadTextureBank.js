@@ -322,9 +322,7 @@ class WadTextureBank {
         return out;
     }
 
-    /**
-     * A row is "dead" when no pixel is real (each is transparent or near-black).
-     */
+    // A row is "dead" when no pixel is real (each is transparent or near-black).
     static _isDeadRow(d, w, y) {
         const row = y * w * 4;
         for (let x = 0; x < w; x++) {
@@ -337,11 +335,9 @@ class WadTextureBank {
         return true;
     }
 
-    /**
-     * Fill transparent pixels from the nearest opaque pixel on the same row
-     * (forward then backward pass) — closes any column gaps without ever
-     * stretching vertically. Leaves a fully-transparent row untouched.
-     */
+    // Fill transparent pixels from the nearest opaque pixel on the same row
+    // (forward then backward pass) — closes any column gaps without ever
+    // stretching vertically. Leaves a fully-transparent row untouched.
     static _fillTransparentHorizontally(image) {
         const w = image.width;
         const h = image.height;

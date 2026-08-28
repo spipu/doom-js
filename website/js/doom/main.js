@@ -1,8 +1,10 @@
-// iOS Safari leaves a residual negative document scroll after a rotation (the
-// toolbar collapses and the visual viewport shifts up). That offset pushes the
-// statically centered #screen (menus) down and shifts touch coordinates.
-// Resetting the scroll to the top neutralizes it for every fullscreen container
-// at once. Deferred passes catch iOS settling the layout a few frames later.
+/**
+ * iOS Safari leaves a residual negative document scroll after a rotation (the
+ * toolbar collapses and the visual viewport shifts up). That offset pushes the
+ * statically centered #screen (menus) down and shifts touch coordinates.
+ * Resetting the scroll to the top neutralizes it for every fullscreen container
+ * at once. Deferred passes catch iOS settling the layout a few frames later.
+ */
 function stabilizeViewport()
 {
     window.scrollTo(0, 0);

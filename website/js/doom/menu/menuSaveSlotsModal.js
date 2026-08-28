@@ -42,19 +42,15 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
         return this;
     }
 
-    /**
-     * Load mode: fired with the chosen slot's metadata; the modal closed
-     * itself (onClose neutralized) before the call.
-     */
+    // Load mode: fired with the chosen slot's metadata; the modal closed
+    // itself (onClose neutralized) before the call.
     setOnLoad(callback) {
         this._onLoad = callback;
 
         return this;
     }
 
-    /**
-     * Save mode: {buildMeta(slot), capture()} provided by the running game.
-     */
+    // Save mode: {buildMeta(slot), capture()} provided by the running game.
     setSaveContext(context) {
         this._saveContext = context;
 

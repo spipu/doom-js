@@ -1,11 +1,13 @@
-// The weapon view-sprite's on-screen offset and its smoothing, split out of the
-// state machine. The shown offset (sx,sy) eases toward a target (tx,ty): the
-// state machine sets that target (bob while moving, centre on fire / at rest) or
-// drives the raise/lower directly. Vanilla snaps the bob straight onto sx/sy,
-// but its magnitude decays with the player's momentum (friction) so it drifts
-// back gently; our velocity is instantaneous, so we ease the offset instead.
-// Placement follows Doom's R_DrawPSprite in a 320x200 base (left = sx -
-// leftOffset, top = sy - topOffset), normalised to 0..1 screen space.
+/**
+ * The weapon view-sprite's on-screen offset and its smoothing, split out of the
+ * state machine. The shown offset (sx,sy) eases toward a target (tx,ty): the
+ * state machine sets that target (bob while moving, centre on fire / at rest) or
+ * drives the raise/lower directly. Vanilla snaps the bob straight onto sx/sy,
+ * but its magnitude decays with the player's momentum (friction) so it drifts
+ * back gently; our velocity is instantaneous, so we ease the offset instead.
+ * Placement follows Doom's R_DrawPSprite in a 320x200 base (left = sx -
+ * leftOffset, top = sy - topOffset), normalised to 0..1 screen space.
+ */
 class DoomWeaponMotion {
     constructor() {
         this._sx = 1;

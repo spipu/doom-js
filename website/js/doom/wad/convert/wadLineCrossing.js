@@ -16,18 +16,14 @@ class WadLineCrossing {
         this._lastZ   = null;
     }
 
-    /**
-     * True when the actor moved across the line since the previous call.
-     */
+    // True when the actor moved across the line since the previous call.
     crossedBy(user) {
         return (this.crossingSideBy(user) !== null);
     }
 
-    /**
-     * Side of the line the actor CAME FROM when it crossed since the previous
-     * call: null when no crossing, else 0 (front) / 1 (back). Vanilla hands
-     * the origin side to the specials (P_TryMove passes oldside).
-     */
+    // Side of the line the actor CAME FROM when it crossed since the previous
+    // call: null when no crossing, else 0 (front) / 1 (back). Vanilla hands
+    // the origin side to the specials (P_TryMove passes oldside).
     crossingSideBy(user) {
         const fromX = this._lastX;
         const fromZ = this._lastZ;

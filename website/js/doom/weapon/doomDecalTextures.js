@@ -1,22 +1,24 @@
-// Source pixels of the impact-decal graphics, decoded ONCE at app startup and
-// kept across level changes. loader.reset() wipes engine textures at every
-// level, but these graphics are level-independent, so their raw ImageData is
-// cached here and re-registered per level (in the load batch) by DoomDecals.
-//
-// WHICH graphics exist is per-game data: every registered game profile
-// contributes its decalAssets() manifest ({basePath, keys}), all loaded at
-// startup since the WAD (hence the game) is only known later. Keys must be
-// unique across games (never the same key for two different files); since
-// the union of every manifest is always loaded, a profile's decalTemplates()
-// may reference keys declared by another profile (Heretic reuses the Doom
-// plasma1/plasma2/scorch1 graphics).
-//
-// The PNGs are grayscale intensity masks (fully opaque, black background): the
-// luminance IS the coverage. DoomDecals colourises them with the decaldef
-// `shade` at registration time (luminance → alpha, shade → RGB).
-//
-// These are third-party GPL v3 assets (see website/assets/uzdoom/) — the only
-// non-MIT files in the project; the rest of the engine stays asset-free.
+/**
+ * Source pixels of the impact-decal graphics, decoded ONCE at app startup and
+ * kept across level changes. loader.reset() wipes engine textures at every
+ * level, but these graphics are level-independent, so their raw ImageData is
+ * cached here and re-registered per level (in the load batch) by DoomDecals.
+ *
+ * WHICH graphics exist is per-game data: every registered game profile
+ * contributes its decalAssets() manifest ({basePath, keys}), all loaded at
+ * startup since the WAD (hence the game) is only known later. Keys must be
+ * unique across games (never the same key for two different files); since
+ * the union of every manifest is always loaded, a profile's decalTemplates()
+ * may reference keys declared by another profile (Heretic reuses the Doom
+ * plasma1/plasma2/scorch1 graphics).
+ *
+ * The PNGs are grayscale intensity masks (fully opaque, black background): the
+ * luminance IS the coverage. DoomDecals colourises them with the decaldef
+ * `shade` at registration time (luminance → alpha, shade → RGB).
+ *
+ * These are third-party GPL v3 assets (see website/assets/uzdoom/) — the only
+ * non-MIT files in the project; the rest of the engine stays asset-free.
+ */
 class DoomDecalTextures {
     constructor() {
         this._data  = {};      // key → raw ImageData

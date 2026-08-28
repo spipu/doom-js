@@ -92,11 +92,9 @@ class DoomAutomap {
         return null;
     }
 
-    /**
-     * Revealed lines, by LINEDEF index — never by position in our own list (the
-     * idiom of DoomSecretInteraction): that index belongs to the WAD's LINEDEFS
-     * lump, so it survives any reshuffle of the build.
-     */
+    // Revealed lines, by LINEDEF index — never by position in our own list (the
+    // idiom of DoomSecretInteraction): that index belongs to the WAD's LINEDEFS
+    // lump, so it survives any reshuffle of the build.
     exportState() {
         const seen = [];
         for (const line of this._model.lines) {
@@ -108,11 +106,9 @@ class DoomAutomap {
         return {lineCount: this._model.lineCount, seen: seen};
     }
 
-    /**
-     * A different line count means the WAD file changed under the same id (the
-     * id is only its name): the map restarts blank rather than painting
-     * nonsense. Unknown indexes are ignored for the same reason.
-     */
+    // A different line count means the WAD file changed under the same id (the
+    // id is only its name): the map restarts blank rather than painting
+    // nonsense. Unknown indexes are ignored for the same reason.
     importState(state) {
         if (((state ?? null) === null) || (state.lineCount !== this._model.lineCount)) {
             return;

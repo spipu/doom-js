@@ -34,13 +34,11 @@ class DoomSectorZones {
         return (this._bySi.get(si) ?? null);
     }
 
-    /**
-     * The zone under an actor's FEET (world coordinates): containing the
-     * position AND with the actor standing on its floor — the vanilla
-     * mo->z == floorheight gate of the damage and secret sectors. Zones
-     * failing the floor gate do not stop the search (nested outers overlap
-     * in polygon mode).
-     */
+    // The zone under an actor's FEET (world coordinates): containing the
+    // position AND with the actor standing on its floor — the vanilla
+    // mo->z == floorheight gate of the damage and secret sectors. Zones
+    // failing the floor gate do not stop the search (nested outers overlap
+    // in polygon mode).
     zoneUnderFeet(worldX, worldY, worldZ) {
         const doomX = worldX / WadConstants.SCALE;
         const doomY = worldZ / WadConstants.SCALE;

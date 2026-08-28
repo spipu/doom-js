@@ -1,9 +1,11 @@
-// The player's weapon logic — a faithful port of p_pspr.c. Owns the two
-// psprites (weapon + muzzle flash), runs their state machine at 35 tics/s,
-// bobs the weapon from the player's speed, drives the raise/lower on a
-// retargetable pending weapon, consumes ammo and dispatches the fire actions
-// to the injected attack systems (hitscan / projectiles). No rendering here:
-// getViewSprites() hands the current frames to the engine's view-sprite pass.
+/**
+ * The player's weapon logic — a faithful port of p_pspr.c. Owns the two
+ * psprites (weapon + muzzle flash), runs their state machine at 35 tics/s,
+ * bobs the weapon from the player's speed, drives the raise/lower on a
+ * retargetable pending weapon, consumes ammo and dispatches the fire actions
+ * to the injected attack systems (hitscan / projectiles). No rendering here:
+ * getViewSprites() hands the current frames to the engine's view-sprite pass.
+ */
 class DoomPlayerWeapon {
     constructor(game, user, spriteBank, rng) {
         this._game       = game;

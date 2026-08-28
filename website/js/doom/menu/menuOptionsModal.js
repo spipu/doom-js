@@ -57,9 +57,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return this._open('options', 'menu.game.options', () => this._buildRoot());
     }
 
-    /**
-     * Opens the modal directly on the About page (no options root underneath).
-     */
+    // Opens the modal directly on the About page (no options root underneath).
     showAbout() {
         return this._open('about', 'help.about', () => this._buildAbout());
     }

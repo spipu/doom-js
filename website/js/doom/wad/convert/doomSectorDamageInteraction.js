@@ -91,11 +91,9 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         user.takeDamage(entry.damage);
     }
 
-    /**
-     * "+change" support: a floor change rewrites the sector's special (0 =
-     * harmless) and, the floor having moved, its height. No-op on a sector
-     * absent from the zones (never damaging, before or after).
-     */
+    // "+change" support: a floor change rewrites the sector's special (0 =
+    // harmless) and, the floor having moved, its height. No-op on a sector
+    // absent from the zones (never damaging, before or after).
     setSectorSpecial(si, special, floorY) {
         const zone = this._zones.bySi(si);
         if (zone !== null) {

@@ -82,33 +82,27 @@ class WadBspTree {
         this._sectorPolys       = level.sectors.map(() => []);
     }
 
-    /**
-     * Convex polygons ([x, y] Doom units) covering the sector, one per
-     * subsector. Empty for a sector the BSP never reaches (callers fall back
-     * to the chain polygons for it), and after releaseBuildData.
-     */
+    // Convex polygons ([x, y] Doom units) covering the sector, one per
+    // subsector. Empty for a sector the BSP never reaches (callers fall back
+    // to the chain polygons for it), and after releaseBuildData.
     polysOfSector(si) {
         return ((this._sectorPolys !== null) ? this._sectorPolys[si] : []);
     }
 
-    /**
-     * The carved polygons and the raw lumps only serve the build; findSector
-     * needs the nodes and the subsector→sector table alone. Frees the carved
-     * per-subsector polygons and this tree's own level/lump references — the
-     * parsed level itself stays alive through the monster system's runtime
-     * findSector (its polygon fallback needs it).
-     */
+    // The carved polygons and the raw lumps only serve the build; findSector
+    // needs the nodes and the subsector→sector table alone. Frees the carved
+    // per-subsector polygons and this tree's own level/lump references — the
+    // parsed level itself stays alive through the monster system's runtime
+    // findSector (its polygon fallback needs it).
     releaseBuildData() {
         this._level       = null;
         this._bsp         = null;
         this._sectorPolys = null;
     }
 
-    /**
-     * R_PointInSubsector (r_main.c): iterative descent, on-line goes to the
-     * left child (vanilla back side). Returns the sector index, or null on a
-     * subsector no seg could attribute (the polygon fallback decides).
-     */
+    // R_PointInSubsector (r_main.c): iterative descent, on-line goes to the
+    // left child (vanilla back side). Returns the sector index, or null on a
+    // subsector no seg could attribute (the polygon fallback decides).
     findSector(x, y) {
         let child = this._nodes.length - 1;
         while (!WadBspTree.isLeaf(child)) {

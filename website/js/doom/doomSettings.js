@@ -123,27 +123,21 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Definitions whose key starts with the given prefix — the settings UI
-     * builds its pages this way: one section per device ('pad.',
-     * 'virtual_pad.', 'mouse.', 'keyboard.') plus the display page
-     * ('display.').
-     */
+    // Definitions whose key starts with the given prefix — the settings UI
+    // builds its pages this way: one section per device ('pad.',
+    // 'virtual_pad.', 'mouse.', 'keyboard.') plus the display page
+    // ('display.').
     getDefinitions(prefix) {
         return DoomSettings.DEFINITIONS.filter((def) => def.key.startsWith(prefix));
     }
 
-    /**
-     * Raw read (settings UI); an unset key falls back to its default.
-     */
+    // Raw read (settings UI); an unset key falls back to its default.
     get(key) {
         return ((this._values[key] !== undefined) ? this._values[key] : this._defaults[key]);
     }
 
-    /**
-     * Updates the value and persists it. Fire-and-forget write: the in-memory
-     * value is authoritative for the session even if the write fails.
-     */
+    // Updates the value and persists it. Fire-and-forget write: the in-memory
+    // value is authoritative for the session even if the write fails.
     set(key, value) {
         this._values[key] = value;
         if (this._database !== null) {
@@ -155,10 +149,8 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Fraction 0..1 of a percent-coded 'list' value ('7.5' → 0.075) — the shape
-     * every percentage setting uses (see percentValues).
-     */
+    // Fraction 0..1 of a percent-coded 'list' value ('7.5' → 0.075) — the shape
+    // every percentage setting uses (see percentValues).
     getPercent(key) {
         const percent = parseFloat(this.get(key));
         if (Number.isFinite(percent)) {
@@ -223,11 +215,9 @@ class DoomSettings {
         return codes[((index + dir + codes.length) % codes.length)];
     }
 
-    /**
-     * Removes the given key code from every OTHER keyboard binding that
-     * carries it (a key can only serve one action) — the emptied binding is
-     * saved as '' (unmapped).
-     */
+    // Removes the given key code from every OTHER keyboard binding that
+    // carries it (a key can only serve one action) — the emptied binding is
+    // saved as '' (unmapped).
     unbindKeyCode(code, exceptKey) {
         for (const def of DoomSettings.DEFINITIONS) {
             if ((def.type === 'char') && (def.key !== exceptKey) && (this.get(def.key) === code)) {
@@ -238,11 +228,9 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Keyboard mapping for the engine ({action: code}): only the bindings
-     * explicitly SAVED by the player override the engine defaults; a ''
-     * value unmaps the action.
-     */
+    // Keyboard mapping for the engine ({action: code}): only the bindings
+    // explicitly SAVED by the player override the engine defaults; a ''
+    // value unmaps the action.
     getKeyboardMapping() {
         const mapping = {};
         for (const def of DoomSettings.DEFINITIONS) {
@@ -254,12 +242,10 @@ class DoomSettings {
         return mapping;
     }
 
-    /**
-     * Deletes EVERY saved setting — everything falls back to the defaults.
-     * The whole store is wiped (not just the known keys), so orphan rows of
-     * older versions go away too. In-memory values reset immediately, the
-     * store wipe is fire-and-forget like set().
-     */
+    // Deletes EVERY saved setting — everything falls back to the defaults.
+    // The whole store is wiped (not just the known keys), so orphan rows of
+    // older versions go away too. In-memory values reset immediately, the
+    // store wipe is fire-and-forget like set().
     resetAll() {
         this._values = Object.create(null);
         if (this._database !== null) {
@@ -273,10 +259,8 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Pushes the input-related settings onto the engine Inputs — called at
-     * game init and after every change from the settings UI.
-     */
+    // Pushes the input-related settings onto the engine Inputs — called at
+    // game init and after every change from the settings UI.
     applyToInputs(inputs) {
         inputs.setLookInvertY('gamepad', this.getPadYInverse());
         inputs.setLookInvertY('virtualGamepad', this.getVirtualPadYInverse());

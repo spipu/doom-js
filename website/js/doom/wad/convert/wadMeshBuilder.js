@@ -66,16 +66,14 @@ class WadMeshBuilder {
             {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si)});
     }
 
-    /**
-     * Full floor or ceiling flat of a sector, from its linedef-chain polygons
-     * and their holes (without the holes a ring sector would get a solid disc
-     * over the inner one). A sector whose chains do not close has no usable
-     * contour: it takes the BSP subsector fans instead, which is what the
-     * carve was added for — the chains stay the shape of everything else,
-     * because ONE boundary per sector cannot disagree with itself, while two
-     * carved neighbours can (E1M2 sector 142 lost a 227-unit sliver of
-     * ceiling to a linedef line prolonged past its seg).
-     */
+    // Full floor or ceiling flat of a sector, from its linedef-chain polygons
+    // and their holes (without the holes a ring sector would get a solid disc
+    // over the inner one). A sector whose chains do not close has no usable
+    // contour: it takes the BSP subsector fans instead, which is what the
+    // carve was added for — the chains stay the shape of everything else,
+    // because ONE boundary per sector cannot disagree with itself, while two
+    // carved neighbours can (E1M2 sector 142 lost a 227-unit sliver of
+    // ceiling to a linedef line prolonged past its seg).
     static addSectorFlat(mesh, level, texIdx, si, yHeight, isFloor, light, options = {}) {
         const lightGroup = (options.lightGroup ?? null);
         const uScroll    = (options.uScroll ?? 0);
@@ -103,11 +101,9 @@ class WadMeshBuilder {
         }
     }
 
-    /**
-     * One CONVEX flat polygon fanned from its first vertex ((numlines - 2)
-     * triangles, GZDoom hw_vertexbuilder) — the per-subsector path, no
-     * triangulator involved.
-     */
+    // One CONVEX flat polygon fanned from its first vertex ((numlines - 2)
+    // triangles, GZDoom hw_vertexbuilder) — the per-subsector path, no
+    // triangulator involved.
     static addConvexFlat(mesh, texIdx, convexPolyDoom, yHeight, isFloor, light = 128, lightGroup = null, uScrollUvPerSec = 0, collisionOnly = false) {
         if (convexPolyDoom.length < 3) {
             return;
@@ -369,10 +365,8 @@ class WadMeshBuilder {
         return sortedGlobal.map((g) => g - 1);
     }
 
-    /**
-     * Replace static 'texture' by animated 'textures' on the faces matching the
-     * animation map (local 1-based indices), in place.
-     */
+    // Replace static 'texture' by animated 'textures' on the faces matching the
+    // animation map (local 1-based indices), in place.
     static applyAnimMap(faces, animMap) {
         for (const face of faces) {
             const idx = face.texture;

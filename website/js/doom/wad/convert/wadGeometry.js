@@ -3,10 +3,8 @@
  * All static methods. 2D points are [x, y] arrays in Doom units or world units.
  */
 class WadGeometry {
-    /**
-     * Convert Doom map coordinates to world (x, z) or (x, y, z).
-     * Doom x → world x, Doom y → world z (same sign — not negated).
-     */
+    // Convert Doom map coordinates to world (x, z) or (x, y, z).
+    // Doom x → world x, Doom y → world z (same sign — not negated).
     static doomToWorld(dx, dy, dzHeight = null) {
         const x = dx * WadConstants.SCALE;
         const z = dy * WadConstants.SCALE;
@@ -51,9 +49,7 @@ class WadGeometry {
         return [point[0] - dir[0] * back, point[1] - dir[1] * back, point[2] - dir[2] * back];
     }
 
-    /**
-     * 2D length of a wall segment in Doom units.
-     */
+    // 2D length of a wall segment in Doom units.
     static wallLengthDoom(vertexes, v1, v2) {
         const dx = vertexes[v2][0] - vertexes[v1][0];
         const dy = vertexes[v2][1] - vertexes[v1][1];
@@ -106,9 +102,7 @@ class WadGeometry {
         return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
     }
 
-    /**
-     * Shortest distance from point (px, py) to the segment (ax, ay)-(bx, by).
-     */
+    // Shortest distance from point (px, py) to the segment (ax, ay)-(bx, by).
     static distanceToSegment(px, py, ax, ay, bx, by) {
         return Math.sqrt(WadGeometry.pointSegmentDistSq(px, py, ax, ay, bx, by));
     }
@@ -123,9 +117,7 @@ class WadGeometry {
         return !(hasNeg && hasPos);
     }
 
-    /**
-     * Ray-casting point-in-polygon test in 2D.
-     */
+    // Ray-casting point-in-polygon test in 2D.
     static pointInPolygon2d(px, pz, poly) {
         let inside = false;
         const n = poly.length;
@@ -140,9 +132,7 @@ class WadGeometry {
         return inside;
     }
 
-    /**
-     * Shoelace sign: positive → CW winding, negative → CCW winding.
-     */
+    // Shoelace sign: positive → CW winding, negative → CCW winding.
     static polygonAreaSign(poly) {
         let s = 0;
         const n = poly.length;
@@ -155,10 +145,8 @@ class WadGeometry {
         return s;
     }
 
-    /**
-     * Squared 2D distance from a point to a segment (same coordinate space
-     * for both).
-     */
+    // Squared 2D distance from a point to a segment (same coordinate space
+    // for both).
     static pointSegmentDistSq(px, pz, x1, z1, x2, z2) {
         const dx    = x2 - x1;
         const dz    = z2 - z1;

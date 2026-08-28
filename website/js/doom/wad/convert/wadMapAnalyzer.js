@@ -236,17 +236,19 @@ class WadMapAnalyzer {
 
     // --- Donuts (special 9, S1 — vanilla EV_DoDonut) ---
 
-    // The tagged sector s1 (the "hole"/pillar) LOWERS to the floor of s3 while
-    // the untagged ring s2 around it RISES to the same height, both at
-    // FLOORSPEED/2; at the ring's arrival its flat becomes s3's and its sector
-    // special is cleared (T_MoveFloor donutRaise — the raised slime no longer
-    // hurts). s2 = the sector across s1's first linedef; s3 = the sector
-    // across s2's first two-sided linedef whose far side is not s1. The hole
-    // rides the floor-down family with a forced target (holeTargetFh); the
-    // ring joins the rising floors (ringTag lets the switch resolve it — a
-    // ring carries no tag of its own).
-    //
-    // @returns {{holeTargetFh: object, rings: object, ringTag: object}}
+    /**
+     * The tagged sector s1 (the "hole"/pillar) LOWERS to the floor of s3 while
+     * the untagged ring s2 around it RISES to the same height, both at
+     * FLOORSPEED/2; at the ring's arrival its flat becomes s3's and its sector
+     * special is cleared (T_MoveFloor donutRaise — the raised slime no longer
+     * hurts). s2 = the sector across s1's first linedef; s3 = the sector
+     * across s2's first two-sided linedef whose far side is not s1. The hole
+     * rides the floor-down family with a forced target (holeTargetFh); the
+     * ring joins the rising floors (ringTag lets the switch resolve it — a
+     * ring carries no tag of its own).
+     *
+     * @returns {{holeTargetFh: object, rings: object, ringTag: object}}
+     */
     _identifyDonuts() {
         const {sidedefs, sectors} = this._level;
         const linedefs = this._moverLinedefs();
@@ -297,13 +299,15 @@ class WadMapAnalyzer {
         return {holeTargetFh: holeTargetFh, rings: rings, ringTag: ringTag};
     }
 
-    // Ring half of the donuts: joins the rising floors (fh not patched, moving
-    // top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
-    // does not rise above its own floor is dropped (no movement in vanilla).
-    // Each claimed ring also gets its declared "+change" (the up-table entry:
-    // model flat, special zeroed, at arrival — T_MoveFloor donutRaise).
-    //
-    // @returns {object} claimed ring si → floorChange record
+    /**
+     * Ring half of the donuts: joins the rising floors (fh not patched, moving
+     * top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
+     * does not rise above its own floor is dropped (no movement in vanilla).
+     * Each claimed ring also gets its declared "+change" (the up-table entry:
+     * model flat, special zeroed, at arrival — T_MoveFloor donutRaise).
+     *
+     * @returns {object} claimed ring si → floorChange record
+     */
     _mergeDonutRings(donuts, doorSectorIds, movingFloorDownIds, rising) {
         const {sectors} = this._level;
         const ringChanges = {};
@@ -879,17 +883,19 @@ class WadMapAnalyzer {
 
     // --- Floor texture/type changes (the "+change" specials) ---
 
-    // Resolve, at build time, what each "+change" target sector will become:
-    // the new flat name and (unless 'keep') the new sector special — taken from
-    // the trigger line's front sector, or, for the lowerAndChange 37/84, from
-    // the first neighbour sitting at the destination height (vanilla walks the
-    // sector lines in order). One change per sector: with several change lines
-    // on the same tag, the last one wins (same per-element limitation as the
-    // doors). Fired at 'start' or at 'complete' of the moving instance.
-    // Seeded with the donut ring changes _mergeDonutRings emitted (a tagged
-    // change line on the same sector wins, like everywhere else).
-    //
-    // @returns {object} si → {flatName, special (number|null), at}
+    /**
+     * Resolve, at build time, what each "+change" target sector will become:
+     * the new flat name and (unless 'keep') the new sector special — taken from
+     * the trigger line's front sector, or, for the lowerAndChange 37/84, from
+     * the first neighbour sitting at the destination height (vanilla walks the
+     * sector lines in order). One change per sector: with several change lines
+     * on the same tag, the last one wins (same per-element limitation as the
+     * doors). Fired at 'start' or at 'complete' of the moving instance.
+     * Seeded with the donut ring changes _mergeDonutRings emitted (a tagged
+     * change line on the same sector wins, like everywhere else).
+     *
+     * @returns {object} si → {flatName, special (number|null), at}
+     */
     _identifyFloorChanges(lifts, rising, ringChanges) {
         const {linedefs, sidedefs, sectors} = this._level;
         const floorChange = {...ringChanges};
@@ -959,15 +965,17 @@ class WadMapAnalyzer {
 
     // --- Stairs (build stairs) ---
 
-    // EV_BuildStairs: a stair special raises a CHAIN of sectors. From each tagged
-    // base sector, raise it by one step, then walk to the adjacent sector that
-    // shares a two-sided line whose FRONT (right) side is the current step AND
-    // whose floor flat matches the base flat; that sector becomes the next step
-    // at the running cumulated height. Like rising floors, fh is NOT patched —
-    // each step's moving top-flat (WadStairBuilder) sits at its WAD height and
-    // rises to its target. Sectors already claimed (doors/lifts/rising) are out.
-    //
-    // @returns {{stairIds: Set<number>, stairInfo: object, stairStepTag: object}}
+    /**
+     * EV_BuildStairs: a stair special raises a CHAIN of sectors. From each tagged
+     * base sector, raise it by one step, then walk to the adjacent sector that
+     * shares a two-sided line whose FRONT (right) side is the current step AND
+     * whose floor flat matches the base flat; that sector becomes the next step
+     * at the running cumulated height. Like rising floors, fh is NOT patched —
+     * each step's moving top-flat (WadStairBuilder) sits at its WAD height and
+     * rises to its target. Sectors already claimed (doors/lifts/rising) are out.
+     *
+     * @returns {{stairIds: Set<number>, stairInfo: object, stairStepTag: object}}
+     */
     _identifyStairs(doorSectorIds, movingFloorDownIds, risingFloorIds) {
         const {linedefs, sidedefs, sectors} = this._level;
         const stairIds     = new Set();
@@ -1027,20 +1035,22 @@ class WadMapAnalyzer {
 
     // --- Switches ---
 
-    // A switch linedef (S-type special) is a USE-activation point. Two shapes:
-    //  - **panel** ({side, slot, texName}): the wall carries a SWxxx graphic
-    //    (one-sided middle — historic case — or, on a two-sided line, a step
-    //    riser `lower` / header `upper`, either side). The static builder drops
-    //    that exact face and the switch builder rebuilds an interactive quad that
-    //    swaps SW1↔SW2 at the right vertical band.
-    //  - **invisible** ({invisible:true}): a two-sided activation line with NO
-    //    SWxxx graphic (e.g. an SR lift edge, special 62 textured PLAT1) — there
-    //    is no panel to draw/swap, and its wall (the lift riser) is already built
-    //    elsewhere. It becomes an invisible USE zone that start()s the tagged
-    //    targets, the press analog of a walk-trigger zone — so pressing the edge
-    //    actually fires the lift even when no walk line backs it up.
-    //
-    // @returns {{ids: Set<number>, walls: Map<number, object>}}
+    /**
+     * A switch linedef (S-type special) is a USE-activation point. Two shapes:
+     *  - **panel** ({side, slot, texName}): the wall carries a SWxxx graphic
+     *    (one-sided middle — historic case — or, on a two-sided line, a step
+     *    riser `lower` / header `upper`, either side). The static builder drops
+     *    that exact face and the switch builder rebuilds an interactive quad that
+     *    swaps SW1↔SW2 at the right vertical band.
+     *  - **invisible** ({invisible:true}): a two-sided activation line with NO
+     *    SWxxx graphic (e.g. an SR lift edge, special 62 textured PLAT1) — there
+     *    is no panel to draw/swap, and its wall (the lift riser) is already built
+     *    elsewhere. It becomes an invisible USE zone that start()s the tagged
+     *    targets, the press analog of a walk-trigger zone — so pressing the edge
+     *    actually fires the lift even when no walk line backs it up.
+     *
+     * @returns {{ids: Set<number>, walls: Map<number, object>}}
+     */
     _identifySwitches() {
         const {linedefs, sidedefs} = this._level;
         const ids = new Set();

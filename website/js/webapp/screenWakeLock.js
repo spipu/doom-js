@@ -1,6 +1,6 @@
 class ScreenWakeLock {
-    /** @type {boolean} */ isSupported;
-    /**                 */ wakeLock;
+    /** @type {boolean} */                 isSupported;
+    /** @type {WakeLockSentinel|null} */   wakeLock;
 
     constructor() {
         this.isSupported = ('wakeLock' in navigator);
