@@ -85,6 +85,37 @@ class World extends AbstractLoadedEntity {
         loader.instances().flushRemovals();
     }
 
+    /**
+     * Scene contents, written once by the loader that reads the definition:
+     * the player, the background colour, the optional sky descriptor, the
+     * ambient level and the point lights. Chainable, like every configuration
+     * setter of the engine.
+     */
+    setUser(user) {
+        this._user = user;
+        return this;
+    }
+
+    setBackground(background) {
+        this._background = background;
+        return this;
+    }
+
+    setSky(sky) {
+        this._sky = sky;
+        return this;
+    }
+
+    setLightAmbient(ambient) {
+        this._lightAmbient = ambient;
+        return this;
+    }
+
+    setLights(lights) {
+        this._lights = lights;
+        return this;
+    }
+
     getUser() {
         return this._user;
     }

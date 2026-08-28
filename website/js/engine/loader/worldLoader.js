@@ -47,11 +47,13 @@ class WorldLoader {
 
     // Shared by the in-memory and the URL loading paths.
     _populateWorld(world, data) {
-        world._user         = this._initUser(data.user);
-        world._background   = data.background || [0, 0, 0];
-        world._sky          = data.sky || null;
-        world._lightAmbient = data.lights.ambient;
-        world._lights       = data.lights.sources.map((s) => new Light(s.color, s.range, s.position));
+        world
+            .setUser(this._initUser(data.user))
+            .setBackground(data.background || [0, 0, 0])
+            .setSky(data.sky || null)
+            .setLightAmbient(data.lights.ambient)
+            .setLights(data.lights.sources.map((s) => new Light(s.color, s.range, s.position)))
+        ;
         world.setLoaded();
     }
 

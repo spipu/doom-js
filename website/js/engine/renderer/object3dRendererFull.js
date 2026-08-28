@@ -23,7 +23,7 @@ class Object3dRendererFull extends Object3dRendererBase {
     }
 
     draw(obj, engine) {
-        for (const faceIndices of [obj._opaqueFaces, obj._alphaFaces]) {
+        for (const faceIndices of [obj.opaqueFaces, obj.alphaFaces]) {
             for (const k of faceIndices) {
                 const fc = obj.faceList[k];
                 if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
@@ -35,7 +35,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                 this._buildVertex(this._v2, engine, fc, obj, 2);
 
                 const tris          = this._clipNear(engine, this._v0, this._v1, this._v2);
-                const resolvedTexId = this._resolveTexId(fc, engine._sceneMs);
+                const resolvedTexId = this._resolveTexId(fc, engine.sceneMs);
                 const texture       = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
                 const alpha         = fc.alpha;
                 const clampV        = fc.clampV || false;
@@ -62,7 +62,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         const col  = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
         const pt3d = obj.pt3d[ptIdx];
         const pt2d = obj.pt2d[ptIdx];
-        const scroll = this._uvScrollOffset(fc, engine._sceneMs);
+        const scroll = this._uvScrollOffset(fc, engine.sceneMs);
         const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
         out[3] = col[0] * lf;  out[4] = col[1] * lf;  out[5] = col[2] * lf;

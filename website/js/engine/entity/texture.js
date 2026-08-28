@@ -6,6 +6,18 @@ class Texture extends AbstractLoadedEntity {
         this._alpha     = false;
     }
 
+    /**
+     * Pixels of the texture, handed over by the loader once the image is
+     * decoded (or built in memory). finalizeInit derives the alpha flag from
+     * them afterwards.
+     *
+     * @param {ImageData} imageData
+     */
+    setImageData(imageData) {
+        this._imageData = imageData;
+        return this;
+    }
+
     finalizeInit() {
         const d = this._imageData.data;
         for (let i = 3; i < d.length; i += 4) {

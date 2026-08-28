@@ -1,7 +1,7 @@
 class Collision {
     constructor() {
         this._static      = []; // [{floors, ceilings, walls, grids}] — grids index the three lists
-        this._dynamic     = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, _platformDeltaApplied}]
+        this._dynamic     = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, platformDeltaApplied}]
         this._boxes       = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
         this._prevUserPos = null; // player position at the end of the previous pressure pass
         this._tfDelta     = {dx: 0, dy: 0, dz: 0, dRy: 0}; // scratch of _transformDelta
@@ -54,7 +54,7 @@ class Collision {
             centerLocal:           obj.getCenter(),
             floors: [], ceilings: [], walls: [],
             centerWorld:           [0, 0, 0],
-            _platformDeltaApplied: null,
+            platformDeltaApplied: null,
         };
         this._dynamic.push(dc);
         this._updateDynamicCollider(dc);
@@ -263,7 +263,7 @@ class Collision {
 
     applyPlatformRiding(user) {
         for (const dc of this._dynamic) {
-            dc._platformDeltaApplied = null;
+            dc.platformDeltaApplied = null;
             if (!dc.instance.isCollidable()) {
                 continue;
             }
@@ -317,7 +317,7 @@ class Collision {
             user.yaw += dRy;
             user.syncPositionTracking();
 
-            dc._platformDeltaApplied = {x: user.x - origX, y: user.y - origY, z: user.z - origZ, yaw: dRy};
+            dc.platformDeltaApplied = {x: user.x - origX, y: user.y - origY, z: user.z - origZ, yaw: dRy};
         }
     }
 
@@ -362,12 +362,12 @@ class Collision {
                 dc.instance.rollbackTransform(prev);
                 this._updateDynamicCollider(dc);
             }
-            if (dc._platformDeltaApplied) {
-                user.x   -= dc._platformDeltaApplied.x;
-                user.y   -= dc._platformDeltaApplied.y;
-                user.z   -= dc._platformDeltaApplied.z;
-                user.yaw += dc._platformDeltaApplied.yaw;
-                dc._platformDeltaApplied = null;
+            if (dc.platformDeltaApplied) {
+                user.x   -= dc.platformDeltaApplied.x;
+                user.y   -= dc.platformDeltaApplied.y;
+                user.z   -= dc.platformDeltaApplied.z;
+                user.yaw += dc.platformDeltaApplied.yaw;
+                dc.platformDeltaApplied = null;
             }
         }
     }

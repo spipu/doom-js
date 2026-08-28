@@ -37,7 +37,7 @@ class Object3dRendererFlat extends Object3dRendererBase {
     }
 
     draw(obj, engine) {
-        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj._opaqueFaces));
-        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj._alphaFaces));
+        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj.opaqueFaces));
+        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj.alphaFaces));
     }
 }
