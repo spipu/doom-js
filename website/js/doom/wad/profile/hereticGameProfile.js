@@ -168,7 +168,7 @@ class HereticGameProfile extends DefaultGameProfile {
             84:   {kind: 'pickup', sprite: 'INVUA0', frames: DoomThingCatalog.animFrames('INVU', 'ABCD'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'invulnerability'}},
             75:   {kind: 'pickup', sprite: 'INVSA0', effect: {item: 'invisibility'}},
             // BossSpot: not a body, only a spot D'Sparil reappears on.
-            56:   {kind: 'bossSpot'},
+            56:   {kind: 'spot', group: 'bossSpot'},
             33:   {kind: 'pickup', sprite: 'TRCHA0', frames: DoomThingCatalog.animFrames('TRCH', 'ABC'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'torch'}},
             35:   {kind: 'pickup', sprite: 'SPMPA0', effect: {item: 'superMap'}},
             // --- Inert inventory artifacts ---

@@ -80,7 +80,7 @@ class DoomEffects {
         if ((tpl === null) || (tpl === undefined)) {
             return;
         }
-        this.spawn(name, x, y, z, ((melee) ? tpl.meleeStart : 0));
+        this.spawn(name, x, y, z, {startFrame: ((melee) ? tpl.meleeStart : 0)});
     }
 
     // EV_Teleport fog pair: one at the old spot, one TELEPORT_FOG_AHEAD units
@@ -93,14 +93,23 @@ class DoomEffects {
         this.spawn('teleportFog', toX + Math.cos(rad) * ahead, toY, toZ + Math.sin(rad) * ahead);
     }
 
-    // Spawn a named effect animation on the given point, lifted by the
-    // template's spawnHeight: every frame's quad is anchored there through its
-    // own vanilla offsets, no per-frame height correction needed.
-    spawn(name, x, y, z, startFrame = 0) {
+    /**
+     * Spawn a named effect animation on the given point, lifted by the
+     * template's spawnHeight: every frame's quad is anchored there through its
+     * own vanilla offsets, no per-frame height correction needed.
+     *
+     * @param {object} opts {startFrame?: frame to enter the animation on (a
+     *                       melee puff starts at C), skipTics?: tics already
+     *                       elapsed on that frame, so a row of explosions goes
+     *                       off raggedly (A_BrainScream)}
+     * @returns {object|null} the live effect
+     */
+    spawn(name, x, y, z, opts = {}) {
         const tpl = this._templates[name];
         if ((tpl === null) || (tpl === undefined)) {
             return null;
         }
+        const startFrame = (opts.startFrame ?? 0);
         const jz = ((tpl.rise > 0) ? (this._rng.next() - this._rng.next()) / 4096 : 0);  // puff z-rand
         const instId = loader.instances().spawnFromData(null, {
             object:         tpl.frames[startFrame].objId,
@@ -112,8 +121,9 @@ class DoomEffects {
             collisionShape: 'none',
             keyframes:      [],
         });
-        // th->tics -= P_Random()&3: the puff's first frame is a touch shorter.
-        const elapsed = ((tpl.shorten) ? (this._rng.next() & 3) : 0);
+        // th->tics -= P_Random()&3: the puff's first frame is a touch shorter,
+        // and a caller may start the animation further in still.
+        const elapsed = (((tpl.shorten) ? (this._rng.next() & 3) : 0) + (opts.skipTics ?? 0));
         // A template with gravity ballistically drops its drift (blood: up at
         // rise, then falling); without it the drift stays constant (puffs).
         const active = { tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise, follow: null };

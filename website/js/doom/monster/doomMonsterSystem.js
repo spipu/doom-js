@@ -43,6 +43,8 @@ class DoomMonsterSystem {
         this._droppedRecords = [];
         this._pressure       = new DoomMoverPressure();
         this._trace          = new DoomMonsterTrace(this);
+        this._bossBrain      = null;
+        this._exitCallback   = null;
         this._view           = new DoomMonsterView();
     }
 
@@ -248,6 +250,35 @@ class DoomMonsterSystem {
         return this;
     }
 
+    /**
+     * The level's Icon of Sin bookkeeping (null on every other level): the
+     * rotation of the target spots and the weighted draw of what a cube
+     * hatches. Read by the spit verb and by a landing cube.
+     */
+    setBossBrain(service) {
+        this._bossBrain = service;
+        return this;
+    }
+
+    getBossBrain() {
+        return this._bossBrain;
+    }
+
+    /**
+     * How a monster ends the level (A_BrainDie): the NORMAL exit, so the tally
+     * and the story text come up exactly as through an exit switch.
+     */
+    setExitCallback(callback) {
+        this._exitCallback = callback;
+        return this;
+    }
+
+    exitLevel() {
+        if (this._exitCallback !== null) {
+            this._exitCallback(false);
+        }
+    }
+
     countAliveOfDef(def) {
         return this._monsters.filter((m) => ((m.def === def) && !m.dead)).length;
     }
@@ -287,6 +318,10 @@ class DoomMonsterSystem {
             // build order) — owned here, where they are crossed.
             lines:        (this._levelData.monsterLines ?? []).map((line) => line.used),
             crushStalled: this._pressure.exportStalled(),
+            // Where the Icon of Sin's rotation stands (null on every other
+            // level): reloaded at zero, its cubes would walk the spots again
+            // from the first one.
+            bossBrain:    ((this._bossBrain !== null) ? this._bossBrain.exportState() : null),
         };
     }
 
@@ -348,6 +383,9 @@ class DoomMonsterSystem {
         }
 
         this._pressure.importStalled(data.crushStalled ?? []);
+        if (this._bossBrain !== null) {
+            this._bossBrain.importState(data.bossBrain ?? null);
+        }
     }
 
     // A body that did not exist at build time: a nightmare respawn ('_r'),
@@ -685,7 +723,7 @@ class DoomMonsterSystem {
 
     // P_CheckPosition against the live bodies and the player (the world
     // geometry validated these spots at map load) — shared by the nightmare
-    // respawn (any occupancy refuses) and the monster teleport (MAP30 stomps).
+    // respawn (any occupancy refuses) and the monster teleport (which may stomp).
     _spotOccupancy(x, z, r, exclude) {
         const blockers = [];
         for (const other of this._monsters) {
@@ -784,7 +822,8 @@ class DoomMonsterSystem {
      * @param {object} opts {exclude?: a body that does not block the spot,
      *                       state?: the state key it starts in, free?: skip
      *                       the occupancy test (the sorcerer replaces its own
-     *                       corpse, so it always fits)}
+     *                       corpse and a boss cube stomps its spot first, so
+     *                       both always fit)}
      * @returns {object|null} the fresh record
      */
     spawnBodyAt(kind, x, y, z, angle, opts = {}) {
@@ -819,6 +858,46 @@ class DoomMonsterSystem {
     }
 
     /**
+     * Clear a spot for a body about to land on it (TeleportMove with
+     * telefragging on): every live body and the player standing there are
+     * killed outright. The Icon of Sin's cubes land this way — that is what
+     * makes standing on a target spot lethal.
+     *
+     * @param {number}      x       world position of the spot
+     * @param {number}      z
+     * @param {string}      kind    catalog key of the body about to land
+     * @param {object|null} exclude a body that does not count as an occupant
+     */
+    telefragAt(x, z, kind, exclude = null) {
+        const template = ((this._spawnables !== null) ? (this._spawnables[kind] ?? null) : null);
+        if (template === null) {
+            return;
+        }
+        const spot = this._spotOccupancy(x, z, template.def.getRadius() * WadConstants.SCALE, exclude);
+        for (const other of spot.blockers) {
+            this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
+        }
+        if (spot.playerBlocks) {
+            this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
+        }
+    }
+
+    /**
+     * A body that appeared mid-level enters the fight at once (SpawnFly): it
+     * inherits the grudge of whoever sent it, hears what its sector last heard,
+     * and walks straight into its See state.
+     *
+     * @param {object}      body   a record from spawnBodyAt
+     * @param {object|null} target what its sender was after
+     */
+    wakeSpawnedBody(body, target) {
+        body.target = (target ?? this._sight.getSoundTarget(body.si) ?? null);
+        if ((body.target !== null) && (body.def.getState('see0') !== null)) {
+            this.enterState(body, 'see0');
+        }
+    }
+
+    /**
      * DSparilTeleport: the sorcerer vanishes and reappears on a BossSpot at
      * least `minDistance` map units away, leaving a fade behind him. Without
      * spots on the map (or with nowhere far enough) he simply stays put.
@@ -826,7 +905,7 @@ class DoomMonsterSystem {
      * @returns {boolean} true when he moved
      */
     teleportToBossSpot(m, minDistance) {
-        const spots = (this._levelData.bossSpots ?? []);
+        const spots = ((this._levelData.spots ?? {}).bossSpot ?? []);
         if (spots.length === 0) {
             return false;
         }
@@ -1610,13 +1689,14 @@ class DoomMonsterSystem {
     }
 
     // EV_Teleport for a monster: an arrival spot held by any live body fails
-    // silently — the telefrag only exists on MAP30 (p_map.c PIT_StompThing).
-    // The teleported actor faces the landing angle with all momentum cleared,
-    // and no reaction delay (the 18-tic freeze is player-only).
+    // silently, except on the maps whose profile allows a monster to stomp
+    // (p_map.c PIT_StompThing). The teleported actor faces the landing angle
+    // with all momentum cleared, and no reaction delay (the 18-tic freeze is
+    // player-only).
     _monsterTeleport(m, landing) {
         const spot = this._spotOccupancy(landing.x, landing.z, m.inst.getCollisionRadius(), m);
         if ((spot.blockers.length > 0) || spot.playerBlocks) {
-            if (this._levelData.levelName !== 'MAP30') {
+            if (this._levelData.monstersTelefrag !== true) {
                 return false;
             }
             for (const other of spot.blockers) {

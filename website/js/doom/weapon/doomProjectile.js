@@ -123,6 +123,11 @@ class DoomProjectileSystem {
             // {kind, afterTics, retryTics}. It keeps flying while the spot is
             // taken, which is exactly what vanilla's spawner does.
             spawnMonster:     (spec.spawnMonster ?? null),
+            // What a shot aimed at a spot does on arrival: {fog, telefrag}.
+            // The Icon of Sin's cube (SpawnShot, +NOCLIP) is the one that has
+            // it — WHAT it hatches is not def data, the level's DoomBossBrain
+            // draws it per cube.
+            hatchAtSpot:      (spec.hatchAtSpot ?? null),
             // A standing shot (MinotaurFX3): it never travels, so no segment
             // ever crosses a body — it goes off on whoever OVERLAPS it, within
             // this radius in map units.
@@ -260,6 +265,46 @@ class DoomProjectileSystem {
         return shot;
     }
 
+    /**
+     * A shot aimed at a fixed POINT rather than at a body (A_BrainSpit): it
+     * flies straight, ignores everything on the way, and hatches on arrival.
+     *
+     * Vanilla estimates the arrival from the dominant axis (`(targ.y - y) /
+     * vel.y`) because Doom could not divide by zero; the distance over the
+     * speed is the same number without the special case, and we hold it as a
+     * tic count rather than an absolute map time — a save restores it as-is.
+     *
+     * @param {string} kind     def key, which must carry a `hatchAtSpot` spec
+     * @param {object} shooter  the body doing the spitting
+     * @param {object} spot     {x, y, z} world target
+     * @param {object} opts     {height?: map units above the shooter's feet}
+     * @returns {object|null} the live projectile
+     */
+    spawnAtSpot(kind, shooter, spot, opts = {}) {
+        const def = this._defs[kind];
+        if ((def === undefined) || (def === null) || (spot === null) || (this._collision === null)) {
+            return null;
+        }
+        const originY = DoomActorRef.feetY(shooter) + (opts.height ?? WadConstants.MISSILE_SPAWN_HEIGHT) * WadConstants.SCALE;
+        const toX = spot.x - DoomActorRef.x(shooter);
+        const toY = spot.y - originY;
+        const toZ = spot.z - DoomActorRef.z(shooter);
+        const length = Math.hypot(toX, toY, toZ);
+        const speed  = this._speedOf(def);
+        if ((length < 1e-6) || (speed <= 0)) {
+            return null;
+        }
+        const shot = this._spawnRaw(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter),
+            (toX / length) * speed, (toY / length) * speed, (toZ / length) * speed, shooter);
+        if (shot === null) {
+            return null;
+        }
+        shot.spot        = {x: spot.x, y: spot.y, z: spot.z};
+        shot.arrivalTics = Math.max(1, Math.round(length / speed));
+
+        return shot;
+    }
+
     // Register one in-flight projectile from an explicit origin and velocity —
     // shared by the player muzzle, the monster muzzle and the bounce-spawned
     // balls. owner is the body it may never hit and the one its kills go to.
@@ -277,6 +322,9 @@ class DoomProjectileSystem {
             // angle, frozen at fire time — not the shooter's current yaw.
             yaw: Math.atan2(vx, vz) / DEG_TO_RAD,
             tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0, growTics: 0,
+            // Aimed-at-a-spot shots only (spawnAtSpot): where it goes, and how
+            // many tics it takes to get there.
+            spot: null, arrivalTics: 0,
             instId: null,
         };
         p.instId = loader.instances().spawnFromData(null, {
@@ -308,7 +356,12 @@ class DoomProjectileSystem {
             bounces:   p.bounces,
             growTics:  p.growTics,
             ownerCode: DoomMonsterSystem.actorCode(p.owner),
-            seekCode:  DoomMonsterSystem.actorCode(p.seekTarget)
+            seekCode:  DoomMonsterSystem.actorCode(p.seekTarget),
+            // A cube in flight: where it goes and when it lands. New fields,
+            // read back with a default — the format version is compared
+            // strictly, so bumping it would throw every existing save away.
+            spot:        p.spot,
+            arrivalTics: p.arrivalTics
         }));
     }
 
@@ -330,6 +383,8 @@ class DoomProjectileSystem {
             p.dropped    = rec.dropped;
             p.bounces    = rec.bounces;
             p.growTics   = rec.growTics;
+            p.spot        = (rec.spot ?? null);
+            p.arrivalTics = (rec.arrivalTics ?? 0);
         }
     }
 
@@ -355,6 +410,22 @@ class DoomProjectileSystem {
             if ((p.def.lifeTics > 0) && (p.tics >= p.def.lifeTics)) {
                 this._effects.spawn(p.def.explosion, p.x, p.y, p.z);
                 loader.instances().scheduleRemoval(inst);
+                continue;
+            }
+            // A shot aimed at a spot (+NOCLIP) answers to nothing but its own
+            // arrival: no wall, no floor, no body on the way.
+            if (p.spot !== null) {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.z += p.vz;
+                p.tics += 1;
+                this._syncView(p, inst);
+                if (p.tics >= p.arrivalTics) {
+                    this._hatchAtSpot(p);
+                    loader.instances().scheduleRemoval(inst);
+                    continue;
+                }
+                kept.push(p);
                 continue;
             }
             this._applyGravity(p);
@@ -443,19 +514,25 @@ class DoomProjectileSystem {
             }
 
             p.tics += 1;
-            const frame = ((p.def.frames.length > 1)
-                ? Math.floor(p.tics / p.def.flightTics) % p.def.frames.length : 0);
-            if (frame !== p.shown) {
-                inst.setObject(p.def.frames[frame].objId);
-                p.shown = frame;
-            }
-            const pos = inst.getTransform().position;
-            pos[0] = p.x;
-            pos[1] = p.y - p.def.frames[frame].height / 2;
-            pos[2] = p.z;
+            this._syncView(p, inst);
             kept.push(p);
         }
         this._active = kept;
+    }
+
+    // The instance follows the shot: current animation frame (swapped only when
+    // it changes) and world position, the billboard anchored by its own height.
+    _syncView(p, inst) {
+        const frame = ((p.def.frames.length > 1)
+            ? Math.floor(p.tics / p.def.flightTics) % p.def.frames.length : 0);
+        if (frame !== p.shown) {
+            inst.setObject(p.def.frames[frame].objId);
+            p.shown = frame;
+        }
+        const pos = inst.getTransform().position;
+        pos[0] = p.x;
+        pos[1] = p.y - p.def.frames[frame].height / 2;
+        pos[2] = p.z;
     }
 
     /**
@@ -481,6 +558,40 @@ class DoomProjectileSystem {
         this._effects.spawn(p.def.explosion, p.x, p.y, p.z);
 
         return true;
+    }
+
+    /**
+     * SpawnFly: the cube has reached its spot. The fire goes up, the level's
+     * brain draws WHAT hatches (the weighted ladder is level state, not def
+     * data), the body lands on the spot whatever stands there — vanilla
+     * telefrags it with TeleportMove(pos, true) — and wakes up at once.
+     *
+     * A spot with no body available (an unknown kind, a level without the
+     * views) simply burns the fire: the cube is spent either way.
+     */
+    _hatchAtSpot(p) {
+        const spec = p.def.hatchAtSpot;
+        const spot = p.spot;
+        if ((spec.fog ?? null) !== null) {
+            this._effects.spawn(spec.fog, spot.x, spot.y, spot.z);
+        }
+        // The brain is read live, not held: the world builder installs it on
+        // the monster system AFTER this system is built.
+        const brain = ((this._monsters !== null) ? this._monsters.getBossBrain() : null);
+        if (brain === null) {
+            return;
+        }
+        const kind = brain.pickSpawn(this._rng);
+        if (spec.telefrag === true) {
+            this._monsters.telefragAt(spot.x, spot.z, kind, p.owner);
+        }
+        const born = this._monsters.spawnBodyAt(kind, spot.x, spot.y, spot.z, p.yaw, {exclude: p.owner, free: true});
+        if (born === null) {
+            return;
+        }
+        // "Make the new monster hate what the boss eye hates", and let it act
+        // as if it had been around when the player first made noise.
+        this._monsters.wakeSpawnedBody(born, ((p.owner !== null) ? p.owner.target : null));
     }
 
     // A_MntrFloorFire: the crawling flame drops a standing fire beside itself,

@@ -316,7 +316,7 @@ class DoomMonsterDamage {
         if (this._rules.bloodDamageAdvance) {
             start = ((damage > 12) ? 0 : ((damage >= 9) ? 1 : 2));
         }
-        this._effects.spawn(this._rules.bloodTemplate, x, y, z, start);
+        this._effects.spawn(this._rules.bloodTemplate, x, y, z, {startFrame: start});
     }
 }
 
