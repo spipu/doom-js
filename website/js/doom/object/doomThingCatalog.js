@@ -38,6 +38,12 @@ class DoomThingCatalog {
         if (entry === undefined) {
             return null;
         }
+        // A boss teleport spot is not a body: nothing is drawn, only its
+        // position is kept (D'Sparil hops from one to the next).
+        if (entry.kind === 'bossSpot') {
+            return {kind: 'bossSpot', code: null, frames: [], animDuration: 0,
+                solid: false, radius: 0, ceiling: false, effect: null, spawnerGroup: null};
+        }
         if (entry.kind === 'decoration') {
             const def = this._decorations[entry.code];
             return {
