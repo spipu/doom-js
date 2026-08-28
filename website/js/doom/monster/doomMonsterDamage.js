@@ -71,6 +71,9 @@ class DoomMonsterDamage {
             this._damagePlayer(victim, amount, opts);
             return;
         }
+        if (victim.invulnerable === true) {
+            return;
+        }
         const def = victim.def;
         if ((opts.noBlood !== true) && (def.getFlags().noBlood !== true)) {
             const at = (opts.point ?? victim.inst.getWorldCenter());

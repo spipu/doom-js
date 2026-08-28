@@ -28,7 +28,28 @@ class DoomWeaponSpriteBank {
         if (this._cache[lump] !== undefined) {
             return this._cache[lump];
         }
-        const spr   = this._bank.get(lump);
+
+        return this._store(lump, this._bank.get(lump));
+    }
+
+    /**
+     * One rotation view of a frame (a flying projectile's single billboard),
+     * resolved through the rotation index so a mirrored lump is found too.
+     *
+     * @param {string[]} preference rotations to try, best first
+     * @returns {object|null}
+     */
+    getFrameView(base, letter, preference) {
+        const key = base + letter + '|' + preference.join('');
+        if (this._cache[key] !== undefined) {
+            return this._cache[key];
+        }
+
+        return this._store(key, this._bank.getFrameView(base, letter, preference));
+    }
+
+    // Cache one decoded sprite under `key`, in the shape the view pass wants.
+    _store(key, spr) {
         const entry = ((spr === null) ? null : {
             texId:      spr.loaderId,
             width:      spr.width,
@@ -36,7 +57,8 @@ class DoomWeaponSpriteBank {
             leftOffset: spr.leftOffset,
             topOffset:  spr.topOffset,
         });
-        this._cache[lump] = entry;
+        this._cache[key] = entry;
+
         return entry;
     }
 }

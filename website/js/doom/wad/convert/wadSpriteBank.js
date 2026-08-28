@@ -116,6 +116,39 @@ class WadSpriteBank {
         return null;
     }
 
+    /**
+     * ONE view of a frame, for a body drawn on a single billboard (a flying
+     * projectile). Rotations are tried in the caller's order of preference and
+     * resolved through the rotation index, not the raw lump names: a fully
+     * rotating sprite is often stored mirrored ('SPAXA2A8'), so probing
+     * 'SPAXA1' by name finds nothing while the frame exists in full.
+     *
+     * @param {string}   base       4-char sprite prefix
+     * @param {string}   letter     frame letter
+     * @param {string[]} preference rotations to try, best first ('0' = the
+     *                              non-rotating lump)
+     * @returns {object|null}
+     */
+    getFrameView(base, letter, preference) {
+        if (this._rotIndex === null) {
+            this._buildRotationIndex();
+        }
+        for (const rot of preference) {
+            if (rot === '0') {
+                if (this.has(base + letter + '0')) {
+                    return this.get(base + letter + '0');
+                }
+                continue;
+            }
+            const ref = this._rotIndex[base + letter + rot];
+            if (ref !== undefined) {
+                return ((ref.mirrored) ? this._getMirrored(ref.lump) : this.get(ref.lump));
+            }
+        }
+
+        return null;
+    }
+
     // One pass over the lump names: a 6-char name holds one (frame, rotation)
     // pair at chars 4-5, an 8-char name holds a second, mirrored pair at 6-7.
     _buildRotationIndex() {

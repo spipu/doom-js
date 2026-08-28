@@ -110,7 +110,13 @@ class DoomMonsterAttack {
         }
         const dx = DoomActorRef.x(m.target) - DoomActorRef.x(m);
         const dz = DoomActorRef.z(m.target) - DoomActorRef.z(m);
-        m.facing = (((Math.atan2(dz, dx) / DEG_TO_RAD) % 360) + 360) % 360;
+        let facing = (Math.atan2(dz, dx) / DEG_TO_RAD);
+        if (DoomActorRef.isShadow(m.target)) {
+            // A_Face_ShadowHandling: it cannot quite tell where the thing is,
+            // and every shot leaving along this facing inherits the miss.
+            facing += this._rng.nextDiff() * WadConstants.SHADOW_FACE_SPREAD;
+        }
+        m.facing = ((facing % 360) + 360) % 360;
         m.flags &= ~WadConstants.MTF_AMBUSH;
     }
 
@@ -253,7 +259,7 @@ class DoomMonsterAttack {
         if (levelWith && (dist < args.chargeMax) && (dist > args.chargeMin) && (this._rng.next() < args.chargeChance)) {
             this.faceTarget(m);
             this._system.enterState(m, args.chargeState);
-            this._system.startCharge(m, args.chargeSpeed);
+            this._system.startCharge(m, args.chargeSpeed, (args.chargeInvulnerable === true));
             m.special1 = args.chargeTics;
             return;
         }

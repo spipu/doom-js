@@ -60,12 +60,18 @@ class DoomHitscan {
             return;
         }
         const origin = DoomHitscan.attackOrigin(shooter);
-        const aim    = DoomHitscan._aimAt(origin, target);
+        // The heading is the shooter's own facing, which A_FaceTarget has just
+        // set — never a fresh bearing to the target. That is what carries the
+        // MF_SHADOW miss into the bullets, exactly like vanilla, where the
+        // volley leaves along self.angle. The slope still comes from the
+        // target (AimLineAttack), which vanilla never randomises.
+        const yaw    = WadGeometry.doomAngleYaw(DoomActorRef.facing(shooter));
+        const pitch  = DoomHitscan._aimAt(origin, target).pitch;
         const range  = WadConstants.MONSTER_ATTACK_RANGE * WadConstants.SCALE;
         const rays   = (spec.rays ?? 1);
         for (let i = 0; i < rays; i++) {
-            const yaw = aim.yaw + WadConstants.MONSTER_BULLET_SPREAD * this._rng.nextDiff();
-            this._shootMonsterRay(shooter, origin, yaw, aim.pitch, range, spec);
+            this._shootMonsterRay(shooter, origin, yaw + WadConstants.MONSTER_BULLET_SPREAD * this._rng.nextDiff(),
+                pitch, range, spec);
         }
     }
 
@@ -83,8 +89,9 @@ class DoomHitscan {
         ];
     }
 
-    // Yaw/pitch (degrees) from a point onto a body's centre — the slope
-    // AimLineAttack lands on when the target stands in the firing cone.
+    // Vertical slope from a point onto a body's centre — what AimLineAttack
+    // lands on when the target stands in the firing cone. The yaw it also
+    // returns is the exact bearing, used only where no facing applies.
     static _aimAt(origin, target) {
         const dx = DoomActorRef.x(target) - origin[0];
         const dz = DoomActorRef.z(target) - origin[2];

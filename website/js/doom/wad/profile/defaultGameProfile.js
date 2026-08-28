@@ -392,7 +392,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             3006: new DoomMonsterDef({
                 code: 'lostsoul', name: 'Lost Soul', sprite: 'SKUL',
                 health: 100, radius: 16, height: 56, mass: 50, speed: 8, painChance: 256,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 params: {missileChanceMult: 0.5, chargeDamage: {base: 3, dice: 8}},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn', true]],
@@ -406,7 +406,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             3005: new DoomMonsterDef({
                 code: 'cacodemon', name: 'Cacodemon', sprite: 'HEAD',
                 health: 400, radius: 31, height: 56, mass: 400, speed: 8, painChance: 128,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 params: {melee: {base: 10, dice: 6}, missile: 'cacoBall'},
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
@@ -475,7 +475,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             71: new DoomMonsterDef({
                 code: 'painelemental', name: 'Pain Elemental', sprite: 'PAIN',
                 health: 400, radius: 31, height: 56, mass: 400, speed: 8, painChance: 128,
-                flags: {float: true},
+                flags: {float: true, noGravity: true},
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCC', 3, 'A_Chase', 'see']],
@@ -489,7 +489,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             64: new DoomMonsterDef({
                 code: 'archvile', name: 'Archvile', sprite: 'VILE',
                 health: 700, radius: 20, height: 56, mass: 500, speed: 15, painChance: 10,
-                flags: {noTarget: true},
+                flags: {noTarget: true, quickToRetaliate: true},
                 params: {maxTargetRange: 896},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
@@ -532,6 +532,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'keen', name: 'Commander Keen', sprite: 'KEEN',
                 health: 100, radius: 16, height: 72, mass: 10000000, speed: 0, painChance: 256,
                 ceiling: true,
+                flags: {noGravity: true},
                 bossMaps: ['MAP32'],
                 states: {
                     spawn: [['A', -1]],
@@ -556,7 +557,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             88: new DoomMonsterDef({
                 code: 'bossbrain', name: 'Boss Brain', sprite: 'BBRN',
                 health: 250, radius: 16, height: 16, mass: 10000000, speed: 0, painChance: 255,
-                flags: {countsKill: false, dontGib: true},
+                flags: {countsKill: false},
                 states: {
                     spawn: [['A', -1]],
                     pain:  [['B', 36, 'A_BrainPain', 'spawn']],
@@ -800,7 +801,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             // A_Tracer: the smoke and the course correction both run one tic in
             // four, which is why the revenant's shot swerves in visible steps.
             {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: false,
-                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4}, trailEffect: 'tracerSmoke', trailEveryTics: 4}
+                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4}
         ];
     }
 

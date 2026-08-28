@@ -22,6 +22,7 @@ class DoomProjectileSystem {
         this._fast      = false;
         this._active    = [];
         this._acc       = 0;
+        this._ticCount  = 0;
         this._defs      = this._buildDefs(spriteBank, profile);
     }
 
@@ -118,6 +119,8 @@ class DoomProjectileSystem {
             // Floor-hugging shot (Heretic MinotaurFX2, +FLOORHUGGER): it never
             // rises, never dives, and its trail is left ON the floor.
             floorHugger:      (spec.floorHugger === true),
+            // +THRUGHOST: the shot passes through Heretic's phantoms.
+            thruGhost:        (spec.thruGhost === true),
         };
     }
 
@@ -126,15 +129,8 @@ class DoomProjectileSystem {
     // non-rotating (…A0). A single camera-facing billboard can't do 8-way
     // rotation, so pick the best available single view — rotation 0 when present,
     // else the rear view (5, seen as the shot flies away), else rotation 1.
-    // Probed with has() so a missing rotation never warns.
     _pickSprite(bank, base, letter) {
-        for (const rot of ['0', '5', '1']) {
-            const lump = base + letter + rot;
-            if (bank.has(lump)) {
-                return bank.get(lump);
-            }
-        }
-        return null;
+        return bank.getFrameView(base, letter, DoomProjectileSystem.VIEW_PREFERENCE);
     }
 
     // angleOffsetDeg = fixed fan angle (Heretic crossbow side bolts),
@@ -225,9 +221,14 @@ class DoomProjectileSystem {
         let vx = (toX / length) * speed;
         let vy = ((opts.vz !== undefined) ? opts.vz : (toY / length) * speed);
         let vz = (toZ / length) * speed;
-        const offset = (opts.angleOffset ?? 0);
+        // A fan turns the flat velocity and keeps the slope
+        // (SpawnMissileAngle); a target nobody can quite see adds a miss of
+        // its own (P_SpawnMissileXYZ_ShadowHandling).
+        let offset = (opts.angleOffset ?? 0);
+        if (DoomActorRef.isShadow(target)) {
+            offset += this._rng.nextDiff() * WadConstants.SHADOW_MISSILE_SPREAD;
+        }
         if (offset !== 0) {
-            // A fan turns the flat velocity and keeps the slope (SpawnMissileAngle).
             const flat = Math.hypot(vx, vz);
             const yaw  = Math.atan2(vx, vz) + offset * DEG_TO_RAD;
             vx = Math.sin(yaw) * flat;
@@ -326,6 +327,7 @@ class DoomProjectileSystem {
         this._acc += dtMs;
         while (this._acc >= DoomProjectileSystem.MS_PER_TIC) {
             this._acc -= DoomProjectileSystem.MS_PER_TIC;
+            this._ticCount++;
             this._stepTic();
         }
     }
@@ -368,7 +370,8 @@ class DoomProjectileSystem {
             const flesh = ((this._monsters !== null)
                 ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
                     ((hit !== null) ? Math.min(hit.dist, step) : step),
-                    {exclude: p.owner, includePlayer: !DoomActorRef.isPlayer(p.owner), immuneTo: p.owner})
+                    {exclude: p.owner, includePlayer: !DoomActorRef.isPlayer(p.owner), immuneTo: p.owner,
+                        thruGhost: p.def.thruGhost})
                 : null);
             if (flesh !== null) {
                 if (p.def.ripper === null) {
@@ -457,7 +460,11 @@ class DoomProjectileSystem {
         if ((seek === null) || (p.seekTarget === null)) {
             return;
         }
-        if ((p.tics % seek.everyTics) !== 0) {
+        // A_Tracer opens its correction on the world clock (`maptime & 3`), so
+        // every revenant tracer in the level bends on the same tics;
+        // A_SeekerMissile instead runs on the shot's own state cadence.
+        const clock = ((seek.worldClock === true) ? this._ticCount : p.tics);
+        if ((clock % seek.everyTics) !== 0) {
             return;
         }
         if (DoomActorRef.isDead(p.seekTarget)) {
@@ -635,6 +642,8 @@ class DoomProjectileSystem {
     }
 }
 
+// Rotations a single in-flight billboard settles for, best first
+DoomProjectileSystem.VIEW_PREFERENCE = ['0', '5', '1'];
 DoomProjectileSystem.MS_PER_TIC = 1000 / 35;
 DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe lifetime
 // A_Tracer2 slope chase: map units per tic added to the vertical speed toward
