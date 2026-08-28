@@ -76,10 +76,10 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         }
 
         if (zone.special === 11) {
-            // E1M8 finale: the suit gives no protection, and reaching 10 health
-            // ends the level through the normal exit (vanilla G_ExitLevel).
+            // E1M8 finale: the suit gives no protection, and dropping to the
+            // exit health ends the level through the normal exit (G_ExitLevel).
             user.takeDamage(entry.damage);
-            if (!this._exited && user.getEnergy() <= 10 && this._exitCallback !== null) {
+            if (!this._exited && (user.getEnergy() <= WadConstants.SECTOR_DAMAGE_EXIT_HEALTH) && (this._exitCallback !== null)) {
                 this._exited = true;
                 this._exitCallback(false);
             }

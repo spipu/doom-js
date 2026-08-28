@@ -63,10 +63,18 @@ class WadGeometry {
         return ((Math.abs(x1 - x2) < r1 + r2) && (Math.abs(z1 - z2) < r1 + r2));
     }
 
+    // An angle folded back into [0, 360) — JavaScript's % keeps the sign of its
+    // left operand, so a negative or over-a-turn angle needs the second fold.
+    // Every angle STORED on an actor goes through this, so a facing is always
+    // readable as-is (and a saved one never carries 585 degrees).
+    static normalizeAngle(degrees) {
+        return (((degrees % 360) + 360) % 360);
+    }
+
     // Doom angle ↔ engine yaw conversion — the mapping is involutive
     // (a = 90 − y mod 360 both ways).
     static doomAngleYaw(value) {
-        return (((90 - value) % 360) + 360) % 360;
+        return WadGeometry.normalizeAngle(90 - value);
     }
 
     // P_PointOnLineSide (p_maputl.c): 0 when the point sits on the FRONT side

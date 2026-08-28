@@ -237,7 +237,7 @@ class DoomMonsterDamage {
         const dx   = (this._rng.nextDiff() / 128) * shove;
         const dz   = (this._rng.nextDiff() / 128) * shove;
         if (!DoomActorRef.isPlayer(victim)) {
-            victim.facing = (((victim.facing + turn) % 360) + 360) % 360;
+            victim.facing = WadGeometry.normalizeAngle(victim.facing + turn);
             victim.velX  += dx;
             victim.velZ  += dz;
             // A boss keeps its feet on the ground (the funnel never lifts one).
@@ -246,7 +246,7 @@ class DoomMonsterDamage {
             }
             return;
         }
-        victim.yaw = (((victim.yaw + turn) % 360) + 360) % 360;
+        victim.yaw = WadGeometry.normalizeAngle(victim.yaw + turn);
         const perSecond = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
         victim.getExternalForces().addImpulse(dx * perSecond, dz * perSecond);
         victim.applyVerticalImpulse(Math.min(lift, DoomMonsterDamage.SPIN_MAX_LIFT) * perSecond);

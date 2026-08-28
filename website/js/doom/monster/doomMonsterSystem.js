@@ -42,6 +42,8 @@ class DoomMonsterSystem {
         // instance code, so a save must re-spawn them explicitly.
         this._droppedRecords = [];
         this._pressure       = new DoomMoverPressure();
+        this._trace          = new DoomMonsterTrace(this);
+        this._view           = new DoomMonsterView();
     }
 
     /**
@@ -56,52 +58,58 @@ class DoomMonsterSystem {
         // except in nightmare, where it stays 0 — the InstantReaction skill.
         const instant = ((this._skillRule !== null) && (this._skillRule.instantReaction === true));
         this._monsters.push({
-            code:         record.code,
-            inst:         record.inst,
-            def:          record.def,
-            facing:       record.facing,
-            flags:        record.flags,
-            frames:       record.frames,
-            si:           (record.si ?? null),
-            spawn:        (record.spawn ?? null),
+            code:            record.code,
+            inst:            record.inst,
+            def:             record.def,
+            // Folded here, at the ONE door every body comes through: a verb
+            // that spits three souls at facing + 90/180/270 must not leave a
+            // 585-degree angle on a record (and in the save).
+            facing:          WadGeometry.normalizeAngle(record.facing),
+            flags:           record.flags,
+            frames:          record.frames,
+            si:              (record.si ?? null),
+            spawn:           (record.spawn ?? null),
             // Catalog key when the body was spat into the level at runtime
             // (null for the ones the map itself placed) — a save recreates it
             // from that key alone.
-            spawnKind:    (record.spawnKind ?? null),
-            health:       record.def.getHealth(),
-            dead:         false,
-            velX:         0,
-            velZ:         0,
-            velY:         0,
-            target:       null,
-            threshold:    0,
-            reactiontime: ((instant) ? 0 : DoomMonsterSystem.REACTION_TIME),
-            movedir:      DoomMonsterMove.DI_NODIR,
-            movecount:    0,
-            special1:     0,
-            special2:     0,
+            spawnKind:       (record.spawnKind ?? null),
+            health:          record.def.getHealth(),
+            dead:            false,
+            velX:            0,
+            velZ:            0,
+            velY:            0,
+            target:          null,
+            threshold:       0,
+            reactiontime:    ((instant) ? 0 : DoomMonsterSystem.REACTION_TIME),
+            movedir:         DoomMonsterMove.DI_NODIR,
+            movecount:       0,
+            // MF5_AVOIDINGDROPOFF, held for the length of one escape step
+            // (transient: never saved).
+            avoidingDropoff: false,
+            special1:        0,
+            special2:        0,
             // MF_JUSTATTACKED / MF_JUSTHIT: "not twice in a row" and "fight
             // back at once", the two flags that pace a fight.
-            justAttacked: false,
-            justHit:      false,
+            justAttacked:    false,
+            justHit:         false,
             // MF_SKULLFLY: the body is charging, so it no longer walks — it
             // flies until it slams into something.
-            charging:     false,
-            invulnerable: false,
-            renderLight:  null,   // last factor pushed to the instance (null = never)
-            litSi:        null,   // sector and bright flag the light was resolved for
-            litBright:    false,
-            inFloat:      false,
-            respawnClock: 0,
-            noKillCount:  false,
-            crushedFlat:  false,
-            blend:        null,
-            snapRender:   false,
-            walkStepped:  false,
-            env:          new ActorExternalForces(),
-            stateKey:     'spawn0',
-            ticsLeft:     record.def.getState('spawn0').getTics(),
-            shownObj:     null
+            charging:        false,
+            invulnerable:    false,
+            renderLight:     null,   // last factor pushed to the instance (null = never)
+            litSi:           null,   // sector and bright flag the light was resolved for
+            litBright:       false,
+            inFloat:         false,
+            respawnClock:    0,
+            noKillCount:     false,
+            crushedFlat:     false,
+            blend:           null,
+            snapRender:      false,
+            walkStepped:     false,
+            env:             new ActorExternalForces(),
+            stateKey:        'spawn0',
+            ticsLeft:        record.def.getState('spawn0').getTics(),
+            shownObj:        null
         });
         return this;
     }
@@ -109,6 +117,8 @@ class DoomMonsterSystem {
     setWorld(collision, user) {
         this._collision = collision;
         this._user      = user;
+        this._trace.setUser(user);
+        this._view.setUser(user);
         this._wireModules();
         return this;
     }
@@ -162,12 +172,13 @@ class DoomMonsterSystem {
     // re-resolves its current sector through it).
     setLevelData(data) {
         this._levelData = data;
+        this._view.setLevelData(data);
         this._pressure.setMovers(data.moverCodes);
         this._wireModules();
         // First lighting of the bodies already added: their views are baked
         // fullbright, so none may reach a draw unlit.
         for (const m of this._monsters) {
-            this._applyRenderLight(m);
+            this._view.applyLight(m);
         }
         return this;
     }
@@ -366,14 +377,21 @@ class DoomMonsterSystem {
         return ((proto !== undefined) ? this._spawnFreshBody(proto, rec.code, rec.position) : null);
     }
 
-    // A target as a save can carry it: nothing, the player, or another body's
-    // instance code (infighting).
-    static _targetCode(target) {
-        if (target === null) {
+    /**
+     * How a save names an actor: nothing, the player, or another body's
+     * instance code (infighting). Public and static — the projectile system
+     * writes the owner and the seek target of every shot in flight with it,
+     * and reads them back through actorByCode.
+     *
+     * @param {object|null} actor player, monster record, or null
+     * @returns {string|null}
+     */
+    static actorCode(actor) {
+        if (actor === null) {
             return null;
         }
 
-        return ((DoomActorRef.isPlayer(target)) ? DoomMonsterSystem.PLAYER_TARGET_CODE : target.code);
+        return ((DoomActorRef.isPlayer(actor)) ? DoomMonsterSystem.PLAYER_TARGET_CODE : actor.code);
     }
 
     /**
@@ -413,7 +431,7 @@ class DoomMonsterSystem {
             velX:           m.velX,
             velY:           m.velY,
             velZ:           m.velZ,
-            targetCode:     DoomMonsterSystem._targetCode(m.target),
+            targetCode:     DoomMonsterSystem.actorCode(m.target),
             threshold:      m.threshold,
             reactiontime:   m.reactiontime,
             movedir:        m.movedir,
@@ -473,8 +491,8 @@ class DoomMonsterSystem {
             }
         }
         this._resolveRide(m);
-        this._refreshView(m);
-        this._applyRenderLight(m);
+        this._view.refresh(m);
+        this._view.applyLight(m);
 
         return m;
     }
@@ -501,13 +519,13 @@ class DoomMonsterSystem {
         }
         for (const m of this._monsters) {
             m.env.beginFrame();
-            this._applyRenderBlend(m);
-            this._applyRenderLight(m);
+            this._view.applyBlend(m, this._clockMs);
+            this._view.applyLight(m);
         }
         this._refreshDropLight();
     }
 
-    // A drop never moves sector, so _pushRenderLight only recomputes while its
+    // A drop never moves sector, so the light is only recomputed while its
     // sector runs a light effect. Picked-up drops leave a despawned instance
     // behind: purge their records here.
     _refreshDropLight() {
@@ -517,7 +535,7 @@ class DoomMonsterSystem {
                 this._droppedRecords.splice(i, 1);
                 continue;
             }
-            this._pushRenderLight(drop, false);
+            this._view.pushLight(drop, false);
         }
     }
 
@@ -525,49 +543,6 @@ class DoomMonsterSystem {
     // Identity-checked so a reused id can never pass for the drop.
     _isDropGone(drop) {
         return (loader.instances().get(drop.inst.getId()) !== drop.inst);
-    }
-
-    // Light of the sector the body CURRENTLY stands in, times that sector's
-    // live effect: a monster leaving a dark room brightens, one entering a
-    // strobing room pulses with it. A bright state (zscript Bright — the lost
-    // soul burns in the dark) stays fullbright.
-    //
-    // Only recomputed on an event that can change the answer — the body changed
-    // sector, its state switched fullbright, or its sector runs a light effect.
-    // A body standing still in a steadily-lit room is lit once and never again.
-    _applyRenderLight(m) {
-        this._pushRenderLight(m, m.def.getState(m.stateKey).isBright());
-    }
-
-    // Shared by monster and drop records ({inst, si, renderLight, litSi,
-    // litBright}) — both views are baked fullbright, the instance carries
-    // the sector lighting.
-    _pushRenderLight(rec, bright) {
-        if ((rec.renderLight !== null) && (rec.litSi === rec.si) && (rec.litBright === bright)
-            && !this._hasLightEffect(rec.si)) {
-            return;
-        }
-        rec.litSi     = rec.si;
-        rec.litBright = bright;
-        const wanted = ((bright) ? 1 : this._sectorLight(rec.si));
-        if (wanted !== rec.renderLight) {
-            rec.renderLight = wanted;
-            rec.inst.setRenderLight(wanted);
-        }
-    }
-
-    // True when the sector runs one of the vanilla light thinkers, so its
-    // brightness moves on its own and its bodies must follow every frame.
-    _hasLightEffect(si) {
-        return ((si !== null) && (this._levelData !== null) && this._levelData.hasLightEffect(si));
-    }
-
-    // Sector brightness as a 0..1 factor; full light when the sector is unknown.
-    _sectorLight(si) {
-        if ((si === null) || (this._levelData === null) || (this._levelData.sectors[si] === undefined)) {
-            return 1;
-        }
-        return (this._levelData.sectors[si].light / 255) * this._levelData.lightFactorOf(si);
     }
 
     // Sector index under a world position, null when no sector claims it.
@@ -578,51 +553,6 @@ class DoomMonsterSystem {
         const S   = WadConstants.SCALE;
         const sec = this._levelData.findSector(x / S, z / S);
         return ((sec !== null) ? sec.si : null);
-    }
-
-    // Arm the render glide after a tic that moved the body: from its previous
-    // spot, over the current state's duration for a walking step (the next
-    // A_Chase step lands right when the glide ends — continuous motion) or a
-    // single tic for momentum slides. A teleport snaps instead.
-    _armRenderBlend(m, fromX, fromY, fromZ) {
-        if (m.snapRender) {
-            m.snapRender = false;
-            m.blend      = null;
-            m.inst.clearRenderOffset();
-            return;
-        }
-        const p = m.inst.getTransform().position;
-        if ((Math.abs(p[0] - fromX) < 1e-9) && (Math.abs(p[1] - fromY) < 1e-9) && (Math.abs(p[2] - fromZ) < 1e-9)) {
-            return;
-        }
-        // Only a REAL walk step glides over the state duration; a momentum
-        // slide (knockback, drift) smooths over its own single tic — a shove
-        // mid-chase must not rubber-band across the whole See state.
-        const durTics = ((m.walkStepped) ? Math.max(1, m.ticsLeft) : 1);
-        m.blend = {fx: fromX, fy: fromY, fz: fromZ, t0: this._clockMs, dur: durTics * DoomMonsterSystem.MS_PER_TIC};
-    }
-
-    // Render smoothing (user decision, GZDoom-like): the logical body moves
-    // by teleport-steps at 35 Hz, the DISPLAYED body glides from the previous
-    // spot to the current one — vertically too, so stair steps flow like the
-    // player's camera smoothing. Only the render offset moves, never the
-    // physics.
-    _applyRenderBlend(m) {
-        if (m.blend === null) {
-            return;
-        }
-        const k = (this._clockMs - m.blend.t0) / m.blend.dur;
-        if (k >= 1) {
-            m.inst.clearRenderOffset();
-            m.blend = null;
-            return;
-        }
-        const p = m.inst.getTransform().position;
-        m.inst.setRenderOffset(
-            (m.blend.fx - p[0]) * (1 - k),
-            (m.blend.fy - p[1]) * (1 - k),
-            (m.blend.fz - p[2]) * (1 - k)
-        );
     }
 
     _stepTic() {
@@ -666,8 +596,8 @@ class DoomMonsterSystem {
                 }
             }
 
-            this._armRenderBlend(m, beforeX, beforeY, beforeZ);
-            this._refreshView(m);
+            this._view.armBlend(m, beforeX, beforeY, beforeZ, this._clockMs);
+            this._view.refresh(m);
             kept.push(m);
         }
         this._monsters = kept;
@@ -751,36 +681,6 @@ class DoomMonsterSystem {
         }
         this._respawnQueue.push(m);
         return true;
-    }
-
-    /**
-     * The first live body standing on a spot — the overlap answer traceRay
-     * cannot give, because a mine never moves along a segment. This is how the
-     * maulotaur's floor fire knows it has been trodden on.
-     *
-     * @param {object} opts {exclude?, immuneTo?, includePlayer?}
-     * @returns {{ref, point}|null}
-     */
-    bodyAt(x, z, radius, opts = {}) {
-        const exclude  = (opts.exclude ?? null);
-        const immuneTo = (opts.immuneTo ?? null);
-        for (const m of this._monsters) {
-            if (m.dead || (m === exclude)
-                || ((immuneTo !== null) && !DoomMonsterDamage.canAttackHurt(m, immuneTo))) {
-                continue;
-            }
-            const pos = m.inst.getTransform().position;
-            if (WadGeometry.boxesOverlap2d(x, z, radius, pos[0], pos[2], m.inst.getCollisionRadius())) {
-                return {ref: m, point: m.inst.getWorldCenter()};
-            }
-        }
-        const u = this._user;
-        if ((opts.includePlayer === true) && (u !== null) && !u.isDead()
-            && (u !== exclude) && WadGeometry.boxesOverlap2d(x, z, radius, u.x, u.z, u.getRadius())) {
-            return {ref: u, point: [u.x, u.y + u.getCurrentHeight() / 2, u.z]};
-        }
-
-        return null;
     }
 
     // P_CheckPosition against the live bodies and the player (the world
@@ -974,7 +874,7 @@ class DoomMonsterSystem {
         if (this._collision !== null) {
             this._collision.addInstance(inst);
         }
-        this._applyRenderLight(fresh);
+        this._view.applyLight(fresh);
 
         return fresh;
     }
@@ -1060,7 +960,7 @@ class DoomMonsterSystem {
             }
             next = state.getNext();
         }
-        this._refreshView(m);
+        this._view.refresh(m);
     }
 
     _dispatchAction(m, action, args) {
@@ -1169,7 +1069,7 @@ class DoomMonsterSystem {
         const dx  = this._user.x - pos[0];
         const dz  = this._user.z - pos[2];
         if (!allaround) {
-            let diff = (((Math.atan2(dz, dx) * 180 / Math.PI - m.facing) % 360) + 360) % 360;
+            let diff = WadGeometry.normalizeAngle(Math.atan2(dz, dx) * 180 / Math.PI - m.facing);
             if (diff > 180) {
                 diff = 360 - diff;
             }
@@ -1296,7 +1196,7 @@ class DoomMonsterSystem {
         if (!this._isFast() && (m.movecount > 0)) {
             return false;
         }
-        if (!this._attack.checkMissileRange(m)) {
+        if (!this._attack.decideMissileAttack(m)) {
             return false;
         }
         this.enterState(m, 'missile0');
@@ -1496,7 +1396,7 @@ class DoomMonsterSystem {
             litSi:       null,
             litBright:   false
         };
-        this._pushRenderLight(drop, false);
+        this._view.pushLight(drop, false);
         this._droppedRecords.push(drop);
     }
 
@@ -1747,7 +1647,7 @@ class DoomMonsterSystem {
             m.si = si;
         }
         this._resolveRide(m);
-        this._refreshView(m);
+        this._view.refresh(m);
         if (this._effects !== null) {
             this._effects.spawnTeleportFogs(fromX, fromY, fromZ, landing.x, destY, landing.z, m.facing);
         }
@@ -1777,177 +1677,37 @@ class DoomMonsterSystem {
         }
     }
 
-    _refreshView(m) {
-        // A ground corpse shows the gibs pool whatever its state machine says
-        // (it keeps running to its terminal frame for the nightmare respawn).
-        if (m.crushedFlat) {
-            return;
-        }
-        const state = m.def.getState(m.stateKey);
-        const views = m.frames[DoomMonsterDef.viewKey(state.getSprite(), state.getFrame())];
-        if (views === undefined) {
-            return;
-        }
-        const objId = ((views.length === 1) ? views[0] : views[this._rotationOctant(m)]);
-        if (objId !== m.shownObj) {
-            m.inst.setObject(objId);
-            m.shownObj = objId;
-        }
-    }
-
-    // Octant of the view angle: world runs on worldX = doomX / worldZ = +doomY,
-    // so atan2(dz, dx) IS the Doom angle. (angleToViewer − facing + 22.5°) / 45
-    // is the thing→viewer form of the vanilla viewer→thing +202.5° formula.
-    _rotationOctant(m) {
-        const pos = m.inst.getTransform().position;
-        const angleToViewer = Math.atan2(this._user.z - pos[2], this._user.x - pos[0]) * 180 / Math.PI;
-        return Math.floor(((((angleToViewer - m.facing + 22.5) % 360) + 360) % 360) / 45);
+    /**
+     * Closest live body crossed by a ray (see DoomMonsterTrace.ray) — the
+     * entry point every shooting channel uses.
+     *
+     * @returns {{ref, dist, point}|null}
+     */
+    traceRay(ox, oy, oz, dx, dy, dz, maxDist, opts = {}) {
+        return this._trace.ray(ox, oy, oz, dx, dy, dz, maxDist, opts);
     }
 
     /**
-     * First LIVE body crossed by a ray (normalized direction): every body is a
-     * vertical cylinder — the 2D circle of its collision radius over the
-     * [feet, feet + actor height] span (thing->height from the def, never the
-     * displayed billboard's — that one pulses with the animation). The engine
-     * raycast never sees these bodies, so the caller compares dist with its
-     * own wall hit.
+     * Closest live body along a horizontal bearing (see DoomMonsterTrace.aim).
      *
-     * @param {object} opts {exclude: a body the ray goes through (its own
-     *                       shooter), includePlayer: the player is a target
-     *                       too (a monster's shot), immuneTo: skip whoever
-     *                       that body cannot hurt (same species)}
-     * @returns {{ref, dist, point}|null} closest hit
+     * @returns {{record, dist}|null}
      */
-    traceRay(ox, oy, oz, dx, dy, dz, maxDist, opts = {}) {
-        const exclude  = (opts.exclude ?? null);
-        const immuneTo = (opts.immuneTo ?? null);
-        // +THRUGHOST (the knight's axes, the lich's ice ball, the Heretic
-        // weapons): the shot goes clean through a phantom, which is the whole
-        // point of the ghost variants.
-        const thruGhost = (opts.thruGhost === true);
-        let best = null;
-        const consider = (ref, cx, cz, radius, feetY, topY) => {
-            if ((ref === exclude) || (thruGhost && DoomActorRef.isGhost(ref))
-                || ((immuneTo !== null) && !DoomMonsterDamage.canAttackHurt(ref, immuneTo))) {
-                return;
-            }
-            const t = this._rayCylinder(ox, oy, oz, dx, dy, dz, cx, cz, radius, feetY, topY);
-            if ((t !== null) && (t <= maxDist) && ((best === null) || (t < best.dist))) {
-                best = {ref: ref, dist: t, point: [ox + dx * t, oy + dy * t, oz + dz * t]};
-            }
-        };
-
-        for (const m of this._monsters) {
-            if (m.dead) {
-                continue;
-            }
-            const pos = m.inst.getTransform().position;
-            consider(m, pos[0], pos[2], m.inst.getCollisionRadius(),
-                pos[1], pos[1] + m.def.getHeight() * WadConstants.SCALE);
-        }
-        if ((opts.includePlayer === true) && (this._user !== null) && !this._user.isDead()) {
-            consider(this._user, this._user.x, this._user.z, this._user.getRadius(),
-                this._user.y, this._user.y + this._user.getCurrentHeight());
-        }
-
-        return best;
-    }
-
-    // A_BFGSpray-style aim: closest LIVE body whose XZ circle crosses the
-    // HORIZONTAL ray within maxDist — the vertical axis is ignored, like the
-    // slope search of P_AimLineAttack, which finds a target above or below
-    // the eye plane. The caller settles visibility with its own LOS check.
     aimRay(ox, oz, dx, dz, maxDist) {
-        let best = null;
-        for (const m of this._monsters) {
-            if (m.dead) {
-                continue;
-            }
-            const pos = m.inst.getTransform().position;
-            const t   = this._rayCircle(ox, oz, dx, dz, pos[0], pos[2], m.inst.getCollisionRadius());
-            if ((t !== null) && (t <= maxDist) && ((best === null) || (t < best.dist))) {
-                best = {record: m, dist: t};
-            }
-        }
-        return best;
+        return this._trace.aim(ox, oz, dx, dz, maxDist);
     }
 
-    // Ray parameter against one 2D circle (entry point, clamped to the origin
-    // when it starts inside), or null when the ray misses or leaves it behind.
-    _rayCircle(ox, oz, dx, dz, cx, cz, r) {
-        const span = DoomMonsterSystem._circleSpan(ox - cx, oz - cz, dx, dz, r);
-
-        return ((span !== null) ? span.near : null);
-    }
-
-    // Entry and exit parameters of the ray on the XZ circle (entry clamped to
-    // the origin when the ray starts inside), or null when it misses or the
-    // circle is entirely behind. The quadratic of both ray tests.
-    static _circleSpan(ex, ez, dx, dz, r) {
-        const a = dx * dx + dz * dz;
-        if (a < DoomMonsterSystem.RAY_MIN_XZ) {
-            // No XZ direction (a shot straight up or down): the quadratic
-            // degenerates to 0/0. The cylinder test owns that case through its
-            // cap branch, the flat circle test simply has no answer.
-            return null;
-        }
-        const b    = 2 * (ex * dx + ez * dz);
-        const c    = ex * ex + ez * ez - r * r;
-        const disc = b * b - 4 * a * c;
-        if (disc < 0) {
-            return null;
-        }
-        const sq  = Math.sqrt(disc);
-        const far = (-b + sq) / (2 * a);
-        if (far < 0) {
-            return null;
-        }
-
-        return {near: Math.max(0, (-b - sq) / (2 * a)), far: far};
-    }
-
-    // Ray parameter against one vertical cylinder, or null. Solved on the XZ
-    // circle (the quadratic keeps the 3D ray parameter since the direction is
-    // 3D-normalized), then gated on the vertical span — with a cap crossing
-    // when the ray enters above the head or below the feet and dives into it.
-    _rayCylinder(ox, oy, oz, dx, dy, dz, cx, cz, r, yBottom, yTop) {
-        const ex = ox - cx;
-        const ez = oz - cz;
-        const a  = dx * dx + dz * dz;
-        if (a < DoomMonsterSystem.RAY_MIN_XZ) {
-            // Straight vertical shot: hit only when already over the body.
-            if ((ex * ex + ez * ez) > r * r) {
-                return null;
-            }
-            const tCap = (((dy > 0) ? yBottom : yTop) - oy) / dy;
-            return ((tCap >= 0) ? tCap : null);
-        }
-        const span = DoomMonsterSystem._circleSpan(ex, ez, dx, dz, r);
-        if (span === null) {
-            return null;
-        }
-        const tNear = span.near;
-        const tFar  = span.far;
-        const yNear = oy + dy * tNear;
-        if ((yNear >= yBottom) && (yNear <= yTop)) {
-            return tNear;
-        }
-        if (dy === 0) {
-            return null;
-        }
-        // Entering above the head (or below the feet): the ray may still dive
-        // onto the matching cap while inside the circle.
-        const tCap = (((yNear > yTop) ? yTop : yBottom) - oy) / dy;
-        return (((tCap >= tNear) && (tCap <= tFar) && (tCap >= 0)) ? tCap : null);
+    /**
+     * The first live body standing on a spot (see DoomMonsterTrace.bodyAt).
+     *
+     * @returns {{ref, point}|null}
+     */
+    bodyAt(x, z, radius, opts = {}) {
+        return this._trace.bodyAt(x, z, radius, opts);
     }
 }
 
 DoomMonsterSystem.MS_PER_TIC = 1000 / 35;
 
-// Below this squared XZ length a ray direction counts as purely vertical: the
-// ray/circle quadratic has no solution there (0/0), the cylinder answers on its
-// caps instead.
-DoomMonsterSystem.RAY_MIN_XZ = 1e-9;
 // Vanilla P_XYMovement stop threshold (0x1000/65536, map units/tic) — the
 // decay/step/float numbers live in WadConstants (shared with the locomotion)
 DoomMonsterSystem.STOPSPEED = 0.0625;

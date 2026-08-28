@@ -93,7 +93,7 @@ class WadAnimationBank {
                 ids.push(this._bank.getLoaderId(idx));
             }
         }
-        const tics = ((seq !== undefined && seq.speedTics > 0) ? seq.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
+        const tics = (((seq !== undefined) && (seq.speedTics > 0)) ? seq.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
 
         return {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
     }
@@ -126,7 +126,7 @@ class WadAnimationBank {
             const nameList = ((isFlat) ? flatNames : wallNames);
             const fi = nameList.indexOf(firstName);
             const li = nameList.indexOf(lastName);
-            if (fi === -1 || li === -1 || li < fi) {
+            if ((fi === -1) || (li === -1) || (li < fi)) {
                 continue;
             }
             const frames = nameList.slice(fi, li + 1);

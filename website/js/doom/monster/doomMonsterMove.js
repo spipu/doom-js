@@ -24,7 +24,6 @@ class DoomMonsterMove {
         this._rng       = rng;
         this._levelData = levelData;
         this._postMove  = null;
-        this._avoidingDropoff = false;
     }
 
     // Bookkeeping hook run after every successful step (ride re-resolution).
@@ -47,8 +46,8 @@ class DoomMonsterMove {
         if (m.movedir >= DoomMonsterMove.DI_NODIR) {
             return;
         }
-        m.facing = Math.floor((((m.facing % 360) + 360) % 360) / 45) * 45;
-        let delta = ((m.movedir * 45 - m.facing) % 360 + 360) % 360;
+        m.facing = Math.floor(WadGeometry.normalizeAngle(m.facing) / 45) * 45;
+        let delta = WadGeometry.normalizeAngle(m.movedir * 45 - m.facing);
         if (delta > 180) {
             delta -= 360;
         }
@@ -57,7 +56,7 @@ class DoomMonsterMove {
         } else if (delta > 0) {
             m.facing += 45;
         }
-        m.facing = ((m.facing % 360) + 360) % 360;
+        m.facing = WadGeometry.normalizeAngle(m.facing);
     }
 
     // P_Move: one all-or-nothing step of `speed` map units along movedir.
@@ -167,9 +166,12 @@ class DoomMonsterMove {
         }
         const escape = this._dropoffEscape(m);
         if (escape !== null) {
-            this._avoidingDropoff = true;
+            // MF5_AVOIDINGDROPOFF is a flag of the ACTOR in the source, so it
+            // rides the record: a module-wide field would leak one monster's
+            // escape onto every other body walking the same tic.
+            m.avoidingDropoff = true;
             this._doNewChaseDir(m, escape.dx, escape.dz);
-            this._avoidingDropoff = false;
+            m.avoidingDropoff = false;
             // Small steps while backing away from the edge.
             m.movecount = 1;
             return;
@@ -211,7 +213,7 @@ class DoomMonsterMove {
         }
         // While escaping a dropoff the axes keep their order and the turnaround
         // stays allowed: the way out may well be backwards.
-        if (!this._avoidingDropoff) {
+        if (m.avoidingDropoff !== true) {
             if ((this._rng.next() > 200) || (Math.abs(deltay) > Math.abs(deltax))) {
                 const swap = d1;
                 d1 = d2;
@@ -227,7 +229,7 @@ class DoomMonsterMove {
         if (tryDir(d1) || tryDir(d2)) {
             return;
         }
-        if (!this._avoidingDropoff && tryDir(olddir)) {
+        if ((m.avoidingDropoff !== true) && tryDir(olddir)) {
             return;
         }
         if ((this._rng.next() & 1) !== 0) {
@@ -364,7 +366,7 @@ class DoomMonsterMove {
         // MF5_AVOIDINGDROPOFF: a body already hanging over a ledge overhangs it
         // from every direction, so the strict refusal would pin it there — the
         // escape step is exempt (the destination floor test still holds it up).
-        if (isFloat || this._avoidingDropoff || (m.def.getFlags().dropOff === true)) {
+        if (isFloat || (m.avoidingDropoff === true) || (m.def.getFlags().dropOff === true)) {
             return true;
         }
         const r    = m.inst.getCollisionRadius();

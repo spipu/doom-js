@@ -86,7 +86,7 @@ class WadMapAnalyzer {
         const bySector = sectors.map(() => []);
         for (let li = 0; li < linedefs.length; li++) {
             const ld = linedefs[li];
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
             const siR = sidedefs[ld.right].sector;
@@ -133,7 +133,7 @@ class WadMapAnalyzer {
 
         const minNeighbour = {};
         for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
             const rSi = sidedefs[ld.right].sector;
@@ -153,7 +153,7 @@ class WadMapAnalyzer {
             }
             const maxLight = sectors[si].lightRaw;
             let minLight = Math.min(maxLight, minNeighbour[si] ?? maxLight);
-            if (effect.type === 'strobe' && minLight === maxLight) {
+            if ((effect.type === 'strobe') && (minLight === maxLight)) {
                 minLight = 0;
             }
             if (effect.type === 'fire') {
@@ -523,7 +523,7 @@ class WadMapAnalyzer {
             }
             const adj = [];
             for (const ld of linedefs) {
-                if (ld.right < 0 || ld.left < 0) {
+                if ((ld.right < 0) || (ld.left < 0)) {
                     continue;
                 }
                 if (sidedefs[ld.right].sector === si) {
@@ -594,7 +594,7 @@ class WadMapAnalyzer {
                 const adjFh    = [];
                 const adjAllFh = [];
                 for (const ld of linedefs) {
-                    if (ld.right < 0 || ld.left < 0) {
+                    if ((ld.right < 0) || (ld.left < 0)) {
                         continue;
                     }
                     const rSi = sidedefs[ld.right].sector;
@@ -832,7 +832,7 @@ class WadMapAnalyzer {
         if (rule === 'shortestLower') {
             let shortest = null;
             for (const ld of linedefs) {
-                if (ld.right < 0 || ld.left < 0) {
+                if ((ld.right < 0) || (ld.left < 0)) {
                     continue;
                 }
                 if (sidedefs[ld.right].sector !== si && sidedefs[ld.left].sector !== si) {
@@ -850,7 +850,7 @@ class WadMapAnalyzer {
 
         const neighbours = [];
         for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
             const rSi = sidedefs[ld.right].sector;
@@ -908,7 +908,7 @@ class WadMapAnalyzer {
                 continue;
             }
             const rule = WadConstants.floorChangeForSpecial(ld.special);
-            if (rule === null || ld.tag === 0 || ld.right < 0) {
+            if ((rule === null) || (ld.tag === 0) || (ld.right < 0)) {
                 continue;
             }
             const front = sectors[sidedefs[ld.right].sector];
@@ -949,7 +949,7 @@ class WadMapAnalyzer {
     _sectorAtHeight(si, fh) {
         const {linedefs, sidedefs, sectors} = this._level;
         for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
             const rSi = sidedefs[ld.right].sector;
@@ -995,7 +995,7 @@ class WadMapAnalyzer {
         // and whose left-side sector is an unclaimed same-flat sector.
         const nextStep = (current, texture) => {
             for (const ld of linedefs) {
-                if (ld.right < 0 || ld.left < 0) {
+                if ((ld.right < 0) || (ld.left < 0)) {
                     continue;
                 }
                 if (sidedefs[ld.right].sector !== current) {

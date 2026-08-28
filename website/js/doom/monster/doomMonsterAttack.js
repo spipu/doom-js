@@ -2,7 +2,7 @@
  * The monsters' attack layer: when an attack fires, where it is aimed, and
  * what each `A_*` verb of the bestiary actually does.
  *
- * Two halves. The GATES (checkMeleeRange / checkMissileRange) are called by
+ * Two halves. The GATES (checkMeleeRange / decideMissileAttack) are called by
  * A_Chase before it walks, and decide whether the body switches to its Melee
  * or Missile state — they are the whole reason a monster claws at arm's length
  * and only lobs a fireball now and then. The VERBS are the state actions those
@@ -69,7 +69,11 @@ class DoomMonsterAttack {
     // its reaction delay never fires, a melee fighter holds fire inside its own
     // threshold (the revenant's fist), and the archvile gives up past its
     // maximum range.
-    checkMissileRange(m) {
+    //
+    // Named a decision and not a check: like the source, it CONSUMES the
+    // MF_JUSTHIT flag it answers on, so calling it twice in a tic would not
+    // give the same answer.
+    decideMissileAttack(m) {
         const target = m.target;
         if ((target === null) || !this._system.checkSightTo(m, target)) {
             return false;
@@ -116,7 +120,7 @@ class DoomMonsterAttack {
             // and every shot leaving along this facing inherits the miss.
             facing += this._rng.nextDiff() * WadConstants.SHADOW_FACE_SPREAD;
         }
-        m.facing = ((facing % 360) + 360) % 360;
+        m.facing = WadGeometry.normalizeAngle(facing);
         m.flags &= ~WadConstants.MTF_AMBUSH;
     }
 
@@ -177,8 +181,9 @@ class DoomMonsterAttack {
         this._missile(m, kind, args);
     }
 
-    // A_Srcr1Attack: D'Sparil spits one fireball while healthy and three once
-    // past a third of its life, where it may also chain a second volley.
+    // A_Srcr1Attack: D'Sparil spits one fireball while healthy and the whole
+    // fan once wounded, where it may also chain a second volley. Both
+    // thresholds are fractions of its full health, read from the state.
     _serpentAttack(m, args) {
         this.faceTarget(m);
         if (this.checkMeleeRange(m)) {
@@ -186,15 +191,15 @@ class DoomMonsterAttack {
             return;
         }
         const full = m.def.getHealth();
-        if (m.health > ((full / 3) * 2)) {
+        if (m.health > DoomMonsterAttack._share(full, args.fanBelow)) {
             this._fire(m, args.kind, {height: args.height});
             return;
         }
         this._fan(m, {kind: args.kind, height: args.height, angles: args.angles});
-        if (m.health >= (full / 3)) {
+        if (m.health >= DoomMonsterAttack._share(full, args.doubleBelow)) {
             return;
         }
-        // Under a third of its life it attacks twice in a row, then rests one
+        // Under the second threshold it attacks twice in a row, then rests one
         // volley (special1 carries the alternation).
         if (m.special1 !== 0) {
             m.special1 = 0;
@@ -380,7 +385,7 @@ class DoomMonsterAttack {
 
     _painDie(m, args) {
         this._system.noBlocking(m);
-        for (const offset of [90, 180, 270]) {
+        for (const offset of args.spawnAngles) {
             this._shootSoul(m, m.facing + offset, args);
         }
     }
@@ -497,6 +502,14 @@ class DoomMonsterAttack {
     }
 
     // --- Internals ---
+
+    // A fraction of a health pool, multiplied BEFORE dividing like the source
+    // does: for a third of the integer healths — D'Sparil's own 3500 among them
+    // — the two forms differ by one ulp, which flips the comparison for a body
+    // sitting exactly on the threshold.
+    static _share(health, fraction) {
+        return ((health * fraction.num) / fraction.den);
+    }
 
     // A blow landing on the current target, through the shared pipeline.
     _hit(m, damage) {
