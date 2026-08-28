@@ -1,5 +1,7 @@
-// Doom's deterministic game RNG (P_Random), a fixed 256-entry table walked by a
-// single index — reproduces vanilla spread and damage exactly. Port of m_random.c.
+/**
+ * Doom's deterministic game RNG (P_Random), a fixed 256-entry table walked by a
+ * single index — reproduces vanilla spread and damage exactly. Port of m_random.c.
+ */
 class DoomRandom {
     constructor() {
         this._index = 0;
@@ -25,6 +27,26 @@ class DoomRandom {
     // Signed difference of two draws, the vanilla idiom for symmetric spread.
     nextDiff() {
         return this.next() - this.next();
+    }
+
+    /**
+     * One damage roll, in either shape the sources write: `base × (1..dice)`
+     * plus an optional flat part (the Doom bestiary and the weapon tables), or
+     * a plain `min..max` range (the Heretic melee verbs). Costs exactly ONE
+     * draw either way, which is what keeps the shared table in step.
+     *
+     * @param {object|null} spec {base, dice, flat?} or {min, max}
+     * @returns {number} 0 when nothing is specified
+     */
+    damageRoll(spec) {
+        if ((spec === undefined) || (spec === null)) {
+            return 0;
+        }
+        if (spec.min !== undefined) {
+            return (spec.min + this.next() % (spec.max - spec.min + 1));
+        }
+
+        return ((spec.flat ?? 0) + spec.base * (1 + this.next() % spec.dice));
     }
 }
 

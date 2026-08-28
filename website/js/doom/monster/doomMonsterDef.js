@@ -49,13 +49,20 @@ class DoomMonsterDef {
         }
         for (const key of Object.keys(raw)) {
             const st = raw[key];
-            this._states[key] = new DoomMonsterState(st.sprite, st.frame, st.tics, st.action, this._resolveNext(raw, key, st.next), st.bright, st.fast);
+            this._states[key] = new DoomMonsterState(st.sprite, st.frame, st.tics, st.action, st.args,
+                this._resolveNext(raw, key, st.next), st.bright, st.fast);
         }
     }
 
     _expandGroup(raw, group, sprite, tuples) {
         const expanded = [];
         for (const [frames, tics, action, next, bright, fast] of tuples) {
+            // A zscript action takes parameters, and two states of one monster
+            // may call the same verb with different ones (the ophidian's two
+            // projectiles). The tuple therefore accepts either a bare name or
+            // a [name, args] pair, transcribed straight from the state line.
+            const named = (Array.isArray(action) ? action[0] : (action ?? null));
+            const args  = (Array.isArray(action) ? action[1] : null);
             for (let i = 0; i < frames.length; i++) {
                 // The zscript action runs on EVERY state of the multi-letter
                 // line ('AABBCCDD 4 A_Chase' = 8 chase steps); only the jump
@@ -65,7 +72,8 @@ class DoomMonsterDef {
                     sprite: sprite,
                     frame:  frames[i],
                     tics:   tics,
-                    action: (action ?? null),
+                    action: named,
+                    args:   args,
                     next:   ((last) ? (next ?? null) : null),
                     bright: (bright === true),
                     fast:   (fast === true)
@@ -162,13 +170,19 @@ class DoomMonsterDef {
         return (sprite + frame);
     }
 
+    // Distinct {sprite, frame} pairs of EVERY state, whatever its group.
+    getAllFramePairs() {
+        return this.getFramePairs(null);
+    }
+
     // Distinct {sprite, frame} pairs of the given state groups (the sprite is
     // per-state: spriteOverrides groups differ from the base — barrel BEXP).
+    // A null group list takes them all.
     getFramePairs(groups) {
         const seen  = new Set();
         const pairs = [];
         for (const key of Object.keys(this._states)) {
-            if (!groups.some((g) => key.startsWith(g))) {
+            if ((groups !== null) && !groups.some((g) => key.startsWith(g))) {
                 continue;
             }
             const state   = this._states[key];

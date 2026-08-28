@@ -150,6 +150,17 @@ class AbstractGameProfile {
     }
 
     /**
+     * Monster types this game spawns at RUNTIME rather than from the map
+     * (the pain elemental's lost souls): their views have to be built with the
+     * level, since a body born mid-fight has no chance to load a sprite.
+     *
+     * @returns {string[]} monster def codes
+     */
+    runtimeSpawnTypes() {
+        return [];
+    }
+
+    /**
      * Per-game numbers of the shootable-body damage pipeline (gib threshold,
      * default kickback, blood behaviour) — UZDoom gameinfo + P_SpawnBlood.
      *
@@ -402,7 +413,14 @@ class AbstractGameProfile {
      * halved at dropoff) and trailEffect (template spawned every
      * trailEveryTics of flight — set the two together).
      *
-     * @returns {object[]} [{kind, sprite, letters, speed, flightTics, explosion, splashDamage, alpha, additive, decalType, gravity?, gravityDelayTics?, dropSpeed?, trailEffect?, trailEveryTics?}]
+     * A monster's shot adds: fastSpeed (the nightmare skill's FastSpeed),
+     * seek (homing — {threshold, turnMax} in degrees, everyTics = the cadence
+     * of the vanilla action), ripper (a shot that passes THROUGH bodies and
+     * grinds them — {damage, damageEvery, shove, lift}), lifeTics (a forced
+     * lifetime), growRise (map units climbed per tic while growing) and
+     * floorHugger (it crawls along the floor).
+     *
+     * @returns {object[]} [{kind, sprite, letters, speed, flightTics, explosion, splashDamage, alpha, additive, decalType, gravity?, gravityDelayTics?, dropSpeed?, trailEffect?, trailEveryTics?, fastSpeed?, seek?, ripper?, lifeTics?, growRise?, floorHugger?}]
      */
     projectileDefs() {
         this._generateException('projectileDefs must be implemented');

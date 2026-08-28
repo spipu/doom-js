@@ -1,8 +1,15 @@
-// Hitscan attacks (bullets, pellets, melee) — P_BulletSlope / P_GunShot /
-// P_LineAttack. Free aim (yaw + pitch, gzdoom mouselook): each ray is cast from
-// the eye through the world; the first surface it meets gets a puff, pulled a
-// little in front of it (vanilla backs the puff off 4 map units). A ray into the
-// sky meets no geometry → no hit → no puff, exactly like Doom.
+/**
+ * Hitscan attacks (bullets, pellets, melee) — P_BulletSlope / P_GunShot /
+ * P_LineAttack. Free aim (yaw + pitch, gzdoom mouselook): each ray is cast from
+ * the eye through the world; the first surface it meets gets a puff, pulled a
+ * little in front of it (vanilla backs the puff off 4 map units). A ray into the
+ * sky meets no geometry → no hit → no puff, exactly like Doom.
+ *
+ * Monsters shoot through the same rays (fireMonster): only the origin, the aim
+ * and the damage table differ — they have no free look, so their pellets share
+ * one vertical slope computed once on the target (AimLineAttack), and only the
+ * yaw spreads.
+ */
 class DoomHitscan {
     constructor(collision, effects, rng, decals, gunTriggers = null, monsters = null, damageModule = null) {
         this._collision   = collision;
@@ -38,14 +45,100 @@ class DoomHitscan {
         this._shootRay(def, user, yaw, user.pitch, true);
     }
 
-    _shootRay(def, user, yaw, pitch, melee) {
-        const range  = def.getRange();
+    /**
+     * A monster's bullet volley (A_PosAttack / A_SPosAttack / A_CPosAttack).
+     * The vertical aim is taken ONCE on the target and shared by every pellet,
+     * like the single AimLineAttack call that opens those functions; only the
+     * yaw spreads. The shot leaves the body centre plus AttackOffset.
+     *
+     * @param {object} shooter monster record
+     * @param {object} target  the victim it is aiming at (player or monster)
+     * @param {object} spec    {rays, damage: {base, dice, flat?}, puff}
+     */
+    fireMonster(shooter, target, spec) {
+        if ((target === null) || (this._damage === null)) {
+            return;
+        }
+        const origin = DoomHitscan.attackOrigin(shooter);
+        const aim    = DoomHitscan._aimAt(origin, target);
+        const range  = WadConstants.MONSTER_ATTACK_RANGE * WadConstants.SCALE;
+        const rays   = (spec.rays ?? 1);
+        for (let i = 0; i < rays; i++) {
+            const yaw = aim.yaw + WadConstants.MONSTER_BULLET_SPREAD * this._rng.nextDiff();
+            this._shootMonsterRay(shooter, origin, yaw, aim.pitch, range, spec);
+        }
+    }
+
+    /**
+     * Where a monster's shot leaves its body: the centre plus AttackOffset
+     * (actorinlines.h — 8 units for a non-player), never the sprite top.
+     *
+     * @returns {number[]} [x, y, z] world
+     */
+    static attackOrigin(shooter) {
+        return [
+            DoomActorRef.x(shooter),
+            DoomActorRef.centerY(shooter) + WadConstants.MONSTER_ATTACK_Z_OFFSET * WadConstants.SCALE,
+            DoomActorRef.z(shooter)
+        ];
+    }
+
+    // Yaw/pitch (degrees) from a point onto a body's centre — the slope
+    // AimLineAttack lands on when the target stands in the firing cone.
+    static _aimAt(origin, target) {
+        const dx = DoomActorRef.x(target) - origin[0];
+        const dz = DoomActorRef.z(target) - origin[2];
+        const dy = DoomActorRef.centerY(target) - origin[1];
+        const flat = Math.hypot(dx, dz);
+
+        return {
+            yaw:   Math.atan2(dx, dz) / DEG_TO_RAD,
+            pitch: Math.atan2(dy, ((flat > 1e-6) ? flat : 1e-6)) / DEG_TO_RAD
+        };
+    }
+
+    _shootMonsterRay(shooter, origin, yaw, pitch, range, spec) {
+        const dir = DoomHitscan._direction(yaw, pitch);
+        const hit = this._collision.raycast(origin[0], origin[1], origin[2],
+            dir[0], dir[1], dir[2], range, {floors: true, ceilings: true, dynamic: true});
+        const flesh = ((this._monsters !== null)
+            ? this._monsters.traceRay(origin[0], origin[1], origin[2], dir[0], dir[1], dir[2],
+                ((hit !== null) ? Math.min(hit.dist, range) : range), {exclude: shooter, includePlayer: true})
+            : null);
+
+        if (flesh !== null) {
+            // No species filter here: vanilla only spares a relative from a
+            // MISSILE (CanAttackHurt is called from PIT_CheckThing alone), which
+            // is why a chaingunner's spray tears through its own kin.
+            const damage = this._rng.damageRoll(spec.damage);
+            const point  = WadGeometry.pullBack(flesh.point, dir, 10);
+            this._damage.damage(flesh.ref, damage, {point: point, source: shooter});
+            // Vanilla only draws the puff on a bloodless victim; everything
+            // else bleeds (P_LineAttack).
+            if (DoomActorRef.isMonster(flesh.ref) && (flesh.ref.def.getFlags().noBlood === true)) {
+                this._effects.spawnPuff(spec.puff, point[0], point[1], point[2], false);
+            }
+            return;
+        }
+        if (hit === null) {
+            return;
+        }
+        const at = WadGeometry.pullBack(hit.point, dir);
+        this._effects.spawnPuff(spec.puff, at[0], at[1], at[2], false);
+    }
+
+    // Unit ray of a yaw/pitch pair, in the engine's world convention.
+    static _direction(yaw, pitch) {
         const yawR   = yaw * DEG_TO_RAD;
         const pitchR = pitch * DEG_TO_RAD;
         const cp = Math.cos(pitchR);
-        const dx = Math.sin(yawR) * cp;
-        const dy = Math.sin(pitchR);
-        const dz = Math.cos(yawR) * cp;
+
+        return [Math.sin(yawR) * cp, Math.sin(pitchR), Math.cos(yawR) * cp];
+    }
+
+    _shootRay(def, user, yaw, pitch, melee) {
+        const range  = def.getRange();
+        const [dx, dy, dz] = DoomHitscan._direction(yaw, pitch);
 
         const hit = this._collision.raycast(
             user.getCameraX(), user.getCameraY(), user.getCameraZ(),
@@ -96,18 +189,19 @@ class DoomHitscan {
         if ((spec === null) || (this._damage === null)) {
             return;
         }
-        let damage = (spec.flat ?? 0) + spec.base * (1 + this._rng.next() % spec.dice);
+        let damage = this._rng.damageRoll(spec);
         if ((def.getBerserkItem() !== null) && user.hasItem(def.getBerserkItem())) {
             damage *= def.getBerserkFactor();
         }
         const point = WadGeometry.pullBack(flesh.point, dir, 10);
-        this._damage.damage(flesh.record, damage, {
+        this._damage.damage(flesh.ref, damage, {
             point:    point,
+            source:   user,
             srcX:     user.getCameraX(),
             srcZ:     user.getCameraZ(),
             kickback: def.getKickback()
         });
-        if (def.isPuffOnMonsters() || (flesh.record.def.getFlags().noBlood === true)) {
+        if (def.isPuffOnMonsters() || (flesh.ref.def.getFlags().noBlood === true)) {
             this._effects.spawnPuff(def.getPuffType(), point[0], point[1], point[2], melee);
         }
     }

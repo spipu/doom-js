@@ -6,9 +6,9 @@
  * triggers, monsters and the RNG index.
  *
  * Assumed exclusions (transient or cosmetic, like most of what vanilla also
- * skips): in-flight projectiles, sprite effects, decals, sector light phases,
- * sector sound targets, the fine psprite state (the active weapon replays its
- * raise) and the monsters' render smoothing.
+ * skips): sprite effects, decals, sector light phases, sector sound targets,
+ * the fine psprite state (the active weapon replays its raise) and the
+ * monsters' render smoothing.
  *
  * The context is assembled by DoomGame (_snapshotContext): explicit
  * dependencies, no reach into its private fields.
@@ -16,8 +16,9 @@
 class DoomGameSnapshot {
     /**
      * @param {object} context - {wadId, levelCode, skill, user, rng, monsters,
-     *                            gunTriggers, secretsFound, killsCount,
-     *                            itemsFound, levelTimeMs, setCounters}
+     *                            projectiles, gunTriggers, secretsFound,
+     *                            killsCount, itemsFound, levelTimeMs,
+     *                            setCounters}
      * @returns {object} JSON-safe snapshot
      */
     capture(context) {
@@ -49,14 +50,13 @@ class DoomGameSnapshot {
             gunTriggers:  ((context.gunTriggers !== null) ? context.gunTriggers.exportState() : null),
             automap:      ((context.automap !== null) ? context.automap.exportState() : null),
             monsters:     context.monsters.exportState(),
+            projectiles:  context.projectiles.exportState(),
         };
     }
 
-    /**
-     * Applies a snapshot on the freshly rebuilt level — called once everything
-     * is built and wired, before the first frame runs. The player equipment is
-     * restored earlier by DoomGame (it replaces the loadout branch of _init).
-     */
+    // Applies a snapshot on the freshly rebuilt level — called once everything
+    // is built and wired, before the first frame runs. The player equipment is
+    // restored earlier by DoomGame (it replaces the loadout branch of _init).
     apply(context, snapshot) {
         // itemsFound and levelTimeMs postdate FORMAT_VERSION 2: absent from the
         // saves written before them, and the version is compared strictly
@@ -73,6 +73,10 @@ class DoomGameSnapshot {
             context.automap.importState(snapshot.automap ?? null);
         }
         context.monsters.importState(snapshot.monsters);
+        // Missiles last: an owner or a homing lock is resolved against the
+        // bodies the line above just brought back. Absent from the saves
+        // written before they were persisted.
+        context.projectiles.importState(snapshot.projectiles ?? null);
         loader.instances().flushRemovals();
 
         // The player position is re-applied AFTER the movers: the spawn

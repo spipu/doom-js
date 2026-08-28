@@ -54,6 +54,11 @@ class HereticGameProfile extends DefaultGameProfile {
     // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
     // EV_DoFloor(lowerFloor) — to the HIGHEST neighbour, internal special 19 —
     // on tag 666. The boss per episode is on the defs' bossMaps below.
+    // Nothing is born mid-fight in this bestiary (no pain elemental).
+    runtimeSpawnTypes() {
+        return [];
+    }
+
     bossActions() {
         return {
             'E1M8': {special: 19, tag: 666},
@@ -212,7 +217,7 @@ class HereticGameProfile extends DefaultGameProfile {
         return new DoomMonsterDef({
             code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
             health: 45, radius: 16, height: 54, speed: 0, painChance: 255,
-            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true, noCorpseThrust: true},
+            flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noCorpseThrust: true},
             params: {explode: {damage: 128, distance: 128}},
             states: {
                 spawn: [['A', 10, null, 'spawn']],
@@ -220,6 +225,16 @@ class HereticGameProfile extends DefaultGameProfile {
                 death: [['C', 5, 'A_RemovePod', null, true], ['D', 5, 'A_Scream', null, true], ['E', 5, 'A_Explode', null, true], ['F', 10, null, null, true]]
             }
         });
+    }
+
+    // A gargoyle claws for 5..12; the fire gargoyle throws its ball instead
+    // and its species is its own (hereticimp.zs HereticImpLeader).
+    _gargoyleParams(leader) {
+        if (leader) {
+            return {melee: {min: 5, max: 12}, missile: 'hereticImpBall', species: 'gargoyleLeader'};
+        }
+
+        return {missileChanceMult: 0.5, melee: {min: 5, max: 12}};
     }
 
     _gargoyleStates(leader) {
@@ -234,12 +249,24 @@ class HereticGameProfile extends DefaultGameProfile {
             xcrash: [['XY', 7], ['Z', -1]]
         };
         if (leader) {
-            states.missile = [['DE', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomComboAttack', 'see']];
+            states.missile = [['DE', 6, 'A_FaceTarget'], ['F', 6, ['A_CustomComboAttack', {height: 32}], 'see']];
             return states;
         }
         states.melee   = [['DE', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomMeleeAttack', 'see']];
-        states.missile = [['A', 10, 'A_FaceTarget'], ['B', 6, 'A_ImpMsAttack'], ['CBAB', 6, null, 'missile2']];
+        states.missile = [['A', 10, 'A_FaceTarget'], ['B', 6, ['A_ImpMsAttack', {chance: 64, speed: 12}]], ['CBAB', 6, null, 'missile2']];
         return states;
+    }
+
+    // Golem: claw for 2 × (1..8); the nitrogolem throws the seeking skull
+    // instead, under its own species (mummy.zs MummyLeader).
+    _golemParams(leader, ghost) {
+        const params = {melee: {base: 2, dice: 8}};
+        if (leader) {
+            params.missile = 'mummyFX1';
+            params.species = ((ghost) ? 'golemLeaderGhost' : 'golemLeader');
+        }
+
+        return params;
     }
 
     _golemStates(leader) {
@@ -251,9 +278,15 @@ class HereticGameProfile extends DefaultGameProfile {
             death: [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, 'A_SpawnItemEx'], ['L', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
         };
         if (leader) {
-            states.missile = [['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_CustomComboAttack', 'see', true]];
+            states.missile = [['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, ['A_CustomComboAttack', {height: 32}], 'see', true]];
         }
         return states;
+    }
+
+    // knight.zs: Melee and Missile share one block, so the axe thrower keeps
+    // its fist bonus in the missile gate; both variants are one species.
+    _undeadWarriorParams() {
+        return {meleeInMissile: true, species: 'undeadWarrior'};
     }
 
     _undeadWarriorStates() {
@@ -262,7 +295,7 @@ class HereticGameProfile extends DefaultGameProfile {
             // (A_KnightAttack picks axe type by range).
             spawn:   [['AB', 10, 'A_Look', 'spawn']],
             see:     [['ABCD', 4, 'A_Chase', 'see']],
-            missile: [['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, 'A_KnightAttack'], ['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, 'A_KnightAttack', 'see']],
+            missile: [['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, HereticGameProfile.KNIGHT_ATTACK], ['E', 10, 'A_FaceTarget'], ['F', 8, 'A_FaceTarget'], ['G', 8, HereticGameProfile.KNIGHT_ATTACK, 'see']],
             pain:    [['H', 3], ['H', 3, 'A_Pain', 'see']],
             death:   [['I', 6], ['J', 6, 'A_Scream'], ['K', 6], ['L', 6, 'A_NoBlocking'], ['MN', 6], ['O', -1]]
         };
@@ -285,25 +318,28 @@ class HereticGameProfile extends DefaultGameProfile {
                 code: 'gargoyle', name: 'Gargoyle', sprite: 'IMPX',
                 health: 40, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
                 flags: {float: true},
-                params: {missileChanceMult: 0.5},
+                params: this._gargoyleParams(false),
                 states: this._gargoyleStates(false)
             }),
             5: new DoomMonsterDef({
                 code: 'gargoyleLeader', name: 'Fire Gargoyle', sprite: 'IMPX',
                 health: 80, radius: 16, height: 36, mass: 50, speed: 10, painChance: 200,
                 flags: {float: true},
+                params: this._gargoyleParams(true),
                 states: this._gargoyleStates(true)
             }),
             68: new DoomMonsterDef({
                 code: 'golem', name: 'Golem', sprite: 'MUMM',
                 health: 80, radius: 22, height: 62, mass: 75, speed: 12, painChance: 128,
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                params: this._golemParams(false, false),
                 states: this._golemStates(false)
             }),
             45: new DoomMonsterDef({
                 code: 'golemLeader', name: 'Nitrogolem', sprite: 'MUMM',
                 health: 100, radius: 22, height: 62, mass: 75, speed: 12, painChance: 64,
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                params: this._golemParams(true, false),
                 states: this._golemStates(true)
             }),
             69: new DoomMonsterDef({
@@ -311,6 +347,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 80, radius: 22, height: 62, mass: 75, speed: 12, painChance: 128,
                 flags: {ghost: true},
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                params: this._golemParams(false, true),
                 states: this._golemStates(false)
             }),
             46: new DoomMonsterDef({
@@ -318,12 +355,14 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 100, radius: 22, height: 62, mass: 75, speed: 12, painChance: 64,
                 flags: {ghost: true},
                 dropItems: [{item: 'GoldWandAmmo', chance: 84, amount: 3}],
+                params: this._golemParams(true, true),
                 states: this._golemStates(true)
             }),
             64: new DoomMonsterDef({
                 code: 'undeadWarrior', name: 'Undead Warrior', sprite: 'KNIG',
                 health: 200, radius: 24, height: 78, mass: 150, speed: 12, painChance: 100,
                 dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 5}],
+                params: this._undeadWarriorParams(),
                 states: this._undeadWarriorStates()
             }),
             65: new DoomMonsterDef({
@@ -331,6 +370,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 200, radius: 24, height: 78, mass: 150, speed: 12, painChance: 100,
                 flags: {ghost: true},
                 dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 5}],
+                params: this._undeadWarriorParams(),
                 states: this._undeadWarriorStates()
             }),
             15: new DoomMonsterDef({
@@ -338,10 +378,11 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 180, radius: 16, height: 68, speed: 12, painChance: 64,
                 flags: {float: true},
                 dropItems: [{item: 'BlasterAmmo', chance: 84, amount: 10}, {item: 'ArtiTomeOfPower', chance: 4, amount: 0}],
+                params: {melee: {base: 4, dice: 8}, missile: 'wizardFX1'},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['A', 3, 'A_Chase'], ['A', 4, 'A_Chase'], ['A', 3, 'A_Chase'], ['A', 4, 'A_Chase'], ['B', 3, 'A_Chase'], ['B', 4, 'A_Chase'], ['B', 3, 'A_Chase'], ['B', 4, 'A_Chase', 'see']],
-                    missile: [['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['D', 12, 'A_WizAtk3', 'see']],
+                    missile: [['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['C', 4, 'A_WizAtk1'], ['C', 4, 'A_WizAtk2'], ['D', 12, ['A_WizAtk3', {angles: [0, -5.625, 5.625]}], 'see']],
                     pain:    [['E', 3, 'A_GhostOff'], ['E', 3, 'A_Pain', 'see']],
                     death:   [['F', 6, 'A_GhostOff'], ['G', 6, 'A_Scream'], ['HI', 6], ['J', 6, 'A_NoBlocking'], ['KL', 6], ['M', -1, 'A_SetFloorClip']]
                 }
@@ -350,10 +391,11 @@ class HereticGameProfile extends DefaultGameProfile {
                 code: 'weredragon', name: 'Weredragon', sprite: 'BEAS',
                 health: 220, radius: 32, height: 74, mass: 200, speed: 14, painChance: 100,
                 dropItems: [{item: 'CrossbowAmmo', chance: 84, amount: 10}],
+                params: {melee: {base: 3, dice: 8}, missile: 'beastBall'},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['ABCDEF', 3, 'A_Chase', 'see']],
-                    missile: [['H', 10, 'A_FaceTarget'], ['I', 10, 'A_CustomComboAttack', 'see']],
+                    missile: [['H', 10, 'A_FaceTarget'], ['I', 10, ['A_CustomComboAttack', {height: 32}], 'see']],
                     pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
                     death:   [['R', 6], ['S', 6, 'A_Scream'], ['TUV', 6], ['W', 6, 'A_NoBlocking'], ['XY', 6], ['Z', -1]],
                     xdeath:  [['J', 5], ['K', 6, 'A_Scream'], ['L', 5], ['M', 6], ['N', 5], ['O', 6, 'A_NoBlocking'], ['P', 5], ['Q', -1]]
@@ -364,6 +406,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 150, radius: 20, height: 64, mass: 75, speed: 14, painChance: 32,
                 flags: {noBlood: true},
                 dropItems: [{item: 'SkullRodAmmo', chance: 84, amount: 20}],
+                params: {melee: {min: 3, max: 9}},
                 states: {
                     spawn: [['AB', 10, 'A_Look', 'spawn']],
                     see:   [['ABCD', 3, 'A_Chase', 'see']],
@@ -379,7 +422,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['ABCD', 4, 'A_Chase', 'see']],
-                    missile: [['FF', 5, 'A_FaceTarget'], ['FFF', 4, 'A_SpawnProjectile'], ['FFF', 5, 'A_FaceTarget'], ['F', 4, 'A_SpawnProjectile', 'see']],
+                    missile: [['FF', 5, 'A_FaceTarget'], ['FFF', 4, ['A_SpawnProjectile', {kind: 'snakeProjA', height: 32}]], ['FFF', 5, 'A_FaceTarget'], ['F', 4, ['A_SpawnProjectile', {kind: 'snakeProjB', height: 32}], 'see']],
                     pain:    [['E', 3], ['E', 3, 'A_Pain', 'see']],
                     death:   [['G', 5], ['H', 5, 'A_Scream'], ['IJKL', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
                 }
@@ -396,7 +439,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
                     see:     [['A', 4, 'A_Chase', 'see']],
-                    missile: [['A', 5, 'A_FaceTarget'], ['B', 20, 'A_LichAttack', 'see']],
+                    missile: [['A', 5, 'A_FaceTarget'], ['B', 20, HereticGameProfile.LICH_ATTACK, 'see']],
                     pain:    [['A', 4], ['A', 4, 'A_Pain', 'see']],
                     death:   [['C', 7], ['D', 7, 'A_Scream'], ['EF', 7], ['G', 7, 'A_NoBlocking'], ['H', 7], ['I', -1, 'A_BossDeath']]
                 }
@@ -406,17 +449,17 @@ class HereticGameProfile extends DefaultGameProfile {
                 health: 3000, radius: 28, height: 100, mass: 800, speed: 16, painChance: 25,
                 flags: {boss: true, dropOff: true, noTarget: true, noRadiusDmg: true},
                 bossMaps: ['E2M8', 'E5M8'],
-                params: {damage: 7},
+                params: {chargeDamage: {base: 7, dice: 8}},
                 dropItems: [{item: 'ArtiSuperHealth', chance: 51}, {item: 'PhoenixRodAmmo', chance: 84, amount: 10}],
                 states: {
                     spawn:      [['AB', 10, 'A_MinotaurLook', 'spawn']],
                     roam:       [['ABCD', 5, 'A_MinotaurRoam', 'roam']],
                     see:        [['ABCD', 5, 'A_MinotaurChase', 'see']],
-                    melee:      [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, 'A_MinotaurAtk1', 'see']],
-                    missile:    [['V', 10, 'A_MinotaurDecide'], ['Y', 4, 'A_FaceTarget'], ['Z', 9, 'A_MinotaurAtk2', 'see']],
-                    hammer:     [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, 'A_MinotaurAtk3', 'see']],
+                    melee:      [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, ['A_MinotaurAtk1', {damage: {base: 4, dice: 8}}], 'see']],
+                    missile:    [['V', 10, HereticGameProfile.MINOTAUR_DECIDE], ['Y', 4, 'A_FaceTarget'], ['Z', 9, ['A_MinotaurAtk2', {kind: 'minotaurFX1', height: 40, damage: {base: 5, dice: 8}, angles: [0, -5.625, 5.625, -2.8125, 2.8125]}], 'see']],
+                    hammer:     [['V', 10, 'A_FaceTarget'], ['W', 7, 'A_FaceTarget'], ['X', 12, ['A_MinotaurAtk3', {damage: {base: 5, dice: 8}, kind: 'minotaurFX2', loopChance: 192, loopState: 'hammerLoop0'}], 'see']],
                     hammerLoop: [['X', 12, null, 'hammer']],
-                    charge:     [['U', 2, 'A_MinotaurCharge', 'charge']],
+                    charge:     [['U', 2, ['A_MinotaurCharge', {puff: 'phoenixTrail'}], 'charge']],
                     pain:       [['E', 3], ['E', 6, 'A_Pain', 'see']],
                     death:      [['F', 6, 'A_MinotaurDeath'], ['G', 5], ['H', 6, 'A_Scream'], ['I', 5], ['J', 6], ['K', 5], ['L', 6], ['M', 5, 'A_NoBlocking'], ['N', 6], ['O', 5], ['P', 6], ['Q', 5], ['R', 6], ['S', 5], ['T', -1, 'A_BossDeath']]
                 }
@@ -430,8 +473,8 @@ class HereticGameProfile extends DefaultGameProfile {
                     spawn:    [['AB', 10, 'A_Look', 'spawn']],
                     see:      [['ABCD', 5, 'A_Sor1Chase', 'see']],
                     pain:     [['Q', 6, 'A_Sor1Pain', 'see']],
-                    missile:  [['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
-                    missile2: [['S', 10, 'A_FaceTarget'], ['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, 'A_Srcr1Attack', 'see']],
+                    missile:  [['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, HereticGameProfile.SERPENT_ATTACK, 'see']],
+                    missile2: [['S', 10, 'A_FaceTarget'], ['Q', 7, 'A_FaceTarget'], ['R', 6, 'A_FaceTarget'], ['S', 10, HereticGameProfile.SERPENT_ATTACK, 'see']],
                     // Vanilla ends on A_SorcererRise (Sorcerer2, the unmounted
                     // phase — not implemented) whose own death fires the boss
                     // action: until that phase exists, the serpent frees E3M8.
@@ -659,6 +702,22 @@ class HereticGameProfile extends DefaultGameProfile {
             // Heretic blood (BLOD lumps): no damage-staged start and no
             // shortened first tics (Doom-family quirks only).
             {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false},
+            // Every monster missile's Death animation.
+            {name: 'hereticImpBallDeath', sprite: 'FX10', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
+            {name: 'mummyFX1Death',       sprite: 'FX15', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
+            {name: 'knightAxeDeath',      sprite: 'SPAX', letters: ['D', 'E', 'F'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false},
+            {name: 'redAxeDeath',         sprite: 'RAXE', letters: ['C', 'D', 'E'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false},
+            {name: 'beastBallDeath',      sprite: 'FRB1', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: true},
+            {name: 'snakeProjADeath',     sprite: 'SNFX', letters: ['E', 'F', 'G', 'H', 'I'],      frameTics: [5, 5, 4, 3, 3],    alpha: 1, rise: 0, additive: true},
+            {name: 'snakeProjBDeath',     sprite: 'SNFX', letters: ['L', 'M', 'N', 'O'],           frameTics: [5, 5, 4, 3],       alpha: 1, rise: 0, additive: true},
+            {name: 'wizardFX1Death',      sprite: 'FX11', letters: ['C', 'D', 'E', 'F', 'G'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true},
+            {name: 'sorcererFX1Death',    sprite: 'FX14', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true},
+            {name: 'headFX1Death',        sprite: 'FX05', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
+            {name: 'headFX3Death',        sprite: 'FX06', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
+            {name: 'whirlwindDeath',      sprite: 'FX07', letters: ['G', 'F', 'E', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4, rise: 0, additive: false},
+            {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false},
+            {name: 'minotaurFloorFire',   sprite: 'FX13', letters: ['D', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [4, 4, 5, 5, 5, 5, 4, 4, 4], alpha: 1, rise: 0, additive: false},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
             {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
         ];
@@ -699,7 +758,30 @@ class HereticGameProfile extends DefaultGameProfile {
             {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 6, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
             // The tiny side balls spat by an FX2 bounce — one bounce each,
             // like the normal ball (they inherit MaceFX1's impact).
-            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 4, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}}
+            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 4, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}},
+            // The monsters' shots (zscript/actors/heretic/*.zs, raven/minotaur.zs).
+            {kind: 'hereticImpBall', sprite: 'FX10', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 20, flightTics: 6, explosion: 'hereticImpBallDeath', splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
+            {kind: 'mummyFX1',       sprite: 'FX15', letters: ['A', 'B', 'C', 'B'], speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'mummyFX1Death',      splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true,  seek: {threshold: 10, turnMax: 20, everyTics: 10}},
+            {kind: 'knightAxe',      sprite: 'SPAX', letters: ['A', 'B', 'C'],      speed: 9,  fastSpeed: 18, flightTics: 3, explosion: 'knightAxeDeath',     splashDamage: 0, impactDamage: 2,  alpha: 1,   additive: false},
+            {kind: 'redAxe',         sprite: 'RAXE', letters: ['A', 'B'],           speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'redAxeDeath',        splashDamage: 0, impactDamage: 7,  alpha: 1,   additive: false},
+            {kind: 'beastBall',      sprite: 'FRB1', letters: ['A', 'B', 'C'],      speed: 12, fastSpeed: 20, flightTics: 4, explosion: 'beastBallDeath',     splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true},
+            {kind: 'snakeProjA',     sprite: 'SNFX', letters: ['A', 'B', 'C', 'D'], speed: 14, fastSpeed: 20, flightTics: 5, explosion: 'snakeProjADeath',    splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
+            {kind: 'snakeProjB',     sprite: 'SNFX', letters: ['J', 'K'],           speed: 14, fastSpeed: 20, flightTics: 6, explosion: 'snakeProjBDeath',    splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
+            {kind: 'wizardFX1',      sprite: 'FX11', letters: ['A', 'B'],           speed: 18, fastSpeed: 24, flightTics: 6, explosion: 'wizardFX1Death',     splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
+            {kind: 'sorcererFX1',    sprite: 'FX14', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 6, explosion: 'sorcererFX1Death',   splashDamage: 0, impactDamage: 10, alpha: 1,   additive: true},
+            {kind: 'headFX1',        sprite: 'FX05', letters: ['A', 'B', 'C'],      speed: 13, fastSpeed: 20, flightTics: 6, explosion: 'headFX1Death',       splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
+            {kind: 'headFX3',        sprite: 'FX06', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 18, flightTics: 4, explosion: 'headFX3Death',       splashDamage: 0, impactDamage: 5,  alpha: 1,   additive: true, growRise: 9},
+            // The whirlwind is no ball: it passes THROUGH its victim and
+            // grinds them for as long as it lasts (Whirlwind::DoSpecialDamage).
+            {kind: 'whirlwind',      sprite: 'FX07', letters: ['D', 'E', 'F', 'G', 'A', 'B', 'C'], speed: 10, flightTics: 3, explosion: 'whirlwindDeath', splashDamage: 0, impactDamage: 0, alpha: 0.4, additive: false,
+                seek: {threshold: 10, turnMax: 30, everyTics: 3}, ripper: {damage: 3, damageEvery: 8, shove: 2, lift: 0.3}, lifeTics: 700},
+            {kind: 'minotaurFX1',    sprite: 'FX12', letters: ['A', 'B'],           speed: 20, fastSpeed: 26, flightTics: 6, explosion: 'minotaurFX1Death',   splashDamage: 0,  impactDamage: 3, alpha: 1, additive: false},
+            // MinotaurFX2 crawls along the floor sowing MinotaurFX3 flames. The
+            // flames are drawn (trail) but do not burn: a standing 128-damage
+            // mine every other tic has no equivalent in our missile model, so
+            // the shot keeps only its own A_Explode (24).
+            {kind: 'minotaurFX2',    sprite: 'FX13', letters: ['A'],                speed: 14, fastSpeed: 20, flightTics: 2, explosion: 'minotaurFX2Death',   splashDamage: 24, impactDamage: 4, alpha: 1, additive: false,
+                floorHugger: true, trailEffect: 'minotaurFloorFire', trailEveryTics: 2}
         ];
     }
 
@@ -994,3 +1076,51 @@ class HereticGameProfile extends DefaultGameProfile {
         return map;
     }
 }
+
+// A_KnightAttack (knight.zs): fist in reach, else an axe thrown from 36 units
+// up — the red one, far nastier, on a 40/256 jet (always, for a ghost).
+HereticGameProfile.KNIGHT_ATTACK = ['A_KnightAttack', {
+    damage:     {base: 3, dice: 8},
+    kind:       'knightAxe',
+    rareKind:   'redAxe',
+    rareChance: 40,
+    height:     36
+}];
+
+// A_LichAttack (ironlich.zs): fist in reach, else one of three shots drawn
+// against the distance — ice ball, fire column or whirlwind.
+HereticGameProfile.LICH_ATTACK = ['A_LichAttack', {
+    damage:      {base: 6, dice: 8},
+    farDistance: 8 * 64,
+    iceChance:   [50, 150],
+    fireChance:  [150, 200],
+    iceKind:     'headFX1',
+    fireKind:    'headFX3',
+    fireCount:   5,
+    windKind:    'whirlwind',
+    windHeight:  0
+}];
+
+// A_MinotaurDecide (raven/minotaur.zs): the invulnerable charge at mid range,
+// the floor-fire hammer up close, else the swing the state falls through to.
+HereticGameProfile.MINOTAUR_DECIDE = ['A_MinotaurDecide', {
+    chargeMin:     1 * 64,
+    chargeMax:     8 * 64,
+    chargeChance:  150,
+    chargeSpeed:   13,
+    chargeTics:    17,
+    chargeState:   'charge0',
+    hammerMax:     9 * 64,
+    hammerChance:  220,
+    hammerState:   'hammer0'
+}];
+
+// A_Srcr1Attack (dsparil.zs): one fireball while healthy, three once past a
+// third of its life — and then it may chain a second volley.
+HereticGameProfile.SERPENT_ATTACK = ['A_Srcr1Attack', {
+    damage:     {base: 8, dice: 8},
+    kind:       'sorcererFX1',
+    height:     48,
+    angles:     [0, -3, 3],
+    againState: 'missile20'
+}];

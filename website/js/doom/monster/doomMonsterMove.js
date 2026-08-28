@@ -24,6 +24,7 @@ class DoomMonsterMove {
         this._rng       = rng;
         this._levelData = levelData;
         this._postMove  = null;
+        this._avoidingDropoff = false;
     }
 
     // Bookkeeping hook run after every successful step (ride re-resolution).
@@ -154,85 +155,138 @@ class DoomMonsterMove {
         return (hit !== null);
     }
 
-    // P_NewChaseDir (Doom strict): direct diagonal first, then the axial
-    // tries (swapped on rng > 200 or |dy| > |dx|), the old direction, a
-    // random-order sweep of all eight, the turnaround last — else DI_NODIR.
+    // P_NewChaseDir: before heading for the target at all, a body hanging over
+    // a drop deeper than one step walks AWAY from it. Without that first move a
+    // monster shoved onto a ledge by a blast stays pinned there for good — our
+    // step test refuses every direction that would overhang the void, so it can
+    // never climb back on its own.
     newChaseDir(m) {
         if (m.target === null) {
             m.movedir = DoomMonsterMove.DI_NODIR;
             return;
         }
-        const S          = WadConstants.SCALE;
-        const pos        = m.inst.getTransform().position;
-        const deltax     = (m.target.x - pos[0]) / S;
-        const deltay     = (m.target.z - pos[2]) / S;
+        const escape = this._dropoffEscape(m);
+        if (escape !== null) {
+            this._avoidingDropoff = true;
+            this._doNewChaseDir(m, escape.dx, escape.dz);
+            this._avoidingDropoff = false;
+            // Small steps while backing away from the edge.
+            m.movecount = 1;
+            return;
+        }
+        const S   = WadConstants.SCALE;
+        const pos = m.inst.getTransform().position;
+
+        this._doNewChaseDir(m, (DoomActorRef.x(m.target) - pos[0]) / S, (DoomActorRef.z(m.target) - pos[2]) / S);
+    }
+
+    // P_DoNewChaseDir (Doom strict): direct diagonal first, then the axial
+    // tries (swapped on rng > 200 or |dy| > |dx|), the old direction, a
+    // random-order sweep of all eight, the turnaround last — else DI_NODIR.
+    // A direction is only ever ATTEMPTED ONCE: retrying it would cost a second
+    // walk test and, worse, extra draws from the shared vanilla random table.
+    _doNewChaseDir(m, deltax, deltay) {
         const olddir     = m.movedir;
         const turnaround = DoomMonsterMove.OPPOSITE[olddir];
+        const attempts   = new Array(DoomMonsterMove.DI_NODIR).fill(false);
+        const tryDir     = (dir) => {
+            if ((dir === DoomMonsterMove.DI_NODIR) || attempts[dir]) {
+                return false;
+            }
+            attempts[dir] = true;
+            m.movedir = dir;
+
+            return this._tryWalk(m);
+        };
 
         let d1 = ((deltax > 10) ? DoomMonsterMove.DI_EAST : ((deltax < -10) ? DoomMonsterMove.DI_WEST : DoomMonsterMove.DI_NODIR));
         let d2 = ((deltay < -10) ? DoomMonsterMove.DI_SOUTH : ((deltay > 10) ? DoomMonsterMove.DI_NORTH : DoomMonsterMove.DI_NODIR));
 
         if ((d1 !== DoomMonsterMove.DI_NODIR) && (d2 !== DoomMonsterMove.DI_NODIR)) {
-            m.movedir = DoomMonsterMove.DIAGS[((deltay < 0) ? 2 : 0) + ((deltax > 0) ? 1 : 0)];
-            if ((m.movedir !== turnaround) && this._tryWalk(m)) {
+            const diagonal = DoomMonsterMove.DIAGS[((deltay < 0) ? 2 : 0) + ((deltax > 0) ? 1 : 0)];
+            m.movedir = diagonal;
+            if ((diagonal !== turnaround) && tryDir(diagonal)) {
                 return;
             }
         }
-        if ((this._rng.next() > 200) || (Math.abs(deltay) > Math.abs(deltax))) {
-            const swap = d1;
-            d1 = d2;
-            d2 = swap;
-        }
-        if (d1 === turnaround) {
-            d1 = DoomMonsterMove.DI_NODIR;
-        }
-        if (d2 === turnaround) {
-            d2 = DoomMonsterMove.DI_NODIR;
-        }
-        if (d1 !== DoomMonsterMove.DI_NODIR) {
-            m.movedir = d1;
-            if (this._tryWalk(m)) {
-                return;
+        // While escaping a dropoff the axes keep their order and the turnaround
+        // stays allowed: the way out may well be backwards.
+        if (!this._avoidingDropoff) {
+            if ((this._rng.next() > 200) || (Math.abs(deltay) > Math.abs(deltax))) {
+                const swap = d1;
+                d1 = d2;
+                d2 = swap;
+            }
+            if (d1 === turnaround) {
+                d1 = DoomMonsterMove.DI_NODIR;
+            }
+            if (d2 === turnaround) {
+                d2 = DoomMonsterMove.DI_NODIR;
             }
         }
-        if (d2 !== DoomMonsterMove.DI_NODIR) {
-            m.movedir = d2;
-            if (this._tryWalk(m)) {
-                return;
-            }
+        if (tryDir(d1) || tryDir(d2)) {
+            return;
         }
-        if (olddir !== DoomMonsterMove.DI_NODIR) {
-            m.movedir = olddir;
-            if (this._tryWalk(m)) {
-                return;
-            }
+        if (!this._avoidingDropoff && tryDir(olddir)) {
+            return;
         }
         if ((this._rng.next() & 1) !== 0) {
             for (let dir = DoomMonsterMove.DI_EAST; dir <= DoomMonsterMove.DI_SOUTHEAST; dir++) {
-                if (dir !== turnaround) {
-                    m.movedir = dir;
-                    if (this._tryWalk(m)) {
-                        return;
-                    }
+                if ((dir !== turnaround) && tryDir(dir)) {
+                    return;
                 }
             }
         } else {
             for (let dir = DoomMonsterMove.DI_SOUTHEAST; dir >= DoomMonsterMove.DI_EAST; dir--) {
-                if (dir !== turnaround) {
-                    m.movedir = dir;
-                    if (this._tryWalk(m)) {
-                        return;
-                    }
+                if ((dir !== turnaround) && tryDir(dir)) {
+                    return;
                 }
             }
         }
-        if (turnaround !== DoomMonsterMove.DI_NODIR) {
-            m.movedir = turnaround;
-            if (this._tryWalk(m)) {
-                return;
-            }
+        if (tryDir(turnaround)) {
+            return;
         }
         m.movedir = DoomMonsterMove.DI_NODIR;
+    }
+
+    /**
+     * The way off a ledge, or null when the body is not on one. Vanilla sums
+     * the normals of the contacted dropoff linedefs; we have no linedef list at
+     * runtime, so the four corners of the body's box are probed instead and the
+     * escape points away from whichever ones hang over the void — same answer,
+     * read off the geometry we do index.
+     *
+     * @returns {{dx, dz}|null} direction to walk, in map units
+     */
+    _dropoffEscape(m) {
+        if ((m.def.getFlags().float === true) || (m.def.getFlags().dropOff === true)) {
+            return null;
+        }
+        const pos = m.inst.getTransform().position;
+        const r   = m.inst.getCollisionRadius();
+        const cap = pos[1] + WadConstants.ACTOR_STEP_HEIGHT;
+        const own = this._collision.getFloor(pos[0], pos[2], 0.01, cap);
+        if ((own === -Infinity) || (Math.abs(pos[1] - own) > WadConstants.ON_FLOOR_TOLERANCE)) {
+            return null;   // airborne, or standing on nothing we can read
+        }
+
+        let dx = 0;
+        let dz = 0;
+        for (const [ox, oz] of DoomMonsterMove.BOX_CORNERS) {
+            const cornerY = this._collision.getFloor(pos[0] + ox * r, pos[2] + oz * r, 0.01, cap);
+            if ((cornerY !== -Infinity) && ((own - cornerY) <= WadConstants.ACTOR_DROPOFF_HEIGHT)) {
+                continue;
+            }
+            // That corner hangs over a tall drop (or over nothing at all):
+            // push away from it.
+            dx -= ox;
+            dz -= oz;
+        }
+        if ((dx === 0) && (dz === 0)) {
+            return null;
+        }
+
+        return {dx: dx * DoomMonsterMove.DROPOFF_ESCAPE_PUSH, dz: dz * DoomMonsterMove.DROPOFF_ESCAPE_PUSH};
     }
 
     // --- Internal ---
@@ -307,15 +361,18 @@ class DoomMonsterMove {
     // A corner over the void counts as a bottomless drop. Shared by the walk
     // step and the live momentum slides.
     _dropoffOk(m, destX, destZ, destFloor, isFloat) {
-        if (isFloat || (m.def.getFlags().dropOff === true)) {
+        // MF5_AVOIDINGDROPOFF: a body already hanging over a ledge overhangs it
+        // from every direction, so the strict refusal would pin it there — the
+        // escape step is exempt (the destination floor test still holds it up).
+        if (isFloat || this._avoidingDropoff || (m.def.getFlags().dropOff === true)) {
             return true;
         }
         const r    = m.inst.getCollisionRadius();
         const step = WadConstants.ACTOR_STEP_HEIGHT;
         const capY = m.inst.getTransform().position[1] + step;
         let lowest = destFloor;
-        for (const c of [[destX - r, destZ - r], [destX + r, destZ - r], [destX - r, destZ + r], [destX + r, destZ + r]]) {
-            const fy = this._collision.getFloor(c[0], c[1], 0.01, capY);
+        for (const [ox, oz] of DoomMonsterMove.BOX_CORNERS) {
+            const fy = this._collision.getFloor(destX + ox * r, destZ + oz * r, 0.01, capY);
             if (fy === -Infinity) {
                 return false;
             }
@@ -409,3 +466,8 @@ DoomMonsterMove.YSPEED       = [0, 0.7071075439453125, 1, 0.7071075439453125, 0,
 DoomMonsterMove.ORIG_FRICTION_FACTOR = 2048 / 65536;
 // Wall-graze tolerance of the all-or-nothing step test (metres)
 DoomMonsterMove.CONTACT_EPSILON      = 0.005;
+// Unit offsets of the four corners of a body's box, in radius multiples
+DoomMonsterMove.BOX_CORNERS          = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+// Map units walked per corner away from a ledge (any value > 10 picks the
+// direction; P_NewChaseDir only reads the sign of each axis)
+DoomMonsterMove.DROPOFF_ESCAPE_PUSH  = 128;

@@ -1,11 +1,13 @@
-// Transient sprite effects spawned at runtime: hitscan puffs, projectile
-// explosions/impacts, blood, teleport fog. Each effect is a short sprite
-// animation; its frame billboards are pre-built once at level load (in the
-// loader batch), and each spawned effect is a runtime instance re-pointed to
-// the current frame, then despawned. All the data (sprites, tics, alpha,
-// drift) comes from the game profile's effectTemplates() — the Doom puff
-// floats up 1 map unit/tic and starts a melee hit at frame C, the explosion
-// frames come straight from the game sources.
+/**
+ * Transient sprite effects spawned at runtime: hitscan puffs, projectile
+ * explosions/impacts, blood, teleport fog. Each effect is a short sprite
+ * animation; its frame billboards are pre-built once at level load (in the
+ * loader batch), and each spawned effect is a runtime instance re-pointed to
+ * the current frame, then despawned. All the data (sprites, tics, alpha,
+ * drift) comes from the game profile's effectTemplates() — the Doom puff
+ * floats up 1 map unit/tic and starts a melee hit at frame C, the explosion
+ * frames come straight from the game sources.
+ */
 class DoomEffects {
     constructor(spriteBank, rng, profile) {
         this._rng       = rng;
@@ -97,7 +99,7 @@ class DoomEffects {
     spawn(name, x, y, z, startFrame = 0) {
         const tpl = this._templates[name];
         if ((tpl === null) || (tpl === undefined)) {
-            return;
+            return null;
         }
         const jz = ((tpl.rise > 0) ? (this._rng.next() - this._rng.next()) / 4096 : 0);  // puff z-rand
         const instId = loader.instances().spawnFromData(null, {
@@ -114,7 +116,30 @@ class DoomEffects {
         const elapsed = ((tpl.shorten) ? (this._rng.next() & 3) : 0);
         // A template with gravity ballistically drops its drift (blood: up at
         // rise, then falling); without it the drift stays constant (puffs).
-        this._active.push({ tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise });
+        const active = { tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise, follow: null };
+        this._active.push(active);
+
+        return active;
+    }
+
+    /**
+     * An effect that rides a body instead of standing where it was born: the
+     * archvile's hellfire, replanted `ahead` map units in front of its victim
+     * every tic (A_Fire). It dies of its own animation like any other.
+     *
+     * @param {string} name
+     * @param {object} ref   the body it follows (player or monster)
+     * @param {number} ahead map units in front of that body
+     */
+    spawnTracking(name, ref, ahead) {
+        const at     = DoomActorRef.aheadOf(ref, ahead);
+        const active = this.spawn(name, at[0], at[1], at[2]);
+        if (active === null) {
+            return null;
+        }
+        active.follow = {ref: ref, ahead: ahead};
+
+        return active;
     }
 
     update(dtMs) {
@@ -150,6 +175,13 @@ class DoomEffects {
                 if (p.tpl.gravity > 0) {
                     p.vy -= p.tpl.gravity;
                 }
+            }
+            if (p.follow !== null) {
+                const at  = DoomActorRef.aheadOf(p.follow.ref, p.follow.ahead);
+                const pos = inst.getTransform().position;
+                pos[0] = at[0];
+                pos[1] = at[1] + p.tpl.spawnHeight;
+                pos[2] = at[2];
             }
             kept.push(p);
         }

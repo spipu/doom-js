@@ -63,8 +63,17 @@ class DefaultGameProfile extends AbstractGameProfile {
             'E4M6':    {special: 109, tag: 666},
             'E4M8':    {special: 38,  tag: 666},
             'MAP07-1': {special: 38,  tag: 666},
-            'MAP07-2': {special: 30,  tag: 667}
+            'MAP07-2': {special: 30,  tag: 667},
+            // A_KeenDie is a hardwired open-stay door on tag 666: declared
+            // here so the boss machinery builds and fires it like any other.
+            'MAP32':   {special: 103, tag: 666}
         };
+    }
+
+    // The pain elemental spits lost souls that were never placed on the map,
+    // so their views have to be built with the level.
+    runtimeSpawnTypes() {
+        return ['lostsoul'];
     }
 
     bfgDecalShade() {
@@ -263,6 +272,11 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
+    // Baron and hell knight share their species: they never hurt each other.
+    _bruiserParams() {
+        return {melee: {base: 10, dice: 8}, missile: 'baronBall', species: 'baron'};
+    }
+
     _bruiserStates(withBossDeath) {
         return {
             spawn:   [['AB', 10, 'A_Look', 'spawn']],
@@ -286,6 +300,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'zombieman', name: 'Zombieman', sprite: 'POSS',
                 health: 20, radius: 20, height: 56, speed: 8, painChance: 200,
                 dropItems: [{item: 'Clip'}],
+                params: {bullet: DefaultGameProfile.MONSTER_BULLET},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDD', 4, 'A_Chase', 'see']],
@@ -300,10 +315,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'shotgunguy', name: 'Shotgun Guy', sprite: 'SPOS',
                 health: 30, radius: 20, height: 56, speed: 8, painChance: 170,
                 dropItems: [{item: 'Shotgun'}],
+                params: {bullet: DefaultGameProfile.MONSTER_BULLET},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
-                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, 'A_SposAttackUseAtkSound', null, true], ['E', 10, null, 'see']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, ['A_SposAttackUseAtkSound', {rays: 3}], null, true], ['E', 10, null, 'see']],
                     pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
                     death:   [['H', 5], ['I', 5, 'A_Scream'], ['J', 5, 'A_NoBlocking'], ['K', 5], ['L', -1]],
                     xdeath:  [['M', 5], ['N', 5, 'A_XScream'], ['O', 5, 'A_NoBlocking'], ['PQRST', 5], ['U', -1]],
@@ -314,10 +330,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'chaingunguy', name: 'Chaingunner', sprite: 'CPOS',
                 health: 70, radius: 20, height: 56, speed: 8, painChance: 170,
                 dropItems: [{item: 'Chaingun'}],
+                params: {bullet: DefaultGameProfile.MONSTER_BULLET},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
-                    missile: [['E', 10, 'A_FaceTarget'], ['FE', 4, 'A_CPosAttack', null, true], ['F', 1, 'A_CPosRefire', 'missile1']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['FE', 4, 'A_CPosAttack', null, true], ['F', 1, ['A_CPosRefire', {chance: 40}], 'missile1']],
                     pain:    [['G', 3], ['G', 3, 'A_Pain', 'see']],
                     death:   [['H', 5], ['I', 5, 'A_Scream'], ['J', 5, 'A_NoBlocking'], ['KLM', 5], ['N', -1]],
                     xdeath:  [['O', 5], ['P', 5, 'A_XScream'], ['Q', 5, 'A_NoBlocking'], ['RS', 5], ['T', -1]],
@@ -328,10 +345,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'wolfss', name: 'Wolfenstein SS', sprite: 'SSWV',
                 health: 50, radius: 20, height: 56, speed: 8, painChance: 170,
                 dropItems: [{item: 'Clip'}],
+                params: {bullet: DefaultGameProfile.MONSTER_BULLET},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDD', 3, 'A_Chase', 'see']],
-                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 6, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 1, 'A_CPosRefire', 'missile1']],
+                    missile: [['E', 10, 'A_FaceTarget'], ['F', 10, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 6, 'A_FaceTarget'], ['G', 4, 'A_CPosAttack', null, true], ['F', 1, ['A_CPosRefire', {chance: 40}], 'missile1']],
                     pain:    [['H', 3], ['H', 3, 'A_Pain', 'see']],
                     death:   [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, 'A_NoBlocking'], ['L', 5], ['M', -1]],
                     xdeath:  [['N', 5], ['O', 5, 'A_XScream'], ['P', 5, 'A_NoBlocking'], ['QRSTU', 5], ['V', -1]],
@@ -341,6 +359,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             3001: new DoomMonsterDef({
                 code: 'imp', name: 'Imp', sprite: 'TROO',
                 health: 60, radius: 20, height: 56, speed: 8, painChance: 200,
+                params: {melee: {base: 3, dice: 8}, missile: 'impBall', meleeInMissile: true},
                 states: {
                     // zscript labels Melee+Missile on the same block
                     // (A_TroopAttack picks claw or fireball by range).
@@ -356,6 +375,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             3002: new DoomMonsterDef({
                 code: 'demon', name: 'Demon', sprite: 'SARG',
                 health: 150, radius: 30, height: 56, mass: 400, speed: 10, painChance: 180,
+                params: {melee: {base: 4, dice: 10}},
                 states: this._demonStates()
             }),
             58: new DoomMonsterDef({
@@ -365,13 +385,15 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'spectre', name: 'Spectre', sprite: 'SARG', alpha: 0.3,
                 health: 150, radius: 30, height: 56, mass: 400, speed: 10, painChance: 180,
                 flags: {shadow: true},
+                // Species Demon: a spectre and a demon never hurt each other.
+                params: {melee: {base: 4, dice: 10}, species: 'demon'},
                 states: this._demonStates()
             }),
             3006: new DoomMonsterDef({
                 code: 'lostsoul', name: 'Lost Soul', sprite: 'SKUL',
                 health: 100, radius: 16, height: 56, mass: 50, speed: 8, painChance: 256,
                 flags: {float: true},
-                params: {missileChanceMult: 0.5, damage: 3},
+                params: {missileChanceMult: 0.5, chargeDamage: {base: 3, dice: 8}},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn', true]],
                     see:     [['AB', 6, 'A_Chase', 'see', true]],
@@ -385,6 +407,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'cacodemon', name: 'Cacodemon', sprite: 'HEAD',
                 health: 400, radius: 31, height: 56, mass: 400, speed: 8, painChance: 128,
                 flags: {float: true},
+                params: {melee: {base: 10, dice: 6}, missile: 'cacoBall'},
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
                     see:     [['A', 3, 'A_Chase', 'see']],
@@ -397,18 +420,20 @@ class DefaultGameProfile extends AbstractGameProfile {
             69: new DoomMonsterDef({
                 code: 'hellknight', name: 'Hell Knight', sprite: 'BOS2',
                 health: 500, radius: 24, height: 64, mass: 1000, speed: 8, painChance: 50,
+                params: this._bruiserParams(),
                 states: this._bruiserStates(false)
             }),
             3003: new DoomMonsterDef({
                 code: 'baron', name: 'Baron of Hell', sprite: 'BOSS',
                 health: 1000, radius: 24, height: 64, mass: 1000, speed: 8, painChance: 50,
                 bossMaps: ['E1M8'],
+                params: this._bruiserParams(),
                 states: this._bruiserStates(true)
             }),
             66: new DoomMonsterDef({
                 code: 'revenant', name: 'Revenant', sprite: 'SKEL',
                 health: 300, radius: 20, height: 56, mass: 500, speed: 10, painChance: 100,
-                params: {meleeThreshold: 196, missileChanceMult: 0.5},
+                params: {meleeThreshold: 196, missileChanceMult: 0.5, melee: {base: 6, dice: 10}, missile: 'tracer'},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDDEEFF', 2, 'A_Chase', 'see']],
@@ -423,10 +448,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'mancubus', name: 'Mancubus', sprite: 'FATT',
                 health: 600, radius: 48, height: 64, mass: 1000, speed: 8, painChance: 80,
                 bossMaps: ['MAP07-1'],
+                params: {missile: 'fatShot'},
                 states: {
                     spawn:   [['AB', 15, 'A_Look', 'spawn']],
                     see:     [['AABBCCDDEEFF', 4, 'A_Chase', 'see']],
-                    missile: [['G', 20, 'A_FatRaise'], ['H', 10, 'A_FatAttack1', null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, 'A_FatAttack2', null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, 'A_FatAttack3', null, true], ['IG', 5, 'A_FaceTarget', 'see']],
+                    missile: [['G', 20, 'A_FatRaise'], ['H', 10, ['A_FatAttack1', {angles: [0, 11.25]}], null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, ['A_FatAttack2', {angles: [0, -11.25]}], null, true], ['IG', 5, 'A_FaceTarget'], ['H', 10, ['A_FatAttack3', {angles: [-5.625, 5.625]}], null, true], ['IG', 5, 'A_FaceTarget', 'see']],
                     pain:    [['J', 3], ['J', 3, 'A_Pain', 'see']],
                     death:   [['K', 6], ['L', 6, 'A_Scream'], ['M', 6, 'A_NoBlocking'], ['NOPQRS', 6], ['T', -1, 'A_BossDeath']],
                     raise:   [['R', 5], ['QPONMLK', 5, null, 'see']]
@@ -436,10 +462,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'arachnotron', name: 'Arachnotron', sprite: 'BSPI',
                 health: 500, radius: 64, height: 64, mass: 600, speed: 12, painChance: 128,
                 bossMaps: ['MAP07-2'],
+                params: {missile: 'arachPlasma'},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['A', 20], ['A', 3, 'A_BabyMetal'], ['ABBCC', 3, 'A_Chase'], ['D', 3, 'A_BabyMetal'], ['DEEFF', 3, 'A_Chase', 'see1']],
-                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, 'A_BspiAttack', null, true], ['H', 4, null, null, true], ['H', 1, 'A_SpidRefire', 'missile1', true]],
+                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, 'A_BspiAttack', null, true], ['H', 4, null, null, true], ['H', 1, ['A_SpidRefire', {chance: 10}], 'missile1', true]],
                     pain:    [['I', 3], ['I', 3, 'A_Pain', 'see1']],
                     death:   [['J', 20, 'A_Scream'], ['K', 7, 'A_NoBlocking'], ['LMNO', 7], ['P', -1, 'A_BossDeath']],
                     raise:   [['P', 5], ['ONMLKJ', 5, null, 'see1']]
@@ -452,10 +479,10 @@ class DefaultGameProfile extends AbstractGameProfile {
                 states: {
                     spawn:   [['A', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCC', 3, 'A_Chase', 'see']],
-                    missile: [['D', 5, 'A_FaceTarget'], ['E', 5, 'A_FaceTarget'], ['F', 5, 'A_FaceTarget', null, true], ['F', 0, 'A_PainAttack', 'see', true]],
+                    missile: [['D', 5, 'A_FaceTarget'], ['E', 5, 'A_FaceTarget'], ['F', 5, 'A_FaceTarget', null, true], ['F', 0, ['A_PainAttack', {spawn: 'lostsoul'}], 'see', true]],
                     pain:    [['G', 6], ['G', 6, 'A_Pain', 'see']],
                     // A_PainDie bursts into lost souls: no corpse.
-                    death:   [['H', 8, null, null, true], ['I', 8, 'A_Scream', null, true], ['JK', 8, null, null, true], ['L', 8, 'A_PainDie', null, true], ['M', 8, null, null, true]],
+                    death:   [['H', 8, null, null, true], ['I', 8, 'A_Scream', null, true], ['JK', 8, null, null, true], ['L', 8, ['A_PainDie', {spawn: 'lostsoul'}], null, true], ['M', 8, null, null, true]],
                     raise:   [['MLKJIH', 8, null, 'see']]
                 }
             }),
@@ -467,7 +494,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['AABBCCDDEEFF', 2, 'A_VileChase', 'see']],
-                    missile: [['G', 0, 'A_VileStart', null, true], ['G', 10, 'A_FaceTarget', null, true], ['H', 8, 'A_VileTarget', null, true], ['IJKLMN', 8, 'A_FaceTarget', null, true], ['O', 8, 'A_VileAttack', null, true], ['P', 20, null, 'see', true]],
+                    missile: [['G', 0, 'A_VileStart', null, true], ['G', 10, 'A_FaceTarget', null, true], ['H', 8, ['A_VileTarget', {fire: 'vileFire', ahead: 24}], null, true], ['IJKLMN', 8, 'A_FaceTarget', null, true], ['O', 8, ['A_VileAttack', {damage: 20, blastDamage: 70, blastRadius: 70, thrust: 1, ahead: 24}], null, true], ['P', 20, null, 'see', true]],
                     heal:    [['[\\]', 10, null, 'see', true]],
                     pain:    [['Q', 5], ['Q', 5, 'A_Pain', 'see']],
                     death:   [['Q', 7], ['R', 7, 'A_Scream'], ['S', 7, 'A_NoBlocking'], ['TUVWXY', 7], ['Z', -1]]
@@ -478,11 +505,11 @@ class DefaultGameProfile extends AbstractGameProfile {
                 health: 3000, radius: 128, height: 100, mass: 1000, speed: 12, painChance: 40,
                 flags: {boss: true, noRadiusDmg: true},
                 bossMaps: ['E3M8', 'E4M8'],
-                params: {missileChanceMult: 0.5},
+                params: {missileChanceMult: 0.5, bullet: DefaultGameProfile.MONSTER_BULLET},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['A', 3, 'A_Metal'], ['ABB', 3, 'A_Chase'], ['C', 3, 'A_Metal'], ['CDD', 3, 'A_Chase'], ['E', 3, 'A_Metal'], ['EFF', 3, 'A_Chase', 'see']],
-                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, 'A_SPosAttackUseAtkSound', null, true], ['H', 4, 'A_SposAttackUseAtkSound', null, true], ['H', 1, 'A_SpidRefire', 'missile1', true]],
+                    missile: [['A', 20, 'A_FaceTarget', null, true], ['G', 4, ['A_SPosAttackUseAtkSound', {rays: 3}], null, true], ['H', 4, ['A_SposAttackUseAtkSound', {rays: 3}], null, true], ['H', 1, ['A_SpidRefire', {chance: 10}], 'missile1', true]],
                     pain:    [['I', 3], ['I', 3, 'A_Pain', 'see']],
                     death:   [['J', 20, 'A_Scream'], ['K', 10, 'A_NoBlocking'], ['LMNOPQR', 10], ['S', 30], ['S', -1, 'A_BossDeath']]
                 }
@@ -492,7 +519,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 health: 4000, radius: 40, height: 110, mass: 1000, speed: 16, painChance: 20,
                 flags: {boss: true, noRadiusDmg: true},
                 bossMaps: ['E2M8', 'E4M6'],
-                params: {minMissileChance: 160, missileChanceMult: 0.5},
+                params: {minMissileChance: 160, missileChanceMult: 0.5, missile: 'rocket'},
                 states: {
                     spawn:   [['AB', 10, 'A_Look', 'spawn']],
                     see:     [['A', 3, 'A_Hoof'], ['ABBCC', 3, 'A_Chase'], ['D', 3, 'A_Metal'], ['D', 3, 'A_Chase', 'see']],
@@ -505,6 +532,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'keen', name: 'Commander Keen', sprite: 'KEEN',
                 health: 100, radius: 16, height: 72, mass: 10000000, speed: 0, painChance: 256,
                 ceiling: true,
+                bossMaps: ['MAP32'],
                 states: {
                     spawn: [['A', -1]],
                     pain:  [['M', 4], ['M', 8, 'A_Pain', 'spawn']],
@@ -517,7 +545,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 // sequence despawns it (no respawn).
                 code: 'barrel', name: 'Barrel', sprite: 'BAR1',
                 health: 20, radius: 10, height: 42, speed: 0, painChance: 0,
-                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noTarget: true, noCorpseThrust: true},
+                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noCorpseThrust: true},
                 params: {explode: {damage: 128, distance: 128}},
                 spriteOverrides: {death: 'BEXP'},
                 states: {
@@ -724,6 +752,16 @@ class DefaultGameProfile extends AbstractGameProfile {
             // the full splash, weaker ones start deeper in (monsterDamageRules).
             {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false},
             // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
+            // Every monster missile's Death animation, plus the revenant's
+            // smoke trail and the archvile's hellfire.
+            {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
+            {name: 'cacoBallDeath',    sprite: 'BAL2', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
+            {name: 'baronBallDeath',   sprite: 'BAL7', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
+            {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: false},
+            {name: 'tracerSmoke',      sprite: 'PUFF', letters: ['A', 'B', 'A', 'B', 'C'], frameTics: [4, 4, 4, 4, 4], alpha: 0.5, rise: 1, additive: false},
+            {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
+                frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true},
             {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
         ];
     }
@@ -751,7 +789,18 @@ class DefaultGameProfile extends AbstractGameProfile {
         return [
             {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, impactDamage: 20,  alpha: 1,    additive: false, decalType: 'scorch'},
             {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   impactDamage: 5,   alpha: 0.75, additive: true,  decalType: 'plasma'},
-            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}}
+            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}},
+            // The monsters' shots (zscript/actors/doom/*.zs): no splash but the
+            // cyberdemon's, which fires the very rocket the player does.
+            {kind: 'impBall',     sprite: 'BAL1', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'impBallDeath',     splashDamage: 0, impactDamage: 3,  alpha: 1, additive: false},
+            {kind: 'cacoBall',    sprite: 'BAL2', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'cacoBallDeath',    splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false},
+            {kind: 'baronBall',   sprite: 'BAL7', letters: ['A', 'B'], speed: 15, fastSpeed: 20, flightTics: 4, explosion: 'baronBallDeath',   splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false},
+            {kind: 'arachPlasma', sprite: 'APLS', letters: ['A', 'B'], speed: 25,                flightTics: 5, explosion: 'arachPlasmaDeath', splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false},
+            {kind: 'fatShot',     sprite: 'MANF', letters: ['A', 'B'], speed: 20,                flightTics: 4, explosion: 'rocketExplode',    splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false},
+            // A_Tracer: the smoke and the course correction both run one tic in
+            // four, which is why the revenant's shot swerves in visible steps.
+            {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: false,
+                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4}, trailEffect: 'tracerSmoke', trailEveryTics: 4}
         ];
     }
 
@@ -925,3 +974,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         ];
     }
 }
+
+// A_PosAttack / A_SPosAttack / A_CPosAttack all fire the same 3 × (1..5)
+// bullet, and every hitscan monster of the bestiary uses one of them.
+DefaultGameProfile.MONSTER_BULLET = {damage: {base: 3, dice: 5}, puff: 'puff'};

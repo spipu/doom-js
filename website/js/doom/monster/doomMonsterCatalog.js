@@ -22,4 +22,14 @@ class DoomMonsterCatalog {
     getAllDefs() {
         return Object.values(this._defs);
     }
+
+    /**
+     * A def by its own code rather than by editor number — how the runtime
+     * spawners name what they spit (the elemental's lost soul).
+     *
+     * @returns {DoomMonsterDef|null}
+     */
+    getDefByCode(code) {
+        return (this.getAllDefs().find((def) => (def.getCode() === code)) ?? null);
+    }
 }

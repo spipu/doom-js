@@ -1,10 +1,15 @@
-// Moving projectiles (P_SpawnPlayerMissile): each is launched from the eye
-// along the free-aim direction at its vanilla speed, advances one tic at a
-// time, and raycasts the segment it just crossed for a wall/floor/ceiling —
-// and for a live body, which soaks the direct hit (impactDamage roll) before
-// the death effect and the A_Explode blast (player + bodies through the
-// shared damage pipeline). The BFG ball fires its vanilla shooter-side spray
-// on detonation. All the data comes from the game profile's projectileDefs().
+/**
+ * Moving projectiles, whoever fires them. A player shot leaves the eye along
+ * the free-aim direction (P_SpawnPlayerMissile); a monster shot leaves 32 units
+ * above its feet along the feet→feet vector to its victim (P_SpawnMissile —
+ * monsters have no free look). From there both live the same life: one tic at a
+ * time, raycasting the segment just crossed for a wall/floor/ceiling and for a
+ * live body, which soaks the direct hit (impactDamage roll) before the death
+ * effect and the A_Explode blast, all through the shared damage pipeline. A
+ * missile never hits the body that fired it, and spares the victims that body
+ * cannot hurt (same species). The BFG ball fires its vanilla shooter-side spray
+ * on detonation. All the data comes from the game profile's projectileDefs().
+ */
 class DoomProjectileSystem {
     constructor(spriteBank, effects, rng, decals, profile, monsters = null, damageModule = null) {
         this._effects   = effects;
@@ -14,6 +19,7 @@ class DoomProjectileSystem {
         this._damage    = damageModule;
         this._collision = null;
         this._user      = null;
+        this._fast      = false;
         this._active    = [];
         this._acc       = 0;
         this._defs      = this._buildDefs(spriteBank, profile);
@@ -23,6 +29,18 @@ class DoomProjectileSystem {
         this._collision = collision;
         this._user      = user;
         return this;
+    }
+
+    // Fast-monsters skill: every missile declaring a FastSpeed flies at it
+    // (P_SetState reads it on spawn). Set once per level, before any shot.
+    setFastMonsters(fast) {
+        this._fast = (fast === true);
+        return this;
+    }
+
+    // Flight speed of a kind under the current skill (world units per tic).
+    _speedOf(def) {
+        return (((this._fast) && (def.fastSpeed !== null)) ? def.fastSpeed : def.speed);
     }
 
     _buildDefs(bank, profile) {
@@ -60,8 +78,11 @@ class DoomProjectileSystem {
             });
         }
         return {
+            kind:             spec.kind,
             frames,
             speed:            spec.speed * scale,
+            // FastSpeed (actor.zs): the nightmare skill swaps it in on spawn.
+            fastSpeed:        ((spec.fastSpeed !== undefined) ? spec.fastSpeed * scale : null),
             flightTics:       spec.flightTics,
             explosion:        spec.explosion,
             splashDamage:     spec.splashDamage,
@@ -82,6 +103,21 @@ class DoomProjectileSystem {
             // Muzzle height in map units above the FEET (A_FireMacePL1 spawns
             // the lobbed ball at Pos + 28); null = the eye (camera) height.
             spawnHeight:      ((spec.spawnHeight !== undefined) ? spec.spawnHeight * scale : null),
+            // Homing (A_SeekerMissile / A_Tracer2): {threshold, turnMax} in
+            // degrees, everyTics = the state cadence the vanilla action runs
+            // at. null = it flies straight.
+            seek:             (spec.seek ?? null),
+            // Ripping shot (Heretic Whirlwind): it passes THROUGH bodies and
+            // grinds whoever it overlaps every damageEvery tics instead of
+            // detonating on the first one. Needs lifeTics to ever end.
+            ripper:           (spec.ripper ?? null),
+            // Forced lifetime in tics (0 = only an impact ends the flight).
+            lifeTics:         (spec.lifeTics ?? 0),
+            // Rise per tic while a shot is still growing (A_LichFireGrow).
+            growRise:         (spec.growRise ?? 0) * scale,
+            // Floor-hugging shot (Heretic MinotaurFX2, +FLOORHUGGER): it never
+            // rises, never dives, and its trail is left ON the floor.
+            floorHugger:      (spec.floorHugger === true),
         };
     }
 
@@ -106,12 +142,13 @@ class DoomProjectileSystem {
     spawn(kind, user, angleOffsetDeg = 0, randomSpreadDeg = 0) {
         const def = this._defs[kind];
         if ((def === null) || (def === undefined) || (this._collision === null)) {
-            return;
+            return null;
         }
         let yawDeg = user.yaw + angleOffsetDeg;
         if (randomSpreadDeg !== 0) {
             yawDeg += randomSpreadDeg * this._rng.nextDiff();
         }
+        const speed  = this._speedOf(def);
         const yawR   = yawDeg * DEG_TO_RAD;
         const pitchR = user.pitch * DEG_TO_RAD;
         const cp = Math.cos(pitchR);
@@ -119,16 +156,16 @@ class DoomProjectileSystem {
         const dy = Math.sin(pitchR);
         const dz = Math.cos(yawR) * cp;
 
-        let vx = dx * def.speed;
-        let vy = dy * def.speed;
-        let vz = dz * def.speed;
+        let vx = dx * speed;
+        let vy = dy * speed;
+        let vz = dz * speed;
         if (def.lob) {
             // Lobbed ball (A_FireMacePL1's MaceFX2): full speed FLAT along the
             // yaw (VelFromAngle) and a vertical kick from the aim pitch alone —
             // Vel.Z = 2 - clamp(tan(pitch), -5, 5) with GZDoom's down-positive
             // pitch (ours is up-positive), in map units per tic.
-            vx = Math.sin(yawR) * def.speed;
-            vz = Math.cos(yawR) * def.speed;
+            vx = Math.sin(yawR) * speed;
+            vz = Math.cos(yawR) * speed;
             vy = (2 + Math.max(-5, Math.min(5, Math.tan(pitchR)))) * WadConstants.SCALE;
         }
 
@@ -138,14 +175,85 @@ class DoomProjectileSystem {
             // like vanilla (A_FireMacePL1's ball.AddZ(ball.Vel.Z)).
             originY = user.y + def.spawnHeight + vy;
         }
-        this._spawnRaw(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz);
+
+        return this._spawnRaw(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz, user);
+    }
+
+    /**
+     * A monster's shot (P_SpawnMissile): it leaves `height` units above the
+     * shooter's feet but flies along the vector between the two BODIES' origins
+     * — feet to feet — which is why a monster's fireball dips as it crosses the
+     * room instead of following an eye line. When the muzzle already sits above
+     * the victim's head, vanilla lifts the aim back onto it.
+     *
+     * @param {string} kind
+     * @param {object} shooter monster record
+     * @param {object} target  the body it aims at
+     * @param {object} opts    {height?: map units above the feet (32),
+     *                          angleOffset?: degrees, vz?: forced vertical
+     *                          velocity (world units/tic) for a fan sharing one
+     *                          slope, seekTarget?: the body a homing shot locks,
+     *                          growTics?: tics of upward growth before it flies flat}
+     * @returns {object|null} the live projectile, so a fan can copy its slope
+     */
+    spawnAtTarget(kind, shooter, target, opts = {}) {
+        const def = this._defs[kind];
+        if ((def === null) || (def === undefined) || (this._collision === null) || (target === null)) {
+            return null;
+        }
+        // A floor-hugger leaves the ground, not the muzzle (A_MntrFloorFire
+        // pins the fire to floorz every tic): starting it 32 units up would
+        // send the maulotaur's floor fire out at waist height.
+        const height  = ((def.floorHugger) ? 0 : (opts.height ?? WadConstants.MISSILE_SPAWN_HEIGHT) * WadConstants.SCALE);
+        const originY = DoomActorRef.feetY(shooter) + height;
+        const speed   = this._speedOf(def);
+
+        let toX = DoomActorRef.x(target) - DoomActorRef.x(shooter);
+        let toZ = DoomActorRef.z(target) - DoomActorRef.z(shooter);
+        let toY = DoomActorRef.feetY(target) - DoomActorRef.feetY(shooter);
+        if (def.floorHugger) {
+            toY = 0;
+        } else if (height >= DoomActorRef.height(target)) {
+            // The muzzle overshoots the victim's head: aim back down onto it.
+            toY += (DoomActorRef.height(target) - height);
+        }
+        const length = Math.hypot(toX, toY, toZ);
+        if (length < 1e-6) {
+            return null;
+        }
+
+        let vx = (toX / length) * speed;
+        let vy = ((opts.vz !== undefined) ? opts.vz : (toY / length) * speed);
+        let vz = (toZ / length) * speed;
+        const offset = (opts.angleOffset ?? 0);
+        if (offset !== 0) {
+            // A fan turns the flat velocity and keeps the slope (SpawnMissileAngle).
+            const flat = Math.hypot(vx, vz);
+            const yaw  = Math.atan2(vx, vz) + offset * DEG_TO_RAD;
+            vx = Math.sin(yaw) * flat;
+            vz = Math.cos(yaw) * flat;
+        }
+
+        const shot = this._spawnRaw(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter), vx, vy, vz, shooter);
+        if (shot === null) {
+            return null;
+        }
+        if (def.seek !== null) {
+            shot.seekTarget = (opts.seekTarget ?? target);
+        }
+        shot.growTics = (opts.growTics ?? 0);
+
+        return shot;
     }
 
     // Register one in-flight projectile from an explicit origin and velocity —
-    // shared by the player muzzle (spawn) and the bounce-spawned balls.
-    _spawnRaw(def, x, y, z, vx, vy, vz) {
+    // shared by the player muzzle, the monster muzzle and the bounce-spawned
+    // balls. owner is the body it may never hit and the one its kills go to.
+    _spawnRaw(def, x, y, z, vx, vy, vz, owner = null) {
         const p = {
             def,
+            owner,
+            seekTarget: null,
             x, y, z,
             // The velocity is the single source of truth: the direction is
             // recomputed from it at every tic (_stepTic), never read before.
@@ -154,7 +262,7 @@ class DoomProjectileSystem {
             // Launch heading (degrees): A_BFGSpray fans around the BALL's
             // angle, frozen at fire time — not the shooter's current yaw.
             yaw: Math.atan2(vx, vz) / DEG_TO_RAD,
-            tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0,
+            tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0, growTics: 0,
             instId: null,
         };
         p.instId = loader.instances().spawnFromData(null, {
@@ -168,6 +276,47 @@ class DoomProjectileSystem {
             keyframes:      [],
         });
         this._active.push(p);
+
+        return p;
+    }
+
+    // The shots still in the air, as plain data. Bodies are named by their
+    // save code so an owner or a homing lock can be found again on the
+    // rebuilt level (DoomMonsterSystem.actorByCode).
+    exportState() {
+        return this._active.map((p) => ({
+            kind:      p.def.kind,
+            position:  [p.x, p.y, p.z],
+            velocity:  [p.vx, p.vy, p.vz],
+            tics:      p.tics,
+            traveled:  p.traveled,
+            dropped:   p.dropped,
+            bounces:   p.bounces,
+            growTics:  p.growTics,
+            ownerCode: DoomMonsterSystem._targetCode(p.owner),
+            seekCode:  DoomMonsterSystem._targetCode(p.seekTarget)
+        }));
+    }
+
+    // Restored AFTER the monsters, so every body a shot points at exists.
+    importState(data) {
+        if ((data === null) || (data === undefined) || (this._monsters === null)) {
+            return;
+        }
+        for (const rec of data) {
+            const def = this._defs[rec.kind];
+            if ((def === null) || (def === undefined)) {
+                continue;
+            }
+            const p = this._spawnRaw(def, rec.position[0], rec.position[1], rec.position[2],
+                rec.velocity[0], rec.velocity[1], rec.velocity[2], this._monsters.actorByCode(rec.ownerCode));
+            p.seekTarget = this._monsters.actorByCode(rec.seekCode);
+            p.tics       = rec.tics;
+            p.traveled   = rec.traveled;
+            p.dropped    = rec.dropped;
+            p.bounces    = rec.bounces;
+            p.growTics   = rec.growTics;
+        }
     }
 
     update(dtMs) {
@@ -188,7 +337,17 @@ class DoomProjectileSystem {
             if (inst === undefined) {
                 continue;
             }
+            if ((p.def.lifeTics > 0) && (p.tics >= p.def.lifeTics)) {
+                this._effects.spawn(p.def.explosion, p.x, p.y, p.z);
+                loader.instances().scheduleRemoval(inst);
+                continue;
+            }
             this._applyGravity(p);
+            this._applySeek(p);
+            if (p.growTics > 0) {
+                p.growTics--;
+                p.y += p.def.growRise;
+            }
             // Step and direction follow the CURRENT velocity, so a ballistic
             // projectile's raycast (impact, puff pull-back, decal) tracks the
             // curved path; straight projectiles keep their launch values.
@@ -204,13 +363,20 @@ class DoomProjectileSystem {
             );
             // A live body across this tic's segment soaks the shot before any
             // surface: direct hit roll, then the ball explodes on the flesh.
+            // The shooter is transparent to its own missile, and so is anyone
+            // it cannot hurt (PIT_CheckThing / CanAttackHurt).
             const flesh = ((this._monsters !== null)
-                ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz, ((hit !== null) ? Math.min(hit.dist, step) : step))
+                ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
+                    ((hit !== null) ? Math.min(hit.dist, step) : step),
+                    {exclude: p.owner, includePlayer: !DoomActorRef.isPlayer(p.owner), immuneTo: p.owner})
                 : null);
             if (flesh !== null) {
-                this._hitFlesh(p, flesh);
-                loader.instances().scheduleRemoval(inst);
-                continue;
+                if (p.def.ripper === null) {
+                    this._hitFlesh(p, flesh);
+                    loader.instances().scheduleRemoval(inst);
+                    continue;
+                }
+                this._grind(p, flesh);
             }
             if (hit !== null) {
                 if (!this._tryBounce(p, hit)) {
@@ -281,6 +447,63 @@ class DoomProjectileSystem {
         p.vy -= p.def.gravity;
     }
 
+    // Homing shots (A_SeekerMissile for the golem's skull, A_Tracer2 for the
+    // revenant's): the heading turns by at most turnMax degrees per tic toward
+    // the body it locked on, snapping when the remaining angle is under
+    // threshold; the slope closes at a fixed rate. A dead or lost target frees
+    // the shot, which then flies on straight.
+    _applySeek(p) {
+        const seek = p.def.seek;
+        if ((seek === null) || (p.seekTarget === null)) {
+            return;
+        }
+        if ((p.tics % seek.everyTics) !== 0) {
+            return;
+        }
+        if (DoomActorRef.isDead(p.seekTarget)) {
+            p.seekTarget = null;
+            return;
+        }
+        const speed = Math.hypot(p.vx, p.vy, p.vz);
+        if (speed < 1e-9) {
+            return;
+        }
+        const wanted = Math.atan2(DoomActorRef.x(p.seekTarget) - p.x, DoomActorRef.z(p.seekTarget) - p.z);
+        const flat   = Math.hypot(p.vx, p.vz);
+        let   yaw    = Math.atan2(p.vx, p.vz);
+        let   delta  = ((((wanted - yaw) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+        const turn   = seek.turnMax * DEG_TO_RAD;
+        if (Math.abs(delta) > seek.threshold * DEG_TO_RAD) {
+            delta = ((delta > 0) ? turn : -turn);
+        }
+        yaw += delta;
+        p.vx = Math.sin(yaw) * flat;
+        p.vz = Math.cos(yaw) * flat;
+
+        // Slope chase (A_Tracer2): the vertical speed creeps toward the one
+        // that would land on the target, never jumps to it.
+        const toY  = DoomActorRef.centerY(p.seekTarget) - p.y;
+        const dist = Math.max(Math.hypot(DoomActorRef.x(p.seekTarget) - p.x, DoomActorRef.z(p.seekTarget) - p.z), speed);
+        const want = (toY / dist) * flat;
+        const rate = DoomProjectileSystem.SEEK_SLOPE_RATE * WadConstants.SCALE;
+        p.vy += ((want > p.vy) ? rate : -rate);
+    }
+
+    // A ripper grinding the body it is passing through (Whirlwind's
+    // DoSpecialDamage): a small wound every damageEvery tics, the victim spun
+    // and lifted by the funnel in between.
+    _grind(p, flesh) {
+        if (this._damage === null) {
+            return;
+        }
+        const ripper = p.def.ripper;
+        this._damage.spin(flesh.ref, ripper.shove, ripper.lift);
+        if ((p.tics % ripper.damageEvery) !== 0) {
+            return;
+        }
+        this._damage.damage(flesh.ref, ripper.damage, {point: flesh.point, source: p.owner, srcX: p.x, srcZ: p.z});
+    }
+
     // Floor bounce of the Heretic mace balls (P_FloorBounceMissile +
     // A_MaceBallImpact/A_MaceBallImpact2): on an upward-facing hit while
     // falling, the vertical speed reflects damped (×0.75). FX1/FX3 bounce a
@@ -318,7 +541,8 @@ class DoomProjectileSystem {
                         p.x, p.y, p.z,
                         (p.vz / h) * side * tinyH + p.vx * 0.5,
                         p.vy,
-                        (-p.vx / h) * side * tinyH + p.vz * 0.5);
+                        (-p.vx / h) * side * tinyH + p.vz * 0.5,
+                        p.owner);
                 }
             }
         }
@@ -346,8 +570,9 @@ class DoomProjectileSystem {
     _hitFlesh(p, flesh) {
         if ((this._damage !== null) && (p.def.impactDamage > 0)) {
             const roll = ((this._rng.next() & 7) + 1) * p.def.impactDamage;
-            this._damage.damage(flesh.record, roll, {
+            this._damage.damage(flesh.ref, roll, {
                 point:    flesh.point,
+                source:   p.owner,
                 srcX:     p.x,
                 srcZ:     p.z,
                 kickback: p.def.kickback
@@ -361,9 +586,12 @@ class DoomProjectileSystem {
     _detonate(p, ex, ey, ez) {
         this._effects.spawn(p.def.explosion, ex, ey, ez);
         if ((p.def.splashDamage > 0) && (this._damage !== null)) {
-            this._damage.radiusAttack(ex, ey, ez, p.def.splashDamage, p.def.splashDamage, {kickback: p.def.kickback});
+            this._damage.radiusAttack(ex, ey, ez, p.def.splashDamage, p.def.splashDamage,
+                {kickback: p.def.kickback, source: p.owner});
         }
-        if (p.def.spray !== null) {
+        // The spray is the player's BFG alone: it fans from the shooter, and
+        // no monster in either bestiary carries one.
+        if ((p.def.spray !== null) && DoomActorRef.isPlayer(p.owner)) {
             this._sprayFromShooter(p.def.spray, p.yaw);
         }
     }
@@ -401,10 +629,14 @@ class DoomProjectileSystem {
                 damage += (this._rng.next() & 7) + 1;
             }
             this._effects.spawn(spray.effect, c[0], c[1], c[2]);
-            this._damage.damage(aim.record, damage, {point: [c[0], c[1], c[2]], srcX: ox, srcZ: oz});
+            this._damage.damage(aim.record, damage,
+                {point: [c[0], c[1], c[2]], source: this._user, srcX: ox, srcZ: oz});
         }
     }
 }
 
 DoomProjectileSystem.MS_PER_TIC = 1000 / 35;
 DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe lifetime
+// A_Tracer2 slope chase: map units per tic added to the vertical speed toward
+// the one that would land on the target.
+DoomProjectileSystem.SEEK_SLOPE_RATE = 1 / 8;

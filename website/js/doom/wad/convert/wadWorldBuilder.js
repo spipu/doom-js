@@ -34,10 +34,8 @@ class WadWorldBuilder {
         this._sectorPolys    = null;   // walked on demand, see _sectorPolyCache
     }
 
-    /**
-     * Async only to yield to the browser between the heavy phases, so the
-     * loading modal stays painted. The engine registration itself is synchronous.
-     */
+    // Async only to yield to the browser between the heavy phases, so the
+    // loading modal stays painted. The engine registration itself is synchronous.
     async build() {
         // Per-game policy FIRST: the profile's table extensions land in the
         // WadConstants baseline, then the xlat rewrites the level specials —
@@ -372,8 +370,31 @@ class WadWorldBuilder {
         }
         this._registerMonsterDrops(things, spriteBank);
         this._registerCrushedCorpseView(spriteBank);
+        this._registerRuntimeSpawnables(spriteBank);
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
+    }
+
+    // Views of the monsters this game spawns mid-fight (the pain elemental's
+    // lost souls), built INSIDE the batch like every other template: a body
+    // born during a fight has no chance to load a sprite. A type absent from
+    // the WAD is simply not spawnable — the spitting verb then does nothing.
+    _registerRuntimeSpawnables(spriteBank) {
+        if ((this._monsterSystem === null) || (this._monsterCatalog === null)) {
+            return;
+        }
+        const catalog = {};
+        for (const code of this._profile.runtimeSpawnTypes()) {
+            const def = this._monsterCatalog.getDefByCode(code);
+            if (def === null) {
+                continue;
+            }
+            const frames = DoomMonsterFrames.build(def, spriteBank);
+            if (frames !== null) {
+                catalog[code] = {def: def, frames: frames};
+            }
+        }
+        this._monsterSystem.setSpawnables(catalog);
     }
 
     // Flattened-corpse billboard (vanilla S_GIBS pool, what a corpse ground by
@@ -819,24 +840,22 @@ class WadWorldBuilder {
         });
     }
 
-    /**
-     * USE rules of a manual door, which vanilla carries per LINEDEF while the
-     * engine offers one radius around the whole body. The nearest OPENING of
-     * the door (its two-sided faces — the jambs are walls nobody presses
-     * through) stands in for the line P_UseSpecialLine would pick, and it alone
-     * answers:
-     *  - a face carrying no manual door special answers nothing, so a door
-     *    whose special sits on one linedef only is not openable from the other
-     *    corridor (E1M2's tag-7 door: by hand from its own side, by its switch
-     *    from anywhere else), and a shootable face (46) stays deaf to USE —
-     *    vanilla ignores the impact specials there (E1M2's vent door);
-     *  - it is usable from its FRONT side alone (`if (side) return false`);
-     *  - it demands the key IT carries, so a sector mixing a locked face and a
-     *    free one keeps both (E1M7's yellow doors open freely from inside,
-     *    E3M7's red ones stay locked from the corridor).
-     * A door with no usable opening keeps the plain radius: its press is the
-     * timer-sector cycle replay, which no linedef declares.
-     */
+    // USE rules of a manual door, which vanilla carries per LINEDEF while the
+    // engine offers one radius around the whole body. The nearest OPENING of
+    // the door (its two-sided faces — the jambs are walls nobody presses
+    // through) stands in for the line P_UseSpecialLine would pick, and it alone
+    // answers:
+    //  - a face carrying no manual door special answers nothing, so a door
+    //    whose special sits on one linedef only is not openable from the other
+    //    corridor (E1M2's tag-7 door: by hand from its own side, by its switch
+    //    from anywhere else), and a shootable face (46) stays deaf to USE —
+    //    vanilla ignores the impact specials there (E1M2's vent door);
+    //  - it is usable from its FRONT side alone (`if (side) return false`);
+    //  - it demands the key IT carries, so a sector mixing a locked face and a
+    //    free one keeps both (E1M7's yellow doors open freely from inside,
+    //    E3M7's red ones stay locked from the corridor).
+    // A door with no usable opening keeps the plain radius: its press is the
+    // timer-sector cycle replay, which no linedef declares.
     _applyDoorUseGuard(built, level) {
         if (built.instanceData.trigger !== 'action') {
             return;
@@ -957,12 +976,10 @@ class WadWorldBuilder {
         return [Math.round(r / w), Math.round(g / w), Math.round(b / w)];
     }
 
-    /**
-     * Player spawn from the THINGS lump (type 1 = Player 1 start).
-     * Doom angle 0 = east, 90 = north; engine yaw 0 = north (+Z), 90 = east (+X).
-     * The spawn Y is the floor height of the spawn sector + a small snap margin
-     * (the fixed 0.3 of the Python script only worked for floors near 0).
-     */
+    // Player spawn from the THINGS lump (type 1 = Player 1 start).
+    // Doom angle 0 = east, 90 = north; engine yaw 0 = north (+Z), 90 = east (+X).
+    // The spawn Y is the floor height of the spawn sector + a small snap margin
+    // (the fixed 0.3 of the Python script only worked for floors near 0).
     _computeSpawn(level) {
         const player1 = level.things.find((t) => t.type === 1);
         if (player1 === undefined) {

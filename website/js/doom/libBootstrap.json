@@ -1,5 +1,5 @@
 {
-    "version": "v1.582",
+    "version": "v1.583",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -88,8 +88,10 @@
             "/js/doom/object/doomItem.js",
             "/js/doom/object/doomDecoration.js",
             "/js/doom/object/doomThingCatalog.js",
+            "/js/doom/monster/doomActorRef.js",
             "/js/doom/monster/doomMonsterState.js",
             "/js/doom/monster/doomMonsterDef.js",
+            "/js/doom/monster/doomMonsterFrames.js",
             "/js/doom/monster/doomMonsterCatalog.js",
             "/js/doom/monster/doomMonsterSight.js",
             "/js/doom/monster/doomMonsterMove.js",
@@ -97,6 +99,7 @@
             "/js/doom/monster/doomMoverPressure.js",
             "/js/doom/monster/doomMonsterSystem.js",
             "/js/doom/monster/doomMonsterDamage.js",
+            "/js/doom/monster/doomMonsterAttack.js",
             "/js/doom/automap/doomAutomapReveal.js",
             "/js/doom/automap/doomAutomap.js",
             "/js/doom/weapon/doomRandom.js",

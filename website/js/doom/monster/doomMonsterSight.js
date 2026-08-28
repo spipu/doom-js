@@ -44,21 +44,26 @@ class DoomMonsterSight {
     }
 
     /**
-     * P_CheckSight between an eye point and the player. The REJECT early-out
-     * needs both sector indexes (either may be null — unknown sector skips it).
+     * P_CheckSight between an eye point and a body — the player or another
+     * monster. The REJECT early-out needs both sector indexes (either may be
+     * null — an unknown sector skips it).
      *
-     * @returns {boolean} true when at least one ray reaches the player
+     * @returns {boolean} true when at least one ray reaches the body
      */
-    checkSight(eyeX, eyeY, eyeZ, fromSi, user, userSi) {
-        if ((this._reject !== null) && (fromSi !== null) && (userSi !== null)) {
-            const pnum = fromSi * this._numSectors + userSi;
+    checkSight(eyeX, eyeY, eyeZ, fromSi, target, targetSi) {
+        if ((this._reject !== null) && (fromSi !== null) && (targetSi !== null)) {
+            const pnum = fromSi * this._numSectors + targetSi;
             if ((this._reject[pnum >> 3] & (1 << (pnum & 7))) !== 0) {
                 return false;
             }
         }
-        const height = user.getCurrentHeight();
-        return (this._rayClear(eyeX, eyeY, eyeZ, user.x, user.y + height * 0.5, user.z)
-            || this._rayClear(eyeX, eyeY, eyeZ, user.x, user.y + height, user.z));
+        const x    = DoomActorRef.x(target);
+        const z    = DoomActorRef.z(target);
+        const feet = DoomActorRef.feetY(target);
+        const h    = DoomActorRef.height(target);
+
+        return (this._rayClear(eyeX, eyeY, eyeZ, x, feet + h * 0.5, z)
+            || this._rayClear(eyeX, eyeY, eyeZ, x, feet + h, z));
     }
 
     /**
