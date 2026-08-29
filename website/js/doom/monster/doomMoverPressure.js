@@ -24,6 +24,11 @@
  *    here.
  * A corpse never blocks: pinched below a quarter of its height (vanilla
  * P_KillMobj height >>= 2), it is ground into the gibs pool instead.
+ * An item a monster dropped never blocks either: pinched below its own height
+ * it is removed outright (MF_DROPPED -> P_RemoveMobj), whatever the mover's
+ * crush flag — vanilla runs that branch BEFORE the crushchange test, so a door
+ * closing normally destroys it just like a crusher does. Items the map placed
+ * are not dropped: like every non-shootable thing they go through untouched.
  * Deviation, documented: containment by the body's centre (m.si) where
  * vanilla tests the box.
  */
@@ -110,7 +115,7 @@ class DoomMoverPressure {
     }
 
     // The per-tic pass (see the class doc for the behaviour table).
-    pressureTic(monsters, ticCount) {
+    pressureTic(monsters, drops, ticCount) {
         if ((this._heights === null) || (this._movers.length === 0)) {
             return;
         }
@@ -125,6 +130,7 @@ class DoomMoverPressure {
             const inst     = this._moverInstance(mv);
             const heights  = this._heights.effectiveHeights(mv.si);
             const gap      = heights.ch - heights.fh;
+            this._crushDrops(drops, mv, gap);
             const behavior = inst.getBlockedBehavior();
             let pinched = false;
             for (const m of monsters) {
@@ -190,6 +196,22 @@ class DoomMoverPressure {
         m.crushedFlat = ((wasFlat === true) && (this._crushedView !== null));
         if (m.crushedFlat) {
             m.inst.setObject(this._crushedView);
+        }
+    }
+
+    // The MF_DROPPED branch. The flag stops the despawn from being queued again
+    // on every tic until World.update flushes it on the next frame, and keeps
+    // the item out of the save written in that window.
+    _crushDrops(drops, mv, gap) {
+        if (gap >= WadConstants.DROPPED_ITEM_HEIGHT) {
+            return;
+        }
+        for (const drop of drops) {
+            if (drop.crushed || (drop.si !== mv.si)) {
+                continue;
+            }
+            drop.crushed = true;
+            loader.instances().scheduleRemoval(drop.inst);
         }
     }
 

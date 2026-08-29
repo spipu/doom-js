@@ -26,11 +26,11 @@ class Collision {
             return;
         }
 
-        // Doom-style square blocker (decorations, bodies): a static
-        // axis-aligned box centred on the thing point, with a vertical
-        // interval derived from the sprite body. Not updated per frame — a
-        // box that moves or dies must be pushed back through syncBoxFor /
-        // removeBoxFor by its owner.
+        // Doom-style square blocker (decorations, bodies): an axis-aligned box
+        // centred on the thing point, with a vertical interval derived from the
+        // sprite body. A box that moves under its own steam or dies must be
+        // pushed back through syncBoxFor / removeBoxFor by its owner; one
+        // standing on a moving floor follows it through syncRidingBoxes.
         if (instance.getCollisionShape() === 'box') {
             const box = {instance: instance, cx: 0, cz: 0, half: 0, yBottom: 0, yTop: 0};
             this._refreshBox(box);
@@ -63,6 +63,18 @@ class Collision {
     updateDynamicColliders() {
         for (const dc of this._dynamic) {
             this._updateDynamicCollider(dc);
+        }
+    }
+
+    // Box blockers standing on a moving floor: their instance already followed
+    // it (Instance._syncRide moved the sprite and the world centre), so the box
+    // just re-reads them. Without this a torch riding a lift would keep blocking
+    // at the platform's rest height and let the player walk through its sprite.
+    syncRidingBoxes() {
+        for (const box of this._boxes) {
+            if (box.instance.getRideOn() !== null) {
+                this._refreshBox(box);
+            }
         }
     }
 

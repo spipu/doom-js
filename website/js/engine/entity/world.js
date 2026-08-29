@@ -58,8 +58,10 @@ class World extends AbstractLoadedEntity {
         // 4. Update interactions
         loader.interactions().updateAll(dt);
 
-        // 5. Refresh dynamic collider triangles
+        // 5. Refresh dynamic collider triangles, and the box blockers that rode
+        // a moving floor in step 3
         this._collision.updateDynamicColliders();
+        this._collision.syncRidingBoxes();
 
         // 5b. Mover-caused pressure (stall/reverse rollback) — resolved BEFORE
         // riding and the player's own movement, so the player is never clipped

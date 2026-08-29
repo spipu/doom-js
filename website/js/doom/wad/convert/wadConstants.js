@@ -279,6 +279,9 @@ class WadConstants {
     // P_KillMobj does height >>= 2: a corpse only pinches (and grinds)
     // below a quarter of its living height.
     static CORPSE_HEIGHT_DIVISOR    = 4;
+    // MF_DROPPED things are removed outright once they no longer fit. No item
+    // of either bestiary overrides the default actor height (actor.zs Height 16).
+    static DROPPED_ITEM_HEIGHT      = 16;
 
     static crushDamageDescriptor() {
         return {
