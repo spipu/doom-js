@@ -295,8 +295,10 @@ class DoomMonsterSystem {
         const monsters = this._monsters.map((m) => this._exportRecord(m));
         const drops    = [];
         for (const drop of this._droppedRecords) {
-            if (this._isDropGone(drop)) {
-                continue;   // picked up since it fell
+            // Picked up since it fell, or crushed by a mover and awaiting the
+            // next frame's flush.
+            if (this._isDropGone(drop) || drop.crushed) {
+                continue;
             }
             const pos  = drop.inst.getTransform().position;
             const ride = drop.inst.getRideOn();
@@ -595,7 +597,7 @@ class DoomMonsterSystem {
 
     _stepTic() {
         this._ticCount++;
-        this._pressure.pressureTic(this._monsters, this._ticCount);
+        this._pressure.pressureTic(this._monsters, this._droppedRecords, this._ticCount);
         const kept = [];
         for (const m of this._monsters) {
             const before   = m.inst.getTransform().position;
@@ -1471,6 +1473,7 @@ class DoomMonsterSystem {
             key:         key,
             inst:        inst,
             si:          si,
+            crushed:     false,
             renderLight: null,
             litSi:       null,
             litBright:   false

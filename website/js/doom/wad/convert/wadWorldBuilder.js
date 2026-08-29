@@ -685,8 +685,8 @@ class WadWorldBuilder {
     // instance of the thing's sector, plus the Y shift back to the ORIGINAL
     // floor height for the lowered lifts (their sector fh is patched down for
     // the static map, but the platform RESTS at its original height). The
-    // thing then rides that instance (setRideOn). Static-box collisions of
-    // solid decorations do not follow (known limitation, pickups are 'none').
+    // thing then rides that instance (setRideOn), box blocker of a solid
+    // decoration included (Collision.syncRidingBoxes).
     _resolveThingFloor(t, analysis, builtFloorCodes) {
         const SCALE = WadConstants.SCALE;
         const sec = this._findSector(t.position[0] / SCALE, t.position[2] / SCALE);
