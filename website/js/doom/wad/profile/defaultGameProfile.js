@@ -1105,17 +1105,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             'misc/p_pkup':       {lump: 'DSGETPOW'},
             'misc/i_pkup':       {lump: 'DSITEMUP', pitch: 0},
             'misc/k_pkup':       {lump: 'DSITEMUP', pitch: 0},
-            'misc/teleport':     {lump: 'DSTELEPT'},
-            // Interface (lines 495-503): position-less, menu volume, pitch fixed.
-            'menu/activate': {lump: 'DSSWTCHN'},
-            'menu/backup':   {lump: 'DSSWTCHN'},
-            'menu/prompt':   {lump: 'DSSWTCHN'},
-            'menu/cursor':   {lump: 'DSPSTOP'},
-            'menu/change':   {lump: 'DSSTNMOV'},
-            'menu/invalid':  {lump: 'DSOOF'},
-            'menu/dismiss':  {lump: 'DSSWTCHX'},
-            'menu/choose':   {lump: 'DSPISTOL'},
-            'menu/clear':    {lump: 'DSSWTCHX'}
+            'misc/teleport':     {lump: 'DSTELEPT'}
         };
     }
 
