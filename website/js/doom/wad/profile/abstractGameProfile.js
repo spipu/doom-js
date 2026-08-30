@@ -332,6 +332,76 @@ class AbstractGameProfile {
     }
 
     /**
+     * SNDINFO table of the game: logical sound name → {lump | alias | random}
+     * plus the per-sound attributes ({limit, limitRange, pitch, singular}).
+     * Lump NAMING is game data (Doom prefixes DS, Heretic uses bare names) —
+     * sounds always resolve by name from this table, never by header sniffing.
+     *
+     * @returns {object} name → definition (see DoomSoundCatalog)
+     */
+    soundDefs() {
+        this._generateException('soundDefs must be implemented');
+        return {};
+    }
+
+    /**
+     * Distance attenuation curve of the game ($rolloff of its SNDINFO):
+     * {type: 'doom', min, max} for the log-scaled linear curve, or
+     * {type: 'sndcurve', min, max} for a lookup in the WAD's SNDCURVE lump
+     * (whose size overrides max when present).
+     *
+     * @returns {{type: string, min: number, max: number}}
+     */
+    soundRolloff() {
+        this._generateException('soundRolloff must be implemented');
+        return {type: 'doom', min: 0, max: 0};
+    }
+
+    /**
+     * $pitchshiftrange of the game: the width (bits) of the random pitch
+     * variation every sound start takes, unless its own def overrides it
+     * (pitch 0 = fixed).
+     *
+     * @returns {number}
+     */
+    soundPitchRange() {
+        this._generateException('soundPitchRange must be implemented');
+        return 0;
+    }
+
+    /**
+     * What each monster def voices (zscript sound properties), by def code:
+     * {see, active, pain, death, melee, attack, boss?, actions?}.
+     *
+     * @returns {object}
+     */
+    monsterSounds() {
+        this._generateException('monsterSounds must be implemented');
+        return {};
+    }
+
+    /**
+     * Door movement sound style (sndseq.txt): Doom starts its close leg on the
+     * close lump and ends silently; Raven overrides with {closeStart: 'open',
+     * closeArrival: true} (HereticDoorClose).
+     *
+     * @returns {{closeStart: string, closeArrival: boolean}}
+     */
+    doorSoundStyle() {
+        return {closeStart: 'close', closeArrival: false};
+    }
+
+    /**
+     * Ambient sound things (ednum → {loop} or {random}): none by default —
+     * a Raven concept (waterfall/wind loops, HereticAmbience scripts).
+     *
+     * @returns {object}
+     */
+    ambientSounds() {
+        return {};
+    }
+
+    /**
      * Hardcoded texture/flat animation sequences of this game's engine, used
      * when the WAD carries no ANIMATED lump (the lump always wins).
      *

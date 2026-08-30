@@ -9,7 +9,19 @@ class World extends AbstractLoadedEntity {
         this._lights        = [];
         this._collision     = null;
         this._jumpWasDown   = false;
+        this._actionWasDown = false;
+    }
 
+    // Flat forward ray from the eye (uses are 2D): a wall inside the probe
+    // distance is what swallowed the press.
+    _useProbeHitsWall(user) {
+        const yawRad = DEG_TO_RAD * user.yaw;
+
+        return (this._collision.raycast(
+            user.x, user.getCameraY(), user.z,
+            Math.sin(yawRad), 0, Math.cos(yawRad),
+            user.getUseProbeDistance()
+        ) !== null);
     }
 
     finalizeInit() {
@@ -57,6 +69,17 @@ class World extends AbstractLoadedEntity {
 
         // 4. Update interactions
         loader.interactions().updateAll(dt);
+
+        // Use feedback: a fresh press that reached nothing usable — refused by
+        // a trigger condition (locked door), or swallowed by a bare wall at
+        // probe distance. Consumed every frame so held presses stay silent.
+        const useState = user.consumeUseState();
+        if (action && !this._actionWasDown
+            && ((useState.seen && !useState.accepted)
+                || (!useState.seen && this._useProbeHitsWall(user)))) {
+            user.notifyUseFailed();
+        }
+        this._actionWasDown = action;
 
         // 5. Refresh dynamic collider triangles, and the box blockers that rode
         // a moving floor in step 3

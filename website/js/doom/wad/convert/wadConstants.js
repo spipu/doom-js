@@ -176,18 +176,18 @@ class WadConstants {
         116: {kind: 'close', speed: 8, trigger: 'none',      anim: 'close-stay',      loop: false, onlyOnce: true,  key: null},
         // Moving ceilings: 40 raiseToHighest, 41/43 lowerToFloor,
         // 44/72 lowerAndCrush (stop at floor + 8)
-        40:  {kind: 'ceilingRaise', speed: 1, trigger: 'proximity', anim: 'one-way',  loop: false, onlyOnce: true, key: null},
-        41:  {kind: 'close', speed: 1, trigger: 'none',      anim: 'close-stay', loop: false, onlyOnce: true,  key: null},
-        43:  {kind: 'close', speed: 1, trigger: 'none',      anim: 'close-stay', loop: false, onlyOnce: true,  key: null},
-        44:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'close-stay', loop: false, onlyOnce: true,  key: null, closeMargin: 8},
-        72:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'close-stay', loop: false, onlyOnce: true,  key: null, closeMargin: 8},
+        40:  {kind: 'ceilingRaise', speed: 1, trigger: 'proximity', anim: 'one-way',  loop: false, onlyOnce: true, key: null, ceiling: true},
+        41:  {kind: 'close', speed: 1, trigger: 'none',      anim: 'close-stay', loop: false, onlyOnce: true,  key: null, ceiling: true},
+        43:  {kind: 'close', speed: 1, trigger: 'none',      anim: 'close-stay', loop: false, onlyOnce: true,  key: null, ceiling: true},
+        44:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'close-stay', loop: false, onlyOnce: true,  key: null, closeMargin: 8, ceiling: true},
+        72:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'close-stay', loop: false, onlyOnce: true,  key: null, closeMargin: 8, ceiling: true},
         // Crushers (6/77 fast, 25/49/73 slow, 141 silent)
         6:   {kind: 'close', speed: 2, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8},
         25:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8},
         49:  {kind: 'close', speed: 1, trigger: 'none',      anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8},
         73:  {kind: 'close', speed: 1, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8},
         77:  {kind: 'close', speed: 2, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8},
-        141: {kind: 'close', speed: 1, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8}
+        141: {kind: 'close', speed: 1, trigger: 'proximity', anim: 'crusher', loop: true, onlyOnce: false, key: null, closeMargin: 8, silent: true}
     };
 
     // Name of the cycle a door special drives, and the key its keyframe variant
@@ -739,6 +739,32 @@ class WadConstants {
     static TELEZOOM_FOV_MAX = 175;
     static TELEZOOM_STEP_MIN = 7;
     static TELEZOOM_STEP_FACTOR = 0.025;
+
+    // --- Sound ---
+
+    // Own volume of the interface sounds (UZDoom snd_menuvolume, menu.cpp:57).
+    static MENU_SOUND_VOLUME = 0.6;
+
+    // Default per-sound start limit: at most 4 copies of the same sound within
+    // 256 map units; SNDINFO $limit only OVERRIDES these defaults
+    // (s_soundinternal.h, sfxinfo_t — a $limit of 0 means unlimited).
+    static SOUND_NEAR_LIMIT = 4;
+    static SOUND_NEAR_LIMIT_RANGE = 256;
+
+    // ATTN_* factors (zscript/engine/base.zs): they MULTIPLY the distance a
+    // sound is heard at — 0 makes it full volume over the whole level.
+    static SOUND_ATTN = {none: 0, norm: 1, idle: 1.001, static: 3};
+
+    // Reach of a use press (p_local.h USERANGE): a press that finds no trigger
+    // probes a wall this far ahead before voicing the failure.
+    static USE_RANGE = 64;
+
+    // Fall (in map units) beyond which landing grunts: vanilla plays *grunt at
+    // momz < -8 u/tic (p_mobj.c), which gravity 1 u/tic² reaches after 32 units.
+    static LAND_GRUNT_FALL_UNITS = 32;
+
+    // A_Chase idle bark: P_Random() < 3 per call (p_enemy.c).
+    static MONSTER_ACTIVE_SOUND_CHANCE = 3;
 
     // --- Walk triggers (W1/WR) ---
 

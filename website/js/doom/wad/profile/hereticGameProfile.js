@@ -28,6 +28,219 @@ class HereticGameProfile extends DefaultGameProfile {
      *
      * @returns {object}
      */
+    // Heretic SNDINFO transcription (filter/game-heretic/sndinfo.txt): same
+    // logical events as Doom, mapped on Raven's bare-named lumps. misc/secret
+    // names a Doom lump heretic.wad does not carry — silent by design.
+    soundDefs() {
+        return {
+            // Player ($playersound male)
+            '*death':   {lump: 'PLRDTH'},
+            '*xdeath':  {lump: 'PLRCDTH'},
+            '*gibbed':  {lump: 'GIBDTH'},
+            '*pain100': {lump: 'PLRPAI'},
+            '*grunt':   {lump: 'PLROOF'},
+            '*usefail': {alias: '*grunt'},
+            '*land':    {alias: '*grunt'},
+            '*jump':    {lump: 'PLRJMP'},
+            '*weaponlaugh': {lump: 'WPNUP'},
+            // Weapons (PL1)
+            'weapons/staffhit':          {lump: 'STFHIT'},
+            'weapons/wandhit':           {lump: 'GLDHIT'},
+            'weapons/bowshoot':          {lump: 'BOWSHT'},
+            'weapons/bowhit':            {lump: 'HRNHIT', limit: 0},
+            'weapons/gauntletsactivate': {lump: 'GNTACT', limit: 0},
+            'weapons/gauntletson':       {lump: 'GNTFUL', limit: 0},
+            'weapons/gauntletshit':      {lump: 'GNTHIT', limit: 0},
+            'weapons/maceshoot':         {lump: 'LOBSHT', limit: 0},
+            'weapons/macebounce':        {lump: 'BOUNCE'},
+            'weapons/macehit':           {lump: 'LOBHIT'},
+            'weapons/macestop':          {lump: 'PSTOP'},
+            'weapons/maceexplode':       {lump: 'PHOHIT', limit: 0},
+            'weapons/blastershoot':      {lump: 'BLSSHT'},
+            'weapons/blasterhit':        {lump: 'BLSHIT'},
+            'weapons/hornrodshoot':      {lump: 'HRNSHT', limit: 0},
+            'weapons/hornrodhit':        {lump: 'HRNHIT', limit: 0},
+            'weapons/phoenixshoot':      {lump: 'PHOSHT'},
+            'weapons/phoenixhit':        {lump: 'PHOHIT', limit: 0},
+            // Monsters
+            'himp/sight':            {lump: 'IMPSIT'},
+            'himp/attack':           {lump: 'IMPAT1'},
+            'himp/pain':             {lump: 'IMPPAI'},
+            'himp/death':            {lump: 'IMPDTH'},
+            'himp/active':           {lump: 'IMPSIT'},
+            'himp/leaderattack':     {lump: 'IMPAT2'},
+            'mummy/sight':           {lump: 'MUMSIT'},
+            'mummy/attack1':         {lump: 'MUMAT1'},
+            'mummy/attack2':         {lump: 'MUMAT2'},
+            'mummy/pain':            {lump: 'MUMPAI'},
+            'mummy/death':           {lump: 'MUMDTH'},
+            'mummy/active':          {lump: 'MUMSIT'},
+            'mummy/head':            {lump: 'MUMHED'},
+            'beast/sight':           {lump: 'BSTSIT'},
+            'beast/attack':          {lump: 'BSTATK'},
+            'beast/pain':            {lump: 'BSTPAI'},
+            'beast/death':           {lump: 'BSTDTH'},
+            'beast/active':          {lump: 'BSTACT'},
+            'snake/attack':          {lump: 'SNKATK'},
+            'snake/sight':           {lump: 'SNKSIT'},
+            'snake/pain':            {lump: 'SNKPAI'},
+            'snake/death':           {lump: 'SNKDTH'},
+            'snake/active':          {lump: 'SNKACT'},
+            'clink/sight':           {lump: 'CLKSIT'},
+            'clink/attack':          {lump: 'CLKATK'},
+            'clink/pain':            {lump: 'CLKPAI'},
+            'clink/death':           {lump: 'CLKDTH'},
+            'clink/active':          {lump: 'CLKACT'},
+            'hknight/sight':         {lump: 'KGTSIT'},
+            'hknight/attack':        {lump: 'KGTATK'},
+            'hknight/melee':         {lump: 'KGTAT2'},
+            'hknight/pain':          {lump: 'KGTPAI'},
+            'hknight/death':         {lump: 'KGTDTH'},
+            'hknight/active':        {lump: 'KGTSIT'},
+            'hknight/hit':           {lump: 'HRNHIT'},
+            'hknight/axewhoosh':     {lump: 'KGTATK'},
+            'wizard/sight':          {lump: 'WIZSIT'},
+            'wizard/attack':         {lump: 'WIZATK'},
+            'wizard/death':          {lump: 'WIZDTH'},
+            'wizard/pain':           {lump: 'WIZPAI'},
+            'wizard/active1':        {lump: 'WIZACT'},
+            'wizard/active':         {random: ['wizard/sight', 'wizard/active1']},
+            'ironlich/sight':        {lump: 'HEDSIT'},
+            'ironlich/attack1':      {lump: 'HEDAT1'},
+            'ironlich/attack2':      {lump: 'HEDAT2'},
+            'ironlich/attack3':      {lump: 'HEDAT3'},
+            'ironlich/pain':         {lump: 'HEDPAI'},
+            'ironlich/death':        {lump: 'HEDDTH'},
+            'ironlich/active':       {lump: 'HEDACT'},
+            'minotaur/sight':        {lump: 'MINSIT'},
+            'minotaur/melee':        {lump: 'STFPOW'},
+            'minotaur/attack1':      {lump: 'MINAT1'},
+            'minotaur/attack2':      {lump: 'MINAT2'},
+            'minotaur/attack3':      {lump: 'MINAT3'},
+            'minotaur/pain':         {lump: 'MINPAI'},
+            'minotaur/death':        {lump: 'MINDTH'},
+            'minotaur/active':       {lump: 'MINACT'},
+            'minotaur/fx2hit':       {lump: 'PHOHIT'},
+            'minotaur/fx3hit':       {lump: 'PHOHIT'},
+            'dsparilserpent/sight':  {lump: 'BSTSIT'},
+            'dsparilserpent/attack': {lump: 'BSTATK'},
+            'dsparilserpent/pain':   {lump: 'SBTPAI'},
+            'dsparilserpent/death':  {lump: 'SBTDTH'},
+            'dsparilserpent/active': {lump: 'SBTACT'},
+            'dsparil/sight':         {lump: 'SORSIT'},
+            'dsparil/attack':        {lump: 'SORATK'},
+            'dsparil/pain':          {lump: 'SORPAI'},
+            'dsparil/active':        {lump: 'SORACT'},
+            'dsparil/rise':          {lump: 'SORRISE'},
+            'dsparil/zap':           {lump: 'SORZAP'},
+            'dsparil/scream':        {lump: 'SORDSPH'},
+            'dsparil/explode':       {lump: 'SORDEXP'},
+            'dsparil/bones':         {lump: 'SORDBON'},
+            // World, movers, pickups
+            'world/podexplode':      {lump: 'PODEXP', limit: 0},
+            'world/podgrow':         {lump: 'NEWPOD', limit: 0},
+            'world/wind':            {lump: 'WIND', limit: 1},
+            'world/waterfall':       {lump: 'WATERFL'},
+            'world/amb1':            {lump: 'AMB1', limit: 1},
+            'world/amb2':            {lump: 'AMB2', limit: 1},
+            'world/amb3':            {lump: 'AMB3', limit: 1},
+            'world/amb4':            {lump: 'AMB4', limit: 1},
+            'world/amb5':            {lump: 'AMB5', limit: 1},
+            'world/amb6':            {lump: 'AMB6', limit: 1},
+            'world/amb7':            {lump: 'AMB7', limit: 1},
+            'world/amb8':            {lump: 'AMB8', limit: 1},
+            'world/amb9':            {lump: 'AMB9', limit: 1},
+            'world/amb10':           {lump: 'AMB10', limit: 1},
+            'world/amb11':           {lump: 'AMB11', limit: 0},
+            'world/amb12':           {lump: 'BSTSIT'},
+            'world/volcano/blast':   {lump: 'LOBHIT'},
+            'world/volcano/shoot':   {lump: 'BSTATK'},
+            'plats/pt1_strt':        {lump: 'PSTART'},
+            'plats/pt1_stop':        {lump: 'PSTOP'},
+            'plats/pt1_mid':         {lump: 'DORMOV'},
+            'doors/dr1_open':        {lump: 'DOROPN'},
+            'doors/dr1_clos':        {lump: 'DORCLS'},
+            'doors/dr2_open':        {lump: 'DOROPN'},
+            'doors/dr2_clos':        {lump: 'DORCLS'},
+            'switches/normbutn':     {lump: 'SWITCH'},
+            'switches/exitbutn':     {alias: 'switches/normbutn'},
+            'misc/secret':           {lump: 'DSSECRET'},
+            'misc/gibbed':           {lump: 'GIBDTH'},
+            'misc/i_pkup':           {lump: 'ITEMUP', pitch: 0},
+            'misc/k_pkup':           {lump: 'KEYUP', pitch: 0},
+            'misc/p_pkup':           {lump: 'ARTIUP'},
+            'misc/w_pkup':           {alias: '*weaponlaugh'},
+            'misc/teleport':         {lump: 'TELEPT'},
+            // Interface (lines 345-353)
+            'menu/activate': {lump: 'DORCLS'},
+            'menu/backup':   {lump: 'SWITCH'},
+            'menu/prompt':   {lump: 'CHAT'},
+            'menu/choose':   {lump: 'DORCLS'},
+            'menu/cursor':   {lump: 'SWITCH'},
+            'menu/change':   {lump: 'KEYUP'},
+            'menu/invalid':  {lump: 'PLROOF'},
+            'menu/dismiss':  {lump: 'DORCLS'},
+            'menu/clear':    {lump: 'DORCLS'}
+        };
+    }
+
+    // zscript sound properties of the Heretic bestiary (the ghost and leader
+    // ednum variants share their base def's code, so one entry serves all).
+    monsterSounds() {
+        return {
+            gargoyle:  {see: 'himp/sight', active: 'himp/active', pain: 'himp/pain', death: 'himp/death', melee: 'himp/attack'},
+            golem:     {see: 'mummy/sight', active: 'mummy/active', pain: 'mummy/pain', death: 'mummy/death', melee: 'mummy/attack1'},
+            disciple:  {see: 'wizard/sight', active: 'wizard/active', pain: 'wizard/pain', death: 'wizard/death'},
+            weredragon: {see: 'beast/sight', active: 'beast/active', pain: 'beast/pain', death: 'beast/death', melee: 'beast/attack'},
+            sabreclaw: {see: 'clink/sight', active: 'clink/active', pain: 'clink/pain', death: 'clink/death', melee: 'clink/attack'},
+            ophidian:  {see: 'snake/sight', active: 'snake/active', pain: 'snake/pain', death: 'snake/death'},
+            ironlich:  {see: 'ironlich/sight', active: 'ironlich/active', pain: 'ironlich/pain', death: 'ironlich/death', boss: true, actions: {A_WhirlwindSeek: 'ironlich/attack1'}},
+            maulotaur: {see: 'minotaur/sight', active: 'minotaur/active', pain: 'minotaur/pain', death: 'minotaur/death', melee: 'minotaur/melee', boss: true, actions: {A_MinotaurAtk2: 'minotaur/attack2', A_MinotaurAtk3: 'minotaur/attack3', A_MinotaurCharge: 'minotaur/attack1'}},
+            dsparil:   {see: 'dsparilserpent/sight', active: 'dsparilserpent/active', pain: 'dsparilserpent/pain', death: 'dsparilserpent/death', boss: true},
+            sorcerer2: {see: 'dsparil/sight', active: 'dsparil/active', pain: 'dsparil/pain', death: 'dsparil/scream', teleport: 'dsparil/zap', boss: true, actions: {A_SorcererRise: 'dsparil/rise', A_Sor2DthLoop: 'dsparil/explode', A_SorDBon: 'dsparil/bones', A_Srcr2Attack: 'dsparil/attack'}},
+            undeadWarrior: {see: 'hknight/sight', active: 'hknight/active', pain: 'hknight/pain', death: 'hknight/death', melee: 'hknight/melee'},
+            pod:           {death: 'world/podexplode'}
+        };
+    }
+
+    // HereticDoorClose (sndseq.txt): the close leg starts on the OPEN lump and
+    // rings the close one on arrival — where Doom plays its close lump at the
+    // start and nothing at the end.
+    doorSoundStyle() {
+        return {closeStart: 'open', closeArrival: true};
+    }
+
+    // Ambient sound things, skipped by the thing catalog (no body, no sprite):
+    // 41/42 are positioned loops, 1200-1209 the HereticAmbience scripts — an
+    // unattenuated random-volume one-shot every few seconds (sndseq.txt).
+    ambientSounds() {
+        return {
+            41:   {loop: 'world/waterfall'},
+            42:   {loop: 'world/wind'},
+            1200: {random: 'world/amb1'},
+            1201: {random: 'world/amb2'},
+            1202: {random: 'world/amb3'},
+            1203: {random: 'world/amb4'},
+            1204: {random: 'world/amb5'},
+            1205: {random: 'world/amb6'},
+            1206: {random: 'world/amb7'},
+            1207: {random: 'world/amb8'},
+            1208: {random: 'world/amb9'},
+            1209: {random: 'world/amb10'}
+        };
+    }
+
+    // Raven attenuation ($rolloff * custom 0 1600, game-heretic/sndinfo.txt:8
+    // — the real curve and max come from the WAD's SNDCURVE lump) and pitch
+    // variation ($pitchshiftrange 2, line 10).
+    soundRolloff() {
+        return {type: 'sndcurve', min: 0, max: 1600};
+    }
+
+    soundPitchRange() {
+        return 2;
+    }
+
     progressionRules() {
         return {
             ...super.progressionRules(),
@@ -583,6 +796,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 damage: {flat: 4, base: 1, dice: 16}, kickback: 150, puffOnMonsters: true,
                 puffType: 'staffPuff',
                 viewSprite: 'STFF', entry: ENTRY,
+                meleeHitSound: 'weapons/staffhit',
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 6, null, 'fire2'], fire2: ['C', 8, 'fireMelee', 'fire3'], fire3: ['B', 8, 'refire', 'ready'],
@@ -594,6 +808,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 damage: {base: 2, dice: 8}, kickback: 0, puffOnMonsters: true,
                 puffType: 'gauntletPuff',
                 viewSprite: 'GAUN', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                upSound: 'weapons/gauntletsactivate', meleeHitSound: 'weapons/gauntletshit', meleeMissSound: 'weapons/gauntletson',
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 4, null, 'fire2'], fire2: ['C', 4, null, 'hold1'],
@@ -608,6 +823,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 damage: {flat: 6, base: 1, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'goldwandPuff', decalType: 'railscorch',
                 viewSprite: 'GWND', entry: ENTRY,
+                actionSounds: {fireHitscan: 'weapons/wandhit'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 3, null, 'fire2'], fire2: ['C', 5, 'fireHitscan', 'fire3'],
@@ -639,6 +855,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 damage: {base: 4, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'blasterPuff', decalType: 'railscorch',
                 viewSprite: 'BLSR', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                actionSounds: {fireHitscan: 'weapons/blastershoot'}, impactSound: 'weapons/blasterhit',
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 3, null, 'fire2'], fire2: ['C', 3, null, 'hold1'],
@@ -674,6 +891,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 yAdjust: 15,
                 projectiles: [{kind: 'macefx1', randomSpreadH: SPREAD, altKind: 'macefx2', altChance: 28}],
                 viewSprite: 'MACE', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
+                actionSounds: {fireProjectiles: 'weapons/maceshoot'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 4, null, 'hold1'],
@@ -773,44 +991,44 @@ class HereticGameProfile extends DefaultGameProfile {
     // frames in effectTemplates.
     projectileDefs() {
         return [
-            {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   impactDamage: 10, alpha: 1, additive: true,  decalType: 'cbowmark'},
-            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   impactDamage: 2,  alpha: 1, additive: true,  decalType: 'cbowmark2', thruGhost: true},
-            {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   impactDamage: 3,  alpha: 1, additive: true,  decalType: 'hornscorch'},
-            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, impactDamage: 20, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4, thruGhost: true},
-            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 2, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}, thruGhost: true},
+            {kind: 'crossbowfx1', sprite: 'FX03', letters: ['B'],      speed: 30, flightTics: 1, explosion: 'crossbowExplode1', splashDamage: 0,   impactDamage: 10, alpha: 1, additive: true,  decalType: 'cbowmark', seeSound: 'weapons/bowshoot', deathSound: 'weapons/bowhit'},
+            {kind: 'crossbowfx3', sprite: 'FX03', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'crossbowExplode3', splashDamage: 0,   impactDamage: 2,  alpha: 1, additive: true,  decalType: 'cbowmark2', thruGhost: true, deathSound: 'weapons/bowhit'},
+            {kind: 'hornrodfx1',  sprite: 'FX00', letters: ['A', 'B'], speed: 22, flightTics: 6, explosion: 'skullrodExplode',  splashDamage: 0,   impactDamage: 3,  alpha: 1, additive: true,  decalType: 'hornscorch', seeSound: 'weapons/hornrodshoot', deathSound: 'weapons/hornrodhit'},
+            {kind: 'phoenixfx1',  sprite: 'FX04', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'phoenixExplode',   splashDamage: 128, impactDamage: 20, alpha: 1, additive: false, decalType: 'phoenixscorch', trailEffect: 'phoenixTrail', trailEveryTics: 4, thruGhost: true, seeSound: 'weapons/phoenixshoot', deathSound: 'weapons/phoenixhit'},
+            {kind: 'macefx1',     sprite: 'FX02', letters: ['A', 'B'], speed: 20, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 2, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, gravityDelayTics: 16, dropSpeed: 7, bounce: {damping: 0.75, maxBounces: 1}, thruGhost: true, deathSound: 'weapons/macehit', bounceSound: 'weapons/macebounce'},
             // The rare lobbed ball (28/256 of A_FireMacePL1 shots): flat launch
             // at Speed 10 + pitch-driven vertical kick, gravity 0.125 from the
             // first tic, same death frames as the normal ball. Bounces while
             // its energy holds, spitting two sideways FX3 each time.
-            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 6, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}},
+            {kind: 'macefx2',     sprite: 'FX02', letters: ['C', 'D'], speed: 10, flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 6, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, lob: true, spawnHeight: 28, bounce: {damping: 0.75, minVz: 2, spawnKind: 'macefx3'}, deathSound: 'weapons/maceexplode', bounceSound: 'weapons/macebounce'},
             // The tiny side balls spat by an FX2 bounce — one bounce each,
             // like the normal ball (they inherit MaceFX1's impact).
-            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 4, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}},
+            {kind: 'macefx3',     sprite: 'FX02', letters: ['A', 'B'], speed: 7,  flightTics: 4, explosion: 'maceExplode',      splashDamage: 0,   impactDamage: 4, alpha: 1, additive: false, decalType: 'macescorch', gravity: 0.125, bounce: {damping: 0.75, maxBounces: 1}, deathSound: 'weapons/macehit', bounceSound: 'weapons/macebounce'},
             // The monsters' shots (zscript/actors/heretic/*.zs, raven/minotaur.zs).
-            {kind: 'hereticImpBall', sprite: 'FX10', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 20, flightTics: 6, explosion: 'hereticImpBallDeath', splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
-            {kind: 'mummyFX1',       sprite: 'FX15', letters: ['A', 'B', 'C', 'B'], speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'mummyFX1Death',      splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true,  seek: {threshold: 10, turnMax: 20, everyTics: 10}},
-            {kind: 'knightAxe',      sprite: 'SPAX', letters: ['A', 'B', 'C'],      speed: 9,  fastSpeed: 18, flightTics: 3, explosion: 'knightAxeDeath',     splashDamage: 0, impactDamage: 2,  alpha: 1,   additive: false, thruGhost: true},
-            {kind: 'redAxe',         sprite: 'RAXE', letters: ['A', 'B'],           speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'redAxeDeath',        splashDamage: 0, impactDamage: 7,  alpha: 1,   additive: false, thruGhost: true},
-            {kind: 'beastBall',      sprite: 'FRB1', letters: ['A', 'B', 'C'],      speed: 12, fastSpeed: 20, flightTics: 4, explosion: 'beastBallDeath',     splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true},
-            {kind: 'snakeProjA',     sprite: 'SNFX', letters: ['A', 'B', 'C', 'D'], speed: 14, fastSpeed: 20, flightTics: 5, explosion: 'snakeProjADeath',    splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true},
-            {kind: 'snakeProjB',     sprite: 'SNFX', letters: ['J', 'K'],           speed: 14, fastSpeed: 20, flightTics: 6, explosion: 'snakeProjBDeath',    splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
-            {kind: 'wizardFX1',      sprite: 'FX11', letters: ['A', 'B'],           speed: 18, fastSpeed: 24, flightTics: 6, explosion: 'wizardFX1Death',     splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true},
-            {kind: 'sorcererFX1',    sprite: 'FX14', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 6, explosion: 'sorcererFX1Death',   splashDamage: 0, impactDamage: 10, alpha: 1,   additive: true},
-            {kind: 'headFX1',        sprite: 'FX05', letters: ['A', 'B', 'C'],      speed: 13, fastSpeed: 20, flightTics: 6, explosion: 'headFX1Death',       splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true,  thruGhost: true},
-            {kind: 'headFX3',        sprite: 'FX06', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 18, flightTics: 4, explosion: 'headFX3Death',       splashDamage: 0, impactDamage: 5,  alpha: 1,   additive: true, growRise: 9},
+            {kind: 'hereticImpBall', sprite: 'FX10', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 20, flightTics: 6, explosion: 'hereticImpBallDeath', splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true,  seeSound: 'himp/leaderattack'},
+            {kind: 'mummyFX1',       sprite: 'FX15', letters: ['A', 'B', 'C', 'B'], speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'mummyFX1Death',      splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true,  seek: {threshold: 10, turnMax: 20, everyTics: 10}, seeSound: 'mummy/head'},
+            {kind: 'knightAxe',      sprite: 'SPAX', letters: ['A', 'B', 'C'],      speed: 9,  fastSpeed: 18, flightTics: 3, explosion: 'knightAxeDeath',     splashDamage: 0, impactDamage: 2,  alpha: 1,   additive: false, thruGhost: true, seeSound: 'hknight/axewhoosh', deathSound: 'hknight/hit'},
+            {kind: 'redAxe',         sprite: 'RAXE', letters: ['A', 'B'],           speed: 9,  fastSpeed: 18, flightTics: 5, explosion: 'redAxeDeath',        splashDamage: 0, impactDamage: 7,  alpha: 1,   additive: false, thruGhost: true, seeSound: 'hknight/axewhoosh', deathSound: 'hknight/hit'},
+            {kind: 'beastBall',      sprite: 'FRB1', letters: ['A', 'B', 'C'],      speed: 12, fastSpeed: 20, flightTics: 4, explosion: 'beastBallDeath',     splashDamage: 0, impactDamage: 4,  alpha: 1,   additive: true,  seeSound: 'beast/attack'},
+            {kind: 'snakeProjA',     sprite: 'SNFX', letters: ['A', 'B', 'C', 'D'], speed: 14, fastSpeed: 20, flightTics: 5, explosion: 'snakeProjADeath',    splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true,  seeSound: 'snake/attack'},
+            {kind: 'snakeProjB',     sprite: 'SNFX', letters: ['J', 'K'],           speed: 14, fastSpeed: 20, flightTics: 6, explosion: 'snakeProjBDeath',    splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true,  seeSound: 'snake/attack'},
+            {kind: 'wizardFX1',      sprite: 'FX11', letters: ['A', 'B'],           speed: 18, fastSpeed: 24, flightTics: 6, explosion: 'wizardFX1Death',     splashDamage: 0, impactDamage: 3,  alpha: 1,   additive: true,  seeSound: 'wizard/attack'},
+            {kind: 'sorcererFX1',    sprite: 'FX14', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 6, explosion: 'sorcererFX1Death',   splashDamage: 0, impactDamage: 10, alpha: 1,   additive: true,  seeSound: 'dsparilserpent/attack'},
+            {kind: 'headFX1',        sprite: 'FX05', letters: ['A', 'B', 'C'],      speed: 13, fastSpeed: 20, flightTics: 6, explosion: 'headFX1Death',       splashDamage: 0, impactDamage: 1,  alpha: 1,   additive: true,  thruGhost: true, seeSound: 'ironlich/attack2'},
+            {kind: 'headFX3',        sprite: 'FX06', letters: ['A', 'B', 'C'],      speed: 10, fastSpeed: 18, flightTics: 4, explosion: 'headFX3Death',       splashDamage: 0, impactDamage: 5,  alpha: 1,   additive: true, growRise: 9, seeSound: 'ironlich/attack3'},
             // The whirlwind is no ball: it passes THROUGH its victim and
             // grinds them for as long as it lasts (Whirlwind::DoSpecialDamage).
             {kind: 'whirlwind',      sprite: 'FX07', letters: ['D', 'E', 'F', 'G', 'A', 'B', 'C'], speed: 10, flightTics: 3, explosion: 'whirlwindDeath', splashDamage: 0, impactDamage: 0, alpha: 0.4, additive: false,
-                seek: {threshold: 10, turnMax: 30, everyTics: 3}, ripper: {damage: 3, damageEvery: 8, shove: 2, lift: 0.3}, lifeTics: 700},
+                seek: {threshold: 10, turnMax: 30, everyTics: 3}, ripper: {damage: 3, damageEvery: 8, shove: 2, lift: 0.3}, lifeTics: 700, seeSound: 'ironlich/attack1'},
             {kind: 'minotaurFX1',    sprite: 'FX12', letters: ['A', 'B'],           speed: 20, fastSpeed: 26, flightTics: 6, explosion: 'minotaurFX1Death',   splashDamage: 0,  impactDamage: 3, alpha: 1, additive: false},
             // MinotaurFX2 crawls along the floor and sows a MinotaurFX3 beside
             // itself every other tic (A_MntrFloorFire, scattered ±4 units).
             {kind: 'minotaurFX2',    sprite: 'FX13', letters: ['A'],                speed: 14, fastSpeed: 20, flightTics: 2, explosion: 'minotaurFX2Death',   splashDamage: 24,  impactDamage: 4, alpha: 1, additive: false,
-                floorHugger: true, trailKind: 'minotaurFX3', trailEveryTics: 2, trailScatter: 4},
+                floorHugger: true, trailKind: 'minotaurFX3', trailEveryTics: 2, trailScatter: 4, deathSound: 'minotaur/fx2hit'},
             // The fire it leaves: it goes nowhere, burns out in 40 tics, and
             // takes a whole room with it if anyone treads on it first.
             {kind: 'minotaurFX3',    sprite: 'FX13', letters: ['D', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], speed: 0, flightTics: 4, explosion: 'minotaurFX2Death', splashDamage: 128, impactDamage: 4, alpha: 1, additive: false,
-                contactRadius: 8, lifeTics: 40},
+                contactRadius: 8, lifeTics: 40, deathSound: 'minotaur/fx3hit'},
             // D'Sparil's blue bolt: a light touch that bursts for 80 to 111.
             {kind: 'sorcerer2FX1',   sprite: 'FX16', letters: ['A', 'B', 'C'],      speed: 20, fastSpeed: 28, flightTics: 3, explosion: 'sorcerer2FX1Death', splashDamage: {min: 80, max: 111}, impactDamage: 1, alpha: 1, additive: true},
             // The spawner he throws to his flanks: it drifts, then hatches a

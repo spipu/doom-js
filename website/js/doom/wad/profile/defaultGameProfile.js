@@ -660,6 +660,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'fist', name: 'Fist', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
                 damage: {base: 2, dice: 10}, berserkItem: 'berserk', berserkFactor: 10,
+                meleeHitSound: '*fist',
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PUNG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
@@ -672,6 +673,8 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'chainsaw', name: 'Chainsaw', ammoType: null, ammoUse: 0,
                 pellets: 1, spreadH: SPREAD, range: MELEE,
                 damage: {base: 2, dice: 10}, kickback: 0,
+                upSound: 'weapons/sawup', meleeHitSound: 'weapons/sawhit', meleeMissSound: 'weapons/sawfull',
+                actionSounds: {ready: 'weapons/sawidle'},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SAWG', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' },
                 main: {
@@ -686,6 +689,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'PISG', flashSprite: 'PISF', entry: READY,
+                actionSounds: {fireHitscan: 'weapons/pistol'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 4, null, 'fire2'], fire2: ['B', 6, 'fireHitscan', 'fire3'],
@@ -699,6 +703,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHTG', flashSprite: 'SHTF', entry: READY,
+                actionSounds: {fireHitscan: 'weapons/shotgf'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireHitscan', 'fire3'], fire3: ['B', 5, null, 'fire4'],
@@ -713,6 +718,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'SHT2', flashSprite: 'SHT2', entry: READY,
+                actionSounds: {fireHitscan: 'weapons/sshotf', openShotgun2: 'weapons/sshoto', loadShotgun2: 'weapons/sshotl', closeShotgun2: 'weapons/sshotc'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 3, null, 'fire2'], fire2: ['A', 7, 'fireHitscan', 'fire3'], fire3: ['B', 7, null, 'fire4'],
@@ -728,6 +734,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
                 viewSprite: 'CHGG', flashSprite: 'CHGF', entry: READY,
+                actionSounds: {fireHitscanFlash1: 'weapons/chngun', fireHitscanFlash2: 'weapons/chngun'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 4, 'fireHitscanFlash1', 'fire2'], fire2: ['B', 4, 'fireHitscanFlash2', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
@@ -761,6 +768,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 code: 'bfg', name: 'BFG9000', ammoType: 'cells', ammoUse: 40,
                 projectiles: [{kind: 'bfg'}], autoFire: false,
                 viewSprite: 'BFGG', flashSprite: 'BFGF', entry: READY,
+                actionSounds: {bfgSound: 'weapons/bfgf'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 20, 'bfgSound', 'fire2'], fire2: ['B', 10, 'gunFlash', 'fire3'],
@@ -811,7 +819,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {name: 'brainExplosion',   sprite: 'MISL', letters: ['B', 'C', 'D'], frameTics: [10, 10, 10],
                 alpha: 1, rise: 0, additive: false},
             {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
-                frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true},
+                frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true, spawnSound: ['vile/firestrt', 'vile/firecrkl']},
             {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
         ];
     }
@@ -837,24 +845,25 @@ class DefaultGameProfile extends AbstractGameProfile {
     // fires the vanilla A_BFGSpray from the shooter on detonation.
     projectileDefs() {
         return [
-            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, impactDamage: 20,  alpha: 1,    additive: false, decalType: 'scorch'},
-            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   impactDamage: 5,   alpha: 0.75, additive: true,  decalType: 'plasma'},
-            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}},
+            {kind: 'rocket', sprite: 'MISL', letters: ['A'],      speed: 20, flightTics: 1, explosion: 'rocketExplode', splashDamage: 128, impactDamage: 20,  alpha: 1,    additive: false, decalType: 'scorch', seeSound: 'weapons/rocklf', deathSound: 'weapons/rocklx'},
+            {kind: 'plasma', sprite: 'PLSS', letters: ['A', 'B'], speed: 25, flightTics: 6, explosion: 'plasmaExplode', splashDamage: 0,   impactDamage: 5,   alpha: 0.75, additive: true,  decalType: 'plasma', seeSound: 'weapons/plasmaf', deathSound: 'weapons/plasmax'},
+            {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', deathSound: 'weapons/bfgx', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}},
             // The monsters' shots (zscript/actors/doom/*.zs): no splash but the
             // cyberdemon's, which fires the very rocket the player does.
-            {kind: 'impBall',     sprite: 'BAL1', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'impBallDeath',     splashDamage: 0, impactDamage: 3,  alpha: 1, additive: false},
-            {kind: 'cacoBall',    sprite: 'BAL2', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'cacoBallDeath',    splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false},
-            {kind: 'baronBall',   sprite: 'BAL7', letters: ['A', 'B'], speed: 15, fastSpeed: 20, flightTics: 4, explosion: 'baronBallDeath',   splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false},
-            {kind: 'arachPlasma', sprite: 'APLS', letters: ['A', 'B'], speed: 25,                flightTics: 5, explosion: 'arachPlasmaDeath', splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false},
-            {kind: 'fatShot',     sprite: 'MANF', letters: ['A', 'B'], speed: 20,                flightTics: 4, explosion: 'rocketExplode',    splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false},
+            {kind: 'impBall',     sprite: 'BAL1', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'impBallDeath',     splashDamage: 0, impactDamage: 3,  alpha: 1, additive: false, seeSound: 'imp/attack', deathSound: 'imp/shotx'},
+            {kind: 'cacoBall',    sprite: 'BAL2', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'cacoBallDeath',    splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false, seeSound: 'caco/attack', deathSound: 'caco/shotx'},
+            {kind: 'baronBall',   sprite: 'BAL7', letters: ['A', 'B'], speed: 15, fastSpeed: 20, flightTics: 4, explosion: 'baronBallDeath',   splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false, seeSound: 'baron/attack', deathSound: 'baron/shotx'},
+            {kind: 'arachPlasma', sprite: 'APLS', letters: ['A', 'B'], speed: 25,                flightTics: 5, explosion: 'arachPlasmaDeath', splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false, seeSound: 'baby/attack', deathSound: 'baby/shotx'},
+            {kind: 'fatShot',     sprite: 'MANF', letters: ['A', 'B'], speed: 20,                flightTics: 4, explosion: 'rocketExplode',    splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false, seeSound: 'fatso/attack', deathSound: 'fatso/shotx'},
             // A_Tracer: the smoke and the course correction both run one tic in
             // four, which is why the revenant's shot swerves in visible steps.
             {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: false,
-                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4},
+                seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4,
+                seeSound: 'skeleton/attack', deathSound: 'skeleton/tracex'},
             // The Icon of Sin's cube (SpawnShot): +NOCLIP, so it crosses the
             // whole map untouched and hatches on the spot it was aimed at.
             {kind: 'spawnShot',   sprite: 'BOSF', letters: ['A', 'B', 'C', 'D'], speed: 10,       flightTics: 3, explosion: null,               splashDamage: 0, impactDamage: 0,  alpha: 1, additive: false,
-                hatchAtSpot: {fog: 'spawnFire', telefrag: true}}
+                hatchAtSpot: {fog: 'spawnFire', telefrag: true}, seeSound: 'brain/spit', hatchSound: 'brain/spawn'}
         ];
     }
 
@@ -926,6 +935,230 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     hudKeyColors() {
         return {blueKey: '#3d7bff', yellowKey: '#ffd23d', redKey: '#ff4444'};
+    }
+
+    // Doom SNDINFO transcription (filter/game-doomchex/sndinfo.txt): logical
+    // names, $random groups, $alias links and the $limit/$pitchshift overrides.
+    // The player set is the 'male' table (acted simplification); the game-wide
+    // $pitchshiftrange 4 lives in soundPitchRange, the saw block narrows to 3.
+    soundDefs() {
+        return {
+            // Player ($playersound male)
+            '*death':   {lump: 'DSPLDETH'},
+            '*xdeath':  {lump: 'DSPDIEHI'},
+            '*gibbed':  {lump: 'DSSLOP'},
+            '*pain100': {lump: 'DSPLPAIN'},
+            '*grunt':   {lump: 'DSOOF'},
+            '*land':    {alias: '*grunt'},
+            '*jump':    {lump: 'DSJUMP'},
+            '*fist':    {lump: 'DSPUNCH'},
+            '*usefail': {lump: 'DSNOWAY'},
+            // Weapons
+            'weapons/sawup':   {lump: 'DSSAWUP', pitch: 3},
+            'weapons/sawidle': {lump: 'DSSAWIDL', pitch: 3},
+            'weapons/sawfull': {lump: 'DSSAWFUL', pitch: 3},
+            'weapons/sawhit':  {lump: 'DSSAWHIT', pitch: 3},
+            'weapons/pistol':  {lump: 'DSPISTOL'},
+            'weapons/shotgf':  {lump: 'DSSHOTGN'},
+            'weapons/sshotf':  {lump: 'DSDSHTGN'},
+            'weapons/sshoto':  {lump: 'DSDBOPN'},
+            'weapons/sshotc':  {lump: 'DSDBCLS'},
+            'weapons/sshotl':  {lump: 'DSDBLOAD'},
+            'weapons/chngun':  {lump: 'DSPISTOL', limit: 0},
+            'weapons/rocklx':  {lump: 'DSBAREXP', limit: 0},
+            'weapons/rocklf':  {lump: 'DSRLAUNC', limit: 0},
+            'weapons/plasmaf': {lump: 'DSPLASMA', limit: 0},
+            'weapons/plasmax': {lump: 'DSFIRXPL'},
+            'weapons/bfgf':    {lump: 'DSBFG'},
+            'weapons/bfgx':    {lump: 'DSRXPLOD'},
+            // Monsters
+            'grunt/sight':     {random: ['grunt/sight1', 'grunt/sight2', 'grunt/sight3']},
+            'grunt/death':     {random: ['grunt/death1', 'grunt/death2', 'grunt/death3']},
+            'grunt/sight1':    {lump: 'DSPOSIT1'},
+            'grunt/sight2':    {lump: 'DSPOSIT2'},
+            'grunt/sight3':    {lump: 'DSPOSIT3'},
+            'grunt/active':    {lump: 'DSPOSACT'},
+            'grunt/pain':      {lump: 'DSPOPAIN'},
+            'grunt/death1':    {lump: 'DSPODTH1'},
+            'grunt/death2':    {lump: 'DSPODTH2'},
+            'grunt/death3':    {lump: 'DSPODTH3'},
+            'grunt/attack':    {lump: 'DSPISTOL'},
+            'shotguy/sight':   {alias: 'grunt/sight'},
+            'shotguy/active':  {lump: 'DSPOSACT'},
+            'shotguy/pain':    {lump: 'DSPOPAIN'},
+            'shotguy/death':   {alias: 'grunt/death'},
+            'shotguy/attack':  {lump: 'DSSHOTGN'},
+            'chainguy/sight':  {alias: 'grunt/sight'},
+            'chainguy/active': {lump: 'DSPOSACT'},
+            'chainguy/pain':   {lump: 'DSPOPAIN'},
+            'chainguy/death':  {alias: 'grunt/death'},
+            'chainguy/attack': {lump: 'DSSHOTGN', limit: 0},
+            'imp/sight':       {random: ['imp/sight1', 'imp/sight2']},
+            'imp/death':       {random: ['imp/death1', 'imp/death2']},
+            'imp/sight1':      {lump: 'DSBGSIT1'},
+            'imp/sight2':      {lump: 'DSBGSIT2'},
+            'imp/active':      {lump: 'DSBGACT', limit: 6},
+            'imp/pain':        {lump: 'DSPOPAIN'},
+            'imp/melee':       {lump: 'DSCLAW'},
+            'imp/death1':      {lump: 'DSBGDTH1'},
+            'imp/death2':      {lump: 'DSBGDTH2'},
+            'imp/attack':      {lump: 'DSFIRSHT'},
+            'imp/shotx':       {lump: 'DSFIRXPL'},
+            'demon/sight':     {lump: 'DSSGTSIT'},
+            'demon/active':    {lump: 'DSDMACT'},
+            'demon/pain':      {lump: 'DSDMPAIN'},
+            'demon/melee':     {lump: 'DSSGTATK', limit: 4},
+            'demon/death':     {lump: 'DSSGTDTH'},
+            'caco/sight':      {lump: 'DSCACSIT'},
+            'caco/active':     {lump: 'DSDMACT'},
+            'caco/pain':       {lump: 'DSDMPAIN'},
+            'caco/death':      {lump: 'DSCACDTH'},
+            'caco/attack':     {lump: 'DSFIRSHT'},
+            'caco/shotx':      {lump: 'DSFIRXPL'},
+            'baron/sight':     {lump: 'DSBRSSIT'},
+            'baron/active':    {lump: 'DSDMACT'},
+            'baron/pain':      {lump: 'DSDMPAIN'},
+            'baron/melee':     {lump: 'DSCLAW'},
+            'baron/death':     {lump: 'DSBRSDTH'},
+            'baron/attack':    {lump: 'DSFIRSHT'},
+            'baron/shotx':     {lump: 'DSFIRXPL'},
+            'knight/sight':    {lump: 'DSKNTSIT'},
+            'knight/active':   {lump: 'DSDMACT'},
+            'knight/pain':     {lump: 'DSDMPAIN'},
+            'knight/death':    {lump: 'DSKNTDTH'},
+            'skull/active':    {lump: 'DSDMACT'},
+            'skull/pain':      {lump: 'DSDMPAIN'},
+            'skull/melee':     {lump: 'DSSKLATK'},
+            'skull/death':     {lump: 'DSFIRXPL'},
+            'vile/sight':      {lump: 'DSVILSIT'},
+            'vile/active':     {lump: 'DSVILACT'},
+            'vile/pain':       {lump: 'DSVIPAIN'},
+            'vile/death':      {lump: 'DSVILDTH'},
+            'vile/raise':      {lump: 'DSSLOP'},
+            'vile/start':      {lump: 'DSVILATK'},
+            'vile/stop':       {lump: 'DSBAREXP'},
+            'vile/firestrt':   {lump: 'DSFLAMST'},
+            'vile/firecrkl':   {lump: 'DSFLAME'},
+            'skeleton/sight':  {lump: 'DSSKESIT'},
+            'skeleton/active': {lump: 'DSSKEACT'},
+            'skeleton/pain':   {lump: 'DSPOPAIN'},
+            'skeleton/melee':  {lump: 'DSSKEPCH'},
+            'skeleton/swing':  {lump: 'DSSKESWG'},
+            'skeleton/death':  {lump: 'DSSKEDTH'},
+            'skeleton/attack': {lump: 'DSSKEATK'},
+            'skeleton/tracex': {lump: 'DSBAREXP'},
+            'fatso/sight':     {lump: 'DSMANSIT'},
+            'fatso/active':    {lump: 'DSPOSACT'},
+            'fatso/pain':      {lump: 'DSMNPAIN'},
+            'fatso/raiseguns': {lump: 'DSMANATK'},
+            'fatso/death':     {lump: 'DSMANDTH'},
+            'fatso/attack':    {lump: 'DSFIRSHT'},
+            'fatso/shotx':     {lump: 'DSFIRXPL'},
+            'spider/sight':    {lump: 'DSSPISIT', limit: 4},
+            'spider/active':   {lump: 'DSDMACT'},
+            'spider/pain':     {lump: 'DSDMPAIN'},
+            'spider/attack':   {lump: 'DSSHOTGN'},
+            'spider/death':    {lump: 'DSSPIDTH', limit: 4},
+            'spider/walk':     {lump: 'DSMETAL'},
+            'baby/sight':      {lump: 'DSBSPSIT'},
+            'baby/active':     {lump: 'DSBSPACT'},
+            'baby/pain':       {lump: 'DSDMPAIN'},
+            'baby/death':      {lump: 'DSBSPDTH'},
+            'baby/walk':       {lump: 'DSBSPWLK'},
+            'baby/attack':     {lump: 'DSPLASMA', limit: 0},
+            'baby/shotx':      {lump: 'DSFIRXPL'},
+            'cyber/sight':     {lump: 'DSCYBSIT', limit: 4},
+            'cyber/active':    {lump: 'DSDMACT'},
+            'cyber/pain':      {lump: 'DSDMPAIN'},
+            'cyber/death':     {lump: 'DSCYBDTH', limit: 4},
+            'cyber/hoof':      {lump: 'DSHOOF'},
+            'pain/sight':      {lump: 'DSPESIT'},
+            'pain/active':     {lump: 'DSDMACT'},
+            'pain/pain':       {lump: 'DSPEPAIN'},
+            'pain/death':      {lump: 'DSPEDTH'},
+            'wolfss/sight':    {lump: 'DSSSSIT'},
+            'wolfss/active':   {lump: 'DSPOSACT'},
+            'wolfss/pain':     {lump: 'DSPOPAIN'},
+            'wolfss/death':    {lump: 'DSSSDTH'},
+            'wolfss/attack':   {lump: 'DSSHOTGN'},
+            'keen/pain':       {lump: 'DSKEENPN'},
+            'keen/death':      {lump: 'DSKEENDT'},
+            'brain/sight':     {lump: 'DSBOSSIT'},
+            'brain/pain':      {lump: 'DSBOSPN'},
+            'brain/death':     {lump: 'DSBOSDTH'},
+            'brain/spit':      {lump: 'DSBOSPIT'},
+            'brain/spawn':     {alias: 'misc/teleport'},
+            // World, movers, pickups
+            'world/barrelx':     {lump: 'DSBAREXP'},
+            'plats/pt1_strt':    {lump: 'DSPSTART'},
+            'plats/pt1_stop':    {lump: 'DSPSTOP'},
+            'plats/pt1_mid':     {lump: 'DSSTNMOV'},
+            'doors/dr1_open':    {lump: 'DSDOROPN'},
+            'doors/dr1_clos':    {lump: 'DSDORCLS'},
+            'doors/dr2_open':    {lump: 'DSBDOPN'},
+            'doors/dr2_clos':    {lump: 'DSBDCLS'},
+            'switches/normbutn': {lump: 'DSSWTCHN'},
+            'switches/exitbutn': {lump: 'DSSWTCHX'},
+            'misc/secret':       {lump: 'DSSECRET'},
+            'misc/gibbed':       {lump: 'DSSLOP'},
+            'misc/w_pkup':       {lump: 'DSWPNUP'},
+            'misc/p_pkup':       {lump: 'DSGETPOW'},
+            'misc/i_pkup':       {lump: 'DSITEMUP', pitch: 0},
+            'misc/k_pkup':       {lump: 'DSITEMUP', pitch: 0},
+            'misc/teleport':     {lump: 'DSTELEPT'},
+            // Interface (lines 495-503): position-less, menu volume, pitch fixed.
+            'menu/activate': {lump: 'DSSWTCHN'},
+            'menu/backup':   {lump: 'DSSWTCHN'},
+            'menu/prompt':   {lump: 'DSSWTCHN'},
+            'menu/cursor':   {lump: 'DSPSTOP'},
+            'menu/change':   {lump: 'DSSTNMOV'},
+            'menu/invalid':  {lump: 'DSOOF'},
+            'menu/dismiss':  {lump: 'DSSWTCHX'},
+            'menu/choose':   {lump: 'DSPISTOL'},
+            'menu/clear':    {lump: 'DSSWTCHX'}
+        };
+    }
+
+    // What each monster def voices (zscript sound properties): see at wake,
+    // active on the A_Chase bark roll, pain/death on their state entries,
+    // melee on a landed bite, attack on a bullet volley; `actions` maps a
+    // state action to its A_StartSound; `boss: true` plays see/death at full
+    // volume (bBoss). Missile launches/impacts ride the projectile defs.
+    monsterSounds() {
+        return {
+            zombieman:     {see: 'grunt/sight', active: 'grunt/active', pain: 'grunt/pain', death: 'grunt/death', attack: 'grunt/attack'},
+            shotgunguy:    {see: 'shotguy/sight', active: 'shotguy/active', pain: 'shotguy/pain', death: 'shotguy/death', attack: 'shotguy/attack'},
+            chaingunguy:   {see: 'chainguy/sight', active: 'chainguy/active', pain: 'chainguy/pain', death: 'chainguy/death', attack: 'chainguy/attack'},
+            wolfss:        {see: 'wolfss/sight', active: 'wolfss/active', pain: 'wolfss/pain', death: 'wolfss/death', attack: 'wolfss/attack'},
+            imp:           {see: 'imp/sight', active: 'imp/active', pain: 'imp/pain', death: 'imp/death', melee: 'imp/melee'},
+            demon:         {see: 'demon/sight', active: 'demon/active', pain: 'demon/pain', death: 'demon/death', melee: 'demon/melee'},
+            spectre:       {see: 'demon/sight', active: 'demon/active', pain: 'demon/pain', death: 'demon/death', melee: 'demon/melee'},
+            lostsoul:      {active: 'skull/active', pain: 'skull/pain', death: 'skull/death', actions: {A_SkullAttack: 'skull/melee'}},
+            cacodemon:     {see: 'caco/sight', active: 'caco/active', pain: 'caco/pain', death: 'caco/death'},
+            hellknight:    {see: 'knight/sight', active: 'knight/active', pain: 'knight/pain', death: 'knight/death', melee: 'baron/melee'},
+            baron:         {see: 'baron/sight', active: 'baron/active', pain: 'baron/pain', death: 'baron/death', melee: 'baron/melee'},
+            revenant:      {see: 'skeleton/sight', active: 'skeleton/active', pain: 'skeleton/pain', death: 'skeleton/death', melee: 'skeleton/melee', actions: {A_SkelWhoosh: 'skeleton/swing'}},
+            mancubus:      {see: 'fatso/sight', active: 'fatso/active', pain: 'fatso/pain', death: 'fatso/death', actions: {A_FatRaise: 'fatso/raiseguns'}},
+            arachnotron:   {see: 'baby/sight', active: 'baby/active', pain: 'baby/pain', death: 'baby/death', actions: {A_BabyMetal: 'baby/walk'}},
+            painelemental: {see: 'pain/sight', active: 'pain/active', pain: 'pain/pain', death: 'pain/death'},
+            archvile:      {see: 'vile/sight', active: 'vile/active', pain: 'vile/pain', death: 'vile/death', actions: {A_VileStart: 'vile/start', A_VileAttack: 'vile/stop'}},
+            mastermind:    {see: 'spider/sight', active: 'spider/active', pain: 'spider/pain', death: 'spider/death', attack: 'spider/attack', boss: true, actions: {A_Metal: 'spider/walk'}},
+            cyberdemon:    {see: 'cyber/sight', active: 'cyber/active', pain: 'cyber/pain', death: 'cyber/death', boss: true, actions: {A_Hoof: 'cyber/hoof', A_Metal: 'spider/walk'}},
+            keen:          {pain: 'keen/pain', death: 'keen/death'},
+            barrel:        {death: 'world/barrelx'},
+            bossbrain:     {see: 'brain/sight', pain: 'brain/pain', death: 'brain/death', boss: true},
+            bosseye:       {}
+        };
+    }
+
+    // Doom attenuation ($rolloff * 200 1200, base sndinfo.txt:51) and pitch
+    // variation ($pitchshiftrange 4, game-doomchex/sndinfo.txt:10).
+    soundRolloff() {
+        return {type: 'doom', min: 200, max: 1200};
+    }
+
+    soundPitchRange() {
+        return 4;
     }
 
     // am_map.cpp DoomColors. `locked` is only the fallback of a key with no HUD

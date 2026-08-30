@@ -35,6 +35,16 @@ class DoomWeaponDef extends DoomWeapon {
         this._accurateFirst = (data.accurateFirst === true);
         this._viewSprite    = data.viewSprite;
         this._flashSprite   = data.flashSprite ?? null;
+        // Sound events of the weapon (logical names of the profile's sound
+        // table): actionSounds maps a psprite ACTION name to the sound its
+        // zscript state line starts; the melee pair splits on the outcome
+        // (chainsaw sawhit/sawful); upSound plays at bring-up (Weapon.UpSound);
+        // impactSound rings at the hitscan impact point (Heretic blaster).
+        this._actionSounds   = data.actionSounds ?? {};
+        this._meleeHitSound  = data.meleeHitSound ?? null;
+        this._meleeMissSound = data.meleeMissSound ?? null;
+        this._upSound        = data.upSound ?? null;
+        this._impactSound    = data.impactSound ?? null;
         this._entry         = data.entry;
         this._states        = this._buildStates(data);
     }
@@ -75,6 +85,26 @@ class DoomWeaponDef extends DoomWeapon {
     // several entries make a fan (the Heretic crossbow).
     getProjectiles() {
         return this._projectiles;
+    }
+
+    getActionSound(action) {
+        return (this._actionSounds[action] ?? null);
+    }
+
+    getMeleeHitSound() {
+        return this._meleeHitSound;
+    }
+
+    getMeleeMissSound() {
+        return this._meleeMissSound;
+    }
+
+    getUpSound() {
+        return this._upSound;
+    }
+
+    getImpactSound() {
+        return this._impactSound;
     }
 
     getPuffType() {

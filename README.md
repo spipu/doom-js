@@ -53,7 +53,8 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Gamepad support**: press any button on a connected gamepad to use it (left stick to move, right stick to look, both analog).
 - **Touch controls**: touch-only devices get a virtual gamepad laid out for a **4-finger claw grip** — a dynamic move stick in the bottom-left quadrant, the whole right half as a floating aim stick split into an *aim* band and an *aim + fire* band (the mode is locked per gesture), jump/crouch/use stacked on the right edge, the menu and the map top-left, and the weapon-switch zone top-right. Each gesture has its own settable dead zone, and the firing gesture a settable aim sensitivity. The jump and crouch targets disappear when the Game options forbid the move, and stop answering touches with them.
 - **Menu footer**: every menu screen shows the aggregated version, the webapp stats and the copyright.
-- **Options modal & persistent settings**: a Display page (language, crosshair, distance shading, texture smoothing), a Game page (fall damage, off by default to match the original, plus jumping and crouching, on), a Controls page that adapts to the active input device — including **full keyboard remapping**, one key per action — and a confirmed reset; everything persists in IndexedDB.
+- **Sound effects**: the original sounds of the selected WAD, decoded on the fly from its own lumps — weapons, pickups, doors and lifts, switches, teleports, the player's own voice, every monster (sight, bark, pain, death, attacks) and Heretic's wind and ambient scripts. World sounds fade with distance and pan with the player's facing (per-game attenuation curves), freeze with the pause, and the menus keep their own interface feedback. The two volume settings apply live.
+- **Options modal & persistent settings**: a Display page (language, crosshair, distance shading, texture smoothing), a Game page (fall damage, off by default to match the original, plus jumping and crouching, on), a Sound page (music and effects volumes), a Controls page that adapts to the active input device — including **full keyboard remapping**, one key per action — and a confirmed reset; everything persists in IndexedDB.
 - **Translation (fr / en)**: every user-facing text goes through a translation catalog addressed by code; locale-dependent formats (sizes, dates, percents) go through `Intl`. The language is a persisted setting defaulting to English; proper nouns are never translated.
 
 ## Demo pages
@@ -125,6 +126,7 @@ website/
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
+    │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables)
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
@@ -141,6 +143,7 @@ website/
         ├── input/               Unified inputs: keyboard, mouse, gamepad, virtual touch gamepad
         ├── interaction/         Interaction bases (switch modes once/timed/toggle)
         ├── loader/              URL or in-memory loaders (textures, objects, instances, interactions, world)
+        ├── sound/               Audio primitives: shared AudioContext with music/effects buses, in-memory PCM samples
         ├── hud/                 HUD bases (debug overlay, screen flash)
         └── renderer/            webgl / full / flat / fast renderers
 ```
@@ -219,7 +222,7 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Sounds & music**: there is no audio at all. Doom's whole feedback loop leans on it — the door you hear open behind you, the growl that tells you a room woke up, the shot that gives your position away.
+* **Music**: the sound effects are in; the OPL music (menu, level, intermission themes synthesized from the WAD's own MUS/MIDI lumps and GENMIDI bank) remains.
 * **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
 * **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.

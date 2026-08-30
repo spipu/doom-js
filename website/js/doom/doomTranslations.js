@@ -79,6 +79,7 @@ class DoomTranslations {
             // --- Options modal (also serves the About page of the ? button) ---
             'help.display':            {fr: 'Affichage',                             en: 'Display'},
             'help.game':               {fr: 'Jeu',                                   en: 'Game'},
+            'help.sound':              {fr: 'Son',                                   en: 'Sound'},
             'help.controls':           {fr: 'Contrôles',                             en: 'Controls'},
             'help.reset':              {fr: 'Réinitialiser tous les paramétrages',   en: 'Reset every setting'},
             'help.resetConfirm':       {fr: 'Supprimer tous les paramétrages enregistrés ?',
@@ -197,6 +198,8 @@ class DoomTranslations {
             'settings.game.fallDamage':           {fr: 'Dégâts de chute',              en: 'Fall damage'},
             'settings.game.jump':                 {fr: 'Autoriser le saut',            en: 'Allow jumping'},
             'settings.game.crouch':               {fr: 'Autoriser l\'accroupissement', en: 'Allow crouching'},
+            'settings.sound.volumeMusic':         {fr: 'Volume de la musique',         en: 'Music volume'},
+            'settings.sound.volumeEffects':       {fr: 'Volume des effets',            en: 'Effects volume'},
             'settings.pad.yInverse':              {fr: 'Inverser l\'axe vertical',     en: 'Invert the vertical axis'},
             'settings.virtualPad.yInverse':       {fr: 'Inverser l\'axe vertical',     en: 'Invert the vertical axis'},
             'settings.mouse.yInverse':            {fr: 'Inverser l\'axe vertical de la souris',

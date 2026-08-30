@@ -66,6 +66,9 @@ class DoomEffects {
             rise:        spec.rise,
             gravity:     (spec.gravity ?? 0),
             shorten:     (spec.shorten ?? (spec.rise > 0)),
+            // Sound(s) started at the effect's birth, positioned on it — the
+            // A_StartSound lines of an effect ACTOR's states (the vile fire).
+            spawnSound:  ((spec.spawnSound !== undefined) ? [].concat(spec.spawnSound) : null),
             meleeStart:  spec.meleeStart ?? 0,
             // P_SpawnTeleportFog raises the fog by gameinfo telefogheight
             // (Doom 0, Raven 32); stored pre-scaled to world units.
@@ -86,11 +89,22 @@ class DoomEffects {
     // EV_Teleport fog pair: one at the old spot, one TELEPORT_FOG_AHEAD units
     // ahead of the arrival — world-forward of a Doom angle is (cos, sin) — so
     // it is not hidden in the teleported body.
-    spawnTeleportFogs(fromX, fromY, fromZ, toX, toY, toZ, doomAngle) {
+    /**
+     * @param {boolean} silent skips the teleport ring — an actor carrying its
+     *                  own teleport voice (D'Sparil's zap) keeps the fogs only
+     */
+    spawnTeleportFogs(fromX, fromY, fromZ, toX, toY, toZ, doomAngle, silent = false) {
         const ahead = WadConstants.TELEPORT_FOG_AHEAD * WadConstants.SCALE;
         const rad   = doomAngle * DEG_TO_RAD;
         this.spawn('teleportFog', fromX, fromY, fromZ);
         this.spawn('teleportFog', toX + Math.cos(rad) * ahead, toY, toZ + Math.sin(rad) * ahead);
+        if (silent) {
+            return;
+        }
+        // Departure and arrival each ring (EV_Teleport, both S_StartSound
+        // sites of p_telept.c) — players and monsters alike.
+        doomSound.playAt('misc/teleport', [fromX, fromY, fromZ]);
+        doomSound.playAt('misc/teleport', [toX, toY, toZ]);
     }
 
     /**
@@ -128,6 +142,11 @@ class DoomEffects {
         // rise, then falling); without it the drift stays constant (puffs).
         const active = { tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise, follow: null };
         this._active.push(active);
+        if (tpl.spawnSound !== null) {
+            for (const soundName of tpl.spawnSound) {
+                doomSound.playAt(soundName, [x, y + tpl.spawnHeight, z]);
+            }
+        }
 
         return active;
     }

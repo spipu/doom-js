@@ -77,6 +77,10 @@ class DoomSwitchInteraction extends SwitchInteraction {
     }
 
     _triggerOn(instance) {
+        // The button rings from the switch's own position; an exit switch has
+        // its dedicated lump (p_switch.c / p_spec.c).
+        doomSound.playAt(((this._exitCallback !== null) ? 'switches/exitbutn' : 'switches/normbutn'),
+            ((instance !== null) ? instance.getWorldCenter() : null));
         // Swap to SW2 only when the panel has a partner: a non-SW switch wall
         // (or an invisible USE zone with no faces) keeps its face untouched
         // instead of being blanked to a null textureId.

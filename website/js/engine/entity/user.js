@@ -61,6 +61,7 @@ class User {
         // Energy / death
         this._energy         = maxEnergy;
         this._dead           = false;
+        this._lastOverkill   = 0;
         this._fallPeakY      = null;
         this._energyFlash    = 0;
         this._pickupFlash    = 0;
@@ -327,12 +328,20 @@ class User {
             }
         }
 
+        // The energy floor hides how far below zero a killing blow went; the
+        // overkill is kept for the game layer (death scream selection).
+        this._lastOverkill = Math.max(0, delta - this._energy);
         this._energy = Math.max(0, this._energy - delta);
         if (this._energy <= 0) {
             this._dead = true;
         }
         this._energyFlash += delta * 0.05;
         this._energyFlash = Math.max(this._energyFlash, 0.7);
+    }
+
+    // Post-armor damage in excess of the energy the last takeDamage found.
+    getLastOverkill() {
+        return (this._lastOverkill ?? 0);
     }
 
     getExternalForces() {
@@ -429,6 +438,62 @@ class User {
         this._jumpHeld = false;
     }
 
+    // --- Game hooks (no-ops here) ---
+
+    // Landing after a fall of the given height (metres) — fires whatever the
+    // fall-damage setting says, a game may voice a hard landing it never bills.
+    _onLanded(fallDist) {
+    }
+
+    // A jump actually executed (not just requested).
+    _onJumped() {
+    }
+
+    // A use press that reached nothing usable — refused by a trigger condition,
+    // or swallowed by a plain wall within the probe distance. Public: the
+    // world decides once the frame's instances have all reported.
+    notifyUseFailed() {
+    }
+
+    // --- Use feedback bookkeeping (fed by the instances during the update) ---
+
+    /**
+     * Distance of the wall probe behind a use press that reached no trigger
+     * (game value — the engine default just spans arm's length).
+     *
+     * @param {number} distance metres
+     */
+    setUseProbeDistance(distance) {
+        this._useProbeDistance = distance;
+        return this;
+    }
+
+    getUseProbeDistance() {
+        return (this._useProbeDistance ?? 1);
+    }
+
+    /**
+     * An action-triggered instance in range reports here whether it accepted
+     * the press — a refusal (locked door) is a use failure the world turns
+     * into feedback once the frame's instances have all spoken.
+     *
+     * @param {boolean} accepted
+     */
+    noteUseTarget(accepted) {
+        this._useSeen     = true;
+        this._useAccepted = (this._useAccepted || (accepted === true));
+        return this;
+    }
+
+    // One-shot read by the world at the end of the update.
+    consumeUseState() {
+        const state = {seen: (this._useSeen === true), accepted: (this._useAccepted === true)};
+        this._useSeen     = false;
+        this._useAccepted = false;
+
+        return state;
+    }
+
     // --- Fall damage infrastructure ---
     _startFall() {
         if (this._fallPeakY === null) {
@@ -450,6 +515,7 @@ class User {
         // Cleared whatever follows: kept, the next fall would measure from
         // this one's peak and bill the two together.
         this._fallPeakY = null;
+        this._onLanded(fallDist);
         if (!this._fallDamage) {
             return;
         }
@@ -579,6 +645,7 @@ class User {
             this._coyoteTimer = 0;
             this._jumpBuffer  = 0;
             this._startFall();
+            this._onJumped();
         }
 
         // 6. Jump cut (variable height — applied once on release)

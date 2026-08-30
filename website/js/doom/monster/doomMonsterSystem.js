@@ -25,6 +25,7 @@ class DoomMonsterSystem {
         this._levelData     = null;
         this._sight         = null;
         this._move          = null;
+        this._sounds        = {};
         this._rng           = null;
         this._skillRule     = null;
         this._nightmareFast = false;
@@ -1018,7 +1019,45 @@ class DoomMonsterSystem {
     //
     // Under the fastMonsters skill, a state carrying the zscript Fast keyword
     // halves its duration on entry (GetTics: tics − (tics>>1)).
+    /**
+     * Sound table of the game's bestiary (profile monsterSounds()), keyed by
+     * def code — see playMonsterSound.
+     *
+     * @param {object} map
+     */
+    setMonsterSounds(map) {
+        this._sounds = (map ?? {});
+        return this;
+    }
+
+    /**
+     * One monster voice line: 'see'/'active'/'pain'/'death' on the voice
+     * channel, 'melee'/'attack' on the weapon one, steps on 'body'. A new
+     * sound replaces the channel's previous one (vanilla per-actor channels);
+     * a boss barks its sight and death over the whole level (bBoss).
+     *
+     * @param {object} m monster record
+     * @param {string} key entry of the def's sound table
+     * @param {string} channel 'voice' | 'weapon' | 'body'
+     */
+    playMonsterSound(m, key, channel = 'voice') {
+        const table = this._sounds[m.def.getCode()];
+        if (table === undefined) {
+            return;
+        }
+        const name = (table[key] ?? null);
+        if (name === null) {
+            return;
+        }
+        const boss = ((table.boss === true) && ((key === 'see') || (key === 'death')));
+        doomSound.playAt(name, m.inst.getWorldCenter(), {
+            attenuation: ((boss) ? WadConstants.SOUND_ATTN.none : WadConstants.SOUND_ATTN.norm),
+            replaceKey:  ('monster:' + m.inst.getId() + ':' + channel)
+        });
+    }
+
     enterState(m, key) {
+        this._playStateEntrySound(m, key);
         let next  = key;
         let guard = 0;
         while ((next !== null) && (guard < DoomMonsterSystem.STATE_CHAIN_GUARD)) {
@@ -1044,9 +1083,38 @@ class DoomMonsterSystem {
         this._view.refresh(m);
     }
 
+    // Screams tied to the entry of a state group (P_KillMobj, the pain roll,
+    // A_XScream on the gib chain, the archvile raising a corpse). Restores
+    // write stateKey directly and never come through here.
+    _playStateEntrySound(m, key) {
+        if (key === 'pain0') {
+            this.playMonsterSound(m, 'pain');
+            return;
+        }
+        if (key === 'death0') {
+            this.playMonsterSound(m, 'death');
+            return;
+        }
+        if (key === 'xdeath0') {
+            doomSound.playAt('misc/gibbed', m.inst.getWorldCenter(),
+                {replaceKey: ('monster:' + m.inst.getId() + ':voice')});
+            return;
+        }
+        if (key === 'raise0') {
+            doomSound.playAt('vile/raise', m.inst.getWorldCenter());
+        }
+    }
+
     _dispatchAction(m, action, args) {
         if (action === null) {
             return;
+        }
+        // A_StartSound riding a state line (hooves, the revenant's whoosh,
+        // D'Sparil's rise) — profile data, played from the body channel.
+        const table = this._sounds[m.def.getCode()];
+        if ((table !== undefined) && ((table.actions?.[action] ?? null) !== null)) {
+            doomSound.playAt(table.actions[action], m.inst.getWorldCenter(),
+                {replaceKey: ('monster:' + m.inst.getId() + ':body')});
         }
         // The attack layer owns every aiming and hurting verb.
         if ((this._attack !== null) && this._attack.run(m, action, args)) {
@@ -1196,6 +1264,11 @@ class DoomMonsterSystem {
         // vile only walks on when it finds none.
         if ((action === 'A_VileChase') && this._tryResurrect(m)) {
             return;
+        }
+        // Idle bark (vanilla rolls it at the end of A_Chase; the order only
+        // shifts the shared random stream).
+        if (this._rng.next() < WadConstants.MONSTER_ACTIVE_SOUND_CHANCE) {
+            this.playMonsterSound(m, 'active');
         }
         if (m.reactiontime > 0) {
             m.reactiontime--;
@@ -1407,6 +1480,7 @@ class DoomMonsterSystem {
 
     _wake(m) {
         m.target = this._user;
+        this.playMonsterSound(m, 'see');
         if (m.def.getState('see0') !== null) {
             this.enterState(m, 'see0');
         }
@@ -1731,8 +1805,14 @@ class DoomMonsterSystem {
         }
         this._resolveRide(m);
         this._view.refresh(m);
+        // A def with its own teleport voice REPLACES the generic ring
+        // (P_DSparilTeleport plays sorzap alone).
+        const ownVoice = ((this._sounds[m.def.getCode()]?.teleport ?? null) !== null);
         if (this._effects !== null) {
-            this._effects.spawnTeleportFogs(fromX, fromY, fromZ, landing.x, destY, landing.z, m.facing);
+            this._effects.spawnTeleportFogs(fromX, fromY, fromZ, landing.x, destY, landing.z, m.facing, ownVoice);
+        }
+        if (ownVoice) {
+            this.playMonsterSound(m, 'teleport');
         }
         return true;
     }

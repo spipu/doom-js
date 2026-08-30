@@ -52,11 +52,16 @@ class WadGunTriggerBuilder {
         const [x1, z1] = WadGeometry.doomToWorld(dx1, dy1);
         const [x2, z2] = WadGeometry.doomToWorld(dx2, dy2);
 
+        // Button sound height: mid-height of the front sector (the vanilla
+        // buttonlist soundorg is the line's sector origin).
+        const front = this._level.sectors[this._level.sidedefs[ld.right].sector];
+
         return {
             x1:          x1,
             z1:          z1,
             x2:          x2,
             z2:          z2,
+            y:           (((front.fh + front.ch) / 2) * WadConstants.SCALE),
             once:        (WadConstants.GUN_BY_SPECIAL[gt.special].once === true),
             used:        false,
             targets:     targets,

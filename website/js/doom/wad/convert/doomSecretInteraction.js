@@ -49,6 +49,9 @@ class DoomSecretInteraction extends AbstractInteraction {
         if (zone !== null) {
             this._zones.remove(zone);
             this._game.addSecretFound();
+            // DSSECRET ships in no IWAD (a modern lump some PWADs add): the
+            // name resolves, the missing lump degrades to silence — expected.
+            doomSound.playAt('misc/secret', null);
         }
     }
 }

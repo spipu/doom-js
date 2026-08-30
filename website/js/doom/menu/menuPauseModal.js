@@ -125,6 +125,7 @@ class MenuPauseModal extends AbstractMenuListModal {
     // modal: a save taken there would be a trap slot.
     _trySave() {
         if (this._saveContext.canSave() !== true) {
+            doomSound.playUi('menu/invalid');
             new MenuModal(this._display).info(appTranslator.get('menu.save.deadInfo'));
             return;
         }

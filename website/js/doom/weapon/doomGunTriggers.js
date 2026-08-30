@@ -60,6 +60,10 @@ class DoomGunTriggers {
     // --- Internal ---
 
     _fire(line) {
+        // Vanilla routes every fired impact line through P_ChangeSwitchTexture,
+        // which rings the button from the line's position unconditionally.
+        doomSound.playAt('switches/normbutn',
+            [(line.x1 + line.x2) / 2, line.y, (line.z1 + line.z2) / 2]);
         DoomTriggerTargets.fire(line.targets, null, line.cycleVariant);
     }
 

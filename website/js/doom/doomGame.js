@@ -39,6 +39,8 @@ class DoomGame {
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
+        this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
+        this._ambientSounds   = null;    // per-level ambient sound points (builder-fed)
         this._automap         = null;    // level automap (null when the WAD has no usable BSP)
         this._depthShadingOn  = null;    // last states pushed to the engine / player (null = never)
         this._texSmoothingOn  = null;
@@ -122,6 +124,32 @@ class DoomGame {
     // ground (Doom does not pick up health/armor/ammo already full, nor a
     // weapon/key already held). Effect shapes come from the profile's thing types (DoomThingCatalog).
     applyPickup(user, effect) {
+        const consumed = this._applyPickupEffect(user, effect);
+        if (consumed) {
+            doomSound.playAt(DoomGame._pickupSoundFor(effect, this), null, {});
+        }
+
+        return consumed;
+    }
+
+    // p_inter.c: weapons, keys and power-ups each ring their own pickup sound,
+    // everything else takes the plain item blip.
+    static _pickupSoundFor(effect, game) {
+        if (effect.weapon !== undefined) {
+            return 'misc/w_pkup';
+        }
+        if (effect.item !== undefined) {
+            const def = game.getItem(effect.item);
+            if ((def !== null) && (def.getType() === 'key')) {
+                return 'misc/k_pkup';
+            }
+            return 'misc/p_pkup';
+        }
+
+        return 'misc/i_pkup';
+    }
+
+    _applyPickupEffect(user, effect) {
         if ((effect === null) || (effect === undefined)) {
             return false;
         }
@@ -368,6 +396,16 @@ class DoomGame {
 
     // Impact-special lines handed over by the world builder (gun triggers,
     // tested by the hitscan against every shot trace).
+    setMoverSounds(moverSounds) {
+        this._moverSounds = moverSounds;
+        return this;
+    }
+
+    setAmbientSounds(ambientSounds) {
+        this._ambientSounds = ambientSounds;
+        return this;
+    }
+
     setGunTriggers(gunTriggers) {
         this._gunTriggers = gunTriggers;
     }
@@ -565,6 +603,9 @@ class DoomGame {
         // The builder only sets one when it can: a BSP-less level must not
         // inherit the previous map.
         this._automap = null;
+        // Builder-fed too: never inherited from the previous level.
+        this._moverSounds   = null;
+        this._ambientSounds = null;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -576,6 +617,7 @@ class DoomGame {
         this._monsters.setSkillRule(this._skillRule());
         this._monsters.setRandom(this._rng);
         this._monsters.setNightmareFast(this._gameProfile.nightmareFast());
+        this._monsters.setMonsterSounds(this._gameProfile.monsterSounds());
         await new WadWorldBuilder(wadFile, levelName, {
             onLevelExit: (secret) => {
                 this._onLevelExit(secret);
@@ -736,6 +778,17 @@ class DoomGame {
         // level start must not immediately quit it)
         this._pauseWasDown = true;
 
+        // The sound system survives the levels: rebind its listener on THIS
+        // level's player (and lift any freeze left by an exit modal).
+        doomSound.bindLevel(this._world.getUser());
+        // Use-failure wall probe at the vanilla USERANGE.
+        this._world.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
+        // Mover motion sounds, declared during the batch, wired now that the
+        // loader can hand the instances out.
+        if (this._moverSounds !== null) {
+            this._moverSounds.wireAll();
+        }
+
         this._running = true;
         requestAnimationFrame(this._animateCallback);
     }
@@ -845,6 +898,11 @@ class DoomGame {
         if (this._decals !== null) {
             this._decals.update(dt);
         }
+        // Playing world sounds follow the moving listener (S_UpdateSounds).
+        doomSound.update();
+        if (this._ambientSounds !== null) {
+            this._ambientSounds.update(dt);
+        }
         this._applySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay(this._world.getUser());
@@ -935,6 +993,7 @@ class DoomGame {
     // and the touch pad hides under the overlay.
     _enterPause() {
         this._paused = true;
+        doomSound.playUi('menu/activate').setPaused(true);
         this._inputs.releaseMouse().setVirtualPadVisible(false);
 
         this._pauseDisplay = new MenuDisplay('screen').init(true);
@@ -979,6 +1038,7 @@ class DoomGame {
     // the canvas, the pre-existing recovery. Quitting the level skips the
     // grab — the canvas is about to be destroyed.
     _leavePause(backToGame = true) {
+        doomSound.playUi('menu/clear').setPaused(false);
         this._pauseModal.close();
         this._pauseDisplay.destroy();
         this._pauseModal   = null;
@@ -1054,6 +1114,7 @@ class DoomGame {
     // loader.reset(), the running world reads its data from the loaders
     _stopLevel() {
         this._running = false;
+        doomSound.unbindLevel();
         if (this._screen !== null) {
             this._screen.destroyContainer();
             this._screen = null;
@@ -1069,6 +1130,9 @@ class DoomGame {
             return;
         }
         this._transitioning = true;
+        // The exit modals freeze the game exactly like the pause: the playing
+        // sounds hold with it (the next level's bindLevel lifts the freeze).
+        doomSound.setPaused(true);
 
         // Progression owned by WadMapInfo: vanilla defaults synthesized from
         // the level names, overlaid by the UMAPINFO lump when the WAD has one

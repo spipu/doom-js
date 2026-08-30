@@ -184,7 +184,49 @@ class DoomUser extends User {
         if (delta > 1) {
             delta = delta * this._damageFactor;
         }
+        const wasAlive     = !this.isDead();
+        const energyBefore = this.getEnergy();
         super.takeDamage(delta);
+        this._voiceDamage(wasAlive, energyBefore);
+    }
+
+    // Pain and death cries (P_KillMobj / P_DamageMobj): the extreme scream
+    // plays past 50 health points below zero — the engine clamps the energy,
+    // so the overkill comes from its own bookkeeping. Position-less voice.
+    _voiceDamage(wasAlive, energyBefore) {
+        if (!wasAlive || (this.getEnergy() >= energyBefore)) {
+            return;
+        }
+        if (!this.isDead()) {
+            doomSound.playAt('*pain100', null, {replaceKey: 'player:voice'});
+            return;
+        }
+        const scream = ((this.getLastOverkill() > DoomUser.XDEATH_OVERKILL) ? '*xdeath' : '*death');
+        doomSound.playAt(scream, null, {replaceKey: 'player:voice'});
+    }
+
+    // --- Player feedback hooks (engine no-ops overridden) ---
+
+    // A corpse never grunts: a body knocked off a ledge or a posthumous use
+    // press stays silent (vanilla stops voicing at death).
+    _onLanded(fallDist) {
+        if (!this.isDead() && (fallDist >= (WadConstants.LAND_GRUNT_FALL_UNITS * WadConstants.SCALE))) {
+            doomSound.playAt('*land', null, {replaceKey: 'player:voice'});
+        }
+    }
+
+    _onJumped() {
+        // dsjump ships in no IWAD (silence expected on Doom); Heretic vanilla
+        // has no jump either, so its plrjmp lump does not exist — silent too.
+        if (!this.isDead()) {
+            doomSound.playAt('*jump', null, {replaceKey: 'player:voice'});
+        }
+    }
+
+    notifyUseFailed() {
+        if (!this.isDead()) {
+            doomSound.playAt('*usefail', null, {replaceKey: 'player:voice'});
+        }
     }
 
     hasEffect(code) {
@@ -291,3 +333,7 @@ class DoomUser extends User {
         return this;
     }
 }
+
+// Post-armor health points below zero past which the death is the extreme
+// scream (P_KillMobj: health < -50).
+DoomUser.XDEATH_OVERKILL = 50;

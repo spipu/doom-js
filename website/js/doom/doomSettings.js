@@ -42,6 +42,13 @@ class DoomSettings {
         return DoomSettings.percentValues([60, 70, 80, 90, 100]);
     }
 
+    // Volume steps of the two sound settings. The quadratic loudness curve
+    // lives in the engine (SoundEngine), not here: the stored code is the raw
+    // percent the player chose.
+    static get VOLUME_VALUES() {
+        return DoomSettings.percentValues([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+    }
+
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
@@ -57,6 +64,10 @@ class DoomSettings {
             {key: 'game.fall_damage',             nameCode: 'settings.game.fallDamage',            type: 'bool', default: false},
             {key: 'game.jump',                    nameCode: 'settings.game.jump',                  type: 'bool', default: true},
             {key: 'game.crouch',                  nameCode: 'settings.game.crouch',                type: 'bool', default: true},
+            // Sound volumes ('sound.' prefix = the "Son" help page). 100% is
+            // the UZDoom default for both (snd_sfxvolume / snd_musicvolume).
+            {key: 'sound.volume_music',           nameCode: 'settings.sound.volumeMusic',          type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
+            {key: 'sound.volume_effects',         nameCode: 'settings.sound.volumeEffects',        type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
             // Per-device look options.
             {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
@@ -346,6 +357,15 @@ class DoomSettings {
 
     getGameCrouch() {
         return (this.get('game.crouch') === true);
+    }
+
+    // Fractions 0..1 handed to the SoundEngine, which owns the loudness curve.
+    getSoundVolumeMusic() {
+        return this.getPercent('sound.volume_music');
+    }
+
+    getSoundVolumeEffects() {
+        return this.getPercent('sound.volume_effects');
     }
 }
 
