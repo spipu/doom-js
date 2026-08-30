@@ -1,8 +1,10 @@
 /**
  * Game-side orchestrator of the audio. Owns the engine-side pieces (the
- * SoundEngine born once for the page, the sample registry, the effect player),
- * fills them from the selected WAD (profile sound table → DMX lumps), and is
- * the single entry point the menu and game code call to play a sound.
+ * SoundEngine born once for the page, the sample registry, the effect player,
+ * the music player over its OPL synthesizer adapter), fills them from the
+ * selected WAD (profile sound table → DMX lumps, GENMIDI bank → WOPL, song
+ * lumps on demand), and is the single entry point the menu and game code call
+ * to play a sound or change the music.
  *
  * Global `doomSound` (same shape as doomSettings/doomSaveStore): sounds are
  * WAD-lifetime data — any sound can play in any level — so the system lives
@@ -33,6 +35,10 @@ class DoomSoundSystem {
         invalid: {frequency: 220, durationMs: 90, decayMs: 10,  gain: 0.9,  attackMs: 0.5, harmonics: DoomSoundSystem.UI_TONE_PARTIALS}
     };
 
+    // Vendored OPL synthesizer files (AudioWorklet processor + wasm core).
+    static LIBADLMIDI_PROCESSOR_URL = '/js/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js';
+    static LIBADLMIDI_WASM_URL      = '/js/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm';
+
     // Logical menu event → tone: navigation and value adjust share the
     // discreet tick, validations the brighter one, back/close the lower one.
     static UI_SOUND_TONES = {
@@ -48,15 +54,21 @@ class DoomSoundSystem {
     };
 
     constructor() {
-        this._engine     = null;
-        this._samples    = null;
-        this._player     = null;
-        this._catalog    = null;
-        this._wadId      = null;
-        this._listener   = new DoomSoundListener();
-        this._pitchRange = 0;
-        this._positional = [];
-        this._uiToneIds  = {};
+        this._engine       = null;
+        this._samples      = null;
+        this._player       = null;
+        this._catalog      = null;
+        this._wadId        = null;
+        this._listener     = new DoomSoundListener();
+        this._pitchRange   = 0;
+        this._positional   = [];
+        this._uiToneIds    = {};
+        this._tracks       = null;
+        this._music        = null;
+        this._desiredMusic = null;
+        this._profile      = null;
+        this._wadFile      = null;
+        this._sequences    = null;
     }
 
     // Idempotent — called on every menu boot (the navigator is recreated):
@@ -67,6 +79,11 @@ class DoomSoundSystem {
             this._engine  = new SoundEngine().installUnlockListeners();
             this._samples = new SoundSampleLoader(this._engine);
             this._player  = new SoundEffectPlayer(this._engine);
+            this._tracks  = new SoundTrackLoader();
+            this._music   = new SoundMusicPlayer(this._engine).setSynth(new SoundMusicSynthAdlMidi(
+                appBootstrap.buildUrl(DoomSoundSystem.LIBADLMIDI_PROCESSOR_URL),
+                appBootstrap.buildUrl(DoomSoundSystem.LIBADLMIDI_WASM_URL)
+            ));
             this._registerUiTones();
         }
 
@@ -92,6 +109,7 @@ class DoomSoundSystem {
         }
         this._engine.setMusicVolume(doomSettings.getSoundVolumeMusic());
         this._engine.setEffectsVolume(doomSettings.getSoundVolumeEffects());
+        this._music.setVolumeGate(doomSettings.getSoundVolumeMusic());
 
         return this;
     }
@@ -127,7 +145,12 @@ class DoomSoundSystem {
         if ((this._engine === null) || (this._wadId === wadId)) {
             return this;
         }
+        // Switching WADs empties everything, but a music request made while
+        // the load was still in flight (the menu asks before the decode lands)
+        // must survive it — it plays at the end of this very call.
+        const desiredMusic = this._desiredMusic;
         this.reset();
+        this._desiredMusic = desiredMusic;
         this._wadId   = wadId;
         const profile = new GameProfileList().getForWad(wadFile);
         this._catalog = new DoomSoundCatalog(profile.soundDefs());
@@ -139,8 +162,26 @@ class DoomSoundSystem {
         }
         this._pitchRange = profile.soundPitchRange();
         this._listener.setRolloff(DoomSoundSystem._buildRolloff(profile, wadFile));
+        this._wadFile = wadFile;
+        this._profile = profile;
+        const wopl    = WadGenmidi.toWopl(wadFile.getLump('GENMIDI'));
+        this._music.setBank((wopl !== null) ? wopl.buffer : null);
+        // Sound sequences: the WAD's own SNDSEQ lump wins (Hexen), else the
+        // profile's transcription (Heretic ambients), else an empty catalog.
+        const sndseq    = wadFile.getLump('SNDSEQ');
+        this._sequences = new DoomSoundSequences(((sndseq !== null)
+            ? WadFile.lumpText(sndseq)
+            : profile.soundSequencesText()));
+        this._applyDesiredMusic();
 
         return this;
+    }
+
+    /**
+     * @returns {DoomSoundSequences|null} the loaded WAD's sequence catalog
+     */
+    getSequences() {
+        return this._sequences;
     }
 
     // A Raven profile looks its volumes up in the WAD's own SNDCURVE lump (the
@@ -168,9 +209,15 @@ class DoomSoundSystem {
         this._player.stopAll().setPaused(false);
         this._samples.reset();
         this._registerUiTones();
-        this._catalog    = null;
-        this._wadId      = null;
-        this._positional = [];
+        this._music.stop().setBank(null);
+        this._tracks.reset();
+        this._desiredMusic = null;
+        this._wadFile      = null;
+        this._profile      = null;
+        this._sequences    = null;
+        this._catalog      = null;
+        this._wadId        = null;
+        this._positional   = [];
 
         return this;
     }
@@ -293,6 +340,88 @@ class DoomSoundSystem {
         }
 
         return this;
+    }
+
+    // --- Music (OPL synthesis of the WAD's own songs) ---
+
+    playMenuMusic() {
+        return this._requestMusic({kind: 'menu'});
+    }
+
+    playIntermissionMusic() {
+        return this._requestMusic({kind: 'intermission'});
+    }
+
+    playFinaleMusic() {
+        return this._requestMusic({kind: 'finale'});
+    }
+
+    /**
+     * @param {string[]} lumps candidate song lumps of the level (WadMapInfo)
+     */
+    playLevelMusic(lumps) {
+        return this._requestMusic({kind: 'level', lumps: lumps});
+    }
+
+    stopMusic() {
+        this._desiredMusic = null;
+        if (this._music !== null) {
+            this._music.stop();
+        }
+
+        return this;
+    }
+
+    // The desired music survives an unloaded WAD: asked for while the sounds
+    // still decode, it starts when loadForWad lands.
+    _requestMusic(desired) {
+        this._desiredMusic = desired;
+        return this._applyDesiredMusic();
+    }
+
+    _applyDesiredMusic() {
+        if ((this._music === null) || (this._wadFile === null) || (this._desiredMusic === null)) {
+            return this;
+        }
+        const desired = this._desiredMusic;
+        const byKind  = {
+            menu:         () => this._profile.menuMusicLumps(),
+            intermission: () => this._profile.intermissionMusicLumps(),
+            finale:       () => this._profile.finaleMusicLumps(),
+            level:        () => desired.lumps
+        };
+        const lumps = byKind[desired.kind]();
+        const track = this._resolveTrack(lumps ?? []);
+        if (track === null) {
+            this._music.stop();
+        } else {
+            // The title tune plays ONCE (d_main.cpp S_ChangeMusic looping
+            // false); every other screen loops its song like the original.
+            this._music.play(track, (desired.kind !== 'menu'));
+        }
+
+        return this;
+    }
+
+    // First candidate lump with a recognized music magic wins; its bytes are
+    // registered once and replayed from the registry afterwards.
+    _resolveTrack(lumpNames) {
+        for (const name of lumpNames) {
+            const known = this._tracks.idByCode(name);
+            if (known !== null) {
+                return this._tracks.get(known);
+            }
+            const lump   = this._wadFile.getLump(name);
+            const format = WadSoundDecoder.musicFormat(lump);
+            if (format === null) {
+                continue;
+            }
+            const bytes = lump.buffer.slice(lump.byteOffset, lump.byteOffset + lump.byteLength);
+
+            return this._tracks.get(this._tracks.loadFromData(name, {format: format, bytes: bytes}));
+        }
+
+        return null;
     }
 
     _resolvedSample(name) {

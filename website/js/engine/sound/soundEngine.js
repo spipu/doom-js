@@ -11,12 +11,16 @@
  */
 class SoundEngine {
     constructor() {
-        this._context    = new AudioContext();
-        this._musicBus   = this._context.createGain();
-        this._effectsBus = this._context.createGain();
+        this._context           = new AudioContext();
+        this._musicBus          = this._context.createGain();
+        this._effectsBus        = this._context.createGain();
+        this._runningListeners  = [];
 
         this._musicBus.connect(this._context.destination);
         this._effectsBus.connect(this._context.destination);
+        this._context.onstatechange = () => {
+            this._notifyRunning();
+        };
     }
 
     getContext() {
@@ -56,6 +60,30 @@ class SoundEngine {
             this._context.resume();
         }
         return this;
+    }
+
+    /**
+     * Registers a callback fired every time the context reaches 'running'
+     * (immediately when it already runs) — deferred consumers like the music
+     * player wait on it instead of poking a still-locked context.
+     *
+     * @param {function} callback
+     */
+    onRunning(callback) {
+        this._runningListeners.push(callback);
+        if (this.isRunning()) {
+            callback();
+        }
+        return this;
+    }
+
+    _notifyRunning() {
+        if (!this.isRunning()) {
+            return;
+        }
+        for (const callback of this._runningListeners) {
+            callback();
+        }
     }
 
     suspendAll() {

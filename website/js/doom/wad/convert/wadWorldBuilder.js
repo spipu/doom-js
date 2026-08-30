@@ -313,9 +313,12 @@ class WadWorldBuilder {
             if (spec === undefined) {
                 continue;
             }
-            const sect = this._findSector(thing.x, thing.y);
-            const pos  = WadGeometry.doomToWorld(thing.x, thing.y, ((sect !== null) ? sect.fh : 0));
-            ambient.add((spec.loop ?? spec.random), ((spec.loop !== undefined) ? 'loop' : 'random'), pos);
+            if (spec.loop !== undefined) {
+                const sect = this._findSector(thing.x, thing.y);
+                ambient.addLoop(spec.loop, WadGeometry.doomToWorld(thing.x, thing.y, ((sect !== null) ? sect.fh : 0)));
+            } else {
+                ambient.addSequence(spec.sequence);
+            }
             count++;
         }
         if (count > 0) {

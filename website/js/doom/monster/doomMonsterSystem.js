@@ -763,6 +763,10 @@ class DoomMonsterSystem {
         const fresh = this._spawnFreshBody(m, m.code + '_r', m.spawn.position);
         fresh.reactiontime = DoomMonsterSystem.RESPAWN_REACTION;
         this._resolveRide(fresh);
+        // P_NightmareRespawn rings the teleport at both ends — the corpse and
+        // the spot (the visual fog itself belongs to the fidelity pass).
+        doomSound.playAt('misc/teleport', [...m.inst.getTransform().position], {});
+        doomSound.playAt('misc/teleport', [...fresh.inst.getTransform().position], {});
     }
 
     // Fresh runtime body sharing an existing record's def/frames/spawn — the

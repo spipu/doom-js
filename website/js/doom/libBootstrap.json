@@ -1,5 +1,5 @@
 {
-    "version": "v1.627",
+    "version": "v1.634",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -20,12 +20,15 @@
             "/assets/uzdoom/heretic/sprite/bal7scr1.png",
             "/assets/uzdoom/heretic/sprite/bal7scr2.png",
             "/assets/uzdoom/doom/text/finale.json",
-            "/assets/uzdoom/heretic/text/finale.json"
+            "/assets/uzdoom/heretic/text/finale.json",
+            "/js/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js",
+            "/js/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm"
         ],
         "css": [
             "/css/doomMenu.css"
         ],
         "js": [
+            "/js/lib/libadlmidi/libadlmidi.js",
             "/js/webapp/screenWakeLock.js",
             "/js/webapp/appDatabase.js",
             "/js/webapp/appTranslator.js",
@@ -34,6 +37,7 @@
             "/js/doom/wad/wadFile.js",
             "/js/doom/wad/wadDehackedStrings.js",
             "/js/doom/wad/wadSoundDecoder.js",
+            "/js/doom/wad/wadGenmidi.js",
             "/js/doom/wad/wadStorage.js",
             "/js/doom/wad/wadRegistry.js",
             "/js/doom/wad/convert/wadConstants.js",
@@ -45,6 +49,8 @@
             "/js/doom/wad/gameProfileList.js",
             "/js/doom/doomFinaleTexts.js",
             "/js/doom/sound/doomSoundCatalog.js",
+            "/js/doom/sound/doomSoundSequences.js",
+            "/js/doom/sound/doomSoundSequencePlayer.js",
             "/js/doom/sound/doomSoundListener.js",
             "/js/doom/sound/doomSoundSystem.js",
             "/js/doom/sound/doomMoverSounds.js",

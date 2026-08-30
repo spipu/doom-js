@@ -75,6 +75,7 @@ class Instance extends AbstractLoadedEntity {
         // and its change hook (game-layer motion sounds).
         this._onMotionChange    = null;
         this._motionDir         = 0;
+        this._motionNotifyMuted = false;
     }
 
     setOnStart(fn) {
@@ -95,8 +96,19 @@ class Instance extends AbstractLoadedEntity {
         this._onMotionChange = fn;
     }
 
+    /**
+     * While muted, motion changes are neither tracked nor notified: a pressure
+     * stall pauses and resumes as if the mover had never stopped moving.
+     *
+     * @param {boolean} muted
+     */
+    setMotionNotifyMuted(muted) {
+        this._motionNotifyMuted = (muted === true);
+        return this;
+    }
+
     _noteMotionDir(dir) {
-        if (dir === this._motionDir) {
+        if (this._motionNotifyMuted || (dir === this._motionDir)) {
             return;
         }
         this._motionDir = dir;

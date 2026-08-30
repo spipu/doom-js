@@ -100,8 +100,9 @@ class MenuNavigator {
      */
     openWadMenu(meta) {
         // Selecting a WAD loads its sound library in the background — no
-        // modal, the menu sounds become audible as decoding lands.
-        doomSound.loadFromRegistry(this._registry, meta);
+        // modal, the menu sounds become audible as decoding lands and the
+        // title music starts then (the request waits for the load).
+        doomSound.loadFromRegistry(this._registry, meta).playMenuMusic();
         this._switchTo(this._wadMenuScreen.setWad(meta));
     }
 

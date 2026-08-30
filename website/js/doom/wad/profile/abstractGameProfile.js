@@ -402,6 +402,60 @@ class AbstractGameProfile {
     }
 
     /**
+     * The game's sound sequences (SNDSEQ text format), used when the WAD
+     * carries no SNDSEQ lump of its own: none by default — a Raven concept
+     * (Heretic's ambient scripts, every Hexen mover).
+     *
+     * @returns {string}
+     */
+    soundSequencesText() {
+        return '';
+    }
+
+    /**
+     * Candidate lumps of the menu (title) music, first present in the WAD wins.
+     *
+     * @returns {string[]}
+     */
+    menuMusicLumps() {
+        this._generateException('menuMusicLumps must be implemented');
+        return [];
+    }
+
+    /**
+     * Candidate lumps of the intermission music (the tally screen).
+     *
+     * @returns {string[]}
+     */
+    intermissionMusicLumps() {
+        this._generateException('intermissionMusicLumps must be implemented');
+        return [];
+    }
+
+    /**
+     * Candidate lumps of the finale music (the end-of-chapter story text).
+     *
+     * @returns {string[]}
+     */
+    finaleMusicLumps() {
+        this._generateException('finaleMusicLumps must be implemented');
+        return [];
+    }
+
+    /**
+     * Candidate music lumps of a level, first present in the WAD wins (the
+     * games reuse songs across levels when a WAD carries fewer music lumps
+     * than maps).
+     *
+     * @param {string} levelName
+     * @returns {string[]}
+     */
+    levelMusicLumps(levelName) {
+        this._generateException('levelMusicLumps must be implemented');
+        return [];
+    }
+
+    /**
      * Hardcoded texture/flat animation sequences of this game's engine, used
      * when the WAD carries no ANIMATED lump (the lump always wins).
      *

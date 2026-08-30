@@ -779,8 +779,10 @@ class DoomGame {
         this._pauseWasDown = true;
 
         // The sound system survives the levels: rebind its listener on THIS
-        // level's player (and lift any freeze left by an exit modal).
+        // level's player (and lift any freeze left by an exit modal), and
+        // start the level's own song.
         doomSound.bindLevel(this._world.getUser());
+        doomSound.playLevelMusic(this._mapInfo.musicLumpsFor(this._levelName));
         // Use-failure wall probe at the vanilla USERANGE.
         this._world.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         // Mover motion sounds, declared during the batch, wired now that the
@@ -1132,7 +1134,9 @@ class DoomGame {
         this._transitioning = true;
         // The exit modals freeze the game exactly like the pause: the playing
         // sounds hold with it (the next level's bindLevel lifts the freeze).
-        doomSound.setPaused(true);
+        // The intermission song covers the tally and the story text (vanilla),
+        // until the next level's own music takes over.
+        doomSound.setPaused(true).playIntermissionMusic();
 
         // Progression owned by WadMapInfo: vanilla defaults synthesized from
         // the level names, overlaid by the UMAPINFO lump when the WAD has one
@@ -1165,6 +1169,9 @@ class DoomGame {
                 this._startNextLevel(display, modal, nextLevel);
                 return;
             }
+            // The story screen has its own song, like the original
+            // (gameinfo finalemusic — D_VICTOR / D_READ_M / MUS_CPTD).
+            doomSound.playFinaleMusic();
             modal.finale(finaleText, appTranslator.get(buttonCode), () => {
                 this._startNextLevel(display, modal, nextLevel);
             });
