@@ -109,6 +109,7 @@ var AdlMidi = class {
     const wasmBinary = await response.arrayBuffer();
     await this.ctx.audioWorklet.addModule(processorUrl);
     this.node = new AudioWorkletNode(this.ctx, "adl-midi-processor", {
+      outputChannelCount: [2],
       processorOptions: {
         sampleRate: this.ctx.sampleRate,
         wasmBinary,

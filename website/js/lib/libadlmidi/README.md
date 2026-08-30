@@ -18,11 +18,24 @@ JavaScript wrapper, published as [libadlmidi-js](https://www.npmjs.com/package/l
 | `libadlmidi.dosbox.slim.processor.js` | `dist/libadlmidi.dosbox.slim.processor.js` — unmodified |
 | `libadlmidi.dosbox.slim.core.wasm` | `dist/libadlmidi.dosbox.slim.core.wasm` — unmodified |
 
-## Modification (LGPL section 4 notice)
+## Modifications (LGPL section 4 notice)
 
-`libadlmidi.js` is distributed by the package as a pure ES module, which this
-application cannot load (every script is loaded in global scope by its
-bootstrap). The final `export` block of the file:
+`libadlmidi.js` carries two modifications against the published `dist/libadlmidi.js`.
+
+**1. Stereo output.** The wrapper creates its `AudioWorkletNode` without an
+`outputChannelCount`; per the Web Audio spec, a node with no input then gets a
+MONO output, and the processor's right channel silently overwrites the left —
+half the soft-panned mix is lost. The node options gained one line:
+
+```javascript
+    this.node = new AudioWorkletNode(this.ctx, "adl-midi-processor", {
+      outputChannelCount: [2],
+      ...
+```
+
+**2. Global-scope loading.** The package distributes the wrapper as a pure ES
+module, which this application cannot load (every script is loaded in global
+scope by its bootstrap). The final `export` block of the file:
 
 ```javascript
 var libadlmidi_default = AdlMidi;
@@ -43,5 +56,5 @@ window.AdlMidiEmulator    = Emulator;
 window.AdlMidiTrackOption = TrackOption;
 ```
 
-Nothing else was changed. Re-apply the same replacement when upgrading the
+Nothing else was changed. Re-apply both modifications when upgrading the
 package, so a diff against the original `dist/libadlmidi.js` stays trivial.
