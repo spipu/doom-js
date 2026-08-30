@@ -26,7 +26,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 ## Spipu-Doom (`index.html`)
 
 - **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Mouse, keyboard, gamepad and touch drive every menu the same way.
-- **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a monster-free skill 0, with the original per-skill rules.
+- **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a pacifist skill 0 — the normal-skill world, but the monsters never attack — with the original per-skill rules.
 - **Save / load**: five slots per WAD; a save captures the full game state and loading rebuilds the level and restores it exactly (transient visuals excepted).
 - **Pause menu**: `ESC` freezes the game under a translucent overlay — resume, load, save, options, leave the level.
 - **Game profiles** (`js/doom/wad/profile/`): everything game-specific — things, specials, weapons, monsters, progression, skies, sounds, HUD — is profile data, auto-detected from the WAD content. Doom, Freedoom and Heretic are fully playable; unknown WADs fall back to the doom-format baseline.

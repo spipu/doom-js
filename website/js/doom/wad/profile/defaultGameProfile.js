@@ -569,7 +569,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 // sequence despawns it (no respawn).
                 code: 'barrel', name: 'Barrel', sprite: 'BAR1',
                 health: 20, radius: 10, height: 42, speed: 0, painChance: 0,
-                flags: {countsKill: false, noBlood: true, dontGib: true, alwaysSpawn: true, noCorpseThrust: true},
+                flags: {countsKill: false, noBlood: true, dontGib: true, noCorpseThrust: true},
                 params: {explode: {damage: 128, distance: 128}},
                 spriteOverrides: {death: 'BEXP'},
                 states: {
@@ -621,15 +621,17 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // Doom skill blocks (UZDoom mapinfo/doomcommon.txt): baby = ammo ×2,
     // damage ×0.5, easy boss brain; nightmare = ammo ×2, fast monsters,
-    // instant reaction, 12 s respawn. Skill 0 = skill 1 without monsters.
+    // instant reaction, 12 s respawn. Skill 0 = skill 3 with PACIFIST
+    // monsters: they spawn, wake and chase but never attack (and the Icon's
+    // eye never spits) — the boss-death map actions stay reachable.
     skillRules() {
         return {
-            0: {spawnFilterBit: 0x01, ammoFactor: 2, damageFactor: 0.5, monstersEnabled: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
-            1: {spawnFilterBit: 0x01, ammoFactor: 2, damageFactor: 0.5, monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
-            2: {spawnFilterBit: 0x01, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
-            3: {spawnFilterBit: 0x02, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
-            4: {spawnFilterBit: 0x04, ammoFactor: 1, damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
-            5: {spawnFilterBit: 0x04, ammoFactor: 2, damageFactor: 1,   monstersEnabled: true,  fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 12 * 35, easyBossBrain: false}
+            0: {spawnFilterBit: 0x02, ammoFactor: 1, damageFactor: 1,   monstersPacifist: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
+            1: {spawnFilterBit: 0x01, ammoFactor: 2, damageFactor: 0.5, monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
+            2: {spawnFilterBit: 0x01, ammoFactor: 1, damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: true},
+            3: {spawnFilterBit: 0x02, ammoFactor: 1, damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
+            4: {spawnFilterBit: 0x04, ammoFactor: 1, damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0,       easyBossBrain: false},
+            5: {spawnFilterBit: 0x04, ammoFactor: 2, damageFactor: 1,   monstersPacifist: false, fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 12 * 35, easyBossBrain: false}
         };
     }
 

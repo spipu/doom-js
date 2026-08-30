@@ -49,24 +49,19 @@ class WadThingBuilder {
 
         // Skill bit for the chosen difficulty (Doom P_SpawnMapThing): a thing is
         // present only if its flags carry this bit. The profile's skill rules
-        // provide it (skill 0 shares the skill-1 bit); legacy fallback when a
-        // caller passes no rule. 0-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
+        // provide it; legacy fallback when a caller passes no rule.
+        // 0-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
         const skillBit = ((this._skillRule !== null)
             ? this._skillRule.spawnFilterBit
             : ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04)));
-        const monstersEnabled = ((this._skillRule !== null) ? (this._skillRule.monstersEnabled === true) : true);
 
         for (const thing of this._level.things) {
             // Monsters route through their own catalog, before the world
-            // things: same multiplayer/skill filters, plus the skill-0 kill
-            // switch ("Labyrinth but no monster").
+            // things: same multiplayer/skill filters.
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
-                // alwaysSpawn bodies (barrels, pods) survive the skill-0
-                // monster kill switch — they are scenery you can shoot.
                 if (((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)
-                    || ((thing.flags & skillBit) === 0)
-                    || (!monstersEnabled && (monsterDef.getFlags().alwaysSpawn !== true))) {
+                    || ((thing.flags & skillBit) === 0)) {
                     this._filtered++;
                     continue;
                 }

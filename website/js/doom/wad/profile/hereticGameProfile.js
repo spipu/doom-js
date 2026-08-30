@@ -423,7 +423,7 @@ class HereticGameProfile extends DefaultGameProfile {
         return new DoomMonsterDef({
             code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
             health: 45, radius: 16, height: 54, speed: 0, painChance: 255,
-            flags: {countsKill: false, noBlood: true, dontGib: true, dropOff: true, alwaysSpawn: true, noCorpseThrust: true},
+            flags: {countsKill: false, noBlood: true, dontGib: true, dropOff: true, noCorpseThrust: true},
             params: {explode: {damage: 128, distance: 128}},
             states: {
                 spawn: [['A', 10, null, 'spawn']],
@@ -734,14 +734,15 @@ class HereticGameProfile extends DefaultGameProfile {
     // damage ×0.5, easy boss brain (Heretic's easy skill has NO easy boss
     // brain, unlike Doom's); nightmare = ammo ×1.5, fast monsters, instant
     // reaction and NO respawn (DoubleAmmoFactor is deathmatch-only, ignored).
+    // Skill 0 = skill 3 with pacifist monsters, like the Doom table.
     skillRules() {
         return {
-            0: {spawnFilterBit: 0x01, ammoFactor: 1.5, damageFactor: 0.5, monstersEnabled: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: true},
-            1: {spawnFilterBit: 0x01, ammoFactor: 1.5, damageFactor: 0.5, monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: true},
-            2: {spawnFilterBit: 0x01, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
-            3: {spawnFilterBit: 0x02, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
-            4: {spawnFilterBit: 0x04, ammoFactor: 1,   damageFactor: 1,   monstersEnabled: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
-            5: {spawnFilterBit: 0x04, ammoFactor: 1.5, damageFactor: 1,   monstersEnabled: true,  fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 0, easyBossBrain: false}
+            0: {spawnFilterBit: 0x02, ammoFactor: 1,   damageFactor: 1,   monstersPacifist: true,  fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            1: {spawnFilterBit: 0x01, ammoFactor: 1.5, damageFactor: 0.5, monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: true},
+            2: {spawnFilterBit: 0x01, ammoFactor: 1,   damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            3: {spawnFilterBit: 0x02, ammoFactor: 1,   damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            4: {spawnFilterBit: 0x04, ammoFactor: 1,   damageFactor: 1,   monstersPacifist: false, fastMonsters: false, instantReaction: false, respawnTicsDelay: 0, easyBossBrain: false},
+            5: {spawnFilterBit: 0x04, ammoFactor: 1.5, damageFactor: 1,   monstersPacifist: false, fastMonsters: true,  instantReaction: true,  respawnTicsDelay: 0, easyBossBrain: false}
         };
     }
 
