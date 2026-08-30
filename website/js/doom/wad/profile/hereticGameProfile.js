@@ -201,23 +201,30 @@ class HereticGameProfile extends DefaultGameProfile {
     }
 
     // Ambient sound things, skipped by the thing catalog (no body, no sprite):
-    // 41/42 are positioned loops, 1200-1209 the HereticAmbience scripts — an
-    // unattenuated random-volume one-shot every few seconds (sndseq.txt).
+    // 41/42 are positioned loops; 1200+n addresses the sound sequence whose
+    // `environment` number is n (the HereticAmbience scripts of SNDSEQ).
     ambientSounds() {
         return {
             41:   {loop: 'world/waterfall'},
             42:   {loop: 'world/wind'},
-            1200: {random: 'world/amb1'},
-            1201: {random: 'world/amb2'},
-            1202: {random: 'world/amb3'},
-            1203: {random: 'world/amb4'},
-            1204: {random: 'world/amb5'},
-            1205: {random: 'world/amb6'},
-            1206: {random: 'world/amb7'},
-            1207: {random: 'world/amb8'},
-            1208: {random: 'world/amb9'},
-            1209: {random: 'world/amb10'}
+            1200: {sequence: 0},
+            1201: {sequence: 1},
+            1202: {sequence: 2},
+            1203: {sequence: 3},
+            1204: {sequence: 4},
+            1205: {sequence: 5},
+            1206: {sequence: 6},
+            1207: {sequence: 7},
+            1208: {sequence: 8},
+            1209: {sequence: 9}
         };
+    }
+
+    // The game's sound sequences, verbatim from UZDoom sndseq.txt (the
+    // HereticAmbience scheduler and its ten AFX environment scripts) — a WAD
+    // carrying its own SNDSEQ lump overrides this text entirely (Hexen).
+    soundSequencesText() {
+        return HereticGameProfile.SOUND_SEQUENCES;
     }
 
     // Raven attenuation ($rolloff * custom 0 1600, game-heretic/sndinfo.txt:8
@@ -229,6 +236,31 @@ class HereticGameProfile extends DefaultGameProfile {
 
     soundPitchRange() {
         return 2;
+    }
+
+    // gameinfo titlemusic / intermissionmusic (mapinfo/heretic.txt:8/30).
+    menuMusicLumps() {
+        return ['MUS_TITL'];
+    }
+
+    intermissionMusicLumps() {
+        return ['MUS_INTR'];
+    }
+
+    finaleMusicLumps() {
+        return ['MUS_CPTD'];
+    }
+
+    // Per-map music of mapinfo/heretic.txt: MUS_ExMy by rule, except the maps
+    // whose block names another episode's song — heretic.wad only carries 19
+    // level songs for 48 maps (E2M5, most of E3, and E4-E6 entirely reuse).
+    levelMusicLumps(levelName) {
+        const reused = HereticGameProfile.LEVEL_MUSIC_REUSE[levelName];
+        if (reused !== undefined) {
+            return [reused];
+        }
+
+        return ((/^E\dM\d$/.test(levelName)) ? ['MUS_' + levelName] : []);
     }
 
     progressionRules() {
@@ -1396,3 +1428,168 @@ HereticGameProfile.SORCERER2_ATTACK = ['A_Srcr2Attack', {
     spawnChance:     48,
     hurtSpawnChance: 96
 }];
+
+// The maps whose mapinfo block names another episode's song instead of their
+// own MUS_ExMy lump (mapinfo/heretic.txt, extracted map by map).
+HereticGameProfile.LEVEL_MUSIC_REUSE = {
+    E2M5: 'MUS_E1M4',
+    E3M1: 'MUS_E1M1', E3M4: 'MUS_E1M6', E3M5: 'MUS_E1M3', E3M6: 'MUS_E1M2',
+    E3M7: 'MUS_E1M5', E3M8: 'MUS_E1M9', E3M9: 'MUS_E2M6',
+    E4M1: 'MUS_E1M6', E4M2: 'MUS_E1M2', E4M3: 'MUS_E1M3', E4M4: 'MUS_E1M4',
+    E4M5: 'MUS_E1M5', E4M6: 'MUS_E1M1', E4M7: 'MUS_E1M7', E4M8: 'MUS_E1M8',
+    E4M9: 'MUS_E1M9',
+    E5M1: 'MUS_E2M1', E5M2: 'MUS_E2M2', E5M3: 'MUS_E2M3', E5M4: 'MUS_E2M4',
+    E5M5: 'MUS_E1M4', E5M6: 'MUS_E2M6', E5M7: 'MUS_E2M7', E5M8: 'MUS_E2M8',
+    E5M9: 'MUS_E2M9',
+    E6M1: 'MUS_E3M2', E6M2: 'MUS_E3M3', E6M3: 'MUS_E1M6'
+};
+
+// UZDoom sndseq.txt, Heretic Ambience block, verbatim.
+HereticGameProfile.SOUND_SEQUENCES = `
+// Heretic Ambience ---------------------------
+
+:HereticAmbience
+	// Heretic waits 10 seconds after level load before it starts
+	// playing any sounds.
+	delayonce	350
+
+	volumerand	0  50
+	attenuation	none
+	randomsequence
+	delayrand	210  465
+	restart
+end
+
+// To be 100% correct, these sequences shouldn't actually wait for
+// the last sound to stop playing, but I thought it would be nice
+// to make them stand-alone so you don't always have to play them
+// from inside HereticAmbience.
+
+:AFX_Scream
+	environment	0
+	slot		HereticAmbience
+
+	playuntildone	world/amb1
+end
+
+:AFX_Squish
+	environment	1
+	slot		HereticAmbience
+
+	playuntildone	world/amb2
+end
+
+:AFX_Drops
+	environment	2
+	slot		HereticAmbience
+
+	play		world/amb3
+	delayrand	16  47
+	play		world/amb7
+	delayrand	16  47
+	play		world/amb3
+	delayrand	16  47
+	play		world/amb7
+	delayrand	16  47
+	play		world/amb3
+	delayrand	16  47
+	play		world/amb7
+	delayrand	16  47
+end
+
+:AFX_SlowFootsteps
+	environment	3
+	slot		HereticAmbience
+
+	playtime	world/amb4  15
+	volumerel	-2.36
+	playtime	world/amb11 15
+	volumerel	-2.36
+	playtime	world/amb4  15
+	volumerel	-2.36
+	playtime	world/amb11 15
+	volumerel	-2.36
+	playtime	world/amb4  15
+	volumerel	-2.36
+	playtime	world/amb11 15
+	volumerel	-2.36
+	playtime	world/amb4  15
+	volumerel	-2.36
+	playuntildone	world/amb11
+end
+
+:AFX_Heartbeat
+	environment	4
+	slot		HereticAmbience
+
+	playtime	world/amb5  35
+	playtime	world/amb5  35
+	playtime	world/amb5  35
+	playuntildone	world/amb5
+end
+
+:AFX_Bells
+	environment	5
+	slot		HereticAmbience
+
+	playtime	world/amb6  17
+	volumerel	-6.3
+	playtime	world/amb6  17
+	volumerel	-6.3
+	playtime	world/amb6  17
+	volumerel	-6.3
+	playuntildone	world/amb6
+end
+
+:AFX_Growl
+	environment	6
+	slot		HereticAmbience
+
+	playuntildone	world/amb12
+end
+
+:AFX_Magic
+	environment	7
+	slot		HereticAmbience
+
+	playuntildone	world/amb8
+end
+
+:AFX_Laughter
+	environment	8
+	slot		HereticAmbience
+
+	playtime	world/amb9  16
+	volumerel	-3.15
+	playtime	world/amb9  16
+	volumerel	-3.15
+	playtime	world/amb9  16
+	volumerel	-3.15
+	playtime	world/amb10 16
+	volumerel	-3.15
+	playtime	world/amb10 16
+	volumerel	-3.15
+	playuntildone	world/amb10
+end
+
+:AFX_FastFootsteps
+	environment	9
+	slot		HereticAmbience
+
+	playtime	world/amb4  8
+	volumerel	-2.36
+	playtime	world/amb11 8
+	volumerel	-2.36
+	playtime	world/amb4  8
+	volumerel	-2.36
+	playtime	world/amb11 8
+	volumerel	-2.36
+	playtime	world/amb4  8
+	volumerel	-2.36
+	playtime	world/amb11 8
+	volumerel	-2.36
+	playtime	world/amb4  8
+	volumerel	-2.36
+	playuntildone	world/amb11
+end
+`;

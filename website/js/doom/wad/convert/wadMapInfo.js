@@ -24,11 +24,12 @@
  * entry without nextsecret routes its secret exit to the NORMAL target, per
  * spec — even on a map with a natural secret exit; a target absent from the
  * WAD is ignored with a warning), endgame / endpic / endbunny / endcast
- * (end of game: both exits → null), levelname (HUD display), intertext /
- * intertextsecret (the story text of each exit, "-" for none — a map the lump
- * describes ignores the cluster texts entirely). Every other key is parsed and
- * skipped. The spec does not define comments, but real lumps carry C-style
- * ones — // and slash-star blocks are tolerated.
+ * (end of game: both exits → null), levelname (HUD display), music (the
+ * level's song lump), intertext / intertextsecret (the story text of each
+ * exit, "-" for none — a map the lump describes ignores the cluster texts
+ * entirely). Every other key is parsed and skipped. The spec does not define
+ * comments, but real lumps carry C-style ones — // and slash-star blocks are
+ * tolerated.
  */
 class WadMapInfo {
     /**
@@ -36,7 +37,8 @@ class WadMapInfo {
      * @param {AbstractGameProfile} profile
      */
     constructor(wadFile, profile = null) {
-        this._rules   = (profile ?? new DefaultGameProfile()).progressionRules();
+        this._profile = (profile ?? new DefaultGameProfile());
+        this._rules   = this._profile.progressionRules();
         this._levels  = wadFile.getLevelNames();
         this._entries = {};
         for (const name of this._levels) {
@@ -44,6 +46,9 @@ class WadMapInfo {
                 next:       this._vanillaNext(name, false),
                 nextsecret: this._vanillaNext(name, true),
                 levelname:  null,
+                // Candidate music lumps, first present wins (the game rules
+                // reuse songs across levels; a UMAPINFO music key overrides).
+                music:      this._profile.levelMusicLumps(name),
                 // True once a UMAPINFO block described the map: it then owns
                 // its finale text and the cluster ones no longer apply.
                 umapinfo:   false
@@ -84,6 +89,14 @@ class WadMapInfo {
      */
     levelNameFor(levelCode) {
         return (this._entries[levelCode]?.levelname ?? null);
+    }
+
+    /**
+     * @param {string} levelCode
+     * @returns {string[]} candidate music lumps of the level, first present wins
+     */
+    musicLumpsFor(levelCode) {
+        return (this._entries[levelCode]?.music ?? []);
     }
 
     /**
@@ -235,7 +248,7 @@ class WadMapInfo {
     // the fly for a map absent from the WAD — harmless, it is never current).
     // Returns the index of the token following the block.
     _overlayBlock(tokens, i, mapName) {
-        const entry = (this._entries[mapName] ?? {next: null, nextsecret: null, levelname: null});
+        const entry = (this._entries[mapName] ?? {next: null, nextsecret: null, levelname: null, music: []});
         const seen  = {nextsecret: false, end: false};
         entry.umapinfo = true;
         while ((i < tokens.length) && (tokens[i].type !== '}')) {
@@ -292,6 +305,9 @@ class WadMapInfo {
         }
         if (key === 'levelname') {
             entry.levelname = first;
+        }
+        if (key === 'music') {
+            entry.music = [first.toUpperCase()];
         }
         // Story text of this map's normal / secret exit, one string per line;
         // a lone "-" states that this exit shows none.

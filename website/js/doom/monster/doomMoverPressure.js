@@ -167,7 +167,11 @@ class DoomMoverPressure {
                     mv.reacted = true;
                 }
             } else {
-                inst.pause();
+                // A pressure stall is soundless (user ruling): vanilla keeps
+                // the mover nominally moving, so no stop/start ever plays —
+                // unlike a stop line, whose pause stays audible.
+                inst.setMotionNotifyMuted(true).pause();
+                inst.setMotionNotifyMuted(false);
                 mv.stalled = true;
             }
         }
@@ -238,7 +242,9 @@ class DoomMoverPressure {
             }
         }
         mv.stalled = false;
-        this._moverInstance(mv).start();
+        const inst = this._moverInstance(mv);
+        inst.setMotionNotifyMuted(true).start();
+        inst.setMotionNotifyMuted(false);
     }
 
     // Vanilla Grind: a bleeding, gibbable corpse becomes the gibs pool

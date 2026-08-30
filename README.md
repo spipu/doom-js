@@ -40,6 +40,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Sector effects**: damaging floors, floor mutations, scrolling walls, dynamic lights, distance shading, secret counting, and the Heretic pushes (wind, conveyors, ice) on player and monsters.
 - **Level chaining & story texts**: exits follow the vanilla progression (secret exits included, `UMAPINFO` overrides honoured) through a tally modal — time, enemies, items, secrets — followed by the game's own chapter texts (from the WAD when it tells its own story, else the translated catalog).
 - **Sound effects**: the WAD's own sounds decoded on the fly — weapons, pickups, movers, teleports, player, monsters, Heretic ambients — spatialised per game and frozen with the pause. The menus use light synthesized clicks, WAD-independent, with distinct accents for navigation, validation and cancel. Two live volume settings.
+- **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
 - **Options & persistent settings**: Display, Game, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity.
 - **Translation (fr / en)**: every user-facing text goes through a translation catalog addressed by code; locale-dependent formats go through `Intl`.
@@ -105,6 +106,7 @@ website/
 ├── _examples/                Simple demos + their assets and bootstrap definitions
 └── js/
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
+    ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
     ├── doom/                 The Spipu-Doom game
     │   ├── libBootstrap.json    Doom bootstrap definition (version + file lists)
     │   ├── doomGame.js          Level lifecycle, game loop, catalogs, pickups
@@ -114,7 +116,7 @@ website/
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
-    │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables)
+    │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables), music orchestration
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
@@ -131,7 +133,7 @@ website/
         ├── input/               Unified inputs: keyboard, mouse, gamepad, virtual touch gamepad
         ├── interaction/         Interaction bases (switch modes once/timed/toggle)
         ├── loader/              URL or in-memory loaders (textures, objects, instances, interactions, world)
-        ├── sound/               Audio primitives: shared AudioContext with music/effects buses, in-memory PCM samples
+        ├── sound/               Audio primitives: shared AudioContext with music/effects buses, in-memory PCM samples, tone synthesis, music player over a swappable synth contract
         ├── hud/                 HUD bases (debug overlay, screen flash)
         └── renderer/            webgl / full / flat / fast renderers
 ```
@@ -210,7 +212,6 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## Todo - Next steps
 
-* **Music**: the sound effects are in; the OPL music (menu, level, intermission themes synthesized from the WAD's own MUS/MIDI lumps and GENMIDI bank) remains.
 * **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
 * **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
@@ -219,4 +220,4 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 
 ## License
 
-This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), which is distributed under the GPL v3 with its own LICENSE.md and attribution README. Removing that directory yields a 100% MIT distribution.
+This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), distributed under the GPL v3, and the `website/js/lib/libadlmidi/` directory (the vendored libADLMIDI-JS music synthesizer), distributed under the LGPL v3 — each with its own LICENSE.md and attribution README. Removing those two directories yields a 100% MIT distribution.

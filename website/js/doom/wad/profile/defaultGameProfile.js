@@ -1153,6 +1153,44 @@ class DefaultGameProfile extends AbstractGameProfile {
         return 4;
     }
 
+    // Title and intermission songs (UZDoom mapinfo doomcommon/doom1 gameinfo):
+    // the commercial lumps first, the Doom 1 ones behind — one profile serves
+    // both WAD families and each carries only its own pair.
+    menuMusicLumps() {
+        return ['D_DM2TTL', 'D_INTRO'];
+    }
+
+    intermissionMusicLumps() {
+        return ['D_DM2INT', 'D_INTER'];
+    }
+
+    finaleMusicLumps() {
+        return ['D_READ_M', 'D_VICTOR'];
+    }
+
+    // Level songs: ExMy plays its own D_ExMy lump (mapinfo/doom1.txt) — but
+    // the original Ultimate Doom WAD ships no E4 songs and reuses earlier
+    // ones (linuxdoom s_sound.c spmus), so E4 falls back on that table when
+    // the own lump is absent (Freedoom provides real E4 lumps). MAPxx plays
+    // the ordered commercial list (mapinfo/doom2.txt, mus_runnin + map − 1).
+    levelMusicLumps(levelName) {
+        const episodic = levelName.match(/^E(\d)M(\d)$/);
+        if (episodic !== null) {
+            const candidates = ['D_' + levelName];
+            if (episodic[1] === '4') {
+                candidates.push(DefaultGameProfile.E4_MUSIC_REUSE[Number(episodic[2]) - 1]);
+            }
+            return candidates;
+        }
+        const doom2 = levelName.match(/^MAP(\d{2})$/);
+        if (doom2 !== null) {
+            const song = DefaultGameProfile.MAP_MUSIC[Number(doom2[1]) - 1];
+            return ((song !== undefined) ? ['D_' + song] : []);
+        }
+
+        return [];
+    }
+
     // am_map.cpp DoomColors. `locked` is only the fallback of a key with no HUD
     // colour: a locked line normally takes the colour of the key it demands.
     automapColors() {
@@ -1289,3 +1327,18 @@ DefaultGameProfile.BOSS_CUBE_SPAWNS = [
 // A_PosAttack / A_SPosAttack / A_CPosAttack all fire the same 3 × (1..5)
 // bullet, and every hitscan monster of the bestiary uses one of them.
 DefaultGameProfile.MONSTER_BULLET = {damage: {base: 3, dice: 5}, puff: 'puff'};
+
+// Commercial level songs in map order (mapinfo/doom2.txt, the vanilla
+// mus_runnin + map − 1 sequence): lump = 'D_' + name.
+DefaultGameProfile.MAP_MUSIC = [
+    'RUNNIN', 'STALKS', 'COUNTD', 'BETWEE', 'DOOM',   'THE_DA', 'SHAWN',  'DDTBLU',
+    'IN_CIT', 'DEAD',   'STLKS2', 'THEDA2', 'DOOM2',  'DDTBL2', 'RUNNI2', 'DEAD2',
+    'STLKS3', 'ROMERO', 'SHAWN2', 'MESSAG', 'COUNT2', 'DDTBL3', 'AMPIE',  'THEDA3',
+    'ADRIAN', 'MESSG2', 'ROMER2', 'TENSE',  'SHAWN3', 'OPENIN', 'EVIL',   'ULTIMA'
+];
+
+// Ultimate Doom's fourth episode reuses earlier songs (linuxdoom s_sound.c
+// spmus table, E4M1..E4M9) — its WAD ships no D_E4M* lump.
+DefaultGameProfile.E4_MUSIC_REUSE = [
+    'D_E3M4', 'D_E3M2', 'D_E3M3', 'D_E1M5', 'D_E2M7', 'D_E2M4', 'D_E2M6', 'D_E2M5', 'D_E1M9'
+];
