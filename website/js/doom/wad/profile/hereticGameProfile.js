@@ -170,17 +170,7 @@ class HereticGameProfile extends DefaultGameProfile {
             'misc/k_pkup':           {lump: 'KEYUP', pitch: 0},
             'misc/p_pkup':           {lump: 'ARTIUP'},
             'misc/w_pkup':           {alias: '*weaponlaugh'},
-            'misc/teleport':         {lump: 'TELEPT'},
-            // Interface (lines 345-353)
-            'menu/activate': {lump: 'DORCLS'},
-            'menu/backup':   {lump: 'SWITCH'},
-            'menu/prompt':   {lump: 'CHAT'},
-            'menu/choose':   {lump: 'DORCLS'},
-            'menu/cursor':   {lump: 'SWITCH'},
-            'menu/change':   {lump: 'KEYUP'},
-            'menu/invalid':  {lump: 'PLROOF'},
-            'menu/dismiss':  {lump: 'DORCLS'},
-            'menu/clear':    {lump: 'DORCLS'}
+            'misc/teleport':         {lump: 'TELEPT'}
         };
     }
 

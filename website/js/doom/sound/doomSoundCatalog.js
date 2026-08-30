@@ -44,7 +44,7 @@ class DoomSoundCatalog {
      * the chain wins over the target's (an alias inherits the limit of its
      * target when it sets none — the NearLimit -1 of the UZDoom $alias).
      *
-     * @param {string} name e.g. 'menu/choose'
+     * @param {string} name e.g. 'weapons/pistol'
      * @returns {{lump: string, limit: number, limitRange: number, pitch: number|null, singular: boolean}|null}
      */
     resolve(name) {

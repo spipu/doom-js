@@ -1,5 +1,5 @@
 {
-    "version": "v2.257",
+    "version": "v2.261",
     "files": {
         "assets": [],
         "css": [],
@@ -27,6 +27,7 @@
             "/js/engine/sound/soundSample.js",
             "/js/engine/sound/soundSampleLoader.js",
             "/js/engine/sound/soundEffectPlayer.js",
+            "/js/engine/sound/soundSynth.js",
             "/js/engine/loader.js",
             "/js/engine/matrix.js",
             "/js/engine/zBuffer.js",
