@@ -99,6 +99,9 @@ class WadWorldBuilder {
             builtStairCodes.add(step.code);
         }
 
+        // Movement sounds of every built mover (sndseq behaviours).
+        this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
+
         // Switches + interactions
         const switches = new WadSwitchBuilder(
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
@@ -228,6 +231,7 @@ class WadWorldBuilder {
         // Things (decorations + pickups) as billboard sprites
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
+        this._registerAmbientSounds(level);
         await this._yield();
 
         // One height service for the monsters and the map, carried by this data.
@@ -264,6 +268,61 @@ class WadWorldBuilder {
     // the rest (pickups, gore, pools…) are non-blocking ('none'). Pickups get a
     // proximity trigger + a DoomPickupInteraction that applies the effect and
     // despawns the sprite when picked up.
+    // One motion-sound spec per built mover: doors and crushing ceilings from
+    // their sector props (blaze = the ×4 speeds, the 141 crusher is silent),
+    // lifts as plats, rising floors and stair steps as floors. Every other
+    // closing "door" (the 40-44/72 ceiling specials share the door family)
+    // keeps the door voice — an accepted deviation on those rare specials.
+    _registerMoverSounds(analysis, doors, lifts, risingFloors, stairs) {
+        if (this._game === null) {
+            return;
+        }
+        const sounds = new DoomMoverSounds(this._profile.doorSoundStyle());
+        const wire = (built, spec) => {
+            for (const item of built) {
+                sounds.register(item.code, spec(item));
+            }
+        };
+        wire(doors, (door) => {
+            const props   = (analysis.doorProps[parseInt(door.code.slice('door_'.length), 10)] ?? {});
+            const ceiling = ((props.anim === 'crusher') || (props.ceilingRaise === true) || (props.ceilingSound === true));
+            return {
+                kind:   ((ceiling) ? 'ceiling' : 'door'),
+                blaze:  ((props.speed ?? 2) >= 8),
+                silent: (props.silent === true)
+            };
+        });
+        wire(lifts, () => ({kind: 'plat', blaze: false, silent: false}));
+        wire(risingFloors, () => ({kind: 'floor', blaze: false, silent: false}));
+        wire(stairs, () => ({kind: 'floor', blaze: false, silent: false}));
+        this._game.setMoverSounds(sounds);
+    }
+
+    // Ambient sound points (profile table, ednum → loop/random spec): the
+    // things the catalog skips on purpose — no body, only a place that sounds.
+    _registerAmbientSounds(level) {
+        const table = this._profile.ambientSounds();
+        const kinds = Object.keys(table);
+        if ((kinds.length === 0) || (this._game === null)) {
+            return;
+        }
+        const ambient = new DoomAmbientSounds();
+        let count = 0;
+        for (const thing of level.things) {
+            const spec = table[thing.type];
+            if (spec === undefined) {
+                continue;
+            }
+            const sect = this._findSector(thing.x, thing.y);
+            const pos  = WadGeometry.doomToWorld(thing.x, thing.y, ((sect !== null) ? sect.fh : 0));
+            ambient.add((spec.loop ?? spec.random), ((spec.loop !== undefined) ? 'loop' : 'random'), pos);
+            count++;
+        }
+        if (count > 0) {
+            this._game.setAmbientSounds(ambient);
+        }
+    }
+
     _registerThings(level, palette, analysis, builtFloorCodes) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0, monsters: 0};

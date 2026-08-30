@@ -152,6 +152,11 @@ class DoomMonsterAttack {
         this._hit(m, this._rng.damageRoll(args.damage ?? m.def.getParams().melee));
     }
 
+    // MeleeSound of a landed bite (zscript A_CustomMeleeAttack).
+    _playMeleeSound(m) {
+        this._system.playMonsterSound(m, 'melee', 'weapon');
+    }
+
     // A_TroopAttack / A_HeadAttack / A_BruisAttack / A_CustomComboAttack /
     // A_WizAtk3: claw when close, throw the def's missile otherwise — a spread
     // of them when the state line names one (the disciple's trio).
@@ -445,6 +450,8 @@ class DoomMonsterAttack {
         if (spec === null) {
             return;
         }
+        // AttackSound of the volley (A_PosAttack and kin).
+        this._system.playMonsterSound(m, 'attack', 'weapon');
         this._hitscan.fireMonster(m, m.target, {
             rays:   (args.rays ?? 1),
             damage: spec.damage,
@@ -554,6 +561,7 @@ class DoomMonsterAttack {
         if ((damage <= 0) || (m.target === null)) {
             return;
         }
+        this._playMeleeSound(m);
         this._damage.damage(m.target, damage, {source: m});
     }
 

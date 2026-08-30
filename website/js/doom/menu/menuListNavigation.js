@@ -236,7 +236,23 @@ class MenuListNavigation {
 
     // Clamped at both ends — no wrap-around; up on the first entry reaches
     // the side button, down past the last one reaches the bottom button.
+    // The cursor sound plays only when the highlight actually moved (a step
+    // against a clamped end stays silent).
     moveSelection(delta) {
+        const before = this._focusSignature();
+        this._moveSelectionStep(delta);
+        if (this._focusSignature() !== before) {
+            doomSound.playUi('menu/cursor');
+        }
+
+        return this;
+    }
+
+    _focusSignature() {
+        return (this._index + '|' + this._onSide + '|' + this._onBottom);
+    }
+
+    _moveSelectionStep(delta) {
         if (this._onSide) {
             if (delta > 0) {
                 this._focusSide(false);
@@ -317,6 +333,7 @@ class MenuListNavigation {
         }
         const entry = this._items[this._index];
         if ((entry !== undefined) && ((entry.adjust ?? null) !== null)) {
+            doomSound.playUi('menu/change');
             entry.adjust(dir);
         }
     }
@@ -339,6 +356,9 @@ class MenuListNavigation {
             this._bottomButton.click();
             return;
         }
+        // A back routed through the bottom button plays its click feedback
+        // (menu/choose); only the button-less path carries the backup sound.
+        doomSound.playUi('menu/backup');
         this._onBack();
     }
 
@@ -376,8 +396,13 @@ class MenuListNavigation {
 
     _selectElement(el) {
         const index = this._items.findIndex((entry) => (entry.el === el));
-        if (index >= 0) {
-            this.selectIndex(index);
+        if (index < 0) {
+            return;
+        }
+        const before = this._focusSignature();
+        this.selectIndex(index);
+        if (this._focusSignature() !== before) {
+            doomSound.playUi('menu/cursor');
         }
     }
 

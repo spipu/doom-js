@@ -101,6 +101,11 @@ class DoomProjectileSystem {
             // pre-damping energy floor), maxBounces, spawnKind (balls spat
             // sideways at each bounce)} — null = explode on any impact.
             bounce:           spec.bounce ?? null,
+            // Sound events (logical names): SeeSound at spawn, DeathSound at
+            // detonation, macebounce at each floor bounce.
+            seeSound:         spec.seeSound ?? null,
+            deathSound:       spec.deathSound ?? null,
+            bounceSound:      spec.bounceSound ?? null,
             // Muzzle height in map units above the FEET (A_FireMacePL1 spawns
             // the lobbed ball at Pos + 28); null = the eye (camera) height.
             spawnHeight:      ((spec.spawnHeight !== undefined) ? spec.spawnHeight * scale : null),
@@ -128,6 +133,7 @@ class DoomProjectileSystem {
             // it — WHAT it hatches is not def data, the level's DoomBossBrain
             // draws it per cube.
             hatchAtSpot:      (spec.hatchAtSpot ?? null),
+            hatchSound:       spec.hatchSound ?? null,
             // A standing shot (MinotaurFX3): it never travels, so no segment
             // ever crosses a body — it goes off on whoever OVERLAPS it, within
             // this radius in map units.
@@ -338,6 +344,9 @@ class DoomProjectileSystem {
             keyframes:      [],
         });
         this._active.push(p);
+        if (p.def.seeSound !== null) {
+            doomSound.playAt(p.def.seeSound, [p.x, p.y, p.z]);
+        }
 
         return p;
     }
@@ -575,6 +584,9 @@ class DoomProjectileSystem {
         if ((spec.fog ?? null) !== null) {
             this._effects.spawn(spec.fog, spot.x, spot.y, spot.z);
         }
+        if (p.def.hatchSound !== null) {
+            doomSound.playAt(p.def.hatchSound, [spot.x, spot.y, spot.z]);
+        }
         // The brain is read live, not held: the world builder installs it on
         // the monster system AFTER this system is built.
         const brain = ((this._monsters !== null) ? this._monsters.getBossBrain() : null);
@@ -717,6 +729,9 @@ class DoomProjectileSystem {
         p.y = hit.point[1] + 0.02;
         p.z = hit.point[2];
         p.vy = -p.vy * bounce.damping;
+        if (p.def.bounceSound !== null) {
+            doomSound.playAt(p.def.bounceSound, [p.x, p.y, p.z]);
+        }
 
         // A_MaceBallImpact2's side balls: horizontal speed = the ball's damped
         // up-velocity minus 1 u/tic, perpendicular to its heading (±90°), plus
@@ -774,6 +789,9 @@ class DoomProjectileSystem {
 
     // Death effect + A_Explode blast + the def's shooter-side spray (BFG).
     _detonate(p, ex, ey, ez) {
+        if (p.def.deathSound !== null) {
+            doomSound.playAt(p.def.deathSound, [ex, ey, ez]);
+        }
         this._effects.spawn(p.def.explosion, ex, ey, ez);
         // A_Explode's damage doubles as its reach; D'Sparil's bolt rolls it
         // fresh on every burst (A_Explode(random(80,111))).

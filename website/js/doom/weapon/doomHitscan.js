@@ -45,6 +45,26 @@ class DoomHitscan {
         this._shootRay(def, user, yaw, user.pitch, true);
     }
 
+    // Melee outcome sound (the fist punches only on a hit, the chainsaw roars
+    // either way with two different lumps) — the player's own, position-less.
+    _playMeleeSound(def, melee, hit) {
+        if (!melee) {
+            return;
+        }
+        const sound = ((hit) ? def.getMeleeHitSound() : def.getMeleeMissSound());
+        if (sound !== null) {
+            doomSound.playAt(sound, null, {replaceKey: 'player:weapon'});
+        }
+    }
+
+    // Impact ring at the hit point (Heretic blaster crash) — most weapons
+    // carry none.
+    _playImpactSound(def, point) {
+        if (def.getImpactSound() !== null) {
+            doomSound.playAt(def.getImpactSound(), [point[0], point[1], point[2]]);
+        }
+    }
+
     /**
      * A monster's bullet volley (A_PosAttack / A_SPosAttack / A_CPosAttack).
      * The vertical aim is taken ONCE on the target and shared by every pellet,
@@ -166,12 +186,16 @@ class DoomHitscan {
             this._gunTriggers.onTrace(user.getCameraX(), user.getCameraZ(), endX, endZ);
         }
         if (flesh !== null) {
+            this._playMeleeSound(def, melee, true);
+            this._playImpactSound(def, flesh.point);
             this._hitFlesh(def, user, flesh, [dx, dy, dz], melee);
             return;
         }
+        this._playMeleeSound(def, melee, false);
         if (hit === null) {
             return;
         }
+        this._playImpactSound(def, hit.point);
         // Persistent impact mark on the wall (self-filters floors/ceilings);
         // a null decal type leaves no mark (Heretic melee weapons). Spawned
         // BEFORE the puff: instances draw in id order and an additive puff

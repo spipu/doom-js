@@ -70,6 +70,7 @@ class MenuNavigator {
             .then(() => doomSettings.init(this._storage.getDatabase()))
             .then(() => doomSaveStore.init(this._storage.getDatabase()))
             .then(() => doomSettings.applyToTranslator(appTranslator))
+            .then(() => doomSound.boot())
             .then(onReady)
             .catch(() => {
                 this._showFallback();
@@ -79,6 +80,8 @@ class MenuNavigator {
     }
 
     showWadList() {
+        // Back to the WAD list = no WAD selected any more: its sounds go away.
+        doomSound.reset();
         this._switchTo(this._wadListScreen);
     }
 
@@ -96,6 +99,9 @@ class MenuNavigator {
      * @param {object} meta
      */
     openWadMenu(meta) {
+        // Selecting a WAD loads its sound library in the background — no
+        // modal, the menu sounds become audible as decoding lands.
+        doomSound.loadFromRegistry(this._registry, meta);
         this._switchTo(this._wadMenuScreen.setWad(meta));
     }
 
@@ -176,6 +182,7 @@ class MenuNavigator {
             this._selectedDifficulty = snapshot.skill;
 
             const wadFile = await this._registry.getWadFile(meta.id);
+            doomSound.loadForWad(wadFile, meta.id);
             const game = new DoomGame().setRestoreSnapshot(snapshot);
             await game.startFromWad(wadFile, snapshot.levelCode, meta, {
                 position: [snapshot.player.x, snapshot.player.y + DoomGameSnapshot.SPAWN_Y_MARGIN, snapshot.player.z],
@@ -197,6 +204,7 @@ class MenuNavigator {
     async _launchGame(meta, levelCode, spawnOverride, modal, fallbackToFirst) {
         try {
             const wadFile   = await this._registry.getWadFile(meta.id);
+            doomSound.loadForWad(wadFile, meta.id);
             const levelName = ((fallbackToFirst) ? this._resolveLevel(wadFile, levelCode) : levelCode);
             const game = new DoomGame();
             await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);

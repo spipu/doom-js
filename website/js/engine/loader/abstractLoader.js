@@ -37,6 +37,12 @@ class AbstractLoader {
         return this.get(this._codeRegistry[code]);
     }
 
+    // Id registered under a code, without the getByCode throw — lets a caller
+    // deduplicate before loading.
+    idByCode(code) {
+        return (this._codeRegistry[code] ?? null);
+    }
+
     load(url) {
         const existingId = this._alreadyLoaded(url);
         if (existingId !== null) {

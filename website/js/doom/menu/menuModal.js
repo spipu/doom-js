@@ -18,6 +18,7 @@ class MenuModal {
      * @param {string}   cancelLabel
      */
     confirm(message, onConfirm, confirmLabel = null, cancelLabel = null) {
+        doomSound.playUi('menu/prompt');
         confirmLabel = (confirmLabel ?? appTranslator.get('menu.confirm'));
         cancelLabel  = (cancelLabel ?? appTranslator.get('menu.cancel'));
 

@@ -71,6 +71,10 @@ class Instance extends AbstractLoadedEntity {
         // its final keyframe (game-layer effects like floor texture changes)
         this._onStart           = null;
         this._onComplete        = null;
+        // Vertical motion direction of the animation (-1 down, 0 still, +1 up)
+        // and its change hook (game-layer motion sounds).
+        this._onMotionChange    = null;
+        this._motionDir         = 0;
     }
 
     setOnStart(fn) {
@@ -79,6 +83,26 @@ class Instance extends AbstractLoadedEntity {
 
     setOnComplete(fn) {
         this._onComplete = fn;
+    }
+
+    /**
+     * Called with the new vertical direction (-1/0/+1) every time the keyframe
+     * animation starts moving, reverses, or comes to rest — plateaus included.
+     *
+     * @param {function} fn (dir) => void
+     */
+    setOnMotionChange(fn) {
+        this._onMotionChange = fn;
+    }
+
+    _noteMotionDir(dir) {
+        if (dir === this._motionDir) {
+            return;
+        }
+        this._motionDir = dir;
+        if (this._onMotionChange !== null) {
+            this._onMotionChange(dir);
+        }
     }
 
     finalizeInit() {
@@ -444,6 +468,7 @@ class Instance extends AbstractLoadedEntity {
             return;
         }
 
+        const prevY = this._delta.translate[1];
         if (this._animReverse) {
             this._animTime -= (dt / 1000) * this._animReverseScale;
             if (this._animTime <= this._animKeyframes[0].t) {
@@ -464,6 +489,9 @@ class Instance extends AbstractLoadedEntity {
         }
 
         this._computeWorldCenter();
+
+        const dy = (this._delta.translate[1] - prevY);
+        this._noteMotionDir(((!this._animPlaying || (Math.abs(dy) <= Instance.MOTION_EPSILON)) ? 0 : Math.sign(dy)));
     }
 
     // A once-only trigger that already fired (or was force-stopped) is spent
@@ -594,8 +622,14 @@ class Instance extends AbstractLoadedEntity {
                 }
                 break;
             case 'action':
-                if (inRange && action && this._conditionMet(user)) {
-                    this.start();
+                if (inRange && action) {
+                    // Reported either way: a refused press (locked door) is a
+                    // use failure the world voices at the end of the frame.
+                    const accepted = this._conditionMet(user);
+                    user.noteUseTarget(accepted);
+                    if (accepted) {
+                        this.start();
+                    }
                 }
                 break;
         }
@@ -710,6 +744,7 @@ class Instance extends AbstractLoadedEntity {
     // stopped. Harmless on an instance that is not playing.
     pause() {
         this._animPlaying = false;
+        this._noteMotionDir(0);
     }
 
     // Replay the keyframes backward from the current position. No-op while
@@ -755,6 +790,7 @@ class Instance extends AbstractLoadedEntity {
     stop() {
         this._animTime    = this._animMaxTime;
         this._animPlaying = false;
+        this._noteMotionDir(0);
         if (this._animOnlyOnce) {
             this._animDone = true;
         }
@@ -805,3 +841,7 @@ class Instance extends AbstractLoadedEntity {
 
 // Pose tolerance of _poseIsCycleStart (world units / degrees)
 Instance.POSE_EPSILON = 1e-3;
+
+// Below this per-frame vertical delta the animation counts as still (a wait
+// plateau, not a slow leg) for the motion-change hook.
+Instance.MOTION_EPSILON = 1e-6;

@@ -22,6 +22,7 @@ class MenuDom {
             return;
         }
         MenuDom._pressing = true;
+        doomSound.playUi('menu/choose');
         el.classList.add(pressedClass);
         setTimeout(() => {
             MenuDom._pressing = false;

@@ -1,5 +1,5 @@
 {
-    "version": "v1.607",
+    "version": "v1.619",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -33,6 +33,7 @@
             "/js/doom/wad/wadError.js",
             "/js/doom/wad/wadFile.js",
             "/js/doom/wad/wadDehackedStrings.js",
+            "/js/doom/wad/wadSoundDecoder.js",
             "/js/doom/wad/wadStorage.js",
             "/js/doom/wad/wadRegistry.js",
             "/js/doom/wad/convert/wadConstants.js",
@@ -43,6 +44,11 @@
             "/js/doom/wad/profile/hereticGameProfile.js",
             "/js/doom/wad/gameProfileList.js",
             "/js/doom/doomFinaleTexts.js",
+            "/js/doom/sound/doomSoundCatalog.js",
+            "/js/doom/sound/doomSoundListener.js",
+            "/js/doom/sound/doomSoundSystem.js",
+            "/js/doom/sound/doomMoverSounds.js",
+            "/js/doom/sound/doomAmbientSounds.js",
             "/js/doom/wad/convert/wadSpecialTranslator.js",
             "/js/doom/wad/convert/wadGeometry.js",
             "/js/doom/wad/convert/wadLineCrossing.js",

@@ -140,6 +140,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
         this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildSettingsPage('display.')));
         this._nav.addItemIn(list, appTranslator.get('help.game'), () => this._pushPage('help.game', () => this._buildSettingsPage('game.')));
+        this._nav.addItemIn(list, appTranslator.get('help.sound'), () => this._pushPage('help.sound', () => this._buildSettingsPage('sound.')));
         this._nav.addItemIn(list, appTranslator.get('help.controls'), () => this._pushPage('help.controls', () => this._buildControls()));
         this._nav.addItemIn(list, appTranslator.get('help.reset'), () => this._confirmReset());
         this._nav.selectFirst();
@@ -150,6 +151,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
     _confirmReset() {
         this._confirm(appTranslator.get('help.resetConfirm'), () => {
             doomSettings.resetAll().applyToInputs(new Inputs()).applyToTranslator(appTranslator);
+            doomSound.applyVolumes();
             this._renderPage();
         }, null, appTranslator.get('menu.back'));
     }
@@ -231,6 +233,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
             : doomSettings.nextListValue(def, dir));
 
         doomSettings.set(def.key, next).applyToInputs(inputs).applyToTranslator(appTranslator);
+        doomSound.applyVolumes();
 
         if (def.key === 'display.language') {
             this._restoreIndex = this._nav.getSelectedIndex();

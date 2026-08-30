@@ -369,6 +369,11 @@ class WadMapAnalyzer {
                 anim:         door.anim,
                 close:        (door.kind === 'close'),
                 ceilingRaise: (door.kind === 'ceilingRaise'),
+                // The 141 silent crusher grinds without a movement sound; the
+                // ceiling specials (40/41/43/44/72) hum the floor loop, not
+                // the door voice (sndseq CeilingNormal).
+                silent:       (door.silent === true),
+                ceilingSound: (door.ceiling === true),
                 // Doom units left above the floor at the end of a close
                 // (crush ceilings 44/72 stop at floor + 8).
                 closeMargin:  (door.closeMargin ?? 0),

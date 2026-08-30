@@ -189,7 +189,17 @@ class DoomPlayerWeapon {
     // Generic fire verbs, fully parameterized by the weapon def (pellets,
     // spread, range, puff, decal, projectiles come from the profile data) —
     // no game-specific action name may appear here.
+    // The player's weapon channel: a new sound replaces the previous one, the
+    // vanilla CHAN_WEAPON behaviour (the chainsaw idle re-buzzes every ready).
+    _playActionSound(name) {
+        const sound = this._def().getActionSound(name);
+        if (sound !== null) {
+            doomSound.playAt(sound, null, {replaceKey: 'player:weapon'});
+        }
+    }
+
     _runAction(name, psp) {
+        this._playActionSound(name);
         switch (name) {
             case 'ready':                    this._aWeaponReady();       break;
             case 'lower':                    this._aLower();             break;
@@ -341,6 +351,10 @@ class DoomPlayerWeapon {
         this._pending = null;
         this._motion.dropToBottom();
         this._user.setActiveWeapon(this._ready);
+        const upSound = this._def().getUpSound();
+        if (upSound !== null) {
+            doomSound.playAt(upSound, null, {replaceKey: 'player:weapon'});
+        }
         this._setState(this._weaponPsp, this._def().getEntry().up);
     }
 
