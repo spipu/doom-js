@@ -154,6 +154,12 @@ class DoomMonsterSystem {
         return this;
     }
 
+    // Skill-0 rule: the monsters live their whole vanilla life — wake, chase,
+    // block, die, fire the boss map actions — but never attack.
+    isPacifist() {
+        return ((this._skillRule !== null) && (this._skillRule.monstersPacifist === true));
+    }
+
     // Shared vanilla P_Random table (the locomotion rolls its direction and
     // move counts on it) — set before the world wiring.
     setRandom(rng) {
@@ -338,17 +344,22 @@ class DoomMonsterSystem {
         const rebuilt = new Map(this._monsters.map((m) => [m.code, m]));
         const saved   = new Map(data.monsters.map((rec) => [rec.code, rec]));
 
-        const kept = [];
-        for (const m of this._monsters) {
-            const rec = saved.get(m.code);
-            if (rec === undefined) {
-                this._despawn(m);
-                continue;
+        // A save from the old monster-free skill 0 carries NO record at all
+        // (a cleared level still exports its corpses): the freshly built
+        // monsters then stay as they are instead of being despawned.
+        if (data.monsters.length > 0) {
+            const kept = [];
+            for (const m of this._monsters) {
+                const rec = saved.get(m.code);
+                if (rec === undefined) {
+                    this._despawn(m);
+                    continue;
+                }
+                this._restoreRecord(m, rec);
+                kept.push(m);
             }
-            this._restoreRecord(m, rec);
-            kept.push(m);
+            this._monsters = kept;
         }
-        this._monsters = kept;
 
         for (const rec of data.monsters) {
             if (rebuilt.has(rec.code)) {

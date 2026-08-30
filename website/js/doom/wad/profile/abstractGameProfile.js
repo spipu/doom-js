@@ -238,11 +238,11 @@ class AbstractGameProfile {
 
     /**
      * Per-skill gameplay rules, transcribed from the game's UZDoom MAPINFO
-     * skill blocks. Skill 0 is our own "Labyrinth but no monster" mode: the
-     * skill-1 world (spawn filter, ammo, damage) with monsters disabled.
+     * skill blocks. Skill 0 is our own "Pacifist monsters" mode: the skill-3
+     * world (spawn filter, ammo, damage) with monsters that never attack.
      *
      * @returns {object} skill (0-5) → {spawnFilterBit, ammoFactor, damageFactor,
-     *                   monstersEnabled, fastMonsters, instantReaction,
+     *                   monstersPacifist, fastMonsters, instantReaction,
      *                   respawnTicsDelay, easyBossBrain}
      */
     skillRules() {

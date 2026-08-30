@@ -161,7 +161,7 @@ class DoomTranslations {
             // "I'm too young to die", "Hey, not too rough", "Hurt me plenty",
             // "Ultra-Violence" and "Nightmare!"; skill 0 is our own monster-free
             // exploration mode.
-            'difficulty.0':            {fr: 'Sans monstre',                          en: 'No monsters'},
+            'difficulty.0':            {fr: 'Monstres pacifiques',                   en: 'Pacifist monsters'},
             'difficulty.1':            {fr: 'Très facile',                           en: 'Very easy'},
             'difficulty.2':            {fr: 'Facile',                                en: 'Easy'},
             'difficulty.3':            {fr: 'Moyen',                                 en: 'Normal'},

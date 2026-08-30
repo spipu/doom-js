@@ -45,6 +45,10 @@ class DoomMonsterAttack {
     // two bodies must overlap vertically, and the monster must see it. Range
     // comes from the def when it declares one (Heretic's longer arms).
     checkMeleeRange(m) {
+        // Pacifist skill: never in reach, so A_Chase never enters a Melee state.
+        if (this._system.isPacifist()) {
+            return false;
+        }
         const target = m.target;
         if ((target === null) || DoomActorRef.isDead(target)) {
             return false;
@@ -74,6 +78,11 @@ class DoomMonsterAttack {
     // MF_JUSTHIT flag it answers on, so calling it twice in a tic would not
     // give the same answer.
     decideMissileAttack(m) {
+        // Pacifist skill: the jet never fires, so no Missile state is entered
+        // (charges, fans, spat souls and the archvile's fire all live there).
+        if (this._system.isPacifist()) {
+            return false;
+        }
         const target = m.target;
         if ((target === null) || !this._system.checkSightTo(m, target)) {
             return false;
@@ -512,6 +521,11 @@ class DoomMonsterAttack {
     // and the skipping (EasyBossBrain) belong to the level's brain, so this
     // verb only carries the shot.
     _brainSpit(m, args) {
+        // The eye's state chain skips the attack gates, but spitting IS its
+        // attack: a pacifist eye stays silent (a hatched cube would telefrag).
+        if (this._system.isPacifist()) {
+            return;
+        }
         if ((this._system.getBossBrain() === null) || (this._projectiles === null)) {
             return;
         }
