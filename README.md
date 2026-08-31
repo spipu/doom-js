@@ -54,7 +54,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
 - **Options & persistent settings**: Display, Game, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity.
-- **Translation (en / fr / it)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
+- **Translation (en / fr / it / es)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
 - **Robustness**: a failed level build reports its cause and returns to the WAD list; every menu screen shows the aggregated version, the webapp stats and the copyright.
 
 ## Controls
@@ -128,7 +128,7 @@ website/
     │   ├── doomGame.js          Level lifecycle, game loop, catalogs, pickups
     │   ├── doomUser.js          Player equipment state
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
-    │   ├── doomTranslations.js  Every user-facing text (en + fr + it)
+    │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
