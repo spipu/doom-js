@@ -351,7 +351,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._addLines(['help.guide.wad', 'help.guide.freedoom'], {
             addFile: appTranslator.get('menu.wad.addFile')
         });
-        this._addExternalLink(MenuOptionsModal.FREEDOOM_URL);
+        this._addExternalLink(DoomExternalLinks.FREEDOOM);
         this._addLines(['help.guide.own', 'help.guide.install', 'help.guide.controls'], {
             addUrl: appTranslator.get('menu.wad.addUrl')
         });
@@ -362,7 +362,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
     _buildAbout() {
         this._addLines(['help.about.what', 'help.about.author', 'help.about.source']);
-        this._addExternalLink(MenuOptionsModal.PROJECT_URL);
+        this._addExternalLink(DoomExternalLinks.PROJECT);
         this._addLines(['help.about.licence', 'help.about.wads']);
         this._addLines(['help.about.copyright'], {year: new Date().getFullYear()});
     }
@@ -378,6 +378,3 @@ class MenuOptionsModal extends AbstractMenuListModal {
         MenuDom.addLink(this._bodyEl, 'doom-menu-modal-link', url, url);
     }
 }
-
-MenuOptionsModal.FREEDOOM_URL = 'https://freedoom.github.io/';
-MenuOptionsModal.PROJECT_URL  = 'https://github.com/spipu/doom-js';

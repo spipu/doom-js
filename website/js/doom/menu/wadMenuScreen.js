@@ -39,6 +39,9 @@ class WadMenuScreen extends AbstractMenuScreen {
         this._addListItem(listEl, appTranslator.get('help.about'), () => {
             this._openAbout();
         });
+        this._addListItem(listEl, appTranslator.get('menu.game.reportBug'), () => {
+            window.open(DoomExternalLinks.ISSUES, '_blank', 'noopener');
+        });
         this._addBackButton(panel, appTranslator.get('menu.game.quit', {wad: this._wadTitle(this._wadMeta)}));
 
         this._nav.selectFirst();

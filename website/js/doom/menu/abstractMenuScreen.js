@@ -159,7 +159,7 @@ class AbstractMenuScreen {
         if (this._footerEl === null) {
             return;
         }
-        this._footerEl.textContent = appBootstrap.getVersion()
+        this._footerEl.textContent = 'beta ' + appBootstrap.getVersion()
             + ' — ' + appBootstrap.getStatsText()
             + ' — © ' + new Date().getFullYear() + ' Spipu';
     }

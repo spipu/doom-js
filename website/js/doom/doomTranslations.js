@@ -166,6 +166,12 @@ class DoomTranslations {
                 it: 'Esci da {wad}',
                 es: 'Salir de {wad}'
             },
+            'menu.game.reportBug': {
+                fr: 'Déclarer un bug',
+                en: 'Report a bug',
+                it: 'Segnala un bug',
+                es: 'Informar de un error'
+            },
 
             // Save slots modal (load from the WAD menu or the pause menu,
             // save from the pause menu)
