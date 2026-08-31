@@ -56,6 +56,11 @@ class WadStorage {
             }
             throw new WadError('storage-unavailable', 'Unable to save the WAD: ' + error.message);
         }
+
+        // The user just chose to store tens of megabytes: the one moment where
+        // asking is understandable. Not awaited — the WAD is already saved, and
+        // the answer to a permission prompt must not hold the screen back.
+        AppDatabase.requestPersistentStorage();
     }
 
     /**

@@ -136,6 +136,36 @@ class AppDatabase {
         });
     }
 
+    /**
+     * Asks the browser to exempt this origin from storage eviction. Without it
+     * the storage is best-effort: a large store can be dropped when the disk is
+     * under pressure, or after a while without a visit.
+     *
+     * Origin-wide, hence static — it covers every database AND the Service
+     * Worker cache at once. Call it on a deliberate user action that stores
+     * something big: Firefox raises a permission prompt, which only makes sense
+     * to the user at that moment.
+     *
+     * @returns {Promise<boolean>} true when the origin is persisted
+     */
+    static async requestPersistentStorage() {
+        if (!navigator.storage || !navigator.storage.persist) {
+            return false;
+        }
+
+        try {
+            if (await navigator.storage.persisted()) {
+                return true;
+            }
+
+            return await navigator.storage.persist();
+        } catch (error) {
+            console.warn('AppDatabase - unable to request persistent storage: ' + error.message);
+
+            return false;
+        }
+    }
+
     promisifyTransaction(transaction) {
         return new Promise((resolve, reject) => {
             transaction.oncomplete = () => {
