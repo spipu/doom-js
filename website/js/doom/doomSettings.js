@@ -52,7 +52,7 @@ class DoomSettings {
     static get DEFINITIONS() {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
-            {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'fr', label: 'Français'}, {code: 'en', label: 'English'}]},
+            {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'en', label: 'English'}, {code: 'fr', label: 'Français'}, {code: 'it', label: 'Italiano'}]},
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},

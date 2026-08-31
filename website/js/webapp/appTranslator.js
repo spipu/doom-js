@@ -146,8 +146,9 @@ class AppTranslator {
 }
 
 AppTranslator.LOCALES = {
+    en: 'en-GB',
     fr: 'fr-FR',
-    en: 'en-GB'
+    it: 'it-IT'
 };
 
 const appTranslator = new AppTranslator();
