@@ -213,8 +213,9 @@ class DoomPlayerWeapon {
             case 'fireHitscanFlash2':        this._aFireHitscanFlash('flash2'); break;
             case 'fireProjectiles':          this._aFireProjectiles();   break;
             case 'fireProjectilesRandFlash': this._aFireProjectilesRandFlash(); break;
-            // No-op: muzzle-flash extralight and reload sounds (no audio yet).
-            // The state timing and the flash sprite are still played.
+            // The muzzle-flash extralight has no engine equivalent; the four
+            // others carry nothing but the sound _playActionSound just rang.
+            // The state timing and the flash sprite are played either way.
             case 'light1':
             case 'light2':
             case 'bfgSound':
