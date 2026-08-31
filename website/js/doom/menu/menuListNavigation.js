@@ -46,8 +46,8 @@ class MenuListNavigation {
         this._escapeAsBack = false;
         this._items        = [];
         this._index        = -1;
-        this._sideButton   = null;
-        this._onSide       = false;
+        this._sideButtons  = [];
+        this._sideIndex    = -1;
         this._bottomButton = null;
         this._onBottom     = false;
         this._horizontal   = false;
@@ -106,22 +106,34 @@ class MenuListNavigation {
         return this;
     }
 
+    // Only the list: the side and bottom buttons are not list content, and this
+    // runs on every refresh — dropping their highlight there would undo a focus
+    // deliberately placed by the screen. A rebuild resets them through
+    // setSideButtons / setBottomButton anyway.
     clear() {
-        this._focusSide(false);
-        this._focusBottom(false);
         this._items = [];
         this._index = -1;
 
         return this;
     }
 
-    // Optional target sitting above the list, reached by pressing Up on the
-    // first entry (and Down to come back): the WAD screen's help button.
-    // Highlighted through a dedicated class; Enter / validate clicks it, so
-    // the press feedback plays like a mouse click.
-    setSideButton(el) {
-        this._sideButton = el;
-        this._onSide     = false;
+    // Optional targets sitting above the list, in visual left-to-right order,
+    // reached by pressing Up on the first entry (and Down to come back): the
+    // WAD screen's language and help buttons. They form a row, so Left / Right
+    // walks it. Highlighted through a dedicated class; Enter / validate clicks
+    // the focused one, so the press feedback plays like a mouse click.
+    setSideButtons(elements) {
+        this._sideButtons = elements;
+        this._sideIndex   = -1;
+
+        return this;
+    }
+
+    // Puts the highlight on one of the side buttons, so an action that rebuilds
+    // its own screen can hand the focus back where the user left it. An element
+    // that is not in the row simply clears the highlight.
+    focusSideButton(el) {
+        this._focusSideAt(this._sideButtons.indexOf(el));
 
         return this;
     }
@@ -177,8 +189,10 @@ class MenuListNavigation {
         return this;
     }
 
+    // Initial selection only: a highlight deliberately put on a side or bottom
+    // button wins over the convenience of landing on the first entry.
     selectFirst() {
-        if (this._items.length > 0) {
+        if ((this._items.length > 0) && (this._sideIndex === -1) && !this._onBottom) {
             this.selectIndex(0);
         }
 
@@ -190,7 +204,7 @@ class MenuListNavigation {
     }
 
     selectIndex(index) {
-        this._focusSide(false);
+        this._focusSideAt(-1);
         this._focusBottom(false);
         if (this._index === index) {
             return this;
@@ -249,13 +263,13 @@ class MenuListNavigation {
     }
 
     _focusSignature() {
-        return (this._index + '|' + this._onSide + '|' + this._onBottom);
+        return (this._index + '|' + this._sideIndex + '|' + this._onBottom);
     }
 
     _moveSelectionStep(delta) {
-        if (this._onSide) {
+        if (this._sideIndex !== -1) {
             if (delta > 0) {
-                this._focusSide(false);
+                this._focusSideAt(-1);
             }
             return this;
         }
@@ -268,7 +282,7 @@ class MenuListNavigation {
         const count = this._items.length;
         if (count === 0) {
             if (delta < 0) {
-                this._focusSide(true);
+                this._focusSideFromList();
             }
             if (delta > 0) {
                 this._focusBottom(true);
@@ -279,7 +293,7 @@ class MenuListNavigation {
             return this.selectIndex(((delta > 0) ? 0 : count - 1));
         }
         if ((delta < 0) && (this._index === 0)) {
-            this._focusSide(true);
+            this._focusSideFromList();
             return this;
         }
         if ((delta > 0) && (this._index === count - 1)) {
@@ -291,8 +305,8 @@ class MenuListNavigation {
     }
 
     activateSelection() {
-        if (this._onSide && (this._sideButton !== null)) {
-            this._sideButton.click();
+        if (this._sideButtons[this._sideIndex] !== undefined) {
+            this._sideButtons[this._sideIndex].click();
             return this;
         }
         if (this._onBottom && (this._bottomButton !== null)) {
@@ -324,11 +338,17 @@ class MenuListNavigation {
     // Left/Right: the selection itself in a horizontal list, otherwise the
     // selected entry's value adjustment (a settings row cycling its value).
     _stepSideways(dir) {
+        // The corner buttons are a row: Left / Right walks it, whatever the
+        // axis of the list underneath.
+        if (this._sideIndex !== -1) {
+            this._focusSideAt(Math.max(0, Math.min(this._sideButtons.length - 1, this._sideIndex + dir)));
+            return;
+        }
         if (this._horizontal) {
             this.moveSelection(dir);
             return;
         }
-        if (this._onSide || this._onBottom) {
+        if (this._onBottom) {
             return;
         }
         const entry = this._items[this._index];
@@ -341,7 +361,7 @@ class MenuListNavigation {
     // Validate (Enter / gamepad button 0) on a page without any list entry
     // (the About popup): the back action is the only thing to validate.
     _validate() {
-        if ((this._items.length === 0) && !this._onSide && !this._onBottom) {
+        if ((this._items.length === 0) && (this._sideIndex === -1) && !this._onBottom) {
             this._goBack();
             return;
         }
@@ -364,17 +384,30 @@ class MenuListNavigation {
 
     // --- Internal ---
 
-    // Moves the highlight between the list and the side button: the list
-    // keeps its index, only the visible highlight switches.
-    _focusSide(on) {
-        if ((this._sideButton === null) || (on === this._onSide)) {
+    // Entering the row from the list lands on its last button — the rightmost
+    // one, the help the screen has always carried there.
+    _focusSideFromList() {
+        this._focusSideAt(this._sideButtons.length - 1);
+    }
+
+    // Moves the highlight between the list and the side buttons: -1 leaves the
+    // row. The list keeps its index, only the visible highlight switches.
+    _focusSideAt(index) {
+        if (index === this._sideIndex) {
             return;
         }
-        this._onSide = on;
-        this._sideButton.classList.toggle('doom-menu-button-focus', on);
+        const previous = this._sideButtons[this._sideIndex];
+        if (previous !== undefined) {
+            previous.classList.remove('doom-menu-button-focus');
+        }
+        this._sideIndex = index;
+        const current = this._sideButtons[index];
+        if (current !== undefined) {
+            current.classList.add('doom-menu-button-focus');
+        }
         const entry = this._items[this._index];
         if (entry !== undefined) {
-            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), !on);
+            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), (this._sideIndex === -1));
         }
     }
 

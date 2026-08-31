@@ -414,14 +414,44 @@
     background: rgba(192, 57, 43, 0.15);
 }
 
-/* --- Help button + options modal --- */
+/* --- Corner buttons + options modal --- */
 
-/* Placement only: the metrics and the visual states come from
-   doom-menu-button, so the label matches every other button. */
-.doom-menu-help-button {
+/* Globe marking the language button as a switch: the autonym alone reads as a
+   label, not as a command. Drawn rather than taken from the emoji font, whose
+   glyph carries its own blue and ignores `color`: these strokes are
+   currentColor, so the mark follows the button's theme and its hover. */
+.doom-menu-language {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.doom-menu-language::before {
+    /* One masked SVG rather than a border plus two gradients: the three strokes
+       then share a single stroke-width, where an elliptical gradient scales its
+       stops per axis and thickens the meridian at the poles. The mask paints
+       currentColor, so the mark still follows the button. */
+    --globe: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.6"><circle cx="12" cy="12" r="10.5"/><ellipse cx="12" cy="12" rx="5.2" ry="10.5"/><path d="M1.5 12h21"/></svg>');
+    content: '';
+    flex: 0 0 auto;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask: var(--globe) center / contain no-repeat;
+    mask: var(--globe) center / contain no-repeat;
+}
+
+/* Screen-level buttons (language, then help) in a row anchored to the
+   top-right corner, so help keeps the exact spot it has always had. Placement
+   only: the metrics and the visual states come from doom-menu-button, and each
+   button keeps its natural width. */
+.doom-menu-corner {
     position: absolute;
     top: 0.4em;
     right: 0.5em;
+    display: flex;
+    flex-direction: row;
+    gap: 0.4em;
 }
 
 /* Tall column layout: the body grows, the actions stick to the bottom right.
