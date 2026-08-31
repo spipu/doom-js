@@ -1,7 +1,7 @@
 {
  "name": "Spipu-Doom",
  "short_name": "Spipu-Doom",
- "description": "Doom-like FPS on the Proto3d engine by Spipu",
+ "description": "Doom in the browser — any Doom-format WAD converted on the fly, by Spipu",
  "theme_color": "#000000",
  "background_color": "#000000",
  "display": "standalone",

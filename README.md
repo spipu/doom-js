@@ -1,10 +1,10 @@
-# lib3d_js
+# Spipu-Doom
 
-A pure-JavaScript 3D rendering engine — no external dependency, just for fun.
+Doom in the browser, in pure JavaScript — no framework, no build step, no server side.
 
-Renders 3D objects with lights, textures, and projection entirely in the browser using the HTML5 `<canvas>` API. Includes a full FPS physics engine with collision detection, gravity, jumping, crouching, and animated objects.
+Spipu-Doom (`index.html`) ships as a PWA and converts **any Doom-format WAD on the fly, entirely in the browser**: WAD files are stored in IndexedDB, parsed in JS (geometry, textures, doors, lifts, switches, monsters, weapons, sounds and music) and turned directly into in-memory engine objects — no server-side conversion, no generated files. Everything game-specific lives in **game profiles** (Doom, Freedoom, **Heretic**…) auto-detected from the WAD content, so other Doom-engine games plug in without touching the converter.
 
-The main demo (Spipu-Doom, `index.html`) ships as a PWA and converts **any Doom-format WAD on the fly, entirely in the browser**: WAD files are stored in IndexedDB, parsed in JS (geometry, textures, doors, lifts, switches, weapons, and world things rendered as camera-facing sprites), and turned directly into in-memory engine objects — no server-side conversion, no generated files. Everything game-specific lives in **game profiles** (Doom, Freedoom, **Heretic**…) auto-detected from the WAD content, so other Doom-engine games plug in without touching the converter.
+It runs on **Spipu3D** (`js/engine/`), the 3D engine written for it: renderer, FPS physics, entities, inputs and audio, with no knowledge of Doom whatsoever. The demos in `_examples/` drive that same engine on other scenes.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ python3 -m http.server 8080
 
 Then open `http://localhost:8080` in a browser, add a WAD file (local file or URL), select it, start a new game (episode, then difficulty), and play.
 
-## Spipu-Doom (`index.html`)
+## Features
 
 - **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Mouse, keyboard, gamepad and touch drive every menu the same way.
 - **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a pacifist skill 0 — the normal-skill world, but the monsters never attack — with the original per-skill rules.
@@ -46,21 +46,9 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 - **Translation (fr / en)**: every user-facing text goes through a translation catalog addressed by code; locale-dependent formats go through `Intl`.
 - **Robustness**: a failed level build reports its cause and returns to the WAD list; every menu screen shows the aggregated version, the webapp stats and the copyright.
 
-## Demo pages
+## Controls
 
-| Page | Description |
-|---|---|
-| `index.html` | Spipu-Doom — WAD menu + on-the-fly level conversion, PWA, 1920×1080 virtual screen |
-| `_examples/index.html` | Home page — links to all demos |
-| `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
-| `_examples/example.html` | Static render of the Lotus F1 |
-| `_examples/lights.html` | Coloured light sources demo (arrow keys move lights) |
-| `_examples/game.html` | Interactive van — drive it with the arrow keys |
-| `_examples/world.html` | First-person navigation inside a 3D labyrinth |
-
-## Controls (index.html / _examples/world.html)
-
-Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key.
+Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key. The `_examples/world.html` demo answers to the same keys.
 
 | Keyboard / mouse | Gamepad | Action |
 |---|---|---|
@@ -80,9 +68,11 @@ Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY
 
 The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices select the virtual gamepad (see **Inputs** above). On iOS the touch mapping and the menus stay aligned with the display across device rotation.
 
-## Renderer modes
+## The Spipu3D engine
 
-Four rendering modes are available via the **Renderer** selector on `objects.html`:
+`js/engine/` is a standalone 3D engine with no external dependency: it renders textured, lit 3D objects entirely in the browser through the HTML5 `<canvas>` API, and carries a full FPS physics engine (collision detection, gravity, jumping, crouching, animated objects). It never depends on `js/doom/`: it exposes parameterisable primitives (depth shading, per-instance light and render offset, external forces, screen sprites…) that the game layer feeds with its own constants.
+
+Four rendering modes are available, selectable via the **Renderer** selector on `_examples/objects.html`:
 
 | Mode | Description |
 |---|---|
@@ -92,6 +82,19 @@ Four rendering modes are available via the **Renderer** selector on `objects.htm
 | `fast` | Wireframe — no lighting, canvas 2D paths only |
 
 Whatever the mode, instances are frustum-culled in camera space before any per-vertex work; the static level map is one single object, always drawn whole.
+
+### Demo pages
+
+| Page | Description |
+|---|---|
+| `_examples/index.html` | Home page — links to all demos |
+| `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
+| `_examples/example.html` | Static render of the Lotus F1 |
+| `_examples/lights.html` | Coloured light sources demo (arrow keys move lights) |
+| `_examples/game.html` | Interactive van — drive it with the arrow keys |
+| `_examples/world.html` | First-person navigation inside a 3D labyrinth |
+
+Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
 
 ## Architecture
 
@@ -103,7 +106,7 @@ website/
 ├── appServiceWorker.js       Service Worker — cache-first, offline (must stay at webroot: SW scope)
 ├── css/                      Shell + menu styles
 ├── assets/uzdoom/            UZDoom impact-decal graphics + finale texts (GPL v3 — own LICENSE.md + README.md)
-├── _examples/                Simple demos + their assets and bootstrap definitions
+├── _examples/                Spipu3D demos + their assets and bootstrap definitions
 └── js/
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
     ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
@@ -124,7 +127,7 @@ website/
     │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, save slots)
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
-    └── engine/               Game-agnostic 3D engine
+    └── engine/               Spipu3D — the game-agnostic 3D engine
         ├── libBootstrap.json    Engine bootstrap definition (version + file lists)
         ├── engine3d.js          Viewport, lights, render loop, frustum culling
         ├── collision.js         FPS physics: spatially indexed triangles, box blockers, mover pressure
@@ -137,8 +140,6 @@ website/
         ├── hud/                 HUD bases (debug overlay, screen flash)
         └── renderer/            webgl / full / flat / fast renderers
 ```
-
-Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
 
 ## In-memory loading
 
