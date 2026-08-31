@@ -84,15 +84,22 @@
        by fractional em positions (sub-pixel borders on phones). */
     padding: 0.1em 0;
     margin-bottom: 0.7em;
+}
+
+/* Scrollbar skin shared by every scrolling menu area. */
+.doom-menu-list,
+.doom-menu-modal-options-body {
     scrollbar-width: thin;
     scrollbar-color: rgba(192, 57, 43, 0.4) transparent;
 }
 
-.doom-menu-list::-webkit-scrollbar {
+.doom-menu-list::-webkit-scrollbar,
+.doom-menu-modal-options-body::-webkit-scrollbar {
     width: 0.2em;
 }
 
-.doom-menu-list::-webkit-scrollbar-thumb {
+.doom-menu-list::-webkit-scrollbar-thumb,
+.doom-menu-modal-options-body::-webkit-scrollbar-thumb {
     background: rgba(192, 57, 43, 0.4);
     border-radius: 0.1em;
 }
@@ -407,22 +414,14 @@
     background: rgba(192, 57, 43, 0.15);
 }
 
-/* --- About button (?) + options modal --- */
+/* --- Help button + options modal --- */
 
-/* Geometry only: the visual states come from doom-menu-button. */
+/* Placement only: the metrics and the visual states come from
+   doom-menu-button, so the label matches every other button. */
 .doom-menu-help-button {
     position: absolute;
     top: 0.4em;
     right: 0.5em;
-    width: 1.6em;
-    height: 1.6em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    line-height: 1;
-    letter-spacing: 0;
-    font-size: 1.65em;
 }
 
 /* Tall column layout: the body grows, the actions stick to the bottom right.
@@ -440,10 +439,12 @@
     justify-content: flex-end;
 }
 
-/* Page body: fills the modal, its list scrolls internally. */
+/* Page body: fills the modal and scrolls. A page built as a list keeps its own
+   internal scroll, so the body never overflows and shows no second bar. */
 .doom-menu-modal-options-body {
     flex: 1 1 auto;
     min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     margin-bottom: 1em;
@@ -456,6 +457,43 @@
 }
 
 /* Generic text line of a modal page (about, controls...). */
+/* Uppercase and faint like the empty label above it would drown a sentence.
+   One element per line: each language breaks where it reads best. */
+.doom-menu-empty-hint {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.8em;
+    line-height: 1.45;
+    text-align: center;
+    padding: 0 1.5em;
+}
+
+.doom-menu-empty-hint:last-child {
+    padding-bottom: 1.2em;
+}
+
+.doom-menu-modal-heading {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: left;
+    margin: 1.2em 0 0.6em;
+}
+
+.doom-menu-modal-link {
+    display: block;
+    color: #c0392b;
+    font-size: 0.85em;
+    letter-spacing: 0.08em;
+    text-align: left;
+    margin-bottom: 0.9em;
+    word-break: break-all;
+}
+
+.doom-menu-modal-link:hover {
+    color: #e74c3c;
+}
+
 .doom-menu-modal-line {
     color: rgba(255, 255, 255, 0.75);
     font-size: 0.85em;

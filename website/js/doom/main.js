@@ -31,13 +31,12 @@ function loadApp()
 {
     installViewportStabilizer();
 
-    // Texts first: French is the reference language of the catalog, so it is
-    // the fallback of a missing translation; the default UI language is
-    // English (the options only become reachable after picking a WAD). The
-    // saved language lands once the settings are read from the database
+    // Texts first: English is both the default UI language and the fallback of
+    // a missing translation, so a hole never shows French to a foreign visitor.
+    // The saved language lands once the settings are read from the database
     // (MenuNavigator._boot).
     appTranslator.addCatalog(DoomTranslations.CATALOG)
-        .setFallbackLanguage('fr')
+        .setFallbackLanguage('en')
         .setLanguage('en');
 
     // Decode the impact-decal graphics once (level-independent); ready well

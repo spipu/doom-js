@@ -133,6 +133,14 @@ class AbstractMenuScreen {
         return MenuDom.addText(listEl, 'doom-menu-empty', text);
     }
 
+    _openAbout() {
+        this._openModal(new MenuOptionsModal(this._display)).showAbout();
+    }
+
+    _openHelp() {
+        this._openModal(new MenuOptionsModal(this._display)).showHelp();
+    }
+
     _clearList(listEl) {
         listEl.innerHTML = '';
         this._nav.clear();
