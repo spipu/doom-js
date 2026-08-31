@@ -16,7 +16,7 @@ Nothing to download and nothing to configure — the game runs in the page.
    - **iOS / iPadOS** — use **Safari** (the option is unreliable in the other iOS browsers): tap the *Share* button, scroll down the sheet, *Add to Home Screen*, then *Add*. Launch it from the new icon. iOS ignores the landscape request, so turn the device to landscape yourself.
    - **Android** — use **Chrome** (Edge and Samsung Internet work too): accept the install banner if it appears, otherwise *⋮* → *Install app* (older versions say *Add to Home screen*), then *Install*. It comes up in landscape on its own.
    - **Desktop** — Chrome and Edge: the install icon in the address bar, or *⋮* → *Install*. Firefox has no PWA install; just play in the tab.
-2. **Add a WAD.** No game data ships with Spipu-Doom. [Freedoom](https://freedoom.github.io/) is free and BSD licensed: download it, unzip it, then load `freedoom1.wad` or `freedoom2.wad` with *Local file*. *Add by URL* takes any Doom-format WAD reachable over HTTP with CORS enabled. Doom, Doom II, Heretic and Hexen WADs work the same way, if you own them.
+2. **Add a WAD.** No game data ships with Spipu-Doom. [Freedoom](https://freedoom.github.io/) is free and BSD licensed: download it, unzip it, then load `freedoom1.wad` or `freedoom2.wad` with *Local file*. *Add by URL* takes any Doom-format WAD reachable over HTTP with CORS enabled. Doom, Doom II and Heretic WADs work the same way, if you own them.
 3. **Select the WAD**, then *New game* → episode → skill, and play.
 
 Once it is installed and a WAD is stored, it needs no network at all: the app files are Service-Worker cached and the WAD lives in IndexedDB.

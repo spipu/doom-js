@@ -347,10 +347,10 @@ class DoomTranslations {
                 es: 'Lo más sencillo es Freedoom: un juego completo, gratuito y legal, al estilo de Doom. Descárgalo desde el sitio de abajo, abre el archivo ZIP obtenido y dentro encontrarás «freedoom1.wad». Vuelve aquí, haz clic en «{addFile}» y elige ese archivo.'
             },
             'help.guide.own': {
-                fr: 'Si vous possédez déjà Doom, Doom II, Heretic ou Hexen, leur fichier WAD fonctionne exactement pareil. « {addUrl} » sert à aller chercher un fichier directement sur une adresse internet, quand le site qui l\'héberge le permet.',
-                en: 'If you already own Doom, Doom II, Heretic or Hexen, their WAD file works exactly the same. "{addUrl}" fetches a file straight from a web address, when the site hosting it allows it.',
-                it: 'Se possiedi già Doom, Doom II, Heretic o Hexen, il loro file WAD funziona esattamente allo stesso modo. «{addUrl}» serve a prelevare un file direttamente da un indirizzo internet, quando il sito che lo ospita lo consente.',
-                es: 'Si ya posees Doom, Doom II, Heretic o Hexen, su archivo WAD funciona exactamente igual. «{addUrl}» sirve para traer un archivo directamente desde una dirección de internet, cuando el sitio que lo aloja lo permite.'
+                fr: 'Si vous possédez déjà Doom, Doom II ou Heretic, leur fichier WAD fonctionne exactement pareil. « {addUrl} » sert à aller chercher un fichier directement sur une adresse internet, quand le site qui l\'héberge le permet.',
+                en: 'If you already own Doom, Doom II or Heretic, their WAD file works exactly the same. "{addUrl}" fetches a file straight from a web address, when the site hosting it allows it.',
+                it: 'Se possiedi già Doom, Doom II o Heretic, il loro file WAD funziona esattamente allo stesso modo. «{addUrl}» serve a prelevare un file direttamente da un indirizzo internet, quando il sito che lo ospita lo consente.',
+                es: 'Si ya posees Doom, Doom II o Heretic, su archivo WAD funciona exactamente igual. «{addUrl}» sirve para traer un archivo directamente desde una dirección de internet, cuando el sitio que lo aloja lo permite.'
             },
             'help.guide.install': {
                 fr: 'Sur téléphone ou tablette, installez Spipu-Doom pour jouer en plein écran, sans la barre du navigateur : sur iPhone et iPad, avec Safari, touchez le bouton Partager puis « Sur l\'écran d\'accueil » ; sur Android, avec Chrome, ouvrez le menu ⋮ (les trois points) puis « Installer l\'application ». Une icône apparaît, et le jeu fonctionne ensuite même sans connexion internet.',
