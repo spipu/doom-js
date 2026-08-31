@@ -24,8 +24,17 @@ function init()
 {
     world = loader.world().get();
 
-    screen = new ScreenManager('screen', { fullscreen: true });
+    screen = new ScreenManager('screen', {
+        fullscreen: true,
+        virtualWidth: 1920,
+        virtualHeight: 1080
+    });
+    // Walking, jumping and using are live here; the demo has no pause, no
+    // weapon and nothing to shoot.
     inputs = new Inputs().bindScreen(screen);
+    for (const control of ['pause', 'weaponNext', 'fire']) {
+        inputs.setVirtualPadControlAllowed(control, false);
+    }
 
     engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));
     engine.setFov(45.0);

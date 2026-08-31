@@ -151,23 +151,29 @@ class Inputs {
         return this;
     }
 
-    // Jump and crouch targets of the virtual pad. Only that device is
-    // concerned: a physical pad and a keyboard have fixed buttons, and the
-    // game already refuses the move itself.
-    setVirtualPadJumpAllowed(allowed) {
-        this._virtualGamepad.canJump(allowed);
+    /**
+     * Withdraws a control the game has nothing for, so the pad never shows a
+     * target that answers nothing. Only the virtual pad is concerned: a
+     * physical pad and a keyboard have fixed buttons, and the game already
+     * refuses the move itself.
+     *
+     * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
+     *                          'weaponNext' | 'map' | 'fire'
+     * @param {boolean} allowed
+     */
+    setVirtualPadControlAllowed(control, allowed) {
+        this._virtualGamepad.allowControl(control, allowed);
         return this;
     }
 
-    setVirtualPadCrouchAllowed(allowed) {
-        this._virtualGamepad.canCrouch(allowed);
-        return this;
-    }
-
-    // A level with no map must not show a target that answers nothing. The
-    // keyboard and the physical pad need none: their key stays inert.
-    setVirtualPadMapAllowed(allowed) {
-        this._virtualGamepad.canMap(allowed);
+    /**
+     * Same idea for the mouse: a page that never looks with it takes its
+     * pointer lock away, so a click leaves the cursor alone.
+     *
+     * @param {boolean} allowed
+     */
+    setMouseLockAllowed(allowed) {
+        this._mouse.allowLock(allowed);
         return this;
     }
 

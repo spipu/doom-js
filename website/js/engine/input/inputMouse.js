@@ -1,6 +1,9 @@
 class InputMouse {
     constructor() {
         this._canvas = null;
+        // Set outside _reset: it is a page policy, and _reset runs again on
+        // every canvas rebind.
+        this._lockAllowed = true;
         this._reset();
 
         document.addEventListener('pointerlockchange', () => {
@@ -109,10 +112,21 @@ class InputMouse {
         }
     }
 
+    // Withdraws the pointer lock on a page that never looks with the mouse: a
+    // click then leaves the cursor alone instead of capturing it for nothing.
+    allowLock(allowed) {
+        this._lockAllowed = (allowed === true);
+        if (!this._lockAllowed) {
+            this.releaseLock();
+        }
+
+        return this;
+    }
+
     // Grab the pointer lock on the bound canvas. Also callable by the game on
     // a user gesture (resuming from a pause menu) — fails silently without one.
     requestLock() {
-        if (document.pointerLockElement || (this._canvas === null)) {
+        if (!this._lockAllowed || document.pointerLockElement || (this._canvas === null)) {
             return;
         }
         const p = this._canvas.requestPointerLock({ unadjustedMovement: true });
