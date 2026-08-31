@@ -715,7 +715,7 @@ class DoomGame {
         this._inputs.bindScreen(this._screen);
         doomSettings.applyToInputs(this._inputs);
         // Not a setting but a property of the level: no map, no touch target.
-        this._inputs.setVirtualPadMapAllowed(this._automap !== null);
+        this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
 
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._fov       = WadConstants.PLAYER_FOV;

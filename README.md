@@ -48,7 +48,7 @@ Then open `http://localhost:8080` in a browser, add a WAD file (local file or UR
 
 ## Controls
 
-Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key. The `_examples/world.html` demo answers to the same keys.
+Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key. The `lights`, `game` and `world` demos share this input stack, at the default keys: they answer to the gamepad and to the touch pad the same way, each keeping only the controls it has a use for.
 
 | Keyboard / mouse | Gamepad | Action |
 |---|---|---|
@@ -90,9 +90,11 @@ Whatever the mode, instances are frustum-culled in camera space before any per-v
 | `_examples/index.html` | Home page — links to all demos |
 | `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
 | `_examples/example.html` | Static render of the Lotus F1 |
-| `_examples/lights.html` | Coloured light sources demo (WASD moves them) |
-| `_examples/game.html` | Interactive van — drive it with WASD |
+| `_examples/lights.html` | Coloured light sources demo — move them around |
+| `_examples/game.html` | Interactive van — drive it |
 | `_examples/world.html` | First-person navigation inside a 3D labyrinth |
+
+The last three run in a 16:9 letterboxed fullscreen and take keyboard, gamepad or touch pad, exactly like the game.
 
 Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
 

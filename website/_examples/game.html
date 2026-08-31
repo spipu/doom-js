@@ -31,12 +31,21 @@ const obj_da = 0.1;
 
 function init()
 {
-    inputs = new Inputs();
     light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
     light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
     light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
 
-    screen = new ScreenManager('screen', { fullscreen: true });
+    screen = new ScreenManager('screen', {
+        fullscreen: true,
+        virtualWidth: 1920,
+        virtualHeight: 1080
+    });
+    // The demo only steers: every pad target it has no use for is withdrawn
+    // (the aim stick has no such switch and stays).
+    inputs = new Inputs().bindScreen(screen).setMouseLockAllowed(false);
+    for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
+        inputs.setVirtualPadControlAllowed(control, false);
+    }
 
     engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));
     engine.setFov(45.0);

@@ -71,9 +71,18 @@ class InputVirtualGamepad {
         };
         this._fireSensitivity = 1;
 
-        // The map target ships hidden: unlike jumping and crouching, no game
-        // has a map until it asks for one.
-        this._buttonAllowed = {jump: true, crouch: true, map: false};
+        // The map ships hidden: unlike the others, no game has one until it asks.
+        this._buttonAllowed = {
+            jump:       true,
+            crouch:     true,
+            action:     true,
+            pause:      true,
+            weaponNext: true,
+            map:        false
+        };
+        // Fire is the aim stick's upper band, not a button: withdrawn on its own.
+        this._fireAllowed = true;
+        this._aimBandEl   = null;
 
         // touch identifier -> control owned by that finger
         this._touches = new Map();
@@ -138,22 +147,22 @@ class InputVirtualGamepad {
     }
 
     /**
-     * Takes a button away when the game has nothing for it: a hidden target
-     * stops answering touches too, and the state survives the overlay rebuilt
-     * for the next level.
+     * Takes a control away when the game has nothing for it: it stops
+     * answering touches and stops being drawn. Survives the overlay rebuild.
      *
+     * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
+     *                          'weaponNext' | 'map' | 'fire'
      * @param {boolean} allowed
      */
-    canJump(allowed) {
-        return this._allowButton('jump', allowed);
-    }
+    allowControl(control, allowed) {
+        if (control === 'fire') {
+            return this._allowFire(allowed);
+        }
+        if (this._buttonAllowed[control] === undefined) {
+            return this;
+        }
 
-    canCrouch(allowed) {
-        return this._allowButton('crouch', allowed);
-    }
-
-    canMap(allowed) {
-        return this._allowButton('map', allowed);
+        return this._allowButton(control, allowed);
     }
 
     readJoy1X() {
@@ -286,6 +295,8 @@ class InputVirtualGamepad {
 
         band.appendChild(mark);
         overlay.appendChild(band);
+        this._aimBandEl = band;
+        this._applyFireAllowed();
     }
 
     // A dynamic stick has no base of its own at rest, which leaves its whole
@@ -518,7 +529,8 @@ class InputVirtualGamepad {
         if (this._inArea(InputVirtualGamepad.AIM_AREA, nx, ny) && !this._hasKind('aim')) {
             // The band decides the mode ONCE, here: the gesture keeps it until
             // the finger is lifted, wherever it slides.
-            const fire  = (ny < (InputVirtualGamepad.AIM_AREA.y + InputVirtualGamepad.AIM_AREA.h * InputVirtualGamepad.AIM_FIRE_SPLIT));
+            const fire  = (this._fireAllowed
+                && (ny < (InputVirtualGamepad.AIM_AREA.y + InputVirtualGamepad.AIM_AREA.h * InputVirtualGamepad.AIM_FIRE_SPLIT)));
             const owned = { kind: 'aim', ox: px, oy: py, fire: fire };
             this._touches.set(touch.identifier, owned);
             this._placeStick(this._aimStick, px, py, rect);
@@ -577,6 +589,27 @@ class InputVirtualGamepad {
             return;
         }
         this._buttonEls[name].style.visibility = ((this._buttonAllowed[name]) ? 'visible' : 'hidden');
+    }
+
+    _allowFire(allowed) {
+        this._fireAllowed  = (allowed === true);
+        this._buttons.fire = false;
+        // The mode is locked at touchstart, so a gesture in flight would keep
+        // the fire dead zone and its damped output until the finger lifts.
+        for (const owned of this._touches.values()) {
+            if (owned.kind === 'aim') {
+                owned.fire = false;
+            }
+        }
+        this._applyFireAllowed();
+
+        return this;
+    }
+
+    _applyFireAllowed() {
+        if (this._aimBandEl !== null) {
+            this._aimBandEl.style.visibility = ((this._fireAllowed) ? 'visible' : 'hidden');
+        }
     }
 
     // Deflection from the finger's OWN origin (both sticks are relative), the
