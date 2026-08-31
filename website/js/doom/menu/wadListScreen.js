@@ -11,10 +11,11 @@ class WadListScreen extends AbstractMenuScreen {
         super(navigator, display);
 
         this._registry  = registry;
-        this._listEl    = null;
-        this._urlInput  = null;
-        this._fileInput = null;
-        this._buttons   = [];
+        this._listEl        = null;
+        this._urlInput      = null;
+        this._fileInput     = null;
+        this._buttons       = [];
+        this._languageButton = null;
     }
 
     _build() {
@@ -26,13 +27,15 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
-        const helpButton = MenuDom.addButton(
-            this._container,
-            'doom-menu-button doom-menu-help-button',
-            appTranslator.get('help.guide'),
-            () => this._openHelp()
-        );
-        this._nav.setSideButton(helpButton);
+        const corner = this._addElement('div', 'doom-menu-corner');
+        this._languageButton = MenuDom.addButton(corner, 'doom-menu-button doom-menu-language',
+            doomSettings.getListLabel(this._languageDefinition()),
+            () => this._cycleLanguage());
+        this._nav.setSideButtons([
+            this._languageButton,
+            MenuDom.addButton(corner, 'doom-menu-button', appTranslator.get('help.guide'),
+                () => this._openHelp())
+        ]);
 
         this._buildAddForm(panel);
 
@@ -170,6 +173,24 @@ class WadListScreen extends AbstractMenuScreen {
         this._navigator.openWadMenu(meta);
     }
 
+    // Cycles the UI language and rebuilds the screen: every label is built
+    // once, so nothing short of a rebuild follows the new language.
+    _cycleLanguage() {
+        const definition = this._languageDefinition();
+        doomSettings
+            .set(definition.key, doomSettings.nextListValue(definition))
+            .applyToTranslator(appTranslator);
+
+        // The rebuild drops every highlight: hand it back to the button just
+        // pressed, so changing language twice in a row needs no re-aiming.
+        this.show();
+        this._nav.focusSideButton(this._languageButton);
+    }
+
+    _languageDefinition() {
+        return doomSettings.getDefinition(WadListScreen.LANGUAGE_KEY);
+    }
+
     // --- Internal ---
 
     _setBusy(busy) {
@@ -178,3 +199,5 @@ class WadListScreen extends AbstractMenuScreen {
         }
     }
 }
+
+WadListScreen.LANGUAGE_KEY = 'display.language';

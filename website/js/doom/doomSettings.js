@@ -142,6 +142,12 @@ class DoomSettings {
         return DoomSettings.DEFINITIONS.filter((def) => def.key.startsWith(prefix));
     }
 
+    // Exact-key lookup: getDefinitions matches a PREFIX, so it answers with a
+    // family — a caller driving one known setting needs its declaration alone.
+    getDefinition(key) {
+        return (DoomSettings.DEFINITIONS.find((def) => (def.key === key)) ?? null);
+    }
+
     // Raw read (settings UI); an unset key falls back to its default.
     get(key) {
         return ((this._values[key] !== undefined) ? this._values[key] : this._defaults[key]);
