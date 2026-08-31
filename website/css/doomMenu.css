@@ -473,7 +473,7 @@
 
 .doom-menu-modal-heading {
     color: rgba(255, 255, 255, 0.9);
-    font-size: 0.9em;
+    font-size: 1.1em;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     text-align: left;
@@ -483,7 +483,7 @@
 .doom-menu-modal-link {
     display: block;
     color: #c0392b;
-    font-size: 0.85em;
+    font-size: 1em;
     letter-spacing: 0.08em;
     text-align: left;
     margin-bottom: 0.9em;
@@ -496,9 +496,9 @@
 
 .doom-menu-modal-line {
     color: rgba(255, 255, 255, 0.75);
-    font-size: 0.85em;
+    font-size: 1em;
     letter-spacing: 0.08em;
-    line-height: 1.5;
+    line-height: 1.55;
     text-align: left;
     margin-bottom: 0.6em;
 }
