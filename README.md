@@ -90,8 +90,8 @@ Whatever the mode, instances are frustum-culled in camera space before any per-v
 | `_examples/index.html` | Home page — links to all demos |
 | `_examples/objects.html` | Object viewer — pick an object, resolution and renderer |
 | `_examples/example.html` | Static render of the Lotus F1 |
-| `_examples/lights.html` | Coloured light sources demo (arrow keys move lights) |
-| `_examples/game.html` | Interactive van — drive it with the arrow keys |
+| `_examples/lights.html` | Coloured light sources demo (WASD moves them) |
+| `_examples/game.html` | Interactive van — drive it with WASD |
 | `_examples/world.html` | First-person navigation inside a 3D labyrinth |
 
 Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
