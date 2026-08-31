@@ -63,8 +63,4 @@ class WadMenuScreen extends AbstractMenuScreen {
             }))
             .show();
     }
-
-    _openAbout() {
-        this._openModal(new MenuOptionsModal(this._display)).showAbout();
-    }
 }

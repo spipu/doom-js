@@ -49,6 +49,18 @@ class MenuDom {
         return element;
     }
 
+    // Opens in a new tab: the app is a PWA, so following a link in place would
+    // leave the game shell with no way back.
+    static addLink(parent, className, text, href) {
+        const element = MenuDom.addElement(parent, 'a', className);
+        element.textContent = text;
+        element.href        = href;
+        element.target      = '_blank';
+        element.rel         = 'noopener noreferrer';
+
+        return element;
+    }
+
     // Selectable list entry shell (item + label) — the caller registers it on
     // its MenuListNavigation and may append extra children (infos, buttons).
     static addListItem(listEl, labelText) {

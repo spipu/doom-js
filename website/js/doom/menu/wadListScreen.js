@@ -26,10 +26,13 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
-        const aboutButton = MenuDom.addButton(this._container, 'doom-menu-button doom-menu-help-button', '?', () => {
-            this._openAbout();
-        });
-        this._nav.setSideButton(aboutButton);
+        const helpButton = MenuDom.addButton(
+            this._container,
+            'doom-menu-button doom-menu-help-button',
+            appTranslator.get('help.guide'),
+            () => this._openHelp()
+        );
+        this._nav.setSideButton(helpButton);
 
         this._buildAddForm(panel);
 
@@ -83,6 +86,11 @@ class WadListScreen extends AbstractMenuScreen {
 
         if (list.length === 0) {
             this._addListEmpty(this._listEl, appTranslator.get('menu.wad.empty'));
+            MenuDom.addText(this._listEl, 'doom-menu-empty-hint', appTranslator.get('menu.wad.emptyHint'));
+            MenuDom.addText(this._listEl, 'doom-menu-empty-hint', appTranslator.get('menu.wad.emptyHintHelp'));
+            MenuDom.addText(this._listEl, 'doom-menu-empty-hint', appTranslator.get('menu.wad.emptyHintSteps', {
+                help: appTranslator.get('help.guide')
+            }));
             return;
         }
 
@@ -160,10 +168,6 @@ class WadListScreen extends AbstractMenuScreen {
 
     _onSelectWad(meta) {
         this._navigator.openWadMenu(meta);
-    }
-
-    _openAbout() {
-        this._openModal(new MenuOptionsModal(this._display)).showAbout();
     }
 
     // --- Internal ---

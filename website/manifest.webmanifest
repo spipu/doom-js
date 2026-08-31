@@ -7,7 +7,7 @@
  "display": "standalone",
  "orientation": "landscape",
  "start_url": "/",
- "lang": "fr-FR",
+ "lang": "en",
  "icons": [
   {
    "src": "/icon/android-icon-36x36.png",

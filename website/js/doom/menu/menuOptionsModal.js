@@ -59,7 +59,13 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
     // Opens the modal directly on the About page (no options root underneath).
     showAbout() {
-        return this._open('about', 'help.about', () => this._buildAbout());
+        return this._open('standalone', 'help.about', () => this._buildAbout());
+    }
+
+    // Same, on the Help page: how to get a WAD and install the app. Carried by
+    // the WAD list only, so the in-game About stays what it was.
+    showHelp() {
+        return this._open('standalone', 'help.guide', () => this._buildHelp());
     }
 
     _open(mode, titleCode, builder) {
@@ -112,7 +118,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._titleEl.textContent        = this._stack.map((page) => appTranslator.get(page.titleCode)).join(' > ');
         // The options root closes back to the WAD menu, so its button reads
         // "Retour" like the sub-pages; the direct About popup reads "Fermer".
-        const rootCode                   = ((this._mode === 'about') ? 'menu.close' : 'menu.back');
+        const rootCode                   = ((this._mode === 'standalone') ? 'menu.close' : 'menu.back');
         this._actionButton.textContent   = appTranslator.get(((this._stack.length > 1) ? 'menu.back' : rootCode));
         // A capture page cannot be left by any mean but pressing a key.
         this._actionButton.style.display = ((current.noBack === true) ? 'none' : '');
@@ -341,16 +347,37 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return code;
     }
 
+    _buildHelp() {
+        this._addLines(['help.guide.wad', 'help.guide.freedoom'], {
+            addFile: appTranslator.get('menu.wad.addFile')
+        });
+        this._addExternalLink(MenuOptionsModal.FREEDOOM_URL);
+        this._addLines(['help.guide.own', 'help.guide.install', 'help.guide.controls'], {
+            addUrl: appTranslator.get('menu.wad.addUrl')
+        });
+
+        MenuDom.addText(this._bodyEl, 'doom-menu-modal-heading', appTranslator.get('help.about'));
+        this._buildAbout();
+    }
+
     _buildAbout() {
-        const lines = [
-            appTranslator.get('help.about.what'),
-            appTranslator.get('help.about.author'),
-            appTranslator.get('help.about.licence'),
-            appTranslator.get('help.about.wads'),
-            appTranslator.get('help.about.copyright', {year: new Date().getFullYear()})
-        ];
-        for (const line of lines) {
-            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', line);
+        this._addLines(['help.about.what', 'help.about.author', 'help.about.source']);
+        this._addExternalLink(MenuOptionsModal.PROJECT_URL);
+        this._addLines(['help.about.licence', 'help.about.wads']);
+        this._addLines(['help.about.copyright'], {year: new Date().getFullYear()});
+    }
+
+    _addLines(codes, params = {}) {
+        for (const code of codes) {
+            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', appTranslator.get(code, params));
         }
     }
+
+    // The URL is its own label: an address is a proper noun, never translated.
+    _addExternalLink(url) {
+        MenuDom.addLink(this._bodyEl, 'doom-menu-modal-link', url, url);
+    }
 }
+
+MenuOptionsModal.FREEDOOM_URL = 'https://freedoom.github.io/';
+MenuOptionsModal.PROJECT_URL  = 'https://github.com/spipu/doom-js';

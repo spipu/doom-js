@@ -2,26 +2,37 @@
 
 Doom in the browser, in pure JavaScript — no framework, no build step, no server side.
 
+**Play it: [doom.spipu.net](https://doom.spipu.net/)**
+
 Spipu-Doom (`index.html`) ships as a PWA and converts **any Doom-format WAD on the fly, entirely in the browser**: WAD files are stored in IndexedDB, parsed in JS (geometry, textures, doors, lifts, switches, monsters, weapons, sounds and music) and turned directly into in-memory engine objects — no server-side conversion, no generated files. Everything game-specific lives in **game profiles** (Doom, Freedoom, **Heretic**…) auto-detected from the WAD content, so other Doom-engine games plug in without touching the converter.
 
 It runs on **Spipu3D** (`js/engine/`), the 3D engine written for it: renderer, FPS physics, entities, inputs and audio, with no knowledge of Doom whatsoever. The demos in `_examples/` drive that same engine on other scenes.
 
-## Requirements
+## Play
 
-- A modern browser (Chrome, Firefox, Edge)
-- Any static HTTP server (Apache, Nginx, or `python3 -m http.server`)
-- A Doom WAD file (e.g. [Freedoom](https://freedoom.github.io/), BSD licensed)
+Nothing to download and nothing to configure — the game runs in the page.
 
-## Getting started
+1. **Install it** — worth doing on mobile, where the browser bars otherwise eat the screen. There is no in-app install button: the browser's own menu does it.
+   - **iOS / iPadOS** — use **Safari** (the option is unreliable in the other iOS browsers): tap the *Share* button, scroll down the sheet, *Add to Home Screen*, then *Add*. Launch it from the new icon. iOS ignores the landscape request, so turn the device to landscape yourself.
+   - **Android** — use **Chrome** (Edge and Samsung Internet work too): accept the install banner if it appears, otherwise *⋮* → *Install app* (older versions say *Add to Home screen*), then *Install*. It comes up in landscape on its own.
+   - **Desktop** — Chrome and Edge: the install icon in the address bar, or *⋮* → *Install*. Firefox has no PWA install; just play in the tab.
+2. **Add a WAD.** No game data ships with Spipu-Doom. [Freedoom](https://freedoom.github.io/) is free and BSD licensed: download it, unzip it, then load `freedoom1.wad` or `freedoom2.wad` with *Local file*. *Add by URL* takes any Doom-format WAD reachable over HTTP with CORS enabled. Doom, Doom II, Heretic and Hexen WADs work the same way, if you own them.
+3. **Select the WAD**, then *New game* → episode → skill, and play.
 
-Serve the `website/` directory with any HTTP server:
+Once it is installed and a WAD is stored, it needs no network at all: the app files are Service-Worker cached and the WAD lives in IndexedDB.
+
+It also **updates itself**: every launch checks for a new version and, when there is one, re-downloads the app whole before starting — nothing to reinstall, no cache to clear by hand. Stored WADs and saved games are untouched by an update.
+
+## Run it locally
+
+A modern browser (Chrome, Firefox, Edge) and any static HTTP server (Apache, Nginx, `python3 -m http.server`) — no build step, nothing server side:
 
 ```bash
 cd website
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080` in a browser, add a WAD file (local file or URL), select it, start a new game (episode, then difficulty), and play.
+Then open `http://localhost:8080` and follow steps 2 and 3 above.
 
 ## Features
 
