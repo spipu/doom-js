@@ -1,7 +1,7 @@
 # UZDoom assets — GPL v3
 
 The files in this directory are **not** covered by the MIT license of the rest
-of lib3d_js. They are third-party assets taken verbatim from **UZDoom** and are
+of Spipu-Doom. They are third-party assets taken verbatim from **UZDoom** and are
 licensed under the **GNU General Public License v3** (see `LICENSE.md` in this
 directory for the full text).
 
@@ -62,7 +62,7 @@ not in this transcription.
 
 ## Licensing consequence
 
-Because these files are GPL v3, redistributing lib3d_js together with this
+Because these files are GPL v3, redistributing Spipu-Doom together with this
 directory places the distributed combination under GPL v3 copyleft obligations
 for these files. The rest of the project remains under the MIT license
 (`/LICENSE.md`). Removing this directory restores a fully MIT distribution.
