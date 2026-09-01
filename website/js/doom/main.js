@@ -25,6 +25,9 @@ function installViewportStabilizer()
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', stabilizeViewport);
     }
+    // A rotation during the loading screen happens before the listeners exist:
+    // purge the offset it may have left.
+    stabilizeViewport();
 }
 
 function loadApp()
