@@ -944,10 +944,13 @@ class DoomGame {
 
     // Engine-facing state of the running effects, re-derived every frame:
     // night vision (Doom light visor / Heretic torch) = scene-wide light
-    // floor, blinking through the vanilla end-of-powerup window.
+    // floor, blinking through the vanilla end-of-powerup window; muzzle
+    // flash extralight = scene-wide light boost while the flash runs.
     _pushEffectDisplay(user) {
         this._engine.setLightOverride(((user.isEffectVisible('light'))
             ? WadConstants.NIGHT_VISION_LIGHT : null));
+        const extraLight = ((this._playerWeapon !== null) ? this._playerWeapon.getExtraLight() : 0);
+        this._engine.setLightBoost(extraLight * WadConstants.WEAPON_FLASH_LIGHT_STEP);
     }
 
     _pushSetting(current, wanted, apply) {

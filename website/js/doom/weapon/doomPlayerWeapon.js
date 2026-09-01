@@ -25,6 +25,7 @@ class DoomPlayerWeapon {
         this._attackDown    = false;
         this._fireHeld      = false;
         this._light         = 1;
+        this._extraLight    = 0;
         this._noiseCallback = null;
 
         this._ticks = 0;
@@ -52,6 +53,12 @@ class DoomPlayerWeapon {
         this._light = light;
     }
 
+    // Muzzle-flash extralight level (0, 1 or 2 — A_Light0/1/2), held while the
+    // flash psprite runs.
+    getExtraLight() {
+        return this._extraLight;
+    }
+
     // --- Frame update ---
 
     update(dtMs, fireHeld) {
@@ -65,6 +72,7 @@ class DoomPlayerWeapon {
                 // LOWERSPEED and stays at the bottom — states frozen, muzzle
                 // flash killed, vanilla never raises it again while dead.
                 this._flashPsp.stateKey = null;
+                this._extraLight = 0;
                 this._weaponDown = this._motion.lower(DoomPlayerWeapon.LOWERSPEED);
                 continue;
             }
@@ -169,6 +177,10 @@ class DoomPlayerWeapon {
         do {
             if (stnum === null) {
                 psp.stateKey = null;
+                // End of a flash chain = the vanilla LightDone / A_Light0 state.
+                if (psp === this._flashPsp) {
+                    this._extraLight = 0;
+                }
                 return;
             }
             const state = this._def().getState(stnum);
@@ -213,11 +225,10 @@ class DoomPlayerWeapon {
             case 'fireHitscanFlash2':        this._aFireHitscanFlash('flash2'); break;
             case 'fireProjectiles':          this._aFireProjectiles();   break;
             case 'fireProjectilesRandFlash': this._aFireProjectilesRandFlash(); break;
-            // The muzzle-flash extralight has no engine equivalent; the four
-            // others carry nothing but the sound _playActionSound just rang.
-            // The state timing and the flash sprite are played either way.
-            case 'light1':
-            case 'light2':
+            case 'light1':                   this._extraLight = 1;       break;
+            case 'light2':                   this._extraLight = 2;       break;
+            // The four others carry nothing but the sound _playActionSound
+            // just rang. The state timing is played either way.
             case 'bfgSound':
             case 'openShotgun2':
             case 'loadShotgun2':

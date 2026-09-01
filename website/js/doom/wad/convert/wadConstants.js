@@ -916,6 +916,12 @@ class WadConstants {
     // Engine3d.setLightOverride — 1 = full bright, the vanilla colormap 0.
     static NIGHT_VISION_LIGHT = 1;
 
+    // Muzzle-flash extralight (A_Light1 = 1 level, A_Light2 = 2): light units
+    // added per level to the whole scene, pushed to Engine3d.setLightBoost.
+    // 16 = the software renderer (extralight << 4, r_light.h); UZDoom's
+    // hardware default gl_weaponlight is 8 (hw_lighting.cpp).
+    static WEAPON_FLASH_LIGHT_STEP = 16 / 255;
+
     // End-of-powerup blink (ST_doPaletteStuff): the effect stays solid above
     // 4*32 remaining tics, then strobes on the 8-tic bit of the countdown.
     // Fed by the ms-based effect clocks (DoomUser.getEffects()).
