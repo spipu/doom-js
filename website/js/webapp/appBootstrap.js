@@ -142,7 +142,7 @@ class AppBootstrap {
         if (this.pwaDisabled) {
             return;
         }
-        const url = './ping.json?swBypass=1&m=' + mode + '&v=' + encodeURIComponent(definition.getVersion());
+        const url = './ping.json?swBypass=1&m=' + mode + '&v=' + encodeURIComponent(definition.getVersion()) + '&t=' + (new Date()).getTime();
         // keepalive: the update ping must survive the reload that follows the cache clear.
         fetch(url, {cache: 'no-store', keepalive: true}).catch(() => {});
     }
