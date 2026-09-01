@@ -12,16 +12,20 @@
  */
 class DoomMonsterFrames {
     /**
+     * @param {DoomMonsterDef} def
+     * @param {WadSpriteBank}  spriteBank
+     * @param {boolean}        quiet  a missing body is expected (runtime type of
+     *                                another game), no warning
      * @returns {object|null} viewKey → rotation set, null when the type has no
      *                        usable body (its spawn views are missing)
      */
-    static build(def, spriteBank) {
+    static build(def, spriteBank, quiet = false) {
         // The spawn views are the monster's body: without them the monster is
         // dropped. The other views are optional (freedoom gaps): a state whose
         // views are missing just keeps showing the previous ones.
         const frames = {};
         for (const pair of def.getFramePairs(['spawn'])) {
-            const views = spriteBank.getFrameRotations(pair.sprite, pair.frame);
+            const views = spriteBank.getFrameRotations(pair.sprite, pair.frame, quiet);
             if (views === null) {
                 return null;
             }

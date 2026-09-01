@@ -79,11 +79,13 @@ class WadSpriteBank {
      * 8 entries (rotations 1..8, format of get()), or 1 entry (the rotation-0
      * lump) when the rotation set is incomplete, or null when nothing exists.
      *
-     * @param {string} base  4-char sprite prefix (e.g. 'TROO')
-     * @param {string} letter frame letter (e.g. 'A')
+     * @param {string}  base   4-char sprite prefix (e.g. 'TROO')
+     * @param {string}  letter frame letter (e.g. 'A')
+     * @param {boolean} quiet  probe silently — a type the WAD may legitimately
+     *                         lack (runtime spawn of another game) is no warning
      * @returns {object[]|null}
      */
-    getFrameRotations(base, letter) {
+    getFrameRotations(base, letter, quiet = false) {
         if (this._rotIndex === null) {
             this._buildRotationIndex();
         }
@@ -109,7 +111,7 @@ class WadSpriteBank {
         }
 
         const key = base + letter;
-        if (!this._warned.has(key)) {
+        if (!quiet && !this._warned.has(key)) {
             this._warned.add(key);
             console.warn('WadSpriteBank - no usable rotation set for "' + key + '"');
         }

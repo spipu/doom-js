@@ -492,6 +492,8 @@ class WadWorldBuilder {
     // every other template — a body born during a fight has no chance to load
     // a sprite. They go through the SAME billboard construction as the placed
     // bodies: the monster system spawns instances, which want object ids.
+    // Probed quietly: an IWAD without a type of its bigger sibling (Doom 1 and
+    // the Icon's brood) simply cannot spawn it.
     _registerRuntimeSpawnables(spriteBank, billboardIds) {
         if ((this._monsterSystem === null) || (this._monsterCatalog === null)) {
             return;
@@ -502,7 +504,7 @@ class WadWorldBuilder {
             if (def === null) {
                 continue;
             }
-            const views = DoomMonsterFrames.build(def, spriteBank);
+            const views = DoomMonsterFrames.build(def, spriteBank, true);
             if (views !== null) {
                 catalog[code] = {
                     def:    def,
