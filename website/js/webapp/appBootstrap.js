@@ -138,6 +138,15 @@ class AppBootstrap {
         return ((this.appDefinition !== null) ? this.appDefinition.getVersion() : '');
     }
 
+    trackVersionEvent(mode, definition) {
+        if (this.pwaDisabled) {
+            return;
+        }
+        const url = './ping.json?swBypass=1&m=' + mode + '&v=' + encodeURIComponent(definition.getVersion());
+        // keepalive: the update ping must survive the reload that follows the cache clear.
+        fetch(url, {cache: 'no-store', keepalive: true}).catch(() => {});
+    }
+
     buildUrl(url) {
         if (this.pwaMode) {
             return url;
@@ -263,6 +272,7 @@ class AppBootstrap {
 
             this.offline = false;
             this.logDebug('OnLine - first install');
+            this.trackVersionEvent('install', serverDefinition);
             this.appDefinition = serverDefinition;
             this.appDefinition.saveToLocalStorage();
             this.loadApp();
@@ -286,6 +296,7 @@ class AppBootstrap {
         }
 
         this.logDebug('Need update');
+        this.trackVersionEvent('update', serverDefinition);
         this.appDefinition = serverDefinition;
         this.appDefinition.saveToLocalStorage();
         if (!this.pwaMode) {
