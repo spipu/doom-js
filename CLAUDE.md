@@ -32,12 +32,14 @@
 ### Standards de codage
 
 * Une classe par fichier, nom de fichier en camelCase identique à la classe (`doomMonsterSystem.js` → `DoomMonsterSystem`), préfixé par son domaine (`Wad*`, `Doom*`, `Input*`).
+  * Exception : le pré-bootstrap doit être auto-suffisant (aucun mécanisme de chargement n'existe encore à ce stade), donc `appBootstrap.js` porte aussi `AppDefinition` — ne pas re-séparer ces classes.
 * Pas de modules ES : tout est chargé en portée globale par le bootstrap, donc un nouveau fichier doit être déclaré dans le `libBootstrap.json` concerné. Il y en a **deux**, un par arborescence, chacun avec sa propre `version` :
   * `website/js/engine/libBootstrap.json` (version `v2.x`) — couvre `js/engine/` ;
   * `website/js/doom/libBootstrap.json` (version `v1.x`) — couvre `js/doom/`.
   * Un fichier de `js/webapp/` est déclaré dans le bootstrap de la bibliothèque qui le **consomme** (aujourd'hui doom : `screenWakeLock.js`, `appDatabase.js`, `appTranslator.js`), et c'est donc cette version qu'on incrémente en le touchant. Les démos, qui n'empilent que le bootstrap engine, ne téléchargent ainsi que ce dont elles ont l'usage.
   * L'ordre de déclaration est l'ordre de chargement : un fichier doit être listé avant ceux qui l'utilisent à l'initialisation.
 * Incrémenter la `version` de **chaque** `libBootstrap.json` dont un fichier a été touché, à chaque changement. Ce n'est pas cosmétique : le service worker sert les fichiers depuis le cache tant que la version concaténée (`v2.x|v1.x`) est inchangée, donc **sans l'incrément la modification n'est pas prise en compte, même après un rechargement**.
+  * `appBootstrap.js` et `appServiceWorker.js` ne sont listés dans aucun `libBootstrap.json` mais sont précachés par le service worker : toute modification de l'un d'eux exige d'incrémenter les **deux** versions (engine **et** doom — les démos n'empilent que la première), sans quoi elle ne se propage jamais aux clients installés.
 * Champs privés préfixés `_`, exposés par des accesseurs explicites ; les setters de configuration chaînables retournent `this`.
 * Indentation de 4 espaces, toujours des accolades, early return plutôt qu'imbrication.
 * Parenthèses systématiques autour des ternaires et des comparaisons composées : `((a !== null) ? a : b)`, `((x > 0) && (y === true))`.

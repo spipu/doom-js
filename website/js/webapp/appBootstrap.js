@@ -1,6 +1,108 @@
+class AppDefinition {
+    /** @type {string[]}    */ _definitionUrls;
+    /** @type {string|null} */ _version;
+    /** @type {Object|null} */ _files;
+
+    constructor(definitionUrls) {
+        this._definitionUrls = definitionUrls;
+        this._version = null;
+        this._files = null;
+    }
+
+    getVersion() {
+        return ((this._version !== null) ? this._version : '');
+    }
+
+    getFiles(type) {
+        return ((this._files !== null) ? this._files[type] : []);
+    }
+
+    getFile(type, index) {
+        return (this.getFiles(type)[index] ?? null);
+    }
+
+    countFiles() {
+        return AppDefinition.FILE_TYPES.reduce((total, type) => total + this.getFiles(type).length, 0);
+    }
+
+    hasSameVersion(other) {
+        return (this.getVersion() === other.getVersion());
+    }
+
+    loadFromLocalStorage() {
+        this._version = null;
+        this._files = null;
+
+        const values = localStorage.getItem(this._storageKey());
+        if (!values) {
+            return false;
+        }
+
+        let parsed;
+        try {
+            parsed = JSON.parse(values);
+        } catch {
+            return false;
+        }
+        if (!this._isValidManifest(parsed)) {
+            return false;
+        }
+
+        this._version = parsed.version;
+        this._files = parsed.files;
+        return true;
+    }
+
+    _isValidManifest(parsed) {
+        if (!(parsed instanceof Object) || (typeof parsed.version !== 'string') || !(parsed.files instanceof Object)) {
+            return false;
+        }
+        return AppDefinition.FILE_TYPES.every((type) => Array.isArray(parsed.files[type]));
+    }
+
+    async loadFromServer() {
+        try {
+            const versions = [];
+            const files = {assets: [], css: [], js: []};
+
+            for (const url of this._definitionUrls) {
+                const response = await fetch(url + '?_=' + (new Date()).getTime());
+                const definition = await response.json();
+
+                versions.push(definition.version);
+                files.assets = files.assets.concat(definition.files['assets']);
+                files.css    = files.css.concat(definition.files['css']);
+                files.js     = files.js.concat(definition.files['js']);
+            }
+
+            this._version = versions.join('|');
+            this._files = files;
+            return true;
+        } catch {
+            this._version = null;
+            this._files = null;
+            return false;
+        }
+    }
+
+    saveToLocalStorage() {
+        // Persisting is an optimization for the next visit: a failed write must not abort the boot.
+        try {
+            localStorage.setItem(this._storageKey(), JSON.stringify({version: this._version, files: this._files}));
+        } catch {
+        }
+    }
+
+    _storageKey() {
+        return "app.version." + this._definitionUrls.join('|');
+    }
+}
+
+AppDefinition.FILE_TYPES = ['assets', 'css', 'js'];
+
 class AppBootstrap {
-    /** @type {int}      */ currentFile;
-    /** @type {Object}   */ version;
+    /** @type {int}           */ currentFile;
+    /** @type {AppDefinition} */ appDefinition;
     /** @type {boolean}  */ offline;
     /** @type {int}      */ loadingStepCurrent;
     /** @type {int}      */ loadingStepMax;
@@ -17,6 +119,7 @@ class AppBootstrap {
         this.definitionUrls = [];
         this.readyCallback = null;
         this.stats = null;
+        this.appDefinition = null;
     }
 
     disablePwaMode() {
@@ -32,7 +135,7 @@ class AppBootstrap {
     }
 
     getVersion() {
-        return ((this.version) ? this.version.version : '');
+        return ((this.appDefinition !== null) ? this.appDefinition.getVersion() : '');
     }
 
     buildUrl(url) {
@@ -145,11 +248,14 @@ class AppBootstrap {
     }
 
     async checkVersion() {
-        this.loadCurrentVersion();
-        let serverVersion = await this.loadServerVersion();
+        const currentDefinition = new AppDefinition(this.definitionUrls);
+        const hasCurrent = currentDefinition.loadFromLocalStorage();
 
-        if (this.version === null) {
-            if (serverVersion === null) {
+        const serverDefinition = new AppDefinition(this.definitionUrls);
+        const hasServer = await serverDefinition.loadFromServer();
+
+        if (!hasCurrent) {
+            if (!hasServer) {
                 this.offline = true;
                 this.logError("You need network connexion to load the app");
                 return;
@@ -157,27 +263,31 @@ class AppBootstrap {
 
             this.offline = false;
             this.logDebug('OnLine - first install');
-            this.saveVersion(serverVersion);
+            this.appDefinition = serverDefinition;
+            this.appDefinition.saveToLocalStorage();
             this.loadApp();
             return;
         }
 
-        if (serverVersion === null) {
+        if (!hasServer) {
             this.offline = true;
             this.logDebug('OffLine Mode');
+            this.appDefinition = currentDefinition;
             this.loadApp();
             return;
         }
 
         this.offline = false;
-        if (this.version.version === serverVersion.version) {
+        if (currentDefinition.hasSameVersion(serverDefinition)) {
             this.logDebug('OnLine Mode');
+            this.appDefinition = currentDefinition;
             this.loadApp();
             return;
         }
 
         this.logDebug('Need update');
-        this.saveVersion(serverVersion);
+        this.appDefinition = serverDefinition;
+        this.appDefinition.saveToLocalStorage();
         if (!this.pwaMode) {
             this.clearServiceWorkerCache();
             return;
@@ -197,56 +307,6 @@ class AppBootstrap {
         window.location.reload();
     }
 
-    versionStorageKey() {
-        return "app.version." + this.definitionUrls.join('|');
-    }
-
-    loadCurrentVersion() {
-        this.version = null;
-
-        let values = localStorage.getItem(this.versionStorageKey());
-        if (!values) {
-            return;
-        }
-        this.version = JSON.parse(values);
-        if (!(this.version instanceof Object)) {
-            this.version = null;
-        }
-    }
-
-    async loadServerVersion() {
-        try {
-            let merged = {
-                version: [],
-                files: {
-                    assets: [],
-                    css: [],
-                    js: []
-                }
-            };
-
-            for (let url of this.definitionUrls) {
-                let response = await fetch(url + '?_=' + (new Date()).getTime());
-                let definition = await response.json();
-
-                merged.version.push(definition.version);
-                merged.files['assets'] = merged.files['assets'].concat(definition.files['assets']);
-                merged.files['css']    = merged.files['css'].concat(definition.files['css']);
-                merged.files['js']     = merged.files['js'].concat(definition.files['js']);
-            }
-
-            merged.version = merged.version.join('|');
-            return merged;
-        } catch {
-            return null;
-        }
-    }
-
-    saveVersion(version) {
-        this.version = version;
-        localStorage.setItem(this.versionStorageKey(), JSON.stringify(version));
-    }
-
     async loadApp() {
         if (this.pwaMode) {
             this.serviceWorker.active.postMessage("resetStats");
@@ -255,18 +315,15 @@ class AppBootstrap {
         this.loadingStepCurrent = 0;
         this.loadingStepMax     = 1;
         this.loadingFileCurrent = 0;
-        this.loadingFileMax     = 0;
-        this.loadingFileMax    += this.version.files['assets'].length;
-        this.loadingFileMax    += this.version.files['css'].length;
-        this.loadingFileMax    += this.version.files['js'].length;
+        this.loadingFileMax     = this.appDefinition.countFiles();
         this.displayLoadingBar();
 
         this.currentFile = 0;
-        if (this.version.files['assets'].length > 0) {
+        if (this.appDefinition.getFiles('assets').length > 0) {
             this.loadNextAsset();
             return;
         }
-        if (this.version.files['css'].length > 0) {
+        if (this.appDefinition.getFiles('css').length > 0) {
             this.loadNextCssFile();
             return;
         }
@@ -274,7 +331,7 @@ class AppBootstrap {
     }
 
     async loadNextAsset() {
-        if (await this.resourceLoad(this.version.files['assets'][this.currentFile])) {
+        if (await this.resourceLoad(this.appDefinition.getFile('assets', this.currentFile))) {
             this.assetSuccess();
         }
     }
@@ -284,13 +341,13 @@ class AppBootstrap {
         this.displayLoadingBar();
 
         this.currentFile++;
-        if (this.currentFile < this.version.files['assets'].length) {
+        if (this.currentFile < this.appDefinition.getFiles('assets').length) {
             this.loadNextAsset();
             return;
         }
 
         this.currentFile = 0;
-        if (this.version.files['css'].length === 0) {
+        if (this.appDefinition.getFiles('css').length === 0) {
             this.loadNextJsFile();
             return;
         }
@@ -301,7 +358,7 @@ class AppBootstrap {
         let htmlTag = document.createElement("link");
         htmlTag.setAttribute("rel", "stylesheet");
         htmlTag.setAttribute("type", "text/css");
-        htmlTag.setAttribute("href", this.buildUrl(this.version.files['css'][this.currentFile]));
+        htmlTag.setAttribute("href", this.buildUrl(this.appDefinition.getFile('css', this.currentFile)));
         htmlTag.onload  = this.cssSuccess.bind(this);
         htmlTag.onerror = this.cssFailed.bind(this);
         document.body.appendChild(htmlTag);
@@ -312,7 +369,7 @@ class AppBootstrap {
         this.displayLoadingBar();
 
         this.currentFile++;
-        if (this.currentFile < this.version.files['css'].length) {
+        if (this.currentFile < this.appDefinition.getFiles('css').length) {
             this.loadNextCssFile();
             return;
         }
@@ -322,13 +379,13 @@ class AppBootstrap {
     }
 
     cssFailed() {
-        this.resourceFailed(this.version.files['css'][this.currentFile]);
+        this.resourceFailed(this.appDefinition.getFile('css', this.currentFile));
     }
 
     loadNextJsFile() {
         let htmlTag = document.createElement("script");
         htmlTag.setAttribute("type", "text/javascript");
-        htmlTag.setAttribute("src", this.buildUrl(this.version.files['js'][this.currentFile]));
+        htmlTag.setAttribute("src", this.buildUrl(this.appDefinition.getFile('js', this.currentFile)));
         htmlTag.onload  = this.jsSuccess.bind(this);
         htmlTag.onerror = this.jsFailed.bind(this);
         document.body.appendChild(htmlTag);
@@ -339,7 +396,7 @@ class AppBootstrap {
         this.displayLoadingBar();
 
         this.currentFile++;
-        if (this.currentFile < this.version.files['js'].length) {
+        if (this.currentFile < this.appDefinition.getFiles('js').length) {
             this.loadNextJsFile();
             return;
         }
@@ -349,7 +406,7 @@ class AppBootstrap {
     }
 
     jsFailed() {
-        this.resourceFailed(this.version.files['js'][this.currentFile]);
+        this.resourceFailed(this.appDefinition.getFile('js', this.currentFile));
     }
 
     startApp() {
