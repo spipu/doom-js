@@ -117,7 +117,7 @@ The static collision geometry is indexed once per level in a uniform XZ spatial 
 website/
 ├── index.html                Spipu-Doom shell (PWA)
 ├── appServiceWorker.js       Service Worker — cache-first, offline (must stay at webroot: SW scope)
-├── ping.json                 Install/update tracking pixel — hit only, read from the web-server access logs
+├── ping.json                 Install/update/start tracking json — hit only
 ├── css/                      Shell + menu styles
 ├── assets/uzdoom/            UZDoom impact-decal graphics + finale texts (GPL v3 — own LICENSE.md + README.md)
 ├── _examples/                Spipu3D demos + their assets and bootstrap definitions

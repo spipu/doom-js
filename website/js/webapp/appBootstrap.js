@@ -290,6 +290,7 @@ class AppBootstrap {
         this.offline = false;
         if (currentDefinition.hasSameVersion(serverDefinition)) {
             this.logDebug('OnLine Mode');
+            this.trackVersionEvent('start', currentDefinition);
             this.appDefinition = currentDefinition;
             this.loadApp();
             return;
