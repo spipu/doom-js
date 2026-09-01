@@ -168,10 +168,14 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
     // One textured quad drawn over the scene, depth test OFF, tinted by light,
     // faded by alpha (contract on Object3dRendererBase.drawScreenSprite). The
-    // scene-wide light override floors the tint here too — the overlay is part
-    // of the scene (view sprites), so a fullbright scene lights it as well.
+    // scene-wide light floor and boost apply to the tint here too — the overlay
+    // is part of the scene (view sprites), so a fullbright or flashing scene
+    // lights it as well.
     drawScreenSprite(engine, texId, x, y, w, h, light, alpha = 1) {
         light = Math.max(light, (engine.lightOverride ?? 0));
+        if (light < 1) {
+            light = Math.min(1, light + engine.lightBoost);
+        }
         const gl  = engine.scrCtx;
         const tex = ((texId !== null) ? loader.textures().get(texId) : null);
         if (!gl || !tex) {
@@ -345,8 +349,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             gl.uniform1f(loc.alpha, group.alpha);
             gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
             // Additive groups (energy glows) carry their own light — flooring
-            // them would oversaturate the accumulation, so they keep theirs.
+            // or boosting them would oversaturate the accumulation, so they
+            // keep theirs.
             gl.uniform1f(loc.lightFloor, (((ov !== null) && !group.blendAdd) ? ov : 0));
+            gl.uniform1f(loc.lightBoost, ((group.blendAdd) ? 0 : engine.lightBoost));
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
@@ -525,6 +531,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform float     u_alpha;
             uniform int       u_clampV;
             uniform float     u_lightFloor;
+            uniform float     u_lightBoost;
             uniform float     u_dsVis, u_dsVisMax, u_dsBase, u_dsScale, u_dsRamp, u_dsStrength;
             varying vec3 v_color;
             varying vec2 v_uv;
@@ -557,6 +564,12 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     float m = max(lit.r, max(lit.g, lit.b));
                     lit = ((m > 0.0) ? (lit * max(1.0, u_lightFloor / m)) : vec3(u_lightFloor));
                 }
+                // Scene-wide light boost (engine.setLightBoost, 0 = off): a
+                // flat addition to the faces below full light, saturating —
+                // a fullbright or over-lit face keeps its light untouched.
+                if (max(lit.r, max(lit.g, lit.b)) < 1.0) {
+                    lit = min(lit + vec3(u_lightBoost), vec3(1.0));
+                }
                 if (u_hasTex == 1) {
                     col = min(lit * t.rgb, vec3(1.0));
                     a   = t.a * u_alpha;
@@ -567,9 +580,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 // Depth shading (engine.setDepthShading): the pixel darkens
                 // with the view depth, the darker the face light the sooner,
                 // scaled by the curve strength. Disabled = neutral uniforms
-                // => dsIndex 0, one shader path for both states.
+                // => dsIndex 0, one shader path for both states. The light
+                // boost raises the level the curve reads, like the face.
                 float dsVis   = min(u_dsVis / v_depth, u_dsVisMax);
-                float dsIndex = clamp((u_dsBase - (u_dsScale * v_light) - dsVis) * (u_dsRamp - 1.0), 0.0, u_dsRamp - 1.0);
+                float dsLight = v_light + u_lightBoost;
+                float dsIndex = clamp((u_dsBase - (u_dsScale * dsLight) - dsVis) * (u_dsRamp - 1.0), 0.0, u_dsRamp - 1.0);
                 col = col * (1.0 - (u_dsStrength * dsIndex / u_dsRamp));
                 // Premultiplied output: the face opacity also scales the RGB
                 // (the texture alpha is already baked into t.rgb at upload).
@@ -596,6 +611,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             alpha:      gl.getUniformLocation(this._program, 'u_alpha'),
             clampV:     gl.getUniformLocation(this._program, 'u_clampV'),
             lightFloor: gl.getUniformLocation(this._program, 'u_lightFloor'),
+            lightBoost: gl.getUniformLocation(this._program, 'u_lightBoost'),
             dsVis:      gl.getUniformLocation(this._program, 'u_dsVis'),
             dsVisMax:   gl.getUniformLocation(this._program, 'u_dsVisMax'),
             dsBase:     gl.getUniformLocation(this._program, 'u_dsBase'),
