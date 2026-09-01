@@ -34,13 +34,15 @@ class AppServiceWorker {
     }
 
     activate(event) {
+        // Without claim(), the page that registered this worker stays uncontrolled until its next load.
+        event.waitUntil(this.serviceWorker.clients.claim());
     }
 
     message(event) {
         let eventCode = event.data;
         switch (eventCode) {
             case 'clearCache':
-                this.clearCache();
+                event.waitUntil(this.clearCache());
                 break;
 
             case 'resetStats':
@@ -94,10 +96,12 @@ class AppServiceWorker {
     async deleteOldVersions() {
         let keys = await caches.keys();
 
-        keys.map(key => {
-            this.logDebug(`Deleting version ${key}`);
-            caches.delete(key);
-        });
+        await Promise.all(
+            keys.map(key => {
+                this.logDebug(`Deleting version ${key}`);
+                return caches.delete(key);
+            })
+        );
     }
 
     fetch(event) {
