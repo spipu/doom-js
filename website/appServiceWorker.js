@@ -124,9 +124,9 @@ class AppServiceWorker {
 
                         this.logDebug('Get from server', event.request.url);
                         this.statsFetchServer++;
-                        return fetch(event.request, {cache: "no-store"});
+                        return fetch(event.request, {cache: "no-store"})
+                            .then(response => this.cache(event.request, response).then(() => response));
                     })
-                .then(response => this.cache(event.request, response).then(() => response))
         );
     }
 
