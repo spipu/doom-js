@@ -131,8 +131,9 @@ class AppServiceWorker {
     }
 
     async cache(request, response) {
-        if (response.type === "error" || response.type === "opaque") {
-            return Promise.resolve();
+        // A cached HTTP error would be served until the next version bump; ok is also false for error/opaque types.
+        if (!response.ok) {
+            return;
         }
 
         return caches

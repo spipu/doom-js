@@ -66,8 +66,14 @@ class AppDefinition {
             const files = {assets: [], css: [], js: []};
 
             for (const url of this._definitionUrls) {
-                const response = await fetch(url + '?_=' + (new Date()).getTime());
+                const response = await fetch(url + '?swBypass=1&_=' + (new Date()).getTime());
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ' ' + response.statusText);
+                }
                 const definition = await response.json();
+                if (!this._isValidManifest(definition)) {
+                    throw new Error('Invalid bootstrap manifest');
+                }
 
                 versions.push(definition.version);
                 files.assets = files.assets.concat(definition.files['assets']);
