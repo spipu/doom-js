@@ -4,3 +4,5 @@
 __pycache__/
 .tmp.claude/
 /.report
+/log
+
