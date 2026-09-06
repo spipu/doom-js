@@ -16,7 +16,7 @@ class DoomGameProfile extends DefaultGameProfile {
     }
 
     finaleAssets() {
-        return '/assets/uzdoom/doom/text/finale.json';
+        return '/assets/uzdoom/doom/texts.json';
     }
 
     // Episode titles of Doom 1 (UZDoom mapinfo/doom1.txt episode blocks).

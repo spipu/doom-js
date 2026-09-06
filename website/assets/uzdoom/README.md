@@ -42,9 +42,9 @@ always wins over these.
 (The Hellstaff and Phoenix Rod reuse `doom/sprite/plasma1.png` /
 `plasma2.png` / `scorch1.png`, already loaded by the Doom profile.)
 
-## Files (`doom/text/`, `heretic/text/`)
+## Files (`doom/texts.json`, `heretic/texts.json`)
 
-`finale.json` — the story text shown between two chapters and at the end of the
+The story text shown between two chapters and at the end of the
 game, as a translation catalog (`{code: {fr, en}}`) merged straight into the
 app's own. Its codes are namespaced by game profile, matching the cluster codes
 of the vanilla `mapinfo` (`finale.doom.E1TEXT` … `C6TEXT`,
@@ -52,8 +52,8 @@ of the vanilla `mapinfo` (`finale.doom.E1TEXT` … `C6TEXT`,
 
 | File | Codes | Covers |
 |---|---|---|
-| `doom/text/finale.json` | `E1TEXT`…`E4TEXT`, `C1TEXT`…`C6TEXT` | Doom, Doom II |
-| `heretic/text/finale.json` | `HE1TEXT`…`HE5TEXT` | Heretic |
+| `doom/texts.json` | `E1TEXT`…`E4TEXT`, `C1TEXT`…`C6TEXT` | Doom, Doom II |
+| `heretic/texts.json` | `HE1TEXT`…`HE5TEXT` | Heretic |
 
 Transcribed verbatim, line breaks included. The game drops the ones inside a
 paragraph when it displays them (the modal reflows on its own), and applies

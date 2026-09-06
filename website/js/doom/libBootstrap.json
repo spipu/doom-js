@@ -1,5 +1,5 @@
 {
-    "version": "v1.692",
+    "version": "v1.693",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -19,8 +19,8 @@
             "/assets/uzdoom/heretic/sprite/cbalscr2.png",
             "/assets/uzdoom/heretic/sprite/bal7scr1.png",
             "/assets/uzdoom/heretic/sprite/bal7scr2.png",
-            "/assets/uzdoom/doom/text/finale.json",
-            "/assets/uzdoom/heretic/text/finale.json",
+            "/assets/uzdoom/doom/texts.json",
+            "/assets/uzdoom/heretic/texts.json",
             "/js/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js",
             "/js/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm"
         ],
