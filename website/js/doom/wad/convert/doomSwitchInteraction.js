@@ -76,7 +76,13 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._applyRemoteSwap(true);
     }
 
+    // Vanilla P_UseSpecialLine changes the switch texture (and spends a S1)
+    // only when the action it fired took: pressed while its mover is still
+    // moving, the switch stays untouched and pressable.
     _triggerOn(instance) {
+        if (!DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant)) {
+            return false;
+        }
         // The button rings from the switch's own position; an exit switch has
         // its dedicated lump (p_switch.c / p_spec.c).
         doomSound.playAt(((this._exitCallback !== null) ? 'switches/exitbutn' : 'switches/normbutn'),
@@ -87,11 +93,11 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._swapFaces(instance, this._swapIndex);
         this._applyRemoteSwap(true);
 
-        DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant);
-
         if (this._exitCallback !== null) {
             this._exitCallback(this._exitSecret);
         }
+
+        return true;
     }
 
     _triggerOff(instance) {

@@ -9,14 +9,20 @@ class DoomTriggerTargets {
      * @param {string[]}    targets        - instance codes to start
      * @param {object[]|null} reverseTargets - {code, timeScale} played backward
      * @param {string|null} cycleVariant    - per-trigger cycle key (door or lift-raise)
+     * @returns {boolean} whether the action took: at least one target accepted
+     *                    it (vanilla EV_* return, false when every tagged
+     *                    sector is busy), or there was nothing to drive
      */
     static fire(targets, reverseTargets, cycleVariant = null) {
+        let taken = ((targets.length === 0) && ((reverseTargets ?? []).length === 0));
         for (const code of targets) {
-            loader.instances().getByCode(code).start(cycleVariant);
+            taken = (loader.instances().getByCode(code).start(cycleVariant) || taken);
         }
         for (const entry of (reverseTargets ?? [])) {
-            loader.instances().getByCode(entry.code).startReverse(entry.timeScale);
+            taken = (loader.instances().getByCode(entry.code).startReverse(entry.timeScale) || taken);
         }
+
+        return taken;
     }
 
     // Stop lines (54/89, 57/74): crossing PAUSES the targets in place (vanilla

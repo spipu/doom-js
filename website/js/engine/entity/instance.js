@@ -656,9 +656,15 @@ class Instance extends AbstractLoadedEntity {
     // variant: name of the cycle to play (keyframeVariants of the loaded
     // data), null = the default one — the crossed line's special picks it
     // (a door tag mixing open-stay and close-wait-open lines).
+    // Returns whether the trigger was taken: false while the animation is busy
+    // or when the requested cycle cannot start from the current pose — the
+    // caller (a switch) then leaves its line unspent, as vanilla only changes a
+    // switch texture when the action it fired succeeded. A finished one-way
+    // re-triggered on the same cycle IS taken (vanilla spawns a thinker that
+    // completes at once and spends the switch).
     start(variant = null) {
         if (this._animPlaying) {
-            return;
+            return false;
         }
         // A cycle paused mid-travel (stop line, vanilla stasis) resumes as-is
         // whatever the trigger asks for: P_ActivateInStasis re-awakens the
@@ -668,7 +674,7 @@ class Instance extends AbstractLoadedEntity {
             if (this._onStart !== null) {
                 this._onStart();
             }
-            return;
+            return true;
         }
         // Another cycle is a NEW cycle, not the re-trigger of a spent one
         // (vanilla spawns a fresh thinker), so a done animation accepts it.
@@ -686,14 +692,14 @@ class Instance extends AbstractLoadedEntity {
         // the time while _animDone still blocks update() — a zombie state that
         // also locks out startReverse().
         if (this._animDone && !switching) {
-            return;
+            return true;
         }
         if (switching) {
             // A cycle plays from its first keyframe, so the body must already
             // sit there: a closing cycle rests OPEN, an opening one CLOSED, and
             // applying either from the wrong pose teleports the panel.
             if (!this._poseIsCycleStart(wanted)) {
-                return;
+                return false;
             }
             this._applyCycle(wanted);
         }
@@ -704,6 +710,8 @@ class Instance extends AbstractLoadedEntity {
         if (this._onStart !== null) {
             this._onStart();
         }
+
+        return true;
     }
 
     _isPausedMidCycle() {
@@ -766,17 +774,21 @@ class Instance extends AbstractLoadedEntity {
     // slows (< 1) or speeds up the reverse playback relative to the forward
     // timeline — a floor lowered at turbo speed may legally rise back at the
     // (slower) speed of the raise special that reverses it.
+    // Same contract as start(): false only while busy; already at the origin
+    // counts as taken.
     startReverse(timeScale = 1) {
         if (this._animPlaying || this._animKeyframes.length === 0) {
-            return;
+            return false;
         }
         if (this._animTime <= this._animKeyframes[0].t) {
-            return;
+            return true;
         }
         this._animReverse      = true;
         this._animReverseScale = timeScale;
         this._animDone         = false;
         this._animPlaying      = true;
+
+        return true;
     }
 
     // Mover pressing the player with blockedBehavior 'reverse': head back the
