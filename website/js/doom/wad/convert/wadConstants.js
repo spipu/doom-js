@@ -223,10 +223,7 @@ class WadConstants {
     }
 
     // Cycle key of a floor-lower special aimed at a lift ('lower:one-way@1@lowest@1'),
-    // null for the others: a lift targeted by two lower specials (E2M2's secret
-    // pillar — a W1 plat AND S1 lower-to-lowest switches) runs one cycle per
-    // special, its base special excepted. Perpetual plats and the donut keep
-    // their single cycle.
+    // null for perpetual plats and the donut, which keep a single cycle.
     static floorLowerCycleKey(special) {
         const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[special];
         if ((rule === undefined) || (rule.anim === 'perpetual') || WadConstants.isDonutSpecial(special)) {
@@ -276,8 +273,7 @@ class WadConstants {
     static DOOR_TRACK_OFFSET = 4;
     // Placeholder size of an untextured wall quad (sidedef texture and fill flat both absent)
     static MISSING_TEXTURE_SIZE = 128;
-    // Use trace of a switch (P_UseTraverse): stop this fraction of the way to
-    // the line it aims at
+    // Use trace of a switch: stops this fraction of the way to the aimed line
     static USE_TRACE_STOP_RATIO = 0.99;
 
     // Timer doors (SECTOR specials, no linedef — P_SpawnSpecials arms a

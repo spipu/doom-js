@@ -215,10 +215,8 @@ class WadStaticMapBuilder {
         }
     }
 
-    // Upper/lower texture of a two-sided line, with the GZDoom texture fill as
-    // fallback: a sidedef without texture leaves a hall of mirrors in vanilla,
-    // the hardware ports paint the gap with the flat of the sector across the
-    // line. A sky flat leaves the gap open so the dome shows through.
+    // Upper/lower texture, else the GZDoom texture fill: the flat of the sector
+    // across the line (a HOM in vanilla); a sky flat leaves the gap to the dome.
     _wallTexOrFlat(wallName, flatName) {
         const wallIndex = this._bank.ensureWallTex(wallName);
         if (wallIndex >= 0) {
@@ -234,11 +232,9 @@ class WadStaticMapBuilder {
         return {index: flatIndex, ...this._bank.getDims(flatIndex)};
     }
 
-    // Middle textures: shown exactly once (no vertical tiling) and drawn only
-    // from the side whose sidedef carries it, as vanilla renders the viewed
-    // sidedef's midtexture alone (a one-sided one is a solid wall from one
-    // room and an opening from the other). Without ML_BLOCKING it is a
-    // "false wall": visible but passable.
+    // Middle textures: shown once (no vertical tiling), from the side whose
+    // sidedef carries it only, like vanilla. Without ML_BLOCKING: a passable
+    // "false wall".
     _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall) {
         const {doorSectorIds} = this._analysis;
         const SCALE = WadConstants.SCALE;

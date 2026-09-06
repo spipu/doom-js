@@ -154,14 +154,11 @@ class WadFile {
     }
 
     /**
-     * Fingerprint of a map's own data: the marker lump then THINGS, LINEDEFS,
-     * SIDEDEFS, SECTORS and BEHAVIOR when present, hashed in that order — the
-     * lump set and order of UZDoom's MapData::GetChecksum, so a map keeps one
-     * identity across ports whatever the hash algorithm. Null when the map is
-     * unknown or when the page has no Web Crypto (insecure context).
+     * Fingerprint of a map: its marker, THINGS, LINEDEFS, SIDEDEFS, SECTORS and
+     * BEHAVIOR lumps hashed in UZDoom's MapData::GetChecksum order.
      *
      * @param {string} mapName
-     * @returns {Promise<string|null>} lowercase hex SHA-256
+     * @returns {Promise<string|null>} lowercase hex SHA-256; null for an unknown map or without Web Crypto
      */
     async mapChecksum(mapName) {
         this._requireParsed();

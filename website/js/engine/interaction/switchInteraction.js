@@ -56,8 +56,7 @@ class SwitchInteraction extends AbstractInteraction {
         }
 
         if (this._state) {
-            // A refused ON leaves the switch untouched, usable again: the
-            // action it drives (a busy mover) did not take, so nothing is spent.
+            // A refused ON (busy mover) spends nothing: the switch stays usable
             if (this._triggerOn(instance) === false) {
                 this._state   = previous.state;
                 this._onTimer = previous.onTimer;
