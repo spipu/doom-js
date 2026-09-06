@@ -16,7 +16,7 @@
 class DoomGameSnapshot {
     /**
      * @param {object} context - {wadId, levelCode, skill, user, rng, monsters,
-     *                            projectiles, gunTriggers, secretsFound,
+     *                            projectiles, gunTriggers, sectorSurfaces, secretsFound,
      *                            killsCount, itemsFound, levelTimeMs,
      *                            setCounters}
      * @returns {object} JSON-safe snapshot
@@ -48,6 +48,7 @@ class DoomGameSnapshot {
             instances:    this._captureInstances(),
             interactions: this._captureInteractions(),
             gunTriggers:  ((context.gunTriggers !== null) ? context.gunTriggers.exportState() : null),
+            sectorSurfaces: ((context.sectorSurfaces !== null) ? context.sectorSurfaces.exportState() : null),
             automap:      ((context.automap !== null) ? context.automap.exportState() : null),
             monsters:     context.monsters.exportState(),
             projectiles:  context.projectiles.exportState(),
@@ -63,6 +64,11 @@ class DoomGameSnapshot {
         // (bumping it would throw every existing save away).
         context.setCounters(snapshot.stats.secretsFound, snapshot.stats.killsCount,
             (snapshot.stats.itemsFound ?? 0), (snapshot.stats.levelTimeMs ?? 0));
+        // Surfaces first: the mover hooks replayed by the instance import read
+        // their source sector's live flat, which must already be the saved one.
+        if ((context.sectorSurfaces !== null) && (snapshot.sectorSurfaces !== undefined) && (snapshot.sectorSurfaces !== null)) {
+            context.sectorSurfaces.importState(snapshot.sectorSurfaces);
+        }
         this._applyInstances(snapshot.instances, context.collision);
         this._applyInteractions(snapshot.interactions);
         if ((context.gunTriggers !== null) && (snapshot.gunTriggers !== null)) {

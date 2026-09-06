@@ -39,6 +39,7 @@ class DoomGame {
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
+        this._sectorSurfaces  = null;    // live floor flats/specials rewritten by the "+change" floors (builder-fed)
         this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
         this._ambientSounds   = null;    // per-level ambient sound points (builder-fed)
         this._automap         = null;    // level automap (null when the WAD has no usable BSP)
@@ -410,6 +411,10 @@ class DoomGame {
         this._gunTriggers = gunTriggers;
     }
 
+    setSectorSurfaces(sectorSurfaces) {
+        this._sectorSurfaces = sectorSurfaces;
+    }
+
     setAutomap(automap) {
         this._automap = automap;
     }
@@ -558,6 +563,7 @@ class DoomGame {
             monsters:     this._monsters,
             projectiles:  this._projectiles,
             gunTriggers:  this._gunTriggers,
+            sectorSurfaces: this._sectorSurfaces,
             automap:      this._automap,
             secretsFound: this._secretsFound,
             killsCount:   this._killsCount,

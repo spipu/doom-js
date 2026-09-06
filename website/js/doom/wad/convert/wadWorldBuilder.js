@@ -775,15 +775,21 @@ class WadWorldBuilder {
     }
 
     // Attach the "+change" effect to each moving floor instance: at start
-    // (raise variants) or at completion (lowerAndChange), the top-flat faces
-    // swap to the new flat and the sector's damage zone takes the new special
-    // at the destination height. Both flats are handled as full ANIMATION
-    // sequences: the old faces may carry any frame (and their animTextures
-    // override the texture id at render time), and the destination stays
-    // animated when it is a sequence itself. Riser faces are untouched (wall
-    // textures live in a different bank — their ids never match the flat's).
+    // (raise variants) or at completion (lowerAndChange, donut), the top-flat
+    // faces swap to the flat its SOURCE sector carries at that moment and the
+    // sector's damage zone takes the new special at the destination height —
+    // read live from DoomSectorSurfaces, so a chain of changes propagates the
+    // flat the previous platform just took (vanilla line->frontsector). Both
+    // flats are handled as full ANIMATION sequences (the old faces may carry
+    // any frame). No texture can register outside the load batch, so every
+    // flat a chain can bring to a sector is resolved here, up front. Riser
+    // faces are untouched (wall textures never share a flat's ids).
     _wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction) {
-        const SCALE = WadConstants.SCALE;
+        const SCALE    = WadConstants.SCALE;
+        const surfaces = new DoomSectorSurfaces(this._level.sectors);
+        this._game.setSectorSurfaces(surfaces);
+
+        const sequences = new Map();
         for (const key of Object.keys(analysis.floorChange)) {
             const si     = parseInt(key, 10);
             const change = analysis.floorChange[key];
@@ -792,34 +798,36 @@ class WadWorldBuilder {
             if (code === null) {
                 continue;
             }
-            const oldSeq = animBank.flatSequenceLoaderIds(this._level.sectors[si].ft);
-            const newSeq = animBank.flatSequenceLoaderIds(change.flatName);
-            // The flat swap needs both sequences resolved; the special change
-            // does not (vanilla posts sector->special independently of the
-            // floorpic) and must survive an unresolvable flat.
-            const swapFlats = ((oldSeq.ids.length > 0) && (newSeq.ids.length > 0));
-            if (!swapFlats && ((change.special === null) || (damageInteraction === null))) {
-                continue;
+            const ownIds = new Set();
+            for (const flat of this._reachableFlats(si, analysis.floorChange)) {
+                if (!sequences.has(flat)) {
+                    sequences.set(flat, animBank.flatSequenceLoaderIds(flat));
+                }
+                sequences.get(flat).ids.forEach((id) => ownIds.add(id));
             }
-            const newAnim = ((swapFlats && (newSeq.ids.length > 1))
-                ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
-                : null);
             const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftMinAdjFh[si];
             const inst  = loader.instances().getByCode(code);
             const apply = () => {
-                if (swapFlats) {
+                const flat    = surfaces.flatOf(change.sourceSi);
+                const special = WadMapAnalyzer.changeSpecial(change.special, surfaces.specialOf(change.sourceSi));
+                const newSeq  = sequences.get(flat) ?? {ids: [], duration: 0};
+                if ((ownIds.size > 0) && (newSeq.ids.length > 0)) {
+                    const newAnim = ((newSeq.ids.length > 1)
+                        ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
+                        : null);
                     inst.getObject().faceList.forEach((fc) => {
-                        const animated = (fc.animTextures !== null && fc.animTextures !== undefined
-                            && fc.animTextures.ids.some((id) => oldSeq.ids.includes(id)));
-                        if (animated || oldSeq.ids.includes(fc.textureId)) {
+                        const animated = ((fc.animTextures !== null) && (fc.animTextures !== undefined)
+                            && fc.animTextures.ids.some((id) => ownIds.has(id)));
+                        if (animated || ownIds.has(fc.textureId)) {
                             fc.textureId    = newSeq.ids[0];
                             fc.animTextures = newAnim;
                         }
                     });
                     inst.getObject().invalidateFaceGroups();
                 }
-                if ((change.special !== null) && (damageInteraction !== null)) {
-                    damageInteraction.setSectorSpecial(si, change.special, targetFh * SCALE);
+                surfaces.set(si, flat, ((special !== null) ? special : surfaces.specialOf(si)));
+                if ((special !== null) && (damageInteraction !== null)) {
+                    damageInteraction.setSectorSpecial(si, special, targetFh * SCALE);
                 }
             };
             if (change.at === 'complete') {
@@ -828,6 +836,22 @@ class WadWorldBuilder {
                 inst.setOnStart(apply);
             }
         }
+    }
+
+    // Every flat a sector can show: its WAD flat, then whatever its chain of
+    // "+change" sources can copy onto it.
+    _reachableFlats(si, floorChange, visited = new Set()) {
+        const flats = new Set([this._level.sectors[si].ft]);
+        if (visited.has(si)) {
+            return flats;
+        }
+        visited.add(si);
+        const change = floorChange[si];
+        if (change !== undefined) {
+            this._reachableFlats(change.sourceSi, floorChange, visited).forEach((flat) => flats.add(flat));
+        }
+
+        return flats;
     }
 
     _registerInstance(built, bank) {
