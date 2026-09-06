@@ -269,6 +269,8 @@ class WadConstants {
     // Action radius in metres (xz_diagonal/2 + this margin)
     static DOOR_ACTION_RADIUS = 0.5;
 
+    // Flats named F_SKY* render the sky dome instead of a plane
+    static SKY_FLAT_PREFIX = 'F_SKY';
     // Doom units left at the top of a door panel for the ceiling track mechanism
     static DOOR_TRACK_OFFSET = 4;
     // Placeholder size of an untextured wall quad (sidedef texture and fill flat both absent)
@@ -879,6 +881,10 @@ class WadConstants {
     // True for the donut specials (the 'donutRingOnly' floor-up entries): on a
     // trigger line it identifies a donut; on a built rising floor's special it
     // identifies the sector as a donut RING (only _mergeDonutRings stamps it).
+    static isSkyFlat(flatName) {
+        return flatName.startsWith(WadConstants.SKY_FLAT_PREFIX);
+    }
+
     static isDonutSpecial(special) {
         return (WadConstants.FLOOR_UP_BY_SPECIAL[special]?.donutRingOnly === true);
     }

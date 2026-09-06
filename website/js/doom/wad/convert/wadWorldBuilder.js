@@ -862,7 +862,7 @@ class WadWorldBuilder {
     // P_UseLines: 64 units straight ahead, first line met, front side only —
     // one press reaches one switch, never every panel within the radius.
     _applySwitchUseGuard(built) {
-        const ownIdx   = Number(built.code.split('_')[1]);
+        const ownIdx   = built.linedef;
         const own      = this._useLines()[ownIdx];
         const instance = loader.instances().getByCode(built.code);
         const range    = WadConstants.USE_RANGE * WadConstants.SCALE;
@@ -933,7 +933,6 @@ class WadWorldBuilder {
             loader.instances().getByCode(built.code).addTriggerCondition((user) => user.hasItem(keyCode));
         }
     }
-
 
     // Catalogued fixes of the known maps (UZDoom LevelCompatibility), keyed by
     // the map's own fingerprint, applied before anything reads the records.
