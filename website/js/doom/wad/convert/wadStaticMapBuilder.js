@@ -143,27 +143,29 @@ class WadStaticMapBuilder {
             // the door line — flush doors give lFh == rFh and build nothing. The
             // upper walls below stay door-guarded (the door panel covers them).
             if (lFh > rFh && !isSwitchFace('right', 'lower')) {
-                const ti = this._bank.ensureWallTex(rSd.lower);
-                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
-                // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
-                const yo = rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0);
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    rFh * SCALE, lFh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
+                const tex = this._wallTexOrFlat(rSd.lower, lSec.ft);
+                if (tex !== null) {
+                    // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
+                    const yo = rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0);
+                    WadMeshBuilder.addWallQuad(mesh, tex.index,
+                        wx1, wz1, wx2, wz2,
+                        rFh * SCALE, lFh * SCALE,
+                        wallLen, tex.width, tex.height,
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
+                }
             }
 
             // Lower wall from left side (door sectors allowed, see above)
             if (rFh > lFh && !isSwitchFace('left', 'lower')) {
-                const ti = this._bank.ensureWallTex(lSd.lower);
-                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
-                const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    lFh * SCALE, rFh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
+                const tex = this._wallTexOrFlat(lSd.lower, rSec.ft);
+                if (tex !== null) {
+                    const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
+                    WadMeshBuilder.addWallQuad(mesh, tex.index,
+                        wx1, wz1, wx2, wz2,
+                        lFh * SCALE, rFh * SCALE,
+                        wallLen, tex.width, tex.height,
+                        {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
+                }
             }
 
             // Upper wall: ceiling step down from right sector to left sector.
@@ -173,27 +175,29 @@ class WadStaticMapBuilder {
             // neighbour's ceiling and the door's open ceiling is a static wall
             // (DOORTRAK precedent: the descending panel occludes it).
             if (lCh < rCh && !lIsDoor && !ceilSky && !isSwitchFace('right', 'upper')) {
-                const ti = this._bank.ensureWallTex(rSd.upper);
-                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
-                // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
-                const yo = rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh)));
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    lCh * SCALE, rCh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
+                const tex = this._wallTexOrFlat(rSd.upper, lSec.ct);
+                if (tex !== null) {
+                    // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
+                    const yo = rSd.yo + ((upperUnpeg) ? 0 : (tex.height - (rCh - lCh)));
+                    WadMeshBuilder.addWallQuad(mesh, tex.index,
+                        wx1, wz1, wx2, wz2,
+                        lCh * SCALE, rCh * SCALE,
+                        wallLen, tex.width, tex.height,
+                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
+                }
             }
 
             // Upper wall from left side (same door rule, mirrored)
             if (rCh < lCh && !rIsDoor && !ceilSky && !isSwitchFace('left', 'upper')) {
-                const ti = this._bank.ensureWallTex(lSd.upper);
-                const {width: tw, height: th} = ((ti < 0) ? {width: 128, height: 128} : this._bank.getDims(ti));
-                const yo = lSd.yo + ((upperUnpeg) ? 0 : (th - (lCh - rCh)));
-                WadMeshBuilder.addWallQuad(mesh, ti,
-                    wx1, wz1, wx2, wz2,
-                    rCh * SCALE, lCh * SCALE,
-                    wallLen, tw, th,
-                    {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
+                const tex = this._wallTexOrFlat(lSd.upper, rSec.ct);
+                if (tex !== null) {
+                    const yo = lSd.yo + ((upperUnpeg) ? 0 : (tex.height - (lCh - rCh)));
+                    WadMeshBuilder.addWallQuad(mesh, tex.index,
+                        wx1, wz1, wx2, wz2,
+                        rCh * SCALE, lCh * SCALE,
+                        wallLen, tex.width, tex.height,
+                        {xOff: lSd.xo, yOff: yo, flip: false, light: lSec.light, lightGroup: this._lightGroupOf(lSd.sector)});
+                }
             }
 
             this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
@@ -209,6 +213,25 @@ class WadStaticMapBuilder {
                 this._buildBlockingWall(mesh, rFh, rChEff, lFh, lChEff, wx1, wz1, wx2, wz2, wallLen);
             }
         }
+    }
+
+    // Upper/lower texture of a two-sided line, with the GZDoom texture fill as
+    // fallback: a sidedef without texture leaves a hall of mirrors in vanilla,
+    // the hardware ports paint the gap with the flat of the sector across the
+    // line. A sky flat leaves the gap open so the dome shows through.
+    _wallTexOrFlat(wallName, flatName) {
+        const wallIndex = this._bank.ensureWallTex(wallName);
+        if (wallIndex >= 0) {
+            return {index: wallIndex, ...this._bank.getDims(wallIndex)};
+        }
+        if (flatName.startsWith('F_SKY')) {
+            return null;
+        }
+        const flatIndex = this._bank.ensureFlatTex(flatName);
+        if (flatIndex < 0) {
+            return {index: -1, width: WadConstants.MISSING_TEXTURE_SIZE, height: WadConstants.MISSING_TEXTURE_SIZE};
+        }
+        return {index: flatIndex, ...this._bank.getDims(flatIndex)};
     }
 
     // Middle textures: shown exactly once (no vertical tiling) and drawn only
