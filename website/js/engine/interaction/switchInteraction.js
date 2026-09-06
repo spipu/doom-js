@@ -48,6 +48,7 @@ class SwitchInteraction extends AbstractInteraction {
             return;
         }
 
+        const previous = {state: this._state, onTimer: this._onTimer, done: this._done};
         this._state   = !this._state;
         this._onTimer = 0;
         if (this._mode === 'once') {
@@ -55,7 +56,14 @@ class SwitchInteraction extends AbstractInteraction {
         }
 
         if (this._state) {
-            this._triggerOn(instance);
+            // A refused ON leaves the switch untouched, usable again: the
+            // action it drives (a busy mover) did not take, so nothing is spent.
+            if (this._triggerOn(instance) === false) {
+                this._state   = previous.state;
+                this._onTimer = previous.onTimer;
+                this._done    = previous.done;
+                return;
+            }
         } else {
             this._triggerOff(instance);
         }
@@ -86,8 +94,11 @@ class SwitchInteraction extends AbstractInteraction {
         this._done    = (state.done === true);
     }
 
+    // Returns whether the action took (false = refuse the press, see triggered).
     _triggerOn(instance) {
         console.log('[SwitchInteraction] ' + instance.getCode() + ' -> ON');
+
+        return true;
     }
 
     _triggerOff(instance) {
