@@ -1,0 +1,246 @@
+{
+    "02dd5d83de14e886658a86765d796dd41cdb527568e7dd6ea74bd602582f0963": {
+        "map": "E1M2",
+        "source": "heretic.wad e1m2 (UZDoom level_compatibility.zs, md5 D94587625BA779644D58151A87897CF1)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 477,
+                "side": "back",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 478,
+                "side": "back",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 479,
+                "side": "back",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1057,
+                "side": "front",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            }
+        ]
+    },
+    "2e1d0f0dcbb2c2705230f08eda98c72408fe3f773ce06684961097870b546015": {
+        "map": "E1M3",
+        "source": "heretic.wad e1m3 (UZDoom level_compatibility.zs, md5 ADD0FAC41AFB0B3C9B9F3C0006F93805)",
+        "actions": [
+            {
+                "op": "offsetSectorPlane",
+                "sector": 86,
+                "plane": "floor",
+                "delta": -128
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 86,
+                "plane": "ceiling",
+                "delta": -128
+            }
+        ]
+    },
+    "bb58d157b6c9dc48df4db83f4dacef58aea51efab4a8820da577c903da73c65e": {
+        "map": "E1M4",
+        "source": "heretic.wad e1m4 (UZDoom level_compatibility.zs, md5 916318D8B06DAC2D83424B23E4B66531)",
+        "actions": [
+            {
+                "op": "offsetSectorPlane",
+                "sector": 0,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 1,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 2,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 3,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 4,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 6,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 6,
+                "plane": "floor",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 17,
+                "plane": "ceiling",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 284,
+                "plane": "floor",
+                "delta": -8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 284,
+                "plane": "ceiling",
+                "delta": -8
+            },
+            {
+                "op": "setWallTexture",
+                "line": 490,
+                "side": "back",
+                "part": "lower",
+                "texture": "GRSTNPB"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 722,
+                "side": "front",
+                "part": "lower",
+                "texture": "WOODWL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 911,
+                "side": "front",
+                "part": "lower",
+                "texture": "WOODWL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1296,
+                "side": "front",
+                "part": "lower",
+                "texture": "WOODWL"
+            }
+        ]
+    },
+    "7dd8477c38320e9629eac3a8ee6ab8a4221dd487f2a932360edb55fe318006b3": {
+        "map": "E2M2",
+        "source": "heretic.wad e2m2 (UZDoom level_compatibility.zs, md5 397A0E17A39542E4E8294E156FAB0502)",
+        "actions": [
+            {
+                "op": "setThingSkills",
+                "thing": 17,
+                "enabled": true
+            },
+            {
+                "op": "setThingSkills",
+                "thing": 18,
+                "enabled": true
+            }
+        ]
+    },
+    "650eea608b3dc8f8daf2eb1d2595dc1a6d7d77211c2aafc58ed06557e0b7fcd4": {
+        "map": "E2M7",
+        "source": "heretic.wad e2m7 (UZDoom level_compatibility.zs, md5 FAA0550BE9923B3A3332B4F7DB897A4A)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 629,
+                "side": "back",
+                "part": "upper",
+                "texture": "LOOSERCK"
+            }
+        ]
+    },
+    "bf9a8c31bdd113e499e4dd031430c77ed15bd8ee1a2455366f5590fa9bab0579": {
+        "map": "E3M6",
+        "source": "heretic.wad e3m6 (UZDoom level_compatibility.zs, md5 CA3773ED313E8899311F3DD0CA195A68)",
+        "actions": [
+            {
+                "op": "setThingSkills",
+                "thing": 373,
+                "enabled": false
+            },
+            {
+                "op": "setThingSkills",
+                "thing": 448,
+                "enabled": true
+            },
+            {
+                "op": "setWallTexture",
+                "line": 343,
+                "side": "front",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 370,
+                "side": "front",
+                "part": "upper",
+                "texture": "MOSSRCK1"
+            }
+        ]
+    },
+    "07949a52c995aa6f76eb8f0caeda44a58c52a83f298bad1b6ad2725369674bd2": {
+        "map": "E4M7",
+        "source": "heretic.wad E4M7 (UZDoom level_compatibility.zs, md5 5E3FCFDE78310BB89F92B1626A47D0AD)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 1274,
+                "side": "front",
+                "part": "upper",
+                "texture": "CSTLRCK"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1277,
+                "side": "back",
+                "part": "upper",
+                "texture": "CSTLRCK"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1278,
+                "side": "front",
+                "part": "upper",
+                "texture": "CSTLRCK"
+            }
+        ]
+    },
+    "24f535548483aa56500a0073e00d4bebb6291997bc28f2e219997a1770d074a8": {
+        "map": "E4M8",
+        "source": "heretic.wad E4M8 (UZDoom level_compatibility.zs, md5 30D1480A6D4F3A3153739D4CCF659C4E)",
+        "actions": [
+            {
+                "op": "setThingFlags",
+                "thing": 78,
+                "set": 16,
+                "clear": 0
+            }
+        ]
+    }
+}

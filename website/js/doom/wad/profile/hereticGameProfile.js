@@ -309,6 +309,10 @@ class HereticGameProfile extends DefaultGameProfile {
         return '/assets/uzdoom/heretic/texts.json';
     }
 
+    levelPatchAssets() {
+        return '/assets/uzdoom/heretic/levelPatches.json';
+    }
+
     // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden
     // E6 is not named there — when the WAD carries its maps it shows up as a
     // bare "Episode 6" (deliberate: without an entry in the episode menu

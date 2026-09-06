@@ -48,6 +48,7 @@ function loadApp()
 
     // Same for the games' finale texts, merged into the catalog above.
     doomFinaleTexts.load();
+    doomLevelPatches.load();
 
     // Every Doom level builds a DoomUser (player + equipment) instead of the
     // generic engine User.

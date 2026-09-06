@@ -154,6 +154,54 @@ class WadFile {
     }
 
     /**
+     * Fingerprint of a map's own data: the marker lump then THINGS, LINEDEFS,
+     * SIDEDEFS, SECTORS and BEHAVIOR when present, hashed in that order — the
+     * lump set and order of UZDoom's MapData::GetChecksum, so a map keeps one
+     * identity across ports whatever the hash algorithm. Null when the map is
+     * unknown or when the page has no Web Crypto (insecure context).
+     *
+     * @param {string} mapName
+     * @returns {Promise<string|null>} lowercase hex SHA-256
+     */
+    async mapChecksum(mapName) {
+        this._requireParsed();
+        if ((typeof crypto === 'undefined') || (crypto.subtle === undefined)) {
+            return null;
+        }
+        const mapIndex = this._lumps.findIndex((lump) => (lump.name === mapName));
+        if (mapIndex < 0) {
+            return null;
+        }
+        const parts = [this._lumps[mapIndex]];
+        for (const name of WadFile.CHECKSUM_LUMPS) {
+            const lump = this._mapSubLump(mapIndex, name);
+            if (lump !== null) {
+                parts.push(lump);
+            }
+        }
+        const bytes = new Uint8Array(parts.reduce((total, lump) => (total + lump.size), 0));
+        let offset = 0;
+        for (const lump of parts) {
+            bytes.set(new Uint8Array(this._buffer, lump.offset, lump.size), offset);
+            offset += lump.size;
+        }
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+
+        return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    _mapSubLump(mapIndex, name) {
+        const end = Math.min(mapIndex + 1 + WadFile.MAX_MAP_SUB_LUMPS, this._lumps.length);
+        for (let i = mapIndex + 1; i < end; i++) {
+            if (this._lumps[i].name === name) {
+                return this._lumps[i];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * NUL-terminated fixed-width name of the WAD binary formats (lump
      * directory, but also every name field of the map lumps: textures, flats,
      * animation entries). Static: the converter parsers read their own
@@ -208,3 +256,6 @@ class WadFile {
         }
     }
 }
+
+WadFile.CHECKSUM_LUMPS   = ['THINGS', 'LINEDEFS', 'SIDEDEFS', 'SECTORS', 'BEHAVIOR'];
+WadFile.MAX_MAP_SUB_LUMPS = 11;

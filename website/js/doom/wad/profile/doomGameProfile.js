@@ -19,6 +19,10 @@ class DoomGameProfile extends DefaultGameProfile {
         return '/assets/uzdoom/doom/texts.json';
     }
 
+    levelPatchAssets() {
+        return '/assets/uzdoom/doom/levelPatches.json';
+    }
+
     // Episode titles of Doom 1 (UZDoom mapinfo/doom1.txt episode blocks).
     // Doom 2 (MAPxx) has none: its single episode only shows its number.
     episodeNames() {
