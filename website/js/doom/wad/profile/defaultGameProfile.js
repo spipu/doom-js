@@ -789,7 +789,9 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // Transient effects (P_SpawnPuff + the projectile death frames from
     // info.c). alpha/additive follow gzdoom: the rocket blast is opaque smoke,
-    // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), the puff is
+    // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), every monster
+    // fireball and its death glow too (+ZDOOMTRANS actors: imp, cacodemon,
+    // baron, mancubus, revenant tracer, arachnotron at 0.75), the puff is
     // translucent (0.4 — user setting; gzdoom's BulletPuff is Alpha 0.5,
     // doommisc.zs), floats up 1 map unit/tic and starts a melee hit at frame C
     // (meleeStart 2, no bright spark).
@@ -797,6 +799,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         return [
             {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, meleeStart: 2},
             {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
+            {name: 'fatShotExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],               frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: true},
             {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true},
             {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true},
             {name: 'bfgSprayHit',   sprite: 'BFE2', letters: ['A', 'B', 'C', 'D'],           frameTics: [8, 8, 8, 8],       alpha: 0.75, rise: 0, additive: true},
@@ -806,11 +809,11 @@ class DefaultGameProfile extends AbstractGameProfile {
             // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
             // Every monster missile's Death animation, plus the revenant's
             // smoke trail and the archvile's hellfire.
-            {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
-            {name: 'cacoBallDeath',    sprite: 'BAL2', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
-            {name: 'baronBallDeath',   sprite: 'BAL7', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: false},
-            {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
-            {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: false},
+            {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
+            {name: 'cacoBallDeath',    sprite: 'BAL2', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
+            {name: 'baronBallDeath',   sprite: 'BAL7', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
+            {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 0.75, rise: 0, additive: true},
+            {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: true},
             {name: 'tracerSmoke',      sprite: 'PUFF', letters: ['A', 'B', 'A', 'B', 'C'], frameTics: [4, 4, 4, 4, 4], alpha: 0.5, rise: 1, additive: false},
             // SpawnFire: the pillar a boss cube hatches in (same FIRE sprite as
             // the archvile's, its own 8-frame animation).
@@ -852,14 +855,14 @@ class DefaultGameProfile extends AbstractGameProfile {
             {kind: 'bfg',    sprite: 'BFS1', letters: ['A', 'B'], speed: 25, flightTics: 4, explosion: 'bfgExplode',    splashDamage: 0,   impactDamage: 100, alpha: 0.75, additive: true,  decalType: 'bfg', deathSound: 'weapons/bfgx', spray: {rays: 40, damageCount: 15, angle: 90, distance: 1024, effect: 'bfgSprayHit'}},
             // The monsters' shots (zscript/actors/doom/*.zs): no splash but the
             // cyberdemon's, which fires the very rocket the player does.
-            {kind: 'impBall',     sprite: 'BAL1', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'impBallDeath',     splashDamage: 0, impactDamage: 3,  alpha: 1, additive: false, seeSound: 'imp/attack', deathSound: 'imp/shotx'},
-            {kind: 'cacoBall',    sprite: 'BAL2', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'cacoBallDeath',    splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false, seeSound: 'caco/attack', deathSound: 'caco/shotx'},
-            {kind: 'baronBall',   sprite: 'BAL7', letters: ['A', 'B'], speed: 15, fastSpeed: 20, flightTics: 4, explosion: 'baronBallDeath',   splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false, seeSound: 'baron/attack', deathSound: 'baron/shotx'},
-            {kind: 'arachPlasma', sprite: 'APLS', letters: ['A', 'B'], speed: 25,                flightTics: 5, explosion: 'arachPlasmaDeath', splashDamage: 0, impactDamage: 5,  alpha: 1, additive: false, seeSound: 'baby/attack', deathSound: 'baby/shotx'},
-            {kind: 'fatShot',     sprite: 'MANF', letters: ['A', 'B'], speed: 20,                flightTics: 4, explosion: 'rocketExplode',    splashDamage: 0, impactDamage: 8,  alpha: 1, additive: false, seeSound: 'fatso/attack', deathSound: 'fatso/shotx'},
+            {kind: 'impBall',     sprite: 'BAL1', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'impBallDeath',     splashDamage: 0, impactDamage: 3,  alpha: 1, additive: true, seeSound: 'imp/attack', deathSound: 'imp/shotx'},
+            {kind: 'cacoBall',    sprite: 'BAL2', letters: ['A', 'B'], speed: 10, fastSpeed: 20, flightTics: 4, explosion: 'cacoBallDeath',    splashDamage: 0, impactDamage: 5,  alpha: 1, additive: true, seeSound: 'caco/attack', deathSound: 'caco/shotx'},
+            {kind: 'baronBall',   sprite: 'BAL7', letters: ['A', 'B'], speed: 15, fastSpeed: 20, flightTics: 4, explosion: 'baronBallDeath',   splashDamage: 0, impactDamage: 8,  alpha: 1, additive: true, seeSound: 'baron/attack', deathSound: 'baron/shotx'},
+            {kind: 'arachPlasma', sprite: 'APLS', letters: ['A', 'B'], speed: 25,                flightTics: 5, explosion: 'arachPlasmaDeath', splashDamage: 0, impactDamage: 5,  alpha: 0.75, additive: true, seeSound: 'baby/attack', deathSound: 'baby/shotx'},
+            {kind: 'fatShot',     sprite: 'MANF', letters: ['A', 'B'], speed: 20,                flightTics: 4, explosion: 'fatShotExplode',    splashDamage: 0, impactDamage: 8,  alpha: 1, additive: true, seeSound: 'fatso/attack', deathSound: 'fatso/shotx'},
             // A_Tracer: the smoke and the course correction both run one tic in
             // four, which is why the revenant's shot swerves in visible steps.
-            {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: false,
+            {kind: 'tracer',      sprite: 'FATB', letters: ['A', 'B'], speed: 10,                flightTics: 2, explosion: 'tracerDeath',      splashDamage: 0, impactDamage: 10, alpha: 1, additive: true,
                 seek: {threshold: 16.875, turnMax: 16.875, everyTics: 4, worldClock: true}, trailEffect: 'tracerSmoke', trailEveryTics: 4,
                 seeSound: 'skeleton/attack', deathSound: 'skeleton/tracex'},
             // The Icon of Sin's cube (SpawnShot): +NOCLIP, so it crosses the
