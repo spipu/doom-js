@@ -32,6 +32,8 @@ class WadWorldBuilder {
         this._monsterSystem  = options.monsterSystem ?? null;
         this._level          = null;
         this._sectorPolys    = null;   // walked on demand, see _sectorPolyCache
+        this._useLineCache   = null;   // world-space linedefs of the use traces, see _useLines
+        this._sectorHeights  = null;   // live sector heights (DoomSectorHeights), set with the level data
     }
 
     // Async only to yield to the browser between the heavy phases, so the
@@ -109,6 +111,7 @@ class WadWorldBuilder {
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
+            this._applySwitchSideGuard(sw);
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
             if (spec.remoteSwap) {
@@ -743,6 +746,7 @@ class WadWorldBuilder {
         };
         // The sound flood, the mover pressure and the map share this instance.
         data.heights = new DoomSectorHeights(data);
+        this._sectorHeights = data.heights;
 
         return data;
     }
@@ -860,6 +864,73 @@ class WadWorldBuilder {
             WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank)
         );
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
+    }
+
+    // Vanilla P_UseSpecialLine answers a press from the FRONT side of the line
+    // only (`if (side) return false`), and P_UseTraverse stops at the first
+    // line without an opening: a panel pressed from behind its wall, or the
+    // inward-looking switches of a secret pillar reached through it (E2M2's
+    // tag 86, lowered from the corridor by a walk line), stay deaf. Same side
+    // convention as _applyDoorUseGuard.
+    _applySwitchSideGuard(built) {
+        const ownIdx   = Number(built.code.split('_')[1]);
+        const own      = this._useLines()[ownIdx];
+        const instance = loader.instances().getByCode(built.code);
+        instance.addTriggerCondition((user) => {
+            if (WadGeometry.cross2d([own.x1, own.z1], [own.x2, own.z2], [user.x, user.z]) > 0) {
+                return false;
+            }
+            // Aim inside the line, away from its corners, and stop just short of
+            // it: a corner shared with a wall must count as that wall, not as
+            // a gap beside it.
+            const [nx, nz] = WadGeometry.nearestPointOnSegment(user.x, user.z, own.x1, own.z1, own.x2, own.z2,
+                WadConstants.USE_TRACE_END_MARGIN);
+            const ex = user.x + ((nx - user.x) * WadConstants.USE_TRACE_STOP_RATIO);
+            const ez = user.z + ((nz - user.z) * WadConstants.USE_TRACE_STOP_RATIO);
+
+            return !this._useTraceBlocked(user.x, user.z, ex, ez, ownIdx);
+        });
+    }
+
+    // A one-sided wall, or a two-sided line whose live floor meets its ceiling
+    // (closed door, parked secret pillar), between the player and the pressed
+    // line blocks the use, as P_LineOpening's zero range does.
+    _useTraceBlocked(px, pz, nx, nz, ownIdx) {
+        for (const line of this._useLines()) {
+            if ((line.idx === ownIdx) || !WadGeometry.segmentsTouch(px, pz, nx, nz, line.x1, line.z1, line.x2, line.z2)) {
+                continue;
+            }
+            if (line.lSi < 0) {
+                return true;
+            }
+            const heights = this._sectorHeights;
+            const floor   = Math.max(heights.floorOf(line.rSi), heights.floorOf(line.lSi));
+            const ceiling = Math.min(heights.ceilingOf(line.rSi), heights.ceilingOf(line.lSi));
+            if (ceiling <= floor) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Every linedef as a world-space segment with its sector sides, for the
+    // use traces (built once per level, on first need).
+    _useLines() {
+        if (this._useLineCache === null) {
+            const {vertexes, linedefs, sidedefs} = this._level;
+            this._useLineCache = linedefs.map((ld, idx) => {
+                const [dx1, dy1] = vertexes[ld.v1];
+                const [dx2, dy2] = vertexes[ld.v2];
+                const [x1, z1] = WadGeometry.doomToWorld(dx1, dy1);
+                const [x2, z2] = WadGeometry.doomToWorld(dx2, dy2);
+                return {idx: idx, x1: x1, z1: z1, x2: x2, z2: z2,
+                    rSi: ((ld.right >= 0) ? sidedefs[ld.right].sector : -1),
+                    lSi: ((ld.left >= 0) ? sidedefs[ld.left].sector : -1)};
+            });
+        }
+
+        return this._useLineCache;
     }
 
     // Locked switches (the blaze 99/133-137) only fire if the player holds the
