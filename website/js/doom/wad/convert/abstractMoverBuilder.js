@@ -55,6 +55,93 @@ class AbstractMoverBuilder {
         return groups.newList;
     }
 
+    // Side walls: a riser (riserBaseFh → origFh) on EVERY two-sided perimeter
+    // edge of the mover, moving with it — the mover is a self-contained box, not
+    // dependent on its neighbours, so two adjacent movers stopping at different
+    // heights still show a wall between them. Texture priority per edge: the
+    // neighbour sidedef's lower (preserves the shaft look), else the mover's own
+    // sidedef lower, else a sibling edge's texture (so a bare shared edge still
+    // gets a wall). Two passes: resolve, then emit with the fallback filled in.
+    // One-sided edges stay handled by the static map.
+    _buildRisers(mesh, si, origFh, riserBaseFh) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const SCALE = WadConstants.SCALE;
+
+        // A usable lower texture name on a sidedef, or null.
+        const validLower = (sd) => {
+            if (!sd || !sd.lower || sd.lower === '-') {
+                return null;
+            }
+            return ((this._bank.ensureWallTex(sd.lower) >= 0) ? sd.lower : null);
+        };
+
+        const edges = [];
+        let fallbackTex = null;
+
+        for (const ld of linedefs) {
+            if (ld.right < 0 || ld.left < 0) {
+                continue;
+            }
+            const rSi2 = sidedefs[ld.right].sector;
+            const lSi2 = sidedefs[ld.left].sector;
+            const moverOnRight = (rSi2 === si);
+            const moverOnLeft  = (lSi2 === si);
+            if (!moverOnRight && !moverOnLeft) {
+                continue;
+            }
+
+            const ownSd        = sidedefs[((moverOnRight) ? ld.right : ld.left)];
+            const neighbourSd  = sidedefs[((moverOnRight) ? ld.left : ld.right)];
+            const neighbourSec = sectors[((moverOnRight) ? lSi2 : rSi2)];
+
+            // Texture: neighbour lower first, then own lower. Record the source
+            // sidedef (for xo/yo) and its sector (for light/ch). null = bare edge.
+            let tex    = validLower(neighbourSd);
+            let srcSd  = neighbourSd;
+            let srcSec = neighbourSec;
+            let srcSi  = ((moverOnRight) ? lSi2 : rSi2);
+            if (tex === null) {
+                tex    = validLower(ownSd);
+                srcSd  = ownSd;
+                srcSec = sectors[si];
+                srcSi  = si;
+            }
+            if ((tex !== null) && (fallbackTex === null)) {
+                fallbackTex = tex;
+            }
+
+            const [dx1, dy1] = vertexes[ld.v1];
+            const [dx2, dy2] = vertexes[ld.v2];
+            const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
+            const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
+            edges.push({
+                tex, srcSd, srcSec, srcSi,
+                wx1, wz1, wx2, wz2,
+                wallLen: WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2),
+                lowerUnpeg: ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0),
+                flip: !moverOnRight
+            });
+        }
+
+        for (const e of edges) {
+            const tex = ((e.tex !== null) ? e.tex : fallbackTex);
+            if (tex === null) {
+                continue;   // no texture anywhere on this mover — skip (very rare)
+            }
+            const ti = this._bank.ensureWallTex(tex);
+            if (ti < 0) {
+                continue;
+            }
+            const {width: tw, height: th} = this._bank.getDims(ti);
+            const yo = e.srcSd.yo + ((e.lowerUnpeg) ? (e.srcSec.ch - origFh) : 0);
+            WadMeshBuilder.addWallQuad(mesh, ti,
+                e.wx1, e.wz1, e.wx2, e.wz2,
+                riserBaseFh * SCALE, origFh * SCALE,
+                e.wallLen, tw, th,
+                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi)});
+        }
+    }
+
     /**
      * Sector ids this builder turns into movers (from the analysis).
      *
