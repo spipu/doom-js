@@ -211,8 +211,10 @@ class WadStaticMapBuilder {
         }
     }
 
-    // Middle textures: transparent fence/grating, rendered from both sides,
-    // shown exactly once (no vertical tiling). Without ML_BLOCKING it is a
+    // Middle textures: shown exactly once (no vertical tiling) and drawn only
+    // from the side whose sidedef carries it, as vanilla renders the viewed
+    // sidedef's midtexture alone (a one-sided one is a solid wall from one
+    // room and an opening from the other). Without ML_BLOCKING it is a
     // "false wall": visible but passable.
     _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall) {
         const {doorSectorIds} = this._analysis;
@@ -227,7 +229,7 @@ class WadStaticMapBuilder {
         const lFh = lSec.fh;
         const lCh = lSec.ch;
 
-        for (const [mSd, mSec, otherSec, side] of [[rSd, rSec, lSec, 'right'], [lSd, lSec, rSec, 'left']]) {
+        for (const [mSd, mSec, side] of [[rSd, rSec, 'right'], [lSd, lSec, 'left']]) {
             if ((swWall !== null) && (swWall.side === side) && (swWall.slot === 'middle')) {
                 continue;
             }
@@ -267,7 +269,7 @@ class WadStaticMapBuilder {
             }
 
             // Scrolling wall (48): only the FRONT (right) sidedef's offset is
-            // animated in vanilla — both flip quads show that same texture
+            // animated in vanilla
             const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
 
             // Shots never test middle textures in vanilla (P_ShootTraverse
@@ -276,15 +278,9 @@ class WadStaticMapBuilder {
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
                 wallLen, tw, th,
-                {xOff: mSd.xo, yOff: yo, flip: true, light: mSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, passableShot: true, uScrollTexelsPerSec: uScroll});
-            WadMeshBuilder.addWallQuad(mesh, ti,
-                wx1, wz1, wx2, wz2,
-                ybot * SCALE, ytop * SCALE,
-                wallLen, tw, th,
-                {xOff: mSd.xo, yOff: yo, flip: false, light: otherSec.light, clampV: true,
-                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, passableShot: true, uScrollTexelsPerSec: uScroll});
-            break;   // both sides already covered by the flip pair above
+                {xOff: mSd.xo, yOff: yo, flip: (side === 'right'), light: mSec.light, clampV: true,
+                 passableUser: midPassableUser, passableEnemy: midPassableEnemy, passableShot: true,
+                 uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(mSd.sector)});
         }
     }
 
