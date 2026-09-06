@@ -257,6 +257,8 @@ class WadConstants {
 
     // Doom units left at the top of a door panel for the ceiling track mechanism
     static DOOR_TRACK_OFFSET = 4;
+    // Placeholder size of an untextured wall quad (sidedef texture and fill flat both absent)
+    static MISSING_TEXTURE_SIZE = 128;
 
     // Timer doors (SECTOR specials, no linedef — P_SpawnSpecials arms a
     // countdown at level load): 10 = the statically open sector close-stays
