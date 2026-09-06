@@ -987,7 +987,7 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'headFX1Death',        sprite: 'FX05', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
             {name: 'headFX3Death',        sprite: 'FX06', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
             {name: 'whirlwindDeath',      sprite: 'FX07', letters: ['G', 'F', 'E', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4, rise: 0, additive: false},
-            {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
             {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false},
             {name: 'sorcerer2FX1Death',   sprite: 'FX16', letters: ['G', 'H', 'I', 'J', 'K', 'L'],      frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
@@ -1047,7 +1047,7 @@ class HereticGameProfile extends DefaultGameProfile {
             // grinds them for as long as it lasts (Whirlwind::DoSpecialDamage).
             {kind: 'whirlwind',      sprite: 'FX07', letters: ['D', 'E', 'F', 'G', 'A', 'B', 'C'], speed: 10, flightTics: 3, explosion: 'whirlwindDeath', splashDamage: 0, impactDamage: 0, alpha: 0.4, additive: false,
                 seek: {threshold: 10, turnMax: 30, everyTics: 3}, ripper: {damage: 3, damageEvery: 8, shove: 2, lift: 0.3}, lifeTics: 700, seeSound: 'ironlich/attack1'},
-            {kind: 'minotaurFX1',    sprite: 'FX12', letters: ['A', 'B'],           speed: 20, fastSpeed: 26, flightTics: 6, explosion: 'minotaurFX1Death',   splashDamage: 0,  impactDamage: 3, alpha: 1, additive: false},
+            {kind: 'minotaurFX1',    sprite: 'FX12', letters: ['A', 'B'],           speed: 20, fastSpeed: 26, flightTics: 6, explosion: 'minotaurFX1Death',   splashDamage: 0,  impactDamage: 3, alpha: 1, additive: true},
             // MinotaurFX2 crawls along the floor and sows a MinotaurFX3 beside
             // itself every other tic (A_MntrFloorFire, scattered ±4 units).
             {kind: 'minotaurFX2',    sprite: 'FX13', letters: ['A'],                speed: 14, fastSpeed: 20, flightTics: 2, explosion: 'minotaurFX2Death',   splashDamage: 24,  impactDamage: 4, alpha: 1, additive: false,
