@@ -809,7 +809,7 @@ class WadWorldBuilder {
                 }
                 sequences.get(flat).ids.forEach((id) => ownIds.add(id));
             }
-            const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftMinAdjFh[si];
+            const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftBaseTargetFh[si] ?? analysis.liftMinAdjFh[si];
             const inst  = loader.instances().getByCode(code);
             const apply = () => {
                 const flat    = surfaces.flatOf(change.sourceSi);
