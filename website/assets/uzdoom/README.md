@@ -67,7 +67,7 @@ not in this transcription.
 
 The `LevelCompatibility` catalogue of UZDoom, restricted to the maps of Doom,
 Doom II and Heretic, keyed by the **SHA-256** of the map's own lumps (marker,
-THINGS, LINEDEFS, SIDEDEFS, SECTORS — the lump set and order of the port's MD5
+THINGS, LINEDEFS, SIDEDEFS, SECTORS, BEHAVIOR when present — the lump set and order of the port's MD5
 checksum, whose value is kept in each entry's `source` for traceability). A map
 is recognised whatever the WAD that carries it and never mistaken for another
 edition of the same name.

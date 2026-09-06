@@ -553,7 +553,7 @@ class WadMapAnalyzer {
                 doorHeights[si] = {floorH: sectors[si].fh, ceilH: Math.max(...adj.map((s) => s.ch))};
                 continue;
             }
-            const nonSky = adj.filter((s) => !s.ct.startsWith('F_SKY'));
+            const nonSky = adj.filter((s) => !WadConstants.isSkyFlat(s.ct));
             const ceilH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
                 : floorH + 128);

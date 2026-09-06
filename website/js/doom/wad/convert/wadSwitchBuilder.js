@@ -24,7 +24,7 @@ class WadSwitchBuilder {
     }
 
     /**
-     * @returns {object[]} [{code, textures (bank indices), mesh, instanceData, interactionSpec}]
+     * @returns {object[]} [{code, linedef, textures (bank indices), mesh, instanceData, interactionSpec}]
      */
     buildAll() {
         const result = [];
@@ -71,6 +71,7 @@ class WadSwitchBuilder {
 
         return {
             code:     switchName,
+            linedef:  ldIdx,
             textures: geom.textures,
             mesh:     geom.mesh,
             instanceData: {

@@ -135,7 +135,7 @@ class WadStaticMapBuilder {
 
             // Doom sky rule: when BOTH ceilings are sky, the upper between them
             // is not drawn — the sky is continuous (no band above the opening).
-            const ceilSky = (rSec.ct.startsWith('F_SKY') && lSec.ct.startsWith('F_SKY'));
+            const ceilSky = (WadConstants.isSkyFlat(rSec.ct) && WadConstants.isSkyFlat(lSec.ct));
 
             // Lower wall: step up from right sector floor to left sector floor.
             // Door sectors are allowed here (no !isDoor guard): a door on a step
@@ -222,7 +222,7 @@ class WadStaticMapBuilder {
         if (wallIndex >= 0) {
             return {index: wallIndex, ...this._bank.getDims(wallIndex)};
         }
-        if (flatName.startsWith('F_SKY')) {
+        if (WadConstants.isSkyFlat(flatName)) {
             return null;
         }
         const flatIndex = this._bank.ensureFlatTex(flatName);
@@ -342,9 +342,9 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            const floorSky = sec.ft.startsWith('F_SKY');
+            const floorSky = WadConstants.isSkyFlat(sec.ft);
             const ft = ((floorSky) ? -1 : this._bank.ensureFlatTex(sec.ft));
-            const hasSky = sec.ct.startsWith('F_SKY');
+            const hasSky = WadConstants.isSkyFlat(sec.ct);
             const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
             // Visual eastward flat drift (Heretic scrolling lava / east

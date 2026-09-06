@@ -120,7 +120,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
     // Bottom flat: ceiling flat of the door sector, visible from below when
     // the panel rises. No top flat (z-fight with the static ceiling).
     _buildBottomFlat(mesh, si, sec, floorH) {
-        if (sec.ct.startsWith('F_SKY')) {
+        if (WadConstants.isSkyFlat(sec.ct)) {
             return;
         }
         const ct = this._bank.ensureFlatTex(sec.ct);
