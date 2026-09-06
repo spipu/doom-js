@@ -1,10 +1,7 @@
 /**
- * Live floor surface of every sector — flat name and special — as the
- * "+change" floors rewrite them during play. The parsed sectors keep their WAD
- * values; a change reads its SOURCE here at firing time and writes its target
- * back, so a chain of raise-and-change platforms propagates the flat the
- * previous one just took (vanilla EV_DoFloor reads line->frontsector live).
- * Saved with the game and restored before the movers replay their hooks.
+ * Live floor surface (flat, special) of every sector as the "+change" floors
+ * rewrite them: a change reads its source here at fire time, like vanilla's
+ * live line->frontsector, so chained platforms propagate. Saved with the game.
  */
 class DoomSectorSurfaces {
     /**

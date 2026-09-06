@@ -689,9 +689,8 @@ class WadMapAnalyzer {
         };
     }
 
-    // Floors of the sectors across the two-sided lines of si: every neighbour
-    // (adjAllFh, the vanilla P_Find*FloorSurrounding scan) and the non-lift
-    // ones alone (adjFh, which feed the lift travel and patching).
+    // Neighbour floors of si: all of them (P_Find*FloorSurrounding) and the
+    // non-lift ones alone (lift travel and patching).
     _liftAdjacentFloors(si, movingFloorDownIds) {
         const {sidedefs, sectors} = this._level;
         const adjFh    = [];
@@ -731,11 +730,9 @@ class WadMapAnalyzer {
         return Math.min(...adjFh);
     }
 
-    // Every OTHER floor-lower special aimed at a lift becomes a named cycle on
-    // it (vanilla runs each thinker on its own rules): E2M2's secret pillar is
-    // a W1 plat from the corridor's walk line AND a stay-down S1 from its own
-    // faces. Runs before the floor patch: a variant lowering further than the
-    // base deepens the patched minimum (static floor, riser skirt).
+    // Every OTHER floor-lower special aimed at a lift becomes a named cycle
+    // (vanilla runs each thinker on its own rules); a variant lowering further
+    // than the base deepens the patched minimum, hence the run before the patch.
     // liftLowerVariants: si → key → {special, anim, speed, onlyOnce, targetFh}.
     _identifyLiftLowers(lifts) {
         const {sectors} = this._level;
@@ -981,9 +978,7 @@ class WadMapAnalyzer {
                 if (!moving) {
                     continue;
                 }
-                // The source is kept as a sector, not as a flat: its surface is
-                // read at firing time (DoomSectorSurfaces), so a chain of
-                // changes propagates like vanilla's live line->frontsector.
+                // A sector, not a flat: read live at fire time (chained changes)
                 let sourceSi = frontSi;
                 if (rule.source === 'dest') {
                     sourceSi = this._sectorAtHeight(si, lifts.liftBaseTargetFh[si]);
@@ -1151,14 +1146,9 @@ class WadMapAnalyzer {
         return {ids: ids, walls: walls};
     }
 
-    // The SW graphic counts first on a slot the line actually draws from that
-    // side: a lower needs the far floor higher, an upper the far ceiling lower.
-    // E2M2's secret pillar carries SW1BRN2 on both slots of its inner side and
-    // only the upper exists — the lower would face a higher floor and the
-    // panel would land at the corridor's height. Lift floors are read at their
-    // rest height (the static patch lowered them already). A slot with no band
-    // at rest is kept as a last resort: a switch on a mover's face is revealed
-    // when it moves (MAP19's line 633, E2M2's rising pedestals 1043-1045).
+    // Prefer a slot the line draws from that side (a lower needs the far floor
+    // higher, an upper the far ceiling lower); a bandless slot stays the last
+    // resort for a switch on a mover's face, revealed when it moves.
     _findSwitchSlot(rSd, lSd, liftOriginalFh) {
         const {sectors} = this._level;
         const rSec = sectors[rSd.sector];

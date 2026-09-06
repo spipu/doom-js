@@ -778,16 +778,10 @@ class WadWorldBuilder {
         return {floorCode: null, liftY: 0};
     }
 
-    // Attach the "+change" effect to each moving floor instance: at start
-    // (raise variants) or at completion (lowerAndChange, donut), the top-flat
-    // faces swap to the flat its SOURCE sector carries at that moment and the
-    // sector's damage zone takes the new special at the destination height —
-    // read live from DoomSectorSurfaces, so a chain of changes propagates the
-    // flat the previous platform just took (vanilla line->frontsector). Both
-    // flats are handled as full ANIMATION sequences (the old faces may carry
-    // any frame). No texture can register outside the load batch, so every
-    // flat a chain can bring to a sector is resolved here, up front. Riser
-    // faces are untouched (wall textures never share a flat's ids).
+    // "+change" of a moving floor, at start or at completion: the top flat and
+    // the damage special come from the SOURCE sector's live surface (vanilla
+    // reads line->frontsector at fire time, so chained changes propagate). No
+    // texture registers outside the batch: every reachable flat resolves here.
     _wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction) {
         const SCALE    = WadConstants.SCALE;
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
@@ -842,8 +836,7 @@ class WadWorldBuilder {
         }
     }
 
-    // Every flat a sector can show: its WAD flat, then whatever its chain of
-    // "+change" sources can copy onto it.
+    // Flats a sector can show: its own, then those its "+change" chain brings.
     _reachableFlats(si, floorChange, visited = new Set()) {
         const flats = new Set([this._level.sectors[si].ft]);
         if (visited.has(si)) {
@@ -866,12 +859,8 @@ class WadWorldBuilder {
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
-    // Vanilla P_UseLines traces 64 units straight ahead of the player and uses
-    // the FIRST line it meets, from its front side only (`if (side) return
-    // false`), stopping at any line without an opening. So one press reaches
-    // exactly one switch — the one the player faces — never every panel within
-    // reach: E2M2's pillar carries four S1 lines at arm's length, and a press
-    // on its bare west face must not spend the SW1BRN2 line beside it.
+    // P_UseLines: 64 units straight ahead, first line met, front side only —
+    // one press reaches one switch, never every panel within the radius.
     _applySwitchUseGuard(built) {
         const ownIdx   = Number(built.code.split('_')[1]);
         const own      = this._useLines()[ownIdx];
@@ -887,17 +876,15 @@ class WadWorldBuilder {
             if (hit === null) {
                 return false;
             }
-            // Stop just short of the line: a corner shared with a wall must count
-            // as that wall, not as a gap beside it.
+            // Stopped short of the line so a shared corner counts as its wall
             const reach = hit * WadConstants.USE_TRACE_STOP_RATIO;
 
             return !this._useTraceBlocked(user.x, user.z, user.x + (dx * reach), user.z + (dz * reach), ownIdx);
         });
     }
 
-    // A one-sided wall, or a two-sided line whose live floor meets its ceiling
-    // (closed door, parked secret pillar), between the player and the pressed
-    // line blocks the use, as P_LineOpening's zero range does.
+    // P_LineOpening: a one-sided wall or a two-sided line whose live floor
+    // meets its ceiling (closed door, parked pillar) stops the use trace.
     _useTraceBlocked(px, pz, nx, nz, ownIdx) {
         for (const line of this._useLines()) {
             if ((line.idx === ownIdx) || !WadGeometry.segmentsTouch(px, pz, nx, nz, line.x1, line.z1, line.x2, line.z2)) {
@@ -917,8 +904,7 @@ class WadWorldBuilder {
         return false;
     }
 
-    // Every linedef as a world-space segment with its sector sides, for the
-    // use traces (built once per level, on first need).
+    // Every linedef as a world-space segment with its sector sides (lazy).
     _useLines() {
         if (this._useLineCache === null) {
             const {vertexes, linedefs, sidedefs} = this._level;
@@ -949,9 +935,8 @@ class WadWorldBuilder {
     }
 
 
-    // Catalogued fixes of the known maps (UZDoom LevelCompatibility), applied
-    // to the parsed records before anything reads them; the fingerprint keys
-    // the map itself, not its name.
+    // Catalogued fixes of the known maps (UZDoom LevelCompatibility), keyed by
+    // the map's own fingerprint, applied before anything reads the records.
     async _applyLevelPatches(level) {
         const entry = doomLevelPatches.get(await this._wadFile.mapChecksum(this._levelName));
         if (entry === null) {

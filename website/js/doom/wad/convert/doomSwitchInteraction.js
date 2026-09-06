@@ -76,9 +76,8 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._applyRemoteSwap(true);
     }
 
-    // Vanilla P_UseSpecialLine changes the switch texture (and spends a S1)
-    // only when the action it fired took: pressed while its mover is still
-    // moving, the switch stays untouched and pressable.
+    // P_UseSpecialLine swaps the texture (and spends a S1) only when the action
+    // took: pressed on a moving target, the switch stays untouched.
     _triggerOn(instance) {
         if (!DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant)) {
             return false;

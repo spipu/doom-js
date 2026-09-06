@@ -68,9 +68,8 @@ class WadAnimationBank {
                 // fall back to the vanilla default of 8 tics.
                 const tics = ((sequence.speedTics > 0) ? sequence.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
                 const duration = tics * WadConstants.SECONDS_PER_TIC;
-                // Every frame of the sequence animates (P_UpdateSpecials cycles
-                // the whole range): a face painted with the third frame starts
-                // there and keeps its phase, so the ids are rotated onto it.
+                // P_UpdateSpecials cycles the whole range: a face painted with
+                // any frame animates from it, phase kept (ids rotated onto it).
                 ids.forEach((id, k) => {
                     animMap[id] = {ids: [...ids.slice(k), ...ids.slice(0, k)], duration: duration};
                 });

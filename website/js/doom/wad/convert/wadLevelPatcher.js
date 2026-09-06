@@ -1,9 +1,7 @@
 /**
- * Applies a map patch list to a freshly parsed level, before any analyzer or
- * builder reads it. The verbs are those of the UZDoom LevelPostProcessor the
- * catalogs are transcribed from (see website/assets/uzdoom/), already resolved
- * to doom-format values: the patcher knows nothing of the game, it only edits
- * the parsed records in place.
+ * Applies a map patch list to a freshly parsed level. The verbs are the UZDoom
+ * LevelPostProcessor ones (see website/assets/uzdoom/), already resolved to
+ * doom-format values: the patcher only edits the parsed records in place.
  */
 class WadLevelPatcher {
     static HANDLERS = {
@@ -136,8 +134,8 @@ class WadLevelPatcher {
         return true;
     }
 
-    // The checksum guarantees the map is the one the catalog describes, so an
-    // index out of range is a transcription error: reported, never fatal.
+    // The checksum vouches for the map: an index out of range is a
+    // transcription error, reported, never fatal.
     _record(list, index, kind) {
         if ((index < 0) || (index >= list.length)) {
             console.warn('WadLevelPatcher - ' + kind + ' #' + index + ' out of range');

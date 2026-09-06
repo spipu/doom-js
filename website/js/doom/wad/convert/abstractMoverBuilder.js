@@ -55,14 +55,10 @@ class AbstractMoverBuilder {
         return groups.newList;
     }
 
-    // Side walls: a riser (riserBaseFh → origFh) on EVERY two-sided perimeter
-    // edge of the mover, moving with it — the mover is a self-contained box, not
-    // dependent on its neighbours, so two adjacent movers stopping at different
-    // heights still show a wall between them. Texture priority per edge: the
-    // neighbour sidedef's lower (preserves the shaft look), else the mover's own
-    // sidedef lower, else a sibling edge's texture (so a bare shared edge still
-    // gets a wall). Two passes: resolve, then emit with the fallback filled in.
-    // One-sided edges stay handled by the static map.
+    // Riser (riserBaseFh → origFh) on EVERY two-sided edge: the mover is a
+    // self-contained box, so two adjacent movers at different heights keep a
+    // wall between them. Texture: neighbour lower, else own lower, else a
+    // sibling edge's (two passes). One-sided edges belong to the static map.
     _buildRisers(mesh, si, origFh, riserBaseFh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;

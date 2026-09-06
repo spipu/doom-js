@@ -9,9 +9,8 @@ class DoomTriggerTargets {
      * @param {string[]}    targets        - instance codes to start
      * @param {object[]|null} reverseTargets - {code, timeScale} played backward
      * @param {string|null} cycleVariant    - per-trigger cycle key (door or lift-raise)
-     * @returns {boolean} whether the action took: at least one target accepted
-     *                    it (vanilla EV_* return, false when every tagged
-     *                    sector is busy), or there was nothing to drive
+     * @returns {boolean} whether the action took (vanilla EV_* return): at least
+     *                    one target accepted it, or there was nothing to drive
      */
     static fire(targets, reverseTargets, cycleVariant = null) {
         let taken = ((targets.length === 0) && ((reverseTargets ?? []).length === 0));

@@ -656,12 +656,9 @@ class Instance extends AbstractLoadedEntity {
     // variant: name of the cycle to play (keyframeVariants of the loaded
     // data), null = the default one — the crossed line's special picks it
     // (a door tag mixing open-stay and close-wait-open lines).
-    // Returns whether the trigger was taken: false while the animation is busy
-    // or when the requested cycle cannot start from the current pose — the
-    // caller (a switch) then leaves its line unspent, as vanilla only changes a
-    // switch texture when the action it fired succeeded. A finished one-way
-    // re-triggered on the same cycle IS taken (vanilla spawns a thinker that
-    // completes at once and spends the switch).
+    // Returns whether the trigger was taken (false while busy, or when the cycle
+    // cannot start from the current pose): a switch only spends itself on a
+    // taken action. A finished one-way re-triggered on its cycle counts as taken.
     start(variant = null) {
         if (this._animPlaying) {
             return false;
@@ -774,8 +771,7 @@ class Instance extends AbstractLoadedEntity {
     // slows (< 1) or speeds up the reverse playback relative to the forward
     // timeline — a floor lowered at turbo speed may legally rise back at the
     // (slower) speed of the raise special that reverses it.
-    // Same contract as start(): false only while busy; already at the origin
-    // counts as taken.
+    // Same contract as start(): false only while busy.
     startReverse(timeScale = 1) {
         if (this._animPlaying || this._animKeyframes.length === 0) {
             return false;
