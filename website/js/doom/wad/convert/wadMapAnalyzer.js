@@ -39,7 +39,7 @@ class WadMapAnalyzer {
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
-        const switches = this._identifySwitches();
+        const switches = this._identifySwitches(lifts.liftOriginalFh);
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
         const gunTriggerLinedefs = this._identifyGunTriggers();
@@ -1117,7 +1117,7 @@ class WadMapAnalyzer {
      *
      * @returns {{ids: Set<number>, walls: Map<number, object>}}
      */
-    _identifySwitches() {
+    _identifySwitches(liftOriginalFh = {}) {
         const {linedefs, sidedefs} = this._level;
         const ids = new Set();
         const walls = new Map();
@@ -1145,28 +1145,38 @@ class WadMapAnalyzer {
             // Two-sided: a SWxxx slot → visible panel; otherwise → invisible USE
             // zone (the line still activates its target, e.g. an SR lift edge).
             ids.add(ldIdx);
-            walls.set(ldIdx, this._findSwitchSlot(rSd, sidedefs[ld.left]) ?? {invisible: true});
+            walls.set(ldIdx, this._findSwitchSlot(rSd, sidedefs[ld.left], liftOriginalFh) ?? {invisible: true});
         }
 
         return {ids: ids, walls: walls};
     }
 
-    _findSwitchSlot(rSd, lSd) {
+    // The SW graphic counts first on a slot the line actually draws from that
+    // side: a lower needs the far floor higher, an upper the far ceiling lower.
+    // E2M2's secret pillar carries SW1BRN2 on both slots of its inner side and
+    // only the upper exists — the lower would face a higher floor and the
+    // panel would land at the corridor's height. Lift floors are read at their
+    // rest height (the static patch lowered them already). A slot with no band
+    // at rest is kept as a last resort: a switch on a mover's face is revealed
+    // when it moves (MAP19's line 633, E2M2's rising pedestals 1043-1045).
+    _findSwitchSlot(rSd, lSd, liftOriginalFh) {
+        const {sectors} = this._level;
+        const rSec = sectors[rSd.sector];
+        const lSec = sectors[lSd.sector];
+        const rFh  = liftOriginalFh[rSd.sector] ?? rSec.fh;
+        const lFh  = liftOriginalFh[lSd.sector] ?? lSec.fh;
         const candidates = [
-            {side: 'right', slot: 'lower',  texName: rSd.lower},
-            {side: 'right', slot: 'upper',  texName: rSd.upper},
-            {side: 'right', slot: 'middle', texName: rSd.middle},
-            {side: 'left',  slot: 'lower',  texName: lSd.lower},
-            {side: 'left',  slot: 'upper',  texName: lSd.upper},
-            {side: 'left',  slot: 'middle', texName: lSd.middle}
+            {side: 'right', slot: 'lower',  texName: rSd.lower,  drawn: (lFh > rFh)},
+            {side: 'right', slot: 'upper',  texName: rSd.upper,  drawn: (lSec.ch < rSec.ch)},
+            {side: 'right', slot: 'middle', texName: rSd.middle, drawn: true},
+            {side: 'left',  slot: 'lower',  texName: lSd.lower,  drawn: (rFh > lFh)},
+            {side: 'left',  slot: 'upper',  texName: lSd.upper,  drawn: (rSec.ch < lSec.ch)},
+            {side: 'left',  slot: 'middle', texName: lSd.middle, drawn: true}
         ];
-        for (const c of candidates) {
-            if (c.texName && (/^SW[12]/).test(c.texName)) {
-                return c;
-            }
-        }
+        const isSwitch = (c) => (c.texName && (/^SW[12]/).test(c.texName));
+        const found = (candidates.find((c) => (c.drawn && isSwitch(c))) ?? candidates.find(isSwitch) ?? null);
 
-        return null;
+        return ((found !== null) ? {side: found.side, slot: found.slot, texName: found.texName} : null);
     }
 
     // Codes of the built target instances of a given tag, shared by every
