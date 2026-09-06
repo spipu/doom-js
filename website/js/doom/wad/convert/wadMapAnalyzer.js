@@ -31,6 +31,7 @@ class WadMapAnalyzer {
         const donuts = this._identifyDonuts();
         const doors = this._identifyDoors();
         const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
+        const liftLowerVariants = this._identifyLiftLowers(lifts);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise);
@@ -53,8 +54,10 @@ class WadMapAnalyzer {
             liftSectorSpecial:     lifts.liftSectorSpecial,
             liftOriginalFh:        lifts.liftOriginalFh,
             liftMinAdjFh:          lifts.liftMinAdjFh,
+            liftBaseTargetFh:      lifts.liftBaseTargetFh,
             liftMaxAdjFh:          lifts.liftMaxAdjFh,
             liftRaiseVariants:     liftRaiseVariants,
+            liftLowerVariants:     liftLowerVariants,
             risingFloorIds:        rising.risingFloorIds,
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
@@ -591,42 +594,14 @@ class WadMapAnalyzer {
         const liftVanillaTargetFh = {};
         const computeTargets = () => {
             for (const si of movingFloorDownIds) {
-                const adjFh    = [];
-                const adjAllFh = [];
-                for (const ld of linedefs) {
-                    if ((ld.right < 0) || (ld.left < 0)) {
-                        continue;
-                    }
-                    const rSi = sidedefs[ld.right].sector;
-                    const lSi = sidedefs[ld.left].sector;
-                    const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : null));
-                    if (other === null || other === si) {
-                        continue;
-                    }
-                    adjAllFh.push(sectors[other].fh);
-                    if (!movingFloorDownIds.has(other)) {
-                        adjFh.push(sectors[other].fh);
-                    }
-                }
+                const {adjFh, adjAllFh} = this._liftAdjacentFloors(si, movingFloorDownIds);
                 liftOriginalFh[si] = sectors[si].fh;
-                // Target floor height: classic lifts lower to the LOWEST adjacent
-                // floor; 102 lowers to the HIGHEST, 71 to the highest + 8. Clamped
-                // so a remote floor-lower never raises the floor.
                 const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
-                let target;
-                if (donutHoleTargetFh[si] !== undefined) {
-                    // Donut hole: the target is the floor of the sector beyond
-                    // the ring (EV_DoDonut), not an adjacent-floor rule.
-                    target = donutHoleTargetFh[si];
-                } else if (adjFh.length === 0) {
-                    target = sectors[si].fh;
-                } else if (rule === 'highest') {
-                    target = Math.max(...adjFh);
-                } else if (rule === 'highest+8') {
-                    target = Math.max(...adjFh) + 8;
-                } else {
-                    target = Math.min(...adjFh);
-                }
+                // Donut hole: the target is the floor of the sector beyond the
+                // ring (EV_DoDonut), not an adjacent-floor rule.
+                const target = ((donutHoleTargetFh[si] !== undefined)
+                    ? donutHoleTargetFh[si]
+                    : WadMapAnalyzer._lowerTargetFh(rule, adjFh, sectors[si].fh));
                 liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
                 // Vanilla destination, for the instant-raise detection only: the
                 // P_Find*FloorSurrounding scans count EVERY neighbour, co-movers
@@ -705,10 +680,96 @@ class WadMapAnalyzer {
             movingFloorDownIds: movingFloorDownIds,
             liftSectorSpecial:  liftSectorSpecial,
             liftOriginalFh:     liftOriginalFh,
+            // Destination of the base special; liftMinAdjFh is the lowest point
+            // any special brings the floor to (static patch, riser skirt).
+            liftBaseTargetFh:   {...liftMinAdjFh},
             liftMinAdjFh:       liftMinAdjFh,
             liftMaxAdjFh:       liftMaxAdjFh,
             instantRaise:       instantRaise
         };
+    }
+
+    // Floors of the sectors across the two-sided lines of si: every neighbour
+    // (adjAllFh, the vanilla P_Find*FloorSurrounding scan) and the non-lift
+    // ones alone (adjFh, which feed the lift travel and patching).
+    _liftAdjacentFloors(si, movingFloorDownIds) {
+        const {sidedefs, sectors} = this._level;
+        const adjFh    = [];
+        const adjAllFh = [];
+        for (const ld of this._moverLinedefs()) {
+            if ((ld.right < 0) || (ld.left < 0)) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : null));
+            if (other === null || other === si) {
+                continue;
+            }
+            adjAllFh.push(sectors[other].fh);
+            if (!movingFloorDownIds.has(other)) {
+                adjFh.push(sectors[other].fh);
+            }
+        }
+
+        return {adjFh: adjFh, adjAllFh: adjAllFh};
+    }
+
+    // Destination of a floor-lower rule: classic lifts lower to the LOWEST
+    // adjacent floor; 102 lowers to the HIGHEST, 71 to the highest + 8.
+    static _lowerTargetFh(rule, adjFh, ownFh) {
+        if (adjFh.length === 0) {
+            return ownFh;
+        }
+        if (rule === 'highest') {
+            return Math.max(...adjFh);
+        }
+        if (rule === 'highest+8') {
+            return Math.max(...adjFh) + 8;
+        }
+
+        return Math.min(...adjFh);
+    }
+
+    // Every OTHER floor-lower special aimed at a lift becomes a named cycle on
+    // it (vanilla runs each thinker on its own rules): E2M2's secret pillar is
+    // a W1 plat from the corridor's walk line AND a stay-down S1 from its own
+    // faces. Runs before the floor patch: a variant lowering further than the
+    // base deepens the patched minimum (static floor, riser skirt).
+    // liftLowerVariants: si → key → {special, anim, speed, onlyOnce, targetFh}.
+    _identifyLiftLowers(lifts) {
+        const {sectors} = this._level;
+        const liftLowerVariants = {};
+        for (const ld of this._moverLinedefs()) {
+            const key = WadConstants.floorLowerCycleKey(ld.special);
+            if ((ld.tag === 0) || (key === null)) {
+                continue;
+            }
+            const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[ld.special];
+            for (const si of lifts.movingFloorDownIds) {
+                const baseSpecial = lifts.liftSectorSpecial[si];
+                if ((sectors[si].tag !== ld.tag) || (ld.special === baseSpecial)
+                    || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(baseSpecial)) {
+                    continue;
+                }
+                const origFh   = lifts.liftOriginalFh[si];
+                const {adjFh}  = this._liftAdjacentFloors(si, lifts.movingFloorDownIds);
+                const targetFh = Math.min(WadMapAnalyzer._lowerTargetFh(rule.target, adjFh, origFh), origFh);
+                if (targetFh >= origFh) {
+                    continue;
+                }
+                (liftLowerVariants[si] = (liftLowerVariants[si] ?? {}))[key] = {
+                    special:  ld.special,
+                    anim:     rule.anim,
+                    speed:    rule.speed,
+                    onlyOnce: rule.onlyOnce,
+                    targetFh: targetFh
+                };
+                lifts.liftMinAdjFh[si] = Math.min(lifts.liftMinAdjFh[si], targetFh);
+            }
+        }
+
+        return liftLowerVariants;
     }
 
     // Patch fh to min(adjacent_fh) so the static map shows the lift in down position
@@ -746,7 +807,7 @@ class WadMapAnalyzer {
                 }
                 const liftAnim = WadConstants.FLOOR_DOWN_BY_SPECIAL[lifts.liftSectorSpecial[si]].anim;
                 const numeric  = (typeof rule.target === 'number');
-                const startFh  = ((liftAnim === 'one-way') ? lifts.liftMinAdjFh[si] : lifts.liftOriginalFh[si]);
+                const startFh  = ((liftAnim === 'one-way') ? lifts.liftBaseTargetFh[si] : lifts.liftOriginalFh[si]);
                 const targetFh = ((numeric) ? (startFh + rule.target) : this._risingFloorTarget(si, ld.special));
                 if (targetFh <= startFh) {
                     continue;
@@ -925,7 +986,7 @@ class WadMapAnalyzer {
                 // changes propagates like vanilla's live line->frontsector.
                 let sourceSi = frontSi;
                 if (rule.source === 'dest') {
-                    sourceSi = this._sectorAtHeight(si, lifts.liftMinAdjFh[si]);
+                    sourceSi = this._sectorAtHeight(si, lifts.liftBaseTargetFh[si]);
                     if (sourceSi < 0) {
                         continue;
                     }

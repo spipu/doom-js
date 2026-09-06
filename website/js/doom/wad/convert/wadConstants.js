@@ -222,9 +222,25 @@ class WadConstants {
         return ('raise:' + rule.target + '@' + rule.speed);
     }
 
+    // Cycle key of a floor-lower special aimed at a lift ('lower:one-way@1@lowest@1'),
+    // null for the others: a lift targeted by two lower specials (E2M2's secret
+    // pillar — a W1 plat AND S1 lower-to-lowest switches) runs one cycle per
+    // special, its base special excepted. Perpetual plats and the donut keep
+    // their single cycle.
+    static floorLowerCycleKey(special) {
+        const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[special];
+        if ((rule === undefined) || (rule.anim === 'perpetual') || WadConstants.isDonutSpecial(special)) {
+            return null;
+        }
+
+        return ('lower:' + rule.anim + '@' + rule.speed + '@' + rule.target + '@' + ((rule.onlyOnce) ? 1 : 0));
+    }
+
     // Cycle key driven by a special, whatever the mover family it aims at.
     static cycleKeyForSpecial(special) {
-        return (WadConstants.doorCycleKeyForSpecial(special) ?? WadConstants.floorRaiseCycleKey(special));
+        return (WadConstants.doorCycleKeyForSpecial(special)
+            ?? WadConstants.floorRaiseCycleKey(special)
+            ?? WadConstants.floorLowerCycleKey(special));
     }
 
     // Pressure fields of one animation cycle, from a press profile — shared by

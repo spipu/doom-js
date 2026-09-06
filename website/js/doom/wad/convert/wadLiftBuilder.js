@@ -8,9 +8,12 @@ class WadLiftBuilder extends AbstractMoverBuilder {
     }
 
     _buildOne(si) {
-        const {liftOriginalFh, liftMinAdjFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
+        const {liftOriginalFh, liftMinAdjFh, liftBaseTargetFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
         const origFh = liftOriginalFh[si];
+        // minFh = lowest point of ANY cycle (static patch, skirt); the base
+        // cycle itself travels to its own special's destination.
         const minFh  = liftMinAdjFh[si];
+        const baseFh = liftBaseTargetFh[si] ?? minFh;
 
         // High end of the travel: origFh for ordinary lifts (they never rise
         // above their rest position), highest surrounding floor for perpetual
@@ -42,7 +45,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
             code:         liftName,
             textures:     textures,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh)
+            instanceData: this._buildInstanceData(liftName, si, origFh, baseFh, maxFh, mesh)
         };
     }
 
@@ -108,9 +111,42 @@ class WadLiftBuilder extends AbstractMoverBuilder {
             // Lift blocked while rising = go back down and re-wait (T_PlatRaise)
             ...WadConstants.pressCycleFields(WadConstants.floorDownPressProfile(anim)),
             keyframes:         keyframes,
-            keyframeVariants:  this._buildRaiseVariants(si, origFh, minFh, anim, speed, waitS),
+            keyframeVariants:  this._buildVariants(si, origFh, minFh, anim, speed, waitS),
             defaultVariant:    null
         };
+    }
+
+    // Named cycles of the lift: the raise pairs and the other lower specials
+    // aimed at it, null when it has none.
+    _buildVariants(si, origFh, minFh, anim, speed, waitS) {
+        const variants = {
+            ...(this._buildRaiseVariants(si, origFh, minFh, anim, speed, waitS) ?? {}),
+            ...(this._buildLowerVariants(si, origFh, waitS) ?? {})
+        };
+
+        return ((Object.keys(variants).length > 0) ? variants : null);
+    }
+
+    // One cycle per other lower special (analysis.liftLowerVariants): its own
+    // shape, speed and destination, replayed from the rest pose.
+    _buildLowerVariants(si, origFh, waitS) {
+        const lowers = this._analysis.liftLowerVariants[si];
+        if (lowers === undefined) {
+            return null;
+        }
+        const SCALE = WadConstants.SCALE;
+        const variants = {};
+        for (const [key, lower] of Object.entries(lowers)) {
+            const moveS = WadConstants.moveDurationS(origFh - lower.targetFh, lower.speed);
+            variants[key] = {
+                keyframes: WadLiftBuilder._liftKeyframes(lower.anim, 0, -(origFh - lower.targetFh) * SCALE, moveS, waitS),
+                onlyOnce:  lower.onlyOnce,
+                loop:      false,
+                ...WadConstants.pressCycleFields(WadConstants.floorDownPressProfile(lower.anim))
+            };
+        }
+
+        return variants;
     }
 
     // Timeline of the lift's own shape between two poses: a one-way lower
