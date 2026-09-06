@@ -106,6 +106,24 @@ class WadGeometry {
         return (((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0)));
     }
 
+    // Distance along the ray (px, py) + t·(dx, dy), 0 ≤ t ≤ maxDist, where it
+    // meets the segment (ax, ay)-(bx, by); null when it misses.
+    static raySegmentHit(px, py, dx, dy, maxDist, ax, ay, bx, by) {
+        const sx = bx - ax;
+        const sy = by - ay;
+        const denom = (dx * sy) - (dy * sx);
+        if (denom === 0) {
+            return null;
+        }
+        const t = (((ax - px) * sy) - ((ay - py) * sx)) / denom;
+        const u = (((ax - px) * dy) - ((ay - py) * dx)) / denom;
+        if ((t < 0) || (t > maxDist) || (u < 0) || (u > 1)) {
+            return null;
+        }
+
+        return t;
+    }
+
     // Segment intersection that also counts a touch (an endpoint on the other
     // segment, or collinear overlap) — a trace ending on a wall's corner is
     // stopped by that wall.
@@ -127,20 +145,6 @@ class WadGeometry {
 
     static cross2d(o, a, b) {
         return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-    }
-
-    // Point of the segment (ax, ay)-(bx, by) closest to (px, py); `margin`
-    // keeps it away from the endpoints (fraction of the length).
-    static nearestPointOnSegment(px, py, ax, ay, bx, by, margin = 0) {
-        const dx = bx - ax;
-        const dy = by - ay;
-        const lengthSq = (dx * dx) + (dy * dy);
-        if (lengthSq === 0) {
-            return [ax, ay];
-        }
-        const t = Math.max(margin, Math.min(1 - margin, (((px - ax) * dx) + ((py - ay) * dy)) / lengthSq));
-
-        return [ax + (t * dx), ay + (t * dy)];
     }
 
     // Shortest distance from point (px, py) to the segment (ax, ay)-(bx, by).

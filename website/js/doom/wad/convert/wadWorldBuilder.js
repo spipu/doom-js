@@ -111,7 +111,7 @@ class WadWorldBuilder {
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
-            this._applySwitchSideGuard(sw);
+            this._applySwitchUseGuard(sw);
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
             if (spec.remoteSwap) {
@@ -866,29 +866,32 @@ class WadWorldBuilder {
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
-    // Vanilla P_UseSpecialLine answers a press from the FRONT side of the line
-    // only (`if (side) return false`), and P_UseTraverse stops at the first
-    // line without an opening: a panel pressed from behind its wall, or the
-    // inward-looking switches of a secret pillar reached through it (E2M2's
-    // tag 86, lowered from the corridor by a walk line), stay deaf. Same side
-    // convention as _applyDoorUseGuard.
-    _applySwitchSideGuard(built) {
+    // Vanilla P_UseLines traces 64 units straight ahead of the player and uses
+    // the FIRST line it meets, from its front side only (`if (side) return
+    // false`), stopping at any line without an opening. So one press reaches
+    // exactly one switch — the one the player faces — never every panel within
+    // reach: E2M2's pillar carries four S1 lines at arm's length, and a press
+    // on its bare west face must not spend the SW1BRN2 line beside it.
+    _applySwitchUseGuard(built) {
         const ownIdx   = Number(built.code.split('_')[1]);
         const own      = this._useLines()[ownIdx];
         const instance = loader.instances().getByCode(built.code);
+        const range    = WadConstants.USE_RANGE * WadConstants.SCALE;
         instance.addTriggerCondition((user) => {
             if (WadGeometry.cross2d([own.x1, own.z1], [own.x2, own.z2], [user.x, user.z]) > 0) {
                 return false;
             }
-            // Aim inside the line, away from its corners, and stop just short of
-            // it: a corner shared with a wall must count as that wall, not as
-            // a gap beside it.
-            const [nx, nz] = WadGeometry.nearestPointOnSegment(user.x, user.z, own.x1, own.z1, own.x2, own.z2,
-                WadConstants.USE_TRACE_END_MARGIN);
-            const ex = user.x + ((nx - user.x) * WadConstants.USE_TRACE_STOP_RATIO);
-            const ez = user.z + ((nz - user.z) * WadConstants.USE_TRACE_STOP_RATIO);
+            const dx  = Math.sin(DEG_TO_RAD * user.yaw);
+            const dz  = Math.cos(DEG_TO_RAD * user.yaw);
+            const hit = WadGeometry.raySegmentHit(user.x, user.z, dx, dz, range, own.x1, own.z1, own.x2, own.z2);
+            if (hit === null) {
+                return false;
+            }
+            // Stop just short of the line: a corner shared with a wall must count
+            // as that wall, not as a gap beside it.
+            const reach = hit * WadConstants.USE_TRACE_STOP_RATIO;
 
-            return !this._useTraceBlocked(user.x, user.z, ex, ez, ownIdx);
+            return !this._useTraceBlocked(user.x, user.z, user.x + (dx * reach), user.z + (dz * reach), ownIdx);
         });
     }
 
