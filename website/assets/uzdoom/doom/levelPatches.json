@@ -1,0 +1,1271 @@
+{
+    "8d000c19ee2ea46bf24dbd91158ab859c4edc1caa11bfac5d4eb005599aa6806": {
+        "map": "E1M4",
+        "source": "doom.wad e1m4 (UZDoom level_compatibility.zs, md5 5B26545FF21B051CA06D389CE535684C)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 693,
+                "side": "back",
+                "part": "upper",
+                "texture": "BROWN1"
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 9,
+                "plane": "floor",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 105,
+                "plane": "floor",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 132,
+                "plane": "floor",
+                "delta": 8
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 137,
+                "plane": "floor",
+                "delta": 8
+            }
+        ]
+    },
+    "d83f4f7abbcc5a24d55020e74a8687faf79bf6554c675b8d51654355670468e2": {
+        "map": "E2M2",
+        "source": "doom.wad e2m2 (UZDoom level_compatibility.zs, md5 A24FE135D5B6FD427FE27BEF89717A65)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 947,
+                "side": "back",
+                "part": "upper",
+                "texture": "BROWN1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1596,
+                "side": "back",
+                "part": "upper",
+                "texture": "WOOD1"
+            }
+        ]
+    },
+    "ccb0c3fbe8e4366d650d8410f7c8d4b7b2f385457b3ba6b24c2e8cb4fa866abd": {
+        "map": "E2M4",
+        "source": "doom.wad e2m4 (UZDoom level_compatibility.zs, md5 1BC04D646B32D3A3E411DAF3C1A38FF8)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 551,
+                "side": "back",
+                "part": "upper",
+                "texture": "PIPE4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 865,
+                "side": "back",
+                "part": "lower",
+                "texture": "STEP5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1062,
+                "side": "front",
+                "part": "upper",
+                "texture": "GSTVINE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1071,
+                "side": "front",
+                "part": "upper",
+                "texture": "MARBLE1"
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 165,
+                "special": 31
+            }
+        ]
+    },
+    "f57a6c83045c8dce845676ab043411eac9670a50421c5ae6e6677e020ae9de44": {
+        "map": "E2M5",
+        "source": "doom.wad e2m5 (UZDoom level_compatibility.zs, md5 99C580AD8FABE923CAB485CB7F3C5E5D)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 590,
+                "side": "back",
+                "part": "upper",
+                "texture": "GRAYBIG"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 590,
+                "side": "front",
+                "part": "lower",
+                "texture": "BROWN1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1027,
+                "side": "back",
+                "part": "upper",
+                "texture": "SP_HOT1"
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 127
+            },
+            {
+                "op": "addSectorTag",
+                "sector": 127,
+                "tag": 100
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 382,
+                "special": 2,
+                "tag": 100
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 388,
+                "special": 2,
+                "tag": 100
+            }
+        ]
+    },
+    "13e9e3ffbcebe706a5b7899703e1558e4e7fd62b80d00797ddd866b0c4ba009e": {
+        "map": "E2M6",
+        "source": "doom.wad e2m6 (UZDoom level_compatibility.zs, md5 3838AB29292587A7EE3CA71E7040868D)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 1091,
+                "side": "back",
+                "part": "upper",
+                "texture": "COMPSPAN"
+            }
+        ]
+    },
+    "3da49c324f5ef41ab0dee75e0700bf519cdfe46641208d1aa2cc7d22bbb95ea7": {
+        "map": "E2M7",
+        "source": "doom.wad e2m7 (UZDoom level_compatibility.zs, md5 8590F489879870C098CD7029C3187159)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 1286,
+                "side": "front",
+                "part": "lower",
+                "texture": "SHAWN2"
+            }
+        ]
+    },
+    "0859f43507d6299bcc3ffd4dd566fa779872bd8ea453fce198efea718720b74a": {
+        "map": "E2M9",
+        "source": "doom.wad e2m9 (UZDoom level_compatibility.zs, md5 8A6399FAAA2E68649D4E4B16642074BE)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 121,
+                "side": "back",
+                "part": "upper",
+                "texture": "SW1LION"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 123,
+                "side": "back",
+                "part": "upper",
+                "texture": "GSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 140,
+                "side": "back",
+                "part": "upper",
+                "texture": "GSTONE1"
+            }
+        ]
+    },
+    "7ee17106daa9b22b19f69da9f2015a39c565e536f16f81e39882f7257287cb78": {
+        "map": "E3M2",
+        "source": "Doom E3M2 (UZDoom level_compatibility.zs, md5 BBDC4253AE277DA5FCE2F19561627496)",
+        "actions": [
+            {
+                "op": "setLineSpecial",
+                "line": 368,
+                "special": 61
+            }
+        ]
+    },
+    "c17eb9c402f3d0e16c6fa282335937e6be260aa3f35340718d4b209f07d0c087": {
+        "map": "E3M4",
+        "source": "Commercial Doom e3m4 (UZDoom level_compatibility.zs, md5 2B65CB046EA40D2E44576949381769CA)",
+        "actions": [
+            {
+                "op": "setLineSpecial",
+                "line": 1069,
+                "special": 31
+            },
+            {
+                "op": "setWallTexture",
+                "line": 470,
+                "side": "front",
+                "part": "upper",
+                "texture": "BIGDOOR2"
+            }
+        ]
+    },
+    "c03862a1dd1d7bddc472f3375aa2d1706a86917103f0a99197942076d56d91a2": {
+        "map": "E3M5",
+        "source": "Doom E3M5 (UZDoom level_compatibility.zs, md5 100106C75157B7DECB0DCAD2A59C1919)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 833,
+                "side": "front",
+                "part": "middle",
+                "texture": "FIREWALL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 834,
+                "side": "front",
+                "part": "middle",
+                "texture": "FIREWALL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 836,
+                "side": "front",
+                "part": "middle",
+                "texture": "FIREWALL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 839,
+                "side": "front",
+                "part": "middle",
+                "texture": "FIREWALL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1329,
+                "side": "back",
+                "part": "lower",
+                "texture": "METAL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1330,
+                "side": "back",
+                "part": "lower",
+                "texture": "METAL"
+            }
+        ]
+    },
+    "f8b8b1433cbeebcd67acca2a04774a8883ed97b0fd964bb7e41bdbfac150d3e5": {
+        "map": "E3M7",
+        "source": "doom.wad e3m7 (UZDoom level_compatibility.zs, md5 5AC51CA9F1B57D4538049422A5E37291)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 901,
+                "side": "back",
+                "part": "lower",
+                "texture": "GSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 971,
+                "side": "back",
+                "part": "upper",
+                "texture": "SP_HOT1"
+            }
+        ]
+    },
+    "5a86edabb398c4a3413a66951ac698f40a144303ddfc69ec412954a8c5d3ba54": {
+        "map": "E3M9",
+        "source": "Doom E3M9 (UZDoom level_compatibility.zs, md5 FE97DCB9E6235FB3C52AE7C143160D73)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 102,
+                "side": "back",
+                "part": "lower",
+                "texture": "STONE3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 445,
+                "side": "back",
+                "part": "lower",
+                "texture": "GRAY4"
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 24,
+                "special": 31
+            }
+        ]
+    },
+    "1fb4bb2c5263c0be34be92c9df346d3af86777f0d1b7b9a6dd3d5d9744f52b3a": {
+        "map": "MAP02",
+        "source": "doom2.wad map02 (UZDoom level_compatibility.zs, md5 AB24AE6E2CB13CBDD04600A4D37F9189)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 327,
+                "side": "front",
+                "part": "lower",
+                "texture": "STONE4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 328,
+                "side": "front",
+                "part": "lower",
+                "texture": "STONE4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 338,
+                "side": "front",
+                "part": "lower",
+                "texture": "STONE4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 339,
+                "side": "front",
+                "part": "lower",
+                "texture": "STONE4"
+            }
+        ]
+    },
+    "1bfd67b4ef99d1ccf52ee329dd0507a0349e9235fc04cc98f03bcf7b21dfd7ef": {
+        "map": "MAP04",
+        "source": "doom2.wad map04 (UZDoom level_compatibility.zs, md5 CEC791136A83EEC4B91D39718BDF9D82)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 456,
+                "side": "back",
+                "part": "upper",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 108,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 109,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 110,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 111,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 127,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 128,
+                "side": "front",
+                "part": "upper",
+                "texture": "STONE"
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 19
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 20
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 23
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 28
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 33
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 34
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 83
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 85
+            }
+        ]
+    },
+    "98ddc53f484fa2a28fbd686ee048b2c6f99495825f370d747263509ce84dbb1c": {
+        "map": "MAP05",
+        "source": "doom2.wad map05 (UZDoom level_compatibility.zs, md5 9E061AD7FBCD7FAD968C976CB4AA3B9D)",
+        "actions": [
+            {
+                "op": "clearSectorTags",
+                "sector": 4
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 153
+            },
+            {
+                "op": "setWallTexture",
+                "line": 489,
+                "side": "back",
+                "part": "upper",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 560,
+                "side": "back",
+                "part": "upper",
+                "texture": "SUPPORT3"
+            }
+        ]
+    },
+    "380c39e94b2fb1d94b04633cb208c94bfe7ccc7d3cc082fc850fe08d62829510": {
+        "map": "MAP07",
+        "source": "Doom II MAP07 (UZDoom level_compatibility.zs, md5 291F24417FB3DD411339AE82EF9B3597)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 168,
+                "side": "back",
+                "part": "lower",
+                "texture": "BRONZE3"
+            },
+            {
+                "op": "setLineFlags",
+                "line": 168,
+                "set": 0,
+                "clear": 16
+            }
+        ]
+    },
+    "14dc74e55cdba3408f575e48a7c3f117e58fde63e4e387a75dde53877d8e3c83": {
+        "map": "MAP08",
+        "source": "doom2.wad map08 (UZDoom level_compatibility.zs, md5 66C46385EB1A23D60839D1532522076B)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 101,
+                "side": "back",
+                "part": "upper",
+                "texture": "BRICK7"
+            }
+        ]
+    },
+    "30a919204c7f924108f94b1d393a74178417dd3d623efb6e33c005970588a9ee": {
+        "map": "MAP10",
+        "source": "Doom II MAP10 (UZDoom level_compatibility.zs, md5 6C620F43705BEC0ABBABBF46AC3E62D2)",
+        "actions": [
+            {
+                "op": "setLineSpecial",
+                "line": 786,
+                "special": 1
+            }
+        ]
+    },
+    "9c2117a356ad7f8c6d5b31578a45e892e94e0290233dd591c773b40fe01ab722": {
+        "map": "MAP12",
+        "source": "Doom II MAP12 (UZDoom level_compatibility.zs, md5 1AF4DEC2627360A55B3EB397BC15C39D)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 648,
+                "side": "back",
+                "part": "lower",
+                "texture": "PIPES"
+            },
+            {
+                "op": "clearSectorTags",
+                "sector": 149
+            }
+        ]
+    },
+    "bc0a89107924b91562076a3e04d7a4285da1e2b63c9c1faf01cc607cd485449a": {
+        "map": "MAP13",
+        "source": "Doom II MAP13 (UZDoom level_compatibility.zs, md5 FBA6547B9FD44E95671A923A066E516F)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 622,
+                "side": "back",
+                "part": "upper",
+                "texture": "BROWNGRN"
+            }
+        ]
+    },
+    "6da0f6fb052aa0c9007c1bad9d6c148f448e7c0d9bcc89f44a6876517013c8bc": {
+        "map": "MAP14",
+        "source": "doom2.wad map14 (UZDoom level_compatibility.zs, md5 5BDA34DA60C0530794CC1EA2DA017976)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 429,
+                "side": "front",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 430,
+                "side": "front",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 531,
+                "side": "front",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1259,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1305,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 607,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 608,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 609,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 786,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 787,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 788,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 789,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 790,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 791,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 792,
+                "side": "back",
+                "part": "upper",
+                "texture": "TANROCK5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1133,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1137,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1140,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1134,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1138,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1141,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1135,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1139,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1142,
+                "side": "back",
+                "part": "upper",
+                "texture": "BSTONE1"
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 106,
+                "plane": "floor",
+                "delta": 16
+            }
+        ]
+    },
+    "7c98e7486d7af30d4c998b3a45be58941b55cdaa63aaa3ef72d80844f69f75dc": {
+        "map": "MAP15",
+        "source": "Doom II, map15 (UZDoom level_compatibility.zs, md5 1A540BA717BF9EC85F8522594C352F2A)",
+        "actions": [
+            {
+                "op": "setSectorSpecial",
+                "sector": 147,
+                "special": 0
+            },
+            {
+                "op": "setWallTexture",
+                "line": 94,
+                "side": "back",
+                "part": "upper",
+                "texture": "METAL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 95,
+                "side": "back",
+                "part": "upper",
+                "texture": "METAL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 989,
+                "side": "back",
+                "part": "upper",
+                "texture": "BRICK10"
+            }
+        ]
+    },
+    "7ed703abe3d66b20f82a508ca6a574484c85ac4c1250c123b1703638ef16e988": {
+        "map": "MAP16",
+        "source": "Doom II MAP16 (UZDoom level_compatibility.zs, md5 6B60F37B91309DFF1CDF02E5E476210D)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 162,
+                "side": "back",
+                "part": "upper",
+                "texture": "BRICK6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 303,
+                "side": "front",
+                "part": "upper",
+                "texture": "STUCCO"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 304,
+                "side": "front",
+                "part": "upper",
+                "texture": "STUCCO"
+            }
+        ]
+    },
+    "4534e70385681f7a33521a6f2e9d4b9d446f953ea2e2ba9587190476ebe7aa4c": {
+        "map": "MAP17",
+        "source": "Doom II MAP17 (UZDoom level_compatibility.zs, md5 E1CFD5C6E60C3B6C30F8B95FC287E9FE)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 379,
+                "side": "back",
+                "part": "upper",
+                "texture": "METAL2"
+            }
+        ]
+    },
+    "535d75cd6dd9314b7a40c73c44894777dd7cac8bdd3613e5c36505ed5497d444": {
+        "map": "MAP18",
+        "source": "doom2.wad map18 (UZDoom level_compatibility.zs, md5 0D491365C1B88B7D1B603890100DD03E)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 451,
+                "side": "front",
+                "part": "middle",
+                "texture": "METAL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 459,
+                "side": "front",
+                "part": "middle",
+                "texture": "METAL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 574,
+                "side": "front",
+                "part": "upper",
+                "texture": "GRAYVINE"
+            }
+        ]
+    },
+    "a527b1e5036e0899c2fbe99dd17530a63b779ba03ab5f3a5cd95e69e521e433c": {
+        "map": "MAP19",
+        "source": "doom2.wad map19 (UZDoom level_compatibility.zs, md5 B5506B1E8F2FC272AD0C77B9E0DF5491)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 355,
+                "side": "back",
+                "part": "upper",
+                "texture": "STONE2"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 736,
+                "side": "front",
+                "part": "upper",
+                "texture": "SLADWALL"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1181,
+                "side": "back",
+                "part": "upper",
+                "texture": "MARBLE1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 286,
+                "side": "back",
+                "part": "lower",
+                "texture": "STEP4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 287,
+                "side": "back",
+                "part": "lower",
+                "texture": "STEP4"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 288,
+                "side": "back",
+                "part": "lower",
+                "texture": "STEP4"
+            },
+            {
+                "op": "setThingSkills",
+                "thing": 112,
+                "enabled": true
+            }
+        ]
+    },
+    "b4075792311a7a38a2c28e5749d6a39f376e2633ba1f5e8984f51c72d5b3de2e": {
+        "map": "MAP21",
+        "source": "doom2.wad map21 (UZDoom level_compatibility.zs, md5 EBDAC00E9D25D884B2C8F4B1F0390539)",
+        "actions": [
+            {
+                "op": "offsetSectorPlane",
+                "sector": 50,
+                "plane": "ceiling",
+                "delta": -56
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 54,
+                "plane": "ceiling",
+                "delta": -56
+            }
+        ]
+    },
+    "fab7a12a28014522367607369c1b02f14437fbad1a1d82db2a3b4d03dfb8b803": {
+        "map": "MAP22",
+        "source": "Doom II MAP22 (UZDoom level_compatibility.zs, md5 4AA9B3CE449FB614497756E96509F096)",
+        "actions": [
+            {
+                "op": "setLineSpecial",
+                "line": 120,
+                "special": 20
+            }
+        ]
+    },
+    "c627df8a8ef645624cbccb031db927f0f07e36f40be94d516adbbc837f5001df": {
+        "map": "MAP25",
+        "source": "Doom II MAP25 (UZDoom level_compatibility.zs, md5 94893A0DC429A22ADC4B3A73DA537E16)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 436,
+                "side": "back",
+                "part": "upper",
+                "texture": "STONE6"
+            }
+        ]
+    },
+    "e5f1e1c4637e60e75b1832e18c184c3f179aca143a5d6ea7346ccddc9b708690": {
+        "map": "MAP26",
+        "source": "Doom II MAP26 (UZDoom level_compatibility.zs, md5 1037366026AAB4B0CF11BAB27DB90E4E)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 761,
+                "side": "back",
+                "part": "upper",
+                "texture": "METAL2"
+            }
+        ]
+    },
+    "b528bbc0bec0541a1f969e745fe32bd47d9f8c6779682522c6f2110d491ff582": {
+        "map": "MAP27",
+        "source": "Doom II, map27 (UZDoom level_compatibility.zs, md5 110F84DE041052B59307FAF0293E6BC0)",
+        "actions": [
+            {
+                "op": "setSectorSpecial",
+                "sector": 93,
+                "special": 0
+            },
+            {
+                "op": "setWallTexture",
+                "line": 582,
+                "side": "back",
+                "part": "upper",
+                "texture": "ZIMMER3"
+            },
+            {
+                "op": "setLineFlags",
+                "line": 342,
+                "set": 0,
+                "clear": 1
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 580,
+                "special": 31
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 581,
+                "special": 31
+            }
+        ]
+    },
+    "1dc0712c2a9cc6f79d81e0fbb677100413c0b8e5b04775da916049eb632f38eb": {
+        "map": "MAP28",
+        "source": "Doom II MAP28 (UZDoom level_compatibility.zs, md5 84BB2C8ED2343C91136B87F1832E7CA5)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 103,
+                "side": "front",
+                "part": "upper",
+                "texture": "ASHWALL6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 104,
+                "side": "front",
+                "part": "upper",
+                "texture": "ASHWALL6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 105,
+                "side": "front",
+                "part": "upper",
+                "texture": "ASHWALL6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 106,
+                "side": "front",
+                "part": "upper",
+                "texture": "ASHWALL6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 107,
+                "side": "front",
+                "part": "upper",
+                "texture": "ASHWALL6"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 221,
+                "side": "front",
+                "part": "lower",
+                "texture": "BFALL1"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 391,
+                "side": "front",
+                "part": "upper",
+                "texture": "BIGDOOR5"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 531,
+                "side": "back",
+                "part": "upper",
+                "texture": "WOOD8"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 547,
+                "side": "back",
+                "part": "upper",
+                "texture": "WOOD8"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 548,
+                "side": "back",
+                "part": "upper",
+                "texture": "WOOD8"
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 584,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 585,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 586,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 587,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 588,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 589,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 590,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 591,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 592,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 593,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 594,
+                "special": 119,
+                "tag": 5
+            },
+            {
+                "op": "setLineSpecial",
+                "line": 595,
+                "special": 119,
+                "tag": 5
+            }
+        ]
+    },
+    "27e81546a49be4c57d6f836a826be3ba42f06aac306a98f5a716c125af1ba3a9": {
+        "map": "MAP29",
+        "source": "Doom II, MAP29 (UZDoom level_compatibility.zs, md5 20251EDA21B2F2ECF6FF5B8BBC00B26C)",
+        "actions": [
+            {
+                "op": "setWallTexture",
+                "line": 405,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 516,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 524,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1146,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1138,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 406,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 517,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 525,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1147,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1139,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 407,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 518,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 526,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1148,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1140,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 408,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 519,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 527,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1149,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "setWallTexture",
+                "line": 1141,
+                "side": "back",
+                "part": "lower",
+                "texture": "SUPPORT3"
+            },
+            {
+                "op": "offsetSectorPlane",
+                "sector": 152,
+                "plane": "ceiling",
+                "delta": -32
+            },
+            {
+                "op": "setWallTexture",
+                "line": 603,
+                "side": "back",
+                "part": "upper",
+                "texture": "WOOD5"
+            }
+        ]
+    }
+}

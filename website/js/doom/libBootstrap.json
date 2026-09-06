@@ -1,5 +1,5 @@
 {
-    "version": "v1.693",
+    "version": "v1.695",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -21,6 +21,8 @@
             "/assets/uzdoom/heretic/sprite/bal7scr2.png",
             "/assets/uzdoom/doom/texts.json",
             "/assets/uzdoom/heretic/texts.json",
+            "/assets/uzdoom/doom/levelPatches.json",
+            "/assets/uzdoom/heretic/levelPatches.json",
             "/js/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js",
             "/js/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm"
         ],
@@ -49,6 +51,7 @@
             "/js/doom/wad/profile/hereticGameProfile.js",
             "/js/doom/wad/gameProfileList.js",
             "/js/doom/doomFinaleTexts.js",
+            "/js/doom/doomLevelPatches.js",
             "/js/doom/sound/doomSoundCatalog.js",
             "/js/doom/sound/doomSoundSequences.js",
             "/js/doom/sound/doomSoundSequencePlayer.js",
@@ -63,6 +66,7 @@
             "/js/doom/wad/convert/wadSectorPolygons.js",
             "/js/doom/wad/convert/wadBspTree.js",
             "/js/doom/wad/convert/wadLevelParser.js",
+            "/js/doom/wad/convert/wadLevelPatcher.js",
             "/js/doom/wad/convert/wadMapInfo.js",
             "/js/doom/wad/convert/wadPalette.js",
             "/js/doom/wad/convert/wadPicture.js",

@@ -525,6 +525,16 @@ class AbstractGameProfile {
     }
 
     /**
+     * URL of the map patch catalog of this game (UZDoom LevelCompatibility
+     * transcribed, keyed by map fingerprint), null when the game has none.
+     *
+     * @returns {string|null}
+     */
+    levelPatchAssets() {
+        return null;
+    }
+
+    /**
      * Transient effect templates (hitscan puffs, projectile explosions,
      * blood, teleport fog): short sprite animations built once per level in
      * the load batch. rise is the upward drift in map units/tic (0 = static),

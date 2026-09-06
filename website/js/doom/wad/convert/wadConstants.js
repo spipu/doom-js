@@ -14,6 +14,7 @@ class WadConstants {
     // (multiplayer/co-op/DM only). 0x08 is "ambush" (deaf), irrelevant to display.
     static MTF_NOT_SINGLE = 0x10;
     static MTF_AMBUSH     = 0x08;
+    static MTF_SKILL_MASK = 0x07;
 
     // Doom game tic = 1/35 s (animation/timing unit).
     static SECONDS_PER_TIC = 1 / 35;

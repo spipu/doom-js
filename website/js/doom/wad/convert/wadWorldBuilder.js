@@ -47,6 +47,7 @@ class WadWorldBuilder {
         const animBank = new WadAnimationBank(this._wadFile, bank, this._profile).init();
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
+        const patches  = await this._applyLevelPatches(level);
         // BSP tree (null on missing/foreign lumps → chain-polygon fallback):
         // subsector flats stay correct on UNCLOSED sectors (MAP21 sector 50).
         level.bspTree = WadBspTree.build(level);
@@ -253,7 +254,8 @@ class WadWorldBuilder {
             + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
             + teleporters.length + ' teleporters, ' + bossRules + ' boss rules, '
             + things.count + ' things (' + things.skipped + ' skipped, '
-            + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + ')');
+            + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + '), '
+            + patches + ' compat patches');
 
         if (bspTree !== null) {
             bspTree.releaseBuildData();
@@ -846,6 +848,19 @@ class WadWorldBuilder {
         if (keyCode) {
             loader.instances().getByCode(built.code).addTriggerCondition((user) => user.hasItem(keyCode));
         }
+    }
+
+
+    // Catalogued fixes of the known maps (UZDoom LevelCompatibility), applied
+    // to the parsed records before anything reads them; the fingerprint keys
+    // the map itself, not its name.
+    async _applyLevelPatches(level) {
+        const entry = doomLevelPatches.get(await this._wadFile.mapChecksum(this._levelName));
+        if (entry === null) {
+            return 0;
+        }
+
+        return new WadLevelPatcher().apply(level, entry.actions);
     }
 
     // A_BossDeath actions of this level, from the profile — a 'MAP07-1' /
