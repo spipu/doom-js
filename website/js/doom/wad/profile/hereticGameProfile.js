@@ -306,7 +306,7 @@ class HereticGameProfile extends DefaultGameProfile {
     }
 
     finaleAssets() {
-        return '/assets/uzdoom/heretic/text/finale.json';
+        return '/assets/uzdoom/heretic/texts.json';
     }
 
     // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden
