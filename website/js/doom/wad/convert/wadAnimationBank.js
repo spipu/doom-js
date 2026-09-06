@@ -36,7 +36,7 @@ class WadAnimationBank {
      * face-level animation map (equiv. build_anim_groups).
      *
      * @param {int[]} localIndices - bank indices (0-based) of the object textures
-     * @returns {{newList: int[], animMap: object}} animMap: local 1-based first
+     * @returns {{newList: int[], animMap: object}} animMap: local 1-based
      *          frame id → {ids: local 1-based ids, duration: seconds per frame}
      */
     buildAnimGroups(localIndices) {
@@ -67,7 +67,13 @@ class WadAnimationBank {
                 // Guard a malformed/zero speed (would give a 0/NaN frame duration);
                 // fall back to the vanilla default of 8 tics.
                 const tics = ((sequence.speedTics > 0) ? sequence.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
-                animMap[ids[0]] = {ids: ids, duration: tics * WadConstants.SECONDS_PER_TIC};
+                const duration = tics * WadConstants.SECONDS_PER_TIC;
+                // Every frame of the sequence animates (P_UpdateSpecials cycles
+                // the whole range): a face painted with the third frame starts
+                // there and keeps its phase, so the ids are rotated onto it.
+                ids.forEach((id, k) => {
+                    animMap[id] = {ids: [...ids.slice(k), ...ids.slice(0, k)], duration: duration};
+                });
             }
         }
 
