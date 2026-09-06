@@ -253,7 +253,7 @@ class WadMapAnalyzer {
         const {sidedefs, sectors} = this._level;
         const linedefs = this._moverLinedefs();
         const holeTargetFh = {};
-        const rings        = {};   // ring si → {targetFh, special, modelFlat, modelSpecial}
+        const rings        = {};   // ring si → {targetFh, special, modelSi}
         const ringTag      = {};   // ring si → trigger tag
 
         const otherSide = (ld, si) => {
@@ -290,8 +290,7 @@ class WadMapAnalyzer {
                     continue;
                 }
                 holeTargetFh[s1] = sectors[s3].fh;
-                rings[s2]        = {targetFh: sectors[s3].fh, special: ld.special,
-                    modelFlat: sectors[s3].ft, modelSpecial: sectors[s3].special};
+                rings[s2]        = {targetFh: sectors[s3].fh, special: ld.special, modelSi: s3};
                 ringTag[s2]      = ld.tag;
             }
         }
@@ -304,7 +303,7 @@ class WadMapAnalyzer {
      * top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
      * does not rise above its own floor is dropped (no movement in vanilla).
      * Each claimed ring also gets its declared "+change" (the up-table entry:
-     * model flat, special zeroed, at arrival — T_MoveFloor donutRaise).
+     * model sector's flat, special zeroed, at arrival — T_MoveFloor donutRaise).
      *
      * @returns {object} claimed ring si → floorChange record
      */
@@ -327,11 +326,7 @@ class WadMapAnalyzer {
             // the HOLE's half of the special (the down entry, no change).
             const rule = (WadConstants.FLOOR_UP_BY_SPECIAL[ring.special].change ?? null);
             if (rule !== null) {
-                ringChanges[si] = {
-                    flatName: ring.modelFlat,
-                    special:  WadMapAnalyzer._changeSpecial(rule, ring.modelSpecial),
-                    at:       rule.at
-                };
+                ringChanges[si] = {sourceSi: ring.modelSi, special: rule.special, at: rule.at};
             }
         }
 
@@ -916,7 +911,7 @@ class WadMapAnalyzer {
             if ((rule === null) || (ld.tag === 0) || (ld.right < 0)) {
                 continue;
             }
-            const front = sectors[sidedefs[ld.right].sector];
+            const frontSi = sidedefs[ld.right].sector;
             for (let si = 0; si < sectors.length; si++) {
                 if (sectors[si].tag !== ld.tag) {
                     continue;
@@ -925,32 +920,37 @@ class WadMapAnalyzer {
                 if (!moving) {
                     continue;
                 }
-                let source = front;
+                // The source is kept as a sector, not as a flat: its surface is
+                // read at firing time (DoomSectorSurfaces), so a chain of
+                // changes propagates like vanilla's live line->frontsector.
+                let sourceSi = frontSi;
                 if (rule.source === 'dest') {
-                    source = this._sectorAtHeight(si, lifts.liftMinAdjFh[si]);
-                    if (source === null) {
+                    sourceSi = this._sectorAtHeight(si, lifts.liftMinAdjFh[si]);
+                    if (sourceSi < 0) {
                         continue;
                     }
                 }
-                floorChange[si] = {
-                    flatName: source.ft,
-                    special:  WadMapAnalyzer._changeSpecial(rule, source.special),
-                    at:       rule.at
-                };
+                floorChange[si] = {sourceSi: sourceSi, special: rule.special, at: rule.at};
             }
         }
 
         return floorChange;
     }
 
-    // New sector special posted by a "+change" rule: 'copy' takes the source
-    // sector's, 'zero' clears it, 'keep' (null) leaves it untouched.
-    static _changeSpecial(rule, sourceSpecial) {
-        return ((rule.special === 'copy') ? sourceSpecial : ((rule.special === 'zero') ? 0 : null));
+    /**
+     * New sector special posted by a "+change" rule: 'copy' takes the source
+     * sector's, 'zero' clears it, 'keep' leaves it untouched (null).
+     *
+     * @param {string} mode 'copy' | 'zero' | 'keep'
+     * @param {int}    sourceSpecial
+     * @returns {int|null}
+     */
+    static changeSpecial(mode, sourceSpecial) {
+        return ((mode === 'copy') ? sourceSpecial : ((mode === 'zero') ? 0 : null));
     }
 
     // First two-sided neighbour of si whose floor sits at the given height
-    // (vanilla lowerAndChange line walk).
+    // (vanilla lowerAndChange line walk), -1 when none.
     _sectorAtHeight(si, fh) {
         const {linedefs, sidedefs, sectors} = this._level;
         for (const ld of linedefs) {
@@ -961,11 +961,11 @@ class WadMapAnalyzer {
             const lSi = sidedefs[ld.left].sector;
             const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : -1));
             if (other !== -1 && sectors[other].fh === fh) {
-                return sectors[other];
+                return other;
             }
         }
 
-        return null;
+        return -1;
     }
 
     // --- Stairs (build stairs) ---
