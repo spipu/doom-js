@@ -260,6 +260,10 @@ class WadConstants {
     static DOOR_TRACK_OFFSET = 4;
     // Placeholder size of an untextured wall quad (sidedef texture and fill flat both absent)
     static MISSING_TEXTURE_SIZE = 128;
+    // Use trace of a switch (P_UseTraverse): aim this far from the line's ends
+    // (fraction of its length) and stop this fraction of the way to it
+    static USE_TRACE_END_MARGIN = 0.05;
+    static USE_TRACE_STOP_RATIO = 0.99;
 
     // Timer doors (SECTOR specials, no linedef — P_SpawnSpecials arms a
     // countdown at level load): 10 = the statically open sector close-stays
