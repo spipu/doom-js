@@ -327,6 +327,59 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // Level names (Heretic source am_map.c LevelNames[]), without the
+    // "E1M1:  " prefix; uppercase in the source (uppercase-only font),
+    // normalized to title case. E6 is unnamed there.
+    levelNames() {
+        return {
+            E1M1: 'The Docks',
+            E1M2: 'The Dungeons',
+            E1M3: 'The Gatehouse',
+            E1M4: 'The Guard Tower',
+            E1M5: 'The Citadel',
+            E1M6: 'The Cathedral',
+            E1M7: 'The Crypts',
+            E1M8: 'Hell\'s Maw',
+            E1M9: 'The Graveyard',
+            E2M1: 'The Crater',
+            E2M2: 'The Lava Pits',
+            E2M3: 'The River of Fire',
+            E2M4: 'The Ice Grotto',
+            E2M5: 'The Catacombs',
+            E2M6: 'The Labyrinth',
+            E2M7: 'The Great Hall',
+            E2M8: 'The Portals of Chaos',
+            E2M9: 'The Glacier',
+            E3M1: 'The Storehouse',
+            E3M2: 'The Cesspool',
+            E3M3: 'The Confluence',
+            E3M4: 'The Azure Fortress',
+            E3M5: 'The Ophidian Lair',
+            E3M6: 'The Halls of Fear',
+            E3M7: 'The Chasm',
+            E3M8: 'D\'Sparil\'s Keep',
+            E3M9: 'The Aquifer',
+            E4M1: 'Catafalque',
+            E4M2: 'Blockhouse',
+            E4M3: 'Ambulatory',
+            E4M4: 'Sepulcher',
+            E4M5: 'Great Stair',
+            E4M6: 'Halls of the Apostate',
+            E4M7: 'Ramparts of Perdition',
+            E4M8: 'Shattered Bridge',
+            E4M9: 'Mausoleum',
+            E5M1: 'Ochre Cliffs',
+            E5M2: 'Rapids',
+            E5M3: 'Quay',
+            E5M4: 'Courtyard',
+            E5M5: 'Hydratyr',
+            E5M6: 'Colonnade',
+            E5M7: 'Foetid Manse',
+            E5M8: 'Field of Judgement',
+            E5M9: 'Skein of D\'Sparil'
+        };
+    }
+
     // Heretic world things: editor numbers, sprite frames, radii and flags
     // transcribed from the UZDoom sources (mapinfo/heretic.txt DoomEdNums +
     // zscript/actors/heretic/ and actors/raven/).

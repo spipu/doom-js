@@ -58,6 +58,7 @@ class HudDoom extends AbstractHud {
 
     setLevelInfo(wadId, levelCode, skill, levelName = null) {
         this._debug.setLevelInfo(wadId, levelCode, skill, levelName);
+        this._automap.setLevelInfo(levelCode, levelName);
         return this;
     }
 

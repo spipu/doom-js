@@ -25,7 +25,10 @@ class HudAutomap extends AbstractHud {
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role] = [];
         }
+        this._levelCode = null;
+        this._levelName = null;
         this._root      = null;
+        this._title     = null;
         this._canvas    = null;
         this._ctx       = null;
         this._visible   = false;
@@ -35,6 +38,17 @@ class HudAutomap extends AbstractHud {
         this._lineWidth = 1;
         this._mapX      = [1, 0, 0];
         this._mapY      = [0, -1, 0];
+    }
+
+    // Level identity shown in the title: "Map - E1M1 - Hangar", the name part
+    // only when the level has one (proper noun, never translated).
+    setLevelInfo(levelCode, levelName = null) {
+        this._levelCode = levelCode;
+        this._levelName = levelName;
+        if (this._title !== null) {
+            this._title.innerText = this._titleText();
+        }
+        return this;
     }
 
     bindGame(game) {
@@ -105,14 +119,14 @@ class HudAutomap extends AbstractHud {
         });
         container.appendChild(this._root);
 
-        const title = document.createElement('div');
-        Object.assign(title.style, {
+        this._title = document.createElement('div');
+        Object.assign(this._title.style, {
             position: 'absolute', top: '1cqh', left: '0', width: '100%',
             textAlign: 'center', color: '#fff', fontFamily: 'system-ui, sans-serif',
             fontSize: '3.4cqh', fontWeight: '700', textShadow: '0 0 0.3cqh #000'
         });
-        title.innerText = appTranslator.get('hud.automap');
-        this._root.appendChild(title);
+        this._title.innerText = this._titleText();
+        this._root.appendChild(this._title);
 
         this._canvas = document.createElement('canvas');
         Object.assign(this._canvas.style, {
@@ -121,6 +135,18 @@ class HudAutomap extends AbstractHud {
         this._root.appendChild(this._canvas);
         this._ctx = this._canvas.getContext('2d');
         this._applyBackground();
+    }
+
+    _titleText() {
+        const parts = [appTranslator.get('hud.automap')];
+        if (this._levelCode !== null) {
+            parts.push(this._levelCode);
+        }
+        if (this._levelName !== null) {
+            parts.push(this._levelName);
+        }
+
+        return parts.join(HudAutomap.TITLE_SEPARATOR);
     }
 
     update() {
@@ -287,6 +313,7 @@ class HudAutomap extends AbstractHud {
 
 // Panel: quasi fullscreen, and the framing margins inside it (the top one also
 // clears the title).
+HudAutomap.TITLE_SEPARATOR     = ' - ';
 HudAutomap.INSET_PERCENT       = 2;
 HudAutomap.PADDING_RATIO       = 0.03;
 HudAutomap.PADDING_TOP_RATIO   = 0.08;

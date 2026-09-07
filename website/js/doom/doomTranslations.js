@@ -544,6 +544,12 @@ class DoomTranslations {
                 it: 'Livello {level} completato!',
                 es: '¡Nivel {level} completado!'
             },
+            'game.level.finishedNamed': {
+                fr: '{level} {name} terminé !',
+                en: '{level} {name} finished!',
+                it: '{level} {name} completato!',
+                es: '¡{level} {name} completado!'
+            },
             'game.episode.finished': {
                 fr: 'Épisode terminé !',
                 en: 'Episode finished!',

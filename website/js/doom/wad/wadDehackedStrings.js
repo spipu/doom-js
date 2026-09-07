@@ -36,6 +36,35 @@ class WadDehackedStrings {
         return (this._strings[code] ?? null);
     }
 
+    /**
+     * The WAD's replacement of a level's HUSTR string, without the "E1M1: " /
+     * "level 1: " prefix the vanilla strings carry (Freedoom names its levels
+     * this way). An empty name counts as none.
+     *
+     * @param {string} levelCode e.g. 'E1M1' or 'MAP01'
+     * @returns {string|null}
+     */
+    levelName(levelCode) {
+        const key = WadDehackedStrings.levelNameKey(levelCode);
+        const text = ((key !== null) ? this.get(key) : null);
+        if (text === null) {
+            return null;
+        }
+        const name = text.replace(WadDehackedStrings.LEVEL_NAME_PREFIX, '').trim();
+
+        return ((name !== '') ? name : null);
+    }
+
+    // HUSTR_E1M1 for the episodic games, HUSTR_1..HUSTR_32 for the MAPxx ones.
+    static levelNameKey(levelCode) {
+        if (/^E\dM\d$/.test(levelCode)) {
+            return ('HUSTR_' + levelCode);
+        }
+        const map = /^MAP(\d\d)$/.exec(levelCode);
+
+        return ((map !== null) ? ('HUSTR_' + parseInt(map[1], 10)) : null);
+    }
+
     // --- Internal ---
 
     _parse(text) {
@@ -76,4 +105,5 @@ class WadDehackedStrings {
     }
 }
 
-WadDehackedStrings.ESCAPES = {n: '\n', t: '\t', r: '\r'};
+WadDehackedStrings.ESCAPES           = {n: '\n', t: '\t', r: '\r'};
+WadDehackedStrings.LEVEL_NAME_PREFIX = /^(?:E\dM\d|level \d+):\s*/i;

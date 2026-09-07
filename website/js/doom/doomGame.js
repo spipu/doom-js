@@ -11,6 +11,7 @@ class DoomGame {
         this._mapInfo           = null;
         this._dehackedStrings   = null;
         this._levelName         = null;
+        this._levelDisplayName  = null;
         this._spawnOverride     = null;
         this._skill             = 3;
         this._carriedState      = null;
@@ -596,6 +597,7 @@ class DoomGame {
         this._mapInfo     = new WadMapInfo(wadFile, this._gameProfile);
         this._dehackedStrings = new WadDehackedStrings(wadFile);
         this._levelName   = levelName;
+        this._levelDisplayName = this._resolveLevelName();
         this._spawnOverride = spawnOverride;
         if (wadMeta !== null) {
             this._wadMeta = wadMeta;
@@ -749,7 +751,7 @@ class DoomGame {
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
             .bindGame(this)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._mapInfo.levelNameFor(this._levelName))
+            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._levelDisplayName)
             .addDescription('(c)2026 Spipu')
         ;
         if (this._automap !== null) {
@@ -1169,7 +1171,9 @@ class DoomGame {
         // frozen level stays visible behind it instead of a black screen.
         const display = new MenuDisplay('screen').init(true);
         const modal = new MenuModal(display);
-        let title = appTranslator.get('game.level.finished', {level: this._levelName});
+        let title = ((this._levelDisplayName !== null)
+            ? appTranslator.get('game.level.finishedNamed', {level: this._levelName, name: this._levelDisplayName})
+            : appTranslator.get('game.level.finished', {level: this._levelName}));
         if (nextLevel === null) {
             const endCode = ((/^E\dM\d$/.test(this._levelName)) ? 'game.episode.finished' : 'game.finished');
             title = appTranslator.get(endCode);
@@ -1193,6 +1197,16 @@ class DoomGame {
                 this._startNextLevel(display, modal, nextLevel);
             });
         });
+    }
+
+    // Readable name of the running level, in the vanilla order of precedence:
+    // the WAD's own UMAPINFO, its DEHACKED replacement of the HUSTR string
+    // (Freedoom), then the game's transcribed table. Null when nobody names it.
+    _resolveLevelName() {
+        return (this._mapInfo.levelNameFor(this._levelName)
+            ?? this._dehackedStrings.levelName(this._levelName)
+            ?? this._gameProfile.levelNames()[this._levelName]
+            ?? null);
     }
 
     // Story text closing this level, or null when the chapter is not over.

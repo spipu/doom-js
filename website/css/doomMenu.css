@@ -344,10 +344,6 @@
     gap: 0.8em;
 }
 
-.doom-menu-modal-tally {
-    width: 36%;
-}
-
 .doom-menu-tally {
     margin-bottom: 1.4em;
     border-top: 0.06em solid rgba(192, 57, 43, 0.35);
