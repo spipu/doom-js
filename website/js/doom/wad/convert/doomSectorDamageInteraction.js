@@ -10,10 +10,9 @@
  */
 class DoomSectorDamageInteraction extends AbstractInteraction {
     /**
-     * @param {DoomSectorZones} zones        - [{si, floorY (world), special}] behind the
-     *                                        shared locator — includes the "+change" target
-     *                                        sectors, whose special (and floor height) can
-     *                                        mutate at runtime
+     * @param {DoomSectorZones} zones        - [{si, special}] behind the shared locator —
+     *                                        includes the "+change" target sectors, whose
+     *                                        special mutates at runtime
      * @param {function|null}   exitCallback - normal exit callback (special 11)
      */
     constructor(zones, exitCallback) {
@@ -92,13 +91,12 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
     }
 
     // "+change" support: a floor change rewrites the sector's special (0 =
-    // harmless) and, the floor having moved, its height. No-op on a sector
-    // absent from the zones (never damaging, before or after).
-    setSectorSpecial(si, special, floorY) {
+    // harmless). No-op on a sector absent from the zones (never damaging,
+    // before or after).
+    setSectorSpecial(si, special) {
         const zone = this._zones.bySi(si);
         if (zone !== null) {
             zone.special = special;
-            zone.floorY  = floorY;
         }
     }
 

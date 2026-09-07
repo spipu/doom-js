@@ -15,7 +15,7 @@
  */
 class DoomSectorPushInteraction extends AbstractInteraction {
     /**
-     * @param {DoomSectorZones}   zones    [{si, floorY (world), push: {kind, dx, dz}|null,
+     * @param {DoomSectorZones}   zones    [{si, push: {kind, dx, dz}|null,
      *                                     friction: {friction}|null}] behind the shared locator
      * @param {DoomMonsterSystem} monsters
      */
@@ -41,7 +41,7 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         // map units per tic → metres per second
         const toMs   = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
         this._zones.eachZoneAt(user.x, user.z, (zone) => {
-            const height = user.y - zone.floorY;
+            const height = user.y - this._zones.floorYOf(zone);
             // Carry tolerance above the sector floor: straddling a ledge, the
             // collision cylinder props the player on the lip of the previous
             // (higher) floor while the centre already sits in the carry sector
@@ -69,7 +69,7 @@ class DoomSectorPushInteraction extends AbstractInteraction {
         let pos = null;
         let env = null;
         const apply = (zone) => {
-            const height   = pos[1] - zone.floorY;
+            const height   = pos[1] - this._zones.floorYOf(zone);
             const grounded = ((height >= -WadConstants.ON_FLOOR_TOLERANCE)
                 && (height <= WadConstants.ACTOR_STEP_HEIGHT));
             this._applyForces(zone, env, height, grounded, toMs);

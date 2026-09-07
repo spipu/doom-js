@@ -7,7 +7,7 @@
  */
 class DoomSecretInteraction extends AbstractInteraction {
     /**
-     * @param {DoomSectorZones} zones - [{si, floorY (world)}] behind the shared locator
+     * @param {DoomSectorZones} zones - [{si}] behind the shared locator
      * @param {DoomGame}        game
      */
     constructor(zones, game) {

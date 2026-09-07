@@ -4,17 +4,21 @@
  * through the BSP sectorAt lookup (exact, unclosed sectors included) or, when
  * the level has no usable BSP, through the zones' own chain-polygon outers
  * (with an AABB broadphase). The dual mode lives HERE only — the interactions
- * just ask for the zone(s) at a point.
+ * just ask for the zone(s) at a point. A zone's floor is LIVE (the sector's
+ * current height, mover offset included): a secret lowered by a donut is
+ * credited on its lowered floor, as vanilla reads sector->floorheight.
  */
 class DoomSectorZones {
     /**
-     * @param {object[]}      zones    - [{si, floorY (world), outers?, ...}] — outers
-     *                                   required when sectorAt is null
+     * @param {object[]}      zones    - [{si, outers?, ...}] — outers required when
+     *                                   sectorAt is null
      * @param {function|null} sectorAt - (doomX, doomY) → si|null (BSP)
+     * @param {function}      floorYOf - (si) → live floor height (world)
      */
-    constructor(zones, sectorAt = null) {
+    constructor(zones, sectorAt, floorYOf) {
         this._zones    = zones;
         this._sectorAt = sectorAt;
+        this._floorYOf = floorYOf;
         this._bySi     = new Map(zones.map((zone) => [zone.si, zone]));
         if (sectorAt === null) {
             for (const zone of zones) {
@@ -34,6 +38,10 @@ class DoomSectorZones {
         return (this._bySi.get(si) ?? null);
     }
 
+    floorYOf(zone) {
+        return this._floorYOf(zone.si);
+    }
+
     // The zone under an actor's FEET (world coordinates): containing the
     // position AND with the actor standing on its floor — the vanilla
     // mo->z == floorheight gate of the damage and secret sectors. Zones
@@ -42,7 +50,7 @@ class DoomSectorZones {
     zoneUnderFeet(worldX, worldY, worldZ) {
         const doomX = worldX / WadConstants.SCALE;
         const doomY = worldZ / WadConstants.SCALE;
-        const onFloor = (zone) => (Math.abs(worldY - zone.floorY) <= WadConstants.ON_FLOOR_TOLERANCE);
+        const onFloor = (zone) => (Math.abs(worldY - this.floorYOf(zone)) <= WadConstants.ON_FLOOR_TOLERANCE);
         if (this._sectorAt !== null) {
             const zone = this._bySi.get(this._sectorAt(doomX, doomY));
             return (((zone !== undefined) && onFloor(zone)) ? zone : null);

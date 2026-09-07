@@ -170,9 +170,7 @@ class WadWorldBuilder {
 
         // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
         // polling the player's sector every 32-tic window. The "+change" target
-        // sectors are included too (their special mutates at runtime); a lift's
-        // zone sits at the ORIGINAL floor (the platform rests up, the static fh
-        // is patched down).
+        // sectors are included too (their special mutates at runtime).
         const damageZones = this._sectorZones(analysis, sectorAt,
             (si, special) => ((WadConstants.SECTOR_DAMAGE_BY_SPECIAL[special] !== undefined)
                 || (analysis.floorChange[si] !== undefined)),
@@ -783,7 +781,6 @@ class WadWorldBuilder {
     // reads line->frontsector at fire time, so chained changes propagate). No
     // texture registers outside the batch: every reachable flat resolves here.
     _wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction) {
-        const SCALE    = WadConstants.SCALE;
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
         this._game.setSectorSurfaces(surfaces);
 
@@ -803,7 +800,6 @@ class WadWorldBuilder {
                 }
                 sequences.get(flat).ids.forEach((id) => ownIds.add(id));
             }
-            const targetFh = analysis.risingFloorTargetFh[si] ?? analysis.liftBaseTargetFh[si] ?? analysis.liftMinAdjFh[si];
             const inst  = loader.instances().getByCode(code);
             const apply = () => {
                 const flat    = surfaces.flatOf(change.sourceSi);
@@ -825,7 +821,7 @@ class WadWorldBuilder {
                 }
                 surfaces.set(si, flat, ((special !== null) ? special : surfaces.specialOf(si)));
                 if ((special !== null) && (damageInteraction !== null)) {
-                    damageInteraction.setSectorSpecial(si, special, targetFh * SCALE);
+                    damageInteraction.setSectorSpecial(si, special);
                 }
             };
             if (change.at === 'complete') {
@@ -1280,14 +1276,16 @@ class WadWorldBuilder {
     // carrying the special is a zone (membership is the tree, so the unclosed
     // sectors the polygon cache dropped are back in — secret total included);
     // without it, the cache stays the filter and the zones carry their polygon
-    // outers for the runtime test.
+    // outers for the runtime test. Floors are read live from the height
+    // service, resolved lazily: it is built with the level data, after the
+    // zones, and the interactions only run once the level is up.
     _sectorZones(analysis, sectorAt, predicate, decorate) {
         const zones = [];
-        const pushZone = (si, fh, special, outers) => {
+        const pushZone = (si, special, outers) => {
             if (!predicate(si, special)) {
                 return;
             }
-            const zone = {si: si, floorY: (analysis.liftOriginalFh[si] ?? fh) * WadConstants.SCALE};
+            const zone = {si: si};
             if (outers !== null) {
                 zone.outers = outers;
             }
@@ -1297,13 +1295,13 @@ class WadWorldBuilder {
             zones.push(zone);
         };
         if (sectorAt !== null) {
-            this._level.sectors.forEach((sec, si) => pushZone(si, sec.fh, sec.special, null));
+            this._level.sectors.forEach((sec, si) => pushZone(si, sec.special, null));
         } else {
             for (const s of this._sectorPolyCache()) {
-                pushZone(s.si, s.fh, s.special, s.outers);
+                pushZone(s.si, s.special, s.outers);
             }
         }
-        return new DoomSectorZones(zones, sectorAt);
+        return new DoomSectorZones(zones, sectorAt, (si) => (this._sectorHeights.floorOf(si) * WadConstants.SCALE));
     }
 
     // Find the sector at a point. BSP path first (R_PointInSubsector — the
