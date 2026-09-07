@@ -260,7 +260,7 @@ class HereticGameProfile extends DefaultGameProfile {
             return [reused];
         }
 
-        return ((/^E\dM\d$/.test(levelName)) ? ['MUS_' + levelName] : []);
+        return ((WadLevelCode.isEpisodic(levelName)) ? ['MUS_' + levelName] : []);
     }
 
     progressionRules() {
@@ -1237,8 +1237,8 @@ class HereticGameProfile extends DefaultGameProfile {
     // E5 reuses SKY3; the hidden E6 slots default to SKY1).
     skyForLevel(levelName) {
         const byEpisode = {1: 'SKY1', 2: 'SKY2', 3: 'SKY3', 4: 'SKY1', 5: 'SKY3'};
-        const ep = (/^E(\d)M\d/i).exec(levelName);
-        const name = ((ep !== null) ? (byEpisode[parseInt(ep[1], 10)] ?? 'SKY1') : 'SKY1');
+        const episode = WadLevelCode.parse(levelName).episode;
+        const name    = ((episode !== null) ? (byEpisode[episode] ?? 'SKY1') : 'SKY1');
 
         return {name: name, wrap: 4};
     }

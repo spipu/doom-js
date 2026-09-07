@@ -159,17 +159,15 @@ class WadMapInfo {
         if (clusters.byMapExact[upper] !== undefined) {
             return clusters.byMapExact[upper];
         }
-        const episodic = upper.match(/^E(\d)M\d$/);
-        if (episodic !== null) {
-            return ((clusters.byEpisode === true) ? Number(episodic[1]) : null);
+        const code = WadLevelCode.parse(upper);
+        if (code.episode !== null) {
+            return ((clusters.byEpisode === true) ? code.episode : null);
         }
-        const doom2 = upper.match(/^MAP(\d{2})$/);
-        if (doom2 === null) {
+        if (code.number === null) {
             return null;
         }
-        const number = Number(doom2[1]);
         for (const [last, cluster] of clusters.byMapRange) {
-            if (number <= last) {
+            if (code.number <= last) {
                 return cluster;
             }
         }
@@ -192,21 +190,19 @@ class WadMapInfo {
         }
 
         let routed = null;
-        const episodic = current.match(/^E(\d)M(\d)$/);
-        const doom2 = current.match(/^MAP(\d{2})$/);
-        if (episodic !== null) {
-            const [, episode, map] = episodic;
-            if (!secret && (Number(map) === this._rules.episodeEndMap)) {
+        const code = WadLevelCode.parse(current);
+        if (code.episode !== null) {
+            if (!secret && (code.map === this._rules.episodeEndMap)) {
                 // Vanilla ends the game on the episode-end map's normal exit
                 // (ga_victory); its secret exit still routes to ExM9 below.
                 return null;
             }
             if (secret) {
-                routed = 'E' + episode + 'M9';
-            } else if (map === '9') {
-                routed = this._rules.episodeSecretReturns[episode] ?? null;
+                routed = 'E' + code.episode + 'M9';
+            } else if (code.map === 9) {
+                routed = this._rules.episodeSecretReturns[code.episode] ?? null;
             }
-        } else if (doom2 !== null) {
+        } else if (code.number !== null) {
             if (current === this._rules.mapEndSlot) {
                 // MAP30 ends the game through both exits (cast call).
                 return null;
