@@ -194,9 +194,9 @@ class WadRegistry {
     static _episodeStarts(levels) {
         const groups = new Map();
         for (const name of levels) {
-            const match = name.toUpperCase().match(/^E(\d)M(\d)$/);
-            const key   = ((match !== null) ? Number(match[1]) : 0);
-            const rank  = ((match !== null) ? Number(match[2]) : Number.MAX_SAFE_INTEGER);
+            const code  = WadLevelCode.parse(name);
+            const key   = ((code.episode !== null) ? code.episode : 0);
+            const rank  = ((code.episode !== null) ? code.map : Number.MAX_SAFE_INTEGER);
             const found = groups.get(key);
             if ((found === undefined) || (rank < found.rank)) {
                 groups.set(key, {rank: rank, firstLevel: name});

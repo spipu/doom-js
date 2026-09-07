@@ -57,12 +57,12 @@ class WadDehackedStrings {
 
     // HUSTR_E1M1 for the episodic games, HUSTR_1..HUSTR_32 for the MAPxx ones.
     static levelNameKey(levelCode) {
-        if (/^E\dM\d$/.test(levelCode)) {
-            return ('HUSTR_' + levelCode);
+        const code = WadLevelCode.parse(levelCode);
+        if (code.number !== null) {
+            return ('HUSTR_' + code.number);
         }
-        const map = /^MAP(\d\d)$/.exec(levelCode);
 
-        return ((map !== null) ? ('HUSTR_' + parseInt(map[1], 10)) : null);
+        return ((code.episode !== null) ? ('HUSTR_' + levelCode.toUpperCase()) : null);
     }
 
     // --- Internal ---

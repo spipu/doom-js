@@ -18,8 +18,8 @@ class HudDoomDebug extends HudDebug {
     // running level (DoomGame owns them) and are pushed in here only for display.
     // The [LEVEL] line is rendered in the exact form expected by
     // MenuNavigator.start(wadName, levelCode, ...) so a spawn can be reproduced
-    // straight from a screenshot; the optional readable name (UMAPINFO
-    // levelname) is appended AFTER those three fields.
+    // straight from a screenshot; the optional readable level name is
+    // appended AFTER those three fields.
     setLevelInfo(wadId, levelCode, skill, levelName = null) {
         this._wadId     = wadId;
         this._levelCode = levelCode;

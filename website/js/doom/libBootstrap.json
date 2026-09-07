@@ -1,5 +1,5 @@
 {
-    "version": "v1.725",
+    "version": "v1.726",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -38,6 +38,7 @@
             "/js/doom/doomExternalLinks.js",
             "/js/doom/wad/wadError.js",
             "/js/doom/wad/wadFile.js",
+            "/js/doom/wad/wadLevelCode.js",
             "/js/doom/wad/wadDehackedStrings.js",
             "/js/doom/wad/wadSoundDecoder.js",
             "/js/doom/wad/wadGenmidi.js",

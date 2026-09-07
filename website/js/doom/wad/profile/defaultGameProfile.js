@@ -1183,17 +1183,16 @@ class DefaultGameProfile extends AbstractGameProfile {
     // the own lump is absent (Freedoom provides real E4 lumps). MAPxx plays
     // the ordered commercial list (mapinfo/doom2.txt, mus_runnin + map − 1).
     levelMusicLumps(levelName) {
-        const episodic = levelName.match(/^E(\d)M(\d)$/);
-        if (episodic !== null) {
+        const code = WadLevelCode.parse(levelName);
+        if (code.episode !== null) {
             const candidates = ['D_' + levelName];
-            if (episodic[1] === '4') {
-                candidates.push(DefaultGameProfile.E4_MUSIC_REUSE[Number(episodic[2]) - 1]);
+            if (code.episode === 4) {
+                candidates.push(DefaultGameProfile.E4_MUSIC_REUSE[code.map - 1]);
             }
             return candidates;
         }
-        const doom2 = levelName.match(/^MAP(\d{2})$/);
-        if (doom2 !== null) {
-            const song = DefaultGameProfile.MAP_MUSIC[Number(doom2[1]) - 1];
+        if (code.number !== null) {
+            const song = DefaultGameProfile.MAP_MUSIC[code.number - 1];
             return ((song !== undefined) ? ['D_' + song] : []);
         }
 
@@ -1255,17 +1254,15 @@ class DefaultGameProfile extends AbstractGameProfile {
     // Wrap: vanilla repeats the 256-px sky ~4× per 360°.
     skyForLevel(levelName) {
         const wrap = 4;
-        const ep = (/^E(\d)M\d/i).exec(levelName);
-        if (ep !== null) {
-            return {name: 'SKY' + Math.min(4, Math.max(1, parseInt(ep[1], 10))), wrap: wrap};
+        const code = WadLevelCode.parse(levelName);
+        if (code.episode !== null) {
+            return {name: 'SKY' + Math.min(4, Math.max(1, code.episode)), wrap: wrap};
         }
-        const mp = (/^MAP(\d+)/i).exec(levelName);
-        if (mp !== null) {
-            const n = parseInt(mp[1], 10);
-            if (n <= 11) {
+        if (code.number !== null) {
+            if (code.number <= 11) {
                 return {name: 'SKY1', wrap: wrap};
             }
-            if (n <= 20) {
+            if (code.number <= 20) {
                 return {name: 'SKY2', wrap: wrap};
             }
             return {name: 'SKY3', wrap: wrap};

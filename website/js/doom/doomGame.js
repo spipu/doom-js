@@ -1080,9 +1080,8 @@ class DoomGame {
     // (a MAPxx game is its single episode 1); without stored meta (direct
     // test shortcut) the level name stands in for the WAD.
     _pauseTitle() {
-        const episodeMatch = /^E(\d)M/i.exec(this._levelName);
-        const episode      = ((episodeMatch !== null) ? Number(episodeMatch[1]) : 1);
-        const wadTitle     = ((this._wadMeta !== null) ? WadRegistry.displayTitle(this._wadMeta) : this._levelName);
+        const episode  = (WadLevelCode.parse(this._levelName).episode ?? 1);
+        const wadTitle = ((this._wadMeta !== null) ? WadRegistry.displayTitle(this._wadMeta) : this._levelName);
 
         return wadTitle + ' — ' + appTranslator.get('menu.episode.item', {episode: episode});
     }
@@ -1171,13 +1170,7 @@ class DoomGame {
         // frozen level stays visible behind it instead of a black screen.
         const display = new MenuDisplay('screen').init(true);
         const modal = new MenuModal(display);
-        let title = ((this._levelDisplayName !== null)
-            ? appTranslator.get('game.level.finishedNamed', {level: this._levelName, name: this._levelDisplayName})
-            : appTranslator.get('game.level.finished', {level: this._levelName}));
-        if (nextLevel === null) {
-            const endCode = ((/^E\dM\d$/.test(this._levelName)) ? 'game.episode.finished' : 'game.finished');
-            title = appTranslator.get(endCode);
-        }
+        const title = this._tallyTitle(nextLevel);
         const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
 
         // The story text comes after the tally (vanilla order): the tally then
@@ -1197,6 +1190,19 @@ class DoomGame {
                 this._startNextLevel(display, modal, nextLevel);
             });
         });
+    }
+
+    // Closing sentence of the tally: the end of the episode or of the game when
+    // nothing follows, else the level — named when it has a name.
+    _tallyTitle(nextLevel) {
+        if (nextLevel === null) {
+            return appTranslator.get(((WadLevelCode.isEpisodic(this._levelName)) ? 'game.episode.finished' : 'game.finished'));
+        }
+        if (this._levelDisplayName !== null) {
+            return appTranslator.get('game.level.finishedNamed', {level: this._levelName, name: this._levelDisplayName});
+        }
+
+        return appTranslator.get('game.level.finished', {level: this._levelName});
     }
 
     // Readable name of the running level, in the vanilla order of precedence:
