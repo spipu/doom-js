@@ -120,7 +120,7 @@ class MenuModal {
      * @param {function} action
      */
     tally(title, lines, label, action) {
-        const {modal} = this._createShell(title, 'doom-menu-modal doom-menu-modal-tally', 'doom-menu-modal-message');
+        const {modal} = this._createShell(title, 'doom-menu-modal', 'doom-menu-modal-message');
 
         const body = MenuDom.addElement(modal, 'div', 'doom-menu-tally');
         for (const line of lines) {

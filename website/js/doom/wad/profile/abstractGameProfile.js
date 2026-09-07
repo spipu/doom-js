@@ -93,6 +93,19 @@ class AbstractGameProfile {
     }
 
     /**
+     * Readable level names keyed by level code (uppercase), the game's own
+     * HUSTR strings without their "E1M1: " prefix. Proper nouns, never
+     * translated. Consulted after the WAD's UMAPINFO and DEHACKED; a level
+     * absent from the table simply shows its code.
+     *
+     * @returns {object} level code → level name
+     */
+    levelNames() {
+        this._generateException('levelNames must be implemented');
+        return {};
+    }
+
+    /**
      * RGB tint of the BFG lightning decal (the WAD art shades differ).
      *
      * @returns {number[]}

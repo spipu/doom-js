@@ -52,6 +52,12 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {};
     }
 
+    // Same rule for the level names: an unknown WAD only names its levels
+    // through its own lumps (UMAPINFO, DEHACKED).
+    levelNames() {
+        return {};
+    }
+
     // Transcription of the A_BossDeath switch (linuxdoom p_enemy.c): specials
     // 38 = lowerFloorToLowest, 109 = blazeOpen, 30 = raiseToTexture. E2M8 and
     // E3M8 fall through to G_ExitLevel — their only exit.
