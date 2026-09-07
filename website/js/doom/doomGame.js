@@ -199,6 +199,19 @@ class DoomGame {
         return (user.getAmmo(type) > before);
     }
 
+    // Vanilla sets pendingweapon → the weapon is raised by the psprite
+    // machine. Instant swap only before the controller exists.
+    _raiseWeapon(user, code) {
+        if (code === null) {
+            return;
+        }
+        if (this._playerWeapon !== null) {
+            this._playerWeapon.requestWeapon(code);
+        } else {
+            user.setActiveWeapon(code);
+        }
+    }
+
     _pickupWeapon(user, code, dropped = false) {
         const def = this.getWeapon(code);
         // Unknown weapon, or one whose sprites are absent from this WAD (e.g. the
@@ -209,13 +222,7 @@ class DoomGame {
         let gaveWeapon = false;
         if (!user.hasWeapon(code)) {
             user.giveWeapon(code);
-            // Vanilla sets pendingweapon → the new weapon is raised. Fall back to
-            // an instant swap only before the controller exists.
-            if (this._playerWeapon !== null) {
-                this._playerWeapon.requestWeapon(code);
-            } else {
-                user.setActiveWeapon(code);
-            }
+            this._raiseWeapon(user, code);
             gaveWeapon = true;
         }
         // Ammo handed out with the weapon: the def's own ammoGive when the game
@@ -294,6 +301,7 @@ class DoomGame {
             user.giveItem(code);
             user.addEnergy(def.getPickupHeal(), def.getPickupHeal());
             user.addEffect('berserkFlash', WadConstants.BERSERK_FLASH_MS);
+            this._raiseWeapon(user, def.getPickupWeapon());
             return true;
         }
         // Key or permanent power-up: a key already held leaves the sprite.
