@@ -152,14 +152,9 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
         const saving   = new MenuModal(this._display).showLoading(appTranslator.get('menu.save.saving'));
         const held     = new Promise((resolve) => setTimeout(resolve, MenuSaveSlotsModal.SAVING_DISPLAY_MS));
         Promise.all([doomSaveStore.write(meta, snapshot), held])
-            .then(() => {
-                saving.close();
-                this._onWritten();
-            })
-            .catch((error) => {
-                saving.close();
-                this._showStorageError(error);
-            });
+            .finally(() => saving.close())
+            .then(() => this._onWritten())
+            .catch((error) => this._showStorageError(error));
     }
 
     _onWritten() {

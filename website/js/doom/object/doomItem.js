@@ -10,9 +10,9 @@
 class DoomItem extends AbstractDoomObject {
     constructor(data) {
         super(data, true);
-        this._type       = data.type;
-        this._effect     = data.effect ?? null;
-        this._duration   = data.duration ?? 0;
+        this._type         = data.type;
+        this._effect       = data.effect ?? null;
+        this._duration     = data.duration ?? 0;
         this._pickupHeal   = data.pickupHeal ?? null;
         this._pickupWeapon = data.pickupWeapon ?? null;
     }
