@@ -133,14 +133,16 @@ class MenuPauseModal extends AbstractMenuListModal {
     }
 
     // Loading a slot replaces the running game (the game closes this modal on
-    // its way out). show() is async (it reads the slots): the modal is memoed
-    // BEFORE calling it, so close() always holds the modal, never a promise.
+    // its way out) and a written save resumes it. show() is async (it reads
+    // the slots): the modal is memoed BEFORE calling it, so close() always
+    // holds the modal, never a promise.
     _openSlots(mode) {
         this._openStacked('slots', new MenuSaveSlotsModal(this._display)
             .setMode(mode)
             .setWad(this._saveContext.wadMeta)
             .setSaveContext(this._saveContext)
-            .setOnLoad((saveMeta) => this._saveContext.onLoad(saveMeta)))
+            .setOnLoad((saveMeta) => this._saveContext.onLoad(saveMeta))
+            .setOnSaved(() => this._resume()))
             .show();
     }
 

@@ -3,13 +3,18 @@
  * pause menu. Always shows the MAX_SLOTS slots: a used one displays its level,
  * difficulty and date plus a delete cross (confirmed); a free one reads
  * "empty" — selectable to save, inert to load. Saving over a used slot asks
- * for confirmation; after a save the list refreshes in place. The bottom
- * "Back" button (same path as Backspace / the gamepad back button) closes
- * back to the owner in both modes.
+ * for confirmation; a "saving" loading modal covers the write for at least
+ * SAVING_DISPLAY_MS, then the save hands over to the owner's onSaved callback
+ * (the pause resumes the game) or, without one, refreshes the list in place.
+ * The bottom "Back" button (same path as Backspace / the gamepad back button)
+ * closes back to the owner in both modes.
  */
 class MenuSaveSlotsModal extends AbstractMenuListModal {
     static MODE_LOAD = 'load';
     static MODE_SAVE = 'save';
+
+    // The write is near-instant: the saving modal is held long enough to be read.
+    static SAVING_DISPLAY_MS = 1000;
 
     /**
      * @param {MenuDisplay} display
@@ -20,6 +25,7 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
         this._mode        = MenuSaveSlotsModal.MODE_LOAD;
         this._wadMeta     = null;
         this._onLoad      = null;
+        this._onSaved     = null;
         this._saveContext = null;
         this._slots       = {};
         this._bodyEl      = null;
@@ -46,6 +52,14 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
     // itself (onClose neutralized) before the call.
     setOnLoad(callback) {
         this._onLoad = callback;
+
+        return this;
+    }
+
+    // Save mode: fired once the slot is written; the modal closed itself
+    // (onClose neutralized) before the call.
+    setOnSaved(callback) {
+        this._onSaved = callback;
 
         return this;
     }
@@ -135,9 +149,27 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
     _doSave(slot) {
         const meta     = this._saveContext.buildMeta(slot);
         const snapshot = this._saveContext.capture();
-        doomSaveStore.write(meta, snapshot)
-            .then(() => this._refresh())
-            .catch((error) => this._showStorageError(error));
+        const saving   = new MenuModal(this._display).showLoading(appTranslator.get('menu.save.saving'));
+        const held     = new Promise((resolve) => setTimeout(resolve, MenuSaveSlotsModal.SAVING_DISPLAY_MS));
+        Promise.all([doomSaveStore.write(meta, snapshot), held])
+            .then(() => {
+                saving.close();
+                this._onWritten();
+            })
+            .catch((error) => {
+                saving.close();
+                this._showStorageError(error);
+            });
+    }
+
+    _onWritten() {
+        if (this._onSaved === null) {
+            this._refresh();
+            return;
+        }
+        const onSaved = this._onSaved;
+        this.setOnClose(null).close();
+        onSaved();
     }
 
     _confirmDelete(slot) {

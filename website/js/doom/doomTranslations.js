@@ -211,6 +211,12 @@ class DoomTranslations {
                 it: 'Eliminare il salvataggio dello slot {n}?',
                 es: '¿Eliminar la partida guardada de la ranura {n}?'
             },
+            'menu.save.saving': {
+                fr: 'Sauvegarde en cours',
+                en: 'Saving',
+                it: 'Salvataggio in corso',
+                es: 'Guardando'
+            },
             'menu.save.overwriteConfirm': {
                 fr: 'Remplacer la sauvegarde du slot {n} ?',
                 en: 'Replace the save in slot {n}?',
