@@ -1,16 +1,19 @@
 /**
- * Persistent wall impact decals (UZDoom / GZDoom feature; vanilla Doom has none).
- * A shot on a wall leaves a mark that stays: a small bullet chip, a large rocket
- * scorch, a plasma burn, or a BFG flash over a scorch. Faithful to UZDoom's
- * decaldef.txt: per-weapon graphic + scale + shade, a FIFO cap on permanent
- * decals, and the BFG lightning fading away (animator GoAway2) over a permanent
- * lower scorch.
+ * Persistent impact decals (UZDoom / GZDoom feature; vanilla Doom has none).
+ * A shot on a surface leaves a mark that stays: a small bullet chip, a large
+ * rocket scorch, a plasma burn, or a BFG flash over a scorch. Faithful to
+ * UZDoom's decaldef.txt: per-weapon graphic + scale + shade, a FIFO cap on
+ * permanent decals, and the BFG lightning fading away (animator GoAway2) over a
+ * permanent lower scorch. Floors and ceilings take marks too — our own
+ * extension, UZDoom marks walls only — except the surfaces flagged bare by the
+ * level (sky floors, liquids).
  *
- * A decal is a flat textured quad glued to the wall — a normal Object3d (NOT a
- * camera-facing Billboard): its orientation is baked into the instance yaw, from
- * the wall normal. Textures + quad templates are built ONCE per level inside the
- * load batch (a runtime object/texture registration would re-fire the loader);
- * each impact only spawns an Instance (spawnFromData, no loader re-check).
+ * A decal is a flat textured quad glued to the surface — a normal Object3d (NOT
+ * a camera-facing Billboard): its orientation is baked into the instance
+ * rotation, from the surface normal. Textures + quad templates are built ONCE
+ * per level inside the load batch (a runtime object/texture registration would
+ * re-fire the loader); each impact only spawns an Instance (spawnFromData, no
+ * loader re-check).
  *
  * Sizes match UZDoom exactly: on-wall size (map units) = PNG pixels × decaldef
  * scale, converted to world units by WadConstants.SCALE.
@@ -128,33 +131,45 @@ class DoomDecals {
 
     // --- Runtime spawning ---
 
-    // Stick a decal on the wall hit by a shot. type: 'bulletChip' | 'scorch' |
-    // 'plasma' | 'bfg'. owner = the dynamic instance (door/lift) the wall belongs
-    // to, or null/undefined for the static map (from hit.tri.instance).
-    spawnWallDecal(type, hitPoint, wallNormal, rayDir, owner) {
-        if (Math.abs(wallNormal[1]) >= 0.7) {
-            return;   // floor/ceiling — decals are wall-only (faithful UZDoom)
+    // Stick a decal on the surface hit by a shot. type: 'bulletChip' | 'scorch' |
+    // 'plasma' | 'bfg'. hit = the collision raycast result: its normal orients
+    // the quad, its triangle says whether the surface takes a mark and which
+    // mover (door/lift) it belongs to — the decal then rides it.
+    spawnDecal(type, hit, rayDir) {
+        if (hit.tri.noDecal === true) {
+            return;
         }
-        let nx = wallNormal[0];
-        let ny = wallNormal[1];
-        let nz = wallNormal[2];
+        let [nx, ny, nz] = hit.normal;
         if ((nx * rayDir[0] + ny * rayDir[1] + nz * rayDir[2]) > 0) {
-            nx = -nx;   // face the shooter's side of the wall
+            nx = -nx;   // face the shooter's side of the surface
             ny = -ny;
             nz = -nz;
         }
-        const yaw = Math.atan2(nx, nz) / DEG_TO_RAD;
-        const off = DoomDecals.OFFSET;
+        const rotation = DoomDecals._rotationFor(hit.tri.kind, nx, nz, rayDir);
+        const owner    = hit.tri.instance;
+        const off      = DoomDecals.OFFSET;
 
         if (type === 'bfg') {
-            this._spawn('bfgscrc', hitPoint, nx, ny, nz, off, yaw, owner, false);
-            this._spawn('bfglite', hitPoint, nx, ny, nz, off + DoomDecals.LITE_LIFT, yaw, owner, true);
+            this._spawn('bfgscrc', hit.point, nx, ny, nz, off, rotation, owner, false);
+            this._spawn('bfglite', hit.point, nx, ny, nz, off + DoomDecals.LITE_LIFT, rotation, owner, true);
             return;
         }
-        this._spawn(type, hitPoint, nx, ny, nz, off, yaw, owner, false);
+        this._spawn(type, hit.point, nx, ny, nz, off, rotation, owner, false);
     }
 
-    _spawn(key, hitPoint, nx, ny, nz, off, yaw, owner, isFade) {
+    // Instance rotation laying the +Z quad on the surface. A wall yaws it onto
+    // its normal. A floor or ceiling tilts it flat around X, after a spin
+    // around Z (applied first) that aligns the mark with the shot.
+    static _rotationFor(kind, nx, nz, rayDir) {
+        if (kind === Collision.KIND_WALL) {
+            return [0, Math.atan2(nx, nz) / DEG_TO_RAD, 0];
+        }
+        const spin = Math.atan2(rayDir[0], rayDir[2]) / DEG_TO_RAD;
+
+        return [((kind === Collision.KIND_FLOOR) ? -90 : 90), 0, spin];
+    }
+
+    _spawn(key, hitPoint, nx, ny, nz, off, rotation, owner, isFade) {
         const variants = this._templates[key];
         if ((variants === undefined) || (variants.length === 0)) {
             return;
@@ -164,7 +179,7 @@ class DoomDecals {
         const instId  = loader.instances().spawnFromData(null, {
             object:         objId,
             position:       [hitPoint[0] + nx * off, hitPoint[1] + ny * off, hitPoint[2] + nz * off],
-            rotation:       [0, yaw, 0],
+            rotation:       rotation,
             trigger:        'none',
             loop:           false,
             onlyOnce:       false,
@@ -222,7 +237,7 @@ class DoomDecals {
 }
 
 DoomDecals.MAX        = 256;                       // FIFO cap on permanent decals
-DoomDecals.OFFSET     = 0.75 * WadConstants.SCALE; // push off the wall (anti z-fight)
+DoomDecals.OFFSET     = 0.75 * WadConstants.SCALE; // push off the surface (anti z-fight)
 DoomDecals.LITE_LIFT  = 1.92 * WadConstants.SCALE; // BFG flash floats 0.03 m in front of its scorch (coplanar it was barely visible)
 DoomDecals.FADE_STEPS = 8;
 DoomDecals.FADE_START = 1.0;                        // GoAway2 DecayStart (s)

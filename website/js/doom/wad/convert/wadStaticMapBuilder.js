@@ -363,12 +363,14 @@ class WadStaticMapBuilder {
                     // stays solid but invisible, the sky shows through.
                     WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, sec.fh, true, sec.light, {collisionOnly: true});
                 } else if (ft >= 0) {
-                    WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light, {lightGroup: this._lightGroupOf(si), uScroll: uScroll});
+                    WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
+                        {lightGroup: this._lightGroupOf(si), uScroll: uScroll, noDecal: this._bank.isLiquidFlat(sec.ft)});
                 }
             }
             // Sky flats skipped — outdoor areas have no ceiling geometry
             if (ct >= 0) {
-                WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, sec.ch, false, sec.light, {lightGroup: this._lightGroupOf(si)});
+                WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, sec.ch, false, sec.light,
+                    {lightGroup: this._lightGroupOf(si), noDecal: this._bank.isLiquidFlat(sec.ct)});
             }
         }
     }
@@ -383,6 +385,7 @@ class WadStaticMapBuilder {
         if (ft < 0) {
             return;
         }
-        WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light, {lightGroup: this._lightGroupOf(si)});
+        WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
+            {lightGroup: this._lightGroupOf(si), noDecal: this._bank.isLiquidFlat(sec.ft)});
     }
 }

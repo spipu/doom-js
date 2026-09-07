@@ -11,6 +11,7 @@ class Face {
         this.passableEnemy = passableEnemy;
         this.collisionOnly = false;
         this.passableShot  = false;
+        this.noDecal       = false;
         this.animTextures  = animTextures;
         this.uvScroll      = uvScroll;
         this.lightGroup    = lightGroup;

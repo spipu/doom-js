@@ -202,7 +202,7 @@ class DoomHitscan {
         // writes no depth — a decal drawn after it would paint over it even
         // though the puff sits 4 map units in front.
         if ((this._decals !== null) && (def.getDecalType() !== null)) {
-            this._decals.spawnWallDecal(def.getDecalType(), hit.point, hit.normal, [dx, dy, dz], hit.tri.instance);
+            this._decals.spawnDecal(def.getDecalType(), hit, [dx, dy, dz]);
         }
         // Pull the puff in front of the surface (vanilla: 4 map units back).
         // The puff and decal are per-weapon def data (profile catalogs).
