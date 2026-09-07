@@ -899,7 +899,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             redKey:        new DoomItem({code: 'redKey',        name: 'Red Key',         type: 'key'}),
             blueKey:       new DoomItem({code: 'blueKey',       name: 'Blue Key',        type: 'key'}),
             yellowKey:     new DoomItem({code: 'yellowKey',     name: 'Yellow Key',      type: 'key'}),
-            berserk:       new DoomItem({code: 'berserk',       name: 'Berserk',         type: 'powerupPermanent', effect: 'berserk', pickupHeal: 100}),
+            berserk:       new DoomItem({code: 'berserk',       name: 'Berserk',         type: 'powerupPermanent', effect: 'berserk', pickupHeal: 100, pickupWeapon: 'fist'}),
             computerMap:   new DoomItem({code: 'computerMap',   name: 'Computer Map',    type: 'powerupPermanent', effect: 'map'}),
             invulnerability: new DoomItem({code: 'invulnerability', name: 'Invulnerability', type: 'powerupTimed', effect: 'invulnerability', duration: 30000}),
             radiationSuit: new DoomItem({code: 'radiationSuit', name: 'Radiation Suit',  type: 'powerupTimed', effect: 'radiation', duration: 60000}),

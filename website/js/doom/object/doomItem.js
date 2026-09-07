@@ -2,9 +2,10 @@
  * An inventory item definition: keys and power-ups. type is one of
  * 'key' | 'powerupPermanent' | 'powerupTimed'. duration (ms) only matters for
  * the timed power-ups. pickupHeal (health points, healed up to that value on
- * every pickup, BEFORE the already-owned check — Doom's berserk) is null for
- * regular items. Items reset on a new level by default (keys are not carried
- * over).
+ * every pickup, BEFORE the already-owned check — Doom's berserk) and
+ * pickupWeapon (weapon code raised on pickup — the berserk draws the fist)
+ * are null for regular items. Items reset on a new level by default (keys are
+ * not carried over).
  */
 class DoomItem extends AbstractDoomObject {
     constructor(data) {
@@ -12,7 +13,8 @@ class DoomItem extends AbstractDoomObject {
         this._type       = data.type;
         this._effect     = data.effect ?? null;
         this._duration   = data.duration ?? 0;
-        this._pickupHeal = data.pickupHeal ?? null;
+        this._pickupHeal   = data.pickupHeal ?? null;
+        this._pickupWeapon = data.pickupWeapon ?? null;
     }
 
     getType() {
@@ -29,5 +31,9 @@ class DoomItem extends AbstractDoomObject {
 
     getPickupHeal() {
         return this._pickupHeal;
+    }
+
+    getPickupWeapon() {
+        return this._pickupWeapon;
     }
 }
