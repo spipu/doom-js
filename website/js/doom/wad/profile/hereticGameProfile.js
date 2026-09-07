@@ -1222,6 +1222,18 @@ class HereticGameProfile extends DefaultGameProfile {
         return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: entry[2]}));
     }
 
+    // UZDoom terrain.txt floor entries of Heretic (water, waterfall, lava,
+    // sludge), every frame of their animations.
+    liquidFlats() {
+        return [
+            'FLTWAWA1', 'FLTWAWA2', 'FLTWAWA3',
+            'FLTFLWW1', 'FLTFLWW2', 'FLTFLWW3',
+            'FLTLAVA1', 'FLTLAVA2', 'FLTLAVA3', 'FLTLAVA4',
+            'FLATHUH1', 'FLATHUH2', 'FLATHUH3', 'FLATHUH4',
+            'FLTSLUD1', 'FLTSLUD2', 'FLTSLUD3'
+        ];
+    }
+
     // Heretic pairs its switches by ON/OFF suffix, not by SW1↔SW2 prefix
     // (UZDoom animdefs.txt: switch heretic SW1OFF on pic SW1ON…) — without
     // these the generic prefix rule would swap SW1OFF to the WRONG texture

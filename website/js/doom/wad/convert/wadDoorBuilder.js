@@ -128,7 +128,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             return;
         }
         WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, floorH, false, sec.light,
-            {lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si)});
+            {lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si), noDecal: this._bank.isLiquidFlat(sec.ct)});
     }
 
     _buildInstanceData(doorName, si, floorH, ceilH, mesh) {

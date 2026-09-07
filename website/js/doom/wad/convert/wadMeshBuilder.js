@@ -63,7 +63,7 @@ class WadMeshBuilder {
             return;
         }
         WadMeshBuilder.addSectorFlat(mesh, level, ft, si, origFh, true, sec.light,
-            {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si)});
+            {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si), noDecal: bank.isLiquidFlat(sec.ft)});
     }
 
     // Full floor or ceiling flat of a sector, from its linedef-chain polygons
@@ -75,15 +75,13 @@ class WadMeshBuilder {
     // carved neighbours can (E1M2 sector 142 lost a 227-unit sliver of
     // ceiling to a linedef line prolonged past its seg).
     static addSectorFlat(mesh, level, texIdx, si, yHeight, isFloor, light, options = {}) {
-        const lightGroup = (options.lightGroup ?? null);
-        const uScroll    = (options.uScroll ?? 0);
-        const collisionOnly = (options.collisionOnly === true);
+        const flatOptions = {...options, light: light};
         const {vertexes, linedefs, sidedefs} = level;
 
         const chainPolys = WadSectorPolygons.closedOutersWithHoles(si, linedefs, sidedefs, vertexes);
         if (chainPolys !== null) {
             for (const p of chainPolys) {
-                WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, light, p.holes, lightGroup, uScroll, collisionOnly);
+                WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, {...flatOptions, holes: p.holes});
             }
             return;
         }
@@ -91,20 +89,20 @@ class WadMeshBuilder {
         const bspPolys = ((bspTree !== null) ? bspTree.polysOfSector(si) : []);
         if (bspPolys.length > 0) {
             for (const poly of bspPolys) {
-                WadMeshBuilder.addConvexFlat(mesh, texIdx, poly, yHeight, isFloor, light, lightGroup, uScroll, collisionOnly);
+                WadMeshBuilder.addConvexFlat(mesh, texIdx, poly, yHeight, isFloor, flatOptions);
             }
             return;
         }
         // Neither closes nor carves: the open chains are all this sector has.
         for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, light, p.holes, lightGroup, uScroll, collisionOnly);
+            WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, {...flatOptions, holes: p.holes});
         }
     }
 
     // One CONVEX flat polygon fanned from its first vertex ((numlines - 2)
     // triangles, GZDoom hw_vertexbuilder) — the per-subsector path, no
     // triangulator involved.
-    static addConvexFlat(mesh, texIdx, convexPolyDoom, yHeight, isFloor, light = 128, lightGroup = null, uScrollUvPerSec = 0, collisionOnly = false) {
+    static addConvexFlat(mesh, texIdx, convexPolyDoom, yHeight, isFloor, options = {}) {
         if (convexPolyDoom.length < 3) {
             return;
         }
@@ -114,7 +112,7 @@ class WadMeshBuilder {
         for (let i = 1; i < o.xz.length - 1; i++) {
             tris.push([0, i, i + 1]);
         }
-        WadMeshBuilder._emitFlatFaces(mesh, texIdx, o.xz, o.poly, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, o.xz, o.poly, tris, yHeight, isFloor, options);
     }
 
     // Flat winding convention (triangulate() and the fans expect it): reverse
@@ -225,18 +223,17 @@ class WadMeshBuilder {
      * @param {number[][]} polyVerts2d
      * @param {number}     yHeight - in Doom units
      * @param {boolean}    isFloor
-     * @param {number}     light
-     * @param {number[][][]|null} holes
-     * @param {int|null}   lightGroup
-     * @param {number}     uScrollUvPerSec  UV drift of the flat per second
-     *                     (scrolling lava/conveyor floors; 0 = static)
-     * @param {boolean}    collisionOnly - solid but never drawn (sky floors:
-     *                     the cylindrical sky shows through)
+     * @param {object}     options - {light, holes, lightGroup, uScroll (UV drift of
+     *                     the flat per second — scrolling lava/conveyor floors, 0 =
+     *                     static), collisionOnly (solid but never drawn — sky floors,
+     *                     the sky shows through), noDecal (takes no impact decal —
+     *                     liquids)}
      */
-    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, light = 128, holes = null, lightGroup = null, uScrollUvPerSec = 0, collisionOnly = false) {
+    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, options = {}) {
         if (polyVerts2d.length < 3) {
             return;
         }
+        const holes = (options.holes ?? null);
 
         let xz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
         let polyLocal = [...polyVerts2d];
@@ -290,13 +287,17 @@ class WadMeshBuilder {
             }
         }
 
-        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, preTris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly);
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, preTris, yHeight, isFloor, options);
     }
 
     // Shared emitter of triangulated flat faces (points, UVs, winding, flags)
     // — fed by addFlatQuad (chain polygons) and addConvexFlat (BSP fans).
-    static _emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, light, lightGroup, uScrollUvPerSec, collisionOnly) {
-        const c = Math.trunc(light);
+    static _emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, options) {
+        const lightGroup    = (options.lightGroup ?? null);
+        const uScroll       = (options.uScroll ?? 0);
+        const collisionOnly = (options.collisionOnly === true);
+        const noDecal       = (options.noDecal === true);
+        const c    = Math.trunc(options.light ?? 128);
         const base = mesh.points.length;
         for (const [x, z] of xz) {
             mesh.points.push([x, yHeight * WadConstants.SCALE, z]);
@@ -320,11 +321,14 @@ class WadMeshBuilder {
             if (lightGroup !== null) {
                 face.lightGroup = lightGroup;
             }
-            if (uScrollUvPerSec !== 0) {
-                face.uvScroll = {u: uScrollUvPerSec, v: 0};
+            if (uScroll !== 0) {
+                face.uvScroll = {u: uScroll, v: 0};
             }
             if (collisionOnly) {
                 face.collisionOnly = true;
+            }
+            if (noDecal) {
+                face.noDecal = true;
             }
             mesh.faces.push(face);
         }

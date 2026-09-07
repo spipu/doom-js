@@ -43,13 +43,17 @@ class Object3dLoader extends AbstractLoader {
                 ((f.lightGroup     !== undefined) ? f.lightGroup     : null)
             );
             // collisionOnly = collision geometry, never rendered;
-            // passableShot = hitscans and projectiles pass through
+            // passableShot = hitscans and projectiles pass through;
+            // noDecal = the surface takes no impact decal
             const fc = entity.faceList[entity.getFaceCount() - 1];
             if (f.collisionOnly === true) {
                 fc.collisionOnly = true;
             }
             if (f.passableShot === true) {
                 fc.passableShot = true;
+            }
+            if (f.noDecal === true) {
+                fc.noDecal = true;
             }
         });
     }

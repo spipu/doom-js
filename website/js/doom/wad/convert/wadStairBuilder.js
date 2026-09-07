@@ -63,7 +63,11 @@ class WadStairBuilder extends AbstractMoverBuilder {
         const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
         for (const chain of chains) {
             const polyDoom = chain.map((vi) => vertexes[vi]);
-            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, origFh, true, sec.light, null, WadMapAnalyzer.lightGroupOf(this._analysis, si));
+            WadMeshBuilder.addFlatQuad(mesh, ft, polyDoom, origFh, true, {
+                light:      sec.light,
+                lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si),
+                noDecal:    this._bank.isLiquidFlat(sec.ft)
+            });
         }
     }
 

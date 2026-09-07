@@ -469,6 +469,17 @@ class AbstractGameProfile {
     }
 
     /**
+     * Flats of this game that are liquids (every animation frame): an impact
+     * leaves no decal on them.
+     *
+     * @returns {string[]} flat names (uppercase)
+     */
+    liquidFlats() {
+        this._generateException('liquidFlats must be implemented');
+        return [];
+    }
+
+    /**
      * Hardcoded texture/flat animation sequences of this game's engine, used
      * when the WAD carries no ANIMATED lump (the lump always wins).
      *

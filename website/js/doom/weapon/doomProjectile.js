@@ -763,7 +763,7 @@ class DoomProjectileSystem {
         // — a decal drawn after it would paint over it (same rule as the puff
         // in DoomHitscan).
         if ((this._decals !== null) && (p.def.decalType !== null)) {
-            this._decals.spawnWallDecal(p.def.decalType, hit.point, hit.normal, [p.dx, p.dy, p.dz], hit.tri.instance);
+            this._decals.spawnDecal(p.def.decalType, hit, [p.dx, p.dy, p.dz]);
         }
         const at = WadGeometry.pullBack(hit.point, [p.dx, p.dy, p.dz]);
         this._detonate(p, at[0], at[1], at[2]);

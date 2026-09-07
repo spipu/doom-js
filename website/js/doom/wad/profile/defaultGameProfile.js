@@ -1243,6 +1243,21 @@ class DefaultGameProfile extends AbstractGameProfile {
         return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: 8}));
     }
 
+    // The animated floors of p_spec.c are all liquids but the RROCK rock —
+    // UZDoom keeps no terrain table for Doom, so this is the vanilla list.
+    liquidFlats() {
+        return [
+            'NUKAGE1', 'NUKAGE2', 'NUKAGE3',
+            'FWATER1', 'FWATER2', 'FWATER3', 'FWATER4',
+            'SWATER1', 'SWATER2', 'SWATER3', 'SWATER4',
+            'LAVA1', 'LAVA2', 'LAVA3', 'LAVA4',
+            'BLOOD1', 'BLOOD2', 'BLOOD3',
+            'SLIME01', 'SLIME02', 'SLIME03', 'SLIME04',
+            'SLIME05', 'SLIME06', 'SLIME07', 'SLIME08',
+            'SLIME09', 'SLIME10', 'SLIME11', 'SLIME12'
+        ];
+    }
+
     // Doom switch pairing follows the SW1xxx ↔ SW2xxx naming convention (the
     // texture bank's generic prefix substitution) — no explicit pairs needed.
     switchPairs() {

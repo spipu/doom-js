@@ -45,7 +45,7 @@ class Collision {
                 continue;
             }
             const A = obj.ptOrigin[fc.pts[0]], B = obj.ptOrigin[fc.pts[1]], C = obj.ptOrigin[fc.pts[2]];
-            localTris.push([[A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]]]);
+            localTris.push([[A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]], Collision._refusesDecal(fc)]);
         }
         const dc = {
             instance,
@@ -526,6 +526,7 @@ class Collision {
                 continue;
             }
             tri.passableShot = (fc.passableShot === true);
+            tri.noDecal      = Collision._refusesDecal(fc);
             this._classifyTri(tri, floors, ceilings, walls);
         }
         // Static geometry never moves, so it is indexed once here: without it
@@ -539,12 +540,24 @@ class Collision {
         return { floors, ceilings, walls, grids };
     }
 
+    // An impact decal needs a drawn surface that accepts one: collision-only
+    // geometry has nothing to mark, and the game flags the surfaces it wants
+    // left bare (liquids).
+    static _refusesDecal(fc) {
+        return ((fc.noDecal === true) || (fc.collisionOnly === true));
+    }
+
+    // The triangle keeps its kind: a raycast hit tells its surface apart
+    // without re-deriving it from the normal.
     _classifyTri(tri, floors, ceilings, walls) {
-        if (tri.n[1] > 0.7) {
+        if (tri.n[1] > Collision.HORIZONTAL_NY) {
+            tri.kind = Collision.KIND_FLOOR;
             floors.push(tri);
-        } else if (tri.n[1] < -0.7) {
+        } else if (tri.n[1] < -Collision.HORIZONTAL_NY) {
+            tri.kind = Collision.KIND_CEILING;
             ceilings.push(tri);
         } else {
+            tri.kind = Collision.KIND_WALL;
             walls.push(tri);
         }
     }
@@ -574,7 +587,7 @@ class Collision {
         const tf  = dc.instance.getTransform();
         const m   = Matrix.composeInstanceTransform(tf);
         const floors = [], ceilings = [], walls = [];
-        for (const [la, lb, lc] of dc.localTris) {
+        for (const [la, lb, lc, noDecal] of dc.localTris) {
             const wa = m.multiplyPosition([...la, 1]);
             const wb = m.multiplyPosition([...lb, 1]);
             const wc = m.multiplyPosition([...lc, 1]);
@@ -586,6 +599,7 @@ class Collision {
             // (door/lift) rides it. Static map tris (built elsewhere) never
             // carry this, so hit.tri.instance === undefined marks a static wall.
             tri.instance = dc.instance;
+            tri.noDecal  = noDecal;
             this._classifyTri(tri, floors, ceilings, walls);
         }
         dc.floors   = floors;
@@ -1025,3 +1039,8 @@ class Collision {
 Collision.DYN_NONE = 0;
 Collision.DYN_NEAR = 1;
 Collision.DYN_ALL  = 2;
+// |normal.y| from which a triangle is a floor or a ceiling rather than a wall
+Collision.HORIZONTAL_NY = 0.7;
+Collision.KIND_FLOOR    = 'floor';
+Collision.KIND_CEILING  = 'ceiling';
+Collision.KIND_WALL     = 'wall';
