@@ -294,9 +294,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
                     continue;
                 }
-                // Scroll baked into the per-frame VBO: the fract() wrap in the
+                // Scroll and anchor offsets baked into the per-frame VBO: the fract() wrap in the
                 // fragment shader absorbs the (already wrapped) offset.
-                const scroll = this._uvScrollOffset(fc, engine.sceneMs);
+                const scroll = this._uvOffset(fc, engine.sceneMs);
                 const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
                 // Light level (0..1) fed to the depth shading curve: max of the
                 // face colour (before the ambient of _pointColor) times the live

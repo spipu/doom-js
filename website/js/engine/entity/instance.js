@@ -7,6 +7,7 @@ class Instance extends AbstractLoadedEntity {
 
         // World transform (+ derived centre, frame delta, rollback snapshot)
         this._position          = [0, 0, 0];
+        this._restY             = 0;
         this._rotation          = [0, 0, 0];
         this._worldCenter       = [0, 0, 0];
         this._delta             = { translate: [0, 0, 0], rotate: [0, 0, 0] };
@@ -443,6 +444,7 @@ class Instance extends AbstractLoadedEntity {
         this.setCode(data.code ?? null);
         this._objectId                = ((typeof data.object === 'number') ? data.object : loader.objects().load(data.object));
         this._position                = data.position;
+        this._restY                   = data.position[1];
         this._rotation                = data.rotation;
         this._trigger                 = data.trigger;
         this._animLoop                = (data.loop === true);
@@ -878,6 +880,12 @@ class Instance extends AbstractLoadedEntity {
             deltaTranslate: this._delta.translate,
             deltaRotate:    this._delta.rotate,
         };
+    }
+
+    // World Y travelled from the rest pose: animation delta plus any ride or
+    // game-driven move of the position (texture anchoring of faces).
+    getVerticalShift() {
+        return (this._position[1] - this._restY) + this._delta.translate[1];
     }
 }
 

@@ -654,6 +654,17 @@ class WadConstants {
     };
     static SWITCH_INTERACTION_DEFAULT = {mode: 'once', minOnMs: null, minOffMs: null};
 
+    // Face uvAnchor following a mover's vertical shift (V per world unit of a
+    // wall texture `texH` texels high). A texture on the mover's own mesh that
+    // vanilla keeps pinned to the world (lower unpegged riser, anchored to the
+    // ceiling) compensates the move; a texture on static geometry that vanilla
+    // pegs to the live floor rides it.
+    static wallTextureAnchor(moverCode, texH, ridesWithFloor) {
+        const vPerUnit = 1 / (texH * WadConstants.SCALE);
+
+        return {code: moverCode, v: ((ridesWithFloor) ? vPerUnit : -vPerUnit)};
+    }
+
     // Whether a trigger line can fire more than once (WR / SR / GR).
     static specialRepeats(special) {
         if (special in WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL) {

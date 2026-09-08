@@ -59,7 +59,9 @@ class AbstractMoverBuilder {
     // self-contained box, so two adjacent movers at different heights keep a
     // wall between them. Texture: neighbour lower, else own lower, else a
     // sibling edge's (two passes). One-sided edges belong to the static map.
-    _buildRisers(mesh, si, origFh, riserBaseFh) {
+    // A lower-unpegged riser texture is anchored to the ceiling in vanilla,
+    // hence pinned to the world while the riser moves (uvAnchor).
+    _buildRisers(mesh, si, origFh, riserBaseFh, moverCode) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
@@ -134,7 +136,8 @@ class AbstractMoverBuilder {
                 e.wx1, e.wz1, e.wx2, e.wz2,
                 riserBaseFh * SCALE, origFh * SCALE,
                 e.wallLen, tw, th,
-                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi)});
+                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi),
+                    uvAnchor: ((e.lowerUnpeg) ? WadConstants.wallTextureAnchor(moverCode, th, false) : null)});
         }
     }
 
