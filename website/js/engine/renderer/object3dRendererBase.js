@@ -62,19 +62,30 @@ class Object3dRendererBase {
         return fc.animTextures.ids[frameIdx];
     }
 
-    // Current UV offset of a scrolling face (uvScroll = UV fraction per second),
-    // wrapped to [0,1) so the texture-repeat wrap downstream keeps full float
-    // precision even after hours of scene time. Shared array, consume immediately.
-    _uvScrollOffset(fc, sceneMs) {
+    // Per-frame UV offset of a face: the time scroll (uvScroll = UV fraction per
+    // second, wrapped to [0,1) so the texture-repeat wrap downstream keeps full
+    // float precision) plus the anchor, which follows the vertical shift of a
+    // named instance (a texture pinned to the world on a moving mesh, or riding
+    // a moving floor on a static one). Shared array, consume immediately.
+    _uvOffset(fc, sceneMs) {
         const off = this._uvOff;
-        if (!fc.uvScroll) {
-            off[0] = 0;
-            off[1] = 0;
-            return off;
+        off[0] = 0;
+        off[1] = 0;
+        if (fc.uvScroll) {
+            const t = sceneMs / 1000;
+            off[0] = (t * fc.uvScroll.u) % 1;
+            off[1] = (t * fc.uvScroll.v) % 1;
         }
-        const t = sceneMs / 1000;
-        off[0] = (t * fc.uvScroll.u) % 1;
-        off[1] = (t * fc.uvScroll.v) % 1;
+        if (fc.uvAnchor) {
+            const anchor = fc.uvAnchor;
+            if (anchor.instance === null) {
+                const id = loader.instances().idByCode(anchor.code);
+                anchor.instance = ((id !== null) ? loader.instances().get(id) : null);
+            }
+            if (anchor.instance) {
+                off[1] += anchor.instance.getVerticalShift() * anchor.v;
+            }
+        }
         return off;
     }
 

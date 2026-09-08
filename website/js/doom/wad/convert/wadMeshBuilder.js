@@ -147,6 +147,7 @@ class WadMeshBuilder {
         const passableShot  = (options.passableShot === true);
         const uScrollTexels = options.uScrollTexelsPerSec ?? 0;
         const lightGroup    = options.lightGroup ?? null;
+        const uvAnchor      = options.uvAnchor ?? null;
 
         if (yBot >= yTop) {
             return;
@@ -199,6 +200,9 @@ class WadMeshBuilder {
             }
             if (lightGroup !== null) {
                 face.lightGroup = lightGroup;
+            }
+            if ((uvAnchor !== null) && (texIdx >= 0)) {
+                face.uvAnchor = uvAnchor;
             }
 
             return face;

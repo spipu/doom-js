@@ -65,7 +65,7 @@ class Object3d extends AbstractLoadedEntity {
         return this;
     }
 
-    fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false, animTextures = null, uvScroll = null, lightGroup = null) {
+    fcAdd(pt1, pt2, pt3, color, texture, map, clampV = false, passableUser = false, passableEnemy = false, animTextures = null, uvScroll = null, lightGroup = null, uvAnchor = null) {
         if (!color) {
             color = [255., 255., 255.];
         }
@@ -124,7 +124,8 @@ class Object3d extends AbstractLoadedEntity {
 
         const anim = ((animTextures) ? {ids: animTextures.ids.map((id) => this._textureIds[id - 1]), duration: animTextures.duration, durationMs: Math.round(animTextures.duration * 1000)} : null);
         const scroll = ((uvScroll) ? {u: parseFloat(uvScroll.u ?? 0), v: parseFloat(uvScroll.v ?? 0)} : null);
-        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, ((texture) ? this._textureIds[texture - 1] : null), map, alpha, clampV, passableUser, passableEnemy, anim, scroll, lightGroup));
+        const anchor = ((uvAnchor) ? {code: uvAnchor.code, v: parseFloat(uvAnchor.v), instance: null} : null);
+        this.faceList.push(new Face(pt1-1, pt2-1, pt3-1, color, ((texture) ? this._textureIds[texture - 1] : null), map, alpha, clampV, passableUser, passableEnemy, anim, scroll, lightGroup, anchor));
         this.faceCount++;
         return this;
     }

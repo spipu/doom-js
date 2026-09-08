@@ -1,5 +1,5 @@
 class Face {
-    constructor(pt0, pt1, pt2, color, textureId, map, alpha, clampV, passableUser, passableEnemy, animTextures, uvScroll, lightGroup) {
+    constructor(pt0, pt1, pt2, color, textureId, map, alpha, clampV, passableUser, passableEnemy, animTextures, uvScroll, lightGroup, uvAnchor) {
         this.pts           = [pt0, pt1, pt2];
         this.color         = color;
         this.textureId     = textureId;
@@ -14,6 +14,9 @@ class Face {
         this.noDecal       = false;
         this.animTextures  = animTextures;
         this.uvScroll      = uvScroll;
+        // {code, v, instance}: V shifted by the vertical shift of the instance
+        // `code` times v (instance resolved lazily by the renderers)
+        this.uvAnchor      = uvAnchor;
         this.lightGroup    = lightGroup;
         this.normal        = [0, 0, 0];
     }

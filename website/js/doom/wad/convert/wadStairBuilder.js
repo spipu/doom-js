@@ -33,7 +33,7 @@ class WadStairBuilder extends AbstractMoverBuilder {
         const mesh = WadMeshBuilder.newMesh();
 
         this._buildTopFlat(mesh, si, sec, origFh);
-        this._buildStairRisers(mesh, si, origFh, targetFh, delta);
+        this._buildStairRisers(mesh, si, origFh, targetFh, delta, stairName);
         this._buildFloorPeggedWalls(mesh, si, origFh, 0);
 
         const textures = this._meshTextures(mesh);
@@ -89,7 +89,7 @@ class WadStairBuilder extends AbstractMoverBuilder {
     // instance translate it covers exactly [neighFinal, targetFh] — valid for an
     // arbitrarily lower neighbour. Same texture/flip convention as the lifts and
     // rising floors: the lower (corridor/neighbour) sidedef lower texture.
-    _buildStairRisers(mesh, si, origFh, targetFh, delta) {
+    _buildStairRisers(mesh, si, origFh, targetFh, delta, stairName) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
@@ -145,7 +145,8 @@ class WadStairBuilder extends AbstractMoverBuilder {
                 wx1, wz1, wx2, wz2,
                 botDu * SCALE, topDu * SCALE,
                 wallLen, tw, th,
-                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi)});
+                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi),
+                    uvAnchor: ((lowerUnpeg) ? WadConstants.wallTextureAnchor(stairName, th, false) : null)});
         }
     }
 

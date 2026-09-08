@@ -40,7 +40,8 @@ class Object3dLoader extends AbstractLoader {
                 ((f.passableEnemy  !== undefined) ? f.passableEnemy  : false),
                 ((f.textures       !== undefined) ? f.textures       : null),
                 ((f.uvScroll       !== undefined) ? f.uvScroll       : null),
-                ((f.lightGroup     !== undefined) ? f.lightGroup     : null)
+                ((f.lightGroup     !== undefined) ? f.lightGroup     : null),
+                ((f.uvAnchor       !== undefined) ? f.uvAnchor       : null)
             );
             // collisionOnly = collision geometry, never rendered;
             // passableShot = hitscans and projectiles pass through;
