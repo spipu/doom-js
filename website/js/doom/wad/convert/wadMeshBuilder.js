@@ -132,7 +132,7 @@ class WadMeshBuilder {
      *
      * @param {object} mesh
      * @param {int}    texIdx - GLOBAL 0-based bank index, or -1 (face without texture)
-     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, collisionOnly, passableShot, uScrollTexelsPerSec, lightGroup}
+     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, collisionOnly, passableShot, uScrollTexelsPerSec, lightGroup, uvAnchor}
      */
     static addWallQuad(mesh, texIdx, x1, z1, x2, z2, yBot, yTop, wallLenDoom, texW, texH, options) {
         options = options ?? {};
