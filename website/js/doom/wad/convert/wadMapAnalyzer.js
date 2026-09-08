@@ -62,6 +62,7 @@ class WadMapAnalyzer {
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
             risingFloorInstantIds: rising.risingFloorInstantIds,
+            risingFloorLegs:       rising.risingFloorLegs,
             stairIds:              stairs.stairIds,
             stairInfo:             stairs.stairInfo,
             stairStepTag:          stairs.stairStepTag,
@@ -864,12 +865,46 @@ class WadMapAnalyzer {
             risingFloorTargetFh[si] = info.targetFh;
         }
 
+        const risingFloorLegs = {};
+        for (const si of risingFloorIds) {
+            risingFloorLegs[si] = ((risingFloorInstantIds.has(si)) ? 1 : this._risingFloorLegs(si, risingFloorSpecial[si], linedefs));
+        }
+
         return {
             risingFloorIds:        risingFloorIds,
             risingFloorSpecial:    risingFloorSpecial,
             risingFloorTargetFh:   risingFloorTargetFh,
-            risingFloorInstantIds: risingFloorInstantIds
+            risingFloorInstantIds: risingFloorInstantIds,
+            risingFloorLegs:       risingFloorLegs
         };
+    }
+
+    // How many times a fixed-delta raise (raiseFloor24/32/512) can play: the
+    // destination is computed from the LIVE floor at each trigger, so every
+    // line aiming at the sector raises it again — once per one-use line,
+    // without limit for a repeatable one — never above the sector's ceiling
+    // (UZDoom MoveFloor clamps a rising floor there). Absolute targets
+    // (neighbour ceiling/floor, texture) move once.
+    _risingFloorLegs(si, special, linedefs) {
+        const {sectors} = this._level;
+        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special];
+        if (typeof rule.target !== 'number') {
+            return 1;
+        }
+        const sec     = sectors[si];
+        const maxLegs = Math.max(1, Math.floor((sec.ch - sec.fh) / rule.target));
+        let legs = 0;
+        for (const ld of linedefs) {
+            if ((ld.tag !== sec.tag) || (ld.tag === 0)
+                || (typeof (WadConstants.FLOOR_UP_BY_SPECIAL[ld.special]?.target) !== 'number')) {
+                continue;
+            }
+            if (WadConstants.specialRepeats(ld.special)) {
+                return maxLegs;
+            }
+            legs++;
+        }
+        return Math.min(Math.max(legs, 1), maxLegs);
     }
 
     // Target floor height of a rising sector (vanilla p_floor.c / p_plats.c).

@@ -1,15 +1,17 @@
 /**
- * Rising floor instances builder: a floor that moves UP once toward its target
+ * Rising floor instances builder: a floor that moves UP toward its target
  * (one-way) when its walk-trigger zone or switch fires. Mirrors WadLiftBuilder,
  * but the static floor is NOT patched down — the moving top-flat sits at the
  * WAD floor height (origFh) and rises by +delta, where delta comes from the
  * target computed in the analysis (fixed +24/+32, lowest surrounding ceiling,
- * or next-higher floor — vanilla rules, see FLOOR_UP_BY_SPECIAL). The
- * riser is built as a "skirt" from origFh-delta to origFh: hidden below the
- * adjacent corridor floor at rest, it emerges as the origFh→origFh+delta step
- * once the floor has risen. The skirt covers EVERY two-sided edge, a shared
- * edge with another rising floor included (E2M2's blood platforms stop at
- * different heights) — see AbstractMoverBuilder._buildRisers.
+ * or next-higher floor — vanilla rules, see FLOOR_UP_BY_SPECIAL). A fixed
+ * delta plays one leg per trigger (risingFloorLegs): the timeline chains the
+ * legs and pauses at each leg end until the next start(). The riser is built
+ * as a "skirt" from origFh-(legs×delta) to origFh: hidden below the adjacent
+ * corridor floor at rest, it emerges as the step once the floor has risen.
+ * The skirt covers EVERY two-sided edge, a shared edge with another rising
+ * floor included (E2M2's blood platforms stop at different heights) — see
+ * AbstractMoverBuilder._buildRisers.
  */
 class WadRisingFloorBuilder extends AbstractMoverBuilder {
     _sectorIds() {
@@ -23,9 +25,10 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
         // Travel toward the target computed in the analysis (vanilla rules).
         const targetFh = this._analysis.risingFloorTargetFh[si] ?? (origFh + 24);
         const delta    = targetFh - origFh;
-        // Skirt base: where the riser starts so that, once raised, it covers
-        // exactly the origFh → origFh+delta step.
-        const baseFh  = origFh - delta;
+        const legs     = this._analysis.risingFloorLegs[si] ?? 1;
+        // Skirt base: where the riser starts so that, fully raised, it covers
+        // exactly the origFh → origFh+legs×delta step.
+        const baseFh  = origFh - delta * legs;
 
         const floorName = 'risingfloor_' + si;
         const mesh = WadMeshBuilder.newMesh();
@@ -42,33 +45,33 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
             code:         floorName,
             textures:     textures,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(floorName, special, delta, this._analysis.risingFloorInstantIds.has(si))
+            instanceData: this._buildInstanceData(floorName, special, delta, legs, this._analysis.risingFloorInstantIds.has(si))
         };
     }
 
-    _buildInstanceData(floorName, special, delta, instant = false) {
+    _buildInstanceData(floorName, special, delta, legs, instant = false) {
         const travelY = delta * WadConstants.SCALE;
 
         // One-way, upward. Driven externally (walk-trigger zone or switch),
         // never by self-proximity. onlyOnce stays true even for WR/SR specials:
-        // a one-way floor that reached its target must not replay from the
-        // start (vanilla: re-triggering a raised floor does nothing); the
-        // repeatable part lives on the zone/switch, whose extra start() calls
-        // are harmless (idempotent).
-        let keyframes;
+        // a one-way floor that reached its last target must not replay from
+        // the start; the repeatable part lives on the zone/switch, whose extra
+        // start() calls are harmless (idempotent).
+        let timeline;
         if (instant) {
             // Vanilla instant-raise (EV_DoFloor lower toward a destination
             // ABOVE the floor: T_MovePlane jumps to it on the first tic) —
             // the pop-up bridge trick. One tic, no walk-up pre-frame.
-            keyframes = [
-                {t: 0.0,                          translate: [0, 0, 0],       rotate: [0, 0, 0]},
-                {t: WadConstants.SECONDS_PER_TIC, translate: [0, travelY, 0], rotate: [0, 0, 0]}
-            ];
+            timeline = {
+                keyframes: [
+                    {t: 0.0,                          translate: [0, 0, 0],       rotate: [0, 0, 0]},
+                    {t: WadConstants.SECONDS_PER_TIC, translate: [0, travelY, 0], rotate: [0, 0, 0]}
+                ],
+                stageEnds: []
+            };
         } else {
-            // A static pre-frame delays the raise so the player can step onto
-            // the platform (FLOOR_UP_START_DELAY_S).
             const speed = WadConstants.FLOOR_UP_BY_SPECIAL[special].speed;
-            keyframes = WadConstants.raiseLegKeyframes(0, travelY, WadConstants.moveDurationS(delta, speed));
+            timeline = this._stagedRaiseTimeline(travelY, WadConstants.moveDurationS(delta, speed), legs);
         }
 
         const press = WadConstants.floorUpPressProfile(special);
@@ -84,7 +87,29 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
             interactionRadius: null,
             damage:            null,
             ...WadConstants.pressCycleFields(press),
-            keyframes:         keyframes
+            keyframes:         timeline.keyframes,
+            stageEnds:         timeline.stageEnds
         };
+    }
+
+    // `legs` raise legs chained end to end, each with its boarding pre-frame
+    // (FLOOR_UP_START_DELAY_S); the timeline pauses at every leg end but the
+    // last, so one trigger plays exactly one leg.
+    _stagedRaiseTimeline(travelY, moveS, legs) {
+        const keyframes = [];
+        const stageEnds = [];
+        let t = 0;
+        for (let leg = 0; leg < legs; leg++) {
+            const legFrames = WadConstants.raiseLegKeyframes(leg * travelY, (leg + 1) * travelY, moveS);
+            for (const frame of legFrames.slice((leg === 0) ? 0 : 1)) {
+                keyframes.push({t: t + frame.t, translate: frame.translate, rotate: frame.rotate});
+            }
+            t += legFrames[legFrames.length - 1].t;
+            if (leg < legs - 1) {
+                stageEnds.push(t);
+            }
+        }
+
+        return {keyframes, stageEnds};
     }
 }

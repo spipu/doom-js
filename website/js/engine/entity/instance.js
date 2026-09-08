@@ -30,6 +30,9 @@ class Instance extends AbstractLoadedEntity {
         this._animLoop           = false;
         this._animOnlyOnce       = false;
         this._animDone           = false;
+        // Forward playback pauses at each of these times and waits for the
+        // next start() (a staged mover: one leg per trigger).
+        this._animStageEnds      = [];
 
         // Trigger / interaction (how the animation is activated)
         this._trigger                = 'none';
@@ -122,6 +125,7 @@ class Instance extends AbstractLoadedEntity {
         // Captured so a variant only has to state its divergences.
         this._baseCycle = {
             keyframes:         this._animKeyframes,
+            stageEnds:         this._animStageEnds,
             onlyOnce:          this._animOnlyOnce,
             loop:              this._animLoop,
             blockedBehavior:   this._blockedBehavior,
@@ -430,7 +434,7 @@ class Instance extends AbstractLoadedEntity {
      *                       interactionShape, interactionReachBelow,
      *                       interactionReachAbove, autoStart, damage,
      *                       blockedBehavior, blockedSlowFactor, crushDamage,
-     *                       interaction, keyframes, keyframeVariants,
+     *                       interaction, keyframes, stageEnds, keyframeVariants,
      *                       defaultVariant}
      */
     populate(data) {
@@ -456,6 +460,7 @@ class Instance extends AbstractLoadedEntity {
         this._crushDamage             = (data.crushDamage ?? null);
         this._interaction             = (data.interaction || null);
         this._animKeyframes           = (data.keyframes || []);
+        this._animStageEnds           = (data.stageEnds || []);
         this._animVariants            = (data.keyframeVariants || null);
         this._animDefaultVariant      = (data.defaultVariant ?? null);
 
@@ -490,8 +495,13 @@ class Instance extends AbstractLoadedEntity {
                 this._animDone    = false;
             }
         } else {
+            const fromTime = this._animTime;
             this._animTime += (dt / 1000) * ((this._blockedPressing) ? this._blockedSlowFactor : 1);
-            if (this._animTime >= this._animMaxTime) {
+            const stageEnd = this._stageEndCrossed(fromTime, this._animTime);
+            if (stageEnd !== null) {
+                this._animTime    = stageEnd;
+                this._animPlaying = false;
+            } else if (this._animTime >= this._animMaxTime) {
                 if (this._animLoop) {
                     this._animTime = this._animTime % this._animMaxTime;
                 } else {
@@ -504,6 +514,17 @@ class Instance extends AbstractLoadedEntity {
 
         const dy = (this._delta.translate[1] - prevY);
         this._noteMotionDir(((!this._animPlaying || (Math.abs(dy) <= Instance.MOTION_EPSILON)) ? 0 : Math.sign(dy)));
+    }
+
+    // First stage end strictly after `from` and reached by `to`: resuming from
+    // a stage end must not re-pause on it.
+    _stageEndCrossed(from, to) {
+        for (const end of this._animStageEnds) {
+            if ((end > from) && (to >= end) && (end < this._animMaxTime)) {
+                return end;
+            }
+        }
+        return null;
     }
 
     // A once-only trigger that already fired (or was force-stopped) is spent
@@ -729,6 +750,7 @@ class Instance extends AbstractLoadedEntity {
         const cycle  = this._cycleOf(name);
         const frames = cycle.keyframes;
         this._animKeyframes      = frames;
+        this._animStageEnds      = (cycle.stageEnds ?? []);
         this._animMaxTime        = ((frames.length > 0) ? frames[frames.length - 1].t : 0);
         this._animTime           = ((frames.length > 0) ? frames[0].t : 0);
         this._animOnlyOnce       = (cycle.onlyOnce === true);
