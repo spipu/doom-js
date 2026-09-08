@@ -618,33 +618,40 @@ class Collision {
         let prevNx = null, prevNz = null;
 
         // Depenetration: push the circle out of any wall segment it already overlaps.
-        // Without this, _sweptCircleVsSegment returns null for already-overlapping geometry
-        // (t < 0), causing those faces to be ignored and the player to pass through.
-        for (let i = 0; i < count; i++) {
-            const tri = tris[i];
-            if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
-                continue;
-            }
-            if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
-                continue;
-            }
-            const pts = tri.pts;
-            for (let e = 0; e < 3; e++) {
-                const P = pts[e], Q = pts[(e + 1) % 3];
-                const sdx = Q[0]-P[0], sdz = Q[2]-P[2];
-                const len2 = sdx*sdx + sdz*sdz;
-                if (len2 < 1e-10) {
+        // Iterated because in an acute corner the push out of one wall lands in
+        // the other (their normals are more than 90° apart).
+        for (let pass = 0; pass < Collision.DEPENETRATION_PASSES; pass++) {
+            let pushed = false;
+            for (let i = 0; i < count; i++) {
+                const tri = tris[i];
+                if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
                     continue;
                 }
-                const t = Math.max(0, Math.min(1, ((C[0]-P[0])*sdx + (C[1]-P[2])*sdz) / len2));
-                const ex = C[0] - (P[0] + t*sdx);
-                const ez = C[1] - (P[2] + t*sdz);
-                const dist = Math.sqrt(ex*ex + ez*ez);
-                if (dist < r && dist > 1e-6) {
-                    const push = r - dist;
-                    C[0] += (ex / dist) * push;
-                    C[1] += (ez / dist) * push;
+                if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
+                    continue;
                 }
+                const pts = tri.pts;
+                for (let e = 0; e < 3; e++) {
+                    const P = pts[e], Q = pts[(e + 1) % 3];
+                    const sdx = Q[0]-P[0], sdz = Q[2]-P[2];
+                    const len2 = sdx*sdx + sdz*sdz;
+                    if (len2 < 1e-10) {
+                        continue;
+                    }
+                    const t = Math.max(0, Math.min(1, ((C[0]-P[0])*sdx + (C[1]-P[2])*sdz) / len2));
+                    const ex = C[0] - (P[0] + t*sdx);
+                    const ez = C[1] - (P[2] + t*sdz);
+                    const dist = Math.sqrt(ex*ex + ez*ez);
+                    if (dist < r && dist > 1e-6) {
+                        const push = r - dist;
+                        C[0] += (ex / dist) * push;
+                        C[1] += (ez / dist) * push;
+                        pushed = true;
+                    }
+                }
+            }
+            if (!pushed) {
+                break;
             }
         }
 
@@ -994,7 +1001,10 @@ class Collision {
         const vn   = nix * vx + niz * vz;
         if (Math.abs(vn) > 1e-10) {
             const sn = ((dist >= 0) ? 1 : -1);
-            const t  = (sn * r - dist) / vn;
+            // A circle already in contact (or overlapping) and pushing into the
+            // wall is a hit at t = 0: the exact-contact case would otherwise give
+            // a rounding-sign t and let the whole move pass through the wall.
+            const t  = ((sn * dist <= r && sn * vn < 0) ? 0 : (sn * r - dist) / vn);
             if (t >= 0 && t <= 1) {
                 const s = (cx + t*vx - ax) * (sdx/slen) + (cz + t*vz - az) * (sdz/slen);
                 if (s >= 0 && s <= slen) {
@@ -1022,7 +1032,8 @@ class Collision {
         if (disc < 0) {
             return null;
         }
-        const t = (-b - Math.sqrt(disc)) / (2*a);
+        // Already touching the point and moving toward it (b < 0): hit at t = 0.
+        const t = ((c <= 0 && b < 0) ? 0 : (-b - Math.sqrt(disc)) / (2*a));
         if (t < 0 || t > 1) {
             return null;
         }
@@ -1036,6 +1047,7 @@ class Collision {
 }
 
 // Which dynamic movers join a circle query (see _gather)
+Collision.DEPENETRATION_PASSES = 4;
 Collision.DYN_NONE = 0;
 Collision.DYN_NEAR = 1;
 Collision.DYN_ALL  = 2;
