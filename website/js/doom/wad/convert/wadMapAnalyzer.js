@@ -40,6 +40,7 @@ class WadMapAnalyzer {
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches(lifts.liftOriginalFh);
+        const floorPeggedWalls = this._identifyFloorPeggedWalls(this._builtMoverSectorIds(lifts, rising, stairs), switches.ids);
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
         const gunTriggerLinedefs = this._identifyGunTriggers();
@@ -63,6 +64,7 @@ class WadMapAnalyzer {
             risingFloorTargetFh:   rising.risingFloorTargetFh,
             risingFloorInstantIds: rising.risingFloorInstantIds,
             risingFloorLegs:       rising.risingFloorLegs,
+            floorPeggedWalls:      floorPeggedWalls,
             stairIds:              stairs.stairIds,
             stairInfo:             stairs.stairInfo,
             stairStepTag:          stairs.stairStepTag,
@@ -877,6 +879,54 @@ class WadMapAnalyzer {
             risingFloorInstantIds: risingFloorInstantIds,
             risingFloorLegs:       risingFloorLegs
         };
+    }
+
+    // One-sided walls of a moving-floor sector whose texture is pegged to the
+    // floor (ML_DONTPEGBOTTOM): vanilla anchors them to the LIVE floor
+    // (r_segs.c, rw_midtexturemid), so the mover mesh draws them and they ride
+    // with it. Switch lines keep their own panel; a sky ceiling keeps the
+    // static wall (a quad poking above it would show against the sky).
+    // Returns linedef index → sector index.
+    _identifyFloorPeggedWalls(moverSectorIds, switchLinedefIds) {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const walls = {};
+        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
+            const ld = linedefs[ldIdx];
+            if ((ld.right < 0) || (ld.left >= 0) || switchLinedefIds.has(ldIdx)
+                || ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) === 0)) {
+                continue;
+            }
+            const sd = sidedefs[ld.right];
+            if (!sd.middle || (sd.middle === '-') || WadConstants.isSkyFlat(sectors[sd.sector].ct)
+                || !moverSectorIds.has(sd.sector)) {
+                continue;
+            }
+            walls[ldIdx] = sd.sector;
+        }
+
+        return walls;
+    }
+
+    // Floor-mover sectors whose builder will actually emit an instance — the
+    // static map drops a pegged wall only when a mover takes it over (a lift or
+    // a step with no travel yields no instance).
+    _builtMoverSectorIds(lifts, rising, stairs) {
+        const {sectors} = this._level;
+        const ids = new Set(rising.risingFloorIds);
+        for (const si of lifts.movingFloorDownIds) {
+            const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si]);
+            const maxFh = ((isPerpetual) ? lifts.liftMaxAdjFh[si] : lifts.liftOriginalFh[si]);
+            if (maxFh > lifts.liftMinAdjFh[si]) {
+                ids.add(si);
+            }
+        }
+        for (const si of stairs.stairIds) {
+            if (stairs.stairInfo[si].targetFh > sectors[si].fh) {
+                ids.add(si);
+            }
+        }
+
+        return ids;
     }
 
     // How many times a fixed-delta raise (raiseFloor24/32/512) can play: the

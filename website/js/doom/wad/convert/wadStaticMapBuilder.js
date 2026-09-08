@@ -46,7 +46,7 @@ class WadStaticMapBuilder {
 
     _buildWalls(mesh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds, doorHeights, switchLinedefIds, switchWalls} = this._analysis;
+        const {doorSectorIds, doorHeights, switchLinedefIds, switchWalls, floorPeggedWalls} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
@@ -70,7 +70,7 @@ class WadStaticMapBuilder {
             const uScroll = (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0);
 
             if (ld.left < 0) {
-                if (switchLinedefIds.has(ldIdx)) {
+                if (switchLinedefIds.has(ldIdx) || (floorPeggedWalls[ldIdx] !== undefined)) {
                     continue;
                 }
                 if (rIsDoor) {
