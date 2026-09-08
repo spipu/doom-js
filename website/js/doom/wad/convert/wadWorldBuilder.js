@@ -110,6 +110,9 @@ class WadWorldBuilder {
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
+            if (sw.rideOnCode !== null) {
+                loader.instances().getByCode(sw.code).setRideOn(loader.instances().getByCode(sw.rideOnCode));
+            }
             this._applyKeyGuard(sw);
             this._applySwitchUseGuard(sw);
             const spec = sw.interactionSpec;

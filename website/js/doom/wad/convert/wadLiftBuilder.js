@@ -35,6 +35,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         const raiseTops  = Object.values(this._analysis.liftRaiseVariants[si] ?? {}).map((r) => r.targetFh);
         const highestFh  = Math.max(maxFh, ...raiseTops);
         this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh));
+        this._buildFloorPeggedWalls(mesh, si, origFh, origFh - minFh);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {

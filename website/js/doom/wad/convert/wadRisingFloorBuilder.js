@@ -35,6 +35,7 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
 
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         this._buildRisers(mesh, si, origFh, baseFh);
+        this._buildFloorPeggedWalls(mesh, si, origFh, 0);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {

@@ -24,7 +24,7 @@ class WadSwitchBuilder {
     }
 
     /**
-     * @returns {object[]} [{code, linedef, textures (bank indices), mesh, instanceData, interactionSpec}]
+     * @returns {object[]} [{code, linedef, textures (bank indices), mesh, rideOnCode, instanceData, interactionSpec}]
      */
     buildAll() {
         const result = [];
@@ -70,10 +70,11 @@ class WadSwitchBuilder {
         const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? WadConstants.SWITCH_INTERACTION_DEFAULT;
 
         return {
-            code:     switchName,
-            linedef:  ldIdx,
-            textures: geom.textures,
-            mesh:     geom.mesh,
+            code:       switchName,
+            linedef:    ldIdx,
+            textures:   geom.textures,
+            mesh:       geom.mesh,
+            rideOnCode: (geom.rideOnCode ?? null),
             instanceData: {
                 code:              switchName,
                 position:          [0, 0, 0],
@@ -171,7 +172,7 @@ class WadSwitchBuilder {
         const swapIndex = ((ti2 >= 0) ? localIndices.indexOf(ti2) + 1 : null);
 
         return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
-            restIndex: restIndex, swapIndex: swapIndex};
+            restIndex: restIndex, swapIndex: swapIndex, rideOnCode: (band.rideOnCode ?? null)};
     }
 
     // Invisible USE zone: a switch-special line with no SWxxx graphic (e.g. an
@@ -318,10 +319,17 @@ class WadSwitchBuilder {
             // inside the closed shutter, revealed when it opens (MAP20's
             // SW1GARG alcove) — the door slab has no face on a one-sided edge.
             const doorH = this._analysis.doorHeights[rSd.sector];
-            const yBot  = ((doorH !== undefined) ? doorH.floorH : rSec.fh);
-            const yTop  = ((doorH !== undefined) ? doorH.ceilH : rSec.ch);
+            // Pegged to a moving floor: the panel rides the mover (vanilla
+            // anchors the texture to the live floor), spanning the rest floor
+            // to the ceiling plus the downward travel — see
+            // AbstractMoverBuilder._buildFloorPeggedWalls.
+            const rideOnCode = ((lowerUnpeg && !WadConstants.isSkyFlat(rSec.ct)) ? this._floorMoverCode(rSd.sector) : null);
+            const restFh     = ((rideOnCode !== null) ? (this._analysis.liftOriginalFh[rSd.sector] ?? rSec.fh) : rSec.fh);
+            const downTravel = restFh - rSec.fh;
+            const yBot  = ((doorH !== undefined) ? doorH.floorH : restFh);
+            const yTop  = ((doorH !== undefined) ? doorH.ceilH : (rSec.ch + downTravel));
             const hDoom = yTop - yBot;
-            return {sd: rSd, yBotDu: yBot, yTopDu: yTop,
+            return {sd: rSd, yBotDu: yBot, yTopDu: yTop, rideOnCode: rideOnCode,
                 yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
         }
 
