@@ -654,6 +654,17 @@ class WadConstants {
     };
     static SWITCH_INTERACTION_DEFAULT = {mode: 'once', minOnMs: null, minOffMs: null};
 
+    // Whether a trigger line can fire more than once (WR / SR / GR).
+    static specialRepeats(special) {
+        if (special in WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL) {
+            return (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[special] === false);
+        }
+        if (special in WadConstants.GUN_BY_SPECIAL) {
+            return (WadConstants.GUN_BY_SPECIAL[special].once === false);
+        }
+        return ((WadConstants.SWITCH_INTERACTION_BY_SPECIAL[special] ?? WadConstants.SWITCH_INTERACTION_DEFAULT).mode !== 'once');
+    }
+
     // The check below runs at every level build; one report per mistake is enough.
     static _WARNED_ORPHAN_SWITCHES = new Set();
 
