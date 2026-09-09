@@ -59,8 +59,8 @@ class AbstractMoverBuilder {
     // self-contained box, so two adjacent movers at different heights keep a
     // wall between them. Texture: neighbour lower, else own lower, else a
     // sibling edge's (two passes). One-sided edges belong to the static map.
-    // A lower-unpegged riser texture is anchored to the ceiling in vanilla,
-    // hence pinned to the world while the riser moves (uvAnchor).
+    // A lower-unpegged texture is anchored to the ceiling in vanilla, hence
+    // pinned to the world while the riser moves (uvAnchor).
     _buildRisers(mesh, si, origFh, riserBaseFh, moverCode) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
@@ -138,39 +138,6 @@ class AbstractMoverBuilder {
                 e.wallLen, tw, th,
                 {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi),
                     uvAnchor: ((e.lowerUnpeg) ? WadConstants.wallTextureAnchor(moverCode, th, false) : null)});
-        }
-    }
-
-    // One-sided walls pegged to this sector's floor (analysis.floorPeggedWalls):
-    // drawn by the mover so the texture rides with the floor, as vanilla
-    // anchors it to the live floor. The quad reaches `downTravel` above the
-    // ceiling so it still meets the ceiling at the mover's lowest point; the
-    // overshoot above the ceiling and the gap left under the raised floor are
-    // both out of sight in a Doom world.
-    _buildFloorPeggedWalls(mesh, si, origFh, downTravel) {
-        const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const SCALE = WadConstants.SCALE;
-        const sec   = sectors[si];
-        const topFh = sec.ch + downTravel;
-
-        for (const [ldIdx, wallSi] of Object.entries(this._analysis.floorPeggedWalls)) {
-            if (wallSi !== si) {
-                continue;
-            }
-            const ld = linedefs[ldIdx];
-            const sd = sidedefs[ld.right];
-            const ti = this._bank.ensureWallTex(sd.middle);
-            if (ti < 0) {
-                continue;
-            }
-            const {width: tw, height: th} = this._bank.getDims(ti);
-            const [wx1, wz1] = WadGeometry.doomToWorld(...vertexes[ld.v1]);
-            const [wx2, wz2] = WadGeometry.doomToWorld(...vertexes[ld.v2]);
-            WadMeshBuilder.addWallQuad(mesh, ti,
-                wx1, wz1, wx2, wz2,
-                origFh * SCALE, topFh * SCALE,
-                WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2), tw, th,
-                {xOff: sd.xo, yOff: sd.yo + (th - (topFh - origFh)), flip: true, light: sec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si)});
         }
     }
 

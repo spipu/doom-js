@@ -62,10 +62,11 @@ class WadGunTriggerBuilder {
             x2:          x2,
             z2:          z2,
             y:           (((front.fh + front.ch) / 2) * WadConstants.SCALE),
-            once:        (WadConstants.GUN_BY_SPECIAL[gt.special].once === true),
+            once:        !WadConstants.specialRepeats(gt.special),
             used:        false,
             targets:     targets,
-            cycleVariant: WadConstants.cycleKeyForSpecial(gt.special)
+            cycleVariant: WadConstants.cycleKeyForSpecial(gt.special),
+            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets)
         };
     }
 

@@ -23,6 +23,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._targets        = targets;
         this._reverseTargets = (reverseTargets ?? []);
         this._cycleVariant   = (cycleVariant ?? null);
+        this._stageRules     = null;
         // null on an invisible USE zone or a non-SW wall.
         this._restIndex      = (restIndex ?? null);
         this._swapIndex      = (swapIndex ?? null);
@@ -60,6 +61,13 @@ class DoomSwitchInteraction extends SwitchInteraction {
         return this;
     }
 
+    // code → stage rule of the staged floors among the targets (see
+    // WadMapAnalyzer.stageRulesFor); null when none is staged.
+    setStageRules(rules) {
+        this._stageRules = (rules ?? null);
+        return this;
+    }
+
     // The SW1/SW2 texture swap is a side effect of the state, not a field: a
     // restored ON switch must replay it on the freshly rebuilt panel (the
     // switch instance shares the interaction's code). The panel also becomes
@@ -79,7 +87,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
     // P_UseSpecialLine swaps the texture (and spends a S1) only when the action
     // took: pressed on a moving target, the switch stays untouched.
     _triggerOn(instance) {
-        if (!DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant)) {
+        if (!DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant, this._stageRules)) {
             return false;
         }
         // The button rings from the switch's own position; an exit switch has

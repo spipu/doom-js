@@ -24,7 +24,7 @@ class WadSwitchBuilder {
     }
 
     /**
-     * @returns {object[]} [{code, linedef, textures (bank indices), mesh, rideOnCode, instanceData, interactionSpec}]
+     * @returns {object[]} [{code, linedef, textures (bank indices), mesh, instanceData, interactionSpec}]
      */
     buildAll() {
         const result = [];
@@ -74,7 +74,6 @@ class WadSwitchBuilder {
             linedef:    ldIdx,
             textures:   geom.textures,
             mesh:       geom.mesh,
-            rideOnCode: (geom.rideOnCode ?? null),
             instanceData: {
                 code:              switchName,
                 position:          [0, 0, 0],
@@ -104,6 +103,7 @@ class WadSwitchBuilder {
                 // null when the special names none, ignored by targets that
                 // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(ld.special),
+                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
@@ -160,7 +160,8 @@ class WadSwitchBuilder {
             wx1, wz1, wx2, wz2,
             band.yBotDu * SCALE, band.yTopDu * SCALE,
             wallLen, tw, th,
-            {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, band.lightSi)});
+            {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, band.lightSi),
+                uvAnchor: (band.uvAnchor ?? null)});
 
         // remapLocalTextures orders the LOCAL indices by ascending bank index:
         // the SW2 may have entered the bank before the SW1 (used as a plain
@@ -172,7 +173,7 @@ class WadSwitchBuilder {
         const swapIndex = ((ti2 >= 0) ? localIndices.indexOf(ti2) + 1 : null);
 
         return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
-            restIndex: restIndex, swapIndex: swapIndex, rideOnCode: (band.rideOnCode ?? null)};
+            restIndex: restIndex, swapIndex: swapIndex};
     }
 
     // Invisible USE zone: a switch-special line with no SWxxx graphic (e.g. an
@@ -240,17 +241,7 @@ class WadSwitchBuilder {
     }
 
     _floorMoverCode(si) {
-        if (this._builtRisingCodes.has('risingfloor_' + si)) {
-            return 'risingfloor_' + si;
-        }
-        if (this._builtLiftCodes.has('lift_' + si)) {
-            return 'lift_' + si;
-        }
-        if (this._builtStairCodes.has('stair_' + si)) {
-            return 'stair_' + si;
-        }
-
-        return null;
+        return (this._analysis.floorMovers.get(si)?.code ?? null);
     }
 
     // Last-resort resolution for a panel with no geometry of its own (flush
@@ -304,7 +295,7 @@ class WadSwitchBuilder {
      * stays aligned: a one-sided full-height middle, or the lower (step riser) /
      * upper (ceiling header) of a two-sided line, from either side.
      *
-     * @returns {{sd, yBotDu, yTopDu, yo, flip, light, lightSi}} heights in Doom units
+     * @returns {{sd, yBotDu, yTopDu, yo, flip, light, lightSi, uvAnchor?}} heights in Doom units
      */
     _switchBand(ld, slotInfo, th) {
         const {sidedefs, sectors} = this._level;
@@ -319,18 +310,15 @@ class WadSwitchBuilder {
             // inside the closed shutter, revealed when it opens (MAP20's
             // SW1GARG alcove) — the door slab has no face on a one-sided edge.
             const doorH = this._analysis.doorHeights[rSd.sector];
-            // Pegged to a moving floor: the panel rides the mover (vanilla
-            // anchors the texture to the live floor), spanning the rest floor
-            // to the ceiling plus the downward travel — see
-            // AbstractMoverBuilder._buildFloorPeggedWalls.
-            const rideOnCode = ((lowerUnpeg && !WadConstants.isSkyFlat(rSec.ct)) ? this._floorMoverCode(rSd.sector) : null);
-            const restFh     = ((rideOnCode !== null) ? (this._analysis.liftOriginalFh[rSd.sector] ?? rSec.fh) : rSec.fh);
-            const downTravel = restFh - rSec.fh;
-            const yBot  = ((doorH !== undefined) ? doorH.floorH : restFh);
-            const yTop  = ((doorH !== undefined) ? doorH.ceilH : (rSec.ch + downTravel));
-            const hDoom = yTop - yBot;
-            return {sd: rSd, yBotDu: yBot, yTopDu: yTop, rideOnCode: rideOnCode,
-                yo: rSd.yo + ((lowerUnpeg) ? (th - hDoom) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
+            // ML_DONTPEGBOTTOM pegs the texture to the LIVE floor (r_segs.c):
+            // rest floor here, the mover's shift via uvAnchor.
+            const mover = ((lowerUnpeg) ? (this._analysis.floorMovers.get(rSd.sector) ?? null) : null);
+            const pegFh = ((mover !== null) ? mover.restFh : rSec.fh);
+            const yBot  = ((doorH !== undefined) ? doorH.floorH : rSec.fh);
+            const yTop  = ((doorH !== undefined) ? doorH.ceilH : rSec.ch);
+            return {sd: rSd, yBotDu: yBot, yTopDu: yTop,
+                yo: rSd.yo + ((lowerUnpeg) ? (th - (yTop - pegFh)) : 0), flip: true, light: rSec.light, lightSi: rSd.sector,
+                uvAnchor: ((mover !== null) ? WadConstants.wallTextureAnchor(mover.code, th, true) : null)};
         }
 
         const lSd  = sidedefs[ld.left];

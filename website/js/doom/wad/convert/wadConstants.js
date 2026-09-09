@@ -540,6 +540,9 @@ class WadConstants {
     // Derived membership set — never edit this, edit FLOOR_UP_BY_SPECIAL.
     static FLOOR_MOVE_UP_SPECIALS = null;
 
+    // Ceiling on the legs of a staged rising floor (WadMapAnalyzer._risingFloorStaging)
+    static RISING_FLOOR_MAX_LEGS = 256;
+
     // Deliberate deviation from vanilla (which starts the raise instantly):
     // a rising floor waits this long before moving, so a player who fired the
     // trigger next to the platform has time to step onto it and ride up.
@@ -654,11 +657,9 @@ class WadConstants {
     };
     static SWITCH_INTERACTION_DEFAULT = {mode: 'once', minOnMs: null, minOffMs: null};
 
-    // Face uvAnchor following a mover's vertical shift (V per world unit of a
-    // wall texture `texH` texels high). A texture on the mover's own mesh that
-    // vanilla keeps pinned to the world (lower unpegged riser, anchored to the
-    // ceiling) compensates the move; a texture on static geometry that vanilla
-    // pegs to the live floor rides it.
+    // Face uvAnchor following a mover's vertical shift: a riser texture that
+    // vanilla pins to the world compensates the move, a static wall texture
+    // that vanilla pegs to the live floor rides it.
     static wallTextureAnchor(moverCode, texH, ridesWithFloor) {
         const vPerUnit = 1 / (texH * WadConstants.SCALE);
 

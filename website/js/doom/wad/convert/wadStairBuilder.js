@@ -25,16 +25,16 @@ class WadStairBuilder extends AbstractMoverBuilder {
         const origFh  = sec.fh;
         const targetFh = info.targetFh;
         const delta   = targetFh - origFh;
-        if (delta <= 0) {
+        const mover   = this._analysis.floorMovers.get(si) ?? null;
+        if (mover === null) {
             return null;
         }
 
-        const stairName = 'stair_' + si;
+        const stairName = mover.code;
         const mesh = WadMeshBuilder.newMesh();
 
         this._buildTopFlat(mesh, si, sec, origFh);
         this._buildStairRisers(mesh, si, origFh, targetFh, delta, stairName);
-        this._buildFloorPeggedWalls(mesh, si, origFh, 0);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {

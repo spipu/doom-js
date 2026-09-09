@@ -617,9 +617,8 @@ class Collision {
         let C = [cx, cz], V = [vx, vz];
         let prevNx = null, prevNz = null;
 
-        // Depenetration: push the circle out of any wall segment it already overlaps.
-        // Iterated because in an acute corner the push out of one wall lands in
-        // the other (their normals are more than 90° apart).
+        // Depenetration, iterated: in an acute corner the push out of one wall
+        // lands in the other.
         for (let pass = 0; pass < Collision.DEPENETRATION_PASSES; pass++) {
             let pushed = false;
             for (let i = 0; i < count; i++) {
@@ -646,7 +645,7 @@ class Collision {
                         const push = r - dist;
                         C[0] += (ex / dist) * push;
                         C[1] += (ez / dist) * push;
-                        pushed = true;
+                        pushed = (pushed || (push > EPSILON));
                     }
                 }
             }
@@ -1004,7 +1003,7 @@ class Collision {
             // A circle already in contact (or overlapping) and pushing into the
             // wall is a hit at t = 0: the exact-contact case would otherwise give
             // a rounding-sign t and let the whole move pass through the wall.
-            const t  = ((sn * dist <= r && sn * vn < 0) ? 0 : (sn * r - dist) / vn);
+            const t  = ((((sn * dist) <= r) && ((sn * vn) < 0)) ? 0 : (sn * r - dist) / vn);
             if (t >= 0 && t <= 1) {
                 const s = (cx + t*vx - ax) * (sdx/slen) + (cz + t*vz - az) * (sdz/slen);
                 if (s >= 0 && s <= slen) {
@@ -1033,7 +1032,7 @@ class Collision {
             return null;
         }
         // Already touching the point and moving toward it (b < 0): hit at t = 0.
-        const t = ((c <= 0 && b < 0) ? 0 : (-b - Math.sqrt(disc)) / (2*a));
+        const t = (((c <= 0) && (b < 0)) ? 0 : (-b - Math.sqrt(disc)) / (2*a));
         if (t < 0 || t > 1) {
             return null;
         }

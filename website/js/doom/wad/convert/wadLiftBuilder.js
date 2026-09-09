@@ -21,11 +21,12 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si]);
         const maxFh = ((isPerpetual) ? liftMaxAdjFh[si] : origFh);
 
-        if (maxFh <= minFh) {
+        const mover = this._analysis.floorMovers.get(si) ?? null;
+        if (mover === null) {
             return null;
         }
 
-        const liftName = 'lift_' + si;
+        const liftName = mover.code;
         const mesh = WadMeshBuilder.newMesh();
 
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
@@ -35,7 +36,6 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         const raiseTops  = Object.values(this._analysis.liftRaiseVariants[si] ?? {}).map((r) => r.targetFh);
         const highestFh  = Math.max(maxFh, ...raiseTops);
         this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh), liftName);
-        this._buildFloorPeggedWalls(mesh, si, origFh, origFh - minFh);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {
