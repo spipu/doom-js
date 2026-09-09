@@ -5,7 +5,8 @@
  * radiation suit cancels the damage up to the special's leak chance out of
  * 256 per window (0 = full protection, 5 = Doom super-damage, 256 = never
  * protects — Heretic lava). 11 = 20 with NO suit protection plus a normal
- * level exit once the player is down to 10 health (the E1M8 finale). Damage
+ * level exit once the player is down to 10 health (the E1M8 finale), checked
+ * every tic like vanilla — a monster may land the hit that gets there. Damage
  * goes through takeDamage, so armour absorption and invulnerability apply.
  */
 class DoomSectorDamageInteraction extends AbstractInteraction {
@@ -47,25 +48,18 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
     }
 
     update(dt) {
-        const wrapped = new Set();
-        for (const windowTics of this._windowSizes) {
-            const windowS = windowTics * WadConstants.SECONDS_PER_TIC;
-            const clock   = (this._clockS[windowTics] ?? 0) + dt / 1000;
-            this._clockS[windowTics] = clock % windowS;
-            if (clock >= windowS) {
-                wrapped.add(windowTics);
-            }
-        }
-        if (wrapped.size === 0) {
-            return;
-        }
-
+        const wrapped = this._advanceClocks(dt);
         const user = loader.world().get().getUser();
-        if (user.isDead()) {
-            return;
-        }
         const zone = this._zoneUnderUser(user);
         if (zone === null) {
+            return;
+        }
+        if (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL) {
+            // Deliberate deviation: vanilla stops thinking for a dead player,
+            // so a monster's killing blow in the nukage lost the finale.
+            this._exitWhenDown(user);
+        }
+        if (user.isDead()) {
             return;
         }
 
@@ -74,14 +68,10 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
             return;
         }
 
-        if (zone.special === 11) {
-            // E1M8 finale: the suit gives no protection, and dropping to the
-            // exit health ends the level through the normal exit (G_ExitLevel).
+        if (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL) {
+            // E1M8 finale: the suit gives no protection.
             user.takeDamage(entry.damage);
-            if (!this._exited && (user.getEnergy() <= WadConstants.SECTOR_DAMAGE_EXIT_HEALTH) && (this._exitCallback !== null)) {
-                this._exited = true;
-                this._exitCallback(false);
-            }
+            this._exitWhenDown(user);
             return;
         }
         if (user.hasEffect('radiation') && !(Math.random() * 256 < entry.leak)) {
@@ -98,6 +88,32 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         if (zone !== null) {
             zone.special = special;
         }
+    }
+
+    // One free-running clock per window size; returns the sizes whose window
+    // boundary this frame crossed.
+    _advanceClocks(dt) {
+        const wrapped = new Set();
+        for (const windowTics of this._windowSizes) {
+            const windowS = windowTics * WadConstants.SECONDS_PER_TIC;
+            const clock   = (this._clockS[windowTics] ?? 0) + dt / 1000;
+            this._clockS[windowTics] = clock % windowS;
+            if (clock >= windowS) {
+                wrapped.add(windowTics);
+            }
+        }
+
+        return wrapped;
+    }
+
+    // Down to the exit health in the exit sector: the level ends through the
+    // normal exit (P_PlayerInSpecialSector → G_ExitLevel), once.
+    _exitWhenDown(user) {
+        if (this._exited || (user.getEnergy() > WadConstants.SECTOR_DAMAGE_EXIT_HEALTH) || (this._exitCallback === null)) {
+            return;
+        }
+        this._exited = true;
+        this._exitCallback(false);
     }
 
     // Damage only applies with the feet ON the sector floor (an airborne or
