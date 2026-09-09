@@ -54,7 +54,7 @@ class DoomSectorHeights {
     // --- Internal ---
 
     _deltaOf(mover) {
-        return (mover.inst.getTransform().deltaTranslate[1] / WadConstants.SCALE);
+        return (mover.inst.getVerticalShift() / WadConstants.SCALE);
     }
 
     // Lazy resolution: the builder only lists codes it actually built, so

@@ -62,11 +62,6 @@ class WadWorldBuilder {
         this._level       = level;
         this._sectorPolys = null;   // walked on demand, see _sectorPolyCache
 
-        // Static map
-        const mapData = new WadStaticMapBuilder(level, analysis, bank, animBank).build();
-        loader.objects().loadFromData('map', WadMeshBuilder.toLoaderData(mapData.textures, mapData.mesh, bank));
-        await this._yield();
-
         // Doors
         const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
         const builtDoorCodes = new Set();
@@ -102,19 +97,29 @@ class WadWorldBuilder {
             builtStairCodes.add(step.code);
         }
         // A predicted mover whose geometry came out empty has no instance: the
-        // consumers below (switches, floor changes) must not look it up.
+        // consumers below (static walls, switches, floor changes) must not
+        // look it up.
         for (const [si, mover] of [...analysis.floorMovers]) {
             if (!builtLiftCodes.has(mover.code) && !builtRisingCodes.has(mover.code) && !builtStairCodes.has(mover.code)) {
                 analysis.floorMovers.delete(si);
             }
         }
+        // Live floor of a sector at trigger time (the staged raises resolve
+        // their targets against it): the height service is built with the
+        // level data, before anything can fire.
+        const liveFloorOf = ((si) => this._sectorHeights.floorOf(si));
+
+        // Static map
+        const mapData = new WadStaticMapBuilder(level, analysis, bank, animBank).build();
+        loader.objects().loadFromData('map', WadMeshBuilder.toLoaderData(mapData.textures, mapData.mesh, bank));
+        await this._yield();
 
         // Movement sounds of every built mover (sndseq behaviours).
         this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
 
         // Switches + interactions
         const switches = new WadSwitchBuilder(
-            level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
+            level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
             this._applyKeyGuard(sw);
@@ -135,7 +140,7 @@ class WadWorldBuilder {
         // Walk triggers (W1/WR lines that activate a remote tagged element by
         // being crossed — invisible proximity zones that start() their targets)
         const walkTriggers = new WadWalkTriggerBuilder(
-            level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes).buildAll();
+            level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes, liveFloorOf).buildAll();
         for (const wt of walkTriggers) {
             this._registerInstance(wt, bank);
             this._applyCrossingGuard(wt);
@@ -153,7 +158,7 @@ class WadWorldBuilder {
         // (P_ShootSpecialLine) and start()s the tagged movers.
         if (this._game !== null) {
             const gunLines = new WadGunTriggerBuilder(
-                level, analysis, builtRisingCodes, builtDoorCodes).buildAll();
+                level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf).buildAll();
             this._game.setGunTriggers(new DoomGunTriggers(gunLines));
         }
 
@@ -1018,7 +1023,7 @@ class WadWorldBuilder {
                         targets:        split.start,
                         reverseTargets: split.reverse,
                         cycleVariant:   WadConstants.cycleKeyForSpecial(action.special),
-                        stageRules:     WadMapAnalyzer.stageRulesFor(analysis, action.special, split.start),
+                        stageRules:     WadMapAnalyzer.stageRulesFor(analysis, action.special, split.start, ((si) => this._sectorHeights.floorOf(si))),
                         exit:           (action.exit === true)
                     });
                 }

@@ -126,6 +126,48 @@ class WadMeshBuilder {
     }
 
     /**
+     * UV of a wall standing on a sector floor: ML_DONTPEGBOTTOM pegs the
+     * texture to the LIVE floor (r_segs.c) — the rest floor of the sector's
+     * mover when it has one, the face then riding the mover through its
+     * uvAnchor — else the texture hangs from the wall top.
+     *
+     * @param {object} ld          linedef (flags)
+     * @param {object} sd          sidedef drawn (yo)
+     * @param {object} sec         sector the wall stands in (fh)
+     * @param {number} yTopDu      top of the wall, Doom units
+     * @param {Map}    floorMovers sector → {code, restFh} (WadMapAnalyzer)
+     * @param {int}    texH
+     * @returns {{yOff: number, uvAnchor: object|null}}
+     */
+    static floorPeggedWallUv(ld, sd, sec, yTopDu, floorMovers, texH) {
+        if ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) === 0) {
+            return {yOff: sd.yo, uvAnchor: null};
+        }
+        const mover = (floorMovers.get(sd.sector) ?? null);
+        const pegFh = ((mover !== null) ? mover.restFh : sec.fh);
+
+        return {
+            yOff:     sd.yo + (texH - (yTopDu - pegFh)),
+            uvAnchor: ((mover !== null) ? WadConstants.wallTextureAnchor(mover.code, texH, true) : null)
+        };
+    }
+
+    /**
+     * UV of a mover's riser (the skirt below its moving top, from the source
+     * sidedef of the edge): a lower-unpegged riser stays pinned to the world
+     * while the top rides away from it, a pegged one hangs from the top.
+     *
+     * @returns {{yOff: number, uvAnchor: object|null}}
+     */
+    static moverRiserUv(ld, sd, sec, origFh, moverCode, texH) {
+        if ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) === 0) {
+            return {yOff: sd.yo, uvAnchor: null};
+        }
+
+        return {yOff: sd.yo + (sec.ch - origFh), uvAnchor: WadConstants.wallTextureAnchor(moverCode, texH, false)};
+    }
+
+    /**
      * Append a textured wall quad (two triangles) to the mesh.
      * flip=false → front face (normal on the right-hand side of v1→v2).
      * flip=true  → back face. yOff is the pixel offset from the top of the texture.

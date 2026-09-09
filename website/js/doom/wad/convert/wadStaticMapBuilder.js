@@ -102,18 +102,13 @@ class WadStaticMapBuilder {
                 const ti = this._bank.ensureWallTex(texName);
                 if (ti >= 0) {
                     const {width: tw, height: th} = this._bank.getDims(ti);
-                    const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
-                    // ML_DONTPEGBOTTOM pegs the texture to the LIVE floor
-                    // (r_segs.c): rest floor here, the mover's shift via uvAnchor.
-                    const mover = ((lowerUnpeg) ? (floorMovers.get(rSd.sector) ?? null) : null);
-                    const pegFh = ((mover !== null) ? mover.restFh : rSec.fh);
-                    const yo = rSd.yo + ((lowerUnpeg) ? (th - (rSec.ch - pegFh)) : 0);
+                    const uv = WadMeshBuilder.floorPeggedWallUv(ld, rSd, rSec, rSec.ch, floorMovers, th);
                     WadMeshBuilder.addWallQuad(mesh, ti,
                         wx1, wz1, wx2, wz2,
                         rSec.fh * SCALE, rSec.ch * SCALE,
                         wallLen, tw, th,
-                        {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector),
-                            uvAnchor: ((mover !== null) ? WadConstants.wallTextureAnchor(mover.code, th, true) : null)});
+                        {xOff: rSd.xo, yOff: uv.yOff, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector),
+                            uvAnchor: uv.uvAnchor});
                 }
                 continue;
             }

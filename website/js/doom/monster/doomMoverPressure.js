@@ -90,7 +90,7 @@ class DoomMoverPressure {
     refreshMotion() {
         for (const mv of this._movers) {
             const inst = this._moverInstance(mv);
-            const dy   = inst.getTransform().deltaTranslate[1];
+            const dy   = inst.getVerticalShift();
             if (mv.lastDy === null) {
                 mv.lastDy = dy;
                 continue;

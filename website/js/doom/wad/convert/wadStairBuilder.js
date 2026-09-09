@@ -135,18 +135,17 @@ class WadStairBuilder extends AbstractMoverBuilder {
             const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
             const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
             const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
-            const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
 
             const botDu = neighFinal - delta;
             const topDu = origFh;
-            const yo = corrSd.yo + ((lowerUnpeg) ? (corrSec.ch - origFh) : 0);
+            const uv    = WadMeshBuilder.moverRiserUv(ld, corrSd, corrSec, origFh, stairName, th);
 
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 botDu * SCALE, topDu * SCALE,
                 wallLen, tw, th,
-                {xOff: corrSd.xo, yOff: yo, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi),
-                    uvAnchor: ((lowerUnpeg) ? WadConstants.wallTextureAnchor(stairName, th, false) : null)});
+                {xOff: corrSd.xo, yOff: uv.yOff, flip: !isRightFloor, light: corrSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi),
+                    uvAnchor: uv.uvAnchor});
         }
     }
 

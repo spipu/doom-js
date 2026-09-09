@@ -17,11 +17,12 @@ class WadGunTriggerBuilder {
      * @param {Set<string>} builtRisingCodes
      * @param {Set<string>} builtDoorCodes
      */
-    constructor(level, analysis, builtRisingCodes, builtDoorCodes) {
+    constructor(level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf) {
         this._level            = level;
         this._analysis         = analysis;
         this._builtRisingCodes = builtRisingCodes;
         this._builtDoorCodes   = builtDoorCodes;
+        this._liveFloorOf      = liveFloorOf;
     }
 
     /**
@@ -66,7 +67,7 @@ class WadGunTriggerBuilder {
             used:        false,
             targets:     targets,
             cycleVariant: WadConstants.cycleKeyForSpecial(gt.special),
-            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets)
+            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets, this._liveFloorOf)
         };
     }
 
