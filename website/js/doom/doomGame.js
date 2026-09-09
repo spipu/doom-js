@@ -1210,7 +1210,7 @@ class DoomGame {
     // (Freedoom), then the game's transcribed table. Null when nobody names it.
     _resolveLevelName() {
         return (this._mapInfo.levelNameFor(this._levelName)
-            ?? this._dehackedStrings.levelName(this._levelName)
+            ?? this._dehackedStrings.levelName(this._levelName, this._gameProfile.levelNameStringPrefix())
             ?? this._gameProfile.levelNames()[this._levelName]
             ?? null);
     }

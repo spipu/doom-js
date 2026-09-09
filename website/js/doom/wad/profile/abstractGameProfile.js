@@ -106,6 +106,18 @@ class AbstractGameProfile {
     }
 
     /**
+     * Prefix of the game's level-name strings in a DEHACKED [STRINGS] section
+     * (d_englsh.h: HUSTR_ for Doom and Doom II, THUSTR_ / PHUSTR_ for TNT and
+     * Plutonia), the codes a WAD redefines to rename its levels.
+     *
+     * @returns {string}
+     */
+    levelNameStringPrefix() {
+        this._generateException('levelNameStringPrefix must be implemented');
+        return '';
+    }
+
+    /**
      * RGB tint of the BFG lightning decal (the WAD art shades differ).
      *
      * @returns {number[]}

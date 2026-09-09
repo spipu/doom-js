@@ -42,10 +42,11 @@ class WadDehackedStrings {
      * this way). An empty name counts as none.
      *
      * @param {string} levelCode e.g. 'E1M1' or 'MAP01'
+     * @param {string} prefix    the game's string prefix (AbstractGameProfile.levelNameStringPrefix)
      * @returns {string|null}
      */
-    levelName(levelCode) {
-        const key = WadDehackedStrings.levelNameKey(levelCode);
+    levelName(levelCode, prefix) {
+        const key = WadDehackedStrings.levelNameKey(levelCode, prefix);
         const text = ((key !== null) ? this.get(key) : null);
         if (text === null) {
             return null;
@@ -55,14 +56,15 @@ class WadDehackedStrings {
         return ((name !== '') ? name : null);
     }
 
-    // HUSTR_E1M1 for the episodic games, HUSTR_1..HUSTR_32 for the MAPxx ones.
-    static levelNameKey(levelCode) {
+    // HUSTR_E1M1 for the episodic games, HUSTR_1..HUSTR_32 (THUSTR_, PHUSTR_)
+    // for the MAPxx ones.
+    static levelNameKey(levelCode, prefix) {
         const code = WadLevelCode.parse(levelCode);
         if (code.number !== null) {
-            return ('HUSTR_' + code.number);
+            return (prefix + '_' + code.number);
         }
 
-        return ((code.episode !== null) ? ('HUSTR_' + levelCode.toUpperCase()) : null);
+        return ((code.episode !== null) ? (prefix + '_' + levelCode.toUpperCase()) : null);
     }
 
     // --- Internal ---
