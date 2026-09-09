@@ -39,6 +39,7 @@ class DoomGame {
         this._projectiles     = null;    // rocket / plasma / BFG shots
         this._decals          = null;    // persistent wall impact decals
         this._sectorLight     = null;    // player-sector light lookup (weapon shading)
+        this._sectorDamage    = null;    // damage-sector interaction (exit-sector probe of the player)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
         this._sectorSurfaces  = null;    // live floor flats/specials rewritten by the "+change" floors (builder-fed)
         this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
@@ -404,6 +405,10 @@ class DoomGame {
         this._sectorLight = sectorLight;
     }
 
+    setSectorDamage(sectorDamage) {
+        this._sectorDamage = sectorDamage;
+    }
+
     // Impact-special lines handed over by the world builder (gun triggers,
     // tested by the hitscan against every shot trace).
     setMoverSounds(moverSounds) {
@@ -611,8 +616,11 @@ class DoomGame {
         // Snapshot the player equipment BEFORE loader.reset() destroys the world.
         // Null on the first level (fresh game) → _init pours the starting loadout;
         // set on a level transition → _init restores it then resets level-scoped.
+        // A dead player carries nothing: G_DoLoadLevel reborns them at the
+        // starting loadout (PST_DEAD → PST_REBORN).
         if (this._world !== null) {
-            this._carriedState = this._world.getUser().exportState();
+            const user = this._world.getUser();
+            this._carriedState = ((user.isDead()) ? null : user.exportState());
         }
 
         this._resetLevelStats();
@@ -622,6 +630,7 @@ class DoomGame {
         // Builder-fed too: never inherited from the previous level.
         this._moverSounds   = null;
         this._ambientSounds = null;
+        this._sectorDamage  = null;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -710,6 +719,9 @@ class DoomGame {
         // Skill-derived, re-applied on every level — never part of the
         // carried equipment state.
         user.setDamageFactor(this._skillRule().damageFactor);
+        user.setExitSectorProbe(((this._sectorDamage !== null)
+            ? ((u) => this._sectorDamage.isExitSectorAt(u.x, u.z))
+            : null));
         this._applySpawnOverride();
 
         if (this._wakeLock === null) {
