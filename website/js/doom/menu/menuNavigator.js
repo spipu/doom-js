@@ -59,6 +59,21 @@ class MenuNavigator {
         });
     }
 
+    /**
+     * Starts the menu directly on the given WAD's episode screen (new game
+     * from the death menu), the interrupted game's skill preselected.
+     * @param {object} meta
+     * @param {number|null} skill
+     */
+    startAtEpisodes(meta, skill = null) {
+        this._selectedDifficulty = (skill ?? MenuNavigator.DEFAULT_SKILL);
+
+        return this._boot(() => {
+            this._playWadMusic(meta);
+            this.openEpisodes(meta);
+        });
+    }
+
     // Shared boot: display + registry init, then the persisted settings (same
     // database) whose language reaches the translator before the first screen
     // is built, then the entry action; a storage failure falls back to the
@@ -99,11 +114,15 @@ class MenuNavigator {
      * @param {object} meta
      */
     openWadMenu(meta) {
-        // Selecting a WAD loads its sound library in the background — no
-        // modal, the menu sounds become audible as decoding lands and the
-        // title music starts then (the request waits for the load).
-        doomSound.loadFromRegistry(this._registry, meta).playMenuMusic();
+        this._playWadMusic(meta);
         this._switchTo(this._wadMenuScreen.setWad(meta));
+    }
+
+    // Selecting a WAD loads its sound library in the background — no modal,
+    // the menu sounds become audible as decoding lands and the title music
+    // starts then (the request waits for the load).
+    _playWadMusic(meta) {
+        doomSound.loadFromRegistry(this._registry, meta).playMenuMusic();
     }
 
     /**

@@ -27,6 +27,11 @@ class DoomGame {
         this._paused            = false;
         this._pauseDisplay      = null;
         this._pauseModal        = null;
+        this._deathDisplay      = null;
+        this._deathModal        = null;
+        this._deathClockMs      = 0;
+        this._levelEntryState   = null;   // player equipment as the level began (restart)
+        this._restartState      = null;   // entry state to pour into the level being restarted
         this._animateCallback   = this._animate.bind(this);
         this._resetLevelStats();   // declares the per-level counters and clock
 
@@ -617,8 +622,12 @@ class DoomGame {
         // Null on the first level (fresh game) → _init pours the starting loadout;
         // set on a level transition → _init restores it then resets level-scoped.
         // A dead player carries nothing: G_DoLoadLevel reborns them at the
-        // starting loadout (PST_DEAD → PST_REBORN).
-        if (this._world !== null) {
+        // starting loadout (PST_DEAD → PST_REBORN). A restart replays the
+        // equipment the level began with instead.
+        if (this._restartState !== null) {
+            this._carriedState = this._restartState;
+            this._restartState = null;
+        } else if (this._world !== null) {
             const user = this._world.getUser();
             this._carriedState = ((user.isDead()) ? null : user.exportState());
         }
@@ -722,6 +731,8 @@ class DoomGame {
         user.setExitSectorProbe(((this._sectorDamage !== null)
             ? ((u) => this._sectorDamage.isExitSectorAt(u.x, u.z))
             : null));
+        this._levelEntryState = user.exportState();
+        this._deathClockMs    = 0;
         this._applySpawnOverride();
 
         if (this._wakeLock === null) {
@@ -832,7 +843,7 @@ class DoomGame {
         // Pause button (press edge): toggle the pause menu over the frozen
         // game — read every frame, paused included, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
-        if (pauseDown && !this._pauseWasDown && !this._transitioning) {
+        if (pauseDown && !this._pauseWasDown && !this._transitioning && (this._deathModal === null)) {
             if (this._paused) {
                 // A stacked modal (options, save slots, confirm) handles the
                 // Escape key itself as one step back: the toggle only leaves
@@ -904,6 +915,7 @@ class DoomGame {
         const dt = this._engine.getDeltaTime();
         this._world.update(dt, this._inputs);
         this._world.getUser().updateEffects(dt);
+        this._trackDeath(dt);
         // Vanilla marks its lines from the renderer, so the map memorises what
         // the player sees whether it is on screen or not.
         if (this._automap !== null) {
@@ -1105,26 +1117,96 @@ class DoomGame {
         this._backToMenu();
     }
 
-    // Load a saved game from the pause menu: the running level only goes down
-    // once the save proved readable and compatible — a broken slot must not
-    // cost the current (unsaved) game.
+    // Load a saved game from the pause or death menu: the running level only
+    // goes down once the save proved readable and compatible — a broken slot
+    // must not cost the current (unsaved) game.
     async _loadFromSave(saveMeta) {
+        const display = (this._pauseDisplay ?? this._deathDisplay);
         let snapshot = null;
         try {
             snapshot = (await doomSaveStore.read(saveMeta.wadId, saveMeta.slot)).snapshot;
         } catch (error) {
             console.error(error);
-            new MenuModal(this._pauseDisplay).showError(appTranslator.get('menu.save.loadError'), error.message, () => {});
+            new MenuModal(display).showError(appTranslator.get('menu.save.loadError'), error.message, () => {});
             return;
         }
         if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
-            new MenuModal(this._pauseDisplay).info(appTranslator.get('menu.save.incompatible'));
+            new MenuModal(display).info(appTranslator.get('menu.save.incompatible'));
             return;
         }
 
-        this._leavePause(false);
+        this._closeGameMenu();
         this._teardownLevel();
         new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
+    }
+
+    // Whichever game menu is up (pause or death) goes down without a return
+    // to the game: the level is about to be torn down.
+    _closeGameMenu() {
+        if (this._pauseModal !== null) {
+            this._leavePause(false);
+        }
+        if (this._deathModal !== null) {
+            this._closeDeathMenu();
+        }
+    }
+
+    // --- Death menu ---
+
+    // A moment after the player dies, the death menu opens over the level,
+    // which keeps running (vanilla lets the monsters roam around the corpse).
+    // Never during a level exit: the tally owns the screen, and the reborn
+    // rule of startFromWad handles the dead player.
+    _trackDeath(dt) {
+        if (!this._world.getUser().isDead()) {
+            this._deathClockMs = 0;
+            return;
+        }
+        if ((this._deathModal !== null) || this._transitioning) {
+            return;
+        }
+        this._deathClockMs += dt;
+        if (this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) {
+            this._openDeathMenu();
+        }
+    }
+
+    _openDeathMenu() {
+        this._inputs.releaseMouse().setVirtualPadVisible(false);
+
+        this._deathDisplay = new MenuDisplay('screen').init(true);
+        this._deathModal   = new MenuDeathModal(this._deathDisplay)
+            .setOnRestart(() => this._restartLevel())
+            .setOnNewGame(() => {
+                this._closeDeathMenu();
+                this._teardownLevel();
+                this._leaveLevelTo((navigator, meta) => navigator.startAtEpisodes(meta, this._skill));
+            })
+            .setOnQuit(() => {
+                this._closeDeathMenu();
+                this._quitToMenu();
+            })
+            .setSaveContext(this._saveContext())
+            .show(() => appTranslator.get('game.death.title'));
+    }
+
+    _closeDeathMenu() {
+        this._deathModal.close();
+        this._deathDisplay.destroy();
+        this._deathModal   = null;
+        this._deathDisplay = null;
+    }
+
+    // Replay the current level with the equipment the player entered it with
+    // (the level-start autosave of the modern ports), through the same frozen
+    // loading flow as a level exit.
+    _restartLevel() {
+        this._transitioning = true;
+        this._closeDeathMenu();
+        this._restartState = this._levelEntryState;
+
+        const display = new MenuDisplay('screen').init(true);
+        this._startNextLevel(display, new MenuModal(display), this._levelName);
     }
 
     // Back to the played WAD's menu (pause, end of game, failed chain
@@ -1132,9 +1214,13 @@ class DoomGame {
     // preselects it — or to the WAD list when no meta is known (direct test
     // shortcut).
     _backToMenu() {
+        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill));
+    }
+
+    _leaveLevelTo(open) {
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
-            navigator.startAtWadMenu(this._wadMeta, this._skill);
+            open(navigator, this._wadMeta);
             return;
         }
         navigator.start();
@@ -1162,6 +1248,11 @@ class DoomGame {
             return;
         }
         this._transitioning = true;
+        // A corpse pushed over an exit line, or a boss finished after the
+        // player's death: the exit wins over the death menu.
+        if (this._deathModal !== null) {
+            this._closeDeathMenu();
+        }
         // The exit modals freeze the game exactly like the pause: the playing
         // sounds hold with it (the next level's bindLevel lifts the freeze).
         // The intermission song covers the tally and the story text (vanilla),
@@ -1320,3 +1411,6 @@ DoomGame.PSPRITE_ASPECT = 4 / 3;
 // Longest gap between two frames the level clock still counts (ms): well above
 // the slowest playable frame, well below a tab switch.
 DoomGame.LEVEL_CLOCK_MAX_STEP_MS = 1000;
+// Delay between the player's death and the death menu: the camera falls and
+// the red tint settles first, and an exit fired right after the death wins.
+DoomGame.DEATH_MENU_DELAY_MS = 1000;

@@ -40,6 +40,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Report a bug* (opens the GitHub issues page), *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a pacifist skill 0 — the normal-skill world, but the monsters never attack — with the original per-skill rules.
 - **Save / load**: five slots per WAD; a save captures the full game state and loading rebuilds the level and restores it exactly (transient visuals excepted).
 - **Pause menu**: `ESC` freezes the game under a translucent overlay — resume, load, save, options, leave the level.
+- **Death menu**: a second after the player dies, over the level that keeps running — restart the level with the equipment you entered it with, start a new game, load a save, leave the level. The original's special endings (E1M8) still end the level instead.
 - **Game profiles** (`js/doom/wad/profile/`): everything game-specific — things, specials, weapons, monsters, progression, skies, sounds, HUD — is profile data, auto-detected from the WAD content. Doom, Doom II, TNT: Evilution, The Plutonia Experiment, Freedoom and Heretic are recognised and playable, each with its own level names; unknown WADs fall back to the doom-format baseline.
 - **On-the-fly conversion** (`js/doom/wad/convert/`): geometry, textures, animations and movers are instantiated directly into in-memory engine objects — no generated file, no server. Middle textures, missing textures and the known defects of the original maps are handled the way the hardware ports do.
 - **Moving elements & triggers**: doors (manual, remote, key-locked, timed), lifts, rising floors (a fixed-height raise lifts the floor again at each trigger, up to the ceiling, and every trigger of the same floor aims from wherever the floor and its neighbours currently are — a switch pressed on a busy floor stays unspent), stairs, perpetual platforms, moving ceilings, crushers and the donut, driven by switches, walk-over lines, gunfire, teleporters and boss deaths — behaviours verified against the original sources, including per-side and per-key door activation, and movers that crush, reopen or stall against whoever blocks them. Wall textures stay pegged as the original renders them while floors move: a floor-pegged wall or switch rides its floor, an unpegged riser keeps its texture pinned to the world.
@@ -138,7 +139,7 @@ website/
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer
-    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, save slots)
+    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, death, save slots)
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
     └── engine/               Spipu3D — the game-agnostic 3D engine
