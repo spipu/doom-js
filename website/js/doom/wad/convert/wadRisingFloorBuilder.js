@@ -4,9 +4,9 @@
  * but the static floor is NOT patched down — the moving top-flat sits at the
  * WAD floor height (origFh) and rises by +delta, where delta comes from the
  * target computed in the analysis (fixed +24/+32, lowest surrounding ceiling,
- * or next-higher floor — vanilla rules, see FLOOR_UP_BY_SPECIAL). A fixed
- * delta plays one leg per trigger (risingFloorLegs): the timeline chains the
- * legs and pauses at each leg end until the next start(). The riser is built
+ * or next-higher floor — vanilla rules, see FLOOR_UP_BY_SPECIAL). A staged
+ * floor (risingFloorStaging) chains its legs in one timeline and pauses at
+ * each leg end until the next start(). The riser is built
  * as a "skirt" from origFh-(legs×delta) to origFh: hidden below the adjacent
  * corridor floor at rest, it emerges as the step once the floor has risen.
  * The skirt covers EVERY two-sided edge, a shared edge with another rising
@@ -25,17 +25,16 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
         // Travel toward the target computed in the analysis (vanilla rules).
         const targetFh = this._analysis.risingFloorTargetFh[si] ?? (origFh + 24);
         const delta    = targetFh - origFh;
-        const legs     = this._analysis.risingFloorLegs[si] ?? 1;
+        const legs     = this._analysis.risingFloorStaging[si]?.legs ?? 1;
         // Skirt base: where the riser starts so that, fully raised, it covers
         // exactly the origFh → origFh+legs×delta step.
         const baseFh  = origFh - delta * legs;
 
-        const floorName = 'risingfloor_' + si;
+        const floorName = this._analysis.floorMovers.get(si).code;
         const mesh = WadMeshBuilder.newMesh();
 
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
         this._buildRisers(mesh, si, origFh, baseFh, floorName);
-        this._buildFloorPeggedWalls(mesh, si, origFh, 0);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {
@@ -93,22 +92,18 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
         };
     }
 
-    // `legs` raise legs chained end to end, each with its boarding pre-frame
-    // (FLOOR_UP_START_DELAY_S); the timeline pauses at every leg end but the
-    // last, so one trigger plays exactly one leg.
+    // `legs` raise legs chained end to end; the timeline pauses at every leg
+    // end but the last, so a trigger plays one leg (or several in a row, see
+    // Instance.startStages). Only the first leg carries the boarding pre-frame
+    // (FLOOR_UP_START_DELAY_S): a run of legs must move as one continuous rise.
     _stagedRaiseTimeline(travelY, moveS, legs) {
-        const keyframes = [];
+        const keyframes = WadConstants.raiseLegKeyframes(0, travelY, moveS);
         const stageEnds = [];
-        let t = 0;
-        for (let leg = 0; leg < legs; leg++) {
-            const legFrames = WadConstants.raiseLegKeyframes(leg * travelY, (leg + 1) * travelY, moveS);
-            for (const frame of legFrames.slice((leg === 0) ? 0 : 1)) {
-                keyframes.push({t: t + frame.t, translate: frame.translate, rotate: frame.rotate});
-            }
-            t += legFrames[legFrames.length - 1].t;
-            if (leg < legs - 1) {
-                stageEnds.push(t);
-            }
+        let t = keyframes[keyframes.length - 1].t;
+        for (let leg = 1; leg < legs; leg++) {
+            stageEnds.push(t);
+            t += moveS;
+            keyframes.push({t: t, translate: [0, (leg + 1) * travelY, 0], rotate: [0, 0, 0]});
         }
 
         return {keyframes, stageEnds};

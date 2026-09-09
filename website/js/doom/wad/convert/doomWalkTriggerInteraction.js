@@ -31,6 +31,7 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
         this._reverseTargets = (reverseTargets ?? []);
         this._stop           = (stop === true);
         this._cycleVariant   = (cycleVariant ?? null);
+        this._stageRules     = null;
         this._exitCallback   = null;
         this._exitSecret     = false;
     }
@@ -47,11 +48,18 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
         return this;
     }
 
+    // code → stage rule of the staged floors among the targets (see
+    // WadMapAnalyzer.stageRulesFor); null when none is staged.
+    setStageRules(rules) {
+        this._stageRules = (rules ?? null);
+        return this;
+    }
+
     triggered(instance) {
         if (this._stop) {
             DoomTriggerTargets.pause(this._targets);
         } else {
-            DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant);
+            DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant, this._stageRules);
         }
 
         if (this._exitCallback !== null) {

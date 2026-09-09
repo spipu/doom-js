@@ -101,6 +101,13 @@ class WadWorldBuilder {
             this._registerInstance(step, bank);
             builtStairCodes.add(step.code);
         }
+        // A predicted mover whose geometry came out empty has no instance: the
+        // consumers below (switches, floor changes) must not look it up.
+        for (const [si, mover] of [...analysis.floorMovers]) {
+            if (!builtLiftCodes.has(mover.code) && !builtRisingCodes.has(mover.code) && !builtStairCodes.has(mover.code)) {
+                analysis.floorMovers.delete(si);
+            }
+        }
 
         // Movement sounds of every built mover (sndseq behaviours).
         this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
@@ -110,13 +117,11 @@ class WadWorldBuilder {
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank);
-            if (sw.rideOnCode !== null) {
-                loader.instances().getByCode(sw.code).setRideOn(loader.instances().getByCode(sw.rideOnCode));
-            }
             this._applyKeyGuard(sw);
             this._applySwitchUseGuard(sw);
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
+            interaction.setStageRules(spec.stageRules);
             if (spec.remoteSwap) {
                 interaction.setRemoteSwap(spec.remoteSwap);
             }
@@ -136,6 +141,7 @@ class WadWorldBuilder {
             this._applyCrossingGuard(wt);
             const spec = wt.interactionSpec;
             const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.cycleVariant);
+            interaction.setStageRules(spec.stageRules);
             if (spec.isExit && this._onLevelExit !== null) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -231,7 +237,7 @@ class WadWorldBuilder {
 
         // "+change" floors: swap the moving top-flat texture (and the sector's
         // damage special) when the movement starts or completes.
-        this._wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction);
+        this._wireFloorChanges(analysis, animBank, damageInteraction);
 
         // Things (decorations + pickups) as billboard sprites
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
@@ -714,7 +720,7 @@ class WadWorldBuilder {
                 kind:     'zone',
                 x1:       vx[ld.v1][0], y1: vx[ld.v1][1],
                 x2:       vx[ld.v2][0], y2: vx[ld.v2][1],
-                once:     (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] === true),
+                once:     !WadConstants.specialRepeats(wt.special),
                 used:     false,
                 zoneCode: 'walk_' + wt.ldIdx
             });
@@ -783,7 +789,7 @@ class WadWorldBuilder {
     // the damage special come from the SOURCE sector's live surface (vanilla
     // reads line->frontsector at fire time, so chained changes propagate). No
     // texture registers outside the batch: every reachable flat resolves here.
-    _wireFloorChanges(analysis, animBank, builtLiftCodes, builtRisingCodes, damageInteraction) {
+    _wireFloorChanges(analysis, animBank, damageInteraction) {
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
         this._game.setSectorSurfaces(surfaces);
 
@@ -791,9 +797,8 @@ class WadWorldBuilder {
         for (const key of Object.keys(analysis.floorChange)) {
             const si     = parseInt(key, 10);
             const change = analysis.floorChange[key];
-            const code = ((builtRisingCodes.has('risingfloor_' + si)) ? ('risingfloor_' + si)
-                : ((builtLiftCodes.has('lift_' + si)) ? ('lift_' + si) : null));
-            if (code === null) {
+            const code = (analysis.floorMovers.get(si)?.code ?? null);
+            if ((code === null) || code.startsWith('stair_')) {
                 continue;
             }
             const ownIds = new Set();
@@ -1013,6 +1018,7 @@ class WadWorldBuilder {
                         targets:        split.start,
                         reverseTargets: split.reverse,
                         cycleVariant:   WadConstants.cycleKeyForSpecial(action.special),
+                        stageRules:     WadMapAnalyzer.stageRulesFor(analysis, action.special, split.start),
                         exit:           (action.exit === true)
                     });
                 }

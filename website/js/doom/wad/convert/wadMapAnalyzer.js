@@ -34,14 +34,13 @@ class WadMapAnalyzer {
         const liftLowerVariants = this._identifyLiftLowers(lifts);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
-        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise);
+        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise, lifts.liftOriginalFh);
         const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches(lifts.liftOriginalFh);
-        const floorMoverCodes = this._builtMoverCodes(lifts, rising, stairs);
-        const floorPeggedWalls = this._identifyFloorPeggedWalls(floorMoverCodes, switches.ids);
+        const floorMovers = this._identifyFloorMovers(lifts, rising, stairs);
         const teleporterLinedefs = this._identifyTeleporters();
         const walkTriggerLinedefs = this._identifyWalkTriggers();
         const gunTriggerLinedefs = this._identifyGunTriggers();
@@ -64,9 +63,8 @@ class WadMapAnalyzer {
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
             risingFloorInstantIds: rising.risingFloorInstantIds,
-            risingFloorLegs:       rising.risingFloorLegs,
-            floorPeggedWalls:      floorPeggedWalls,
-            floorMoverCodes:       floorMoverCodes,
+            risingFloorStaging:    rising.risingFloorStaging,
+            floorMovers:           floorMovers,
             stairIds:              stairs.stairIds,
             stairInfo:             stairs.stairInfo,
             stairStepTag:          stairs.stairStepTag,
@@ -835,7 +833,7 @@ class WadMapAnalyzer {
     // (clamped to the own ceiling, -8 for crush) or next-higher neighbour
     // floor. A sector whose target does not rise above its floor is dropped
     // (no movement in vanilla): its static floor is kept, no dead instance.
-    _identifyRisingFloors(doorSectorIds, movingFloorDownIds, instantRaise = {}) {
+    _identifyRisingFloors(doorSectorIds, movingFloorDownIds, instantRaise = {}, liftOriginalFh = {}) {
         const {sectors} = this._level;
         const linedefs = this._moverLinedefs();
         const risingFloorIds        = new Set();
@@ -869,9 +867,17 @@ class WadMapAnalyzer {
             risingFloorTargetFh[si] = info.targetFh;
         }
 
-        const risingFloorLegs = {};
+        // A fixed-delta special splits the travel in legs (staging); each
+        // trigger then runs its own leg count from the live floor (stageRulesFor).
+        const risingFloorStaging = {};
         for (const si of risingFloorIds) {
-            risingFloorLegs[si] = ((risingFloorInstantIds.has(si)) ? 1 : this._risingFloorLegs(si, risingFloorSpecial[si], linedefs));
+            const staging = ((risingFloorInstantIds.has(si)) ? null : this._risingFloorStaging(si, linedefs, liftOriginalFh));
+            if (staging === null) {
+                continue;
+            }
+            risingFloorStaging[si]  = staging;
+            risingFloorSpecial[si]  = staging.special;
+            risingFloorTargetFh[si] = staging.origFh + staging.step;
         }
 
         return {
@@ -879,93 +885,154 @@ class WadMapAnalyzer {
             risingFloorSpecial:    risingFloorSpecial,
             risingFloorTargetFh:   risingFloorTargetFh,
             risingFloorInstantIds: risingFloorInstantIds,
-            risingFloorLegs:       risingFloorLegs
+            risingFloorStaging:    risingFloorStaging
         };
     }
 
-    // One-sided walls of a moving-floor sector whose texture is pegged to the
-    // floor (ML_DONTPEGBOTTOM): vanilla anchors them to the LIVE floor
-    // (r_segs.c, rw_midtexturemid), so the mover mesh draws them and they ride
-    // with it. Switch lines keep their own panel; a sky ceiling keeps the
-    // static wall (a quad poking above it would show against the sky) and
-    // anchors its texture to the mover instead (WadStaticMapBuilder).
-    // Returns linedef index → sector index.
-    _identifyFloorPeggedWalls(floorMoverCodes, switchLinedefIds) {
-        const {linedefs, sidedefs, sectors} = this._level;
-        const walls = {};
-        for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
-            const ld = linedefs[ldIdx];
-            if ((ld.right < 0) || (ld.left >= 0) || switchLinedefIds.has(ldIdx)
-                || ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) === 0)) {
+    // Stage rules of a trigger's staged targets: code → {step, origFh, stages}
+    // for a fixed delta, {step, origFh, targetFhFor(liveFh)} for an absolute
+    // target; null when nothing is staged (DoomTriggerTargets.stagesFor).
+    static stageRulesFor(analysis, special, targets) {
+        const raise = WadConstants.FLOOR_UP_BY_SPECIAL[special];
+        if (raise === undefined) {
+            return null;
+        }
+        const rules = {};
+        for (const code of targets) {
+            const staging = ((code.startsWith('risingfloor_'))
+                ? (analysis.risingFloorStaging[WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')] ?? null)
+                : null);
+            if (staging === null) {
                 continue;
             }
-            const sd = sidedefs[ld.right];
-            if (!sd.middle || (sd.middle === '-') || WadConstants.isSkyFlat(sectors[sd.sector].ct)
-                || !floorMoverCodes.has(sd.sector)) {
-                continue;
+            const base = {step: staging.step, origFh: staging.origFh};
+            if (typeof raise.target === 'number') {
+                rules[code] = {...base, stages: Math.max(1, Math.round(raise.target / staging.step))};
+            } else if (raise.target === 'nextHigher') {
+                rules[code] = {...base, targetFhFor: (liveFh) => WadMapAnalyzer.nextHighestFloor(staging.neighbourFloors, liveFh)};
+            } else if (staging.absoluteTargets[special] !== undefined) {
+                const targetFh = staging.absoluteTargets[special];
+                rules[code] = {...base, targetFhFor: () => targetFh};
             }
-            walls[ldIdx] = sd.sector;
         }
 
-        return walls;
+        return ((Object.keys(rules).length > 0) ? rules : null);
     }
 
-    // Instance code of every floor mover whose builder will actually emit one
-    // (sector index → code) — the static map hands a wall over to a mover only
-    // when it exists (a lift or a step with no travel yields no instance).
-    _builtMoverCodes(lifts, rising, stairs) {
+    // P_FindNextHighestFloor: lowest of the floors strictly above baseFh, null
+    // when none (vanilla then keeps the current floor).
+    static nextHighestFloor(floors, baseFh) {
+        const higher = floors.filter((fh) => (fh > baseFh));
+
+        return ((higher.length > 0) ? Math.min(...higher) : null);
+    }
+
+    // Floor movers that will get an instance (sector → {code, restFh}): the
+    // single place deciding a lift or a step with no travel yields none.
+    _identifyFloorMovers(lifts, rising, stairs) {
         const {sectors} = this._level;
-        const codes = new Map();
+        const movers = new Map();
         for (const si of rising.risingFloorIds) {
-            codes.set(si, 'risingfloor_' + si);
+            movers.set(si, {code: 'risingfloor_' + si, restFh: sectors[si].fh});
         }
         for (const si of lifts.movingFloorDownIds) {
             const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si]);
             const maxFh = ((isPerpetual) ? lifts.liftMaxAdjFh[si] : lifts.liftOriginalFh[si]);
             if (maxFh > lifts.liftMinAdjFh[si]) {
-                codes.set(si, 'lift_' + si);
+                movers.set(si, {code: 'lift_' + si, restFh: lifts.liftOriginalFh[si]});
             }
         }
         for (const si of stairs.stairIds) {
             if (stairs.stairInfo[si].targetFh > sectors[si].fh) {
-                codes.set(si, 'stair_' + si);
+                movers.set(si, {code: 'stair_' + si, restFh: sectors[si].fh});
             }
         }
 
-        return codes;
+        return movers;
     }
 
-    // How many times a fixed-delta raise (raiseFloor24/32/512) can play: the
-    // destination is computed from the LIVE floor at each trigger, so every
-    // line aiming at the sector raises it again — once per one-use line,
-    // without limit for a repeatable one — never above the sector's ceiling
-    // (UZDoom MoveFloor clamps a rising floor there). Absolute targets
-    // (neighbour ceiling/floor, texture) move once.
-    _risingFloorLegs(si, special, linedefs) {
+    // Staging of a floor aimed at by a fixed-delta raise: vanilla recomputes the
+    // destination from the LIVE floor at each trigger, so the travel is cut in
+    // legs (gcd of every reachable height, capped by RISING_FLOOR_MAX_LEGS) up to
+    // the ceiling — UZDoom clamps there — or one leg per one-use line. One speed
+    // for the whole timeline (the first fixed-delta line's). null = not staged.
+    _risingFloorStaging(si, linedefs, liftOriginalFh) {
         const {sectors} = this._level;
-        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special];
-        if (typeof rule.target !== 'number') {
-            return 1;
-        }
-        const sec     = sectors[si];
-        const maxLegs = Math.max(1, Math.floor((sec.ch - sec.fh) / rule.target));
-        let legs = 0;
+        const sec = sectors[si];
+        const neighbourIds    = this._neighbourSectorIds(si);
+        const neighbourFloors = neighbourIds.map((n) => (liftOriginalFh[n] ?? sectors[n].fh));
+        const deltas  = [];
+        const heights = [];
+        const absoluteTargets = {};
+        let onceLegsDu = 0;
+        let openEnded  = false;
         for (const ld of linedefs) {
-            if ((ld.tag !== sec.tag) || (ld.tag === 0)
-                || (typeof (WadConstants.FLOOR_UP_BY_SPECIAL[ld.special]?.target) !== 'number')) {
+            const rule = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
+            if ((ld.tag !== sec.tag) || (ld.tag === 0) || (rule === undefined) || (rule.donutRingOnly === true)) {
                 continue;
             }
-            if (WadConstants.specialRepeats(ld.special)) {
-                return maxLegs;
+            if (typeof rule.target !== 'number') {
+                openEnded = true;
+                if (rule.target === 'nextHigher') {
+                    heights.push(...neighbourFloors);
+                } else {
+                    absoluteTargets[ld.special] = this._risingFloorTarget(si, ld.special, liftOriginalFh, neighbourIds);
+                    heights.push(absoluteTargets[ld.special]);
+                }
+                continue;
             }
-            legs++;
+            deltas.push({special: ld.special, delta: rule.target});
+            if (WadConstants.specialRepeats(ld.special)) {
+                openEnded = true;
+            } else {
+                onceLegsDu += rule.target;
+            }
         }
-        return Math.min(Math.max(legs, 1), maxLegs);
+        if (deltas.length === 0) {
+            return null;
+        }
+        const deltaStep = deltas.map((d) => d.delta).reduce((a, b) => WadMapAnalyzer._gcd(a, b));
+        const fineStep  = heights.filter((h) => (h > sec.fh)).map((h) => (h - sec.fh)).reduce((a, b) => WadMapAnalyzer._gcd(a, b), deltaStep);
+        const step      = ((((sec.ch - sec.fh) / fineStep) <= WadConstants.RISING_FLOOR_MAX_LEGS) ? fineStep : deltaStep);
+        const maxLegs   = Math.max(1, Math.floor((sec.ch - sec.fh) / step));
+
+        return {
+            step:            step,
+            legs:            ((openEnded) ? maxLegs : Math.min(onceLegsDu / step, maxLegs)),
+            origFh:          sec.fh,
+            special:         deltas[0].special,
+            neighbourFloors: neighbourFloors,
+            absoluteTargets: absoluteTargets
+        };
     }
 
-    // Target floor height of a rising sector (vanilla p_floor.c / p_plats.c).
-    // Neighbours are the sectors sharing a two-sided linedef with si.
-    _risingFloorTarget(si, special) {
+    static _gcd(a, b) {
+        return ((b === 0) ? a : WadMapAnalyzer._gcd(b, a % b));
+    }
+
+    // Indices of the sectors sharing a two-sided linedef with si (one per line).
+    _neighbourSectorIds(si) {
+        const {linedefs, sidedefs} = this._level;
+        const neighbours = [];
+        for (const ld of linedefs) {
+            if ((ld.right < 0) || (ld.left < 0)) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            if (rSi === si) {
+                neighbours.push(lSi);
+            } else if (lSi === si) {
+                neighbours.push(rSi);
+            }
+        }
+
+        return neighbours;
+    }
+
+    // Target floor height of a rising sector (vanilla p_floor.c / p_plats.c),
+    // neighbour lifts read at their rest height.
+    _risingFloorTarget(si, special, liftOriginalFh = {}, neighbourIds = null) {
         const {linedefs, sidedefs, sectors} = this._level;
         const sec  = sectors[si];
         const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special].target;
@@ -997,25 +1064,12 @@ class WadMapAnalyzer {
             return ((shortest !== null) ? (sec.fh + shortest) : sec.fh);
         }
 
-        const neighbours = [];
-        for (const ld of linedefs) {
-            if ((ld.right < 0) || (ld.left < 0)) {
-                continue;
-            }
-            const rSi = sidedefs[ld.right].sector;
-            const lSi = sidedefs[ld.left].sector;
-            if (rSi === si) {
-                neighbours.push(sectors[lSi]);
-            } else if (lSi === si) {
-                neighbours.push(sectors[rSi]);
-            }
-        }
+        const ids        = (neighbourIds ?? this._neighbourSectorIds(si));
+        const neighbours = ids.map((n) => sectors[n]);
 
         if (rule === 'nextHigher') {
-            // P_FindNextHighestFloor: smallest neighbour floor strictly above
-            // the current one; none = current floor (no movement).
-            const higher = neighbours.map((s) => s.fh).filter((fh) => fh > sec.fh);
-            return ((higher.length > 0) ? Math.min(...higher) : sec.fh);
+            const floors = ids.map((n) => (liftOriginalFh[n] ?? sectors[n].fh));
+            return (WadMapAnalyzer.nextHighestFloor(floors, sec.fh) ?? sec.fh);
         }
 
         // 'lowestCeiling' / 'lowestCeilingCrush' — P_FindLowestCeilingSurrounding
@@ -1099,15 +1153,9 @@ class WadMapAnalyzer {
     // First two-sided neighbour of si whose floor sits at the given height
     // (vanilla lowerAndChange line walk), -1 when none.
     _sectorAtHeight(si, fh) {
-        const {linedefs, sidedefs, sectors} = this._level;
-        for (const ld of linedefs) {
-            if ((ld.right < 0) || (ld.left < 0)) {
-                continue;
-            }
-            const rSi = sidedefs[ld.right].sector;
-            const lSi = sidedefs[ld.left].sector;
-            const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : -1));
-            if (other !== -1 && sectors[other].fh === fh) {
+        const {sectors} = this._level;
+        for (const other of this._neighbourSectorIds(si)) {
+            if (sectors[other].fh === fh) {
                 return other;
             }
         }

@@ -15,7 +15,7 @@ class DoomGunTriggers {
     }
 
     /**
-     * @param {object[]} lines [{x1, z1, x2, z2, once, used, targets, cycleVariant}]
+     * @param {object[]} lines [{x1, z1, x2, z2, once, used, targets, cycleVariant, stageRules}]
      */
     constructor(lines) {
         this._lines = lines;
@@ -64,7 +64,7 @@ class DoomGunTriggers {
         // which rings the button from the line's position unconditionally.
         doomSound.playAt('switches/normbutn',
             [(line.x1 + line.x2) / 2, line.y, (line.z1 + line.z2) / 2]);
-        DoomTriggerTargets.fire(line.targets, null, line.cycleVariant);
+        DoomTriggerTargets.fire(line.targets, null, line.cycleVariant, line.stageRules ?? null);
     }
 
 }

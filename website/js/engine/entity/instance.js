@@ -32,8 +32,10 @@ class Instance extends AbstractLoadedEntity {
         this._animOnlyOnce       = false;
         this._animDone           = false;
         // Forward playback pauses at each of these times and waits for the
-        // next start() (a staged mover: one leg per trigger).
+        // next start() (a staged mover: one leg per trigger); startStages()
+        // lets one trigger run through several of them.
         this._animStageEnds      = [];
+        this._animStagesLeft     = 0;
 
         // Trigger / interaction (how the animation is activated)
         this._trigger                = 'none';
@@ -241,6 +243,7 @@ class Instance extends AbstractLoadedEntity {
             time:           this._animTime,
             playing:        this._animPlaying,
             reverse:        this._animReverse,
+            stagesLeft:     this._animStagesLeft,
             done:           this._animDone,
         };
     }
@@ -257,6 +260,7 @@ class Instance extends AbstractLoadedEntity {
         this._animTime        = prev.time;
         this._animPlaying     = prev.playing;
         this._animReverse     = prev.reverse;
+        this._animStagesLeft  = prev.stagesLeft;
         this._animDone        = prev.done;
         this._computeWorldCenter();
     }
@@ -273,6 +277,7 @@ class Instance extends AbstractLoadedEntity {
             playing:        this._animPlaying,
             reverse:        this._animReverse,
             reverseScale:   this._animReverseScale,
+            stagesLeft:     this._animStagesLeft,
             done:           this._animDone,
             variant:        this._animActiveVariant,
             defaultVariant: this._animDefaultVariant,
@@ -308,6 +313,7 @@ class Instance extends AbstractLoadedEntity {
         this._animPlaying      = data.playing;
         this._animReverse      = data.reverse;
         this._animReverseScale = data.reverseScale;
+        this._animStagesLeft   = (data.stagesLeft ?? 0);
         this._animDone         = data.done;
         this._rideOn           = rideOnInstance;
         this._rideBaseY        = data.rideBaseY;
@@ -462,7 +468,7 @@ class Instance extends AbstractLoadedEntity {
         this._crushDamage             = (data.crushDamage ?? null);
         this._interaction             = (data.interaction || null);
         this._animKeyframes           = (data.keyframes || []);
-        this._animStageEnds           = (data.stageEnds || []);
+        this._animStageEnds           = (data.stageEnds ?? []);
         this._animVariants            = (data.keyframeVariants || null);
         this._animDefaultVariant      = (data.defaultVariant ?? null);
 
@@ -499,16 +505,21 @@ class Instance extends AbstractLoadedEntity {
         } else {
             const fromTime = this._animTime;
             this._animTime += (dt / 1000) * ((this._blockedPressing) ? this._blockedSlowFactor : 1);
-            const stageEnd = this._stageEndCrossed(fromTime, this._animTime);
-            if (stageEnd !== null) {
-                this._animTime    = stageEnd;
-                this._animPlaying = false;
+            // Stage ends strictly after fromTime: resuming from one must not
+            // re-pause on it. The stages still to run are consumed first.
+            const crossed = this._animStageEnds.filter((end) => ((end > fromTime) && (this._animTime >= end) && (end < this._animMaxTime)));
+            if (crossed.length > this._animStagesLeft) {
+                this._animTime       = crossed[this._animStagesLeft];
+                this._animStagesLeft = 0;
+                this._animPlaying    = false;
             } else if (this._animTime >= this._animMaxTime) {
                 if (this._animLoop) {
                     this._animTime = this._animTime % this._animMaxTime;
                 } else {
                     this.stop();
                 }
+            } else {
+                this._animStagesLeft -= crossed.length;
             }
         }
 
@@ -516,17 +527,6 @@ class Instance extends AbstractLoadedEntity {
 
         const dy = (this._delta.translate[1] - prevY);
         this._noteMotionDir(((!this._animPlaying || (Math.abs(dy) <= Instance.MOTION_EPSILON)) ? 0 : Math.sign(dy)));
-    }
-
-    // First stage end strictly after `from` and reached by `to`: resuming from
-    // a stage end must not re-pause on it.
-    _stageEndCrossed(from, to) {
-        for (const end of this._animStageEnds) {
-            if ((end > from) && (to >= end) && (end < this._animMaxTime)) {
-                return end;
-            }
-        }
-        return null;
     }
 
     // A once-only trigger that already fired (or was force-stopped) is spent
@@ -688,7 +688,8 @@ class Instance extends AbstractLoadedEntity {
         }
         // A cycle paused mid-travel (stop line, vanilla stasis) resumes as-is
         // whatever the trigger asks for: P_ActivateInStasis re-awakens the
-        // parked thinker, it never re-reads the activating line's action.
+        // parked thinker, it never re-reads the activating line's action — the
+        // stages still to run are kept for the same reason.
         if (this._isPausedMidCycle()) {
             this._animPlaying = true;
             if (this._onStart !== null) {
@@ -696,6 +697,7 @@ class Instance extends AbstractLoadedEntity {
             }
             return true;
         }
+        this._animStagesLeft = 0;
         // Another cycle is a NEW cycle, not the re-trigger of a spent one
         // (vanilla spawns a fresh thinker), so a done animation accepts it.
         // One trigger key is broadcast to every tagged target whatever its
@@ -732,6 +734,22 @@ class Instance extends AbstractLoadedEntity {
         }
 
         return true;
+    }
+
+    // start() running through `count` stages before pausing (a staged mover
+    // driven several legs at once). count <= 0 is taken with nothing to do.
+    startStages(count, variant = null) {
+        if (count <= 0) {
+            return true;
+        }
+        const resumed = this._isPausedMidCycle();
+        const taken   = this.start(variant);
+        if (taken && this._animPlaying) {
+            // A resumed run keeps its own remaining stages, its target was
+            // set when it left; a fresh one takes the requested count.
+            this._animStagesLeft = ((resumed) ? Math.max(this._animStagesLeft, count - 1) : (count - 1));
+        }
+        return taken;
     }
 
     _isPausedMidCycle() {
@@ -832,8 +850,8 @@ class Instance extends AbstractLoadedEntity {
     }
 
     stop() {
-        this._animTime    = this._animMaxTime;
-        this._animPlaying = false;
+        this._animTime       = this._animMaxTime;
+        this._animPlaying    = false;
         this._noteMotionDir(0);
         if (this._animOnlyOnce) {
             this._animDone = true;

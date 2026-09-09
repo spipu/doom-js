@@ -34,6 +34,6 @@ class DoomBossDeath {
             }
             return;
         }
-        DoomTriggerTargets.fire(rule.targets, rule.reverseTargets, rule.cycleVariant);
+        DoomTriggerTargets.fire(rule.targets, rule.reverseTargets, rule.cycleVariant, rule.stageRules ?? null);
     }
 }

@@ -46,7 +46,7 @@ class WadStaticMapBuilder {
 
     _buildWalls(mesh) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const {doorSectorIds, doorHeights, switchLinedefIds, switchWalls, floorPeggedWalls, floorMoverCodes, liftOriginalFh} = this._analysis;
+        const {doorSectorIds, doorHeights, switchLinedefIds, switchWalls, floorMovers} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
@@ -70,7 +70,7 @@ class WadStaticMapBuilder {
             const uScroll = (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0);
 
             if (ld.left < 0) {
-                if (switchLinedefIds.has(ldIdx) || (floorPeggedWalls[ldIdx] !== undefined)) {
+                if (switchLinedefIds.has(ldIdx)) {
                     continue;
                 }
                 if (rIsDoor) {
@@ -103,19 +103,17 @@ class WadStaticMapBuilder {
                 if (ti >= 0) {
                     const {width: tw, height: th} = this._bank.getDims(ti);
                     const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
-                    // A floor-pegged wall of a moving-floor sector kept static
-                    // (sky ceiling): its texture is pegged to the REST floor
-                    // and rides the mover from there (vanilla: live floor).
-                    const moverCode = ((lowerUnpeg) ? (floorMoverCodes.get(rSd.sector) ?? null) : null);
-                    const pegFh = ((moverCode !== null) ? (liftOriginalFh[rSd.sector] ?? rSec.fh) : rSec.fh);
-                    // ML_DONTPEGBOTTOM: texture bottom at floor instead of texture top at ceiling
+                    // ML_DONTPEGBOTTOM pegs the texture to the LIVE floor
+                    // (r_segs.c): rest floor here, the mover's shift via uvAnchor.
+                    const mover = ((lowerUnpeg) ? (floorMovers.get(rSd.sector) ?? null) : null);
+                    const pegFh = ((mover !== null) ? mover.restFh : rSec.fh);
                     const yo = rSd.yo + ((lowerUnpeg) ? (th - (rSec.ch - pegFh)) : 0);
                     WadMeshBuilder.addWallQuad(mesh, ti,
                         wx1, wz1, wx2, wz2,
                         rSec.fh * SCALE, rSec.ch * SCALE,
                         wallLen, tw, th,
                         {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector),
-                            uvAnchor: ((moverCode !== null) ? WadConstants.wallTextureAnchor(moverCode, th, true) : null)});
+                            uvAnchor: ((mover !== null) ? WadConstants.wallTextureAnchor(mover.code, th, true) : null)});
                 }
                 continue;
             }

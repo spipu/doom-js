@@ -65,7 +65,7 @@ class WadWalkTriggerBuilder {
 
         const walkName = 'walk_' + wt.ldIdx;
         // Exits are all W1 (once); other specials carry their own W1/WR flag.
-        const onlyOnce = ((isExit) ? true : (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[wt.special] ?? false));
+        const onlyOnce = (isExit || !WadConstants.specialRepeats(wt.special));
 
         return {
             code:     walkName,
@@ -97,6 +97,7 @@ class WadWalkTriggerBuilder {
                 // null when the special names none, ignored by targets that
                 // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(wt.special),
+                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }
