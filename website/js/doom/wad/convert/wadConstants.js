@@ -540,9 +540,6 @@ class WadConstants {
     // Derived membership set — never edit this, edit FLOOR_UP_BY_SPECIAL.
     static FLOOR_MOVE_UP_SPECIALS = null;
 
-    // Ceiling on the legs of a staged rising floor (WadMapAnalyzer._risingFloorStaging)
-    static RISING_FLOOR_MAX_LEGS = 256;
-
     // Deliberate deviation from vanilla (which starts the raise instantly):
     // a rising floor waits this long before moving, so a player who fired the
     // trigger next to the platform has time to step onto it and ride up.
@@ -760,6 +757,9 @@ class WadConstants {
     // mo->z == floorheight exactly; our float heights need a hair of slack.
     static ON_FLOOR_TOLERANCE = 0.02;
 
+    // Tolerance (Doom units) when comparing a live floor with a target height
+    static FLOOR_HEIGHT_EPSILON = 1e-3;
+
     // Doom thing type of a teleport landing (destination marker, not rendered).
     static TELEPORT_LANDING_THING = 14;
 
@@ -927,9 +927,10 @@ class WadConstants {
         11: {damage: 20, windowTics: 32, leak: 0}
     };
 
-    // Health at or under which the E1M8 finale sector ends the level
-    // (p_spec.c P_PlayerInSpecialSector case 11).
-    static SECTOR_DAMAGE_EXIT_HEALTH = 10;
+    // The E1M8 finale sector (p_spec.c P_PlayerInSpecialSector case 11) and
+    // the health at or under which it ends the level.
+    static SECTOR_DAMAGE_EXIT_SPECIAL = 11;
+    static SECTOR_DAMAGE_EXIT_HEALTH  = 10;
 
     // Secret sector (P_SpawnSpecials counts it in totalsecret, then
     // P_PlayerInSpecialSector credits it once and clears the special)

@@ -13,7 +13,7 @@ class WadSwitchBuilder {
      * @param {Set<string>}    builtStairCodes - codes of the stair-step instances actually built
      * @param {Set<string>}    builtRisingCodes - codes of the rising-floor instances actually built
      */
-    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes) {
+    constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf) {
         this._level            = level;
         this._analysis         = analysis;
         this._bank             = bank;
@@ -21,6 +21,7 @@ class WadSwitchBuilder {
         this._builtDoorCodes   = builtDoorCodes;
         this._builtStairCodes  = builtStairCodes;
         this._builtRisingCodes = builtRisingCodes;
+        this._liveFloorOf      = liveFloorOf;
     }
 
     /**
@@ -103,7 +104,7 @@ class WadSwitchBuilder {
                 // null when the special names none, ignored by targets that
                 // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(ld.special),
-                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start),
+                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start, this._liveFloorOf),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
@@ -310,15 +311,11 @@ class WadSwitchBuilder {
             // inside the closed shutter, revealed when it opens (MAP20's
             // SW1GARG alcove) — the door slab has no face on a one-sided edge.
             const doorH = this._analysis.doorHeights[rSd.sector];
-            // ML_DONTPEGBOTTOM pegs the texture to the LIVE floor (r_segs.c):
-            // rest floor here, the mover's shift via uvAnchor.
-            const mover = ((lowerUnpeg) ? (this._analysis.floorMovers.get(rSd.sector) ?? null) : null);
-            const pegFh = ((mover !== null) ? mover.restFh : rSec.fh);
             const yBot  = ((doorH !== undefined) ? doorH.floorH : rSec.fh);
             const yTop  = ((doorH !== undefined) ? doorH.ceilH : rSec.ch);
+            const uv    = WadMeshBuilder.floorPeggedWallUv(ld, rSd, rSec, yTop, this._analysis.floorMovers, th);
             return {sd: rSd, yBotDu: yBot, yTopDu: yTop,
-                yo: rSd.yo + ((lowerUnpeg) ? (th - (yTop - pegFh)) : 0), flip: true, light: rSec.light, lightSi: rSd.sector,
-                uvAnchor: ((mover !== null) ? WadConstants.wallTextureAnchor(mover.code, th, true) : null)};
+                yo: uv.yOff, flip: true, light: rSec.light, lightSi: rSd.sector, uvAnchor: uv.uvAnchor};
         }
 
         const lSd  = sidedefs[ld.left];

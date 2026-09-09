@@ -113,10 +113,9 @@ class AbstractMoverBuilder {
             const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
             const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
             edges.push({
-                tex, srcSd, srcSec, srcSi,
+                ld, tex, srcSd, srcSec, srcSi,
                 wx1, wz1, wx2, wz2,
                 wallLen: WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2),
-                lowerUnpeg: ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0),
                 flip: !moverOnRight
             });
         }
@@ -131,13 +130,13 @@ class AbstractMoverBuilder {
                 continue;
             }
             const {width: tw, height: th} = this._bank.getDims(ti);
-            const yo = e.srcSd.yo + ((e.lowerUnpeg) ? (e.srcSec.ch - origFh) : 0);
+            const uv = WadMeshBuilder.moverRiserUv(e.ld, e.srcSd, e.srcSec, origFh, moverCode, th);
             WadMeshBuilder.addWallQuad(mesh, ti,
                 e.wx1, e.wz1, e.wx2, e.wz2,
                 riserBaseFh * SCALE, origFh * SCALE,
                 e.wallLen, tw, th,
-                {xOff: e.srcSd.xo, yOff: yo, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi),
-                    uvAnchor: ((e.lowerUnpeg) ? WadConstants.wallTextureAnchor(moverCode, th, false) : null)});
+                {xOff: e.srcSd.xo, yOff: uv.yOff, flip: e.flip, light: e.srcSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, e.srcSi),
+                    uvAnchor: uv.uvAnchor});
         }
     }
 

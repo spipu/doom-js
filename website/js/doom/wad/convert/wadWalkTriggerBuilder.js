@@ -21,13 +21,14 @@ class WadWalkTriggerBuilder {
      * @param {Set<string>}    builtDoorCodes
      * @param {Set<string>}    builtStairCodes
      */
-    constructor(level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
+    constructor(level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes, liveFloorOf) {
         this._level            = level;
         this._analysis         = analysis;
         this._builtLiftCodes   = builtLiftCodes;
         this._builtRisingCodes = builtRisingCodes;
         this._builtDoorCodes   = builtDoorCodes;
         this._builtStairCodes  = builtStairCodes ?? new Set();
+        this._liveFloorOf      = liveFloorOf;
     }
 
     /**
@@ -97,7 +98,7 @@ class WadWalkTriggerBuilder {
                 // null when the special names none, ignored by targets that
                 // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(wt.special),
-                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start),
+                stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start, this._liveFloorOf),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
             }
