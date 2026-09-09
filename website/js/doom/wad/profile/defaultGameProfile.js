@@ -58,6 +58,10 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {};
     }
 
+    levelNameStringPrefix() {
+        return 'HUSTR';
+    }
+
     // Transcription of the A_BossDeath switch (linuxdoom p_enemy.c): specials
     // 38 = lowerFloorToLowest, 109 = blazeOpen, 30 = raiseToTexture. E2M8 and
     // E3M8 fall through to G_ExitLevel — their only exit.

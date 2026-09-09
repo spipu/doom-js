@@ -1,5 +1,5 @@
 {
-    "version": "v1.747",
+    "version": "v1.749",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -48,6 +48,8 @@
             "/js/doom/wad/profile/abstractGameProfile.js",
             "/js/doom/wad/profile/defaultGameProfile.js",
             "/js/doom/wad/profile/doomGameProfile.js",
+            "/js/doom/wad/profile/tntGameProfile.js",
+            "/js/doom/wad/profile/plutoniaGameProfile.js",
             "/js/doom/wad/profile/freedoomGameProfile.js",
             "/js/doom/wad/profile/hereticGameProfile.js",
             "/js/doom/wad/gameProfileList.js",

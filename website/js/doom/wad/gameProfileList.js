@@ -1,7 +1,8 @@
 /**
  * Registry of the game profiles (same pattern as Object3dRendererList).
  * Every game registers one profile instance here; getForWad probes them in
- * order (most specific first — freedoom also carries M_DOOM) and falls back
+ * order (most specific first — freedoom also carries M_DOOM and the TNT /
+ * Plutonia textures, which in turn come with M_DOOM) and falls back
  * to the default profile: an unknown WAD (any PWAD/IWAD without a recognized
  * signature) is treated as a plain doom-format WAD.
  *
@@ -12,6 +13,8 @@ class GameProfileList {
         this._profiles = [
             new HereticGameProfile(),
             new FreedoomGameProfile(),
+            new TntGameProfile(),
+            new PlutoniaGameProfile(),
             new DoomGameProfile()
         ];
         this._fallback = new DefaultGameProfile();
