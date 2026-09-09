@@ -917,20 +917,22 @@ class WadConstants {
     // Damage applied to a player standing on the floor of a sector carrying
     // these SECTOR specials, once per windowTics window. leak = radiation-suit
     // leak chance out of 256 per window (0 = full protection, 5 = the Doom
-    // super-damage leak, 256 = the suit never protects — e.g. Heretic lava).
-    // 11 = E1M8 finale (unprotected damage + normal exit at the exit health).
+    // super-damage leak, 256 = the suit never protects — Heretic lava, and
+    // the E1M8 finale whose damage ignores the suit).
     static SECTOR_DAMAGE_BY_SPECIAL = {
         7:  {damage: 5,  windowTics: 32, leak: 0},
         5:  {damage: 10, windowTics: 32, leak: 0},
         4:  {damage: 20, windowTics: 32, leak: 5},
         16: {damage: 20, windowTics: 32, leak: 5},
-        11: {damage: 20, windowTics: 32, leak: 0}
+        11: {damage: 20, windowTics: 32, leak: 256}
     };
 
-    // The E1M8 finale sector (p_spec.c P_PlayerInSpecialSector case 11) and
-    // the health at or under which it ends the level.
-    static SECTOR_DAMAGE_EXIT_SPECIAL = 11;
-    static SECTOR_DAMAGE_EXIT_HEALTH  = 10;
+    // The E1M8 finale sector (p_spec.c P_PlayerInSpecialSector case 11), the
+    // health at or under which it ends the level, and the health a killing blow
+    // leaves the player there (P_DamageMobj "end of game hell hack": health − 1).
+    static SECTOR_DAMAGE_EXIT_SPECIAL     = 11;
+    static SECTOR_DAMAGE_EXIT_HEALTH      = 10;
+    static SECTOR_DAMAGE_EXIT_KEPT_HEALTH = 1;
 
     // Secret sector (P_SpawnSpecials counts it in totalsecret, then
     // P_PlayerInSpecialSector credits it once and clears the special)

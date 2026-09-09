@@ -16,18 +16,26 @@ class DoomUser extends User {
         this._ammo         = {};   // code -> count
         this._ammoMax      = {};   // code -> max
         this._items        = new Set();
-        this._effects        = {};   // code -> remaining time (ms)
-        this._damageFactor   = 1;    // skill-derived, set by DoomGame per level
-        this._controlFreezeS = 0;
+        this._effects         = {};   // code -> remaining time (ms)
+        this._damageFactor    = 1;    // skill-derived, set by DoomGame per level
+        this._exitSectorProbe = null; // (user) → bool, set by DoomGame per level
+        this._controlFreezeS  = 0;
         // Jumping and crouching are ours, not the engine's: vanilla Doom has
         // neither, so the two keys are simply not listened to when the player
         // turns them off (game.jump / game.crouch settings).
-        this._jumpAllowed    = true;
-        this._crouchAllowed  = true;
+        this._jumpAllowed     = true;
+        this._crouchAllowed   = true;
     }
 
     setDamageFactor(factor) {
         this._damageFactor = factor;
+        return this;
+    }
+
+    // Tells whether the player stands in a level-exit sector (null = none on
+    // the level): no blow may kill them there, see takeDamage.
+    setExitSectorProbe(probe) {
+        this._exitSectorProbe = probe;
         return this;
     }
 
@@ -183,6 +191,11 @@ class DoomUser extends User {
         // not replicated — this engine deals float damage).
         if (delta > 1) {
             delta = delta * this._damageFactor;
+        }
+        // P_DamageMobj "end of game hell hack": in the exit sector a killing
+        // blow leaves the player standing, and the sector ends the level.
+        if ((this._exitSectorProbe !== null) && this._exitSectorProbe(this)) {
+            delta = Math.max(0, Math.min(delta, this.getEnergy() - WadConstants.SECTOR_DAMAGE_EXIT_KEPT_HEALTH));
         }
         const wasAlive     = !this.isDead();
         const energyBefore = this.getEnergy();

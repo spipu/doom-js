@@ -4,10 +4,10 @@
  * standing ON the floor of a damage sector takes the special's damage. The
  * radiation suit cancels the damage up to the special's leak chance out of
  * 256 per window (0 = full protection, 5 = Doom super-damage, 256 = never
- * protects — Heretic lava). 11 = 20 with NO suit protection plus a normal
- * level exit once the player is down to 10 health (the E1M8 finale), checked
- * every tic like vanilla — a monster may land the hit that gets there. Damage
- * goes through takeDamage, so armour absorption and invulnerability apply.
+ * protects — Heretic lava, the E1M8 finale). The exit special also ends the
+ * level through the normal exit once the player is down to the exit health,
+ * tested every frame like the vanilla per-tic check. Damage goes through
+ * takeDamage, so armour absorption and invulnerability apply.
  */
 class DoomSectorDamageInteraction extends AbstractInteraction {
     /**
@@ -26,22 +26,10 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         // are read at construction, after the game profile extensions landed.
         this._clockS       = {};
         this._windowSizes  = [...new Set(Object.values(WadConstants.SECTOR_DAMAGE_BY_SPECIAL).map((e) => e.windowTics))];
-        this._exited       = false;
     }
 
     get code() {
         return 'sectorDamage';
-    }
-
-    // The zone mutations of setSectorSpecial ("+change" floors) are NOT
-    // exported: they are replayed by the instances' lifecycle hooks when
-    // their animation state is restored.
-    exportState() {
-        return {exited: this._exited};
-    }
-
-    importState(state) {
-        this._exited = (state.exited === true);
     }
 
     triggered(instance) {
@@ -50,34 +38,21 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
     update(dt) {
         const wrapped = this._advanceClocks(dt);
         const user = loader.world().get().getUser();
+        if (user.isDead() || !this._needsZone(wrapped, user)) {
+            return;
+        }
         const zone = this._zoneUnderUser(user);
         if (zone === null) {
             return;
         }
-        if (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL) {
-            // Deliberate deviation: vanilla stops thinking for a dead player,
-            // so a monster's killing blow in the nukage lost the finale.
-            this._exitWhenDown(user);
-        }
-        if (user.isDead()) {
-            return;
-        }
 
         const entry = WadConstants.SECTOR_DAMAGE_BY_SPECIAL[zone.special];
-        if ((entry === undefined) || !wrapped.has(entry.windowTics)) {
-            return;
-        }
-
-        if (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL) {
-            // E1M8 finale: the suit gives no protection.
+        if ((entry !== undefined) && wrapped.has(entry.windowTics) && !this._suitProtects(user, entry)) {
             user.takeDamage(entry.damage);
+        }
+        if (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL) {
             this._exitWhenDown(user);
-            return;
         }
-        if (user.hasEffect('radiation') && !(Math.random() * 256 < entry.leak)) {
-            return;
-        }
-        user.takeDamage(entry.damage);
     }
 
     // "+change" support: a floor change rewrites the sector's special (0 =
@@ -90,8 +65,17 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         }
     }
 
-    // One free-running clock per window size; returns the sizes whose window
-    // boundary this frame crossed.
+    // Whether the point (world coordinates) lies in an exit sector, whatever
+    // the height — the sector test of P_DamageMobj, not the feet-on-floor gate.
+    isExitSectorAt(worldX, worldZ) {
+        let found = false;
+        this._zones.eachZoneAt(worldX, worldZ, (zone) => {
+            found = (found || (zone.special === WadConstants.SECTOR_DAMAGE_EXIT_SPECIAL));
+        });
+
+        return found;
+    }
+
     _advanceClocks(dt) {
         const wrapped = new Set();
         for (const windowTics of this._windowSizes) {
@@ -106,14 +90,20 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
         return wrapped;
     }
 
-    // Down to the exit health in the exit sector: the level ends through the
-    // normal exit (P_PlayerInSpecialSector → G_ExitLevel), once.
+    // Off a window boundary, the sector lookup only serves the exit test.
+    _needsZone(wrapped, user) {
+        return ((wrapped.size > 0) || ((this._exitCallback !== null) && (user.getEnergy() <= WadConstants.SECTOR_DAMAGE_EXIT_HEALTH)));
+    }
+
+    _suitProtects(user, entry) {
+        return (user.hasEffect('radiation') && !(Math.random() * 256 < entry.leak));
+    }
+
+    // P_PlayerInSpecialSector case 11 → G_ExitLevel.
     _exitWhenDown(user) {
-        if (this._exited || (user.getEnergy() > WadConstants.SECTOR_DAMAGE_EXIT_HEALTH) || (this._exitCallback === null)) {
-            return;
+        if ((user.getEnergy() <= WadConstants.SECTOR_DAMAGE_EXIT_HEALTH) && (this._exitCallback !== null)) {
+            this._exitCallback(false);
         }
-        this._exited = true;
-        this._exitCallback(false);
     }
 
     // Damage only applies with the feet ON the sector floor (an airborne or

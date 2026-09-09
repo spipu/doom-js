@@ -195,6 +195,7 @@ class WadWorldBuilder {
         if (damageZones.list.length > 0) {
             damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit);
             loader.interactions().loadFromData(damageInteraction);
+            this._game.setSectorDamage(damageInteraction);
         }
 
         // Sector pushes (wind / conveyors) and low-friction ground: one
