@@ -532,6 +532,18 @@ class DoomTranslations {
                 it: 'Esci dal livello',
                 es: 'Salir del nivel'
             },
+            'game.death.title': {
+                fr: 'Vous êtes mort',
+                en: 'You are dead',
+                it: 'Sei morto',
+                es: 'Has muerto'
+            },
+            'game.death.restart': {
+                fr: 'Recommencer le niveau',
+                en: 'Restart the level',
+                it: 'Ricomincia il livello',
+                es: 'Reiniciar el nivel'
+            },
             'game.level.loading': {
                 fr: 'Chargement du niveau {level}',
                 en: 'Loading level {level}',
