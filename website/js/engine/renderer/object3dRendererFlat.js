@@ -1,7 +1,9 @@
 class Object3dRendererFlat extends Object3dRendererBase {
     constructor() {
         super();
-        this._center = [0, 0, 0, 1];
+        this._center          = [0, 0, 0, 1];
+        this._baseColor       = [0, 0, 0];
+        this._textureAverages = new WeakMap();
     }
 
     get code() {
@@ -31,11 +33,15 @@ class Object3dRendererFlat extends Object3dRendererBase {
     // that end up the same colour share a style slot, which keeps the runs of
     // the sorted draw pass long.
     _faceStyleId(engine, obj, fc, tint) {
-        const baseColor = (tint ?? ((fc.textureId !== null) ? [255, 255, 255] : fc.color));
+        const baseColor = this._faceBaseColor(fc, tint, engine.sceneMs);
         const col = this._pointColor(engine, baseColor, this._faceCenter(obj, fc), fc.normal);
-        const r   = Math.trunc(col[0]);
-        const g   = Math.trunc(col[1]);
-        const b   = Math.trunc(col[2]);
+        // Same two multipliers as full and webgl: the live factor of the face's
+        // light group, and the light of the instance being drawn. A tinted body
+        // dims with the room like everything else.
+        const light = obj.getFaceLightFactor(fc) * engine.instanceLight;
+        const r     = Math.trunc(col[0] * light);
+        const g     = Math.trunc(col[1] * light);
+        const b     = Math.trunc(col[2] * light);
         const key = (r << 16) | (g << 8) | b;
         const id  = this._styleSlot(key);
         if (id !== -1) {
@@ -44,6 +50,50 @@ class Object3dRendererFlat extends Object3dRendererBase {
         const css = 'rgb(' + r + ',' + g + ',' + b + ')';
 
         return this._addStyle(key, css, css);
+    }
+
+    // No texture is drawn here, so a face wears its tint, or the average colour
+    // of the texture it carries — dimmed either way by its own light
+    // multiplier, which fcAdd normalised to 0..1 for a textured face and left
+    // in 0..255 for the others. That multiplier is where a map thing keeps the
+    // brightness of the sector it stands in.
+    _faceBaseColor(fc, tint, sceneMs) {
+        const texId = this._resolveTexId(fc, sceneMs);
+        const tex   = ((texId !== null) ? loader.textures().get(texId) : undefined);
+        if (tex === undefined) {
+            return (tint ?? fc.color);
+        }
+        const source = (tint ?? this._textureAverage(tex));
+        const base   = this._baseColor;
+        base[0] = source[0] * fc.color[0];
+        base[1] = source[1] * fc.color[1];
+        base[2] = source[2] * fc.color[2];
+
+        return base;
+    }
+
+    // Averaged on first use and cached with the texture itself: the opaque
+    // texels only, so the transparent border of a sprite does not wash it out.
+    _textureAverage(tex) {
+        const cached = this._textureAverages.get(tex);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const data = tex.data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) {
+                continue;
+            }
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count++;
+        }
+        const average = ((count === 0) ? [255, 255, 255] : [r / count, g / count, b / count]);
+        this._textureAverages.set(tex, average);
+
+        return average;
     }
 
     _faceCenter(obj, fc) {
