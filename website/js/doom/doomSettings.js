@@ -10,10 +10,13 @@
  *
  * Types: 'bool' (yes/no), 'char' (one physical key code, captured in the UI)
  * and 'list' — a closed set of values the definition carries as
- * `values: [{code, label?}]`, of any length: the stored value is the code, the
+ * `values: [{code, ...}]`, of any length: the stored value is the code, the
  * UI shows the label and steps through the list (nextListValue). A list value
- * carries either a literal `label` (a language autonym, never translated) or a
- * `format` tag, and is then rendered in the current locale (see getListLabel).
+ * says how it is labelled in exactly one of three ways (see getListLabel):
+ * `label` = a literal proper name, never translated (a language autonym,
+ * 'WebGL'); `labelCode` = a translation code, for a value whose label is a
+ * description; `format` = no label at all, the code itself rendered in the
+ * current locale (percentages).
  */
 class DoomSettings {
     /**
@@ -53,7 +56,12 @@ class DoomSettings {
         return [
             // Display options ('display.' prefix = the "Affichage" help page).
             {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'en', label: 'English'}, {code: 'fr', label: 'Français'}, {code: 'it', label: 'Italiano'}, {code: 'es', label: 'Español'}]},
+            // Codes are the keys of Object3dRendererList and must stay in step
+            // with them. WebGL is the only hardware-accelerated one; the three
+            // others are CPU rasterizers, named by what they can draw.
+            {key: 'display.renderer',             nameCode: 'settings.display.renderer',           type: 'list', default: 'webgl', values: [{code: 'webgl', label: 'WebGL'}, {code: 'full', labelCode: 'value.renderer.softwareTextured'}, {code: 'flat', labelCode: 'value.renderer.softwareFlat'}, {code: 'fast', labelCode: 'value.renderer.softwareWireframe'}]},
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
+            {key: 'display.show_fps',             nameCode: 'settings.display.showFps',            type: 'bool', default: false},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
             // Gameplay rules ('game.' prefix = the "Jeu" help page). None of
@@ -130,8 +138,52 @@ class DoomSettings {
         } catch (error) {
             console.warn('DoomSettings - unable to load the settings: ' + error.message);
         }
+        this._repairValues();
 
         return this;
+    }
+
+    /**
+     * Rewrites every stored value that no longer matches its declaration back
+     * to its default, in memory AND in the store — a list value dropped by an
+     * evolution of the table, a hand-edited base. Done once here, before any
+     * screen or game reads a setting, so no consumer downstream has to guard:
+     * Object3dRendererList, for one, THROWS on a renderer code it does not
+     * know, which would make every level launch fail with no way out of the UI.
+     * An unsaved key is left alone — it already answers with its default.
+     */
+    _repairValues() {
+        for (const def of DoomSettings.DEFINITIONS) {
+            const value = this._values[def.key];
+            if ((value === undefined) || DoomSettings.isValidValue(def, value)) {
+                continue;
+            }
+            console.warn('DoomSettings - [' + def.key + '] held an invalid value, reset to its default');
+            this.set(def.key, def.default);
+        }
+    }
+
+    /**
+     * Whether a value is one this definition can hold: a listed code for a
+     * 'list', a real boolean for a 'bool', a string for a 'char' (any physical
+     * key code, '' meaning unmapped).
+     *
+     * @param {object} def - a DEFINITIONS entry
+     * @param {*} value
+     * @returns {boolean}
+     */
+    static isValidValue(def, value) {
+        if (def.type === 'list') {
+            return def.values.some((item) => (item.code === value));
+        }
+        if (def.type === 'bool') {
+            return (typeof value === 'boolean');
+        }
+        if (def.type === 'char') {
+            return (typeof value === 'string');
+        }
+
+        return true;
     }
 
     // Definitions whose key starts with the given prefix — the settings UI
@@ -183,9 +235,10 @@ class DoomSettings {
 
     /**
      * Label of the current value of a 'list' setting — what the UI displays:
-     * the entry's literal label, or its formatted rendering when it carries a
-     * format tag instead. A saved code missing from the list (a value dropped
-     * since) falls back to the code itself rather than showing an empty row.
+     * the entry's literal label, the translation of its label code, or its
+     * formatted rendering when it carries a format tag instead. A saved code
+     * missing from the list (a value dropped since) falls back to the code
+     * itself rather than showing an empty row.
      *
      * @param {object} def - a 'list' definition
      * @returns {string}
@@ -197,7 +250,9 @@ class DoomSettings {
             return String(value);
         }
 
-        return (entry.label ?? DoomSettings.formatListValue(entry));
+        return (entry.label ?? ((entry.labelCode !== undefined)
+            ? appTranslator.get(entry.labelCode)
+            : DoomSettings.formatListValue(entry)));
     }
 
     /**
@@ -341,8 +396,19 @@ class DoomSettings {
         return this.get('display.language');
     }
 
+    // Renderer code handed to Object3dRendererList (which falls back to 'full'
+    // on its own when the chosen one is unavailable). Always one of the codes
+    // the definition lists: init() repairs the store before anything reads it.
+    getDisplayRenderer() {
+        return this.get('display.renderer');
+    }
+
     getDisplayCrosshair() {
         return (this.get('display.crosshair') === true);
+    }
+
+    getDisplayShowFps() {
+        return (this.get('display.show_fps') === true);
     }
 
     getDisplayDistanceShading() {

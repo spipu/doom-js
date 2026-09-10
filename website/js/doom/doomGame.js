@@ -50,6 +50,7 @@ class DoomGame {
         this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
         this._ambientSounds   = null;    // per-level ambient sound points (builder-fed)
         this._automap         = null;    // level automap (null when the WAD has no usable BSP)
+        this._rendererCode    = null;    // renderer the current engine was built on (null = no engine yet)
         this._depthShadingOn  = null;    // last states pushed to the engine / player (null = never)
         this._texSmoothingOn  = null;
         this._fallDamageOn    = null;
@@ -740,57 +741,24 @@ class DoomGame {
             this._wakeLock.init();
         }
 
-        this._screen = new ScreenManager('screen', {
-            fullscreen: true,
-            virtualWidth: 1920,
-            virtualHeight: 1080
-        });
-
         // Inputs owns the keyboard singleton — created once, reused across levels
         if (this._inputs === null) {
             this._inputs = new Inputs();
         }
-        // The devices are re-bound to the new screen on each level
-        this._inputs.bindScreen(this._screen);
-        doomSettings.applyToInputs(this._inputs);
-        // Not a setting but a property of the level: no map, no touch target.
-        this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
-
-        this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer('webgl'));
         this._fov       = WadConstants.PLAYER_FOV;
         this._fovTicAcc = 0;
-        this._applyFov();
-        this._engine.setZBuffer(0.1, 100);
-        // The engine and the player are rebuilt on each level: re-arm every
-        // memoized setting so all of them are pushed onto the fresh pair.
-        this._depthShadingOn = null;
-        this._texSmoothingOn = null;
-        this._fallDamageOn   = null;
-        this._jumpOn         = null;
-        this._crouchOn       = null;
-        this._applySettings();
-
-        this._hud = new HudDoom(this._engine)
-            .bindUser(this._world.getUser())
-            .bindInputs(this._inputs)
-            .bindGame(this)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._levelDisplayName)
-            .addDescription('(c)2026 Spipu')
-        ;
-        if (this._automap !== null) {
-            this._hud.bindAutomap(this._automap);
-        }
-
-        this._screen.bindHud(this._hud);
-
-        this._engine.initFromWorld(this._world);
+        // Dropped BEFORE the display is built: startFromWad replays _init on
+        // the same instance for the next level, and _buildDisplay only wires
+        // the weapon overlay when a controller exists — reading the previous
+        // level's one would arm the overlay over a controller about to go.
+        this._playerWeapon = null;
+        this._buildDisplay();
 
         // Weapon firing: a fresh psprite controller per level, RNG cleared like
         // vanilla M_ClearRandom. It brings the active weapon up on construction —
         // skipped entirely while the player has no weapon (a game whose arsenal
         // is not built yet): no controller, no overlay, nothing to decode.
         this._rng.reset();
-        this._playerWeapon = null;
         // Monsters + the shared damage pipeline (blood, pain, death, thrust):
         // wired before the hitscan so every attack channel lands on the bodies.
         this._monsters.setWorld(this._world.getCollision(), this._world.getUser());
@@ -832,6 +800,103 @@ class DoomGame {
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
+    }
+
+    /**
+     * Builds the screen, the engine and the HUD — the three objects tied to the
+     * canvas. Called at level init, and again on a renderer change: a canvas
+     * carries one context type for its whole life (2D or WebGL), so switching
+     * renderer means a new canvas, hence a new ScreenManager and a new engine.
+     * Everything else (loader, world, player, monsters, sounds) survives.
+     *
+     * The renderer instance is always fresh: Object3dRendererList hands out a
+     * new one per call, and the old one holds handles of a context that is gone.
+     */
+    _buildDisplay() {
+        this._screen = new ScreenManager('screen', {
+            fullscreen: true,
+            virtualWidth: 1920,
+            virtualHeight: 1080
+        });
+
+        // The devices are re-bound to the new screen (mouse canvas, touch overlay)
+        this._inputs.bindScreen(this._screen);
+        doomSettings.applyToInputs(this._inputs);
+        // Not a setting but a property of the level: no map, no touch target.
+        this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
+
+        // The memo holds the WANTED code, never the effective one: the list
+        // silently falls back to 'full' when a renderer is unavailable, and
+        // memoizing that fallback would make every frame see a mismatch and
+        // rebuild the display forever.
+        this._rendererCode = doomSettings.getDisplayRenderer();
+        this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer(this._rendererCode));
+        // The current fov, never a reset: a telezoom in progress must survive a
+        // renderer swap (_init sets the starting value before calling us).
+        this._applyFov();
+        this._engine.setZBuffer(0.1, 100);
+        // The engine and the player are rebuilt on each level: re-arm every
+        // memoized setting so all of them are pushed onto the fresh pair.
+        this._depthShadingOn = null;
+        this._texSmoothingOn = null;
+        this._fallDamageOn   = null;
+        this._jumpOn         = null;
+        this._crouchOn       = null;
+        this._applySettings();
+
+        this._hud = new HudDoom(this._engine)
+            .bindUser(this._world.getUser())
+            .bindInputs(this._inputs)
+            .bindGame(this)
+            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._levelDisplayName)
+            .addDescription('(c)2026 Spipu')
+        ;
+        if (this._automap !== null) {
+            this._hud.bindAutomap(this._automap);
+        }
+
+        this._screen.bindHud(this._hud);
+
+        this._engine.initFromWorld(this._world);
+
+        // Null on a level init (the controller is built just after), set on a
+        // renderer swap mid-level: the fresh engine needs its overlay back.
+        if (this._playerWeapon !== null) {
+            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+        }
+    }
+
+    /**
+     * Renderer setting, read on every live frame: a change rebuilds the screen,
+     * the engine and the HUD around a new canvas, keeping the level running.
+     *
+     * Deliberately NOT part of _applySettings, which also runs on the frozen
+     * frames of the pause and of the exit modals: the pause overlay and the
+     * screen container are both fixed without a z-index, so their stacking is
+     * DOM order — a screen rebuilt under an open menu would cover it. Waiting
+     * for a live frame also batches the change: stepping through the four
+     * values while paused costs ONE rebuild, the one the player settles on.
+     */
+    _applyRendererSetting() {
+        const wanted = doomSettings.getDisplayRenderer();
+        if (wanted === this._rendererCode) {
+            return;
+        }
+        // A menu display stacked over the game forbids the rebuild: it is a
+        // sibling of the screen container inside #screen, both fixed without a
+        // z-index, so the fresh canvas would be appended after it and cover it.
+        // The pause never reaches here (its frames return early), the death
+        // menu does — it freezes nothing.
+        if ((this._pauseDisplay !== null) || (this._deathDisplay !== null)) {
+            return;
+        }
+        const viewState = this._hud.getViewState();
+        // Before the canvas goes: bindCanvas clears the lock flag without
+        // exiting the lock, which would leave releaseLock() a no-op afterwards.
+        this._inputs.releaseMouse();
+        this._screen.destroyContainer();
+        this._buildDisplay();
+        this._hud.setViewState(viewState);
     }
 
     _animate(timestamp) {
@@ -945,6 +1010,9 @@ class DoomGame {
         if (this._ambientSounds !== null) {
             this._ambientSounds.update(dt);
         }
+        // Before every push onto the engine: a swap replaces it, and the
+        // settings, the fov and the effect state must land on the new one.
+        this._applyRendererSetting();
         this._applySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay(this._world.getUser());
