@@ -426,6 +426,27 @@ class DoomTranslations {
                 it: 'No',
                 es: 'No'
             },
+            // Renderer values: 'WebGL' is a proper name and stays literal in
+            // the definition, the three CPU rasterizers are named by what they
+            // can draw.
+            'value.renderer.softwareTextured': {
+                fr: 'Logiciel texturé',
+                en: 'Software textured',
+                it: 'Software con texture',
+                es: 'Software con texturas'
+            },
+            'value.renderer.softwareFlat': {
+                fr: 'Logiciel en aplats',
+                en: 'Software flat',
+                it: 'Software a tinte piatte',
+                es: 'Software plano'
+            },
+            'value.renderer.softwareWireframe': {
+                fr: 'Logiciel filaire',
+                en: 'Software wireframe',
+                it: 'Software wireframe',
+                es: 'Software de alambre'
+            },
             'key.space': {
                 fr: 'Espace',
                 en: 'Space',
@@ -648,6 +669,15 @@ class DoomTranslations {
                 it: 'Mappa',
                 es: 'Mapa'
             },
+            // 'fps' is the accepted abbreviation in the four languages; it goes
+            // through the catalog all the same, so a spelled-out unit stays a
+            // one-line change.
+            'hud.fps': {
+                fr: '{value} fps',
+                en: '{value} fps',
+                it: '{value} fps',
+                es: '{value} fps'
+            },
 
             // Running power-up effects (one shared label per effect, whatever
             // the game's item name — user decision)
@@ -858,11 +888,23 @@ class DoomTranslations {
                 it: 'Lingua',
                 es: 'Idioma'
             },
+            'settings.display.renderer': {
+                fr: 'Moteur de rendu',
+                en: 'Rendering engine',
+                it: 'Motore di rendering',
+                es: 'Motor de renderizado'
+            },
             'settings.display.crosshair': {
                 fr: 'Afficher le réticule',
                 en: 'Show the crosshair',
                 it: 'Mostra il mirino',
                 es: 'Mostrar la mira'
+            },
+            'settings.display.showFps': {
+                fr: 'Afficher le framerate',
+                en: 'Show the framerate',
+                it: 'Mostra il frame rate',
+                es: 'Mostrar los FPS'
             },
             'settings.display.distanceShading': {
                 fr: 'Assombrissement à la distance',

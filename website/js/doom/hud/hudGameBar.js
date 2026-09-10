@@ -55,6 +55,22 @@ class HudGameBar extends AbstractHud {
         this._buildAmmo();
         this._buildKeys();
         this._buildArms();
+        this._buildFps();
+    }
+
+    // Optional framerate readout, bottom-centre — the only panel that is not in
+    // a corner, and the only one the player can turn off. Same corner block as
+    // the others, so it scales with the letterbox like the whole bar. The debug
+    // view carries its own fps line, so this one serves the game view alone.
+    _buildFps() {
+        const block = this._createEl('div', this._cornerStyle({bottom: '1em', left: '50%'}));
+        block.style.transform = 'translateX(-50%)';
+        block.style.display   = 'none';
+
+        this._els.fpsBlock = block;
+        this._els.fpsValue = this._createEl('div', {fontSize: '0.8em', fontWeight: '700', color: '#ccc'});
+        block.appendChild(this._els.fpsValue);
+        this._root.appendChild(block);
     }
 
     setVisible(visible) {
@@ -91,6 +107,18 @@ class HudGameBar extends AbstractHud {
         if (this._game !== null) {
             this._els.secretsValue.innerText = this._game.getSecretsFound() + '/' + this._game.getSecretsTotal();
             this._els.killsValue.innerText   = this._game.getKillsCount() + '/' + this._game.getKillsTotal();
+        }
+
+        this._updateFps();
+    }
+
+    // Read every frame, like the crosshair: a toggle from the options, which the
+    // pause menu reaches mid-level, applies without reloading.
+    _updateFps() {
+        const visible = doomSettings.getDisplayShowFps();
+        this._els.fpsBlock.style.display = ((visible) ? 'block' : 'none');
+        if (visible) {
+            this._els.fpsValue.innerText = appTranslator.get('hud.fps', {value: this._engine.getFps()});
         }
     }
 

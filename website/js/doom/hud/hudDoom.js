@@ -98,6 +98,21 @@ class HudDoom extends AbstractHud {
         this._automap.toggle();
     }
 
+    // What the player was looking at — the active view and whether the map is
+    // open. Carried across a HUD rebuilt on a fresh engine (renderer swap), so
+    // the swap does not throw him back to the game view with the map closed.
+    getViewState() {
+        return {mode: this._mode, automap: this._automap.isVisible()};
+    }
+
+    setViewState(state) {
+        this._mode = state.mode;
+        this._applyVisibility();
+        this._automap.setVisible(state.automap);
+
+        return this;
+    }
+
     update() {
         this._applyScreenFlash();
         if (this._crosshair !== null) {

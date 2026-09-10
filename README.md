@@ -54,9 +54,10 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Sound effects**: the WAD's own sounds decoded on the fly — weapons, pickups, movers, teleports, player, monsters, Heretic ambients — spatialised per game and frozen with the pause. The menus use light synthesized clicks, WAD-independent, with distinct accents for navigation, validation and cancel. Two live volume settings.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
 - **Options & persistent settings**: Display, Game, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset.
+- **Renderer choice**: the Display page picks one of the four rendering modes (see **The 3D engine** below), WebGL by default. A change applies to the running level without reloading it: the screen, the engine and the HUD are rebuilt on the next live frame, the level and the player carry on untouched.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity.
 - **Translation (en / fr / it / es)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
-- **Robustness**: a failed level build reports its cause and returns to the WAD list; every menu screen shows the aggregated version, the webapp stats and the copyright.
+- **Robustness**: a failed level build reports its cause and returns to the WAD list; a stored setting that no longer matches what its declaration allows is repaired to its default at startup; every menu screen shows the aggregated version, the webapp stats and the copyright.
 
 ## Controls
 
@@ -84,7 +85,7 @@ The gamepad is only visible to the page after a button has been pressed on it (b
 
 `js/engine/` is a standalone 3D engine with no external dependency: it renders textured, lit 3D objects entirely in the browser through the HTML5 `<canvas>` API, and carries a full FPS physics engine (collision detection, gravity, jumping, crouching, animated objects). It never depends on `js/doom/`: it exposes parameterisable primitives (depth shading, per-instance light and render offset, external forces, screen sprites…) that the game layer feeds with its own constants.
 
-Four rendering modes are available, selectable via the **Renderer** selector on `_examples/objects.html`:
+Four rendering modes are available, selectable in the game from the **Display** options page and via the **Renderer** selector on `_examples/objects.html`:
 
 | Mode | Description |
 |---|---|
@@ -232,7 +233,7 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
 * **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
 * **Vanilla polish pass**: the small fidelity gaps knowingly left aside — no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports.
-* **Rendering performance & quality options**: the game is hardwired to the WebGL renderer with no quality settings; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
+* **Rendering performance & quality options**: the renderer is now selectable, but the three CPU modes lag well behind WebGL (no sky, no distance darkening, no screen weapon, and `flat` draws every textured face white), and there is still no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
 
 ## License
 
