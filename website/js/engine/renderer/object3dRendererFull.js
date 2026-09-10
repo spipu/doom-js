@@ -39,6 +39,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const texture       = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
                 const alpha         = fc.alpha;
                 const clampV        = fc.clampV || false;
+                const blendAdd      = (fc.blendAdd === true);
 
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
@@ -49,7 +50,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                         p3[i] = s2[i];
                     }
                     this._sortVertices();
-                    this._rasterize(engine, alpha, texture, clampV);
+                    this._rasterize(engine, alpha, texture, clampV, blendAdd);
                 }
             }
         }
@@ -110,7 +111,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 
-    _rasterize(engine, alpha, texture, clampV = false) {
+    _rasterize(engine, alpha, texture, clampV = false, blendAdd = false) {
         if (texture) {
             this._p1[6] /= this._p1[2]; this._p1[7] /= this._p1[2];
             this._p2[6] /= this._p2[2]; this._p2[7] /= this._p2[2];
@@ -233,7 +234,13 @@ class Object3dRendererFull extends Object3dRendererBase {
                     }
                 }
 
-                if (!engine.zBuffer.set(lx, ly, lz)) {
+                // An additive glow only TESTS the depth: it must not hide what
+                // is behind it, and two glows crossing must both accumulate.
+                if (blendAdd) {
+                    if (!engine.zBuffer.test(lx, ly, lz)) {
+                        continue;
+                    }
+                } else if (!engine.zBuffer.set(lx, ly, lz)) {
                     continue;
                 }
 
@@ -252,7 +259,14 @@ class Object3dRendererFull extends Object3dRendererBase {
                     a = alpha;
                 }
 
-                if (a < 1.) {
+                // Added to the scene instead of replacing it (gzdoom RenderStyle
+                // "Add"): the overflow is clamped by the ImageData itself.
+                if (blendAdd) {
+                    engine.scrData.data[posi+0] += a*r;
+                    engine.scrData.data[posi+1] += a*g;
+                    engine.scrData.data[posi+2] += a*b;
+                    engine.scrData.data[posi+3] += a*255;
+                } else if (a < 1.) {
                     engine.scrData.data[posi+0] = a*r + (1-a)*engine.scrData.data[posi+0];
                     engine.scrData.data[posi+1] = a*g + (1-a)*engine.scrData.data[posi+1];
                     engine.scrData.data[posi+2] = a*b + (1-a)*engine.scrData.data[posi+2];
