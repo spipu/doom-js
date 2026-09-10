@@ -3,6 +3,7 @@ class Object3dRendererBase {
         this._col       = [0, 0, 0];
         this._lightTemp = [0, 0, 0];
         this._uvOff     = [0, 0];
+        this._spriteCanvases = new WeakMap();
     }
 
     isAvailable() {
@@ -30,11 +31,47 @@ class Object3dRendererBase {
 
     // Draw a textured quad in normalised screen space (x, y top-left, w, h in
     // 0..1; y downward), over the scene without depth, tinted by light (0..1)
-    // and faded by alpha (0..1, 1 = opaque). Generic 2D overlay primitive;
-    // only the WebGL renderer implements it (the CPU renderers skip it, like
-    // the sky).
+    // and faded by alpha (0..1, 1 = opaque). Shared by the canvas-2D
+    // renderers; the WebGL one overrides it with its own program.
     drawScreenSprite(engine, texId, x, y, w, h, light, alpha = 1) {
-        // no-op by default
+        const ctx = engine.scrCtx;
+        const tex = ((texId !== null) ? loader.textures().get(texId) : null);
+        if (!ctx || !tex) {
+            return;
+        }
+        // A scene-wide light floor or flash boost must reach the sprite too.
+        let lit = Math.max(light, (engine.lightOverride ?? 0));
+        if (lit < 1) {
+            lit = Math.min(1, lit + engine.lightBoost);
+        }
+        ctx.save();
+        // Never filtered: these renderers sample their texels nearest-neighbour.
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = alpha;
+        ctx.filter      = 'brightness(' + lit + ')';
+        ctx.drawImage(
+            this._spriteCanvas(tex),
+            x * engine.scrWidth,
+            y * engine.scrHeight,
+            w * engine.scrWidth,
+            h * engine.scrHeight
+        );
+        ctx.restore();
+    }
+
+    // drawImage needs a canvas, never the ImageData the loader holds. Straight
+    // alpha, unlike the WebGL upload: the browser composites it.
+    _spriteCanvas(tex) {
+        if (this._spriteCanvases.has(tex)) {
+            return this._spriteCanvases.get(tex);
+        }
+        const canvas  = document.createElement('canvas');
+        canvas.width  = tex.width;
+        canvas.height = tex.height;
+        canvas.getContext('2d').putImageData(new ImageData(tex.data, tex.width, tex.height), 0, 0);
+        this._spriteCanvases.set(tex, canvas);
+
+        return canvas;
     }
 
     _traceTriangle(ctx, obj, fc) {

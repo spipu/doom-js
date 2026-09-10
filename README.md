@@ -233,7 +233,7 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
 * **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
 * **Vanilla polish pass**: the small fidelity gaps knowingly left aside — no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports.
-* **Rendering performance & quality options**: the renderer is now selectable, but the three CPU modes lag well behind WebGL (no sky, no distance darkening, no screen weapon, and `flat` draws every textured face white), and there is still no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
+* **Rendering performance & quality options**: the renderer is now selectable and the three CPU modes draw the weapon in hand, but they still lag behind WebGL (no sky, no distance darkening, and `flat` draws every textured face white), and there is no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
 
 ## License
 
