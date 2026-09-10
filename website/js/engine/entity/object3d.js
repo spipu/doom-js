@@ -18,6 +18,7 @@ class Object3d extends AbstractLoadedEntity {
         this.alphaFaces    = [];
         this._groupLightFactors = {};
         this._faceGroupsVersion = 0;
+        this._renderTint        = null;
     }
 
     // Signals that the faces' texture assignment changed (a switch swapping
@@ -36,6 +37,17 @@ class Object3d extends AbstractLoadedEntity {
     // (e.g. Doom sector light effects), read by the renderers.
     setGroupLightFactor(group, factor) {
         this._groupLightFactors[group] = factor;
+    }
+
+    // Flat replacement colour [r, g, b] for the whole object, consumed by the
+    // renderers that draw no texture; null leaves them on the face colours.
+    setRenderTint(color) {
+        this._renderTint = color;
+        return this;
+    }
+
+    getRenderTint() {
+        return this._renderTint;
     }
 
     getFaceLightFactor(fc) {

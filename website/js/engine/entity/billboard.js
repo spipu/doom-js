@@ -26,7 +26,7 @@ class Billboard extends Object3d {
 
     // Configure the billboard from a descriptor and build its quad in one call.
     // data = {textures:[id…], halfWidth, height, anchorOffsetX?, anchorOffsetY?,
-    //         anchorTop?, light?, animDuration?, lightGroup?}. anchorTop anchors
+    //         anchorTop?, light?, animDuration?, lightGroup?, tint?}. anchorTop anchors
     //         the TOP at the origin (ceiling/hanging) instead of the foot (floor).
     //         light (0-255) is the sector brightness baked into the face colour;
     //         lightGroup tags the faces for dynamic group light factors. The four
@@ -38,6 +38,7 @@ class Billboard extends Object3d {
         this._anchorOffsetX = (data.anchorOffsetX ?? 0);
         this._anchorOffsetY = (data.anchorOffsetY ?? 0);
         this._anchorTop     = (data.anchorTop === true);
+        this.setRenderTint(data.tint ?? null);
 
         const light      = (data.light ?? 255);
         const alpha      = (data.alpha ?? 1);

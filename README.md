@@ -94,6 +94,8 @@ Four rendering modes are available, selectable in the game from the **Display** 
 | `flat` | Painter's algorithm with flat shading (one colour per face), on a neutral grey backdrop without sky |
 | `fast` | Wireframe — no lighting, canvas 2D paths only, on the same grey backdrop |
 
+In the two textureless modes the game paints enemies red and every pickup blue — keys included, and the exploding barrel counts as a body — so a scene stays readable without its sprites.
+
 Whatever the mode, instances are frustum-culled in camera space before any per-vertex work; the static level map is one single object, always drawn whole.
 
 ### Demo pages
