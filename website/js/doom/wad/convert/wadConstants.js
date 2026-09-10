@@ -1032,11 +1032,14 @@ class WadConstants {
     // move whose whole point is to fit under things.
     static PICKUP_REACH_BELOW = 32 / 64;
 
-    // Flat colours the textureless renderers (flat, fast) paint bodies with, so
-    // a wireframe still tells a threat from a thing to grab. Every pickup shares
-    // one colour, keys included: the mode carries no more nuance than that.
+    // Flat colours the textureless renderers (flat, fast) paint whole objects
+    // with, so a wireframe still tells a threat from a thing to grab and a
+    // moving part from a wall. Every pickup shares one colour, keys included:
+    // the mode carries no more nuance than that.
     static MONSTER_TINT = [200, 40, 40];
     static PICKUP_TINT  = [50, 90, 220];
+    static MOVER_TINT   = [230, 200, 50];
+    static SWITCH_TINT  = [215, 105, 230];
 
     // --- Player / world defaults ---
 
