@@ -26,7 +26,10 @@ class ZBuffer {
         this._data   = new Array(width * height).fill(this._z_far);
     }
 
-    set(x, y, z) {
+    // Depth test alone: what passes it is visible, but nothing is recorded —
+    // for the surfaces that must not hide what lies behind them (additive
+    // glows), which several of them may cover in turn.
+    test(x, y, z) {
         if (x < 0 || y < 0) {
             return false;
         }
@@ -37,11 +40,14 @@ class ZBuffer {
             return false;
         }
 
-        const t = x + y * this._width;
-        if (this._data[t] < z) {
+        return (this._data[x + y * this._width] >= z);
+    }
+
+    set(x, y, z) {
+        if (!this.test(x, y, z)) {
             return false;
         }
-        this._data[t] = z;
+        this._data[x + y * this._width] = z;
         return true;
     }
 }
