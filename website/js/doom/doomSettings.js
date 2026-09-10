@@ -61,9 +61,9 @@ class DoomSettings {
             // others are CPU rasterizers, named by what they can draw.
             {key: 'display.renderer',             nameCode: 'settings.display.renderer',           type: 'list', default: 'webgl', values: [{code: 'webgl', label: 'WebGL'}, {code: 'full', labelCode: 'value.renderer.softwareTextured'}, {code: 'flat', labelCode: 'value.renderer.softwareFlat'}, {code: 'fast', labelCode: 'value.renderer.softwareWireframe'}]},
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
-            {key: 'display.show_fps',             nameCode: 'settings.display.showFps',            type: 'bool', default: false},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
+            {key: 'display.show_fps',             nameCode: 'settings.display.showFps',            type: 'bool', default: false},
             // Gameplay rules ('game.' prefix = the "Jeu" help page). None of
             // the three exists in vanilla Doom: fall damage stays OFF to match
             // it, while jumping and crouching are offered on — they cost
