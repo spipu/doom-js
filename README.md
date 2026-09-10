@@ -91,8 +91,8 @@ Four rendering modes are available, selectable in the game from the **Display** 
 |---|---|
 | `webgl` | WebGL — GPU shaders, z-buffer, texture mapping (default, falls back to `full` if unavailable) |
 | `full` | Per-pixel z-buffer with Gouraud shading and texture mapping |
-| `flat` | Painter's algorithm with flat shading (one colour per face) |
-| `fast` | Wireframe — no lighting, canvas 2D paths only |
+| `flat` | Painter's algorithm with flat shading (one colour per face), on a neutral grey backdrop without sky |
+| `fast` | Wireframe — no lighting, canvas 2D paths only, on the same grey backdrop |
 
 Whatever the mode, instances are frustum-culled in camera space before any per-vertex work; the static level map is one single object, always drawn whole.
 

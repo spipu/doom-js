@@ -21,8 +21,11 @@ class Object3dRendererBase {
         return canvas.getContext('2d');
     }
 
+    // flat and fast keep this fixed backdrop and get no sky, by design; full and
+    // webgl override it with their own scene background.
     begin(engine) {
-        engine.scrCtx.clearRect(0, 0, engine.scrWidth, engine.scrHeight);
+        engine.scrCtx.fillStyle = Object3dRendererBase.BACKDROP_COLOR;
+        engine.scrCtx.fillRect(0, 0, engine.scrWidth, engine.scrHeight);
     }
 
     end(engine) {
@@ -74,11 +77,112 @@ class Object3dRendererBase {
         return canvas;
     }
 
+    // Where the segment va→vb crosses the near plane, as {t, cx, cy, sx, sy}:
+    // index-free, so every vertex layout can use it.
+    _nearCrossing(engine, za, cxa, cya, zb, cxb, cyb) {
+        const zNear = engine.zBuffer.getNear();
+        const t     = (zNear - za) / (zb - za);
+        const cx    = cxa + t * (cxb - cxa);
+        const cy    = cya + t * (cyb - cya);
+
+        return {
+            t,
+            cx,
+            cy,
+            sx: Math.trunc(engine.projScaleX * cx / zNear - engine.projOffsetX),
+            sy: Math.trunc(-engine.projScaleY * cy / zNear - engine.projOffsetY)
+        };
+    }
+
+    // Position-only layout [sx, sy, cz, cx, cy], enough for the renderers that
+    // interpolate nothing else. Overridden by those carrying more channels.
+    _clipVertex(engine, va, vb) {
+        const c = this._nearCrossing(engine, va[2], va[3], va[4], vb[2], vb[3], vb[4]);
+
+        return [c.sx, c.sy, engine.zBuffer.getNear(), c.cx, c.cy];
+    }
+
+    // Sutherland-Hodgman near clip of one triangle, into 0, 1 or 2 triangles:
+    // layout-agnostic, the depth sits at index 2 and _clipVertex packs the
+    // vertices it creates.
+    _clipNear(engine, v0, v1, v2) {
+        const zNear  = engine.zBuffer.getNear();
+        const verts  = [v0, v1, v2];
+        const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
+        const cnt    = inside.filter(Boolean).length;
+
+        if (cnt === 3) {
+            return [[v0, v1, v2]];
+        }
+        if (cnt === 0) {
+            return [];
+        }
+
+        if (cnt === 1) {
+            const i = inside.indexOf(true);
+            const j = (i + 1) % 3;
+            const k = (i + 2) % 3;
+            return [[
+                verts[i],
+                this._clipVertex(engine, verts[i], verts[j]),
+                this._clipVertex(engine, verts[i], verts[k]),
+            ]];
+        }
+
+        // cnt === 2 : quad → 2 triangles
+        const iOut = inside.indexOf(false);
+        const iIn1 = (iOut + 1) % 3;
+        const iIn2 = (iOut + 2) % 3;
+        const a = this._clipVertex(engine, verts[iOut], verts[iIn1]);
+        const b = this._clipVertex(engine, verts[iOut], verts[iIn2]);
+        return [
+            [verts[iIn1], verts[iIn2], a],
+            [verts[iIn2], b, a],
+        ];
+    }
+
+    // Face corner in the position-only layout above.
+    _positionVertex(obj, fc, idx) {
+        const pt3d = obj.pt3d[fc.pts[idx]];
+        const pt2d = obj.pt2d[fc.pts[idx]];
+
+        return [pt2d[0], pt2d[1], pt3d[2], pt3d[0], pt3d[1]];
+    }
+
+    // Near-clipped triangles of a face, null when the whole face is in front —
+    // the common case, drawn straight from pt2d with nothing allocated — and
+    // empty when it is entirely behind.
+    _faceScreenTriangles(engine, obj, fc) {
+        const zNear = engine.zBuffer.getNear();
+        if ((obj.pt3d[fc.pts[0]][2] >= zNear)
+            && (obj.pt3d[fc.pts[1]][2] >= zNear)
+            && (obj.pt3d[fc.pts[2]][2] >= zNear)) {
+            return null;
+        }
+
+        return this._clipNear(
+            engine,
+            this._positionVertex(obj, fc, 0),
+            this._positionVertex(obj, fc, 1),
+            this._positionVertex(obj, fc, 2)
+        );
+    }
+
+    // Clipped triangle, its vertices carrying their own screen x/y.
+    _traceClipped(ctx, tri) {
+        this._tracePath(ctx, tri[0], tri[1], tri[2]);
+    }
+
     _traceTriangle(ctx, obj, fc) {
+        this._tracePath(ctx, obj.pt2d[fc.pts[0]], obj.pt2d[fc.pts[1]], obj.pt2d[fc.pts[2]]);
+    }
+
+    // Points are read by index, so any [x, y, …] layout fits.
+    _tracePath(ctx, p0, p1, p2) {
         ctx.beginPath();
-        ctx.moveTo(obj.pt2d[fc.pts[0]][0], obj.pt2d[fc.pts[0]][1]);
-        ctx.lineTo(obj.pt2d[fc.pts[1]][0], obj.pt2d[fc.pts[1]][1]);
-        ctx.lineTo(obj.pt2d[fc.pts[2]][0], obj.pt2d[fc.pts[2]][1]);
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(p1[0], p1[1]);
+        ctx.lineTo(p2[0], p2[1]);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -164,3 +268,7 @@ class Object3dRendererBase {
         return col;
     }
 }
+
+// Backdrop of the canvas-2D renderers that paint no scene background: a fixed
+// neutral grey, deliberately not the engine background and no sky.
+Object3dRendererBase.BACKDROP_COLOR = '#666666';
