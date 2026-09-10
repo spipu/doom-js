@@ -5,6 +5,7 @@ class Object3dRendererFlat extends Object3dRendererBase {
 
     _collectFaces(obj, engine, faceIndices) {
         const result = [];
+        const tint   = obj.getRenderTint();
         for (const k of faceIndices) {
             const fc     = obj.faceList[k];
             const normal = fc.normal;
@@ -22,7 +23,7 @@ class Object3dRendererFlat extends Object3dRendererBase {
                 (obj.pt3d[fc.pts[0]][2] + obj.pt3d[fc.pts[1]][2] + obj.pt3d[fc.pts[2]][2]) / 3,
                 1,
             ];
-            const baseColor = ((fc.textureId !== null) ? [255, 255, 255] : fc.color);
+            const baseColor = (tint ?? ((fc.textureId !== null) ? [255, 255, 255] : fc.color));
             const col = this._pointColor(engine, baseColor, center, normal);
             const depth = (obj.pt3d[fc.pts[0]][2] + obj.pt3d[fc.pts[1]][2] + obj.pt3d[fc.pts[2]][2]) / 3;
             result.push({ k, r: Math.trunc(col[0]), g: Math.trunc(col[1]), b: Math.trunc(col[2]), depth, tris });

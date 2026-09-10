@@ -384,8 +384,11 @@ class WadWorldBuilder {
             // same sprite in differently-lit sectors needs distinct objects — and
             // a sprite in a light-effect sector needs its own object too, so the
             // dynamic group factor does not spill onto its twins elsewhere.
+            const isPickup   = (t.kind === 'pickup');
             const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
-            const objKey     = t.key + '|' + t.light + '|' + lightGroup;
+            // The pickup tint joins the key: two things sharing a sprite must not
+            // share an object when only one of them is to be grabbed.
+            const objKey     = t.key + '|' + t.light + '|' + lightGroup + '|' + isPickup;
             if (billboardIds[objKey] === undefined) {
                 billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
                     billboard:     true,
@@ -397,10 +400,10 @@ class WadWorldBuilder {
                     anchorOffsetY: t.anchorOffsetY,
                     anchorTop:     t.anchorTop,
                     light:         t.light,
-                    lightGroup:    lightGroup
+                    lightGroup:    lightGroup,
+                    tint:          ((isPickup) ? WadConstants.PICKUP_TINT : null)
                 });
             }
-            const isPickup   = (t.kind === 'pickup');
             const countsItem = (isPickup && countedItems.has(t.type));
             const code       = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
             if (countsItem) {
@@ -494,7 +497,8 @@ class WadWorldBuilder {
                         anchorOffsetY: ((ceiling) ? sink : Math.max(0, sink)) * scale,
                         anchorTop:     ceiling,
                         light:         255,
-                        alpha:         alpha
+                        alpha:         alpha,
+                        tint:          WadConstants.MONSTER_TINT
                     });
                 }
 
@@ -546,16 +550,16 @@ class WadWorldBuilder {
             this._monsterSystem.setCrushedCorpseView(null);
             return;
         }
-        this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump)));
+        this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump), WadConstants.MONSTER_TINT));
     }
 
     // Floor-anchored sprite billboard, shared by the batch templates (drop
-    // pickups, crushed corpse): the sprite offset overflow hangs above the
-    // floor, never below. Baked fullbright with no light group like the
+    // pickups, crushed corpse, each passing its own tint): the sprite offset
+    // overflow hangs above the floor, never below. Baked fullbright with no light group like the
     // monster views: the spawn sector is unknown here, so the monster system
     // pushes the sector lighting per instance (the crushed corpse keeps its
     // monster's instance and inherits it).
-    _groundSpriteBillboard(spr) {
+    _groundSpriteBillboard(spr, tint) {
         const geo = WadGeometry.spriteBillboardData(spr);
         return loader.objects().loadBillboardFromData(null, {
             billboard:     true,
@@ -565,7 +569,8 @@ class WadWorldBuilder {
             anchorOffsetX: geo.anchorOffsetX,
             anchorOffsetY: Math.max(0, spr.topOffset - spr.height) * WadConstants.SCALE,
             anchorTop:     false,
-            light:         255
+            light:         255,
+            tint:          tint
         });
     }
 
@@ -598,7 +603,7 @@ class WadWorldBuilder {
                 const code   = 'drop_' + d.item + '_' + (d.amount ?? 'x');
                 catalog[key] = {
                     code:  code,
-                    objId: this._groundSpriteBillboard(spr)
+                    objId: this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT)
                 };
                 loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._game));
             }
