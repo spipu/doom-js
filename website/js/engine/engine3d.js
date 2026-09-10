@@ -368,10 +368,12 @@ class Engine3d {
     }
 
     drawFinish() {
+        // end() first: it flushes the frame (full pushes its pixel buffer
+        // there), so an overlay drawn before would be wiped.
+        this._renderer.end(this);
         if (this._overlayCallback !== null) {
             this._overlayCallback(this._renderer, this);
         }
-        this._renderer.end(this);
         this._updateFps();
         return this;
     }
