@@ -25,6 +25,7 @@ class Object3dLoader extends AbstractLoader {
 
     // Texture entries: url string (loaded via TextureLoader) or number (already loaded texture id)
     _populateFromData(entity, data) {
+        entity.setRenderTint(data.tint ?? null);
         (data.textures || []).forEach((t) => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
         data.points.forEach((p) => entity.ptAdd(p[0], p[1], p[2]));
         data.faces.forEach((f) => {

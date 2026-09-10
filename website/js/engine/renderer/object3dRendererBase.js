@@ -4,6 +4,9 @@ class Object3dRendererBase {
         this._lightTemp = [0, 0, 0];
         this._uvOff     = [0, 0];
         this._spriteCanvases = new WeakMap();
+        this._queue      = new FaceDepthQueue();
+        this._styles     = [];
+        this._styleIndex = new Map();
     }
 
     isAvailable() {
@@ -26,10 +29,81 @@ class Object3dRendererBase {
     begin(engine) {
         engine.scrCtx.fillStyle = Object3dRendererBase.BACKDROP_COLOR;
         engine.scrCtx.fillRect(0, 0, engine.scrWidth, engine.scrHeight);
+        this._queue.clear();
+        this._styles.length = 0;
+        this._styleIndex.clear();
     }
 
+    // The frame is drawn here, farthest triangle first, whatever object each
+    // came from. The canvas state is only touched when the style changes, and
+    // the sorted queue keeps those runs long. A no-op for webgl, which
+    // overrides draw and queues nothing.
     end(engine) {
-        // frame-completion hook — nothing to flush by default
+        const ctx      = engine.scrCtx;
+        const geometry = this._queue.getGeometry();
+        const styles   = this._queue.getStyles();
+        const order    = this._queue.sorted();
+        let current = -1;
+        for (let i = 0; i < order.length; i++) {
+            const t = order[i];
+            if (styles[t] !== current) {
+                current = styles[t];
+                ctx.fillStyle   = this._styles[current][0];
+                ctx.strokeStyle = this._styles[current][1];
+            }
+            const o = t * FaceDepthQueue.STRIDE;
+            ctx.beginPath();
+            ctx.moveTo(geometry[o], geometry[o + 1]);
+            ctx.lineTo(geometry[o + 2], geometry[o + 3]);
+            ctx.lineTo(geometry[o + 4], geometry[o + 5]);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    // Style slot of the frame, -1 when that key has not been registered yet:
+    // the renderers build their colour strings only on a miss.
+    _styleSlot(key) {
+        const id = this._styleIndex.get(key);
+
+        return ((id === undefined) ? -1 : id);
+    }
+
+    _addStyle(key, fill, stroke) {
+        const id = this._styles.length;
+        this._styles.push([fill, stroke]);
+        this._styleIndex.set(key, id);
+
+        return id;
+    }
+
+    // Queue one face, for the renderers whose style costs nothing to resolve.
+    // The others clip first (_faceScreenTriangles) and only pay for the faces
+    // that survive.
+    _pushFace(engine, obj, fc, styleId) {
+        this._pushTriangles(obj, fc, this._faceScreenTriangles(engine, obj, fc), styleId);
+    }
+
+    // Screen triangles of a face, keyed by the depth of its FARTHEST vertex: a
+    // huge floor triangle then sinks to the back of the queue, behind the
+    // bodies standing on it. tris = null means the face is wholly in front.
+    _pushTriangles(obj, fc, tris, styleId) {
+        if (tris === null) {
+            const p0 = obj.pt2d[fc.pts[0]];
+            const p1 = obj.pt2d[fc.pts[1]];
+            const p2 = obj.pt2d[fc.pts[2]];
+            const depth = Math.max(obj.pt3d[fc.pts[0]][2], obj.pt3d[fc.pts[1]][2], obj.pt3d[fc.pts[2]][2]);
+            this._queue.push(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], depth, styleId);
+            return;
+        }
+        for (let t = 0; t < tris.length; t++) {
+            const tri = tris[t];
+            this._queue.push(
+                tri[0][0], tri[0][1], tri[1][0], tri[1][1], tri[2][0], tri[2][1],
+                Math.max(tri[0][2], tri[1][2], tri[2][2]), styleId
+            );
+        }
     }
 
     // Draw a textured quad in normalised screen space (x, y top-left, w, h in
@@ -166,26 +240,6 @@ class Object3dRendererBase {
             this._positionVertex(obj, fc, 1),
             this._positionVertex(obj, fc, 2)
         );
-    }
-
-    // Clipped triangle, its vertices carrying their own screen x/y.
-    _traceClipped(ctx, tri) {
-        this._tracePath(ctx, tri[0], tri[1], tri[2]);
-    }
-
-    _traceTriangle(ctx, obj, fc) {
-        this._tracePath(ctx, obj.pt2d[fc.pts[0]], obj.pt2d[fc.pts[1]], obj.pt2d[fc.pts[2]]);
-    }
-
-    // Points are read by index, so any [x, y, …] layout fits.
-    _tracePath(ctx, p0, p1, p2) {
-        ctx.beginPath();
-        ctx.moveTo(p0[0], p0[1]);
-        ctx.lineTo(p1[0], p1[1]);
-        ctx.lineTo(p2[0], p2[1]);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
     }
 
     // Back-face culling: a face whose normal points away from the camera is

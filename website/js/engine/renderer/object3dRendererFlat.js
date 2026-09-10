@@ -1,54 +1,57 @@
 class Object3dRendererFlat extends Object3dRendererBase {
+    constructor() {
+        super();
+        this._center = [0, 0, 0, 1];
+    }
+
     get code() {
         return 'flat';
     }
 
-    _collectFaces(obj, engine, faceIndices) {
-        const result = [];
-        const tint   = obj.getRenderTint();
-        for (const k of faceIndices) {
-            const fc     = obj.faceList[k];
-            const normal = fc.normal;
-            const p      = obj.pt3d[fc.pts[0]];
-            if (this._isBackFace(normal, p)) {
-                continue;
-            }
-            const tris = this._faceScreenTriangles(engine, obj, fc);
-            if ((tris !== null) && (tris.length === 0)) {
-                continue;
-            }
-            const center = [
-                (obj.pt3d[fc.pts[0]][0] + obj.pt3d[fc.pts[1]][0] + obj.pt3d[fc.pts[2]][0]) / 3,
-                (obj.pt3d[fc.pts[0]][1] + obj.pt3d[fc.pts[1]][1] + obj.pt3d[fc.pts[2]][1]) / 3,
-                (obj.pt3d[fc.pts[0]][2] + obj.pt3d[fc.pts[1]][2] + obj.pt3d[fc.pts[2]][2]) / 3,
-                1,
-            ];
-            const baseColor = (tint ?? ((fc.textureId !== null) ? [255, 255, 255] : fc.color));
-            const col = this._pointColor(engine, baseColor, center, normal);
-            const depth = (obj.pt3d[fc.pts[0]][2] + obj.pt3d[fc.pts[1]][2] + obj.pt3d[fc.pts[2]][2]) / 3;
-            result.push({ k, r: Math.trunc(col[0]), g: Math.trunc(col[1]), b: Math.trunc(col[2]), depth, tris });
-        }
-        result.sort((a, b) => b.depth - a.depth);
-        return result;
-    }
-
-    _drawFaces(obj, engine, faces) {
-        for (const face of faces) {
-            const color = 'rgb(' + face.r + ',' + face.g + ',' + face.b + ')';
-            engine.scrCtx.fillStyle   = color;
-            engine.scrCtx.strokeStyle = color;
-            if (face.tris === null) {
-                this._traceTriangle(engine.scrCtx, obj, obj.faceList[face.k]);
-                continue;
-            }
-            for (let t = 0; t < face.tris.length; t++) {
-                this._traceClipped(engine.scrCtx, face.tris[t]);
-            }
-        }
-    }
-
+    // The lighting of a face is the expensive part here, so a face is culled
+    // and clipped BEFORE its colour is resolved.
     draw(obj, engine) {
-        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj.opaqueFaces));
-        this._drawFaces(obj, engine, this._collectFaces(obj, engine, obj.alphaFaces));
+        const tint = obj.getRenderTint();
+        for (const faceIndices of [obj.opaqueFaces, obj.alphaFaces]) {
+            for (const k of faceIndices) {
+                const fc = obj.faceList[k];
+                if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
+                    continue;
+                }
+                const tris = this._faceScreenTriangles(engine, obj, fc);
+                if ((tris !== null) && (tris.length === 0)) {
+                    continue;
+                }
+                this._pushTriangles(obj, fc, tris, this._faceStyleId(engine, obj, fc, tint));
+            }
+        }
+    }
+
+    // Flat shading: one colour for the whole face, lit from its centre. Faces
+    // that end up the same colour share a style slot, which keeps the runs of
+    // the sorted draw pass long.
+    _faceStyleId(engine, obj, fc, tint) {
+        const baseColor = (tint ?? ((fc.textureId !== null) ? [255, 255, 255] : fc.color));
+        const col = this._pointColor(engine, baseColor, this._faceCenter(obj, fc), fc.normal);
+        const r   = Math.trunc(col[0]);
+        const g   = Math.trunc(col[1]);
+        const b   = Math.trunc(col[2]);
+        const key = (r << 16) | (g << 8) | b;
+        const id  = this._styleSlot(key);
+        if (id !== -1) {
+            return id;
+        }
+        const css = 'rgb(' + r + ',' + g + ',' + b + ')';
+
+        return this._addStyle(key, css, css);
+    }
+
+    _faceCenter(obj, fc) {
+        const center = this._center;
+        for (let i = 0; i < 3; i++) {
+            center[i] = (obj.pt3d[fc.pts[0]][i] + obj.pt3d[fc.pts[1]][i] + obj.pt3d[fc.pts[2]][i]) / 3;
+        }
+
+        return center;
     }
 }

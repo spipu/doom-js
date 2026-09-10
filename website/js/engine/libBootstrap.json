@@ -1,5 +1,5 @@
 {
-    "version": "v2.305",
+    "version": "v2.308",
     "files": {
         "assets": [],
         "css": [],
@@ -36,6 +36,7 @@
             "/js/engine/loader.js",
             "/js/engine/matrix.js",
             "/js/engine/zBuffer.js",
+            "/js/engine/renderer/faceDepthQueue.js",
             "/js/engine/renderer/object3dRendererBase.js",
             "/js/engine/renderer/object3dRendererFast.js",
             "/js/engine/renderer/object3dRendererFull.js",

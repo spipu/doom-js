@@ -66,7 +66,7 @@ class WadWorldBuilder {
         const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
         const builtDoorCodes = new Set();
         for (const door of doors) {
-            this._registerInstance(door, bank);
+            this._registerInstance(door, bank, WadConstants.MOVER_TINT);
             builtDoorCodes.add(door.code);
             this._applyDoorUseGuard(door, level);
         }
@@ -76,7 +76,7 @@ class WadWorldBuilder {
         const lifts = new WadLiftBuilder(level, analysis, bank, animBank).buildAll();
         const builtLiftCodes = new Set();
         for (const lift of lifts) {
-            this._registerInstance(lift, bank);
+            this._registerInstance(lift, bank, WadConstants.MOVER_TINT);
             builtLiftCodes.add(lift.code);
         }
 
@@ -84,7 +84,7 @@ class WadWorldBuilder {
         const risingFloors = new WadRisingFloorBuilder(level, analysis, bank, animBank).buildAll();
         const builtRisingCodes = new Set();
         for (const floor of risingFloors) {
-            this._registerInstance(floor, bank);
+            this._registerInstance(floor, bank, WadConstants.MOVER_TINT);
             builtRisingCodes.add(floor.code);
         }
 
@@ -93,7 +93,7 @@ class WadWorldBuilder {
         const stairs = new WadStairBuilder(level, analysis, bank, animBank).buildAll();
         const builtStairCodes = new Set();
         for (const step of stairs) {
-            this._registerInstance(step, bank);
+            this._registerInstance(step, bank, WadConstants.MOVER_TINT);
             builtStairCodes.add(step.code);
         }
         // A predicted mover whose geometry came out empty has no instance: the
@@ -121,7 +121,7 @@ class WadWorldBuilder {
         const switches = new WadSwitchBuilder(
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf).buildAll();
         for (const sw of switches) {
-            this._registerInstance(sw, bank);
+            this._registerInstance(sw, bank, WadConstants.SWITCH_TINT);
             this._applyKeyGuard(sw);
             this._applySwitchUseGuard(sw);
             const spec = sw.interactionSpec;
@@ -866,11 +866,12 @@ class WadWorldBuilder {
         return flats;
     }
 
-    _registerInstance(built, bank) {
-        const objectId = loader.objects().loadFromData(
-            null,
-            WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank)
-        );
+    // tint: flat colour of the whole body in the textureless renderers, null for
+    // the trigger zones, which carry no face to paint.
+    _registerInstance(built, bank, tint = null) {
+        const data = WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank);
+        data.tint  = tint;
+        const objectId = loader.objects().loadFromData(null, data);
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
