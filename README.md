@@ -91,7 +91,7 @@ Four rendering modes are available, selectable in the game from the **Display** 
 |---|---|
 | `webgl` | WebGL — GPU shaders, z-buffer, texture mapping (default, falls back to `full` if unavailable) |
 | `full` | Per-pixel z-buffer with Gouraud shading and texture mapping |
-| `flat` | Painter's algorithm with flat shading (one colour per face), on a neutral grey backdrop without sky |
+| `flat` | Painter's algorithm with flat shading — one colour per face, the average colour of its texture dimmed by the sector light — on a neutral grey backdrop without sky |
 | `fast` | Wireframe — no lighting, canvas 2D paths only, on the same grey backdrop |
 
 In the two textureless modes the game paints enemies red, every pickup blue — keys included, and the exploding barrel counts as a body — every moving part (doors, lifts, floors, stairs) yellow and the switches magenta, so a scene stays readable without its sprites. Both draw the whole frame in one depth-sorted pass, so a body behind a wall stays behind it instead of being painted over the map.
@@ -235,7 +235,7 @@ After any file change, increment the `version` field of the `libBootstrap.json` 
 * **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
 * **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
 * **Vanilla polish pass**: the small fidelity gaps knowingly left aside — no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports.
-* **Rendering performance & quality options**: the renderer is now selectable and the three CPU modes draw the weapon in hand, but they still lag behind WebGL (no sky, no distance darkening, and `flat` draws every textured face white), and there is no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
+* **Rendering performance & quality options**: the renderer is now selectable and the three CPU modes draw the weapon in hand, but they still lag behind WebGL (no sky, no distance darkening), and there is no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
 
 ## License
 
