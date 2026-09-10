@@ -70,57 +70,19 @@ class Object3dRendererFull extends Object3dRendererBase {
         out[8] = pt3d[0]; out[9] = pt3d[1];
     }
 
+    // Crossing geometry from the base; this only adds the colour and UV channels
+    // of the layout above.
     _clipVertex(engine, va, vb) {
-        const zNear = engine.zBuffer.getNear();
-        const t  = (zNear - va[2]) / (vb[2] - va[2]);
-        const cx = va[8] + t * (vb[8] - va[8]);
-        const cy = va[9] + t * (vb[9] - va[9]);
+        const c = this._nearCrossing(engine, va[2], va[8], va[9], vb[2], vb[8], vb[9]);
+        const t = c.t;
         return [
-            Math.trunc(engine.projScaleX * cx / zNear - engine.projOffsetX),
-            Math.trunc(-engine.projScaleY * cy / zNear - engine.projOffsetY),
-            zNear,
+            c.sx, c.sy, engine.zBuffer.getNear(),
             va[3] + t * (vb[3] - va[3]),
             va[4] + t * (vb[4] - va[4]),
             va[5] + t * (vb[5] - va[5]),
             va[6] + t * (vb[6] - va[6]),
             va[7] + t * (vb[7] - va[7]),
-            cx, cy,
-        ];
-    }
-
-    _clipNear(engine, v0, v1, v2) {
-        const zNear  = engine.zBuffer.getNear();
-        const verts  = [v0, v1, v2];
-        const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
-        const cnt    = inside.filter(Boolean).length;
-
-        if (cnt === 3) {
-            return [[v0, v1, v2]];
-        }
-        if (cnt === 0) {
-            return [];
-        }
-
-        if (cnt === 1) {
-            const i = inside.indexOf(true);
-            const j = (i + 1) % 3;
-            const k = (i + 2) % 3;
-            return [[
-                verts[i],
-                this._clipVertex(engine, verts[i], verts[j]),
-                this._clipVertex(engine, verts[i], verts[k]),
-            ]];
-        }
-
-        // cnt === 2 : quad → 2 triangles
-        const iOut = inside.indexOf(false);
-        const iIn1 = (iOut + 1) % 3;
-        const iIn2 = (iOut + 2) % 3;
-        const a = this._clipVertex(engine, verts[iOut], verts[iIn1]);
-        const b = this._clipVertex(engine, verts[iOut], verts[iIn2]);
-        return [
-            [verts[iIn1], verts[iIn2], a],
-            [verts[iIn2], b, a],
+            c.cx, c.cy,
         ];
     }
 
