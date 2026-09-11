@@ -181,6 +181,15 @@ class WadWorldBuilder {
         const sectorAt = ((bspTree !== null)
             ? ((doomX, doomY) => bspTree.findSector(doomX, doomY))
             : null);
+        // The one point-to-sector lookup every runtime service shares (sector
+        // light, terrain): the BSP answer when the level has a tree — vanilla
+        // R_PointInSubsector — and the polygon cache otherwise. The cache is
+        // resolved HERE rather than read through the builder at query time: a
+        // closure over the builder would keep it, and the whole level data it
+        // holds, alive for as long as the level runs.
+        const siAt = ((sectorAt !== null)
+            ? sectorAt
+            : WadWorldBuilder._polygonLookup(this._sectorPolyCache()));
 
         // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
         // polling the player's sector every 32-tic window. The "+change" target
@@ -233,17 +242,19 @@ class WadWorldBuilder {
             }
             // Sector-light lookup: shades the weapon view sprite by the
             // player's sector, pulsing with the sector's light effect through
-            // the interaction's live factor. It locates the player through the
-            // BSP when there is one, and only falls back on the polygon cache
-            // (built on demand) otherwise.
-            this._game.setSectorLight(new DoomSectorLight(
-                ((sectorAt !== null) ? null : this._sectorPolyCache()), lightInteraction,
-                sectorAt, level.sectors));
+            // the interaction's live factor.
+            this._game.setSectorLight(new DoomSectorLight(siAt, lightInteraction, level.sectors));
         }
 
         // "+change" floors: swap the moving top-flat texture (and the sector's
         // damage special) when the movement starts or completes.
-        this._wireFloorChanges(analysis, animBank, damageInteraction);
+        const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
+
+        // Terrain of the ground: what a shot, a shell, a falling body or a
+        // blast leaves where it meets a liquid. Reads the sector's LIVE flat,
+        // so a "+change" floor turning to water splashes as water.
+        this._game.setTerrain(new DoomTerrain(
+            siAt, surfaces, this._profile.terrainFlats(), this._profile.terrains()));
 
         // Things (decorations + pickups) as billboard sprites
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
@@ -800,6 +811,7 @@ class WadWorldBuilder {
     // the damage special come from the SOURCE sector's live surface (vanilla
     // reads line->frontsector at fire time, so chained changes propagate). No
     // texture registers outside the batch: every reachable flat resolves here.
+    // Returns the live surface registry, which the terrain reads too.
     _wireFloorChanges(analysis, animBank, damageInteraction) {
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
         this._game.setSectorSurfaces(surfaces);
@@ -849,6 +861,8 @@ class WadWorldBuilder {
                 inst.setOnStart(apply);
             }
         }
+
+        return surfaces;
     }
 
     // Flats a sector can show: its own, then those its "+change" chain brings.
@@ -1255,6 +1269,12 @@ class WadWorldBuilder {
             };
         }
         return landings;
+    }
+
+    // Point-to-sector lookup over a resolved polygon cache, closing over that
+    // array alone (see the siAt of build()).
+    static _polygonLookup(sectorPolys) {
+        return ((doomX, doomY) => (WadSectorPolygons.smallestContaining(sectorPolys, doomX, doomY)?.si ?? null));
     }
 
     /**

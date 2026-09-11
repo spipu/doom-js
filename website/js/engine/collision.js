@@ -167,9 +167,17 @@ class Collision {
             // Broadphase: reject on the triangle AABB (6 compares) before the
             // costly point-in-triangle test. Matters for multi-ray shots
             // (the super shotgun casts 20 rays through every wall).
-            if (px < tri.xMin || px > tri.xMax
-                || py < tri.yMin || py > tri.yMax
-                || pz < tri.zMin || pz > tri.zMax) {
+            //
+            // Slackened on every axis: an axis-aligned triangle — every Doom
+            // floor and ceiling — has a box of ZERO thickness on that axis,
+            // while the ray/plane solve lands its point an ulp off the plane.
+            // Compared strictly, the box then rejects hits the exact test
+            // below would accept, and the shot silently passes through the
+            // floor at a handful of angles.
+            const eps = Collision.RAY_AABB_EPSILON;
+            if (px < tri.xMin - eps || px > tri.xMax + eps
+                || py < tri.yMin - eps || py > tri.yMax + eps
+                || pz < tri.zMin - eps || pz > tri.zMax + eps) {
                 continue;
             }
             if (!this._pointInTri(px, py, pz, tri)) {
@@ -1052,6 +1060,9 @@ Collision.DYN_NEAR = 1;
 Collision.DYN_ALL  = 2;
 // |normal.y| from which a triangle is a floor or a ceiling rather than a wall
 Collision.HORIZONTAL_NY = 0.7;
+// Slack of the raycast broadphase box (world units): far above the rounding of
+// the ray/plane solve, far below anything the geometry can tell apart.
+Collision.RAY_AABB_EPSILON = 1e-6;
 Collision.KIND_FLOOR    = 'floor';
 Collision.KIND_CEILING  = 'ceiling';
 Collision.KIND_WALL     = 'wall';

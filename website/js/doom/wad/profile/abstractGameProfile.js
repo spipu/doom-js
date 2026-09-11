@@ -481,14 +481,52 @@ class AbstractGameProfile {
     }
 
     /**
-     * Flats of this game that are liquids (every animation frame): an impact
-     * leaves no decal on them.
+     * Terrain of each flat of this game (the floor entries of the UZDoom
+     * TERRAIN lump): flat name (uppercase, EVERY animation frame) → terrain
+     * code declared by terrains(). A flat absent from the table is dry.
      *
-     * @returns {string[]} flat names (uppercase)
+     * @returns {object} flat name → terrain code
      */
-    liquidFlats() {
-        this._generateException('liquidFlats must be implemented');
-        return [];
+    terrainFlats() {
+        this._generateException('terrainFlats must be implemented');
+        return {};
+    }
+
+    /**
+     * What each terrain code does, transcribed from the splash blocks of the
+     * TERRAIN lump. Every component is optional, so one shape covers them all:
+     * `base` (the ripple spreading on the spot), `chunk` (the piece thrown out
+     * of it) with its `chunkVel`, and `sound`. A terrain declaring none is a
+     * liquid that splashes nothing — which is how the Doom family keeps its
+     * impact decals filtered without gaining a splash it never had.
+     *
+     * chunkVel carries the lump's own fields: the velocity is
+     * `(Random2() << xVelShift) / 65536` and `(Random2() << yVelShift) / 65536`
+     * sideways (null = thrown straight up, the lump's 255 sentinel) and
+     * `baseZVel + (Random() << zVelShift) / 65536` upward.
+     *
+     * @returns {object} terrain code → {base?, chunk?, chunkVel?, sound?}
+     */
+    terrains() {
+        this._generateException('terrains must be implemented');
+        return {};
+    }
+
+    /**
+     * Flat → terrain entries of a whole animation family, so a profile names
+     * the frames once instead of repeating the terrain on every line.
+     *
+     * @param {string}   terrain
+     * @param {string[]} flats
+     * @returns {object}
+     */
+    static terrainGroup(terrain, flats) {
+        const entries = {};
+        for (const name of flats) {
+            entries[name] = terrain;
+        }
+
+        return entries;
     }
 
     /**

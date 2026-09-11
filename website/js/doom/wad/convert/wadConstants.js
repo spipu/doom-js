@@ -806,6 +806,14 @@ class WadConstants {
     // momz < -8 u/tic (p_mobj.c), which gravity 1 u/tic² reaches after 32 units.
     static LAND_GRUNT_FALL_UNITS = 32;
 
+    // Fall (in map units) beyond which a body landing in a liquid splashes:
+    // P_HitWater refuses it to a living one under -6 u/tic, which gravity
+    // 1 u/tic² reaches after 18 units. Below the step height an ordinary drop
+    // is a step down and never reports a landing at all, so what this really
+    // catches is the body that left the ground without falling — a platform
+    // sinking from under it — which would otherwise splash on every tic.
+    static SPLASH_FALL_UNITS = 18;
+
     // A_Chase idle bark: P_Random() < 3 per call (p_enemy.c).
     static MONSTER_ACTIVE_SOUND_CHANCE = 3;
 
