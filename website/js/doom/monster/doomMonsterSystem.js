@@ -106,6 +106,9 @@ class DoomMonsterSystem {
             respawnClock:    0,
             noKillCount:     false,
             crushedFlat:     false,
+            // A_ImpXDeath1: a gibbed body hangs in the air until A_Gravity
+            // lets it drop (hereticimp.zs).
+            corpseFloats:    false,
             blend:           null,
             snapRender:      false,
             walkStepped:     false,
@@ -1143,6 +1146,23 @@ class DoomMonsterSystem {
             this._aChase(m, action);
             return;
         }
+        // A_SpawnItemEx (the golem's rising soul) and A_ImpExplode (the two
+        // pieces a gargoyle shatters into) let go of transient bodies named by
+        // the profile: the system only spawns them where the actor stands.
+        if ((action === 'A_SpawnItemEx') || (action === 'A_ImpExplode')) {
+            this._spawnStateEffects(m, args);
+            return;
+        }
+        // A_Gravity (hereticimp.zs A_ImpXDeath2): the body that was hanging
+        // falls again, and breaks on landing — or at once when it is already
+        // down, like the ordinary death does.
+        if (action === 'A_Gravity') {
+            m.corpseFloats = false;
+            if (this._restsOnFloor(m)) {
+                this._crashLanding(m);
+            }
+            return;
+        }
         if (action === 'A_Sor1Pain') {
             // dsparil.zs: the pain arms the serpent's chase acceleration
             m.special1 = 20;
@@ -1164,8 +1184,17 @@ class DoomMonsterSystem {
         // A_ImpDeath / A_ImpXDeath1: bSolid = false) — same effect as
         // A_NoBlocking, without which a dead gargoyle still blocks the player.
         if ((action === 'A_NoBlocking') || (action === 'A_ImpDeath') || (action === 'A_ImpXDeath1')) {
+            if (action === 'A_ImpXDeath1') {
+                m.corpseFloats = true;
+            }
             this.noBlocking(m);
             this._spawnDrops(m);
+            // hereticimp.zs A_ImpDeath: a body that dies ALREADY on its floor
+            // shatters at once — it will never land, so the crash test that
+            // rides landings would never fire for it.
+            if ((action === 'A_ImpDeath') && this._restsOnFloor(m)) {
+                this._crashLanding(m);
+            }
             return;
         }
         if ((action === 'A_Explode') && (this._damage !== null)) {
@@ -1510,6 +1539,21 @@ class DoomMonsterSystem {
         return this._userSi;
     }
 
+    // Transient bodies of a state line: one effect (`effect`) or several
+    // (`effects`), all named by the profile.
+    _spawnStateEffects(m, args) {
+        if (this._effects === null) {
+            return;
+        }
+        const names = (((args?.effects ?? null) !== null) ? args.effects : [(args?.effect ?? null)]);
+        const at    = m.inst.getTransform().position;
+        for (const name of names) {
+            if (name !== null) {
+                this._effects.spawn(name, at[0], at[1], at[2]);
+            }
+        }
+    }
+
     // A_DropItem at the A_NoBlocking state: every dropItems entry rolls its
     // chance (x/256, default always) and materializes as a proximity pickup
     // at the body's feet — no toss (agreed simplification).
@@ -1642,8 +1686,9 @@ class DoomMonsterSystem {
         // vertical life is the float logic, Commander Keen simply hangs from
         // his ceiling); everything else falls to its floor. A void below (no
         // floor at all) freezes the body instead of dropping it through the
-        // world. Death clears the flag, like vanilla: a corpse always falls.
-        if ((m.def.getFlags().noGravity === true) && !m.dead) {
+        // world. Death clears the flag, like vanilla: a corpse always falls —
+        // all but the gibbed body, which hangs until A_Gravity drops it.
+        if (((m.def.getFlags().noGravity === true) && !m.dead) || m.corpseFloats) {
             return;
         }
         const floorY = this._collision.getFloor(pos[0], pos[2], r, pos[1] + 0.01);
@@ -1668,6 +1713,17 @@ class DoomMonsterSystem {
         if (moved) {
             this._resolveRide(m);
         }
+    }
+
+    // Whether the body already sits on the floor under it (no fall to come).
+    _restsOnFloor(m) {
+        if (this._collision === null) {
+            return false;
+        }
+        const pos    = m.inst.getTransform().position;
+        const floorY = this._collision.getFloor(pos[0], pos[2], m.def.getRadius() * WadConstants.SCALE, pos[1] + 0.01);
+
+        return ((floorY !== -Infinity) && (pos[1] <= floorY + 0.001));
     }
 
     // AActor::Crash: a corpse resting on its floor breaks open (the Heretic
