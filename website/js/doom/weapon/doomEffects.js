@@ -30,6 +30,21 @@ class DoomEffects {
         return this;
     }
 
+    /**
+     * One more template, built after construction from a bank of its own — the
+     * generic splash bakes a set of frames per liquid flat, which only the
+     * level knows. Like every other template it must be registered inside the
+     * load batch.
+     *
+     * @param {object} bank has(lump) / get(lump), as a sprite bank answers
+     * @param {object} spec an effectTemplates() entry
+     */
+    addTemplate(bank, spec) {
+        this._templates[spec.name] = this._buildTemplate(bank, spec);
+
+        return this;
+    }
+
     _buildTemplates(bank, profile) {
         const templates = {};
         for (const spec of profile.effectTemplates()) {
@@ -56,7 +71,7 @@ class DoomEffects {
         // One shared map for both timelines: a chunk replays on landing the
         // very frame its flight ended on, and must not build it twice.
         const byLetter = new Map();
-        const frames   = this._buildFrames(bank, spec, spec.letters, byLetter);
+        const frames   = this._buildFrames(bank, spec, spec.letters, byLetter, false);
         // The first-frame tic shortening is a Doom-family quirk (P_SpawnPuff /
         // P_SpawnBlood under GAME_DoomChex): drifting templates get it unless
         // the spec opts out (Heretic blood).
@@ -68,6 +83,11 @@ class DoomEffects {
             landing:     ((landing !== null)
                 ? {frames: this._buildFrames(bank, spec, landing.letters, byLetter), frameTics: landing.frameTics}
                 : null),
+            // The same timelines mirrored left to right, when the spec asks for
+            // them: the caller then draws which way each spawn faces, so a
+            // repeated effect stops stamping the identical picture. null = the
+            // effect only ever faces one way.
+            mirrored:    ((spec.mirror === true) ? this._buildMirrored(bank, spec, landing) : null),
             rise:        spec.rise,
             gravity:     (spec.gravity ?? 0),
             shorten:     (spec.shorten ?? (spec.rise > 0)),
@@ -81,9 +101,24 @@ class DoomEffects {
         };
     }
 
+    // The mirrored twin of a template's timelines, with a letter map of its
+    // own: the same letter is a different billboard on each side.
+    _buildMirrored(bank, spec, landing) {
+        const byLetter = new Map();
+
+        return {
+            frames:  this._buildFrames(bank, spec, spec.letters, byLetter, true),
+            landing: ((landing !== null)
+                ? {frames: this._buildFrames(bank, spec, landing.letters, byLetter, true), frameTics: landing.frameTics}
+                : null)
+        };
+    }
+
     // Billboards of one timeline, sharing byLetter with the others of the
-    // same template so a letter used twice costs a single object.
-    _buildFrames(bank, spec, letters, byLetter) {
+    // same template so a letter used twice costs a single object. Mirroring
+    // flips the anchor with the picture: the offset is measured from the left
+    // edge, which becomes the right one.
+    _buildFrames(bank, spec, letters, byLetter, flipX = false) {
         const scale  = WadConstants.SCALE;
         const frames = [];
         for (const letter of letters) {
@@ -94,11 +129,12 @@ class DoomEffects {
                     textures:      [spr.texId],
                     halfWidth:     geo.halfWidth,
                     height:        geo.height,
-                    anchorOffsetX: geo.anchorOffsetX,
+                    anchorOffsetX: ((flipX) ? -geo.anchorOffsetX : geo.anchorOffsetX),
                     anchorOffsetY: (spr.topOffset - spr.height) * scale,
                     light:         255,
                     alpha:         spec.alpha,
                     additive:      spec.additive,
+                    flipX:         flipX,
                 }));
             }
             frames.push({objId: byLetter.get(letter)});
@@ -149,7 +185,10 @@ class DoomEffects {
      *                       off raggedly (A_BrainScream), velocity?: [vx, vy,
      *                       vz] in map units per tic, which replaces the
      *                       template's plain upward drift (a splash chunk is
-     *                       thrown out of its ripple)}
+     *                       thrown out of its ripple), mirror?: draw the
+     *                       template's mirrored timelines, ignored by a
+     *                       template that declares none, roll?: radians of
+     *                       spin in the sprite's own plane}
      * @returns {object|null} the live effect
      */
     spawn(name, x, y, z, opts = {}) {
@@ -157,10 +196,14 @@ class DoomEffects {
         if ((tpl === null) || (tpl === undefined)) {
             return null;
         }
+        // Which way this one faces. The choice is the caller's, never this
+        // object's: the splashes draw it from a random stream of their own, so
+        // the game's table keeps the vanilla sequence.
+        const facing     = (((opts.mirror === true) && (tpl.mirrored !== null)) ? tpl.mirrored : tpl);
         const startFrame = (opts.startFrame ?? 0);
         const jz = ((tpl.rise > 0) ? (this._rng.next() - this._rng.next()) / 4096 : 0);  // puff z-rand
         const instId = loader.instances().spawnFromData(null, {
-            object:         tpl.frames[startFrame].objId,
+            object:         facing.frames[startFrame].objId,
             position:       [x, y + tpl.spawnHeight + jz, z],
             rotation:       [0, 0, 0],
             trigger:        'none',
@@ -179,8 +222,9 @@ class DoomEffects {
         const vel    = (opts.velocity ?? null);
         const active = {
             tpl,
+            facing,
             instId,
-            frames:    tpl.frames,
+            frames:    facing.frames,
             frameTics: tpl.frameTics,
             start:     startFrame,
             shown:     startFrame,
@@ -194,6 +238,9 @@ class DoomEffects {
             landed:    false,
             follow:    null
         };
+        if ((opts.roll ?? 0) !== 0) {
+            loader.instances().get(instId).setRenderRoll(opts.roll);
+        }
         this._active.push(active);
         if (tpl.spawnSound !== null) {
             for (const soundName of tpl.spawnSound) {
@@ -298,8 +345,8 @@ class DoomEffects {
         }
         inst.translate(0, floorY - pos[1], 0);
         p.landed    = true;
-        p.frames    = p.tpl.landing.frames;
-        p.frameTics = p.tpl.landing.frameTics;
+        p.frames    = p.facing.landing.frames;
+        p.frameTics = p.facing.landing.frameTics;
         p.start     = 0;
         p.elapsed   = 0;
         p.shown     = 0;

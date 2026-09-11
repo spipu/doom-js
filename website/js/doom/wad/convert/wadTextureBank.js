@@ -12,11 +12,13 @@ class WadTextureBank {
      * @param {WadFile}             wadFile
      * @param {WadPalette}          palette
      * @param {AbstractGameProfile} profile
+     * @param {WadTerrainBank}      terrainBank
      */
-    constructor(wadFile, palette, profile) {
+    constructor(wadFile, palette, profile, terrainBank) {
         this._wadFile = wadFile;
         this._palette = palette;
         this._profile = profile;
+        this._terrain = terrainBank;
 
         this._pnames      = [];
         this._patches     = {};   // name → DataView
@@ -24,7 +26,6 @@ class WadTextureBank {
         this._wallTexDir  = {};   // name → {dv, offset} (pre-indexed TEXTURE1/2)
         this._wallNames   = [];   // ordered wall texture names (for ANIMATED)
         this._switchPairs = {};   // SW1 name ↔ SW2 name
-        this._liquidFlats = new Set(Object.keys(profile.terrainFlats()));
 
         this._texList  = [];      // index → {name, loaderId, width, height}
         this._texIndex = {};      // name (or 'FLAT_'+name) → index
@@ -273,9 +274,8 @@ class WadTextureBank {
         }
     }
 
-    // A flat the game gives a terrain to is a liquid: it takes no impact decal.
     isLiquidFlat(name) {
-        return this._liquidFlats.has(name.toUpperCase());
+        return this._terrain.isLiquid(name);
     }
 
     _initSwitchPairs() {

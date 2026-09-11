@@ -45,7 +45,8 @@ class WadWorldBuilder {
         WadConstants.applyGameExtensions(this._profile.wadConstantsExtensions());
 
         const palette  = new WadPalette(this._wadFile);
-        const bank     = new WadTextureBank(this._wadFile, palette, this._profile).init();
+        const terrains = new WadTerrainBank(this._wadFile, this._profile).init();
+        const bank     = new WadTextureBank(this._wadFile, palette, this._profile, terrains).init();
         const animBank = new WadAnimationBank(this._wadFile, bank, this._profile).init();
 
         const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
@@ -253,8 +254,8 @@ class WadWorldBuilder {
         // Terrain of the ground: what a shot, a shell, a falling body or a
         // blast leaves where it meets a liquid. Reads the sector's LIVE flat,
         // so a "+change" floor turning to water splashes as water.
-        this._game.setTerrain(new DoomTerrain(
-            siAt, surfaces, this._profile.terrainFlats(), this._profile.terrains()));
+        this._game.setTerrain(new DoomTerrain(siAt, surfaces, terrains.flats(), terrains.terrains())
+            .setLiquidTints(this._liquidTints(analysis, terrains, bank)));
 
         // Things (decorations + pickups) as billboard sprites
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
@@ -863,6 +864,27 @@ class WadWorldBuilder {
         }
 
         return surfaces;
+    }
+
+    // Average colour of every liquid flat the level can show — its own and
+    // those its "+change" chains bring in. Measured on the flat's own pixels:
+    // it is what the generic splash of a splashless game is colourised with.
+    _liquidTints(analysis, terrains, bank) {
+        const tints = {};
+        for (let si = 0; si < this._level.sectors.length; si++) {
+            for (const flat of this._reachableFlats(si, analysis.floorChange)) {
+                const name = flat.toUpperCase();
+                if ((tints[name] !== undefined) || !terrains.isLiquid(name)) {
+                    continue;
+                }
+                const index = bank.ensureFlatTex(name);
+                if (index >= 0) {
+                    tints[name] = loader.textures().get(bank.getLoaderId(index)).getAverageColor();
+                }
+            }
+        }
+
+        return tints;
     }
 
     // Flats a sector can show: its own, then those its "+change" chain brings.

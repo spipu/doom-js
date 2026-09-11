@@ -221,7 +221,7 @@ class WadMapInfo {
 
     // Sequence of MAP blocks: MAP <name> { key = value[, value…] … }
     _overlayLump(text) {
-        const tokens = WadMapInfo._tokenize(text);
+        const tokens = WadLumpTokenizer.tokenize(text, WadMapInfo.SYMBOLS);
         let i = 0;
         while (i < tokens.length) {
             const word = tokens[i];
@@ -319,58 +319,7 @@ class WadMapInfo {
             seen.end = true;
         }
     }
-
-    // Lexer: quoted strings, single-char symbols {}=, and bare words
-    // (identifiers, numbers, map names). Control chars are whitespace.
-    static _tokenize(text) {
-        const symbols = '{}=,';
-        const tokens = [];
-        let i = 0;
-        while (i < text.length) {
-            const c = text[i];
-            if ((c === '/') && (text[i + 1] === '/')) {
-                while ((i < text.length) && (text[i] !== '\n')) {
-                    i++;
-                }
-                continue;
-            }
-            if ((c === '/') && (text[i + 1] === '*')) {
-                const end = text.indexOf('*/', i + 2);
-                i = ((end === -1) ? text.length : end + 2);
-                continue;
-            }
-            if (text.charCodeAt(i) <= 32) {
-                i++;
-                continue;
-            }
-            if (c === '"') {
-                const end = text.indexOf('"', i + 1);
-                if (end === -1) {
-                    throw new Error('unterminated string');
-                }
-                tokens.push({type: 'string', value: text.slice(i + 1, end)});
-                i = end + 1;
-                continue;
-            }
-            if (symbols.indexOf(c) !== -1) {
-                tokens.push({type: c});
-                i++;
-                continue;
-            }
-            let j = i;
-            while (j < text.length) {
-                const cj = text[j];
-                if ((text.charCodeAt(j) <= 32) || (symbols.indexOf(cj) !== -1) || (cj === '"')) {
-                    break;
-                }
-                if ((cj === '/') && ((text[j + 1] === '/') || (text[j + 1] === '*'))) {
-                    break;
-                }
-                j++;
-            }
-            tokens.push({type: 'word', value: text.slice(i, j)});
-            i = j;
-        }
-        return tokens;
-    }
 }
+
+// Symbols of the UMAPINFO grammar: block braces, key/value and value lists.
+WadMapInfo.SYMBOLS = '{}=,';

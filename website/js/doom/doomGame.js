@@ -696,7 +696,13 @@ class DoomGame {
         // Impact decals: textures + quad templates are built here in the batch,
         // from the game profile's decal set. Skipped only if the decal graphics
         // haven't finished decoding yet (first-level race).
-        this._decals = ((doomDecalTextures.isReady()) ? new DoomDecals(doomDecalTextures, this._rng, this._gameProfile) : null);
+        this._decals = ((doomImageAssets.isReady()) ? new DoomDecals(doomImageAssets, this._rng, this._gameProfile) : null);
+        // Our own addition: a game with no splash of its own gets one anyway,
+        // baked here in the batch from the greyscale masks and the colour of
+        // each liquid flat the level uses.
+        if ((this._terrain !== null) && doomImageAssets.isReady()) {
+            new DoomGenericSplash(doomImageAssets, this._effects, this._gameProfile).apply(this._terrain);
+        }
         // Shared damage pipeline of the shootable bodies — wired to the world
         // in _init, consumed by hitscan, projectiles and the bodies' own
         // A_Explode (barrels).

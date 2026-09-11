@@ -1061,13 +1061,15 @@ class HereticGameProfile extends DefaultGameProfile {
             // was born; the chunk is thrown out of it and plays its landing
             // frames on the way down (the Death state of a MISSILE chunk). The
             // lava is another mechanism entirely: its smoke only drifts up.
-            {name: 'waterSplashBase',   sprite: 'SPSH', letters: ['E', 'F', 'G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
-            {name: 'waterSplashChunk',  sprite: 'SPSH', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 16], alpha: 1, rise: 0, gravity: 0.125, additive: false,
+            // Deliberate departure from the sources, which draw all but the
+            // lava smoke opaque: water reads better seen through.
+            {name: 'waterSplashBase',   sprite: 'SPSH', letters: ['E', 'F', 'G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false},
+            {name: 'waterSplashChunk',  sprite: 'SPSH', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 16], alpha: 0.7, rise: 0, gravity: 0.125, additive: false,
                 landing: {letters: ['D'], frameTics: [10]}},
-            {name: 'sludgeSplashBase',  sprite: 'SLDG', letters: ['E', 'F', 'G', 'H'], frameTics: [6, 6, 6, 6], alpha: 1, rise: 0, additive: false},
-            {name: 'sludgeSplashChunk', sprite: 'SLDG', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 8], alpha: 1, rise: 0, gravity: 0.125, additive: false,
+            {name: 'sludgeSplashBase',  sprite: 'SLDG', letters: ['E', 'F', 'G', 'H'], frameTics: [6, 6, 6, 6], alpha: 0.7, rise: 0, additive: false},
+            {name: 'sludgeSplashChunk', sprite: 'SLDG', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 8], alpha: 0.7, rise: 0, gravity: 0.125, additive: false,
                 landing: {letters: ['D'], frameTics: [6]}},
-            {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false},
             {name: 'lavaSmoke',         sprite: 'LVAS', letters: ['G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5], alpha: 0.4, rise: 0, additive: false},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
             {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
@@ -1275,6 +1277,10 @@ class HereticGameProfile extends DefaultGameProfile {
             lava:   {base: 'lavaSplashBase',   chunk: 'lavaSmoke',         chunkVel: {xVelShift: null, yVelShift: null, zVelShift: 7, baseZVel: 1}, sound: 'world/lavasizzle'},
             sludge: {base: 'sludgeSplashBase', chunk: 'sludgeSplashChunk', chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 1}}
         };
+    }
+
+    terrainGame() {
+        return 'heretic';
     }
 
     // Heretic pairs its switches by ON/OFF suffix, not by SW1↔SW2 prefix

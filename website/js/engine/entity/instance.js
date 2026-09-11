@@ -52,6 +52,7 @@ class Instance extends AbstractLoadedEntity {
         this._triggerConditions      = [];
         this._renderOffset           = null;
         this._renderLight            = 1;
+        this._renderRoll             = 0;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -564,6 +565,30 @@ class Instance extends AbstractLoadedEntity {
 
     getRenderLight() {
         return this._renderLight;
+    }
+
+    // Spin consumed at DRAW time only, in radians, and meaningful to the
+    // camera-facing bodies alone: a billboard turns by it in its own plane, so
+    // two instances of one sprite can face different ways. 0 = upright.
+    setRenderRoll(radians) {
+        this._renderRoll = radians;
+    }
+
+    getRenderRoll() {
+        return this._renderRoll;
+    }
+
+    // How far the roll can push the drawn body out of the bounding sphere its
+    // object reports: that sphere is centred on the body's UNROLLED centre,
+    // while a roll turns it around the entity origin instead. Zero cost while
+    // the body stands upright, like the render offset's own bound.
+    getRenderRollBound() {
+        if (this._renderRoll === 0) {
+            return 0;
+        }
+        const c = this._object.getCenter();
+
+        return (2 * Math.sqrt(c[0] * c[0] + c[1] * c[1] + c[2] * c[2]));
     }
 
     getRenderTransform() {

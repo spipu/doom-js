@@ -50,7 +50,8 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Weapons**: the nine Doom and eight Heretic weapons with faithful behaviour — free-aim hitscans, projectiles with fans, ballistic drops and bounces, persistent impact decals on walls, floors and ceilings (never on liquids or sky), sector-lit view sprite, muzzle flashes that briefly brighten the whole scene like the original — every table being profile data from the original sources. Switch with **F**/**G**, gamepad shoulders, or the virtual pad.
 - **HUD & automap**: a modern corner HUD (health, armor, ammo, keys, secrets, kills, ARMS panel) adapting to the loaded game, a debug overlay on **H**, an optional crosshair, and a translucent automap (**Tab**) over the running game, revealed like the original and titled with the level's name (the WAD's own when it carries one, else the game's).
 - **Sector effects**: damaging floors, floor mutations, scrolling walls, dynamic lights, distance shading, secret counting, and the Heretic pushes (wind, conveyors, ice) on player and monsters.
-- **Ground terrain**: the flats a game declares as liquid take no impact decal, and those it gives a splash to answer whatever reaches them — a shot, a shell, a body falling in, a blast going off close by — with the ripple, the piece thrown out of it and the sound of that liquid. Heretic's water, lava and sludge are described; the Doom family has none, exactly as the original.
+- **Ground terrain**: the flats a game declares as liquid take no impact decal, and those it gives a splash to answer whatever reaches them — a shot, a shell, a body falling in, a blast going off close by — with the ripple, the piece thrown out of it and the sound of that liquid. Heretic's water, lava and sludge are described this way. A WAD shipping its own TERRAIN lump overrides those tables entry by entry, so a custom level can make any flat splash — or stop one from splashing.
+- **Generic splash**: a liquid no game describes still answers, with our own greyscale masks colourised by the average colour of the flat itself — the nukage of Doom splashes green, blood red — mirrored left or right at random, and its flying piece tilted at an angle of its own, so two impacts never stamp the same picture. Silent and always on; not a behaviour any original game had.
 - **Level chaining & story texts**: exits follow the vanilla progression (secret exits included, `UMAPINFO` overrides honoured) through a tally modal — time, enemies, items, secrets — followed by the game's own chapter texts (from the WAD when it tells its own story, else the translated catalog).
 - **Sound effects**: the WAD's own sounds decoded on the fly — weapons, pickups, movers, teleports, player, monsters, Heretic ambients — spatialised per game and frozen with the pause. The menus use light synthesized clicks, WAD-independent, with distinct accents for navigation, validation and cancel. Two live volume settings.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
@@ -125,6 +126,7 @@ website/
 ├── ping.json                 Install/update/start tracking json — hit only
 ├── css/                      Shell + menu styles
 ├── assets/uzdoom/            UZDoom impact-decal graphics + finale texts (GPL v3 — own LICENSE.md + README.md)
+├── assets/spipu/             Our own graphics: the generic splash masks, colourised at level load
 ├── _examples/                Spipu3D demos + their assets and bootstrap definitions
 └── js/
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
@@ -136,6 +138,7 @@ website/
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
+    │   ├── doomImageAssets.js   Source pixels of every PNG drawn from outside the WAD (decals, splash masks)
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables), music orchestration

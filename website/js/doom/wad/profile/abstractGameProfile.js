@@ -513,6 +513,18 @@ class AbstractGameProfile {
     }
 
     /**
+     * Game this profile answers to in the `if<game>` conditionals of a WAD's
+     * TERRAIN lump (ifdoom / ifheretic / ifhexen / ifstrife): a lump written
+     * for another game is skipped whole.
+     *
+     * @returns {string}
+     */
+    terrainGame() {
+        this._generateException('terrainGame must be implemented');
+        return '';
+    }
+
+    /**
      * Flat → terrain entries of a whole animation family, so a profile names
      * the frames once instead of repeating the terrain on every line.
      *
@@ -572,6 +584,89 @@ class AbstractGameProfile {
     decalAssets() {
         this._generateException('decalAssets must be implemented');
         return {};
+    }
+
+    /**
+     * Every PNG this game draws from outside the WAD, decoded once at startup:
+     * its own decal graphics, and the generic splash masks.
+     *
+     * @returns {{basePath: string, keys: string[]}[]}
+     */
+    imageAssets() {
+        const splash = this.genericSplash();
+        const keys   = [];
+        for (const part of splash.parts) {
+            for (const frame of part.frames) {
+                keys.push(frame.key);
+            }
+        }
+
+        return [this.decalAssets(), {basePath: splash.basePath, keys: keys}];
+    }
+
+    /**
+     * The splash shown on a liquid this game describes none for — our own
+     * masks, colourised at level load with the average colour of the flat
+     * (DoomGenericSplash). Shared by every game, so it lives here rather than
+     * in one profile; a game with graphics of its own may still override it.
+     *
+     * The masks are greyscale PNGs WITH an alpha channel: the alpha carries
+     * the shape, and the red channel alone is read as the luminance. Their
+     * size in the world comes from their own pixel size divided by the part's
+     * pixelsPerUnit, so redrawing them at another resolution only means
+     * scaling that figure by the same factor. Every frame is cropped to its
+     * drawing and carries its own anchor IN ITS OWN PIXELS — the point of the
+     * image the splash is born at, exactly as a Doom sprite lump carries its
+     * leftOffset / topOffset.
+     *
+     * The anchors below were measured against the Heretic SPSH sprites these
+     * masks replace: same water ring footprint, same point on the ground.
+     *
+     * @returns {object}
+     */
+    genericSplash() {
+        return {
+            basePath: '/assets/spipu/splash/',
+            // The chunk is thrown like Heretic's water chunk (terrain.txt),
+            // and tumbles: each one is drawn within 90° either side of
+            // upright, which no original game does.
+            chunkVel: {xVelShift: 8, yVelShift: 8, zVelShift: 8, baseZVel: 2},
+            chunkSpin: 90,
+            // The masks are normalised onto the flat's own average colour, so
+            // the splash would come out EXACTLY the shade it stands on — and
+            // its translucency blends the flat back in on top of that. This
+            // lifts it off its background; the clamp keeps the brightest
+            // texels from wrapping.
+            tintGain: 1.3,
+            parts: [
+                {
+                    part: 'base', sprite: 'SPLB', alpha: 0.7, rise: 0, additive: false, mirror: true,
+                    pixelsPerUnit: 3.65,
+                    frames: [
+                        {letter: 'A', key: 'base-1', tics: 5, anchorX: 54, anchorY:  30},
+                        {letter: 'B', key: 'base-2', tics: 5, anchorX: 56, anchorY:  63},
+                        {letter: 'C', key: 'base-3', tics: 5, anchorX: 60, anchorY: 100},
+                        {letter: 'D', key: 'base-4', tics: 5, anchorX: 49, anchorY:  60},
+                        {letter: 'E', key: 'base-5', tics: 5, anchorX: 50, anchorY:  38},
+                        {letter: 'F', key: 'base-6', tics: 5, anchorX: 56, anchorY:  30},
+                        {letter: 'G', key: 'base-7', tics: 5, anchorX: 36, anchorY:  10}
+                    ]
+                },
+                {
+                    part: 'chunk', sprite: 'SPLC', alpha: 0.7, rise: 0, gravity: 0.125, additive: false, mirror: true,
+                    pixelsPerUnit: 5.43,
+                    frames: [
+                        {letter: 'A', key: 'chunk-1', tics: 8,  anchorX: 14, anchorY: 27},
+                        {letter: 'B', key: 'chunk-2', tics: 8,  anchorX: 12, anchorY: 25},
+                        {letter: 'C', key: 'chunk-3', tics: 8,  anchorX: 13, anchorY: 24},
+                        {letter: 'D', key: 'chunk-4', tics: 16, anchorX:  5, anchorY: 10}
+                    ],
+                    // Replayed where it falls back into the liquid, like the
+                    // Death state of the Heretic chunk.
+                    landing: {letters: ['D'], frameTics: [10]}
+                }
+            ]
+        };
     }
 
     /**
