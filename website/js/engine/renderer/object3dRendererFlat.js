@@ -1,9 +1,8 @@
 class Object3dRendererFlat extends Object3dRendererBase {
     constructor() {
         super();
-        this._center          = [0, 0, 0, 1];
-        this._baseColor       = [0, 0, 0];
-        this._textureAverages = new WeakMap();
+        this._center    = [0, 0, 0, 1];
+        this._baseColor = [0, 0, 0];
     }
 
     get code() {
@@ -63,37 +62,13 @@ class Object3dRendererFlat extends Object3dRendererBase {
         if (tex === undefined) {
             return (tint ?? fc.color);
         }
-        const source = (tint ?? this._textureAverage(tex));
+        const source = (tint ?? tex.getAverageColor());
         const base   = this._baseColor;
         base[0] = source[0] * fc.color[0];
         base[1] = source[1] * fc.color[1];
         base[2] = source[2] * fc.color[2];
 
         return base;
-    }
-
-    // Averaged on first use and cached with the texture itself: the opaque
-    // texels only, so the transparent border of a sprite does not wash it out.
-    _textureAverage(tex) {
-        const cached = this._textureAverages.get(tex);
-        if (cached !== undefined) {
-            return cached;
-        }
-        const data = tex.data;
-        let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] === 0) {
-                continue;
-            }
-            r += data[i];
-            g += data[i + 1];
-            b += data[i + 2];
-            count++;
-        }
-        const average = ((count === 0) ? [255, 255, 255] : [r / count, g / count, b / count]);
-        this._textureAverages.set(tex, average);
-
-        return average;
     }
 
     _faceCenter(obj, fc) {

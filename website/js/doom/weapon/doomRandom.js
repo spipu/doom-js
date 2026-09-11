@@ -71,3 +71,6 @@ DoomRandom.TABLE = [
     197, 242,  98,  43,  39, 175, 254, 145, 190,  84, 118, 222, 187, 136,
     120, 163, 236, 249,
 ];
+
+// Largest value a draw can return: the table holds plain bytes.
+DoomRandom.MAX = 255;

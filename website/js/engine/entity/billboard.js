@@ -29,9 +29,11 @@ class Billboard extends Object3d {
     //         anchorTop?, light?, animDuration?, lightGroup?, tint?}. anchorTop anchors
     //         the TOP at the origin (ceiling/hanging) instead of the foot (floor).
     //         light (0-255) is the sector brightness baked into the face colour;
-    //         lightGroup tags the faces for dynamic group light factors. The four
-    //         corner slots are overwritten each frame by ptTransform; UVs account
-    //         for the v-flip applied by fcAdd (corners: 0 BL, 1 BR, 2 TR, 3 TL).
+    //         lightGroup tags the faces for dynamic group light factors; flipX
+    //         mirrors the sprite left to right (the caller mirrors
+    //         anchorOffsetX with it). The four corner slots are overwritten each
+    //         frame by ptTransform; UVs account for the v-flip applied by fcAdd
+    //         (corners: 0 BL, 1 BR, 2 TR, 3 TL).
     configure(data) {
         this._halfWidth     = data.halfWidth;
         this._height        = data.height;
@@ -56,8 +58,9 @@ class Billboard extends Object3d {
         // A fresh colour array per face (fcAdd normalises it in place); the alpha
         // slot is added only when translucent, leaving opaque billboards untouched.
         const i0 = this.faceCount;
-        this.fcAdd(1, 2, 3, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 0], [1, 1]], true, false, false, anim, null, lightGroup);
-        this.fcAdd(1, 3, 4, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, [[0, 0], [1, 1], [0, 1]], true, false, false, anim, null, lightGroup);
+        const uv = Billboard.quadUv(data.flipX === true);
+        this.fcAdd(1, 2, 3, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, uv[0], true, false, false, anim, null, lightGroup);
+        this.fcAdd(1, 3, 4, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, uv[1], true, false, false, anim, null, lightGroup);
         // Additive blend (gzdoom RenderStyle "Add"): energy sprites glow instead
         // of just fading. Tagged post-hoc like isAlpha, so Face stays untouched.
         if (additive) {
@@ -65,6 +68,21 @@ class Billboard extends Object3d {
             this.faceList[i0 + 1].blendAdd = true;
         }
         return this;
+    }
+
+    /**
+     * UVs of the quad's two triangles, mirrored left to right when asked.
+     *
+     * @param {boolean} flipX
+     * @returns {number[][][]}
+     */
+    static quadUv(flipX) {
+        const u = ((value) => ((flipX) ? 1 - value : value));
+
+        return [
+            [[u(0), 0], [u(1), 0], [u(1), 1]],
+            [[u(0), 0], [u(1), 1], [u(0), 1]]
+        ];
     }
 
     // Sprite height (world units). Used by Collision to derive the box collider's
@@ -90,7 +108,8 @@ class Billboard extends Object3d {
         return [this._anchorOffsetX, cy, 0];
     }
 
-    // Override: place a cylindrical (Y-axis) billboard in camera space. The
+    // Override: place a cylindrical (Y-axis) billboard in camera space. `roll`
+    // (radians, from the instance being drawn) spins it in its own plane. The
     // entity origin (0,0,0) transformed by the view matrix is the matrix
     // translation column — the anchor (sprite foot, or top for hanging things)
     // in camera space. The vertical edge follows world up in camera space
@@ -98,7 +117,7 @@ class Billboard extends Object3d {
     // cross(up, anchorDir), horizontal and facing the camera. The face normal is
     // set toward the camera so back-face culling keeps the quad (cull test is
     // normal·pt >= 0).
-    ptTransform(m, minZ = 0) {
+    ptTransform(m, minZ = 0, roll = 0) {
         const px = m.v[3][0];
         const py = m.v[3][1];
         const pz = m.v[3][2];
@@ -140,6 +159,21 @@ class Billboard extends Object3d {
         rx /= rl;
         ry /= rl;
         rz /= rl;
+
+        // Roll: the two basis vectors turn inside the quad's own plane, so the
+        // sprite spins on screen and still faces the camera whatever the angle.
+        if (roll !== 0) {
+            const cos = Math.cos(roll);
+            const sin = Math.sin(roll);
+            const r0 = rx, r1 = ry, r2 = rz;
+            const u0 = ux, u1 = uy, u2 = uz;
+            rx = r0 * cos + u0 * sin;
+            ry = r1 * cos + u1 * sin;
+            rz = r2 * cos + u2 * sin;
+            ux = u0 * cos - r0 * sin;
+            uy = u1 * cos - r1 * sin;
+            uz = u2 * cos - r2 * sin;
+        }
 
         const hw = this._halfWidth;
         const h  = this._height;

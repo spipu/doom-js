@@ -1,7 +1,7 @@
 /**
  * Terrain under a world point, and the splash a body hitting it leaves —
- * transcription of the UZDoom TERRAIN lump (floor entries + splash blocks) and
- * of P_HitWater (p_mobj.cpp).
+ * transcription of P_HitWater (p_mobj.cpp). The tables come from
+ * WadTerrainBank: the game's own, overlaid by the WAD's TERRAIN lump.
  *
  * The terrain is read from the sector's LIVE floor flat, never from the face
  * the shot met: a "+change" floor rewrites that flat at runtime, and the
@@ -17,8 +17,8 @@ class DoomTerrain {
     /**
      * @param {function}            siAt     (doomX, doomY) → sector index | null
      * @param {DoomSectorSurfaces}  surfaces live floor flat of each sector
-     * @param {object}              flats    flat name → terrain code (profile)
-     * @param {object}              terrains terrain code → splash (profile)
+     * @param {object}              flats    flat name → terrain code
+     * @param {object}              terrains terrain code → splash definition
      */
     constructor(siAt, surfaces, flats, terrains) {
         this._siAt     = siAt;
@@ -26,6 +26,7 @@ class DoomTerrain {
         this._flats    = flats;
         this._terrains = terrains;
         this._effects  = null;
+        this._tints    = {};
         // A stream of its own (vanilla's pr_chunk), NOT the game's table: of
         // the four paths that splash, only the falling body exists in the
         // original, so drawing the other three from the shared table would
@@ -41,6 +42,57 @@ class DoomTerrain {
      */
     setEffects(effects) {
         this._effects = effects;
+
+        return this;
+    }
+
+    /**
+     * Average colour of each liquid flat the level actually uses, measured on
+     * the flat's own pixels at build time: what the generic splash is
+     * colourised with.
+     *
+     * @param {object} tints flat name (uppercase) → [r, g, b]
+     */
+    setLiquidTints(tints) {
+        this._tints = tints;
+
+        return this;
+    }
+
+    /**
+     * @returns {object} flat name → [r, g, b]
+     */
+    liquidTints() {
+        return this._tints;
+    }
+
+    /**
+     * True when the flat already shows something of its own, from the game or
+     * from the WAD's TERRAIN lump — the generic splash then stays out of it.
+     *
+     * @param {string} flat uppercase flat name
+     * @returns {boolean}
+     */
+    splashesOnFlat(flat) {
+        const terrain = (this._terrains[this._flats[flat]] ?? null);
+        if (terrain === null) {
+            return false;
+        }
+
+        return (((terrain.base ?? null) !== null) || ((terrain.chunk ?? null) !== null));
+    }
+
+    /**
+     * Give one flat a terrain built after the level, for the generic splash:
+     * its frames only exist once the flat's colour is known.
+     *
+     * @param {string} flat    uppercase flat name
+     * @param {string} code    the terrain code minted for it
+     * @param {object} terrain its splash definition
+     */
+    addFlatTerrain(flat, code, terrain) {
+        this._terrains[code] = terrain;
+        this._flats[flat]    = code;
 
         return this;
     }
@@ -95,14 +147,22 @@ class DoomTerrain {
         const base  = (terrain.base ?? null);
         const chunk = (terrain.chunk ?? null);
         const sound = (terrain.sound ?? null);
+        // Spawning may still come back empty — a WAD naming a splash actor no
+        // profile builds a template for — and such a terrain must report the
+        // silence rather than swallow the caller's own effect.
         let spawned = false;
         if (base !== null) {
-            this._effects.spawn(base, x, y, z);
-            spawned = true;
+            spawned = ((this._effects.spawn(base, x, y, z, {mirror: this._mirror()}) !== null) || spawned);
         }
         if (chunk !== null) {
-            this._effects.spawn(chunk, x, y, z, {velocity: this._chunkVelocity(terrain.chunkVel)});
-            spawned = true;
+            // Held in locals for the same reason _chunkVelocity is: the draws
+            // must follow a pinned order, not the one an object literal
+            // happens to evaluate its fields in.
+            const velocity = this._chunkVelocity(terrain.chunkVel);
+            const mirror   = this._mirror();
+            const roll     = this._roll(terrain.chunkSpin ?? null);
+            const spawn    = this._effects.spawn(chunk, x, y, z, {velocity: velocity, mirror: mirror, roll: roll});
+            spawned = ((spawn !== null) || spawned);
         }
         if (sound !== null) {
             doomSound.playAt(sound, [x, y, z]);
@@ -110,6 +170,24 @@ class DoomTerrain {
         }
 
         return spawned;
+    }
+
+    // Half the splashes face the other way, so the same picture is not stamped
+    // on every impact. Our own addition — vanilla mirrors nothing here — hence
+    // this object's stream rather than the game's.
+    _mirror() {
+        return ((this._rng.next() & 1) === 1);
+    }
+
+    // A piece thrown out of the liquid is tumbling, so it is drawn at an angle
+    // of its own within `spin` degrees either side of upright — a terrain that
+    // declares none keeps its chunk straight, as every original game does.
+    _roll(spin) {
+        if (spin === null) {
+            return 0;
+        }
+
+        return (((this._rng.next() / DoomRandom.MAX) - 0.5) * 2 * spin * DEG_TO_RAD);
     }
 
     // P_HitWater, fixed-point arithmetic kept as written. Held in locals rather

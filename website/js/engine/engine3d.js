@@ -11,6 +11,7 @@ class Engine3d {
         this.lightBoost    = 0;       // additive scene-wide light 0..1 (brief flashes), 0 = off
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
+        this.instanceRoll  = 0;       // billboard spin of the instance being drawn; upright outside drawInstance
         this.textureSmoothing = true; // texture filter: smoothed, or raw texels
         this.viewYaw    = 0;          // cached in setCamera for the sky pass
         this.viewPitch  = 0;
@@ -298,8 +299,10 @@ class Engine3d {
         this.matrixPush();
         this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getRenderTransform()));
         this.instanceLight = instance.getRenderLight();
+        this.instanceRoll  = instance.getRenderRoll();
         this.drawObject(instance.getObject());
         this.instanceLight = 1;
+        this.instanceRoll  = 0;
         this.matrixPop();
         return this;
     }
@@ -310,7 +313,7 @@ class Engine3d {
     }
 
     drawObject(obj) {
-        obj.ptTransform(this.viewMatrix, this.zBuffer.getNear());
+        obj.ptTransform(this.viewMatrix, this.zBuffer.getNear(), this.instanceRoll);
         if (this._renderer.needsProjection()) {
             obj.ptProjection(this);
         }
@@ -355,7 +358,7 @@ class Engine3d {
         const c = instance.getWorldCenter();
         const m = this.viewMatrix.v;
         const cz = m[0][2]*c[0] + m[1][2]*c[1] + m[2][2]*c[2] + m[3][2];
-        const r  = instance.getObject().getBoundingRadius() + instance.getRenderOffsetBound();
+        const r  = instance.getObject().getBoundingRadius() + instance.getRenderOffsetBound() + instance.getRenderRollBound();
         if ((cz + r < this.zBuffer.getNear()) || (cz - r > this.zBuffer.getFar())) {
             return false;
         }

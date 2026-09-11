@@ -4,7 +4,7 @@
  *
  * WHICH catalog exists is per-game data: every registered profile contributes
  * its finaleAssets() URL, and all of them are loaded at startup since the WAD
- * (hence the game) is only known later — the same reason doomDecalTextures
+ * (hence the game) is only known later — the same reason doomImageAssets
  * loads every profile's graphics up front.
  *
  * A catalog is a plain AppTranslator catalog ({code: {fr, en}}) whose codes are
@@ -62,5 +62,5 @@ class DoomFinaleTexts {
     }
 }
 
-// Global instance (loaded once from doom/main.js), like doomDecalTextures.
+// Global instance (loaded once from doom/main.js), like doomImageAssets.
 const doomFinaleTexts = new DoomFinaleTexts();

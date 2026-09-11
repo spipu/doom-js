@@ -1269,6 +1269,12 @@ class DefaultGameProfile extends AbstractGameProfile {
         return {liquid: {}};
     }
 
+    // The Doom family and everything derived from it (Freedoom, the IWAD
+    // mission packs) share the ifdoom branch of a TERRAIN lump.
+    terrainGame() {
+        return 'doom';
+    }
+
     // Doom switch pairing follows the SW1xxx ↔ SW2xxx naming convention (the
     // texture bank's generic prefix substitution) — no explicit pairs needed.
     switchPairs() {

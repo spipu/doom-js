@@ -42,9 +42,10 @@ function loadApp()
         .setFallbackLanguage('en')
         .setLanguage('en');
 
-    // Decode the impact-decal graphics once (level-independent); ready well
-    // before the first level is built.
-    doomDecalTextures.load();
+    // Decode the graphics that live outside the WADs once (impact decals,
+    // splash masks — all level-independent); ready well before the first
+    // level is built.
+    doomImageAssets.load();
 
     // Same for the games' finale texts, merged into the catalog above.
     doomFinaleTexts.load();
