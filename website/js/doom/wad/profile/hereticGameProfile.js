@@ -540,7 +540,7 @@ class HereticGameProfile extends DefaultGameProfile {
             // Death crumples in the air, Crash lands the pieces.
             death:  [['G', 4, 'A_ImpDeath'], ['H', -1]],
             xdeath: [['S', 5, 'A_ImpXDeath1'], ['TU', 5], ['V', 5, 'A_Gravity'], ['W', -1]],
-            crash:  [['I', 7, 'A_ImpExplode'], ['J', 7, 'A_Scream'], ['K', 7], ['L', -1]],
+            crash:  [['I', 7, ['A_ImpExplode', {effects: ['gargoyleChunk1', 'gargoyleChunk2']}]], ['J', 7, 'A_Scream'], ['K', 7], ['L', -1]],
             xcrash: [['XY', 7], ['Z', -1]]
         };
         if (leader) {
@@ -570,7 +570,7 @@ class HereticGameProfile extends DefaultGameProfile {
             see:   [['ABCD', 4, 'A_Chase', 'see']],
             melee: [['E', 6, 'A_FaceTarget'], ['F', 6, 'A_CustomMeleeAttack'], ['G', 6, null, 'see']],
             pain:  [['H', 4], ['H', 4, 'A_Pain', 'see']],
-            death: [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, 'A_SpawnItemEx'], ['L', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
+            death: [['I', 5], ['J', 5, 'A_Scream'], ['K', 5, ['A_SpawnItemEx', {effect: 'mummySoul'}]], ['L', 5], ['M', 5, 'A_NoBlocking'], ['NO', 5], ['P', -1]]
         };
         if (leader) {
             states.missile = [['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, 'A_FaceTarget', null, true], ['X', 5, 'A_FaceTarget'], ['Y', 5, ['A_CustomComboAttack', {height: 32}], 'see', true]];
@@ -1027,6 +1027,14 @@ class HereticGameProfile extends DefaultGameProfile {
             // Heretic blood (BLOD lumps): no damage-staged start and no
             // shortened first tics (Doom-family quirks only).
             {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false},
+            // The two pieces a gargoyle shatters into when its gibbed body hits
+            // the floor (hereticimp.zs HereticImpChunk1/2: thrown up at 9, then
+            // left lying for 700 tics).
+            {name: 'gargoyleChunk1',   sprite: 'IMPX', letters: ['M', 'N'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false},
+            {name: 'gargoyleChunk2',   sprite: 'IMPX', letters: ['O', 'P'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false},
+            // The soul a golem lets go of when it dies (vanilla A_MummySoul:
+            // spawned 10 units up, rising 1 unit/tic).
+            {name: 'mummySoul',        sprite: 'MUMM', letters: ['Q', 'R', 'S', 'T', 'U', 'V', 'W'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 1, rise: 1, spawnHeight: 10, additive: false},
             // Every monster missile's Death animation.
             {name: 'hereticImpBallDeath', sprite: 'FX10', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
             {name: 'mummyFX1Death',       sprite: 'FX15', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
