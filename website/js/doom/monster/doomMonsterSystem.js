@@ -19,6 +19,7 @@ class DoomMonsterSystem {
         this._damage        = null;
         this._attack        = null;
         this._effects       = null;
+        this._terrain       = null;
         this._drops         = null;
         this._spawnables    = null;
         this._bossDeath     = null;
@@ -233,6 +234,15 @@ class DoomMonsterSystem {
     // the drop pickups: code → {def, frames}.
     setSpawnables(catalog) {
         this._spawnables = catalog;
+        return this;
+    }
+
+    /**
+     * @param {DoomTerrain} terrain the ground a falling body splashes into
+     */
+    setTerrain(terrain) {
+        this._terrain = terrain;
+
         return this;
     }
 
@@ -1702,6 +1712,7 @@ class DoomMonsterSystem {
             this._collision.syncBoxFor(m.inst);
             moved = true;
         } else if (m.velY !== 0) {
+            this._splashLanding(m, m.velY);
             m.velY = 0;
             this._crashLanding(m);
         }
@@ -1724,6 +1735,18 @@ class DoomMonsterSystem {
         const floorY = this._collision.getFloor(pos[0], pos[2], m.def.getRadius() * WadConstants.SCALE, pos[1] + 0.01);
 
         return ((floorY !== -Infinity) && (pos[1] <= floorY + 0.001));
+    }
+
+    // P_HitFloor: a body dropping into a liquid leaves its splash. Vanilla
+    // refuses it to a LIVE body falling too slowly — the constant splashing of
+    // walking monsters being, in its own words, extremely annoying — while a
+    // corpse always makes one.
+    _splashLanding(m, fallSpeed) {
+        if ((this._terrain === null) || (!m.dead && (fallSpeed > DoomMonsterSystem.SPLASH_MIN_FALL))) {
+            return;
+        }
+        const pos = m.inst.getTransform().position;
+        this._terrain.splashAt(pos[0], pos[1], pos[2]);
     }
 
     // AActor::Crash: a corpse resting on its floor breaks open (the Heretic
@@ -1939,6 +1962,10 @@ class DoomMonsterSystem {
         return this._trace.bodyAt(x, z, radius, opts);
     }
 }
+
+// Slowest fall (map units/tic) that still splashes under a LIVE body
+// (P_HitWater).
+DoomMonsterSystem.SPLASH_MIN_FALL = -6;
 
 DoomMonsterSystem.MS_PER_TIC = 1000 / 35;
 

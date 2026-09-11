@@ -27,6 +27,16 @@ class DoomMonsterDamage {
         this._game      = game;
         this._collision = null;
         this._user      = null;
+        this._terrain   = null;
+    }
+
+    /**
+     * @param {DoomTerrain} terrain the ground a blast splashes into
+     */
+    setTerrain(terrain) {
+        this._terrain = terrain;
+
+        return this;
     }
 
     setWorld(collision, user) {
@@ -146,7 +156,10 @@ class DoomMonsterDamage {
      * @param {number} x, y, z    world explosion point
      * @param {number} damage     bomb damage
      * @param {number} distance   bomb reach (map units)
-     * @param {object} opts       {kickback?, exclude?, source?} exclude = the exploding record
+     * @param {object} opts       {kickback?, exclude?, source?, noSplash?} exclude =
+     *                            the exploding record; noSplash = the caller
+     *                            already disturbed the liquid (A_Explode's
+     *                            XF_NOSPLASH)
      */
     radiusAttack(x, y, z, damage, distance, opts = {}) {
         const SCALE    = WadConstants.SCALE;
@@ -179,6 +192,31 @@ class DoomMonsterDamage {
             // No blood on blast victims: vanilla only bleeds on direct hits
             // (P_LineAttack / missile impact), never from P_RadiusAttack.
             this.damage(m, damage - mDist, {srcX: x, srcZ: z, source: source, noBlood: true, kickback: kickback});
+        }
+
+        // Last, like A_Explode: P_RadiusAttack runs, THEN P_CheckSplash. The
+        // damage rolls draw from the game's table, so the order is what keeps
+        // the following rolls where the source puts them.
+        if (opts.noSplash !== true) {
+            this._splashBlast(x, y, z, distance * SCALE);
+        }
+    }
+
+    // P_CheckSplash: a blast going off within its own reach of the ground
+    // splashes the liquid under it, from the floor rather than from its own
+    // height. Vanilla never alerts the monsters from this one.
+    //
+    // The floor search is capped at the blast's own height, like the floorz
+    // vanilla reads off the actor: uncapped it answers the HIGHEST floor of
+    // that column — a lift or door top far above — and the splash would hang
+    // in mid-air over the explosion.
+    _splashBlast(x, y, z, reach) {
+        if (this._terrain === null) {
+            return;
+        }
+        const floorY = this._collision.getFloor(x, z, 0, y);
+        if ((floorY !== -Infinity) && (y <= (floorY + reach))) {
+            this._terrain.splashAt(x, floorY, z);
         }
     }
 

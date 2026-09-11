@@ -19,6 +19,7 @@ class DoomProjectileSystem {
         this._damage    = damageModule;
         this._collision = null;
         this._user      = null;
+        this._terrain   = null;
         this._fast      = false;
         this._active    = [];
         this._acc       = 0;
@@ -29,6 +30,15 @@ class DoomProjectileSystem {
     setWorld(collision, user) {
         this._collision = collision;
         this._user      = user;
+        return this;
+    }
+
+    /**
+     * @param {DoomTerrain} terrain the ground the shells splash into
+     */
+    setTerrain(terrain) {
+        this._terrain = terrain;
+
         return this;
     }
 
@@ -765,8 +775,13 @@ class DoomProjectileSystem {
         if ((this._decals !== null) && (p.def.decalType !== null)) {
             this._decals.spawnDecal(p.def.decalType, hit, [p.dx, p.dy, p.dz]);
         }
+        // A shell landing on the ground splashes before it goes off, like
+        // the vanilla P_HitFloor that precedes P_ExplodeMissile. Its blast
+        // then keeps quiet (A_Explode's XF_NOSPLASH): the two would otherwise
+        // stack two ripples and two sounds on the one tic.
+        const splashed = ((this._terrain !== null) && this._terrain.splashAtHit(hit));
         const at = WadGeometry.pullBack(hit.point, [p.dx, p.dy, p.dz]);
-        this._detonate(p, at[0], at[1], at[2]);
+        this._detonate(p, at[0], at[1], at[2], splashed);
     }
 
     // Direct body hit (PIT_CheckThing on a missile): the impact roll
@@ -787,8 +802,13 @@ class DoomProjectileSystem {
         this._detonate(p, at[0], at[1], at[2]);
     }
 
-    // Death effect + A_Explode blast + the def's shooter-side spray (BFG).
-    _detonate(p, ex, ey, ez) {
+    /**
+     * Death effect + A_Explode blast + the def's shooter-side spray (BFG).
+     *
+     * @param {boolean} splashed the shell already disturbed the liquid under
+     *                  it, so its own blast must not do it again
+     */
+    _detonate(p, ex, ey, ez, splashed = false) {
         if (p.def.deathSound !== null) {
             doomSound.playAt(p.def.deathSound, [ex, ey, ez]);
         }
@@ -799,7 +819,7 @@ class DoomProjectileSystem {
             ? p.def.splashDamage
             : this._rng.damageRoll(p.def.splashDamage));
         if ((blast > 0) && (this._damage !== null)) {
-            this._damage.radiusAttack(ex, ey, ez, blast, blast, {kickback: p.def.kickback, source: p.owner});
+            this._damage.radiusAttack(ex, ey, ez, blast, blast, {kickback: p.def.kickback, source: p.owner, noSplash: splashed});
         }
         // The spray is the player's BFG alone: it fans from the shooter, and
         // no monster in either bestiary carries one.

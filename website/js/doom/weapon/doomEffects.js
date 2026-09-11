@@ -13,7 +13,21 @@ class DoomEffects {
         this._rng       = rng;
         this._active    = [];
         this._acc       = 0;
+        this._collision = null;
         this._templates = this._buildTemplates(spriteBank, profile);
+    }
+
+    /**
+     * The world a ballistic effect lands on. Only the templates declaring
+     * landing frames ever query it; without it they simply never land and run
+     * their animation out.
+     *
+     * @param {Collision} collision
+     */
+    setWorld(collision) {
+        this._collision = collision;
+
+        return this;
     }
 
     _buildTemplates(bank, profile) {
@@ -32,15 +46,47 @@ class DoomEffects {
     // around the mobj point), so frames of different sizes all align on that
     // point and the runtime frame swap (setObject) never shifts the animation.
     _buildTemplate(bank, spec) {
-        for (const letter of spec.letters) {
+        const landing = (spec.landing ?? null);
+        const letters = spec.letters.concat(((landing !== null) ? landing.letters : []));
+        for (const letter of letters) {
             if (!bank.has(spec.sprite + letter + '0')) {
                 return null;
             }
         }
-        const scale    = WadConstants.SCALE;
+        // One shared map for both timelines: a chunk replays on landing the
+        // very frame its flight ended on, and must not build it twice.
         const byLetter = new Map();
-        const frames   = [];
-        for (const letter of spec.letters) {
+        const frames   = this._buildFrames(bank, spec, spec.letters, byLetter);
+        // The first-frame tic shortening is a Doom-family quirk (P_SpawnPuff /
+        // P_SpawnBlood under GAME_DoomChex): drifting templates get it unless
+        // the spec opts out (Heretic blood).
+        return {
+            frames,
+            frameTics:   spec.frameTics,
+            // Frames played where a ballistic effect meets the floor (the
+            // Death state of a splash chunk); null = it never lands.
+            landing:     ((landing !== null)
+                ? {frames: this._buildFrames(bank, spec, landing.letters, byLetter), frameTics: landing.frameTics}
+                : null),
+            rise:        spec.rise,
+            gravity:     (spec.gravity ?? 0),
+            shorten:     (spec.shorten ?? (spec.rise > 0)),
+            // Sound(s) started at the effect's birth, positioned on it — the
+            // A_StartSound lines of an effect ACTOR's states (the vile fire).
+            spawnSound:  ((spec.spawnSound !== undefined) ? [].concat(spec.spawnSound) : null),
+            meleeStart:  spec.meleeStart ?? 0,
+            // P_SpawnTeleportFog raises the fog by gameinfo telefogheight
+            // (Doom 0, Raven 32); stored pre-scaled to world units.
+            spawnHeight: (spec.spawnHeight ?? 0) * WadConstants.SCALE
+        };
+    }
+
+    // Billboards of one timeline, sharing byLetter with the others of the
+    // same template so a letter used twice costs a single object.
+    _buildFrames(bank, spec, letters, byLetter) {
+        const scale  = WadConstants.SCALE;
+        const frames = [];
+        for (const letter of letters) {
             if (!byLetter.has(letter)) {
                 const spr = bank.get(spec.sprite + letter + '0');
                 const geo = WadGeometry.spriteBillboardData(spr);
@@ -57,23 +103,8 @@ class DoomEffects {
             }
             frames.push({objId: byLetter.get(letter)});
         }
-        // The first-frame tic shortening is a Doom-family quirk (P_SpawnPuff /
-        // P_SpawnBlood under GAME_DoomChex): drifting templates get it unless
-        // the spec opts out (Heretic blood).
-        return {
-            frames,
-            frameTics:   spec.frameTics,
-            rise:        spec.rise,
-            gravity:     (spec.gravity ?? 0),
-            shorten:     (spec.shorten ?? (spec.rise > 0)),
-            // Sound(s) started at the effect's birth, positioned on it — the
-            // A_StartSound lines of an effect ACTOR's states (the vile fire).
-            spawnSound:  ((spec.spawnSound !== undefined) ? [].concat(spec.spawnSound) : null),
-            meleeStart:  spec.meleeStart ?? 0,
-            // P_SpawnTeleportFog raises the fog by gameinfo telefogheight
-            // (Doom 0, Raven 32); stored pre-scaled to world units.
-            spawnHeight: (spec.spawnHeight ?? 0) * scale
-        };
+
+        return frames;
     }
 
     // Weapon puff at a world impact point; the template is per-weapon def data,
@@ -115,7 +146,10 @@ class DoomEffects {
      * @param {object} opts {startFrame?: frame to enter the animation on (a
      *                       melee puff starts at C), skipTics?: tics already
      *                       elapsed on that frame, so a row of explosions goes
-     *                       off raggedly (A_BrainScream)}
+     *                       off raggedly (A_BrainScream), velocity?: [vx, vy,
+     *                       vz] in map units per tic, which replaces the
+     *                       template's plain upward drift (a splash chunk is
+     *                       thrown out of its ripple)}
      * @returns {object|null} the live effect
      */
     spawn(name, x, y, z, opts = {}) {
@@ -140,7 +174,26 @@ class DoomEffects {
         const elapsed = (((tpl.shorten) ? (this._rng.next() & 3) : 0) + (opts.skipTics ?? 0));
         // A template with gravity ballistically drops its drift (blood: up at
         // rise, then falling); without it the drift stays constant (puffs).
-        const active = { tpl, instId, start: startFrame, shown: startFrame, elapsed, vy: tpl.rise, follow: null };
+        // The timeline is carried by the effect, not read off the template:
+        // a landing swaps it for the template's own landing frames.
+        const vel    = (opts.velocity ?? null);
+        const active = {
+            tpl,
+            instId,
+            frames:    tpl.frames,
+            frameTics: tpl.frameTics,
+            start:     startFrame,
+            shown:     startFrame,
+            elapsed,
+            vx:        ((vel !== null) ? vel[0] : 0),
+            vy:        ((vel !== null) ? vel[1] : tpl.rise),
+            vz:        ((vel !== null) ? vel[2] : 0),
+            // Held apart from the velocities: gravity walks them through zero
+            // at the apex, where testing them would freeze the effect in place.
+            drifts:    ((vel !== null) || (tpl.rise > 0)),
+            landed:    false,
+            follow:    null
+        };
         this._active.push(active);
         if (tpl.spawnSound !== null) {
             for (const soundName of tpl.spawnSound) {
@@ -190,21 +243,16 @@ class DoomEffects {
                 continue;
             }
             p.elapsed += 1;
-            const frame = this._frameAt(p.tpl, p.start, p.elapsed);
-            if (frame >= p.tpl.frames.length) {
+            const frame = this._frameAt(p);
+            if (frame >= p.frames.length) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
             }
             if (frame !== p.shown) {
-                inst.setObject(p.tpl.frames[frame].objId);
+                inst.setObject(p.frames[frame].objId);
                 p.shown = frame;
             }
-            if (p.tpl.rise > 0) {
-                inst.getTransform().position[1] += p.vy * WadConstants.SCALE;   // momz, map units/tic
-                if (p.tpl.gravity > 0) {
-                    p.vy -= p.tpl.gravity;
-                }
-            }
+            this._drift(p, inst);
             if (p.follow !== null) {
                 const at  = DoomActorRef.aheadOf(p.follow.ref, p.follow.ahead);
                 const pos = inst.getTransform().position;
@@ -217,17 +265,59 @@ class DoomEffects {
         this._active = kept;
     }
 
-    // Current frame index for an effect that has run `elapsed` tics from `start`,
-    // walking the per-frame durations; returns frames.length once finished.
-    _frameAt(tpl, start, elapsed) {
+    // Per-tic displacement (momz, map units/tic) of a drifting effect: the
+    // upward rise every template may carry, and the sideways throw a spawn may
+    // have been given. A landed one holds still on its final frames.
+    _drift(p, inst) {
+        if (p.landed || !p.drifts) {
+            return;
+        }
+        const scale = WadConstants.SCALE;
+        const fromY = inst.getTransform().position[1];
+        inst.translate(p.vx * scale, p.vy * scale, p.vz * scale);
+        if (p.tpl.gravity > 0) {
+            p.vy -= p.tpl.gravity;
+        }
+        if ((p.tpl.landing !== null) && (this._collision !== null)) {
+            this._land(p, inst, fromY);
+        }
+    }
+
+    // Reaching the floor clamps the effect onto it and hands the animation
+    // over to the landing timeline, from its first frame. Tested AFTER the
+    // move, so a chunk thrown up out of its own surface does not land on the
+    // tic it was born; the search is capped at the height it comes FROM, which
+    // is the whole interval it just crossed — capped at where it arrives, a
+    // tic long enough to overshoot the floor would leave it above the cap and
+    // the chunk would fall through.
+    _land(p, inst, fromY) {
+        const pos    = inst.getTransform().position;
+        const floorY = this._collision.getFloor(pos[0], pos[2], 0, Math.max(fromY, pos[1]));
+        if ((floorY === -Infinity) || (pos[1] > floorY)) {
+            return;
+        }
+        inst.translate(0, floorY - pos[1], 0);
+        p.landed    = true;
+        p.frames    = p.tpl.landing.frames;
+        p.frameTics = p.tpl.landing.frameTics;
+        p.start     = 0;
+        p.elapsed   = 0;
+        p.shown     = 0;
+        inst.setObject(p.frames[0].objId);
+    }
+
+    // Current frame index for an effect that has run `elapsed` tics from `start`
+    // of its timeline, walking the per-frame durations; returns the frame count
+    // once finished.
+    _frameAt(p) {
         let acc = 0;
-        for (let i = start; i < tpl.frames.length; i++) {
-            acc += tpl.frameTics[i];
-            if (elapsed < acc) {
+        for (let i = p.start; i < p.frames.length; i++) {
+            acc += p.frameTics[i];
+            if (p.elapsed < acc) {
                 return i;
             }
         }
-        return tpl.frames.length;
+        return p.frames.length;
     }
 }
 

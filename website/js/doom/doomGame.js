@@ -47,6 +47,7 @@ class DoomGame {
         this._sectorDamage    = null;    // damage-sector interaction (exit-sector probe of the player)
         this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
         this._sectorSurfaces  = null;    // live floor flats/specials rewritten by the "+change" floors (builder-fed)
+        this._terrain         = null;    // ground terrain + its splashes (builder-fed)
         this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
         this._ambientSounds   = null;    // per-level ambient sound points (builder-fed)
         this._automap         = null;    // level automap (null when the WAD has no usable BSP)
@@ -435,6 +436,12 @@ class DoomGame {
         this._sectorSurfaces = sectorSurfaces;
     }
 
+    // Ground terrain of the level: what a shot, a shell, a falling body or a
+    // blast leaves where it meets a liquid.
+    setTerrain(terrain) {
+        this._terrain = terrain;
+    }
+
     setAutomap(automap) {
         this._automap = automap;
     }
@@ -641,6 +648,7 @@ class DoomGame {
         this._moverSounds   = null;
         this._ambientSounds = null;
         this._sectorDamage  = null;
+        this._terrain       = null;
 
         this._teardownLevel();
         loader.beginBatch();
@@ -732,6 +740,10 @@ class DoomGame {
         user.setExitSectorProbe(((this._sectorDamage !== null)
             ? ((u) => this._sectorDamage.isExitSectorAt(u.x, u.z))
             : null));
+        // The player disturbs a liquid he drops into, like any other body.
+        user.setLandingSplash(((this._terrain !== null)
+            ? ((x, y, z) => this._terrain.splashAt(x, y, z))
+            : null));
         this._levelEntryState = user.exportState();
         this._deathClockMs    = 0;
         this._applySpawnOverride();
@@ -764,6 +776,18 @@ class DoomGame {
         this._monsters.setWorld(this._world.getCollision(), this._world.getUser());
         this._monsterDamage.setWorld(this._world.getCollision(), this._world.getUser());
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
+        // Splashes: the terrain spawns them through the effects, and every path
+        // that can reach the ground asks it (shot, shell, falling body — the
+        // player's included, wired above — and blast). The effects need the
+        // world of their own accord: a thrown chunk lands on its floor.
+        this._effects.setWorld(this._world.getCollision());
+        if (this._terrain !== null) {
+            this._terrain.setEffects(this._effects);
+            this._hitscan.setTerrain(this._terrain);
+            this._projectiles.setTerrain(this._terrain);
+            this._monsters.setTerrain(this._terrain);
+            this._monsterDamage.setTerrain(this._terrain);
+        }
         this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
         this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
         if (this._world.getUser().getActiveWeapon() !== null) {

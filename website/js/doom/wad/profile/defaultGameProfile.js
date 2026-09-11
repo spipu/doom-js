@@ -1249,8 +1249,8 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // The animated floors of p_spec.c are all liquids but the RROCK rock —
     // UZDoom keeps no terrain table for Doom, so this is the vanilla list.
-    liquidFlats() {
-        return [
+    terrainFlats() {
+        return AbstractGameProfile.terrainGroup('liquid', [
             'NUKAGE1', 'NUKAGE2', 'NUKAGE3',
             'FWATER1', 'FWATER2', 'FWATER3', 'FWATER4',
             'SWATER1', 'SWATER2', 'SWATER3', 'SWATER4',
@@ -1259,7 +1259,14 @@ class DefaultGameProfile extends AbstractGameProfile {
             'SLIME01', 'SLIME02', 'SLIME03', 'SLIME04',
             'SLIME05', 'SLIME06', 'SLIME07', 'SLIME08',
             'SLIME09', 'SLIME10', 'SLIME11', 'SLIME12'
-        ];
+        ]);
+    }
+
+    // A liquid that splashes nothing: the TERRAIN lump maps no Doom flat at
+    // all, and no IWAD of the family carries the sprites a splash would need.
+    // The entry exists only to keep the impact decals off these flats.
+    terrains() {
+        return {liquid: {}};
     }
 
     // Doom switch pairing follows the SW1xxx ↔ SW2xxx naming convention (the

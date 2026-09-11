@@ -24,7 +24,7 @@ class WadTextureBank {
         this._wallTexDir  = {};   // name → {dv, offset} (pre-indexed TEXTURE1/2)
         this._wallNames   = [];   // ordered wall texture names (for ANIMATED)
         this._switchPairs = {};   // SW1 name ↔ SW2 name
-        this._liquidFlats = new Set(profile.liquidFlats());
+        this._liquidFlats = new Set(Object.keys(profile.terrainFlats()));
 
         this._texList  = [];      // index → {name, loaderId, width, height}
         this._texIndex = {};      // name (or 'FLAT_'+name) → index
@@ -273,7 +273,7 @@ class WadTextureBank {
         }
     }
 
-    // Liquid flats of the game (profile data): they take no impact decal.
+    // A flat the game gives a terrain to is a liquid: it takes no impact decal.
     isLiquidFlat(name) {
         return this._liquidFlats.has(name.toUpperCase());
     }

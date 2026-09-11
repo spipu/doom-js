@@ -19,6 +19,16 @@ class DoomHitscan {
         this._gunTriggers = gunTriggers;
         this._monsters    = monsters;
         this._damage      = damageModule;
+        this._terrain     = null;
+    }
+
+    /**
+     * @param {DoomTerrain} terrain the ground the shots splash into
+     */
+    setTerrain(terrain) {
+        this._terrain = terrain;
+
+        return this;
     }
 
     // A ranged weapon shot: one ray per pellet. accurate (the first pistol /
@@ -196,6 +206,11 @@ class DoomHitscan {
             return;
         }
         this._playImpactSound(def, hit.point);
+        // A pellet landing on the ground splashes the liquid it meets
+        // (P_LineAttack: the puff hits the floor, hence P_HitWater).
+        if (this._terrain !== null) {
+            this._terrain.splashAtHit(hit);
+        }
         // Persistent impact mark on the wall (self-filters floors/ceilings);
         // a null decal type leaves no mark (Heretic melee weapons). Spawned
         // BEFORE the puff: instances draw in id order and an additive puff

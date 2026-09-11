@@ -141,6 +141,12 @@ class HereticGameProfile extends DefaultGameProfile {
             'world/podgrow':         {lump: 'NEWPOD', limit: 0},
             'world/wind':            {lump: 'WIND', limit: 1},
             'world/waterfall':       {lump: 'WATERFL'},
+            // Terrain splashes: Heretic points both water sounds at the same
+            // gloop and the lava at the burn; its sludge resolves to dsempty,
+            // so that terrain declares no sound at all.
+            'world/watersplash':     {lump: 'GLOOP'},
+            'world/drip':            {lump: 'GLOOP'},
+            'world/lavasizzle':      {lump: 'BURN'},
             'world/amb1':            {lump: 'AMB1', limit: 1},
             'world/amb2':            {lump: 'AMB2', limit: 1},
             'world/amb3':            {lump: 'AMB3', limit: 1},
@@ -1051,6 +1057,18 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
             {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false},
             {name: 'sorcerer2FX1Death',   sprite: 'FX16', letters: ['G', 'H', 'I', 'J', 'K', 'L'],      frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
+            // Terrain splashes (splashes.zs). The base ripple spreads where it
+            // was born; the chunk is thrown out of it and plays its landing
+            // frames on the way down (the Death state of a MISSILE chunk). The
+            // lava is another mechanism entirely: its smoke only drifts up.
+            {name: 'waterSplashBase',   sprite: 'SPSH', letters: ['E', 'F', 'G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'waterSplashChunk',  sprite: 'SPSH', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 16], alpha: 1, rise: 0, gravity: 0.125, additive: false,
+                landing: {letters: ['D'], frameTics: [10]}},
+            {name: 'sludgeSplashBase',  sprite: 'SLDG', letters: ['E', 'F', 'G', 'H'], frameTics: [6, 6, 6, 6], alpha: 1, rise: 0, additive: false},
+            {name: 'sludgeSplashChunk', sprite: 'SLDG', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 8], alpha: 1, rise: 0, gravity: 0.125, additive: false,
+                landing: {letters: ['D'], frameTics: [6]}},
+            {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: false},
+            {name: 'lavaSmoke',         sprite: 'LVAS', letters: ['G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5], alpha: 0.4, rise: 0, additive: false},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
             {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
         ];
@@ -1230,16 +1248,33 @@ class HereticGameProfile extends DefaultGameProfile {
         return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: entry[2]}));
     }
 
-    // UZDoom terrain.txt floor entries of Heretic (water, waterfall, lava,
-    // sludge), every frame of their animations.
-    liquidFlats() {
-        return [
-            'FLTWAWA1', 'FLTWAWA2', 'FLTWAWA3',
-            'FLTFLWW1', 'FLTFLWW2', 'FLTFLWW3',
-            'FLTLAVA1', 'FLTLAVA2', 'FLTLAVA3', 'FLTLAVA4',
-            'FLATHUH1', 'FLATHUH2', 'FLATHUH3', 'FLATHUH4',
-            'FLTSLUD1', 'FLTSLUD2', 'FLTSLUD3'
-        ];
+    // UZDoom terrain.txt floor entries of Heretic (water and its flowing
+    // variant, the two lavas, the sludge), every frame of their animations.
+    terrainFlats() {
+        return {
+            ...AbstractGameProfile.terrainGroup('water', [
+                'FLTWAWA1', 'FLTWAWA2', 'FLTWAWA3',
+                'FLTFLWW1', 'FLTFLWW2', 'FLTFLWW3'
+            ]),
+            ...AbstractGameProfile.terrainGroup('lava', [
+                'FLTLAVA1', 'FLTLAVA2', 'FLTLAVA3', 'FLTLAVA4',
+                'FLATHUH1', 'FLATHUH2', 'FLATHUH3', 'FLATHUH4'
+            ]),
+            ...AbstractGameProfile.terrainGroup('sludge', [
+                'FLTSLUD1', 'FLTSLUD2', 'FLTSLUD3'
+            ])
+        };
+    }
+
+    // The three splash blocks of terrain.txt. Lava throws no chunk sideways
+    // (its shifts are written -1, read back as the 255 sentinel) and its smoke
+    // simply drifts up; sludge is silent (its sound resolves to dsempty).
+    terrains() {
+        return {
+            water:  {base: 'waterSplashBase',  chunk: 'waterSplashChunk',  chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 2}, sound: 'world/watersplash'},
+            lava:   {base: 'lavaSplashBase',   chunk: 'lavaSmoke',         chunkVel: {xVelShift: null, yVelShift: null, zVelShift: 7, baseZVel: 1}, sound: 'world/lavasizzle'},
+            sludge: {base: 'sludgeSplashBase', chunk: 'sludgeSplashChunk', chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 1}}
+        };
     }
 
     // Heretic pairs its switches by ON/OFF suffix, not by SW1↔SW2 prefix

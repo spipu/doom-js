@@ -25,6 +25,7 @@ class DoomUser extends User {
         // turns them off (game.jump / game.crouch settings).
         this._jumpAllowed     = true;
         this._crouchAllowed   = true;
+        this._landingSplash   = null; // (x, y, z) => void, set by DoomGame per level
     }
 
     setDamageFactor(factor) {
@@ -220,11 +221,28 @@ class DoomUser extends User {
 
     // --- Player feedback hooks (engine no-ops overridden) ---
 
+    /**
+     * What the player disturbs where they land (the level's terrain service).
+     * A callback like the exit-sector probe: the player knows how hard they
+     * came down, the world knows what they came down on.
+     *
+     * @param {function|null} callback (x, y, z) => void
+     */
+    setLandingSplash(callback) {
+        this._landingSplash = callback;
+        return this;
+    }
+
     // A corpse never grunts: a body knocked off a ledge or a posthumous use
-    // press stays silent (vanilla stops voicing at death).
+    // press stays silent (vanilla stops voicing at death). The splash, being
+    // physical and not vocal, does not care whether the body still lives.
     _onLanded(fallDist) {
         if (!this.isDead() && (fallDist >= (WadConstants.LAND_GRUNT_FALL_UNITS * WadConstants.SCALE))) {
             doomSound.playAt('*land', null, {replaceKey: 'player:voice'});
+        }
+        if (((this._landingSplash ?? null) !== null)
+            && (fallDist >= (WadConstants.SPLASH_FALL_UNITS * WadConstants.SCALE))) {
+            this._landingSplash(this.x, this.y, this.z);
         }
     }
 
