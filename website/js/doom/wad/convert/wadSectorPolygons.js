@@ -10,7 +10,7 @@ class WadSectorPolygons {
      * @returns {number[][]}
      */
     static buildSectorPolygons(sectorId, linedefs, sidedefs, vertexes) {
-        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs).chains;
+        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs, vertexes).chains;
     }
 
     /**
@@ -19,9 +19,10 @@ class WadSectorPolygons {
      * linedefs do not describe its shape (doom2 MAP21's sector 50 has 2
      * linedefs and 4 loose endpoints), and its flats need the BSP carve.
      *
+     * @param {number[][]} vertexes level vertexes (winding test of _splitAtRepeats)
      * @returns {{chains: number[][], openCount: number}}
      */
-    static buildChains(sectorId, linedefs, sidedefs) {
+    static buildChains(sectorId, linedefs, sidedefs, vertexes) {
         const edges = [];
         for (const ld of linedefs) {
             if (ld.right >= 0 && ld.right < sidedefs.length) {
@@ -84,7 +85,7 @@ class WadSectorPolygons {
             if (!closed) {
                 openCount++;
             }
-            for (const loop of WadSectorPolygons._splitAtRepeats(chain)) {
+            for (const loop of WadSectorPolygons._splitAtRepeats(chain, vertexes)) {
                 if (loop.length >= 3) {
                     chains.push(loop);
                 }
@@ -95,7 +96,7 @@ class WadSectorPolygons {
     }
 
     /**
-     * Split a walk that passes twice through the same vertex.
+     * Split a walk that comes back through a vertex it already passed.
      *
      * The walk above picks the first unused edge at each step, which is forced
      * while a vertex has a single way out. Where a sector's linedefs PINCH, a
@@ -107,23 +108,55 @@ class WadSectorPolygons {
      * sector 35). Splitting at the repeat restores the loops; the signed area
      * is unchanged, and a walk with no repeat is returned untouched.
      *
-     * @param {number[]} chain vertex indices
+     * @param {number[]}   chain    vertex indices
+     * @param {number[][]} vertexes level vertexes, for the winding test below
      * @returns {number[][]}
      */
-    static _splitAtRepeats(chain) {
+    static _splitAtRepeats(chain, vertexes) {
         const seen = new Map();
         for (let i = 0; i < chain.length; i++) {
             const first = seen.get(chain[i]);
             if (first !== undefined) {
+                const lobe = chain.slice(first, i);
+                const rest = chain.slice(0, first).concat(chain.slice(i));
+                if (WadSectorPolygons._isBridgedHole(lobe, rest, vertexes)) {
+                    return [chain];
+                }
                 return [
-                    ...WadSectorPolygons._splitAtRepeats(chain.slice(first, i)),
-                    ...WadSectorPolygons._splitAtRepeats(chain.slice(0, first).concat(chain.slice(i)))
+                    ...WadSectorPolygons._splitAtRepeats(lobe, vertexes),
+                    ...WadSectorPolygons._splitAtRepeats(rest, vertexes)
                 ];
             }
             seen.set(chain[i], i);
         }
 
         return [chain];
+    }
+
+    /**
+     * Two lobes winding the SAME way are disjoint loops the walk ran together,
+     * and splitting them is the whole point. Winding OPPOSITE ways, the inner
+     * one is a hole the contour reaches through the pinch — a bridge, and a
+     * legitimate way to carry a hole inside a single polygon, which the
+     * triangulator already handles. Splitting that one would leave an outer
+     * with its hole gone and a hole belonging to no outer (assignHoles tests a
+     * point sitting ON the outer's boundary, so it matches none), and the void
+     * would be painted over: freedoom1 E4M8 sector 154 lidded eleven rooms
+     * under 160 m² of its own ceiling.
+     *
+     * A piece too short to have an area cannot contradict the other, and is
+     * dropped downstream anyway.
+     *
+     * @returns {boolean}
+     */
+    static _isBridgedHole(lobe, rest, vertexes) {
+        if ((lobe.length < 3) || (rest.length < 3)) {
+            return false;
+        }
+        const lobeSign = WadGeometry.polygonAreaSign(lobe.map((vi) => vertexes[vi]));
+        const restSign = WadGeometry.polygonAreaSign(rest.map((vi) => vertexes[vi]));
+
+        return ((lobeSign > 0) !== (restSign > 0));
     }
 
     /**
@@ -175,7 +208,7 @@ class WadSectorPolygons {
      */
     static outersWithHoles(si, linedefs, sidedefs, vertexes) {
         return WadSectorPolygons._outersOf(
-            WadSectorPolygons.buildChains(si, linedefs, sidedefs).chains, vertexes);
+            WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes).chains, vertexes);
     }
 
     /**
@@ -188,7 +221,7 @@ class WadSectorPolygons {
      * @returns {{outer: number[][], holes: number[][][]|null}[]|null}
      */
     static closedOutersWithHoles(si, linedefs, sidedefs, vertexes) {
-        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs);
+        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes);
         if ((chains.length === 0) || (openCount > 0)) {
             return null;
         }
