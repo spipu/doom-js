@@ -75,15 +75,55 @@ class WadSectorPolygons {
                 chain.push(nxt);
                 cur = nxt;
             }
-            if (chain.length >= 3) {
-                chains.push(chain);
-                if (!closed) {
-                    openCount++;
+            if (chain.length < 3) {
+                continue;
+            }
+            // Counted per WALK, not per piece: the question openCount answers
+            // is whether this sector had a dead end, and splitting a dead-ended
+            // walk into loops plus a remainder does not add one.
+            if (!closed) {
+                openCount++;
+            }
+            for (const loop of WadSectorPolygons._splitAtRepeats(chain)) {
+                if (loop.length >= 3) {
+                    chains.push(loop);
                 }
             }
         }
 
         return {chains, openCount};
+    }
+
+    /**
+     * Split a walk that passes twice through the same vertex.
+     *
+     * The walk above picks the first unused edge at each step, which is forced
+     * while a vertex has a single way out. Where a sector's linedefs PINCH, a
+     * vertex has two, and the walk can leave one loop and come back through the
+     * pinch to run the other: one chain visiting that vertex twice instead of
+     * two loops. Handed whole to the triangulator, that degenerate polygon
+     * comes out with its pinch corner covered twice, the second copy wound
+     * backwards — a ceiling facing up, a floor facing down (Doom1 E2M6
+     * sector 35). Splitting at the repeat restores the loops; the signed area
+     * is unchanged, and a walk with no repeat is returned untouched.
+     *
+     * @param {number[]} chain vertex indices
+     * @returns {number[][]}
+     */
+    static _splitAtRepeats(chain) {
+        const seen = new Map();
+        for (let i = 0; i < chain.length; i++) {
+            const first = seen.get(chain[i]);
+            if (first !== undefined) {
+                return [
+                    ...WadSectorPolygons._splitAtRepeats(chain.slice(first, i)),
+                    ...WadSectorPolygons._splitAtRepeats(chain.slice(0, first).concat(chain.slice(i)))
+                ];
+            }
+            seen.set(chain[i], i);
+        }
+
+        return [chain];
     }
 
     /**
