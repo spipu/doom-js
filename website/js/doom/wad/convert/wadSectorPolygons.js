@@ -10,7 +10,7 @@ class WadSectorPolygons {
      * @returns {number[][]}
      */
     static buildSectorPolygons(sectorId, linedefs, sidedefs, vertexes) {
-        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs, vertexes).chains;
+        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs).chains;
     }
 
     /**
@@ -19,10 +19,9 @@ class WadSectorPolygons {
      * linedefs do not describe its shape (doom2 MAP21's sector 50 has 2
      * linedefs and 4 loose endpoints), and its flats need the BSP carve.
      *
-     * @param {number[][]} vertexes level vertexes (winding test of _splitAtRepeats)
      * @returns {{chains: number[][], openCount: number}}
      */
-    static buildChains(sectorId, linedefs, sidedefs, vertexes) {
+    static buildChains(sectorId, linedefs, sidedefs) {
         const edges = [];
         for (const ld of linedefs) {
             if (ld.right >= 0 && ld.right < sidedefs.length) {
@@ -76,87 +75,15 @@ class WadSectorPolygons {
                 chain.push(nxt);
                 cur = nxt;
             }
-            if (chain.length < 3) {
-                continue;
-            }
-            // Counted per WALK, not per piece: the question openCount answers
-            // is whether this sector had a dead end, and splitting a dead-ended
-            // walk into loops plus a remainder does not add one.
-            if (!closed) {
-                openCount++;
-            }
-            for (const loop of WadSectorPolygons._splitAtRepeats(chain, vertexes)) {
-                if (loop.length >= 3) {
-                    chains.push(loop);
+            if (chain.length >= 3) {
+                chains.push(chain);
+                if (!closed) {
+                    openCount++;
                 }
             }
         }
 
         return {chains, openCount};
-    }
-
-    /**
-     * Split a walk that comes back through a vertex it already passed.
-     *
-     * The walk above picks the first unused edge at each step, which is forced
-     * while a vertex has a single way out. Where a sector's linedefs PINCH, a
-     * vertex has two, and the walk can leave one loop and come back through the
-     * pinch to run the other: one chain visiting that vertex twice instead of
-     * two loops. Handed whole to the triangulator, that degenerate polygon
-     * comes out with its pinch corner covered twice, the second copy wound
-     * backwards — a ceiling facing up, a floor facing down (Doom1 E2M6
-     * sector 35). Splitting at the repeat restores the loops; the signed area
-     * is unchanged, and a walk with no repeat is returned untouched.
-     *
-     * @param {number[]}   chain    vertex indices
-     * @param {number[][]} vertexes level vertexes, for the winding test below
-     * @returns {number[][]}
-     */
-    static _splitAtRepeats(chain, vertexes) {
-        const seen = new Map();
-        for (let i = 0; i < chain.length; i++) {
-            const first = seen.get(chain[i]);
-            if (first !== undefined) {
-                const lobe = chain.slice(first, i);
-                const rest = chain.slice(0, first).concat(chain.slice(i));
-                if (WadSectorPolygons._isBridgedHole(lobe, rest, vertexes)) {
-                    return [chain];
-                }
-                return [
-                    ...WadSectorPolygons._splitAtRepeats(lobe, vertexes),
-                    ...WadSectorPolygons._splitAtRepeats(rest, vertexes)
-                ];
-            }
-            seen.set(chain[i], i);
-        }
-
-        return [chain];
-    }
-
-    /**
-     * Two lobes winding the SAME way are disjoint loops the walk ran together,
-     * and splitting them is the whole point. Winding OPPOSITE ways, the inner
-     * one is a hole the contour reaches through the pinch — a bridge, and a
-     * legitimate way to carry a hole inside a single polygon, which the
-     * triangulator already handles. Splitting that one would leave an outer
-     * with its hole gone and a hole belonging to no outer (assignHoles tests a
-     * point sitting ON the outer's boundary, so it matches none), and the void
-     * would be painted over: freedoom1 E4M8 sector 154 lidded eleven rooms
-     * under 160 m² of its own ceiling.
-     *
-     * A piece too short to have an area cannot contradict the other, and is
-     * dropped downstream anyway.
-     *
-     * @returns {boolean}
-     */
-    static _isBridgedHole(lobe, rest, vertexes) {
-        if ((lobe.length < 3) || (rest.length < 3)) {
-            return false;
-        }
-        const lobeSign = WadGeometry.polygonAreaSign(lobe.map((vi) => vertexes[vi]));
-        const restSign = WadGeometry.polygonAreaSign(rest.map((vi) => vertexes[vi]));
-
-        return ((lobeSign > 0) !== (restSign > 0));
     }
 
     /**
@@ -208,7 +135,7 @@ class WadSectorPolygons {
      */
     static outersWithHoles(si, linedefs, sidedefs, vertexes) {
         return WadSectorPolygons._outersOf(
-            WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes).chains, vertexes);
+            WadSectorPolygons.buildChains(si, linedefs, sidedefs).chains, vertexes);
     }
 
     /**
@@ -221,7 +148,7 @@ class WadSectorPolygons {
      * @returns {{outer: number[][], holes: number[][][]|null}[]|null}
      */
     static closedOutersWithHoles(si, linedefs, sidedefs, vertexes) {
-        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes);
+        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs);
         if ((chains.length === 0) || (openCount > 0)) {
             return null;
         }
