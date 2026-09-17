@@ -10,18 +10,26 @@ class WadSectorPolygons {
      * @returns {number[][]}
      */
     static buildSectorPolygons(sectorId, linedefs, sidedefs, vertexes) {
-        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs).chains;
+        return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs, vertexes).chains;
     }
 
     /**
-     * Same walk, plus how many chains ended in a DEAD END instead of closing
-     * back on their first vertex. An open chain is not a contour: the sector's
-     * linedefs do not describe its shape (doom2 MAP21's sector 50 has 2
-     * linedefs and 4 loose endpoints), and its flats need the BSP carve.
+     * Walk the sector's boundary into simple closed loops, plus how many walks
+     * ended in a DEAD END instead of closing back on their first vertex. An
+     * open walk is not a contour: the sector's linedefs do not describe its
+     * shape (doom2 MAP21's sector 50 has 2 linedefs and 4 loose endpoints),
+     * and its flats need the BSP carve.
+     *
+     * Every edge is directed with the sector on its RIGHT, so the walk is the
+     * face tracing of a planar graph: where a vertex offers several ways out
+     * (two lobes pinched on one vertex, a hole touching its contour), the
+     * sharpest right turn is the one that stays along the region the incoming
+     * edge bounds. A loop that still comes back through a vertex (a hole
+     * reached through its pinch) is cut there into its simple loops.
      *
      * @returns {{chains: number[][], openCount: number}}
      */
-    static buildChains(sectorId, linedefs, sidedefs) {
+    static buildChains(sectorId, linedefs, sidedefs, vertexes) {
         const edges = [];
         for (const ld of linedefs) {
             if (ld.right >= 0 && ld.right < sidedefs.length) {
@@ -49,7 +57,7 @@ class WadSectorPolygons {
             adj.get(a).push(b);
         }
 
-        // Walk chains greedily, consuming each directed edge at most once
+        // Walk chains, consuming each directed edge at most once
         const used = new Set();
         const chains = [];
         let openCount = 0;
@@ -57,28 +65,16 @@ class WadSectorPolygons {
             if (used.has(startA + ',' + startB)) {
                 continue;
             }
-            const chain = [startA, startB];
-            used.add(startA + ',' + startB);
-            let cur = startB;
-            let closed = false;
-            while (true) {
-                const nexts = (adj.get(cur) ?? []).filter((v) => !used.has(cur + ',' + v));
-                if (nexts.length === 0) {
-                    break;
-                }
-                const nxt = nexts[0];
-                used.add(cur + ',' + nxt);
-                if (nxt === chain[0]) {
-                    closed = true;
-                    break;
-                }
-                chain.push(nxt);
-                cur = nxt;
+            const {chain, closed} = WadSectorPolygons._walkFrom(startA, startB, adj, used, vertexes);
+            if (chain.length < 3) {
+                continue;
             }
-            if (chain.length >= 3) {
-                chains.push(chain);
-                if (!closed) {
-                    openCount++;
+            if (!closed) {
+                openCount++;
+            }
+            for (const loop of WadSectorPolygons._splitAtRepeats(chain)) {
+                if (WadSectorPolygons._isLoop(loop, vertexes)) {
+                    chains.push(loop);
                 }
             }
         }
@@ -120,11 +116,6 @@ class WadSectorPolygons {
         return {outers: outers, holes: holes};
     }
 
-    // Return the holes geometrically inside the given outer polygon.
-    static assignHoles(outer, holes) {
-        return holes.filter((h) => WadGeometry.pointInPolygon2d(h[0][0], h[0][1], outer));
-    }
-
     /**
      * Outer polygons of a sector with their assigned holes — the shared shape
      * every flat builder needs (static map, moving lift/rising-floor tops,
@@ -135,7 +126,7 @@ class WadSectorPolygons {
      */
     static outersWithHoles(si, linedefs, sidedefs, vertexes) {
         return WadSectorPolygons._outersOf(
-            WadSectorPolygons.buildChains(si, linedefs, sidedefs).chains, vertexes);
+            WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes).chains, vertexes);
     }
 
     /**
@@ -148,23 +139,36 @@ class WadSectorPolygons {
      * @returns {{outer: number[][], holes: number[][][]|null}[]|null}
      */
     static closedOutersWithHoles(si, linedefs, sidedefs, vertexes) {
-        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs);
+        const {chains, openCount} = WadSectorPolygons.buildChains(si, linedefs, sidedefs, vertexes);
         if ((chains.length === 0) || (openCount > 0)) {
             return null;
         }
         return WadSectorPolygons._outersOf(chains, vertexes);
     }
 
+    // Each hole goes to the SMALLEST outer containing it — its immediate
+    // parent. An island of the sector inside one of its holes carries its own
+    // holes, which the enclosing outer must not subtract a second time.
     static _outersOf(chains, vertexes) {
         if (chains.length === 0) {
             return [];
         }
         const {outers, holes} = WadSectorPolygons.splitOutersAndHoles(chains, vertexes);
+        const areas = outers.map((outer) => Math.abs(WadGeometry.polygonAreaSign(outer)));
+        const owned = outers.map(() => []);
+        for (const hole of holes) {
+            let parent = -1;
+            for (let i = 0; i < outers.length; i++) {
+                if (WadSectorPolygons._holeInside(hole, outers[i]) && ((parent < 0) || (areas[i] < areas[parent]))) {
+                    parent = i;
+                }
+            }
+            if (parent >= 0) {
+                owned[parent].push(hole);
+            }
+        }
 
-        return outers.map((outer) => {
-            const own = WadSectorPolygons.assignHoles(outer, holes);
-            return {outer: outer, holes: ((own.length > 0) ? own : null)};
-        });
+        return outers.map((outer, i) => ({outer: outer, holes: ((owned[i].length > 0) ? owned[i] : null)}));
     }
 
     // Point-in-sector over a polygon cache ([{outers, ...}]): the SMALLEST
@@ -189,5 +193,131 @@ class WadSectorPolygons {
         }
 
         return best;
+    }
+
+    // One walk from the directed edge a→b, until it comes back to a (closed)
+    // or runs out of unused edges (dead end).
+    static _walkFrom(a, b, adj, used, vertexes) {
+        const chain = [a, b];
+        used.add(a + ',' + b);
+        let prev = a;
+        let cur  = b;
+        while (true) {
+            const nxt = WadSectorPolygons._nextVertex(prev, cur, adj, used, vertexes);
+            if (nxt === null) {
+                return {chain: chain, closed: false};
+            }
+            used.add(cur + ',' + nxt);
+            if (nxt === a) {
+                return {chain: chain, closed: true};
+            }
+            chain.push(nxt);
+            prev = cur;
+            cur  = nxt;
+        }
+    }
+
+    // A contour needs three vertices and some area: a slit walked there and
+    // back (a linedef with the sector on both sides) is neither.
+    static _isLoop(loop, vertexes) {
+        return ((loop.length >= 3) && (WadGeometry.polygonAreaSign(loop.map((vi) => vertexes[vi])) !== 0));
+    }
+
+    // Next vertex of the walk out of cur, arrived at from prev: the unused
+    // edge making the sharpest right turn, a straight-back U-turn last. With
+    // a single way out the choice is forced.
+    static _nextVertex(prev, cur, adj, used, vertexes) {
+        const nexts = (adj.get(cur) ?? []).filter((v) => !used.has(cur + ',' + v));
+        if (nexts.length === 0) {
+            return null;
+        }
+        if (nexts.length === 1) {
+            return nexts[0];
+        }
+        const inX = vertexes[cur][0] - vertexes[prev][0];
+        const inY = vertexes[cur][1] - vertexes[prev][1];
+        let best     = null;
+        let bestTurn = Infinity;
+        for (const v of nexts) {
+            const outX  = vertexes[v][0] - vertexes[cur][0];
+            const outY  = vertexes[v][1] - vertexes[cur][1];
+            const cross = (inX * outY) - (inY * outX);
+            const dot   = (inX * outX) + (inY * outY);
+            // Collinear edges decided without atan2: a negative zero would
+            // turn a straight-back U-turn into -π, the sharpest right turn.
+            const turn = ((cross === 0) ? ((dot > 0) ? 0 : Math.PI) : Math.atan2(cross, dot));
+            if (turn < bestTurn) {
+                bestTurn = turn;
+                best     = v;
+            }
+        }
+
+        return best;
+    }
+
+    // Cut a closed walk at every vertex it passes twice: the sub-walk between
+    // the two visits is a loop of its own, the rest continues without it.
+    static _splitAtRepeats(chain) {
+        const seen = new Map();
+        for (let i = 0; i < chain.length; i++) {
+            const first = seen.get(chain[i]);
+            if (first !== undefined) {
+                const lobe = chain.slice(first, i);
+                const rest = chain.slice(0, first).concat(chain.slice(i));
+
+                return [...WadSectorPolygons._splitAtRepeats(lobe), ...WadSectorPolygons._splitAtRepeats(rest)];
+            }
+            seen.set(chain[i], i);
+        }
+
+        return [chain];
+    }
+
+    // A hole lies inside an outer when a point strictly inside the hole is
+    // inside the outer — its first vertex may sit ON the outer's boundary (a
+    // hole touching its contour), where a point-in-polygon test answers either
+    // way — and the outer is the larger of the two: boundary loops never
+    // cross, so the same point test also holds for an island INSIDE the hole.
+    static _holeInside(hole, outer) {
+        if (Math.abs(WadGeometry.polygonAreaSign(hole)) >= Math.abs(WadGeometry.polygonAreaSign(outer))) {
+            return false;
+        }
+        const [px, py] = WadSectorPolygons._interiorPoint(hole);
+
+        return WadGeometry.pointInPolygon2d(px, py, outer);
+    }
+
+    // Centroid of an ear of the polygon: a triangle of three consecutive
+    // vertices that turns the polygon's way and holds no other vertex.
+    static _interiorPoint(poly) {
+        const n    = poly.length;
+        const sign = WadGeometry.polygonAreaSign(poly);
+        for (let i = 0; i < n; i++) {
+            const a = poly[(i + n - 1) % n];
+            const b = poly[i];
+            const c = poly[(i + 1) % n];
+            const cross = WadGeometry.cross2d(a, b, c);
+            if ((cross === 0) || ((cross > 0) === (sign > 0))) {
+                continue;
+            }
+            if (WadSectorPolygons._earIsEmpty(poly, a, b, c)) {
+                return [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3];
+            }
+        }
+
+        return poly[0];
+    }
+
+    static _earIsEmpty(poly, a, b, c) {
+        for (const p of poly) {
+            if ((p === a) || (p === b) || (p === c)) {
+                continue;
+            }
+            if (WadGeometry.pointInTriangle(p, a, b, c)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
