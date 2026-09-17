@@ -279,61 +279,89 @@ class WadMeshBuilder {
         if (polyVerts2d.length < 3) {
             return;
         }
-        const holes = (options.holes ?? null);
-
-        let xz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
-        let polyLocal = [...polyVerts2d];
-        let preTris   = null;
-
-        // Holes: merge via bridge cuts then ear-clip. The legacy ear-clipping is
-        // kept whenever it triangulates the merged polygon COMPLETELY (true
-        // count = merged.length - 2), so those sectors keep a byte-identical
-        // mesh. When it leaves the flat incomplete (complex donuts with many
-        // holes whose bridges tangle), fall back to the robust earcut path with
-        // native hole support — otherwise the missing triangles show as holes in
-        // both the floor and the ceiling (same merged polygon feeds both).
-        if (holes && holes.length > 0) {
-            const merged = WadTriangulator.mergeHolesIntoPolygon(polyLocal, holes);
-            const o = WadMeshBuilder._orientFlat(
-                merged.map((v) => WadGeometry.doomToWorld(v[0], v[1])), merged);
-            const legacyTris = WadTriangulator.triangulate(o.xz);
-            if (legacyTris.length >= o.xz.length - 2) {
-                polyLocal = o.poly;
-                xz        = o.xz;
-                preTris   = legacyTris;
-            } else {
-                const outerXz = polyVerts2d.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
-                const holesXz = holes.map((h) => h.map((v) => WadGeometry.doomToWorld(v[0], v[1])));
-                const ec = WadTriangulator.triangulateWithHoles(outerXz, holesXz);
-                const holeVertsDoom = [];
-                for (const h of holes) {
-                    for (const v of h) {
-                        holeVertsDoom.push(v);
-                    }
-                }
-                polyLocal = [...polyVerts2d, ...holeVertsDoom];
-                xz        = ec.vertices;
-                preTris   = ec.tris;
-            }
+        const holes      = (options.holes ?? null);
+        const targetArea = WadMeshBuilder._flatArea(polyVerts2d, holes);
+        const flat = (((holes !== null) && (holes.length > 0))
+            ? WadMeshBuilder._triangulateWithHoles(polyVerts2d, holes, targetArea)
+            : WadMeshBuilder._triangulateSimple(polyVerts2d, targetArea));
+        if (!WadMeshBuilder._triangulationFits(flat.xz, flat.tris, targetArea)) {
+            console.warn('WadMeshBuilder - inexact flat triangulation (' + polyVerts2d.length + ' vertices, '
+                + ((holes !== null) ? holes.length : 0) + ' holes)');
         }
 
-        // Simple polygon path: triangulate() requires CCW winding, reverse CW
-        // polygons. Skipped when the holes path above already produced preTris.
-        if (preTris === null) {
-            const o = WadMeshBuilder._orientFlat(xz, polyLocal);
-            xz        = o.xz;
-            polyLocal = o.poly;
-            const legacyTris = WadTriangulator.triangulate(xz);
-            if (legacyTris.length >= xz.length - 2) {
-                preTris = legacyTris;
-            } else {
-                const ec = WadTriangulator.triangulateWithHoles(xz, null);
-                xz      = ec.vertices;
-                preTris = ec.tris;
-            }
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, flat.xz, flat.poly, flat.tris, yHeight, isFloor, options);
+    }
+
+    // Triangulation of a flat with holes: the legacy path (bridge-cut merge of
+    // the holes, then ear-clipping) is kept whenever it covers the flat
+    // EXACTLY — the very count of its triangles says nothing of where they
+    // land, a tangled bridge cut yields the right number of ears with some of
+    // them overlapping. Those sectors keep a byte-identical mesh; every other
+    // one takes the robust earcut path fed with the outer and its holes as
+    // separate rings (never pre-merged: that is how it copes with touching
+    // holes). Returns {xz (world), poly (Doom twin), tris}.
+    static _triangulateWithHoles(outerDoom, holes, targetArea) {
+        const merged = WadTriangulator.mergeHolesIntoPolygon([...outerDoom], holes);
+        const o      = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(merged), merged);
+        const legacy = WadTriangulator.triangulate(o.xz);
+        if (WadMeshBuilder._triangulationFits(o.xz, legacy, targetArea)) {
+            return {xz: o.xz, poly: o.poly, tris: legacy};
+        }
+        const ec = WadTriangulator.triangulateWithHoles(
+            WadMeshBuilder._toWorld(outerDoom), holes.map((h) => WadMeshBuilder._toWorld(h)));
+
+        return {xz: ec.vertices, poly: [...outerDoom, ...holes.flat()], tris: ec.tris};
+    }
+
+    // Same choice for a simple polygon (triangulate() requires CCW winding,
+    // CW polygons are reversed first).
+    static _triangulateSimple(polyDoom, targetArea) {
+        const o      = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(polyDoom), polyDoom);
+        const legacy = WadTriangulator.triangulate(o.xz);
+        if (WadMeshBuilder._triangulationFits(o.xz, legacy, targetArea)) {
+            return {xz: o.xz, poly: o.poly, tris: legacy};
+        }
+        const ec = WadTriangulator.triangulateWithHoles(o.xz, null);
+
+        return {xz: ec.vertices, poly: o.poly, tris: ec.tris};
+    }
+
+    static _toWorld(polyDoom) {
+        return polyDoom.map((v) => WadGeometry.doomToWorld(v[0], v[1]));
+    }
+
+    // Area of a flat in world units: its outer minus its holes.
+    static _flatArea(outerDoom, holes) {
+        const worldArea = (poly) => Math.abs(WadGeometry.polygonAreaSign(WadMeshBuilder._toWorld(poly))) / 2;
+        let area = worldArea(outerDoom);
+        for (const hole of (holes ?? [])) {
+            area -= worldArea(hole);
         }
 
-        WadMeshBuilder._emitFlatFaces(mesh, texIdx, xz, polyLocal, preTris, yHeight, isFloor, options);
+        return area;
+    }
+
+    // A triangulation covers its flat exactly when its triangles all wind the
+    // same way (a flat one has no side) and their areas add up to the flat's:
+    // an ear-clipping that tangled its bridge cuts fails one or the other.
+    static _triangulationFits(xz, tris, targetArea) {
+        let sum      = 0;
+        let positive = 0;
+        let negative = 0;
+        for (const [a, b, c] of tris) {
+            const area2 = WadGeometry.cross2d(xz[a], xz[b], xz[c]);
+            sum += Math.abs(area2) / 2;
+            if (area2 > 0) {
+                positive++;
+            } else if (area2 < 0) {
+                negative++;
+            }
+        }
+        if ((positive > 0) && (negative > 0)) {
+            return false;
+        }
+
+        return (Math.abs(sum - targetArea) <= WadMeshBuilder.FLAT_AREA_EPSILON);
     }
 
     // Shared emitter of triangulated flat faces (points, UVs, winding, flags)
@@ -443,3 +471,5 @@ class WadMeshBuilder {
         };
     }
 }
+
+WadMeshBuilder.FLAT_AREA_EPSILON = 1e-9;
