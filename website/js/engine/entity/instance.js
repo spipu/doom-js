@@ -40,7 +40,6 @@ class Instance extends AbstractLoadedEntity {
 
         // Trigger / interaction (how the animation is activated)
         this._trigger                = 'none';
-        this._triggerReverse         = false;   // true = a trigger walks the cycle back instead of playing it
         this._interactionRadius      = null;
         // Shape of the proximity test around the radius: 'sphere' measures in
         // 3D, 'planar' on XZ only (walk-over lines fire at any height), and
@@ -447,8 +446,8 @@ class Instance extends AbstractLoadedEntity {
      *                       interactionShape, interactionReachBelow,
      *                       interactionReachAbove, autoStart, damage,
      *                       blockedBehavior, blockedSlowFactor, crushDamage,
-     *                       triggerReverse, interaction, keyframes,
-     *                       keyframeVariants, defaultVariant}
+     *                       interaction, keyframes, keyframeVariants,
+     *                       defaultVariant}
      */
     populate(data) {
         // Null, never undefined: runtime spawns (effects, projectiles, decals)
@@ -459,7 +458,6 @@ class Instance extends AbstractLoadedEntity {
         this._restY                   = data.position[1];
         this._rotation                = data.rotation;
         this._trigger                 = data.trigger;
-        this._triggerReverse          = (data.triggerReverse === true);
         this._animLoop                = (data.loop === true);
         this._animOnlyOnce            = (data.onlyOnce === true);
         this._collisionShape          = (data.collisionShape ?? 'none');
@@ -487,7 +485,8 @@ class Instance extends AbstractLoadedEntity {
         if (this._animKeyframes.length === 0 && this._interaction === null) {
             return;
         }
-        if (this._animDone && !this._triggerReverse) {
+        // A done cycle still listens when a variant can follow it (start() accepts one).
+        if (this._animDone && (this._animVariants === null)) {
             return;
         }
 
@@ -616,10 +615,10 @@ class Instance extends AbstractLoadedEntity {
     // zone stops immediately, so a once-only line is consumed for everyone.
     // No-op on a spent or busy zone. Returns true when it fired.
     fireZoneTrigger() {
-        if (this._trigger === 'none' || this._animPlaying || (this._animDone && !this._triggerReverse)) {
+        if (this._trigger === 'none' || this._animDone || this._animPlaying) {
             return false;
         }
-        this._startByTrigger();
+        this.start();
         if (!this._animPlaying) {
             return false;
         }
@@ -673,11 +672,11 @@ class Instance extends AbstractLoadedEntity {
 
         switch (this._trigger) {
             case 'always':
-                this._startByTrigger();
+                this.start();
                 break;
             case 'proximity':
                 if (inRange && this._conditionMet(user)) {
-                    this._startByTrigger();
+                    this.start();
                 }
                 break;
             case 'action':
@@ -687,7 +686,7 @@ class Instance extends AbstractLoadedEntity {
                     const accepted = this._conditionMet(user);
                     user.noteUseTarget(accepted);
                     if (accepted) {
-                        this._startByTrigger();
+                        this.start();
                     }
                 }
                 break;
@@ -801,13 +800,6 @@ class Instance extends AbstractLoadedEntity {
         }
 
         return null;
-    }
-
-    // A body whose trigger undoes its cycle (a door resting open, closed by a
-    // remote line, that a press must bring back up) walks the timeline back;
-    // at rest that is a no-op, so the trigger only ever acts once the cycle ran.
-    _startByTrigger() {
-        return ((this._triggerReverse) ? this.startReverse() : this.start());
     }
 
     _isPausedMidCycle() {

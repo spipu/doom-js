@@ -80,7 +80,7 @@ class WadStaticMapBuilder {
                     }
                     const {floorH, ceilH} = doorHeights[rSd.sector];
                     const texName = rSd.middle;
-                    if (!texName || texName === '-') {
+                    if (WadTextureBank.isBlank(texName)) {
                         continue;
                     }
                     const ti = this._bank.ensureWallTex(texName);
@@ -251,7 +251,7 @@ class WadStaticMapBuilder {
             if ((swWall !== null) && (swWall.side === side) && (swWall.slot === 'middle')) {
                 continue;
             }
-            if (!(mSd.middle && mSd.middle !== '-')) {
+            if (WadTextureBank.isBlank(mSd.middle)) {
                 continue;
             }
             if (doorSectorIds.has(mSd.sector)) {

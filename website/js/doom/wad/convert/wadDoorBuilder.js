@@ -87,7 +87,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
 
             const neighbourSd = sidedefs[((doorOnRight) ? ld.left : ld.right)];
             const ownSd       = sidedefs[((doorOnRight) ? ld.right : ld.left)];
-            const validUpper  = (sd) => ((sd.upper && sd.upper !== '-') ? sd : null);
+            const validUpper  = (sd) => ((WadTextureBank.isBlank(sd.upper)) ? null : sd);
             const srcSd = ((doorSectorIds.has(neighbourSi))
                 ? (validUpper(neighbourSd) ?? validUpper(ownSd))
                 : validUpper(neighbourSd));
@@ -133,11 +133,9 @@ class WadDoorBuilder extends AbstractMoverBuilder {
 
     _buildInstanceData(doorName, si, floorH, ceilH, mesh) {
         const props = this._analysis.doorProps[si];
-        // Rest position of an opening panel: the sector's OWN ceiling — closed
-        // at its floor for a door stored shut, keeping its slit when stored
-        // ajar, parked open when stored open — travelling up to ceilH from
-        // there. Clamped at the floor for the squished underground doors.
-        const restDu    = ((props.close === true) ? 0 : Math.max(0, this._level.sectors[si].ch - floorH));
+        // The closing and trap cycles own their rest pose; the others rest at the sector's own ceiling.
+        const ownsRest  = ((props.close === true) || (props.anim === 'trap-close'));
+        const restDu    = ((ownsRest) ? 0 : Math.max(0, this._level.sectors[si].ch - floorH));
         const speedTics = props.speed;
 
         const radius = ((mesh.points.length > 0)
@@ -157,15 +155,14 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         // its own at start() time: E1M4 tag 1 mixes two open cycles, E1M6 tag 1
         // an open-stay with a close-wait-open, E4M9 tag 2 an opener with a
         // crusher. Declared only when a special asks for something OTHER than
-        // the base timeline; the doors a closing special registered keep their
-        // single structural cycle. A timer door's base carries the level-load
+        // the base timeline. A timer door's base carries the level-load
         // countdown and no special declares it, so its default stays null —
         // start() then falls back to that base instead of a variant.
         const baseKey       = WadConstants.doorCycleKey(props.anim, speedTics);
         const variantNames  = Object.keys(props.variants ?? {});
         const baseIsVariant = variantNames.includes(baseKey);
         let keyframeVariants = null;
-        if (!props.close && variantNames.some((key) => (key !== baseKey))) {
+        if (variantNames.some((key) => (key !== baseKey))) {
             keyframeVariants = {};
             for (const key of variantNames) {
                 keyframeVariants[key] = this._buildCycle(props.variants[key], floorH, ceilH, restDu);
@@ -179,9 +176,6 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
             trigger:           props.trigger,
-            // A pressable closing door reopens on the press (its manual lines
-            // are openers), so the trigger walks the close cycle back.
-            triggerReverse:    ((props.close === true) && (props.trigger === 'action')),
             autoStart:         props.autoStart,
             loop:              props.loop,
             onlyOnce:          props.onlyOnce,
@@ -193,7 +187,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             ...WadConstants.pressCycleFields(press),
             keyframes:         keyframes,
             keyframeVariants:  keyframeVariants,
-            defaultVariant:    (((keyframeVariants !== null) && baseIsVariant) ? baseKey : null)
+            defaultVariant:    ((keyframeVariants !== null) ? (props.pressVariant ?? ((baseIsVariant) ? baseKey : null)) : null)
         };
     }
 

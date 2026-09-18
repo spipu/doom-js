@@ -174,14 +174,15 @@ class WadSwitchBuilder {
         const swapIndex = ((ti2 >= 0) ? localIndices.indexOf(ti2) + 1 : null);
 
         return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
-            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: this._riserSwapSpec(ld, ti, ti2)};
+            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: this._riserSwapSpec(ld, slotInfo, ti, ti2)};
     }
 
-    // An up mover along the line repeats the SW graphic on the riser it raises
-    // above the static panel (E3M2 SW1BLUE on a raiseToTexture block): that
-    // riser swaps along with the panel.
-    _riserSwapSpec(ld, ti, ti2) {
-        const moverCode = this._builtFloorMoverOn(ld);
+    // The riser a floor mover raises along the line repeats the SW graphic and swaps
+    // along: the far mover borrows this side's lower, the near one only when the far is blank.
+    _riserSwapSpec(ld, slotInfo, ti, ti2) {
+        const near = ((slotInfo.side === 'right') ? ld.right : ld.left);
+        const far  = ((slotInfo.side === 'right') ? ld.left : ld.right);
+        const moverCode = (this._builtFloorMoverOf(far) ?? this._builtFloorMoverOf(near));
         if ((moverCode === null) || (ti2 < 0)) {
             return null;
         }
@@ -269,32 +270,28 @@ class WadSwitchBuilder {
             || this._builtStairCodes.has(code) || this._builtDoorCodes.has(code));
     }
 
-    // Built floor mover (lift, rising floor, stair) on either side of the line.
-    _builtFloorMoverOn(ld) {
-        const {sidedefs} = this._level;
-        for (const sd of [ld.right, ld.left]) {
-            if (sd < 0) {
-                continue;
-            }
-            const floorCode = this._floorMoverCode(sidedefs[sd].sector);
-            if ((floorCode !== null) && this._isBuiltMover(floorCode)) {
-                return floorCode;
-            }
+    _builtFloorMoverOf(sd) {
+        if (sd < 0) {
+            return null;
         }
+        const floorCode = this._floorMoverCode(this._level.sidedefs[sd].sector);
 
-        return null;
+        return (((floorCode !== null) && this._isBuiltMover(floorCode)) ? floorCode : null);
     }
 
     // Last-resort resolution for a panel with no geometry of its own (flush
     // parked, degenerate band): any mover touching the line, floors first.
     _anyMoverOn(ld) {
-        const floorCode = this._builtFloorMoverOn(ld);
-        if (floorCode !== null) {
-            return floorCode;
-        }
         const {sidedefs} = this._level;
         for (const sd of [ld.right, ld.left]) {
-            if ((sd >= 0) && this._builtDoorCodes.has('door_' + sidedefs[sd].sector)) {
+            if (sd < 0) {
+                continue;
+            }
+            const floorCode = this._builtFloorMoverOf(sd);
+            if (floorCode !== null) {
+                return floorCode;
+            }
+            if (this._builtDoorCodes.has('door_' + sidedefs[sd].sector)) {
                 return 'door_' + sidedefs[sd].sector;
             }
         }
