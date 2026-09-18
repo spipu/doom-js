@@ -70,6 +70,7 @@ class WadStaticMapBuilder {
             const uScroll = (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0);
 
             if (ld.left < 0) {
+                this._buildOneSidedJumpGuard(mesh, rSd.sector, wx1, wz1, wx2, wz2, wallLen);
                 if (switchLinedefIds.has(ldIdx)) {
                     continue;
                 }
@@ -199,6 +200,10 @@ class WadStaticMapBuilder {
                 }
             }
 
+            if (!rIsDoor && !lIsDoor) {
+                this._buildUpperJumpGuard(mesh, rSec, lSec, wx1, wz1, wx2, wz2, wallLen);
+            }
+
             this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
 
             // ML_BLOCKING two-sided line (windows, balustrades): impassable
@@ -307,19 +312,63 @@ class WadStaticMapBuilder {
     // height only, the flag blocks the full gap. A single facing is enough —
     // the wall resolution is side-agnostic and the raycast skips the face.
     _buildBlockingWall(mesh, rFh, rCh, lFh, lCh, wx1, wz1, wx2, wz2, wallLen) {
-        const SCALE = WadConstants.SCALE;
         const botDu = Math.max(rFh, lFh);
         const topDu = Math.min(rCh, lCh);
         if (topDu <= botDu) {
             return;
         }
-        // 64×64 = dummy texture dims (only there to pass the addWallQuad
-        // guard; the UVs are dropped on a textureless face)
+        this._addCollisionBand(mesh, botDu, topDu, wx1, wz1, wx2, wz2, wallLen);
+    }
+
+    // A one-sided wall under a sky ceiling has nothing above it to cap a jump,
+    // while vanilla blocks the line at any height (PIT_CheckLine): the guard
+    // above its top keeps it out of the step exemption at the apex of a jump,
+    // where only the void waits behind.
+    _buildOneSidedJumpGuard(mesh, si, wx1, wz1, wx2, wz2, wallLen) {
+        const sec = this._level.sectors[si];
+        if (!WadConstants.isSkyFlat(sec.ct)) {
+            return;
+        }
+        const {doorSectorIds, doorHeights} = this._analysis;
+        const topDu = ((doorSectorIds.has(si)) ? (doorHeights[si]?.ceilH ?? null) : sec.ch);
+        if (topDu === null) {
+            return;
+        }
+        this._addJumpGuard(mesh, topDu, wx1, wz1, wx2, wz2, wallLen, true);
+    }
+
+    // Above the upper wall's top the low-ceiling side is rock: for a jump the
+    // line caps like a one-sided wall, and only a sky on the tall side leaves
+    // room to jump over it. Callers keep door lines out: their upper wall is
+    // the panel, which rises.
+    _buildUpperJumpGuard(mesh, rSec, lSec, wx1, wz1, wx2, wz2, wallLen) {
+        if (rSec.ch === lSec.ch) {
+            return;
+        }
+        const rightIsTall = (rSec.ch > lSec.ch);
+        const tall = ((rightIsTall) ? rSec : lSec);
+        const low  = ((rightIsTall) ? lSec : rSec);
+        if (!WadConstants.isSkyFlat(tall.ct) || WadConstants.isSkyFlat(low.ct)) {
+            return;
+        }
+        this._addJumpGuard(mesh, tall.ch, wx1, wz1, wx2, wz2, wallLen, rightIsTall);
+    }
+
+    // Guard band above a wall top, oriented like the wall it caps.
+    _addJumpGuard(mesh, topDu, wx1, wz1, wx2, wz2, wallLen, flip) {
+        this._addCollisionBand(mesh, topDu, topDu + WadConstants.JUMP_GUARD_HEIGHT, wx1, wz1, wx2, wz2, wallLen, flip);
+    }
+
+    // Invisible, shot-transparent collision band (Doom units). 64×64 = dummy
+    // texture dims (only there to pass the addWallQuad guard; the UVs are
+    // dropped on a textureless face). flip orients it like the wall it caps.
+    _addCollisionBand(mesh, botDu, topDu, wx1, wz1, wx2, wz2, wallLen, flip = false) {
+        const SCALE = WadConstants.SCALE;
         WadMeshBuilder.addWallQuad(mesh, -1,
             wx1, wz1, wx2, wz2,
             botDu * SCALE, topDu * SCALE,
             wallLen, 64, 64,
-            {collisionOnly: true, passableShot: true});
+            {collisionOnly: true, passableShot: true, flip: flip});
     }
 
     // --- Flats ---

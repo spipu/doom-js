@@ -1057,6 +1057,13 @@ class WadConstants {
     // vertical clearance is stricter, so the margin restores those passages.
     static PLAYER_HEIGHT = 0.866;
 
+    // Height (Doom units) of the collision band above a wall no jump may
+    // clear (one-sided walls and upper walls under a sky). The wall resolution
+    // treats a wall lower than feet + step as a step, so the band must outreach
+    // jump (36) + step (24) − the shortest wall a player can stand under (56):
+    // 4 units would do, the player's height leaves a wide margin.
+    static JUMP_GUARD_HEIGHT = WadConstants.PLAYER_HEIGHT / WadConstants.SCALE;
+
     // Vanilla PlayerPawn Mass: the divisor of the kickback formula, so a shot
     // shoves the player exactly as far as it shoves a body of equal mass.
     static PLAYER_MASS = 100;

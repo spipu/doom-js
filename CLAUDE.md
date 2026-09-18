@@ -8,6 +8,7 @@
 * Tout code spécifique à Doom va dans `./website/js/doom` : règles de jeu, conversion WAD, catalogues, HUD de jeu.
 * Le moteur ne dépend jamais de `doom/` ni de `WadConstants` : il expose des primitives paramétrables (`Engine3d.setDepthShading`, `Instance.setRenderOffset`, `Instance.setRenderLight`…) que la couche jeu alimente avec ses propres constantes.
 * À l'intérieur de `doom/`, ce qui est propre à un jeu donné appartient à son profil (`wad/profile/`), pas aux tables de base.
+* **Toujours chercher d'abord une solution dans le convertisseur ou la couche jeu (`doom/`)** avant d'ajouter quoi que ce soit au moteur : une primitive moteur n'est justifiée que si elle est réellement générique et qu'aucune combinaison des primitives existantes ne couvre le besoin. Ne jamais alourdir `engine/` d'une fonction qui ne servirait qu'à Doom (ex. : une garde de saut au-dessus d'un mur se bâtit en géométrie de collision côté convertisseur, pas en drapeau de face moteur).
 
 ### Commentaires
 
