@@ -391,24 +391,23 @@ class WadMapAnalyzer {
                 // registration loops, preserved when the timer-sector pass
                 // re-registers on top): cycle key → {anim, speed, onlyOnce,
                 // loop, closeMargin}.
-                variants:     (doorProps[si]?.variants ?? {})
+                variants:     (doorProps[si]?.variants ?? {}),
+                // Cycle a press plays instead of the base one (manual opener of a closing door).
+                pressVariant: (doorProps[si]?.pressVariant ?? null)
             };
         };
 
-        // The rest pose is the sector's geometry, not the special that happens
-        // to be listed first: a sector resting OPEN under a tag that a closing
-        // special aims at is a closing door, whatever else targets it (E3M2
-        // tag 4 mixes the W1 close with the S1 that reopens it) — it belongs to
-        // the closing pass below, and its openers play that cycle in reverse.
-        const closeTags = new Set(linedefs
-            .filter((ld) => (WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) && (ld.tag !== 0)))
-            .map((ld) => ld.tag));
-        const restsOpen   = (si) => (sectors[si].ch > sectors[si].fh);
-        const closesFirst = (si) => (closeTags.has(sectors[si].tag) && restsOpen(si));
-        // Closing doors carrying a manual opener on their own lines (E2M4's
-        // trap reopened by pressing it): the press stays and walks the close
-        // back (WadDoorBuilder triggerReverse).
-        const manualReopeners = new Set();
+        // A sector the closing pass below will shut is a closing door, whatever else aims at it.
+        const closeMarginByTag = new Map();
+        for (const ld of linedefs) {
+            if (WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
+                const margin = (WadConstants.DOOR_BY_SPECIAL[ld.special].closeMargin ?? 0);
+                closeMarginByTag.set(ld.tag, Math.min(margin, (closeMarginByTag.get(ld.tag) ?? margin)));
+            }
+        }
+        const closesFirst = (si) => (closeMarginByTag.has(sectors[si].tag)
+            && (sectors[si].ch > (sectors[si].fh + closeMarginByTag.get(sectors[si].tag))));
+        const manualReopeners = new Map();
 
         for (const ld of linedefs) {
             if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
@@ -429,7 +428,7 @@ class WadMapAnalyzer {
             } else if (ld.left >= 0) {
                 const si = sidedefs[ld.left].sector;
                 if (closesFirst(si)) {
-                    manualReopeners.add(si);
+                    manualReopeners.set(si, door);
                     continue;
                 }
                 registerDoor(si, door, null);
@@ -450,7 +449,12 @@ class WadMapAnalyzer {
             const margin = (door.closeMargin ?? 0);
             for (let si = 0; si < sectors.length; si++) {
                 if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh + margin) {
-                    registerDoor(si, door, ((manualReopeners.has(si)) ? 'action' : 'none'));
+                    const opener = (manualReopeners.get(si) ?? null);
+                    registerDoor(si, door, ((opener !== null) ? 'action' : 'none'));
+                    if (opener !== null) {
+                        doorProps[si].pressVariant = WadConstants.doorCycleKey(opener.anim, opener.speed);
+                        doorProps[si].monsterUse   = WadMapAnalyzer._monsterUsableDoor(opener, 'action');
+                    }
                 }
             }
         }
@@ -460,7 +464,7 @@ class WadMapAnalyzer {
         // line's special decides which one runs (vanilla — E1M4 tag 1 mixes 12×
         // 90 OWC and 4× 86 open-stay; E1M6 tag 1 mixes an open-stay switch with
         // a close-wait-open line, and E4M9 tag 2 an opener with a crusher).
-        // Doors registered BY a closing special keep their single cycle.
+        // A closing door collects its openers too: they play from its shut pose.
         for (const ld of linedefs) {
             const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             if (door === undefined) {
@@ -477,7 +481,7 @@ class WadMapAnalyzer {
                 targets.push(sidedefs[ld.left].sector);
             }
             for (const si of targets) {
-                if (doorProps[si] === undefined || doorProps[si].close === true) {
+                if (doorProps[si] === undefined) {
                     continue;
                 }
                 doorProps[si].variants[WadConstants.doorCycleKey(door.anim, door.speed)] = {
@@ -580,9 +584,8 @@ class WadMapAnalyzer {
             const openH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
                 : floorH + 128);
-            // A sector resting open above that target stays where it is: the
-            // panel rests at the own ceiling (WadDoorBuilder) and vanilla's
-            // snap down to the neighbours' height is not reproduced.
+            // Deliberate deviation: a sector resting open above that target keeps
+            // its ceiling instead of vanilla's instant snap down to it.
             doorHeights[si] = {floorH: floorH, ceilH: Math.max(openH, sectors[si].ch)};
             sectors[si].fh = floorH;
         }
@@ -1296,7 +1299,7 @@ class WadMapAnalyzer {
 
             if (ld.left < 0) {
                 // One-sided: switch graphic on the right middle.
-                if (!rSd.middle || rSd.middle === '-') {
+                if (WadTextureBank.isBlank(rSd.middle)) {
                     continue;
                 }
                 ids.add(ldIdx);
@@ -1399,11 +1402,6 @@ class WadMapAnalyzer {
         return parseInt(code.slice(prefix.length), 10);
     }
 
-    static _isClosingDoor(analysis, code) {
-        return (code.startsWith('door_')
-            && (analysis.doorProps[WadMapAnalyzer._sectorOfCode(code, 'door_')]?.close === true));
-    }
-
     // Splits resolved target codes into {start, reverse} — reverse = played
     // backward via startReverse(). Shared by the switch and walk builders:
     // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
@@ -1420,10 +1418,7 @@ class WadMapAnalyzer {
     // A closing special caught on an OPENING door is NOT a reverse: the door
     // owns one cycle per special aiming at it, so it starts forward on the
     // cycle the trigger names (cycleVariant) — that is what keeps the 30 s
-    // reopen of 16/76 and the grind of a crusher. An OPENING special caught
-    // on a CLOSING door (one resting open in the WAD) is: the door owns the
-    // single close cycle, which the opener walks back up — a no-op while the
-    // door still rests open, like vanilla.
+    // reopen of 16/76 and the grind of a crusher.
     // Each reverse entry carries a timeScale so the backward playback runs at
     // the VANILLA speed of the reversing special, not at the speed baked into
     // the target's keyframes (a turbo-lowered plat rises back at FLOORSPEED).
@@ -1439,7 +1434,6 @@ class WadMapAnalyzer {
         const isRaise  = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
         const isLower  = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
         const raiseKey = WadConstants.floorRaiseCycleKey(special);
-        const isOpener = (WadConstants.DOOR_BY_SPECIAL[special]?.kind === 'open');
         const start = [];
         const reverse = [];
         for (const code of targets) {
@@ -1462,10 +1456,6 @@ class WadMapAnalyzer {
                     reverse.push(rev(code));
                     continue;
                 }
-            }
-            if (isOpener && WadMapAnalyzer._isClosingDoor(analysis, code)) {
-                reverse.push(rev(code));
-                continue;
             }
             start.push(code);
         }

@@ -48,7 +48,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureWallTex(name) {
-        if (WadTextureBank._isBlank(name)) {
+        if (WadTextureBank.isBlank(name)) {
             return -1;
         }
         if (this._texIndex[name] !== undefined) {
@@ -69,7 +69,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureFlatTex(name) {
-        if (WadTextureBank._isBlank(name)) {
+        if (WadTextureBank.isBlank(name)) {
             return -1;
         }
         const key = 'FLAT_' + name;
@@ -100,7 +100,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureSkyTex(name) {
-        if (WadTextureBank._isBlank(name)) {
+        if (WadTextureBank.isBlank(name)) {
             return -1;
         }
         const key = 'SKY_' + name;
@@ -146,11 +146,15 @@ class WadTextureBank {
      * @returns {int|null} wall texture height in Doom units, null if absent
      */
     wallTextureHeight(name) {
-        const entry = this._wallTexDir[((WadTextureBank._isBlank(name)) ? this._wallNames[0] : name)];
+        const entry = this._wallTexDir[((WadTextureBank.isBlank(name)) ? this._wallNames[0] : name)];
         return ((entry !== undefined) ? WadTextureBank._headerDims(entry).height : null);
     }
 
-    static _isBlank(name) {
+    /**
+     * @param {string|null|undefined} name
+     * @returns {boolean} true for the '-' placeholder or no name at all
+     */
+    static isBlank(name) {
         return (!name || (name === WadTextureBank.BLANK_NAME));
     }
 

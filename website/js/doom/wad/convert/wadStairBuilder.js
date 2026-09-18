@@ -118,10 +118,10 @@ class WadStairBuilder extends AbstractMoverBuilder {
             const corrSec = sectors[neighbourSi];
 
             let tex = corrSd.lower;
-            if (!tex || tex === '-') {
+            if (WadTextureBank.isBlank(tex)) {
                 tex = ownSd.lower;
             }
-            if (!tex || tex === '-') {
+            if (WadTextureBank.isBlank(tex)) {
                 continue;
             }
             const ti = this._bank.ensureWallTex(tex);

@@ -67,7 +67,7 @@ class AbstractMoverBuilder {
 
         // A usable lower texture name on a sidedef, or null.
         const validLower = (sd) => {
-            if (!sd || !sd.lower || sd.lower === '-') {
+            if (!sd || WadTextureBank.isBlank(sd.lower)) {
                 return null;
             }
             return ((this._bank.ensureWallTex(sd.lower) >= 0) ? sd.lower : null);
