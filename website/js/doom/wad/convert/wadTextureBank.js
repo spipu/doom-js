@@ -48,7 +48,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureWallTex(name) {
-        if (!name || name === '-') {
+        if (WadTextureBank._isBlank(name)) {
             return -1;
         }
         if (this._texIndex[name] !== undefined) {
@@ -69,7 +69,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureFlatTex(name) {
-        if (!name || name === '-') {
+        if (WadTextureBank._isBlank(name)) {
             return -1;
         }
         const key = 'FLAT_' + name;
@@ -100,7 +100,7 @@ class WadTextureBank {
      * @returns {int} 0-based texture index, or -1 if absent
      */
     ensureSkyTex(name) {
-        if (!name || name === '-') {
+        if (WadTextureBank._isBlank(name)) {
             return -1;
         }
         const key = 'SKY_' + name;
@@ -138,12 +138,20 @@ class WadTextureBank {
      * probe (P_FindShortestTextureAround), it must not compose nor register
      * the texture for rendering.
      *
+     * A blank name is texture 0 for vanilla (R_TextureNumForName), so it
+     * measures as the first TEXTURE1 entry: that quirk is what keeps the
+     * raiseToTexture switch blocks at their original height.
+     *
      * @param {string} name
      * @returns {int|null} wall texture height in Doom units, null if absent
      */
     wallTextureHeight(name) {
-        const entry = this._wallTexDir[name];
+        const entry = this._wallTexDir[((WadTextureBank._isBlank(name)) ? this._wallNames[0] : name)];
         return ((entry !== undefined) ? WadTextureBank._headerDims(entry).height : null);
+    }
+
+    static _isBlank(name) {
+        return (!name || (name === WadTextureBank.BLANK_NAME));
     }
 
     // TEXTURE1/2 header metrics of a directory entry (width at +12, height at +14).
@@ -387,3 +395,5 @@ class WadTextureBank {
     }
 
 }
+
+WadTextureBank.BLANK_NAME = '-';
