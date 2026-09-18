@@ -395,6 +395,21 @@ class WadMapAnalyzer {
             };
         };
 
+        // The rest pose is the sector's geometry, not the special that happens
+        // to be listed first: a sector resting OPEN under a tag that a closing
+        // special aims at is a closing door, whatever else targets it (E3M2
+        // tag 4 mixes the W1 close with the S1 that reopens it) — it belongs to
+        // the closing pass below, and its openers play that cycle in reverse.
+        const closeTags = new Set(linedefs
+            .filter((ld) => (WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) && (ld.tag !== 0)))
+            .map((ld) => ld.tag));
+        const restsOpen   = (si) => (sectors[si].ch > sectors[si].fh);
+        const closesFirst = (si) => (closeTags.has(sectors[si].tag) && restsOpen(si));
+        // Closing doors carrying a manual opener on their own lines (E2M4's
+        // trap reopened by pressing it): the press stays and walks the close
+        // back (WadDoorBuilder triggerReverse).
+        const manualReopeners = new Set();
+
         for (const ld of linedefs) {
             if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
                 continue;
@@ -407,19 +422,24 @@ class WadMapAnalyzer {
                 // tag (unusual) keeps its natural press trigger so it stays usable.
                 const forced = ((door.trigger === 'action') ? null : 'none');
                 for (let si = 0; si < sectors.length; si++) {
-                    if (sectors[si].tag === ld.tag) {
+                    if ((sectors[si].tag === ld.tag) && !closesFirst(si)) {
                         registerDoor(si, door, forced);
                     }
                 }
             } else if (ld.left >= 0) {
-                registerDoor(sidedefs[ld.left].sector, door, null);
+                const si = sidedefs[ld.left].sector;
+                if (closesFirst(si)) {
+                    manualReopeners.add(si);
+                    continue;
+                }
+                registerDoor(si, door, null);
             }
         }
 
         // Closing doors: tagged sectors, statically OPEN (ch > fh), shut by a
-        // panel parked above the ceiling that descends. A sector already
-        // registered as an (opening) door keeps its opening panel — the close
-        // lines will walk it back down (startReverse) instead.
+        // panel parked above the ceiling that descends. A sector resting CLOSED
+        // under a closing special keeps its opening panel — the close lines
+        // play their own cycle on it.
         for (const ld of linedefs) {
             if (!WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) || ld.tag === 0) {
                 continue;
@@ -430,7 +450,7 @@ class WadMapAnalyzer {
             const margin = (door.closeMargin ?? 0);
             for (let si = 0; si < sectors.length; si++) {
                 if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh + margin) {
-                    registerDoor(si, door, 'none');
+                    registerDoor(si, door, ((manualReopeners.has(si)) ? 'action' : 'none'));
                 }
             }
         }
@@ -557,10 +577,13 @@ class WadMapAnalyzer {
                 continue;
             }
             const nonSky = adj.filter((s) => !WadConstants.isSkyFlat(s.ct));
-            const ceilH  = ((nonSky.length > 0)
+            const openH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
                 : floorH + 128);
-            doorHeights[si] = {floorH: floorH, ceilH: ceilH};
+            // A sector resting open above that target stays where it is: the
+            // panel rests at the own ceiling (WadDoorBuilder) and vanilla's
+            // snap down to the neighbours' height is not reproduced.
+            doorHeights[si] = {floorH: floorH, ceilH: Math.max(openH, sectors[si].ch)};
             sectors[si].fh = floorH;
         }
 
@@ -1376,6 +1399,11 @@ class WadMapAnalyzer {
         return parseInt(code.slice(prefix.length), 10);
     }
 
+    static _isClosingDoor(analysis, code) {
+        return (code.startsWith('door_')
+            && (analysis.doorProps[WadMapAnalyzer._sectorOfCode(code, 'door_')]?.close === true));
+    }
+
     // Splits resolved target codes into {start, reverse} — reverse = played
     // backward via startReverse(). Shared by the switch and walk builders:
     // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
@@ -1392,7 +1420,10 @@ class WadMapAnalyzer {
     // A closing special caught on an OPENING door is NOT a reverse: the door
     // owns one cycle per special aiming at it, so it starts forward on the
     // cycle the trigger names (cycleVariant) — that is what keeps the 30 s
-    // reopen of 16/76 and the grind of a crusher.
+    // reopen of 16/76 and the grind of a crusher. An OPENING special caught
+    // on a CLOSING door (one resting open in the WAD) is: the door owns the
+    // single close cycle, which the opener walks back up — a no-op while the
+    // door still rests open, like vanilla.
     // Each reverse entry carries a timeScale so the backward playback runs at
     // the VANILLA speed of the reversing special, not at the speed baked into
     // the target's keyframes (a turbo-lowered plat rises back at FLOORSPEED).
@@ -1408,6 +1439,7 @@ class WadMapAnalyzer {
         const isRaise  = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
         const isLower  = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
         const raiseKey = WadConstants.floorRaiseCycleKey(special);
+        const isOpener = (WadConstants.DOOR_BY_SPECIAL[special]?.kind === 'open');
         const start = [];
         const reverse = [];
         for (const code of targets) {
@@ -1430,6 +1462,10 @@ class WadMapAnalyzer {
                     reverse.push(rev(code));
                     continue;
                 }
+            }
+            if (isOpener && WadMapAnalyzer._isClosingDoor(analysis, code)) {
+                reverse.push(rev(code));
+                continue;
             }
             start.push(code);
         }
