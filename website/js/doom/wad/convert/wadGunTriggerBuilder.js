@@ -46,6 +46,7 @@ class WadGunTriggerBuilder {
         if (targets.length === 0) {
             return null;
         }
+        const split = WadMapAnalyzer.splitReverseTargets(this._analysis, gt.special, targets);
 
         const ld = this._level.linedefs[gt.ldIdx];
         const [dx1, dy1] = this._level.vertexes[ld.v1];
@@ -65,9 +66,10 @@ class WadGunTriggerBuilder {
             y:           (((front.fh + front.ch) / 2) * WadConstants.SCALE),
             once:        !WadConstants.specialRepeats(gt.special),
             used:        false,
-            targets:     targets,
-            cycleVariant: WadConstants.cycleKeyForSpecial(gt.special),
-            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets, this._liveFloorOf)
+            targets:        split.start,
+            reverseTargets: split.reverse,
+            cycleVariant:   WadConstants.cycleKeyForSpecial(gt.special),
+            stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, split.start, this._liveFloorOf)
         };
     }
 

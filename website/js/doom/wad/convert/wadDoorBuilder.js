@@ -133,10 +133,11 @@ class WadDoorBuilder extends AbstractMoverBuilder {
 
     _buildInstanceData(doorName, si, floorH, ceilH, mesh) {
         const props = this._analysis.doorProps[si];
-        // Rest position of the panel: a door rests closed at its floor; a
-        // ceiling raiser (40) rests at the sector's OWN ceiling — a partially
-        // open sector keeps its slit — and travels up to ceilH from there.
-        const restDu    = ((props.ceilingRaise === true) ? (this._level.sectors[si].ch - floorH) : 0);
+        // Rest position of an opening panel: the sector's OWN ceiling — closed
+        // at its floor for a door stored shut, keeping its slit when stored
+        // ajar, parked open when stored open — travelling up to ceilH from
+        // there. Clamped at the floor for the squished underground doors.
+        const restDu    = ((props.close === true) ? 0 : Math.max(0, this._level.sectors[si].ch - floorH));
         const speedTics = props.speed;
 
         const radius = ((mesh.points.length > 0)
@@ -178,6 +179,9 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
             trigger:           props.trigger,
+            // A pressable closing door reopens on the press (its manual lines
+            // are openers), so the trigger walks the close cycle back.
+            triggerReverse:    ((props.close === true) && (props.trigger === 'action')),
             autoStart:         props.autoStart,
             loop:              props.loop,
             onlyOnce:          props.onlyOnce,
