@@ -39,7 +39,7 @@ class DoomSettings {
      * @returns {object[]} "none" first, then [{code, format}]
      */
     static limitValues(numbers, format) {
-        return [{code: DoomSettings.LIMIT_NONE, labelCode: 'value.none'}]
+        return [{code: DoomSettings.LIMIT_NONE, labelCode: 'value.noLimit'}]
             .concat(numbers.map((number) => ({code: String(number), format: format})));
     }
 

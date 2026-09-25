@@ -6,6 +6,8 @@ Tracks the major upcoming work and the milestones already reached. Only large mi
 
 When a ToDo item is done, move it to the top of Finished with its completion date.
 
+A ToDo item that carries the full specification of a project split into steps (Multiplayer) keeps that specification whole until the whole project is done: a finished step is neither removed nor summarised, its description stays in place, marked "done".
+
 ## ToDo
 
 ### Level testing
@@ -410,9 +412,10 @@ All of them are declared in the doom `libBootstrap.json` once the game consumes 
 
 ##### Menus and UI (`js/doom/menu/`)
 
+* `MenuTextEntryModal` and `MenuVirtualKeyboard`, with the grid mode of `MenuListNavigation`.
 * `MultiplayerScreen` (WAD menu entry), `MenuGameSettingsModal` (the game settings of the launched mode, over the settings page builder), `MenuLobbyModal`, `MenuPairingModal` (shows the invite QR, scans the answer, and the reverse on a sub).
 * New pause menu entries per mode and role; the respawn prompt replacing the death modal outside single-player; the deathmatch frag table in the tally modal.
-* The Multiplayer options shortcut of the Multiplayer screen, `CameraProbe`-driven greying.
+* The `text` setting type in `DoomSettings`, the Multiplayer options section and its shortcut, `CameraProbe`-driven greying.
 * `HudGameBar` fps readout with the ping, frag counter in place of kills and secrets in deathmatch, and the messages shown over the game on a sub or during a wait: "Waiting for {nickname}…", "Paused by the main", "The main is dead".
 
 ##### Testing
@@ -437,7 +440,7 @@ All of them are declared in the doom `libBootstrap.json` once the game consumes 
 Each step ships on its own, keeps solo intact, updates the README and bumps the relevant `libBootstrap.json` versions.
 
 0. **Device matrix on the test bench**: the network layer is written (`webapp/net`, `webapp/qr`) and exercised by `_examples/pairing-test.html` — several subs, loopback between tabs, chunked bursts — and by `_examples/pairing-game.html`, the van demo run through the synchronous cycle — a binary state every turn to every sub, an empty command back from each, the next turn only once every command is in — which measures the real turn rate with one to three subs, the perceived smoothness on a sub and the mobile backgrounding on real devices. PC (Firefox) and iPhone (Safari) already pair both ways, on a shared Wi-Fi and over 4G (direct IPv6), with real host addresses once the camera is open, and a PC webcam reads a code shown on a phone at 1280×720; the one-way state stream holds 60 states per second on the sub. Measured too: a sub on 4G behind a symmetric carrier NAT against a main without IPv6 behind a corporate firewall fails after the ICE timeout, as expected without TURN (see Risks). Still to run: Android (Chrome), a tablet, and two different browsers as subs of one main; ping, QR size, scan speed, ICE window and host addresses measured on each.
-1. **Nickname and options**: done.
+1. **Nickname and options** (done): `text` setting type, text entry modal, virtual keyboard, grid navigation, Multiplayer options section (nickname, friendly fire, deathmatch settings) and its translations.
 2. **WAD identity**: SHA-256 at import, computed on first use for older WADs.
 3. **Commands**: `UserCommand`, `InputCommandSampler`; `World` and `DoomGame` consume commands.
 4. **Simulation / presentation split**: `DoomSimulation`, `DoomPresentation`, `DoomPlayer`, `DoomPlayerRoster`, `DoomSinglePlayerRules`.

@@ -429,8 +429,7 @@ class DoomTranslations {
                 it: 'No',
                 es: 'No'
             },
-            // The absence of a limit ("limite" / "limit" / "limite" / "límite").
-            'value.none': {
+            'value.noLimit': {
                 fr: 'Aucune',
                 en: 'None',
                 it: 'Nessuno',
