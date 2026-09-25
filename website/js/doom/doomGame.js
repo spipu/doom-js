@@ -1,9 +1,7 @@
 class DoomGame {
     constructor() {
-        this._engine            = null;
         this._world             = null;
-        this._screen            = null;
-        this._hud               = null;
+        this._presentation      = new DoomPresentation(this);
         this._inputs            = null;
         this._commandSampler    = null;
         this._wakeLock          = null;
@@ -18,8 +16,6 @@ class DoomGame {
         this._roster            = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
         this._restoreSnapshot   = null;
         this._pauseWasDown      = true;
-        this._hudWasDown        = false;
-        this._mapWasDown        = false;
         this._running           = false;
         this._transitioning     = false;
         this._paused            = false;
@@ -45,14 +41,6 @@ class DoomGame {
         this._moverSounds      = null;
         this._ambientSounds    = null;
         this._automap          = null;   // null when the WAD has no usable BSP
-        this._rendererCode     = null;   // renderer the current engine was built on
-        this._depthShadingOn   = null;   // last states pushed to the engine / player (null = never)
-        this._texSmoothingOn   = null;
-        this._fallDamageOn     = null;
-        this._jumpOn           = null;
-        this._crouchOn         = null;
-        this._fov              = WadConstants.PLAYER_FOV;
-        this._fovUntickedMs    = 0;
         this._rng              = new DoomRandom();
 
         // Placeholder until startFromWad detects the WAD's profile.
@@ -415,37 +403,8 @@ class DoomGame {
         return this._effects;
     }
 
-    // Borrowed from ZDoom (cvar telezoom): a teleport arrival widens the FOV,
-    // then _updateTeleZoom eases it back.
     startTeleZoom() {
-        this._fov           = Math.min(WadConstants.TELEZOOM_FOV_MAX, WadConstants.PLAYER_FOV + WadConstants.TELEZOOM_FOV_BOOST);
-        this._fovUntickedMs = 0;
-        this._applyFov();
-    }
-
-    // ZDoom CheckFOV, per tic.
-    _updateTeleZoom(dt) {
-        if (this._fov === WadConstants.PLAYER_FOV) {
-            return;
-        }
-        const msPerTic = WadConstants.SECONDS_PER_TIC * 1000;
-        this._fovUntickedMs += dt;
-        while (this._fovUntickedMs >= msPerTic) {
-            this._fovUntickedMs -= msPerTic;
-            const diff = this._fov - WadConstants.PLAYER_FOV;
-            if (Math.abs(diff) < WadConstants.TELEZOOM_STEP_MIN) {
-                this._fov = WadConstants.PLAYER_FOV;
-                break;
-            }
-            const step = Math.max(WadConstants.TELEZOOM_STEP_MIN, Math.abs(diff) * WadConstants.TELEZOOM_STEP_FACTOR);
-            this._fov += ((diff > 0) ? -step : step);
-        }
-        this._applyFov();
-    }
-
-    // The engine's fov parameter is the half-angle of the projection.
-    _applyFov() {
-        this._engine.setFov(this._fov / 2);
+        this._presentation.startTeleZoom();
     }
 
     addSecretFound() {
@@ -678,10 +637,15 @@ class DoomGame {
         if (this._inputs === null) {
             this._inputs         = new Inputs();
             this._commandSampler = this._createCommandSampler(this._inputs);
+            this._presentation.bindInputs(this._inputs);
         }
-        this._fov           = WadConstants.PLAYER_FOV;
-        this._fovUntickedMs = 0;
-        this._buildDisplay();
+        this._applyGameSettings(player);
+        this._presentation.showLevel(this._world, player, this._automap, {
+            wadId:     ((this._wadMeta !== null) ? this._wadMeta.id : null),
+            levelCode: this._levelCode,
+            skill:     this._skill,
+            levelName: this._levelName
+        });
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
@@ -702,13 +666,13 @@ class DoomGame {
             player.setWeapon(new DoomPlayerWeapon(this, user, this._weaponSprites, this._rng)
                 .setAttackSystems(this._hitscan, this._projectiles)
                 .setNoiseCallback(() => this._monsters.noiseAlert()));
-            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+            this._presentation.showWeaponOverlay();
         }
 
         if (this._restoreSnapshot !== null) {
             new DoomGameSnapshot().apply(this._snapshotContext(), this._restoreSnapshot);
             this._restoreSnapshot = null;
-            this._engine.resetDeltaClock();
+            this._presentation.getEngine().resetDeltaClock();
         }
 
         // A button held during the level start must not open the pause at once.
@@ -725,80 +689,6 @@ class DoomGame {
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
-    }
-
-    /**
-     * Builds the screen, the engine and the HUD: the objects tied to the canvas.
-     * Also called on a renderer change, since a canvas keeps one context type
-     * (2D or WebGL) for its whole life.
-     */
-    _buildDisplay() {
-        this._screen = new ScreenManager('screen', {
-            fullscreen: true,
-            virtualWidth: 1920,
-            virtualHeight: 1080
-        });
-
-        this._inputs.bindScreen(this._screen);
-        doomSettings.applyToInputs(this._inputs);
-        this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
-
-        // The wanted code, not the effective one: the list falls back to 'full'
-        // when a renderer is unavailable, which would trigger a rebuild every frame.
-        this._rendererCode = doomSettings.getDisplayRenderer();
-        this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer(this._rendererCode));
-        // Not reset: a telezoom in progress must survive a renderer swap.
-        this._applyFov();
-        this._engine.setZBuffer(0.1, 100);
-        // Forces every setting to be pushed onto the fresh engine.
-        this._depthShadingOn = null;
-        this._texSmoothingOn = null;
-        this._fallDamageOn   = null;
-        this._jumpOn         = null;
-        this._crouchOn       = null;
-        this._applySettings();
-
-        this._hud = new HudDoom(this._engine)
-            .bindUser(this._localPlayer().getUser())
-            .bindInputs(this._inputs)
-            .bindGame(this)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelCode, this._skill, this._levelName)
-            .addDescription('(c)2026 Spipu')
-        ;
-        if (this._automap !== null) {
-            this._hud.bindAutomap(this._automap);
-        }
-
-        this._screen.bindHud(this._hud);
-
-        this._engine.initFromWorld(this._world);
-
-        // Only on a renderer swap: at level init the controller is built afterwards.
-        if (this._localPlayer().getWeapon() !== null) {
-            this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
-        }
-    }
-
-    /**
-     * Rebuilds the display on a renderer change, on live frames only: the menus
-     * and the screen are stacked by DOM order, so a screen rebuilt under an open
-     * menu would cover it. It also costs one rebuild for several changes.
-     */
-    _applyRendererSetting() {
-        const wanted = doomSettings.getDisplayRenderer();
-        if (wanted === this._rendererCode) {
-            return;
-        }
-        // The death menu does not freeze the game, so its frames reach here.
-        if ((this._pauseDisplay !== null) || (this._deathDisplay !== null)) {
-            return;
-        }
-        const viewState = this._hud.getViewState();
-        // Before the canvas goes: bindCanvas clears the lock flag without exiting the lock.
-        this._inputs.releaseMouse();
-        this._screen.destroyContainer();
-        this._buildDisplay();
-        this._hud.setViewState(viewState);
     }
 
     // The game's own controls join the engine's in every command: the
@@ -846,19 +736,18 @@ class DoomGame {
         }
         this._pauseWasDown = pauseDown;
 
-        // Frozen frame (pause, tally): the modal owns the inputs, the image is
-        // redrawn since a resize wipes the canvas, the settings stay live.
+        const player = this._localPlayer();
+        // Frozen frame (pause, tally): the modal owns the inputs.
         if (this._paused || this._transitioning) {
-            this._applySettings();
-            this._engine.displayWorld(this._world);
-            this._screen.update();
+            this._applyGameSettings(player);
+            this._presentation.presentFrozen();
             requestAnimationFrame(this._animateCallback);
             return;
         }
 
-        this._engine.calculateDeltaTime(timestamp);
-        const dt       = this._engine.getDeltaTime();
-        const player   = this._localPlayer();
+        const engine = this._presentation.getEngine();
+        engine.calculateDeltaTime(timestamp);
+        const dt       = engine.getDeltaTime();
         const user     = player.getUser();
         const weapon   = player.getWeapon();
         const previous = user.getLastCommand();
@@ -868,17 +757,7 @@ class DoomGame {
             this._applyCheatFullKit();
         }
 
-        const hudDown = this._inputs.readButtonToggleHud();
-        if (hudDown && !this._hudWasDown) {
-            this._hud.toggleMode();
-        }
-        this._hudWasDown = hudDown;
-
-        const mapDown = this._inputs.readButtonMap();
-        if (mapDown && !this._mapWasDown) {
-            this._hud.toggleAutomap();
-        }
-        this._mapWasDown = mapDown;
+        this._presentation.readViewToggles();
 
         if (weapon !== null) {
             this._cycleWeapons(weapon, command, previous);
@@ -887,10 +766,7 @@ class DoomGame {
         this._world.update(dt, command);
         user.updateEffects(dt);
         this._trackDeath(dt);
-        // Vanilla marks the lines from the renderer, even with the map closed.
-        if (this._automap !== null) {
-            this._automap.reveal(user, this._fov / 2);
-        }
+        this._presentation.revealAutomap();
         if (weapon !== null) {
             if (this._sectorLight !== null) {
                 weapon.setLight(this._sectorLight.factorAt(user.x, user.z));
@@ -914,67 +790,19 @@ class DoomGame {
         if (this._ambientSounds !== null) {
             this._ambientSounds.update(dt);
         }
-        // Before every push onto the engine, which a swap replaces.
-        this._applyRendererSetting();
-        this._applySettings();
-        this._updateTeleZoom(dt);
-        this._pushEffectDisplay(player);
-        this._engine.displayWorld(this._world);
-        this._screen.update();
+        this._applyGameSettings(player);
+        this._presentation.present(dt, this._isGameMenuOpen());
 
         requestAnimationFrame(this._animateCallback);
     }
 
     // Read every frame so a change from the pause options applies live.
-    _applySettings() {
-        const user = this._localPlayer().getUser();
-        this._depthShadingOn = this._pushSetting(
-            this._depthShadingOn,
-            doomSettings.getDisplayDistanceShading(),
-            (on) => this._engine.setDepthShading(((on) ? WadConstants.lightDiminishParams() : null)));
-        this._texSmoothingOn = this._pushSetting(
-            this._texSmoothingOn,
-            doomSettings.getDisplayTextureSmoothing(),
-            (on) => this._engine.setTextureSmoothing(on));
-        this._fallDamageOn = this._pushSetting(
-            this._fallDamageOn,
-            doomSettings.getGameFallDamage(),
-            (on) => user.setFallDamage(on));
-        this._jumpOn = this._pushSetting(
-            this._jumpOn,
-            doomSettings.getGameJump(),
-            (on) => user.setJumpAllowed(on));
-        this._crouchOn = this._pushSetting(
-            this._crouchOn,
-            doomSettings.getGameCrouch(),
-            (on) => user.setCrouchAllowed(on));
-    }
-
-    // Night vision (light visor / torch) and the muzzle flash extralight.
-    _pushEffectDisplay(player) {
-        this._engine.setLightOverride(((player.getUser().isEffectVisible('light'))
-            ? WadConstants.NIGHT_VISION_LIGHT : null));
-        const weapon     = player.getWeapon();
-        const extraLight = ((weapon !== null) ? weapon.getExtraLight() : 0);
-        this._engine.setLightBoost(extraLight * WadConstants.WEAPON_FLASH_LIGHT_STEP);
-    }
-
-    _pushSetting(current, wanted, apply) {
-        if (wanted !== current) {
-            apply(wanted);
-        }
-        return wanted;
-    }
-
-    // The 4:3 psprite layer is squeezed around the centre on a wider screen
-    // (like GZDoom) rather than stretched, so asymmetric weapons stay in place.
-    _drawWeaponOverlay(renderer, engine) {
-        const squeeze = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
-        const alpha = ((this._localPlayer().getUser().isEffectVisible('invisibility'))
-            ? WadConstants.INVISIBILITY_WEAPON_ALPHA : 1);
-        for (const sprite of this._localPlayer().getWeapon().getViewSprites()) {
-            renderer.drawScreenSprite(engine, sprite.texId, 0.5 + (sprite.x - 0.5) * squeeze, sprite.y, sprite.w * squeeze, sprite.h, sprite.light, alpha);
-        }
+    _applyGameSettings(player) {
+        player.applyMovementSettings({
+            fallDamage: doomSettings.getGameFallDamage(),
+            jump:       doomSettings.getGameJump(),
+            crouch:     doomSettings.getGameCrouch()
+        });
     }
 
     // A gamepad pause can leave the pointer lock engaged. Inputs are null
@@ -1038,7 +866,7 @@ class DoomGame {
 
         this._paused       = false;
         this._pauseWasDown = true;
-        this._engine.resetDeltaClock();
+        this._presentation.getEngine().resetDeltaClock();
         if (backToGame) {
             this._inputs.setVirtualPadVisible(true);
             if (this._inputs.getMode() === 'keyboardMouse') {
@@ -1079,6 +907,11 @@ class DoomGame {
         this._closeGameMenu();
         this._teardownLevel();
         new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
+    }
+
+    // The death menu does not freeze the game: its frames run live under it.
+    _isGameMenuOpen() {
+        return ((this._pauseDisplay !== null) || (this._deathDisplay !== null));
     }
 
     _closeGameMenu() {
@@ -1165,10 +998,7 @@ class DoomGame {
     _stopLevel() {
         this._running = false;
         doomSound.unbindLevel();
-        if (this._screen !== null) {
-            this._screen.destroyContainer();
-            this._screen = null;
-        }
+        this._presentation.teardown();
     }
 
     // Called by an exit line: the tally, the optional story text, then the
@@ -1310,9 +1140,6 @@ class DoomGame {
         }
     }
 }
-
-// The 320x200 psprite canvas was authored for a 4:3 display.
-DoomGame.PSPRITE_ASPECT = 4 / 3;
 
 // Longest gap between two frames the level clock still counts (ms): well above
 // the slowest playable frame, well below a tab switch.

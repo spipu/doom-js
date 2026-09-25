@@ -53,6 +53,20 @@ class DoomPlayer {
         return this;
     }
 
+    /**
+     * Plain flags on the body, so pushing them every frame costs nothing.
+     *
+     * @param {{fallDamage: boolean, jump: boolean, crouch: boolean}} settings
+     */
+    applyMovementSettings(settings) {
+        this._user
+            .setFallDamage(settings.fallDamage)
+            .setJumpAllowed(settings.jump)
+            .setCrouchAllowed(settings.crouch);
+
+        return this;
+    }
+
     isDead() {
         return this._user.isDead();
     }
