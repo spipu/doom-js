@@ -61,6 +61,7 @@ class WadMapAnalyzer {
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
             risingFloorInstantIds: rising.risingFloorInstantIds,
+            risingFloorPopUpRise:  rising.risingFloorPopUpRise,
             risingFloorStaging:    rising.risingFloorStaging,
             floorMovers:           floorMovers,
             stairIds:              stairs.stairIds,
@@ -617,7 +618,7 @@ class WadMapAnalyzer {
                     && (liftVanillaTargetFh[si] > liftOriginalFh[si]));
             });
             if (instant !== undefined) {
-                instantRaise[instant] = {targetFh: liftVanillaTargetFh[instant], special: liftSectorSpecial[instant]};
+                instantRaise[instant] = {targetFh: liftVanillaTargetFh[instant], originFh: liftOriginalFh[instant], special: liftSectorSpecial[instant]};
                 liftIds.delete(instant);
                 delete liftSectorSpecial[instant];
                 continue;
@@ -790,6 +791,7 @@ class WadMapAnalyzer {
         const risingFloorSpecial    = {};
         const risingFloorTargetFh   = {};
         const risingFloorInstantIds = new Set();
+        const risingFloorPopUpRise  = {};
 
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
@@ -811,8 +813,9 @@ class WadMapAnalyzer {
             const si = Number(key);
             risingFloorIds.add(si);
             risingFloorInstantIds.add(si);
-            risingFloorSpecial[si]  = raise.special;
-            risingFloorTargetFh[si] = raise.targetFh;
+            risingFloorSpecial[si]   = raise.special;
+            risingFloorTargetFh[si]  = raise.targetFh;
+            risingFloorPopUpRise[si] = raise.targetFh - raise.originFh;
         }
 
         const risingFloorStaging = {};
@@ -831,6 +834,7 @@ class WadMapAnalyzer {
             risingFloorSpecial:    risingFloorSpecial,
             risingFloorTargetFh:   risingFloorTargetFh,
             risingFloorInstantIds: risingFloorInstantIds,
+            risingFloorPopUpRise:  risingFloorPopUpRise,
             risingFloorStaging:    risingFloorStaging
         };
     }
@@ -1282,7 +1286,8 @@ class WadMapAnalyzer {
     // - 45 (SWITCH_REVERSE_SPECIALS) reverses all its targets;
     // - a raise on a lift, without a named cycle, walks it back up (E1M5 plats);
     // - a lower on a rising floor walks it back down (E1M8 shaft), except a
-    //   ring hit by its own donut special, which must start rising.
+    //   ring hit by its own donut special and a pop-up floor hit by its own
+    //   pop-up lower, which must start rising.
     // Doors never reverse: they own one forward cycle per special.
     // timeScale replays at the reversing special's vanilla speed.
     static splitReverseTargets(analysis, special, targets) {
@@ -1314,9 +1319,9 @@ class WadMapAnalyzer {
                 continue;
             }
             if (isLower && code.startsWith('risingfloor_')) {
-                const ringOfThisDonut = (WadConstants.isDonutSpecial(special)
-                    && WadMapAnalyzer.isDonutRing(analysis, WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')));
-                if (!ringOfThisDonut) {
+                const risingSi        = WadMapAnalyzer._sectorOfCode(code, 'risingfloor_');
+                const ringOfThisDonut = (WadConstants.isDonutSpecial(special) && WadMapAnalyzer.isDonutRing(analysis, risingSi));
+                if (!ringOfThisDonut && !WadMapAnalyzer._popsUpFloor(analysis, special, risingSi)) {
                     reverse.push(reversed(code));
                     continue;
                 }
@@ -1325,6 +1330,15 @@ class WadMapAnalyzer {
         }
 
         return {start: start, reverse: reverse};
+    }
+
+    static _popsUpFloor(analysis, special, risingSi) {
+        if (!analysis.risingFloorInstantIds.has(risingSi)) {
+            return false;
+        }
+        const popUpRule = WadConstants.FLOOR_DOWN_BY_SPECIAL[analysis.risingFloorSpecial[risingSi]];
+
+        return ((popUpRule !== undefined) && (WadConstants.FLOOR_DOWN_BY_SPECIAL[special]?.target === popUpRule.target));
     }
 
     // No named cycle for a lower that would not move the lift: started, it would
@@ -1356,7 +1370,10 @@ class WadMapAnalyzer {
         }
         if (code.startsWith('risingfloor_')) {
             const si = WadMapAnalyzer._sectorOfCode(code, 'risingfloor_');
-            return WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed ?? 1;
+            // A pop-up floor covers its whole travel in one tic.
+            return (analysis.risingFloorPopUpRise[si]
+                ?? WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed
+                ?? 1);
         }
         if (code.startsWith('door_')) {
             const si = WadMapAnalyzer._sectorOfCode(code, 'door_');
