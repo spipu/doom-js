@@ -1,0 +1,39 @@
+{
+    "version": "v1.20",
+    "files": {
+        "assets": [
+            "/js/lib/zxing-wasm/zxing_full.wasm"
+        ],
+        "css": [
+            "./assets/pairing.css"
+        ],
+        "js": [
+            "/js/lib/zxing-wasm/zxing-wasm.full.iife.js",
+            "/js/webapp/net/netConfig.js",
+            "/js/webapp/net/netError.js",
+            "/js/webapp/net/netHex.js",
+            "/js/webapp/net/netByteWriter.js",
+            "/js/webapp/net/netByteReader.js",
+            "/js/webapp/net/netSignalCodec.js",
+            "/js/webapp/net/netPairingCode.js",
+            "/js/webapp/net/netLink.js",
+            "/js/webapp/net/netPeerLink.js",
+            "/js/webapp/net/netLoopbackLink.js",
+            "/js/webapp/net/netMessageCodec.js",
+            "/js/webapp/net/netPingMeter.js",
+            "/js/webapp/net/netPeer.js",
+            "/js/webapp/net/netSession.js",
+            "/js/webapp/net/netHostSession.js",
+            "/js/webapp/net/netGuestSession.js",
+            "/js/webapp/net/netPairing.js",
+            "/js/webapp/net/netHostPairing.js",
+            "/js/webapp/net/netGuestPairing.js",
+            "/js/webapp/net/netLoopbackCodeChannel.js",
+            "/js/webapp/qr/qrModule.js",
+            "/js/webapp/qr/qrEncoder.js",
+            "/js/webapp/qr/qrScanner.js",
+            "/js/webapp/qr/cameraProbe.js",
+            "/js/webapp/qr/qrPairingView.js"
+        ]
+    }
+}

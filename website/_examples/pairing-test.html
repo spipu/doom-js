@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Spipu3D - network test bench</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport"           content="width=device-width, initial-scale=1" />
+        <meta name="Title"              content="Spipu3D" />
+        <meta name="Description"        content="Network test bench: QR code pairing, WebRTC links, ping and chunked messages" />
+        <meta name="Author"             content="Spipu" />
+        <meta name="Copyright"          content="(c)2026 Spipu" />
+        <style>
+body            { padding: 16px; }
+label           { margin: 0 8px; }
+#metrics td:first-child { color: #999; white-space: nowrap; width: 35%; word-break: normal; }
+#log            { background: #0A0A0A; color: #8C8; font-family: monospace; font-size: 11px; padding: 8px; max-height: 240px; overflow: auto; white-space: pre-wrap; max-width: 900px; }
+        </style>
+    </head>
+    <body>
+        <h1>Network test bench</h1>
+        <div id="roleControls">
+            <button id="hostButton">Host a game (main)</button>
+            <button id="joinButton">Join a game (sub)</button>
+            <label><input type="checkbox" id="loopback" /> Loopback (two tabs, no camera)</label>
+        </div>
+        <div id="hostControls" class="hidden">
+            <button id="addButton">Add a player</button>
+            <button id="burstButton">Send a 200 KB burst</button>
+        </div>
+        <div>
+            <button id="cancelButton" class="hidden">Cancel pairing</button>
+        </div>
+        <div>
+            <button id="copyButton">Copy report</button>
+            <button id="restartButton">Restart</button>
+        </div>
+        <div id="status">Pick a role.</div>
+        <div id="stage" class="hidden">
+            <div class="tile">
+                <div id="qr" class="frame"></div>
+                <div id="qrCaption" class="caption"></div>
+            </div>
+            <div class="tile">
+                <video id="camera" class="frame" playsinline muted></video>
+                <div id="cameraCaption" class="caption"></div>
+            </div>
+        </div>
+        <table id="players"></table>
+        <table id="metrics"></table>
+        <div id="log"></div>
+        <script src="/js/webapp/appBootstrap.js"></script>
+        <script>
+
+// Test bench of the generic network layer (js/webapp/net, js/webapp/qr): real devices pair by
+// QR code, loopback tabs through a BroadcastChannel. English only, like every demo.
+
+const WASM_URL           = '/js/lib/zxing-wasm/zxing_full.wasm';
+const REFRESH_PERIOD_MS  = 1000;
+const SIMULATED_WAD_HASH = 32;
+const BURST_TYPE         = 1;
+const BURST_BYTES        = 200 * 1024;
+const BURST_REPLY        = 'burstReceived';
+const RANDOM_BLOCK_BYTES = 65536;
+const NICKNAME_SUFFIXES  = 1000;
+const CHECKSUM_FACTOR    = 31;
+const LOBBY_TYPE         = 'lobby';
+const PLAYER_COLUMNS     = ['Player', 'Role', 'State', 'Ping', 'Route', 'Burst'];
+const NO_PING            = '—';
+
+const pageStart = performance.now();
+const metrics   = new Map();
+const bursts    = new Map();
+const routes    = new Map();
+
+let scanner   = null;
+let host      = null;
+let guest     = null;
+let pairing   = null;
+let codes     = null;
+let lobby     = [];
+let codeShown = 0;
+let codeRead  = 0;
+
+function el(id)
+{
+    return document.getElementById(id);
+}
+
+function log(message)
+{
+    el('log').textContent += '[' + String(Math.round(performance.now() - pageStart)).padStart(7) + ' ms] ' + message + '\n';
+    el('log').scrollTop    = el('log').scrollHeight;
+}
+
+function setStatus(message)
+{
+    el('status').textContent = message;
+    log('STATUS ' + message);
+}
+
+function setMetric(name, value)
+{
+    metrics.set(name, String(value));
+    const table = el('metrics');
+    table.textContent = '';
+    for (const [key, text] of metrics) {
+        const row = table.insertRow();
+        row.insertCell().textContent = key;
+        row.insertCell().textContent = text;
+    }
+}
+
+function fail(error)
+{
+    const code = ((error instanceof NetError) ? ' [' + error.getCode() + ']' : '');
+    setStatus('Error' + code + ': ' + ((error instanceof Error) ? error.message : String(error)));
+    console.error(error);
+}
+
+function asciiOf(bytes)
+{
+    return String.fromCharCode(...bytes);
+}
+
+function ms(value)
+{
+    return Math.round(value) + ' ms';
+}
+
+function pingText(ping)
+{
+    return ((ping !== null) ? ping.toFixed(1) + ' ms' : NO_PING);
+}
+
+// ---- stage: the QR code and the camera, each with its caption, zoomable on click ----
+
+function pairingView(captions)
+{
+    const elements = {qr: el('qr'), camera: el('camera'), qrCaption: el('qrCaption'), cameraCaption: el('cameraCaption')};
+    return new QrPairingView(scanner, elements, captions, codes)
+        .enableZoom()
+        .setOnCameraOpen((settings, openMs) => {
+            setMetric('Camera', 'open in ' + ms(openMs) + ', ' + settings.width + '×' + settings.height
+                + (settings.facingMode ? ' ' + settings.facingMode : ''));
+            log('Camera opened: ' + scanner.describeStream());
+        })
+        .setOnCameraClose((stopped) => log('Camera closed: ' + ((stopped.length > 0) ? stopped.join(', ') : 'was not open')))
+        .setOnCodeShown((bytes, modules, encodeMs, link) => {
+            codeShown = performance.now();
+            setMetric('Last code', bytes.length + ' bytes, ' + modules + ' modules with quiet zone, encoded in ' + ms(encodeMs));
+            describeLocalCandidates(link);
+        })
+        .setOnCodeRead((stats) => {
+            codeRead = performance.now();
+            if (stats !== null) {
+                setMetric('Last scan', 'code seen after ' + ms(stats.waitingMs) + ' (human time), read ' + ms(stats.readMs)
+                    + ' later; ' + stats.frames + ' frames, decode ' + ms(stats.decodeMs / stats.frames) + '/frame at ' + stats.width + ' px');
+            }
+        });
+}
+
+function describeLocalCandidates(link)
+{
+    if (!(link instanceof NetPeerLink)) {
+        return;
+    }
+    const candidates = link.getLocalCandidates();
+    const hosts      = candidates.filter(c => c.startsWith('host '));
+    setMetric('Local candidates', candidates.join(' | '));
+    setMetric('Host addresses', ((hosts.length === 0) ? 'none'
+        : (hosts.every(c => c.includes('.local:')) ? 'mDNS only (hidden)' : 'real addresses')));
+    setMetric('STUN reached', (candidates.some(c => c.startsWith('srflx ')) ? 'yes' : 'no'));
+}
+
+// ---- main ----
+
+function startHost()
+{
+    lockRole('main');
+    host = new NetHostSession(appBootstrap.getVersion(), linkFactory())
+        .setOnPeerOpen((peer) => {
+            setMetric('Link open (player ' + peer.getId() + ')', ms(performance.now() - codeRead) + ' after its answer was read');
+            setStatus('Player ' + peer.getId() + ' (' + asciiOf(peer.getPayload()) + ') joined.');
+            refreshPlayers();
+        })
+        .setOnPeerControl(onHostControl)
+        .setOnPeerLost((peer, reason) => {
+            setStatus('Player ' + peer.getId() + ' lost: ' + reason + '.');
+            refreshPlayers();
+        });
+    pairing = new NetHostPairing(host, pairingView({show: 'Please scan it from a sub', read: 'Please scan the sub\'s answer'}));
+    el('hostControls').classList.remove('hidden');
+    setStatus('Add a player.');
+}
+
+async function addPlayer()
+{
+    const payload = new Uint8Array(SIMULATED_WAD_HASH + 1);
+    crypto.getRandomValues(payload.subarray(0, SIMULATED_WAD_HASH));
+    el('addButton').disabled = true;
+    setStatus('Pairing a new player…');
+    try {
+        await runPairing(() => pairing.addPeer(payload));
+    } finally {
+        el('addButton').disabled = false;
+    }
+}
+
+function sendBurst()
+{
+    const buffer = new Uint8Array(BURST_BYTES + 1);
+    for (let offset = 1; offset < buffer.length; offset += RANDOM_BLOCK_BYTES) {
+        crypto.getRandomValues(buffer.subarray(offset, offset + RANDOM_BLOCK_BYTES));
+    }
+    buffer[0] = BURST_TYPE;
+    const expected = checksum(buffer);
+    for (const peer of host.getPeers()) {
+        bursts.set(peer.getId(), {sent: performance.now(), expected, result: 'sending…'});
+    }
+    host.broadcastBinary(buffer.buffer);
+    refreshPlayers();
+}
+
+function onHostControl(peer, message)
+{
+    if (message.type !== BURST_REPLY) {
+        return;
+    }
+    const burst = bursts.get(peer.getId());
+    burst.result = (((message.sum === burst.expected) && (message.size === (BURST_BYTES + 1))) ? 'ok' : 'CORRUPTED')
+        + ' in ' + ms(performance.now() - burst.sent);
+    refreshPlayers();
+}
+
+function removePlayer(id)
+{
+    host.remove(host.getPeers().find(peer => peer.getId() === id));
+    setStatus('Player ' + id + ' removed.');
+    refreshPlayers();
+}
+
+function lobbyPlayers()
+{
+    return [{id: null, name: 'Main', role: 'main', state: '', ping: null, route: '', burst: ''}].concat(host.getPeers().map(peer => ({
+        id:    peer.getId(),
+        name:  'Player ' + peer.getId() + ' ' + asciiOf(peer.getPayload()),
+        role:  'sub',
+        state: (peer.isOpen() ? 'open' : 'connecting'),
+        ping:  peer.getPing(),
+        route: (routes.get(peer.getId()) ?? ''),
+        burst: (bursts.get(peer.getId())?.result ?? '')
+    })));
+}
+
+// ---- sub ----
+
+async function startJoin()
+{
+    const nickname = 'SUB ' + Math.floor(Math.random() * NICKNAME_SUFFIXES);
+    lockRole('sub');
+    el('stage').classList.add('sub');
+    setMetric('Nickname', nickname);
+    guest = new NetGuestSession(appBootstrap.getVersion(), linkFactory())
+        .setOnOpen(() => {
+            setMetric('Link open', ms(performance.now() - codeShown) + ' after the answer was shown (ICE window)');
+            setStatus('Connected to the main.');
+        })
+        .setOnControl(onGuestControl)
+        .setOnBinary(onGuestBinary)
+        .setOnLost((reason) => setStatus('Link to the main lost: ' + reason + '.'));
+    pairing = new NetGuestPairing(guest, pairingView({show: 'Please show it to the main', read: 'Please scan the main QR code'}));
+    setStatus('Waiting for the code of the main.');
+    await runPairing(() => pairing.join(() => Uint8Array.from(nickname, c => c.charCodeAt(0))));
+}
+
+function onGuestControl(message)
+{
+    if (message.type !== LOBBY_TYPE) {
+        return;
+    }
+    lobby = message.players;
+    refreshPlayers();
+}
+
+function onGuestBinary(buffer)
+{
+    const bytes = new Uint8Array(buffer);
+    if (bytes[0] !== BURST_TYPE) {
+        return;
+    }
+    guest.sendControl({type: BURST_REPLY, size: bytes.length, sum: checksum(bytes)});
+    setMetric('Last burst', bytes.length + ' bytes received');
+}
+
+// ---- shared ----
+
+async function runPairing(pair)
+{
+    el('cancelButton').classList.remove('hidden');
+    el('stage').classList.remove('hidden');
+    try {
+        await pair();
+    } catch (error) {
+        if (!((error instanceof NetError) && (error.getCode() === NetError.CANCELLED))) {
+            throw error;
+        }
+        setStatus('Pairing cancelled.');
+    } finally {
+        el('cancelButton').classList.add('hidden');
+        el('stage').classList.add('hidden');
+        refreshPlayers();
+    }
+}
+
+function linkFactory()
+{
+    if (codes !== null) {
+        return () => new NetLoopbackLink();
+    }
+    return () => new NetPeerLink();
+}
+
+function checksum(bytes)
+{
+    let sum = 0;
+    for (const byte of bytes) {
+        sum = ((sum * CHECKSUM_FACTOR) + byte) >>> 0;
+    }
+    return sum;
+}
+
+function lockRole(role)
+{
+    if (el('loopback').checked) {
+        codes = new NetLoopbackCodeChannel();
+    }
+    el('roleControls').classList.add('hidden');
+    setMetric('Role', role + ((codes !== null) ? ' (loopback)' : ''));
+    refreshPlayers();
+    setInterval(refreshPlayers, REFRESH_PERIOD_MS);
+}
+
+function refreshPlayers()
+{
+    if (guest !== null) {
+        refreshGuestMetrics();
+    }
+    const players = ((host !== null) ? lobbyPlayers() : lobby);
+    const table   = el('players');
+    table.textContent = '';
+    const head = table.insertRow();
+    for (const title of PLAYER_COLUMNS) {
+        head.appendChild(document.createElement('th')).textContent = title;
+    }
+    for (const player of players) {
+        const row = table.insertRow();
+        for (const cell of [player.name, player.role, player.state, pingText(player.ping), player.route, player.burst]) {
+            row.insertCell().textContent = cell;
+        }
+        if ((host !== null) && (player.id !== null)) {
+            const remove = document.createElement('button');
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', () => removePlayer(player.id));
+            row.insertCell().appendChild(remove);
+        }
+    }
+    if (host === null) {
+        return;
+    }
+    for (const peer of host.getPeers()) {
+        peer.getLink().describeRoute().then(route => routes.set(peer.getId(), route));
+    }
+    host.broadcastControl({type: LOBBY_TYPE, players});
+}
+
+function refreshGuestMetrics()
+{
+    const main = guest.getHost();
+    if ((main === null) || !main.isOpen()) {
+        return;
+    }
+    setMetric('Ping to the main', pingText(main.getPing()));
+    main.getLink().describeRoute().then(route => setMetric('Route to the main', route));
+}
+
+function report()
+{
+    const lines = ['Network test bench report — ' + new Date().toISOString(), navigator.userAgent];
+    for (const [key, value] of metrics) {
+        lines.push(key + ': ' + value);
+    }
+    lines.push('', el('players').innerText, '', el('log').textContent);
+    return lines.join('\n');
+}
+
+async function copyReport()
+{
+    try {
+        await navigator.clipboard.writeText(report());
+        log('Report copied to the clipboard.');
+    } catch (error) {
+        log('Clipboard refused: ' + error.message);
+    }
+}
+
+async function loadApp()
+{
+    const start = performance.now();
+    const ready = QrModule.prepare(appBootstrap.buildUrl(WASM_URL));
+    scanner = new QrScanner();
+    wireControls();
+    setMetric('Version', appBootstrap.getVersion());
+    setMetric('Secure context', window.isSecureContext);
+    // enumerateDevices only settles once the page is visible: never wait on it.
+    CameraProbe.isAvailable().then(available => setMetric('Camera available', available));
+    await ready;
+    setMetric('QR library', 'ready in ' + ms(performance.now() - start));
+}
+
+function wireControls()
+{
+    el('hostButton').addEventListener('click', startHost);
+    el('joinButton').addEventListener('click', () => startJoin().catch(fail));
+    el('addButton').addEventListener('click', () => addPlayer().catch(fail));
+    el('burstButton').addEventListener('click', sendBurst);
+    el('cancelButton').addEventListener('click', () => pairing.cancel());
+    el('copyButton').addEventListener('click', copyReport);
+    el('restartButton').addEventListener('click', () => location.reload());
+}
+
+appBootstrap.disablePwaMode();
+appBootstrap.addBootstrapDefinition('./assets/pairing.json');
+appBootstrap.setReadyCallback(() => loadApp().catch(fail));
+        </script>
+    </body>
+</html>

@@ -14,104 +14,41 @@
         <script src="/js/webapp/appBootstrap.js"></script>
         <script>
 
-let engine   = null;
-let screen   = null;
+let scene    = null;
 let hudDebug = null;
 let inputs   = null;
-let light1   = null;
-let light2   = null;
-let light3   = null;
-
-let vanX =-5.;
-let vanY = 0.;
-let vanZ =-10.;
-let vanAngle = -0.;
-const VAN_SPEED = 0.015;
-const VAN_TURN_SPEED = 0.1;
 
 function init()
 {
-    light1 = new Light([255., 255., 255.], 30, [0., 25., 0.]);
-    light2 = new Light([0., 200., 0.], 5, [9, 2., 0.]);
-    light3 = new Light([200., 0., 0.], 5, [-8, 2., 0.]);
-
-    screen = new ScreenManager('screen', {
-        fullscreen: true,
-        virtualWidth: 1920,
-        virtualHeight: 1080
-    });
+    scene = new DemoVanScene('screen');
     // The demo only steers: every pad target it has no use for is withdrawn
     // (the aim stick has no such switch and stays).
-    inputs = new Inputs().bindScreen(screen).setMouseLockAllowed(false);
+    inputs = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
     for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
 
-    engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));
-    engine.setFov(45.0);
-    engine.setZBuffer(1, 100);
-    engine.setBackground(20, 20, 20);
-
-    hudDebug = new HudDebug(engine)
+    hudDebug = new HudDebug(scene.getEngine())
         .bindInputs(inputs)
         .addDescription('Use the keyboard to move the van')
         .addDescription('(c)2026 Spipu')
     ;
-    screen.bindHud(hudDebug);
-
-    engine.setLightAmbient([40., 40., 40.]);
-    engine.addLight(light1);
-    engine.addLight(light2);
-    engine.addLight(light3);
+    scene.getScreen().bindHud(hudDebug);
 
     requestAnimationFrame(animate);
 }
 
 function animate(timestamp)
 {
-    engine.calculateDeltaTime(timestamp);
-    const dt = engine.getDeltaTime();
-
-    const joyX = inputs.readJoy1X();
-    const joyY = inputs.readJoy1Y();
-    if (joyY !== 0)
-    {
-        vanAngle += dt * VAN_TURN_SPEED * joyX * ((joyY > 0) ? 1 : -1);
-        vanX += dt * VAN_SPEED * joyY * Math.cos(DEG_TO_RAD * vanAngle);
-        vanZ -= dt * VAN_SPEED * joyY * Math.sin(DEG_TO_RAD * vanAngle);
-    }
-
-    if (vanX < -25.) { vanX = -25.; }
-    if (vanX >  25.) { vanX =  25.; }
-    if (vanZ < -15.) { vanZ = -15.; }
-    if (vanZ >  15.) { vanZ =  15.; }
-
-    engine.drawInit();
-
-    engine.matrixIdentity();
-    engine.matrixRotateZ(180);
-    engine.matrixRotateX(200);
-    engine.matrixTranslate(0, -20, -40);
-    engine.lightCalculatePosition(light1);
-
-    engine.matrixPush();
-    engine.matrixTranslate(vanX, vanY, vanZ);
-    engine.matrixRotateY(vanAngle);
-    engine.lightCalculatePosition(light2);
-    engine.lightCalculatePosition(light3);
-    engine.drawObject(loader.objects().getByCode('van'));
-    engine.matrixPop();
-
-    engine.drawObject(loader.objects().getByCode('ground'));
-    engine.drawFinish();
-    screen.update();
+    const dt = scene.beginFrame(timestamp);
+    scene.drive(dt, inputs.readJoy1X(), inputs.readJoy1Y());
+    scene.render();
     requestAnimationFrame(animate);
 }
 
 function loadApp()
 {
-    loader.objects().loadByCode('ground', './assets/objects/ground.obj.json');
-    loader.objects().loadByCode('van', './assets/objects/van.obj.json');
+    DemoVanScene.load();
     loader.setCallback(init);
 }
 

@@ -110,8 +110,10 @@ Whatever the mode, instances are frustum-culled in camera space before any per-v
 | `_examples/lights.html` | Coloured light sources demo — move them around |
 | `_examples/game.html` | Interactive van — drive it |
 | `_examples/world.html` | First-person navigation inside a 3D labyrinth |
+| `_examples/pairing-test.html` | Network test bench — devices pair by QR code (or two tabs in loopback), link over WebRTC, measure their ping and exchange chunked bursts |
+| `_examples/pairing-game.html` | Network game — the main drives the van through the synchronous turn cycle (a state to every sub, a command back from each, then the next turn), every paired sub watches it live with its ping and the turn rate |
 
-The last three run in a 16:9 letterboxed fullscreen and take keyboard, gamepad or touch pad, exactly like the game.
+Lights, game and world run in a 16:9 letterboxed fullscreen and take keyboard, gamepad or touch pad, exactly like the game.
 
 Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_examples/assets/`.
 
@@ -130,7 +132,10 @@ website/
 ├── _examples/                Spipu3D demos + their assets and bootstrap definitions
 └── js/
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
+    │   ├── net/                 Peer-to-peer network layer — WebRTC and loopback links, compact signals, pairing codes and flows, messages, ping, star sessions
+    │   └── qr/                  QR code writing, camera scanning, camera probe and the pairing view (code shown, code read)
     ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
+    ├── lib/zxing-wasm/       Vendored zxing-wasm QR code reader and writer (MIT, Apache-2.0, BSD-3 — own LICENSE.md + README.md)
     ├── doom/                 The Spipu-Doom game
     │   ├── libBootstrap.json    Doom bootstrap definition (version + file lists)
     │   ├── doomGame.js          Level lifecycle, game loop, catalogs, pickups
@@ -239,4 +244,4 @@ The upcoming work is tracked in [./NEXT-STEPS.md](./NEXT-STEPS.md).
 
 ## License
 
-This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), distributed under the GPL v3, and the `website/js/lib/libadlmidi/` directory (the vendored libADLMIDI-JS music synthesizer), distributed under the LGPL v3 — each with its own LICENSE.md and attribution README. Removing those two directories yields a 100% MIT distribution.
+This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file — except the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), distributed under the GPL v3, and the `website/js/lib/libadlmidi/` directory (the vendored libADLMIDI-JS music synthesizer), distributed under the LGPL v3 — each with its own LICENSE.md and attribution README. Removing those two directories yields a 100% MIT distribution. The `website/js/lib/zxing-wasm/` directory (the vendored QR code library) carries the MIT, Apache-2.0 and BSD-3-Clause licences of its three components, all permissive, in its own LICENSE.md.

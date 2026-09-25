@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Spipu3D - network game</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport"           content="width=device-width, initial-scale=1" />
+        <meta name="Title"              content="Spipu3D" />
+        <meta name="Description"        content="Network game demo: the main drives the van, the subs watch it over WebRTC" />
+        <meta name="Author"             content="Spipu" />
+        <meta name="Copyright"          content="(c)2026 Spipu" />
+        <style>
+#lobby          { padding: 16px; }
+#screen         { touch-action: none; }
+#overlay        { position: fixed; top: 8px; right: 8px; z-index: 5; background: rgba(0, 0, 0, 0.6); padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+#overlayPlayers { white-space: pre; }
+#overlay button { padding: 4px 8px; font-size: 12px; margin: 6px 0 0 0; }
+        </style>
+    </head>
+    <body>
+        <div id="lobby">
+            <h1>Network game</h1>
+            <div id="roleControls">
+                <button id="hostButton">Host the game (main)</button>
+                <button id="joinButton">Watch the game (sub)</button>
+            </div>
+            <div id="hostControls" class="hidden">
+                <button id="addButton">Add a player</button>
+                <button id="driveButton" disabled>Drive the van</button>
+            </div>
+            <div>
+                <button id="cancelButton" class="hidden">Cancel pairing</button>
+            </div>
+            <div id="status">Pick a role.</div>
+            <div id="stage" class="hidden">
+                <div class="tile">
+                    <div id="qr" class="frame"></div>
+                    <div id="qrCaption" class="caption"></div>
+                </div>
+                <div class="tile">
+                    <video id="camera" class="frame" playsinline muted></video>
+                    <div id="cameraCaption" class="caption"></div>
+                </div>
+            </div>
+            <table id="players"></table>
+        </div>
+        <div id="screen" class="hidden"></div>
+        <div id="overlay" class="hidden">
+            <div id="overlayPlayers"></div>
+            <button id="lobbyButton" class="hidden">Back to the lobby</button>
+        </div>
+        <script src="/js/webapp/appBootstrap.js"></script>
+        <script>
+
+// Network version of the van demo, run through the synchronous cycle of the multiplayer design:
+// the main sends the van pose to every sub as a binary state, each sub answers with an empty
+// command, and the next turn starts once every command is in (or the command timeout has
+// passed). A sub only draws what it receives. English only, like every demo.
+
+const WASM_URL           = '/js/lib/zxing-wasm/zxing_full.wasm';
+const REFRESH_PERIOD_MS  = 1000;
+const COMMAND_TIMEOUT_MS = 2000;
+const STATE_TYPE         = 1;
+const COMMAND_TYPE       = 2;
+const LOBBY_TYPE         = 'lobby';
+const NICKNAME_SUFFIXES  = 1000;
+const PLAYER_COLUMNS     = ['Player', 'Role', 'Ping', 'State'];
+const NO_PING            = '—';
+
+let scanner        = null;
+let host           = null;
+let guest          = null;
+let pairing        = null;
+let scene          = null;
+let inputs         = null;
+let lobby          = [];
+let turn           = 0;
+let turnSentAt     = 0;
+let awaited        = new Set();
+let turnsInPeriod  = 0;
+let turnRate       = 0;
+
+function el(id)
+{
+    return document.getElementById(id);
+}
+
+function setStatus(message)
+{
+    el('status').textContent = message;
+}
+
+function fail(error)
+{
+    const code = ((error instanceof NetError) ? ' [' + error.getCode() + ']' : '');
+    setStatus('Error' + code + ': ' + ((error instanceof Error) ? error.message : String(error)));
+    console.error(error);
+}
+
+function asciiOf(bytes)
+{
+    return String.fromCharCode(...bytes);
+}
+
+function pingText(ping)
+{
+    return ((ping !== null) ? ping.toFixed(1) + ' ms' : NO_PING);
+}
+
+function pairingView(captions)
+{
+    const elements = {qr: el('qr'), camera: el('camera'), qrCaption: el('qrCaption'), cameraCaption: el('cameraCaption')};
+    return new QrPairingView(scanner, elements, captions).enableZoom();
+}
+
+// ---- main ----
+
+function createInputs()
+{
+    inputs = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
+    for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
+        inputs.setVirtualPadControlAllowed(control, false);
+    }
+}
+
+function createHost()
+{
+    host = new NetHostSession(appBootstrap.getVersion(), () => new NetPeerLink())
+        .setOnPeerOpen((peer) => {
+            setStatus('Player ' + peer.getId() + ' (' + asciiOf(peer.getPayload()) + ') joined.');
+            refreshPlayers();
+        })
+        .setOnPeerBinary(onHostBinary)
+        .setOnPeerLost((peer, reason) => {
+            awaited.delete(peer.getId());
+            setStatus('Player ' + peer.getId() + ' lost: ' + reason + '.');
+            refreshPlayers();
+        });
+}
+
+function startHost()
+{
+    createHost();
+    createInputs();
+    lockRole();
+    pairing = new NetHostPairing(host, pairingView({show: 'Please scan it from a sub', read: 'Please scan the sub\'s answer'}));
+    el('hostControls').classList.remove('hidden');
+    el('lobbyButton').classList.remove('hidden');
+    setStatus('Add a player.');
+    requestAnimationFrame(animateMain);
+}
+
+async function addPlayer()
+{
+    el('addButton').disabled = true;
+    setStatus('Pairing a new player…');
+    try {
+        await runPairing(() => pairing.addPeer(new Uint8Array(0)));
+    } finally {
+        el('addButton').disabled = false;
+    }
+}
+
+function removePlayer(id)
+{
+    host.remove(host.getPeers().find(peer => peer.getId() === id));
+    setStatus('Player ' + id + ' removed.');
+    refreshPlayers();
+}
+
+function lobbyPlayers()
+{
+    return [{id: null, name: 'Main', role: 'main', ping: null, state: turnRate + ' turns/s'}].concat(host.getPeers().map(peer => ({
+        id:    peer.getId(),
+        name:  'Player ' + peer.getId() + ' ' + asciiOf(peer.getPayload()),
+        role:  'sub',
+        ping:  peer.getPing(),
+        state: (peer.isOpen() ? 'open' : 'connecting')
+    })));
+}
+
+function animateMain(timestamp)
+{
+    requestAnimationFrame(animateMain);
+    if (isAwaitingCommands(timestamp)) {
+        return;
+    }
+    const dt = scene.beginFrame(timestamp);
+    if (isDriving()) {
+        scene.drive(dt, inputs.readJoy1X(), inputs.readJoy1Y());
+        scene.render();
+    }
+    broadcastState(timestamp);
+}
+
+function isAwaitingCommands(timestamp)
+{
+    return ((awaited.size > 0) && ((timestamp - turnSentAt) < COMMAND_TIMEOUT_MS));
+}
+
+function broadcastState(timestamp)
+{
+    turn = (turn + 1) >>> 0;
+    const state = new NetByteWriter()
+        .u8(STATE_TYPE)
+        .u32(turn)
+        .f32(scene.getX())
+        .f32(scene.getZ())
+        .f32(scene.getAngle())
+        .toBytes();
+    awaited = new Set(host.getPeers().filter(peer => peer.isOpen()).map(peer => peer.getId()));
+    host.broadcastBinary(state.buffer);
+    turnSentAt = timestamp;
+    turnsInPeriod++;
+}
+
+// A command answers one turn: any other turn's is dropped, never treated as an error.
+function onHostBinary(peer, buffer)
+{
+    const reader = new NetByteReader(buffer);
+    if (reader.u8() !== COMMAND_TYPE) {
+        return;
+    }
+    const answered = reader.u32();
+    if (!reader.isAtEnd()) {
+        peer.reportInvalid(new NetError(NetError.INVALID_MESSAGE, 'Trailing bytes in a command'));
+        return;
+    }
+    if (answered === turn) {
+        awaited.delete(peer.getId());
+    }
+}
+
+// ---- sub ----
+
+function createGuest()
+{
+    guest = new NetGuestSession(appBootstrap.getVersion(), () => new NetPeerLink())
+        .setOnOpen(() => setStatus('Connected to the main, waiting for it to drive.'))
+        .setOnControl(onGuestControl)
+        .setOnBinary(onGuestBinary)
+        .setOnLost((reason) => {
+            showScene(false);
+            setStatus('Link to the main lost: ' + reason + '.');
+        });
+}
+
+async function startJoin()
+{
+    const nickname = 'SUB ' + Math.floor(Math.random() * NICKNAME_SUFFIXES);
+    createGuest();
+    lockRole();
+    el('stage').classList.add('sub');
+    pairing = new NetGuestPairing(guest, pairingView({show: 'Please show it to the main', read: 'Please scan the main QR code'}));
+    setStatus('Waiting for the code of the main.');
+    await runPairing(() => pairing.join(() => Uint8Array.from(nickname, c => c.charCodeAt(0))));
+}
+
+function onGuestControl(message)
+{
+    if (message.type !== LOBBY_TYPE) {
+        return;
+    }
+    lobby = message.players;
+    refreshPlayers();
+}
+
+function onGuestBinary(buffer)
+{
+    const reader = new NetByteReader(buffer);
+    if (reader.u8() !== STATE_TYPE) {
+        return;
+    }
+    turn = reader.u32();
+    const x     = reader.f32();
+    const z     = reader.f32();
+    const angle = reader.f32();
+    if (!reader.isAtEnd()) {
+        guest.getHost().reportInvalid(new NetError(NetError.INVALID_MESSAGE, 'Trailing bytes in a state'));
+        return;
+    }
+    scene.setPose(x, z, angle);
+    sendCommand();
+    if (!isDriving()) {
+        showScene(true);
+        requestAnimationFrame(animateSub);
+    }
+}
+
+function sendCommand()
+{
+    guest.sendBinary(new NetByteWriter().u8(COMMAND_TYPE).u32(turn).toBytes().buffer);
+}
+
+function animateSub(timestamp)
+{
+    if (!isDriving()) {
+        return;
+    }
+    scene.beginFrame(timestamp);
+    scene.render();
+    requestAnimationFrame(animateSub);
+}
+
+// ---- shared ----
+
+async function runPairing(pair)
+{
+    el('cancelButton').classList.remove('hidden');
+    el('stage').classList.remove('hidden');
+    try {
+        await pair();
+    } catch (error) {
+        if (!((error instanceof NetError) && (error.getCode() === NetError.CANCELLED))) {
+            throw error;
+        }
+        setStatus('Pairing cancelled.');
+    } finally {
+        el('cancelButton').classList.add('hidden');
+        el('stage').classList.add('hidden');
+        refreshPlayers();
+    }
+}
+
+function lockRole()
+{
+    el('roleControls').classList.add('hidden');
+    refreshPlayers();
+    setInterval(tick, REFRESH_PERIOD_MS);
+}
+
+function tick()
+{
+    turnRate      = turnsInPeriod;
+    turnsInPeriod = 0;
+    refreshPlayers();
+}
+
+function isDriving()
+{
+    return !el('screen').classList.contains('hidden');
+}
+
+function showScene(shown)
+{
+    el('screen').classList.toggle('hidden', !shown);
+    el('overlay').classList.toggle('hidden', !shown);
+    el('lobby').classList.toggle('hidden', shown);
+}
+
+function refreshPlayers()
+{
+    const players = ((host !== null) ? lobbyPlayers() : lobby);
+    const table   = el('players');
+    table.textContent = '';
+    const head = table.insertRow();
+    for (const title of PLAYER_COLUMNS) {
+        head.appendChild(document.createElement('th')).textContent = title;
+    }
+    for (const player of players) {
+        const row = table.insertRow();
+        for (const cell of [player.name, player.role, pingText(player.ping), player.state]) {
+            row.insertCell().textContent = cell;
+        }
+        if ((host !== null) && (player.id !== null)) {
+            const remove = document.createElement('button');
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', () => removePlayer(player.id));
+            row.insertCell().appendChild(remove);
+        }
+    }
+    el('overlayPlayers').textContent = players.map(player => [player.name, player.role, pingText(player.ping), player.state].join('  ')).join('\n');
+    if (host !== null) {
+        host.broadcastControl({type: LOBBY_TYPE, players});
+        el('driveButton').disabled = !host.getPeers().some(peer => peer.isOpen());
+    }
+}
+
+function init()
+{
+    scene = new DemoVanScene('screen');
+    scene.getScreen().bindHud(new HudDebug(scene.getEngine()).addDescription('(c)2026 Spipu'));
+    wireControls();
+}
+
+async function loadApp()
+{
+    const ready = QrModule.prepare(appBootstrap.buildUrl(WASM_URL));
+    scanner = new QrScanner();
+    DemoVanScene.load();
+    loader.setCallback(init);
+    await ready;
+}
+
+function wireControls()
+{
+    el('hostButton').addEventListener('click', startHost);
+    el('joinButton').addEventListener('click', () => startJoin().catch(fail));
+    el('addButton').addEventListener('click', () => addPlayer().catch(fail));
+    el('driveButton').addEventListener('click', () => showScene(true));
+    el('lobbyButton').addEventListener('click', () => showScene(false));
+    el('cancelButton').addEventListener('click', () => pairing.cancel());
+}
+
+appBootstrap.disablePwaMode();
+appBootstrap.addBootstrapDefinition('/js/engine/libBootstrap.json');
+appBootstrap.addBootstrapDefinition('./assets/pairing.json');
+appBootstrap.addBootstrapDefinition('./assets/game.json');
+appBootstrap.setReadyCallback(() => loadApp().catch(fail));
+        </script>
+    </body>
+</html>
