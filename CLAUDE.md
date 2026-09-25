@@ -73,7 +73,7 @@ Enfin, suivre les instructions du paragraphe "Procédure commune".
 2. Lire tous les fichiers d'instructions dans le répertoire `~/git/claude/memory/instructions/`
 3. Lire la fiche du projet `~/git/claude/memory/projects/websites/doom_js/_main.md`
 4. Lire tous les autres fichiers markdown dans le répertoire `~/git/claude/memory/projects/websites/doom_js/`
-5. Enfin analyse les 10 derniers commits, et analyser le fichier `~/git/claude/memory/projects/websites/doom_js/next-steps.md` pour en déduire les prochains chantiers potentiels.
+5. Enfin analyse les 10 derniers commits, et analyser le fichier `./NEXT-STEPS.md` pour en déduire les prochains chantiers potentiels.
 
 ### Procédure sans mémoire
 
