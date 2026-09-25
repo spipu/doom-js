@@ -140,6 +140,8 @@ website/
     │   ├── libBootstrap.json    Doom bootstrap definition (version + file lists)
     │   ├── doomGame.js          Level lifecycle, game loop, catalogs, pickups
     │   ├── doomUser.js          Player equipment state
+    │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
+    │   ├── doomPlayerRoster.js  The players of a game, the local one among them
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)

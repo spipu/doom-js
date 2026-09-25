@@ -15,7 +15,7 @@ class DoomGame {
         this._levelName         = null;
         this._spawnOverride     = null;
         this._skill             = 3;
-        this._carriedState      = null;
+        this._roster            = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
         this._restoreSnapshot   = null;
         this._pauseWasDown      = true;
         this._hudWasDown        = false;
@@ -28,12 +28,9 @@ class DoomGame {
         this._deathDisplay      = null;
         this._deathModal        = null;
         this._deathClockMs      = 0;
-        this._levelEntryState   = null;   // player equipment as the level began (restart)
-        this._restartState      = null;   // entry state to pour into the level being restarted
         this._animateCallback   = this._animate.bind(this);
         this._resetLevelStats();
 
-        this._playerWeapon     = null;
         this._weaponSprites    = null;
         this._availableWeapons = null;   // codes whose sprites exist in this WAD
         this._effects          = null;   // transient sprite effects (puffs, explosions)
@@ -85,6 +82,13 @@ class DoomGame {
     // Out-of-range skills (dev starter) fall back to the HMP rules.
     _skillRule() {
         return (this._skillTable[this._skill] ?? this._skillTable[3]);
+    }
+
+    /**
+     * @returns {DoomPlayer} the player this device samples and views
+     */
+    _localPlayer() {
+        return this._roster.getLocal();
     }
 
     getGameProfile() {
@@ -201,8 +205,9 @@ class DoomGame {
         if (code === null) {
             return;
         }
-        if (this._playerWeapon !== null) {
-            this._playerWeapon.requestWeapon(code);
+        const weapon = this._localPlayer().getWeapon();
+        if (weapon !== null) {
+            weapon.requestWeapon(code);
         } else {
             user.setActiveWeapon(code);
         }
@@ -319,7 +324,7 @@ class DoomGame {
 
     // Debug cheat (the 'o' key).
     _applyCheatFullKit() {
-        const user = this._world.getUser();
+        const user = this._localPlayer().getUser();
 
         for (const code of Object.keys(this._weapons)) {
             if (this.isWeaponAvailable(code)) {
@@ -350,7 +355,7 @@ class DoomGame {
         if (this._spawnOverride === null) {
             return;
         }
-        const user     = this._world.getUser();
+        const user     = this._localPlayer().getUser();
         const position = this._spawnOverride.position;
         user.x     = position[0];
         user.y     = position[1];
@@ -529,7 +534,7 @@ class DoomGame {
             wadId:        ((this._wadMeta !== null) ? this._wadMeta.id : null),
             levelCode:    this._levelCode,
             skill:        this._skill,
-            user:         this._world.getUser(),
+            user:         this._localPlayer().getUser(),
             collision:    this._world.getCollision(),
             rng:          this._rng,
             monsters:     this._monsters,
@@ -568,15 +573,8 @@ class DoomGame {
             this._skill = skill;
         }
 
-        // Exported before loader.reset() destroys the world. A dead player
-        // carries nothing (G_DoLoadLevel PST_DEAD → PST_REBORN).
-        if (this._restartState !== null) {
-            this._carriedState = this._restartState;
-            this._restartState = null;
-        } else if (this._world !== null) {
-            const user = this._world.getUser();
-            this._carriedState = ((user.isDead()) ? null : user.exportState());
-        }
+        // Before loader.reset() destroys the world the equipment is read from.
+        this._localPlayer().packForNextLevel();
 
         this._resetLevelStats();
         // Builder-fed, and not always set: never inherit the previous level's.
@@ -648,25 +646,27 @@ class DoomGame {
         // Runtime spawns (puffs, projectiles) must never re-enter _init.
         loader.clearCallback();
 
-        const user = this._world.getUser();
+        const player  = this._localPlayer().enterLevel(this._world.getUser());
+        const user    = player.getUser();
+        const carried = player.getCarriedState();
         if (this._restoreSnapshot !== null) {
             // Keys and timed effects included: no per-level reset.
             user.importState(this._restoreSnapshot.player.state);
-        } else if (this._carriedState === null) {
+        } else if (carried === null) {
             this._setupLoadout(user);
         } else {
-            user.importState(this._carriedState);
+            user.importState(carried);
             user.resetForNewLevel(this);
         }
         user.setDamageFactor(this._skillRule().damageFactor);
         user.setExitSectorProbe(((this._sectorDamage !== null)
-            ? ((player) => this._sectorDamage.isExitSectorAt(player.x, player.z))
+            ? ((body) => this._sectorDamage.isExitSectorAt(body.x, body.z))
             : null));
         user.setLandingSplash(((this._terrain !== null)
             ? ((x, y, z) => this._terrain.splashAt(x, y, z))
             : null));
-        this._levelEntryState = user.exportState();
-        this._deathClockMs    = 0;
+        player.markLevelEntry();
+        this._deathClockMs = 0;
         this._applySpawnOverride();
 
         if (this._wakeLock === null) {
@@ -681,15 +681,12 @@ class DoomGame {
         }
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
-        // Before _buildDisplay, which would otherwise wire the overlay on the
-        // previous level's controller.
-        this._playerWeapon = null;
         this._buildDisplay();
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
-        this._monsters.setWorld(this._world.getCollision(), this._world.getUser());
-        this._monsterDamage.setWorld(this._world.getCollision(), this._world.getUser());
+        this._monsters.setWorld(this._world.getCollision(), user);
+        this._monsterDamage.setWorld(this._world.getCollision(), user);
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
         this._effects.setWorld(this._world.getCollision());
         if (this._terrain !== null) {
@@ -699,12 +696,12 @@ class DoomGame {
             this._monsters.setTerrain(this._terrain);
             this._monsterDamage.setTerrain(this._terrain);
         }
-        this._projectiles.setWorld(this._world.getCollision(), this._world.getUser());
+        this._projectiles.setWorld(this._world.getCollision(), user);
         this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
-        if (this._world.getUser().getActiveWeapon() !== null) {
-            this._playerWeapon = new DoomPlayerWeapon(this, this._world.getUser(), this._weaponSprites, this._rng);
-            this._playerWeapon.setAttackSystems(this._hitscan, this._projectiles);
-            this._playerWeapon.setNoiseCallback(() => this._monsters.noiseAlert());
+        if (user.getActiveWeapon() !== null) {
+            player.setWeapon(new DoomPlayerWeapon(this, user, this._weaponSprites, this._rng)
+                .setAttackSystems(this._hitscan, this._projectiles)
+                .setNoiseCallback(() => this._monsters.noiseAlert()));
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
         }
 
@@ -718,9 +715,9 @@ class DoomGame {
         this._pauseWasDown = true;
 
         // Also lifts the sound freeze left by an exit modal.
-        doomSound.bindLevel(this._world.getUser());
+        doomSound.bindLevel(user);
         doomSound.playLevelMusic(this._mapInfo.musicLumpsFor(this._levelCode));
-        this._world.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
+        user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         // Declared during the batch, wired now that the loader hands the instances out.
         if (this._moverSounds !== null) {
             this._moverSounds.wireAll();
@@ -762,7 +759,7 @@ class DoomGame {
         this._applySettings();
 
         this._hud = new HudDoom(this._engine)
-            .bindUser(this._world.getUser())
+            .bindUser(this._localPlayer().getUser())
             .bindInputs(this._inputs)
             .bindGame(this)
             .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelCode, this._skill, this._levelName)
@@ -777,7 +774,7 @@ class DoomGame {
         this._engine.initFromWorld(this._world);
 
         // Only on a renderer swap: at level init the controller is built afterwards.
-        if (this._playerWeapon !== null) {
+        if (this._localPlayer().getWeapon() !== null) {
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
         }
     }
@@ -816,16 +813,16 @@ class DoomGame {
     }
 
     // Next / previous on a fresh press, then one step per wheel notch.
-    _cycleWeapons(command, previous) {
+    _cycleWeapons(weapon, command, previous) {
         if (command.isJustPressed(DoomGame.BUTTON_WEAPON_NEXT, previous)) {
-            this._playerWeapon.cycleWeapon(1);
+            weapon.cycleWeapon(1);
         }
         if (command.isJustPressed(DoomGame.BUTTON_WEAPON_PREV, previous)) {
-            this._playerWeapon.cycleWeapon(-1);
+            weapon.cycleWeapon(-1);
         }
         const wheel = command.getImpulse(DoomGame.IMPULSE_WEAPON_WHEEL);
         for (let n = 0; n < Math.abs(wheel); n++) {
-            this._playerWeapon.cycleWeapon(((wheel > 0) ? 1 : -1));
+            weapon.cycleWeapon(((wheel > 0) ? 1 : -1));
         }
     }
 
@@ -861,7 +858,9 @@ class DoomGame {
 
         this._engine.calculateDeltaTime(timestamp);
         const dt       = this._engine.getDeltaTime();
-        const user     = this._world.getUser();
+        const player   = this._localPlayer();
+        const user     = player.getUser();
+        const weapon   = player.getWeapon();
         const previous = user.getLastCommand();
         const command  = this._commandSampler.collect(dt).sample();
 
@@ -881,8 +880,8 @@ class DoomGame {
         }
         this._mapWasDown = mapDown;
 
-        if (this._playerWeapon !== null) {
-            this._cycleWeapons(command, previous);
+        if (weapon !== null) {
+            this._cycleWeapons(weapon, command, previous);
         }
 
         this._world.update(dt, command);
@@ -892,11 +891,11 @@ class DoomGame {
         if (this._automap !== null) {
             this._automap.reveal(user, this._fov / 2);
         }
-        if (this._playerWeapon !== null) {
+        if (weapon !== null) {
             if (this._sectorLight !== null) {
-                this._playerWeapon.setLight(this._sectorLight.factorAt(user.x, user.z));
+                weapon.setLight(this._sectorLight.factorAt(user.x, user.z));
             }
-            this._playerWeapon.update(dt, command.isPressed(DoomGame.BUTTON_FIRE));
+            weapon.update(dt, command.isPressed(DoomGame.BUTTON_FIRE));
         }
         if (this._effects !== null) {
             this._effects.update(dt);
@@ -919,7 +918,7 @@ class DoomGame {
         this._applyRendererSetting();
         this._applySettings();
         this._updateTeleZoom(dt);
-        this._pushEffectDisplay(user);
+        this._pushEffectDisplay(player);
         this._engine.displayWorld(this._world);
         this._screen.update();
 
@@ -928,7 +927,7 @@ class DoomGame {
 
     // Read every frame so a change from the pause options applies live.
     _applySettings() {
-        const user = this._world.getUser();
+        const user = this._localPlayer().getUser();
         this._depthShadingOn = this._pushSetting(
             this._depthShadingOn,
             doomSettings.getDisplayDistanceShading(),
@@ -952,10 +951,11 @@ class DoomGame {
     }
 
     // Night vision (light visor / torch) and the muzzle flash extralight.
-    _pushEffectDisplay(user) {
-        this._engine.setLightOverride(((user.isEffectVisible('light'))
+    _pushEffectDisplay(player) {
+        this._engine.setLightOverride(((player.getUser().isEffectVisible('light'))
             ? WadConstants.NIGHT_VISION_LIGHT : null));
-        const extraLight = ((this._playerWeapon !== null) ? this._playerWeapon.getExtraLight() : 0);
+        const weapon     = player.getWeapon();
+        const extraLight = ((weapon !== null) ? weapon.getExtraLight() : 0);
         this._engine.setLightBoost(extraLight * WadConstants.WEAPON_FLASH_LIGHT_STEP);
     }
 
@@ -970,9 +970,9 @@ class DoomGame {
     // (like GZDoom) rather than stretched, so asymmetric weapons stay in place.
     _drawWeaponOverlay(renderer, engine) {
         const squeeze = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
-        const alpha = ((this._world.getUser().isEffectVisible('invisibility'))
+        const alpha = ((this._localPlayer().getUser().isEffectVisible('invisibility'))
             ? WadConstants.INVISIBILITY_WEAPON_ALPHA : 1);
-        for (const sprite of this._playerWeapon.getViewSprites()) {
+        for (const sprite of this._localPlayer().getWeapon().getViewSprites()) {
             renderer.drawScreenSprite(engine, sprite.texId, 0.5 + (sprite.x - 0.5) * squeeze, sprite.y, sprite.w * squeeze, sprite.h, sprite.light, alpha);
         }
     }
@@ -1022,7 +1022,7 @@ class DoomGame {
                 formatVersion: DoomSaveStore.FORMAT_VERSION,
             }),
             capture:   () => this.captureSnapshot(),
-            canSave:   () => !this._world.getUser().isDead(),
+            canSave:   () => !this._localPlayer().isDead(),
             onLoad:    (saveMeta) => this._loadFromSave(saveMeta),
         };
     }
@@ -1095,7 +1095,7 @@ class DoomGame {
     // The level keeps running under the death menu, like vanilla. Never during
     // a level exit: the tally owns the screen.
     _trackDeath(dt) {
-        if (!this._world.getUser().isDead()) {
+        if (!this._localPlayer().isDead()) {
             this._deathClockMs = 0;
             return;
         }
@@ -1139,7 +1139,7 @@ class DoomGame {
     _restartLevel() {
         this._transitioning = true;
         this._closeDeathMenu();
-        this._restartState = this._levelEntryState;
+        this._localPlayer().requestRestart();
 
         const display = new MenuDisplay('screen').init(true);
         this._startNextLevel(display, new MenuModal(display), this._levelCode);
@@ -1326,3 +1326,5 @@ DoomGame.BUTTON_WEAPON_NEXT    = 'weaponNext';
 DoomGame.BUTTON_WEAPON_PREV    = 'weaponPrev';
 DoomGame.BUTTON_CHEAT_FULL_KIT = 'cheatFullKit';
 DoomGame.IMPULSE_WEAPON_WHEEL  = 'weaponWheel';
+// The main holds slot 1; a single-player game has it alone.
+DoomGame.LOCAL_PLAYER_ID = 1;
