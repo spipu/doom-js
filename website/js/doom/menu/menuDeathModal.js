@@ -16,18 +16,12 @@ class MenuDeathModal extends AbstractGameMenuModal {
         this._onNewGame = null;
     }
 
-    /**
-     * @param {function} callback
-     */
     setOnRestart(callback) {
         this._onRestart = callback;
 
         return this;
     }
 
-    /**
-     * @param {function} callback
-     */
     setOnNewGame(callback) {
         this._onNewGame = callback;
 

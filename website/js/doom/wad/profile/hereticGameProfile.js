@@ -1,9 +1,9 @@
 /**
  * Heretic profile. The tables below are transcribed from the UZDoom sources
  * (wadsrc/static/xlat/heretic.txt vs base.txt, defines.i speed units = 1/8
- * Doom unit per tic). Divergent specials are remapped to
- * SYNTHETIC internal codes (>= 1000, unreachable by vanilla WAD data, see
- * WadConstants) so the Doom pipeline stays byte-identical.
+ * Doom unit per tic). Divergent specials are remapped to synthetic internal
+ * codes (>= 1000, unreachable by vanilla WAD data, see WadConstants) so the
+ * Doom pipeline stays untouched.
  */
 class HereticGameProfile extends DefaultGameProfile {
     getCode() {
@@ -21,13 +21,6 @@ class HereticGameProfile extends DefaultGameProfile {
         return ((wadFile.getLump('MUS_E1M1') !== null) || (wadFile.getLump('TINTTAB') !== null));
     }
 
-    /**
-     * Same ExMy patterns as the baseline, but the secret ExM9 maps return to
-     * different slots (UZDoom mapinfo/heretic.txt next entries). Heretic has
-     * no MAPxx maps — the MAP31/32 slots of the baseline stay inert.
-     *
-     * @returns {object}
-     */
     // Heretic SNDINFO transcription (filter/game-heretic/sndinfo.txt): same
     // logical events as Doom, mapped on Raven's bare-named lumps. misc/secret
     // names a Doom lump heretic.wad does not carry — silent by design.
@@ -260,15 +253,17 @@ class HereticGameProfile extends DefaultGameProfile {
     // Per-map music of mapinfo/heretic.txt: MUS_ExMy by rule, except the maps
     // whose block names another episode's song — heretic.wad only carries 19
     // level songs for 48 maps (E2M5, most of E3, and E4-E6 entirely reuse).
-    levelMusicLumps(levelName) {
-        const reused = HereticGameProfile.LEVEL_MUSIC_REUSE[levelName];
+    levelMusicLumps(levelCode) {
+        const reused = HereticGameProfile.LEVEL_MUSIC_REUSE[levelCode];
         if (reused !== undefined) {
             return [reused];
         }
 
-        return ((WadLevelCode.isEpisodic(levelName)) ? ['MUS_' + levelName] : []);
+        return ((WadLevelCode.isEpisodic(levelCode)) ? ['MUS_' + levelCode] : []);
     }
 
+    // Same ExMy patterns as the baseline, but the secret ExM9 maps return to
+    // other slots (UZDoom mapinfo/heretic.txt); the MAPxx slots stay inert.
     progressionRules() {
         return {
             ...super.progressionRules(),
@@ -292,15 +287,15 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
-    // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
-    // EV_DoFloor(lowerFloor) — to the HIGHEST neighbour, internal special 19 —
-    // on tag 666. The boss per episode is on the defs' bossMaps below.
     // Born mid-fight: D'Sparil rising out of his dying mount, and the
     // disciples his spawners hatch.
     runtimeSpawnTypes() {
         return ['dsparil', 'disciple'];
     }
 
+    // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
+    // EV_DoFloor(lowerFloor) — to the HIGHEST neighbour, internal special 19 —
+    // on tag 666. The boss per episode is on the defs' bossMaps.
     bossActions() {
         return {
             'E1M8': {special: 19, tag: 666},
@@ -320,9 +315,7 @@ class HereticGameProfile extends DefaultGameProfile {
     }
 
     // Episode titles (UZDoom mapinfo/heretic.txt episode blocks). The hidden
-    // E6 is not named there — when the WAD carries its maps it shows up as a
-    // bare "Episode 6" (deliberate: without an entry in the episode menu
-    // those maps would be unreachable, no level exit routes to them).
+    // E6 is unnamed but still listed as "Episode 6": no level exit leads there.
     episodeNames() {
         return {
             E1M1: 'City of the Damned',
@@ -404,8 +397,8 @@ class HereticGameProfile extends DefaultGameProfile {
             barrel:          new DoomDecoration({code: 'barrel',          name: 'Barrel',             sprite: 'BARLA0', solid: true,  radius: 12 * WadConstants.SCALE}),
             brownPillar:     new DoomDecoration({code: 'brownPillar',     name: 'Brown pillar',       sprite: 'BRPLA0', solid: true,  radius: 14 * WadConstants.SCALE}),
             volcano:         new DoomDecoration({code: 'volcano',         name: 'Volcano',            sprite: 'VLCOA0', solid: true,  radius: 12 * WadConstants.SCALE}),
-            // Key gizmos: solid base pillar (the floating colored top of the
-            // vanilla actor pair is not spawned — assumed simplification)
+            // Key gizmos: solid base pillar only (the floating colored top of
+            // the vanilla actor pair is not spawned)
             keyGizmoBlue:    new DoomDecoration({code: 'keyGizmoBlue',    name: 'Blue key gizmo',     sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
             keyGizmoGreen:   new DoomDecoration({code: 'keyGizmoGreen',   name: 'Green key gizmo',    sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
             keyGizmoYellow:  new DoomDecoration({code: 'keyGizmoYellow',  name: 'Yellow key gizmo',   sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
@@ -426,17 +419,17 @@ class HereticGameProfile extends DefaultGameProfile {
 
     thingTypes() {
         return {
-            // --- Weapons (consumable once the Heretic arsenal exists) ---
-            // (no gold wand pickup: editor number 9042 is a GZDoom addition
-            // whose GWAN sprite is not in the vanilla WAD — starting weapon)
+            // --- Weapons ---
+            // No gold wand pickup: editor number 9042 is a GZDoom addition
+            // whose GWAN sprite is not in the vanilla WAD.
             2001: {kind: 'pickup', sprite: 'WBOWA0', effect: {weapon: 'crossbow'}},
             53:   {kind: 'pickup', sprite: 'WBLSA0', effect: {weapon: 'blaster'}},
             2004: {kind: 'pickup', sprite: 'WSKLA0', effect: {weapon: 'skullrod'}},
             2003: {kind: 'pickup', sprite: 'WPHXA0', effect: {weapon: 'phoenixrod'}},
             2005: {kind: 'pickup', sprite: 'WGNTA0', effect: {weapon: 'gauntlets'}},
             // MaceSpawner: vanilla materializes ONE mace per level among all
-            // its spawner spots (P_RepositionMace) — spawnerGroup keeps a
-            // single random one (user-validated choice).
+            // its spawner spots (P_RepositionMace); spawnerGroup keeps a
+            // single random one.
             2002: {kind: 'pickup', sprite: 'WMCEA0', spawnerGroup: 'mace', effect: {weapon: 'mace'}},
             // --- Ammo (small / hefty amounts from the zscript definitions) ---
             10:   {kind: 'pickup', sprite: 'AMG1A0', effect: {ammo: 'crystals', amount: 10}},
@@ -504,16 +497,12 @@ class HereticGameProfile extends DefaultGameProfile {
     }
 
     // COUNTITEM of the Raven zscript: super map, shadowsphere, tome of power,
-    // time bomb, bag of holding — the ring of invulnerability and the torch
-    // are NOT counted. The tome of power and the time bomb carry no effect yet
-    // (no Heretic inventory), so they stay on the ground and out of the score;
-    // the total states what the map holds, it is not trimmed to look reachable.
+    // time bomb, bag of holding (not the ring nor the torch). The tome and the
+    // time bomb have no effect yet, so they stay in the total but uncollectable.
     countedItemTypes() {
         return new Set([35, 75, 86, 34, 8]);
     }
 
-    // Shared state blocks of the variant families (ghosts = base monsters
-    // with translucency, leaders swap the attack): one transcription each.
     _podDef() {
         return new DoomMonsterDef({
             code: 'pod', name: 'Gas Pod', sprite: 'PPOD',
@@ -528,6 +517,8 @@ class HereticGameProfile extends DefaultGameProfile {
         });
     }
 
+    // Shared state blocks of the variant families (ghosts = base monsters
+    // with translucency, leaders swap the attack): one transcription each.
     // A gargoyle claws for 5..12; the fire gargoyle throws its ball instead
     // and its species is its own (hereticimp.zs HereticImpLeader).
     _gargoyleParams(leader) {
@@ -606,13 +597,13 @@ class HereticGameProfile extends DefaultGameProfile {
     // zscript/actors/heretic/*.zs + actors/raven/minotaur.zs). The ghost
     // variants share the base sprites with a 0.4 translucency (zscript
     // RenderStyle Translucent / Alpha 0.4). Sorcerer2 (D'Sparil unmounted)
-    // has no editor number: he is spawned by Sorcerer1's death (phase D).
-    // The chicken is a player morph (inventory chantier), not a monster.
+    // has no editor number: he is spawned by Sorcerer1's death. The chicken
+    // is a player morph (inventory not implemented), not a monster.
     monsterDefs() {
         return {
             // hereticmisc.zs Pod: a shootable exploding body, not a kill.
             // A_PodPain (the goo squirt) and A_RemovePod (generator hook) are
-            // skipped — agreed simplification. Two editor numbers spawn it.
+            // not implemented. Two editor numbers spawn it.
             2035: this._podDef(),
             125:  this._podDef(),
             66: new DoomMonsterDef({
@@ -729,9 +720,8 @@ class HereticGameProfile extends DefaultGameProfile {
                 }
             }),
             6: new DoomMonsterDef({
-                // The WAD lump prefix is HEAD (GZDoom renames it to LICH to
-                // dodge the Doom cacodemon clash — our catalogs are per-game,
-                // no clash to dodge).
+                // Sprite HEAD as in the WAD: GZDoom renames it LICH to dodge
+                // the cacodemon clash, which per-game catalogs never meet.
                 code: 'ironlich', name: 'Iron Lich', sprite: 'HEAD',
                 health: 700, radius: 40, height: 72, mass: 325, speed: 6, painChance: 32,
                 flags: {noBlood: true},
@@ -870,18 +860,18 @@ class HereticGameProfile extends DefaultGameProfile {
     // per-weapon pickup amounts (Weapon.AmmoGive); yAdjust lowers the view
     // sprites like gzdoom (15, the wand 5, the staff 0).
     buildWeapons() {
-        const MELEE   = 1.0;
-        const HITSCAN = 128.0;
-        const SPREAD  = 360 / 16384;
-        const ENTRY   = { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' };
+        const MELEE_RANGE   = 1.0;
+        const HITSCAN_RANGE = 128.0;
+        const SPREAD        = 360 / 16384;
+        const WEAPON_ENTRY  = { ready: 'ready', down: 'down', up: 'up', atk: 'fire1' };
 
-        const data = [
+        const weaponDefs = [
             {
                 code: 'staff', name: 'Staff', ammoType: null, ammoUse: 0,
-                pellets: 1, spreadH: SPREAD, range: MELEE,
+                pellets: 1, spreadH: SPREAD, range: MELEE_RANGE,
                 damage: {flat: 4, base: 1, dice: 16}, kickback: 150, puffOnMonsters: true,
                 puffType: 'staffPuff',
-                viewSprite: 'STFF', entry: ENTRY,
+                viewSprite: 'STFF', entry: WEAPON_ENTRY,
                 meleeHitSound: 'weapons/staffhit',
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -890,7 +880,7 @@ class HereticGameProfile extends DefaultGameProfile {
             },
             {
                 code: 'gauntlets', name: 'Gauntlets', ammoType: null, ammoUse: 0,
-                pellets: 1, spreadH: SPREAD, range: MELEE, yAdjust: 15,
+                pellets: 1, spreadH: SPREAD, range: MELEE_RANGE, yAdjust: 15,
                 damage: {base: 2, dice: 8}, kickback: 0, puffOnMonsters: true,
                 puffType: 'gauntletPuff',
                 viewSprite: 'GAUN', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
@@ -905,10 +895,10 @@ class HereticGameProfile extends DefaultGameProfile {
             },
             {
                 code: 'goldwand', name: 'Gold Wand', ammoType: 'crystals', ammoUse: 1, ammoGive: 25,
-                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 5,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN_RANGE, accurateFirst: true, yAdjust: 5,
                 damage: {flat: 6, base: 1, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'goldwandPuff', decalType: 'railscorch',
-                viewSprite: 'GWND', entry: ENTRY,
+                viewSprite: 'GWND', entry: WEAPON_ENTRY,
                 actionSounds: {fireHitscan: 'weapons/wandhit'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -924,7 +914,7 @@ class HereticGameProfile extends DefaultGameProfile {
                     {kind: 'crossbowfx3', angleOffset: -4.5},
                     {kind: 'crossbowfx3', angleOffset: 4.5}
                 ],
-                viewSprite: 'CRBW', entry: ENTRY,
+                viewSprite: 'CRBW', entry: WEAPON_ENTRY,
                 main: {
                     ...this._animatedReadyStates('AAAAAABBBBBBCCCCCC'),
                     down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -937,7 +927,7 @@ class HereticGameProfile extends DefaultGameProfile {
             },
             {
                 code: 'blaster', name: 'Dragon Claw', ammoType: 'orbs', ammoUse: 1, ammoGive: 30,
-                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true, yAdjust: 15,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN_RANGE, accurateFirst: true, yAdjust: 15,
                 damage: {base: 4, dice: 8}, kickback: 150, puffOnMonsters: true,
                 puffType: 'blasterPuff', decalType: 'railscorch',
                 viewSprite: 'BLSR', entry: { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', hold: 'hold1' },
@@ -953,7 +943,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 code: 'skullrod', name: 'Hellstaff', ammoType: 'runes', ammoUse: 1, ammoGive: 50,
                 yAdjust: 15,
                 projectiles: [{kind: 'hornrodfx1'}],
-                viewSprite: 'HROD', entry: ENTRY,
+                viewSprite: 'HROD', entry: WEAPON_ENTRY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 4, 'fireProjectiles', 'fire2'], fire2: ['B', 4, 'fireProjectiles', 'fire3'],
@@ -964,7 +954,7 @@ class HereticGameProfile extends DefaultGameProfile {
                 code: 'phoenixrod', name: 'Phoenix Rod', ammoType: 'flameorbs', ammoUse: 1, ammoGive: 2,
                 yAdjust: 15, autoFire: false,
                 projectiles: [{kind: 'phoenixfx1'}],
-                viewSprite: 'PHNX', entry: ENTRY,
+                viewSprite: 'PHNX', entry: WEAPON_ENTRY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 5, null, 'fire2'], fire2: ['C', 7, 'fireProjectiles', 'fire3'],
@@ -991,7 +981,7 @@ class HereticGameProfile extends DefaultGameProfile {
         ];
 
         const catalog = {};
-        for (const entry of data) {
+        for (const entry of weaponDefs) {
             catalog[entry.code] = new DoomWeaponDef(entry);
         }
         return catalog;
@@ -1091,8 +1081,8 @@ class HereticGameProfile extends DefaultGameProfile {
 
     // The Heretic projectiles (zscript actors, PL1): speed in map units/tic.
     // The mace ball flies straight 16 tics then drops (A_MacePL1Check:
-    // gravity 1/8, horizontal speed rescaled to 7, vertical halved) — no
-    // bounce (agreed simplification: it breaks on first impact). The phoenix
+    // gravity 1/8, horizontal speed rescaled to 7, vertical halved) and
+    // bounces once off the floor (A_MaceBallImpact). The phoenix
     // shot carries the A_Explode 128 splash and leaves its FX04 puff trail.
     // The additive shots (bolts, hellstaff) are RenderStyle "Add" with the
     // default actor alpha (1.0) in the zscript — same value as their death
@@ -1215,12 +1205,9 @@ class HereticGameProfile extends DefaultGameProfile {
         return {blueKey: '#3d7bff', yellowKey: '#ffd23d', greenKey: '#3ddd66'};
     }
 
-    // Heretic's hues, but inverted onto a dark ground: am_map.cpp RavenColors
-    // draws dark ink (wall 75,50,16 · ceiling step 103,59,31) on an OPAQUE
-    // parchment (0x6c5440), which only reads because that ground is perfectly
-    // flat. Over our translucent panel the same set measures 1.3:1 and 1.0:1
-    // against the composited ground, and no colour at all — black included —
-    // can pass 3:1 over a parchment. Here every role clears 3:1.
+    // Heretic's hues inverted onto a dark ground: am_map.cpp RavenColors draws
+    // dark ink on an opaque parchment (0x6c5440), unreadable (< 3:1 contrast)
+    // over our translucent panel.
     automapColors() {
         return {
             background: [26, 18, 12],
@@ -1236,7 +1223,7 @@ class HereticGameProfile extends DefaultGameProfile {
     // (UZDoom filter/game-heretic/animated.lmp) — heretic.wad has no
     // ANIMATED lump, these always apply.
     vanillaAnimSequences() {
-        const raw = [
+        const sequences = [
             [true,  ['FLTWAWA1', 'FLTWAWA2', 'FLTWAWA3'], 8],
             [true,  ['FLTSLUD1', 'FLTSLUD2', 'FLTSLUD3'], 8],
             [true,  ['FLTTELE1', 'FLTTELE2', 'FLTTELE3', 'FLTTELE4'], 6],
@@ -1247,7 +1234,7 @@ class HereticGameProfile extends DefaultGameProfile {
             [false, ['WATRWAL1', 'WATRWAL2', 'WATRWAL3'], 4]
         ];
 
-        return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: entry[2]}));
+        return sequences.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: entry[2]}));
     }
 
     // UZDoom terrain.txt floor entries of Heretic (water and its flowing
@@ -1284,9 +1271,8 @@ class HereticGameProfile extends DefaultGameProfile {
     }
 
     // Heretic pairs its switches by ON/OFF suffix, not by SW1↔SW2 prefix
-    // (UZDoom animdefs.txt: switch heretic SW1OFF on pic SW1ON…) — without
-    // these the generic prefix rule would swap SW1OFF to the WRONG texture
-    // SW2OFF (which exists: silent visual bug).
+    // (UZDoom animdefs.txt: switch heretic SW1OFF on pic SW1ON…): the generic
+    // prefix rule would swap SW1OFF to SW2OFF, which exists too.
     switchPairs() {
         return [
             ['SW1OFF', 'SW1ON'],
@@ -1296,19 +1282,17 @@ class HereticGameProfile extends DefaultGameProfile {
 
     // Heretic skies by episode (UZDoom mapinfo/heretic.txt: E4 reuses SKY1,
     // E5 reuses SKY3; the hidden E6 slots default to SKY1).
-    skyForLevel(levelName) {
+    skyForLevel(levelCode) {
         const byEpisode = {1: 'SKY1', 2: 'SKY2', 3: 'SKY3', 4: 'SKY1', 5: 'SKY3'};
-        const episode = WadLevelCode.parse(levelName).episode;
-        const name    = ((episode !== null) ? (byEpisode[episode] ?? 'SKY1') : 'SKY1');
+        const episode   = WadLevelCode.parse(levelCode).episode;
+        const name      = ((episode !== null) ? (byEpisode[episode] ?? 'SKY1') : 'SKY1');
 
         return {name: name, wrap: 4};
     }
 
     // The UZDoom impact-decal graphics specific to Heretic (GPL v3,
-    // website/assets/uzdoom/heretic/). The boot loader takes the union of
-    // every profile's assets with key dedup: the templates below may also
-    // reference the plasma1/plasma2/scorch1 keys already loaded by the Doom
-    // profile (same UZDoom graphics).
+    // website/assets/uzdoom/heretic/). The boot loader merges every profile's
+    // keys, so the templates may also use plasma1/plasma2/scorch1 from Doom.
     decalAssets() {
         return {
             basePath: '/assets/uzdoom/heretic/sprite/',
@@ -1316,7 +1300,7 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
-    // Faithful to UZDoom's decaldef.txt generators: GoldWand/Blaster hitscans
+    // UZDoom decaldef.txt generators: GoldWand/Blaster hitscans
     // → RailScorchLower (CBALSCR 0.2), CrossbowFX1/FX3 → CrossbowScorch
     // (CBOWMARK 0.4 / 0.25), HornRodFX1 → PlasmaScorchLower (PLASMA 0.3),
     // PhoenixFX1 → Scorch (SCORCH1 0.5), MaceFX1 → BaronScorch (BAL7SCR 0.5).
@@ -1414,12 +1398,11 @@ class HereticGameProfile extends DefaultGameProfile {
      * Player pushes of the Heretic sector specials, in map units per tic
      * (UZDoom p_mobj.cpp:4809-4834 + 2410-2437). Carriers 20-39 (→ 1020-1039)
      * are terminal carry speeds: the east family uses the modern GZDoom values
-     * matched to the scrolling texture (0.5/1/2/4/8 — user choice; the 0.5
-     * step sits below CARRYSTOPSPEED and pushes nothing, texture drift only,
-     * hence no 1020 entry), north/south/west keep the original mul/3 speeds
-     * (GZDoom only rebased the east). Winds 40-51 (→ 1040-1051) are per-tick
-     * thrusts (windTab 5/32, 10/32, 25/32); the scrolling lava 1204 carries
-     * east at 4.0 (12 / (32 × CARRYFACTOR)).
+     * matched to the scrolling texture (0.5/1/2/4/8; 0.5 sits below
+     * CARRYSTOPSPEED and pushes nothing, hence no 1020 entry), north/south/west
+     * keep the original mul/3 speeds (GZDoom only rebased the east). Winds
+     * 40-51 (→ 1040-1051) are per-tick thrusts (windTab 5/32, 10/32, 25/32);
+     * the scrolling lava 1204 carries east at 4.0 (12 / (32 × CARRYFACTOR)).
      *
      * @returns {object}
      */

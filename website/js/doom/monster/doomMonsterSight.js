@@ -1,10 +1,10 @@
 /**
- * Monster senses (phase C): P_CheckSight line of sight and P_NoiseAlert sound
+ * Monster senses: P_CheckSight line of sight and P_NoiseAlert sound
  * propagation, over the level data handed by the world builder (sector
  * adjacency graph, REJECT table, sector polygons resolver).
  *
- * Sight is a 2-ray approximation of the vanilla slope window (documented
- * deviation, same approach as the phase-B blast LOS): eye at feet + 3/4 of
+ * Sight is a 2-ray approximation of the vanilla slope window (deviation,
+ * same approach as the blast line of sight): eye at feet + 3/4 of
  * the actor height (the vanilla sightzstart), first ray to the target's
  * centre, fallback ray to its top — walls, floor/ceiling slabs and dynamic
  * colliders block (a closed door panel blocks the view). The REJECT lump,

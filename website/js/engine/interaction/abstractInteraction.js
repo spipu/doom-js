@@ -9,9 +9,8 @@ class AbstractInteraction {
     update(dt) {
     }
 
-    // Plain-data snapshot of the mutable state, restorable by importState
-    // after a deterministic rebuild. Stateless interactions return null
-    // (nothing to persist).
+    // Plain-data snapshot restorable by importState after a deterministic
+    // rebuild; null when stateless.
     exportState() {
         return null;
     }

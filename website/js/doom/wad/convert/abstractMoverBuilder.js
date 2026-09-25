@@ -26,15 +26,15 @@ class AbstractMoverBuilder {
      * @returns {object[]} [{code, textures (bank indices), mesh, instanceData}]
      */
     buildAll() {
-        const result = [];
+        const movers = [];
         for (const si of [...this._sectorIds()].sort((a, b) => (a - b))) {
             const built = this._buildOne(si);
             if (built !== null) {
-                result.push(built);
+                movers.push(built);
             }
         }
 
-        return result;
+        return movers;
     }
 
     /**
@@ -57,16 +57,13 @@ class AbstractMoverBuilder {
 
     // Riser (riserBaseFh → origFh) on EVERY two-sided edge: the mover is a
     // self-contained box, so two adjacent movers at different heights keep a
-    // wall between them. Texture: neighbour lower, else own lower, else a
-    // sibling edge's (two passes). One-sided edges belong to the static map.
-    // A lower-unpegged texture is anchored to the ceiling in vanilla, hence
-    // pinned to the world while the riser moves (uvAnchor).
+    // wall between them. One-sided edges belong to the static map. Vanilla
+    // anchors a lower-unpegged texture to the ceiling, hence the uvAnchor.
     _buildRisers(mesh, si, origFh, riserBaseFh, moverCode) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const SCALE = WadConstants.SCALE;
 
-        // A usable lower texture name on a sidedef, or null.
-        const validLower = (sd) => {
+        const usableLower = (sd) => {
             if (!sd || WadTextureBank.isBlank(sd.lower)) {
                 return null;
             }
@@ -77,29 +74,27 @@ class AbstractMoverBuilder {
         let fallbackTex = null;
 
         for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
-            const rSi2 = sidedefs[ld.right].sector;
-            const lSi2 = sidedefs[ld.left].sector;
-            const moverOnRight = (rSi2 === si);
-            const moverOnLeft  = (lSi2 === si);
+            const rightSi      = sidedefs[ld.right].sector;
+            const leftSi       = sidedefs[ld.left].sector;
+            const moverOnRight = (rightSi === si);
+            const moverOnLeft  = (leftSi === si);
             if (!moverOnRight && !moverOnLeft) {
                 continue;
             }
 
             const ownSd        = sidedefs[((moverOnRight) ? ld.right : ld.left)];
             const neighbourSd  = sidedefs[((moverOnRight) ? ld.left : ld.right)];
-            const neighbourSec = sectors[((moverOnRight) ? lSi2 : rSi2)];
+            const neighbourSec = sectors[((moverOnRight) ? leftSi : rightSi)];
 
-            // Texture: neighbour lower first, then own lower. Record the source
-            // sidedef (for xo/yo) and its sector (for light/ch). null = bare edge.
-            let tex    = validLower(neighbourSd);
+            let tex    = usableLower(neighbourSd);
             let srcSd  = neighbourSd;
             let srcSec = neighbourSec;
-            let srcSi  = ((moverOnRight) ? lSi2 : rSi2);
+            let srcSi  = ((moverOnRight) ? leftSi : rightSi);
             if (tex === null) {
-                tex    = validLower(ownSd);
+                tex    = usableLower(ownSd);
                 srcSd  = ownSd;
                 srcSec = sectors[si];
                 srcSi  = si;
@@ -123,7 +118,7 @@ class AbstractMoverBuilder {
         for (const e of edges) {
             const tex = ((e.tex !== null) ? e.tex : fallbackTex);
             if (tex === null) {
-                continue;   // no texture anywhere on this mover — skip (very rare)
+                continue;
             }
             const ti = this._bank.ensureWallTex(tex);
             if (ti < 0) {

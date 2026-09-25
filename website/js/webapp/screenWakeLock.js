@@ -1,44 +1,44 @@
 class ScreenWakeLock {
-    /** @type {boolean} */                 isSupported;
-    /** @type {WakeLockSentinel|null} */   wakeLock;
+    /** @type {boolean} */                 _isSupported;
+    /** @type {WakeLockSentinel|null} */   _wakeLock;
 
     constructor() {
-        this.isSupported = ('wakeLock' in navigator);
-        this.wakeLock = null;
+        this._isSupported = ('wakeLock' in navigator);
+        this._wakeLock = null;
     }
 
     init() {
-        this.ask();
-        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+        this._requestLock();
+        document.addEventListener('visibilitychange', this._handleVisibilityChange.bind(this));
     }
 
-    async ask() {
-        if (!this.isSupported) {
+    async _requestLock() {
+        if (!this._isSupported) {
             return;
         }
         try {
-            this.wakeLock = await navigator.wakeLock.request("screen");
+            this._wakeLock = await navigator.wakeLock.request("screen");
         } catch (err) {
             console.log(`Error on Wake Lock - ${err.name}, ${err.message}`);
         }
     }
 
     release() {
-        if (this.wakeLock === null) {
+        if (this._wakeLock === null) {
             return;
         }
 
         let that = this;
-        that.wakeLock.release().then(
+        that._wakeLock.release().then(
             () => {
-                that.wakeLock = null;
+                that._wakeLock = null;
             }
         )
     }
 
-    handleVisibilityChange() {
-        if (this.wakeLock !== null && document.visibilityState === 'visible') {
-            this.ask();
+    _handleVisibilityChange() {
+        if ((this._wakeLock !== null) && (document.visibilityState === 'visible')) {
+            this._requestLock();
         }
     }
 }

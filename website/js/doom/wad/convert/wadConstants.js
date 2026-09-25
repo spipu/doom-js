@@ -11,7 +11,7 @@ class WadConstants {
 
     // THING flags (entry byte 8). Skill bits gate a thing per difficulty
     // (1-2 → 0x01, 3 → 0x02, 4-5 → 0x04); 0x10 means "not in single-player"
-    // (multiplayer/co-op/DM only). 0x08 is "ambush" (deaf), irrelevant to display.
+    // (multiplayer/co-op/DM only); 0x08 is "ambush" (deaf monster).
     static MTF_NOT_SINGLE = 0x10;
     static MTF_AMBUSH     = 0x08;
     static MTF_SKILL_MASK = 0x07;
@@ -23,9 +23,7 @@ class WadConstants {
     // also the fallback for a malformed ANIMATED speed.
     static ANIM_DEFAULT_SPEED_TICS = 8;
 
-    // Membership Set derived from a per-special table — the unified tables
-    // (DOOR_BY_SPECIAL, FLOOR_DOWN_BY_SPECIAL…) are the single source of
-    // truth, a derived set is never edited by hand.
+    // Membership Set derived from a per-special table, never edited by hand.
     static _specialsWhere(table, predicate) {
         return new Set(Object.keys(table).map(Number).filter((sp) => predicate(table[sp])));
     }
@@ -33,13 +31,10 @@ class WadConstants {
     // --- Game profile extensions ---
 
     // The tables of this class are the GENERIC doom-format baseline. A game
-    // profile contributes its specific entries through this hook (called once
-    // per level build, before any analyzer runs): every entry lives in the
-    // >= GAME_EXTENSION_BASE namespace — unreachable by vanilla WAD data
-    // (specials cap at 141), emitted only by the profile's own xlat maps.
-    // Previous extensions are wiped first (a Doom WAD loaded after a Heretic
-    // one runs on the pristine baseline), then the derived membership sets
-    // are recomputed.
+    // profile adds its entries once per level build, before any analyzer runs,
+    // in the >= GAME_EXTENSION_BASE namespace: vanilla specials cap at 141, so
+    // only the profile's own xlat maps reach it. Previous extensions are wiped
+    // first, so a Doom WAD loaded after a Heretic one runs on the baseline.
     static GAME_EXTENSION_BASE = 1000;
 
     static applyGameExtensions(extensions) {
@@ -273,6 +268,8 @@ class WadConstants {
     static SKY_FLAT_PREFIX = 'F_SKY';
     // Doom units left at the top of a door panel for the ceiling track mechanism
     static DOOR_TRACK_OFFSET = 4;
+    // Open height of a door whose neighbours all have a sky ceiling
+    static DOOR_SKY_OPEN_HEIGHT = 128;
     // Placeholder size of an untextured wall quad (sidedef texture and fill flat both absent)
     static MISSING_TEXTURE_SIZE = 128;
     // Use trace of a switch: stops this fraction of the way to the aimed line
@@ -464,6 +461,11 @@ class WadConstants {
     // Tics at bottom before rising (Lower Lift)
     static LIFT_WAIT_TICS = 105;
 
+    // P_FindHighestFloorSurrounding seed when the sector has no neighbour (p_spec.c)
+    static HIGHEST_FLOOR_SEED = -500;
+    // turboLower stops this far above the highest neighbour floor (p_floor.c)
+    static TURBO_LOWER_OFFSET = 8;
+
     // --- Floors moving UP (rising floors — single table) ---
 
     // One COMPLETE entry per floor-up special (one-way raise toward a target).
@@ -544,6 +546,9 @@ class WadConstants {
     // a rising floor waits this long before moving, so a player who fired the
     // trigger next to the platform has time to step onto it and ride up.
     static FLOOR_UP_START_DELAY_S = 1.0;
+
+    // raiseFloorCrush stops this far below the lowest neighbour ceiling (p_floor.c)
+    static RAISE_FLOOR_CRUSH_GAP = 8;
 
     // Travel time (s) of one mover leg: Doom units at a vanilla speed (u/tic).
     static moveDurationS(deltaDu, speedPerTic) {
@@ -674,7 +679,7 @@ class WadConstants {
         return ((WadConstants.SWITCH_INTERACTION_BY_SPECIAL[special] ?? WadConstants.SWITCH_INTERACTION_DEFAULT).mode !== 'once');
     }
 
-    // The check below runs at every level build; one report per mistake is enough.
+    // _warnOrphanSwitchProfiles runs at every level build; one report per mistake is enough.
     static _WARNED_ORPHAN_SWITCHES = new Set();
 
     // S-type specials that end the level (11 = S1 Exit, 51 = S1 Secret Exit)
@@ -748,8 +753,7 @@ class WadConstants {
     static SHADOW_SNEAK_RANGE    = 128;
     static SHADOW_SNEAK_SPEED    = 5;
     static SHADOW_SPOT_CHANCE    = 225;
-    // A_SkullAttack default charge speed (map units/tic) and the mode's own
-    // stop threshold — a charging body slams instead of shooting.
+    // A_SkullAttack default charge speed (map units/tic).
     static SKULL_CHARGE_SPEED = 20;
 
     // Feet-on-the-sector-floor tolerance (world units) of the runtime sector
@@ -822,8 +826,8 @@ class WadConstants {
     // Walk-over linedefs that activate a REMOTE tagged element (lift/floor/door)
     // by crossing them — like a switch, but proximity-activated. Modelled as an
     // invisible proximity zone at the linedef that start()s the tagged target
-    // instances. The matching lift/floor specials must be 'none' in their
-    // *_TRIGGER_BY_SPECIAL so the zone drives them (not self-proximity).
+    // instances. The matching lift/floor/door entries carry trigger 'none' so
+    // the zone drives them (not self-proximity).
     // Walk lifts: 88 (WR), 120 (WR fast), 121 (W1 fast). 122 is S1 fast = a
     // SWITCH lift, not walk (see SWITCH_SPECIALS). Walk floor-lowers: 19/36/37/38
     // (W1), 82/83/84 (WR). Walk floor-raisers: 5/22/30/56/58/59/119/130 (W1),
@@ -909,13 +913,13 @@ class WadConstants {
 
     // --- Donut (EV_DoDonut) ---
 
-    // True for the donut specials (the 'donutRingOnly' floor-up entries): on a
-    // trigger line it identifies a donut; on a built rising floor's special it
-    // identifies the sector as a donut RING (only _mergeDonutRings stamps it).
     static isSkyFlat(flatName) {
         return flatName.startsWith(WadConstants.SKY_FLAT_PREFIX);
     }
 
+    // True for the donut specials (the 'donutRingOnly' floor-up entries): on a
+    // trigger line it identifies a donut; on a built rising floor's special it
+    // identifies the sector as a donut RING (only _mergeDonutRings stamps it).
     static isDonutSpecial(special) {
         return (WadConstants.FLOOR_UP_BY_SPECIAL[special]?.donutRingOnly === true);
     }
@@ -960,7 +964,7 @@ class WadConstants {
     //  - radiation: vanilla RADIATIONPAL (palette 13), UZDoom blends
     //    PowerIronFeet as "00 ff 00" at 0.125 (powerups.zs);
     //  - invulnerability: deliberate deviation from the vanilla
-    //    INVERSECOLORMAP (user decision) — one golden wash for every game.
+    //    INVERSECOLORMAP — one golden wash for every game.
     static POWERUP_SCREEN_TINTS = {
         radiation:       {rgb: [0, 255, 0],   alpha: 0.125},
         invulnerability: {rgb: [255, 200, 0], alpha: 0.25}
@@ -1057,6 +1061,11 @@ class WadConstants {
     // vertical clearance is stricter, so the margin restores those passages.
     static PLAYER_HEIGHT = 0.866;
 
+    // Gap in metres left between a spawn or teleport landing and its floor
+    static SPAWN_FLOOR_CLEARANCE = 0.3;
+    // Spawn of a map without a player 1 start
+    static FALLBACK_SPAWN = {x: -6.5, y: 0.3, z: 4.0, yaw: 90};
+
     // Height (Doom units) of the collision band above a wall no jump may
     // clear (one-sided walls and upper walls under a sky). The wall resolution
     // treats a wall lower than feet + step as a step, so the band must outreach
@@ -1081,12 +1090,9 @@ class WadConstants {
         // 0.5625 m) at the vanilla gravity: v = sqrt(2 * 19.141 * 0.5625).
         maxJumpVelocity: 4.640,
         maxSlopeAngle:   50,
-        // Run by default (cl_run), tuned to ~2/3 of the vanilla forwardmove 50
+        // Run by default (cl_run) at ~2/3 of the vanilla forwardmove 50
         // (≈ 0.0091): deliberate deviation — the jump (absent from vanilla)
-        // extends the reach, so the run-across gaps stay crossable (playtested
-        // on MAP20's alcove) at a tamer top speed. The walk-slow modifier
-        // halves it, and a partial analog deflection covers everything in
-        // between.
+        // keeps the run-across gaps crossable at a tamer top speed.
         moveSpeed:       0.006,
         stepHeight:      0.375,
         // Fall damage thresholds (multiples of the player height): nothing
@@ -1119,8 +1125,8 @@ class WadConstants {
     static LIGHT_DIMINISH_SHADE_BASE     = 2 - (12 / 128);
     static LIGHT_DIMINISH_SHADE_SCALE    = 255 / 128;
     static LIGHT_DIMINISH_RAMP_COUNT     = 32;
-    // Fraction of the computed darkness actually applied (user setting: the
-    // full UZDoom curve reads slightly too strong here).
+    // Fraction of the computed darkness actually applied: the full UZDoom
+    // curve reads slightly too strong here.
     static LIGHT_DIMINISH_STRENGTH       = 0.8;
 
     // Floor the rendered sector light converges to: an absolute black is

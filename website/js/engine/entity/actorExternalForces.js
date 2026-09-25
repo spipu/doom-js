@@ -1,10 +1,7 @@
 /**
- * External perturbations applied to an actor (player or any game-driven body)
- * by its environment: wind gusts, conveyor floors, slippery ground. Generic —
- * the game code re-asserts its forces every frame (emitters run before the
- * owner's physics step), the owner consumes them during that step and the
- * whole state resets each frame, so leaving the perturbed area simply stops
- * feeding it. Each actor carries its own channel.
+ * Environment forces on one actor (wind, conveyors, slippery ground). Game code
+ * re-asserts them every frame before the owner's physics step consumes them,
+ * so leaving the area simply stops feeding them.
  *
  * The horizontal push is an environment velocity integrated at a fixed tick
  * rate: each tick `vel = vel * DECAY + thrust`. A constant thrust therefore
@@ -52,25 +49,20 @@ class ActorExternalForces {
 
     // --- Owner-facing hooks ---
 
-    // Frame reset: emitters re-assert their forces every frame.
     beginFrame() {
         this._thrustX        = 0;
         this._thrustZ        = 0;
         this._groundFriction = null;
     }
 
-    // One-shot velocity kick in m/s (a blow, a blast), poured straight into
-    // the momentum channel and decaying with it. Unlike addThrust it is NOT
-    // re-asserted per frame, so it must bypass the thrust accumulator that
-    // beginFrame clears.
+    // One-shot kick in m/s (a blow, a blast): goes straight into the momentum,
+    // since the thrust accumulator is cleared every frame.
     addImpulse(x, z) {
         this._velX += x;
         this._velZ += z;
     }
 
-    // Advance the environment velocity by dtS seconds. Closed form of the
-    // per-tick recurrence `vel = vel * DECAY + thrust` — exact for any frame
-    // duration, no tick accumulator needed.
+    // Closed form of the per-tick recurrence, exact for any frame duration
     integrate(dtS) {
         const keep = Math.pow(ActorExternalForces.DECAY, dtS * ActorExternalForces.TICK_RATE);
         const termX = this._thrustX / (1 - ActorExternalForces.DECAY);

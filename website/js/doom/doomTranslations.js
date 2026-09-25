@@ -1,19 +1,9 @@
 /**
- * Every user-facing text of Spipu-Doom, in one place — the catalog the generic
- * AppTranslator serves. The code carries only translation CODES, so a text has
- * exactly one owner and a missing translation is spotted by reading a column.
+ * Every user-facing text of Spipu-Doom, served by AppTranslator.
  *
- * Conventions:
- *  - dotted codes mirroring the domain of the calling code (menu, help, error,
- *    game, hud, settings…), sections grouped and commented like the code is;
- *  - {placeholders} for the parameterised texts, filled at the call site;
- *  - proper nouns are NOT translated: the Spipu-Doom brand, the WAD and level
- *    names, the language autonyms (English / Français / Italiano / Español),
- *    BFG9000;
- *  - only the texts that actually reach a screen live here. Of the game data,
- *    that means the weapon names alone (HudGameBar shows them); the ammo, item,
- *    monster and decoration names are read by no view, so they stay in their
- *    profile tables as transcribed from the sources.
+ * Proper nouns are not translated (the brand, WAD and level names, language
+ * autonyms, BFG9000). Of the game data, only the weapon names reach a screen;
+ * the other names stay in their profile tables as transcribed.
  */
 class DoomTranslations {
     static get CATALOG() {
@@ -637,7 +627,7 @@ class DoomTranslations {
                 it: 'Torna al menu',
                 es: 'Volver al menú'
             },
-            // Leaves the tally for the story text, which carries the real next action
+            // Leaves the tally for the story text.
             'game.finale.continue': {
                 fr: 'Continuer',
                 en: 'Continue',
@@ -669,9 +659,6 @@ class DoomTranslations {
                 it: 'Mappa',
                 es: 'Mapa'
             },
-            // 'fps' is the accepted abbreviation in the four languages; it goes
-            // through the catalog all the same, so a spelled-out unit stays a
-            // one-line change.
             'hud.fps': {
                 fr: '{value} fps',
                 en: '{value} fps',
@@ -679,8 +666,7 @@ class DoomTranslations {
                 es: '{value} fps'
             },
 
-            // Running power-up effects (one shared label per effect, whatever
-            // the game's item name — user decision)
+            // Running power-up effects: one label per effect, whatever the game's item name.
             'effect.berserk': {
                 fr: 'Berserk',
                 en: 'Berserk',
@@ -733,10 +719,8 @@ class DoomTranslations {
             },
 
             // --- Difficulties ---
-            // Generic scale: the vanilla titles of skills 1-5 were
-            // "I'm too young to die", "Hey, not too rough", "Hurt me plenty",
-            // "Ultra-Violence" and "Nightmare!"; skill 0 is our own monster-free
-            // exploration mode.
+            // Generic scale instead of the vanilla skill titles; skill 0 is our
+            // own monster-free exploration mode.
             'difficulty.0': {
                 fr: 'Monstres pacifiques',
                 en: 'Pacifist monsters',
@@ -774,10 +758,8 @@ class DoomTranslations {
                 es: 'Muy difícil'
             },
 
-            // --- Weapon names (the only game data a view displays) ---
-            // Keyed by the weapon code of the game profiles; the English side
-            // repeats the name transcribed in the profile table, which stays the
-            // HUD fallback for a weapon with no entry here.
+            // --- Weapon names ---
+            // Keyed by weapon code; the profile table's name stays the HUD fallback.
             'weapon.fist': {
                 fr: 'Poing',
                 en: 'Fist',

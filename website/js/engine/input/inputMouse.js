@@ -67,14 +67,14 @@ class InputMouse {
 
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
-            this._wheel += ((e.deltaY < 0) ? 1 : -1);
+            this._wheelNotches += ((e.deltaY < 0) ? 1 : -1);
         }, { passive: false });
     }
 
     // Net wheel notches since the last call (up = +1, down = -1), then reset.
     readWheelNotches() {
-        const notches = this._wheel;
-        this._wheel = 0;
+        const notches = this._wheelNotches;
+        this._wheelNotches = 0;
         return notches;
     }
 
@@ -129,9 +129,9 @@ class InputMouse {
         if (!this._lockAllowed || document.pointerLockElement || (this._canvas === null)) {
             return;
         }
-        const p = this._canvas.requestPointerLock({ unadjustedMovement: true });
-        if (p) {
-            p.catch((e) => {
+        const lockRequest = this._canvas.requestPointerLock({ unadjustedMovement: true });
+        if (lockRequest) {
+            lockRequest.catch((e) => {
                 if (e.name === 'NotSupportedError') {
                     this._canvas.requestPointerLock();
                 }
@@ -147,7 +147,7 @@ class InputMouse {
         this._locked         = false;
         this._leftClick      = false;
         this._focusClick     = false;
-        this._wheel          = 0;
+        this._wheelNotches   = 0;
         this._pauseRequested = false;
     }
 

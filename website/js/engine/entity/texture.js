@@ -7,22 +7,15 @@ class Texture extends AbstractLoadedEntity {
         this._averageColor = null;
     }
 
-    /**
-     * Pixels of the texture, handed over by the loader once the image is
-     * decoded (or built in memory). finalizeInit derives the alpha flag from
-     * them afterwards.
-     *
-     * @param {ImageData} imageData
-     */
     setImageData(imageData) {
         this._imageData = imageData;
         return this;
     }
 
     finalizeInit() {
-        const d = this._imageData.data;
-        for (let i = 3; i < d.length; i += 4) {
-            if (d[i] !== 255) {
+        const pixels = this._imageData.data;
+        for (let i = 3; i < pixels.length; i += 4) {
+            if (pixels[i] !== 255) {
                 this._alpha = true;
                 break;
             }
@@ -34,9 +27,7 @@ class Texture extends AbstractLoadedEntity {
     }
 
     /**
-     * Average colour of the texture, computed on first use and kept. Only the
-     * opaque texels count, so the transparent border of a sprite does not wash
-     * it out; a texture with no opaque texel at all answers white.
+     * Average of the opaque texels, computed once; white when there is none.
      *
      * @returns {number[]} [r, g, b], each 0-255
      */
@@ -44,15 +35,15 @@ class Texture extends AbstractLoadedEntity {
         if (this._averageColor !== null) {
             return this._averageColor;
         }
-        const data = this._imageData.data;
+        const pixels = this._imageData.data;
         let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] === 0) {
+        for (let i = 0; i < pixels.length; i += 4) {
+            if (pixels[i + 3] === 0) {
                 continue;
             }
-            r += data[i];
-            g += data[i + 1];
-            b += data[i + 2];
+            r += pixels[i];
+            g += pixels[i + 1];
+            b += pixels[i + 2];
             count++;
         }
         this._averageColor = ((count === 0) ? [255, 255, 255] : [r / count, g / count, b / count]);

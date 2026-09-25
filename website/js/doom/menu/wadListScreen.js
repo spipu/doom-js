@@ -10,19 +10,19 @@ class WadListScreen extends AbstractMenuScreen {
     constructor(navigator, display, registry) {
         super(navigator, display);
 
-        this._registry  = registry;
-        this._listEl        = null;
-        this._urlInput      = null;
-        this._fileInput     = null;
-        this._buttons       = [];
+        this._registry       = registry;
+        this._listEl         = null;
+        this._urlInput       = null;
+        this._fileInput      = null;
+        this._formButtons    = [];
         this._languageButton = null;
     }
 
     _build() {
-        this._listEl    = null;
-        this._urlInput  = null;
-        this._fileInput = null;
-        this._buttons   = [];
+        this._listEl      = null;
+        this._urlInput    = null;
+        this._fileInput   = null;
+        this._formButtons = [];
 
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
@@ -62,7 +62,7 @@ class WadListScreen extends AbstractMenuScreen {
         const addUrlButton = this._addButton(appTranslator.get('menu.wad.addUrl'), () => {
             this._onAddUrl();
         }, form);
-        this._buttons.push(addUrlButton);
+        this._formButtons.push(addUrlButton);
 
         this._fileInput = this._addElement('input', 'doom-menu-file-input', form);
         this._fileInput.type = 'file';
@@ -71,7 +71,7 @@ class WadListScreen extends AbstractMenuScreen {
             this._onAddFile(event);
         });
 
-        this._buttons.push(this._addButton(appTranslator.get('menu.wad.addFile'), () => {
+        this._formButtons.push(this._addButton(appTranslator.get('menu.wad.addFile'), () => {
             this._fileInput.click();
         }, form));
     }
@@ -173,8 +173,7 @@ class WadListScreen extends AbstractMenuScreen {
         this._navigator.openWadMenu(meta);
     }
 
-    // Cycles the UI language and rebuilds the screen: every label is built
-    // once, so nothing short of a rebuild follows the new language.
+    // Every label is built once: only a rebuild follows the new language.
     _cycleLanguage() {
         const definition = this._languageDefinition();
         doomSettings
@@ -182,7 +181,7 @@ class WadListScreen extends AbstractMenuScreen {
             .applyToTranslator(appTranslator);
 
         // The rebuild drops every highlight: hand it back to the button just
-        // pressed, so changing language twice in a row needs no re-aiming.
+        // pressed.
         this.show();
         this._nav.focusSideButton(this._languageButton);
     }
@@ -194,7 +193,7 @@ class WadListScreen extends AbstractMenuScreen {
     // --- Internal ---
 
     _setBusy(busy) {
-        for (const button of this._buttons) {
+        for (const button of this._formButtons) {
             button.disabled = busy;
         }
     }

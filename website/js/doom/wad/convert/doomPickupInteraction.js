@@ -1,5 +1,5 @@
 /**
- * Proximity pickup interaction (phase 3). When the player enters the pickup
+ * Proximity pickup interaction. When the player enters the pickup
  * Instance's radius, the effect descriptor is applied to the DoomUser through
  * DoomGame.applyPickup; if anything is consumed the Instance is despawned.
  * Effects that would do nothing (full health/armor, owned weapon/key) leave the
@@ -27,11 +27,8 @@ class DoomPickupInteraction extends AbstractInteraction {
 
     triggered(instance) {
         const user = loader.world().get().getUser();
-        // A counted item is taken whatever it gives: the vanilla MF_COUNTITEM
-        // things all carry ALWAYSPICKUP too, so an armor bonus at 200 vanishes
-        // and still scores. An artifact with no effect wired yet is the one
-        // exception — it would disappear for nothing. Everything else keeps the
-        // refusal rule above.
+        // Vanilla MF_COUNTITEM things all carry ALWAYSPICKUP: a counted item is
+        // taken whatever it gives, unless it has no effect wired yet.
         const alwaysPickup = (this._countsItem && ((this._effect ?? null) !== null));
         if (!this._game.applyPickup(user, this._effect) && !alwaysPickup) {
             return;

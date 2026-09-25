@@ -112,10 +112,8 @@ class SoundEngine {
         return this;
     }
 
-    // Hearing is logarithmic: a linear 0.5 sounds far louder than "half".
-    // Squared, the mid setting lands near -12 dB — about half the perceived
-    // loudness — and the whole 0..100% range stays usable. The single place
-    // the curve lives.
+    // Hearing is logarithmic: squared, the mid setting lands near -12 dB,
+    // about half the perceived loudness.
     static _volumeCurve(fraction) {
         const clamped = Math.min(Math.max(fraction, 0), 1);
         return (clamped * clamped);

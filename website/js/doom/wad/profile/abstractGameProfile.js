@@ -1,17 +1,14 @@
 /**
  * Per-game policy of the WAD converter — the pure contract. The binary map
- * format is identical across Doom-engine games, but the SEMANTICS (thing
- * types, linedef/sector specials, level progression, animation sequences,
- * switch pairs, sky, assets) live in the game executable — so they live in a
- * profile per game. NOTHING game-specific may exist outside the profiles.
+ * format is identical across Doom-engine games, but the semantics (thing
+ * types, specials, progression, animations, switches, sky, assets) live in
+ * the game executable, hence one profile per game.
  *
- * Hierarchy: DefaultGameProfile carries the generic doom-format behaviour
- * (the WadConstants tables ARE that baseline) and is the fallback for any
- * unrecognized WAD; every game profile (doom, freedoom, heretic…) extends it
- * and overrides only its divergences. The right profile for a WAD is picked
- * by GameProfileList.getForWad, which asks every registered profile
- * matchesWad (GZDoom iwadinfo approach: each game is recognized by lumps
- * only it carries).
+ * DefaultGameProfile carries the generic doom-format behaviour (the
+ * WadConstants tables are that baseline) and is the fallback for any
+ * unrecognized WAD; every game profile extends it and overrides only its
+ * divergences. GameProfileList.getForWad picks the profile through matchesWad
+ * (GZDoom iwadinfo approach: each game is recognized by lumps only it carries).
  */
 class AbstractGameProfile {
     /**
@@ -70,7 +67,7 @@ class AbstractGameProfile {
 
     /**
      * Level progression data (WadMapInfo synthesizes the per-level chain from
-     * these rules applied to the level name patterns; UMAPINFO overlays it).
+     * these rules applied to the level code patterns; UMAPINFO overlays it).
      *
      * @returns {{episodeSecretReturns: object, mapSecretSlot: string, mapSuperSecretSlot: string, mapSecretReturn: string}}
      */
@@ -85,7 +82,7 @@ class AbstractGameProfile {
      * the level names. An episode present in the WAD but absent from this
      * table only shows its number ("Episode 6").
      *
-     * @returns {object} first level name → episode name
+     * @returns {object} first level code → episode name
      */
     episodeNames() {
         this._generateException('episodeNames must be implemented');
@@ -129,9 +126,7 @@ class AbstractGameProfile {
 
     /**
      * Catalog mapping the THING editor numbers of this game to world
-     * descriptors — generic assembly: the resolver is the shared
-     * DoomThingCatalog, only the data (thingDecorations / thingTypes) is
-     * per-game.
+     * descriptors; only the data (thingDecorations / thingTypes) is per-game.
      *
      * @returns {DoomThingCatalog}
      */
@@ -140,8 +135,7 @@ class AbstractGameProfile {
     }
 
     /**
-     * Assemble the game's monster catalog. Generic here: the mechanics are in
-     * DoomMonsterCatalog, only the data (monsterDefs) is per-game.
+     * The game's monster catalog; only the data (monsterDefs) is per-game.
      *
      * @returns {DoomMonsterCatalog}
      */
@@ -164,7 +158,7 @@ class AbstractGameProfile {
      * Map actions fired when the last boss of a type dies (vanilla
      * A_BossDeath). Keyed by the same codes the monster defs carry in their
      * bossMaps ('E1M8', or 'MAP07-1'/'MAP07-2' when one map hosts two boss
-     * groups — the level name is key.split('-')[0]). Value: {special, tag}
+     * groups — the level code is key.split('-')[0]). Value: {special, tag}
      * (internal special codes, same vocabulary as the mover tables) or
      * {exit: true}.
      *
@@ -179,7 +173,7 @@ class AbstractGameProfile {
      * instead of staying put (mapinfo `allowmonstertelefrags`): the Icon of
      * Sin's arena needs it, nothing else does.
      *
-     * @returns {string[]} level names
+     * @returns {string[]} level codes
      */
     monsterTelefragMaps() {
         return [];
@@ -250,10 +244,8 @@ class AbstractGameProfile {
 
     /**
      * THING editor numbers that count towards the level's item score (vanilla
-     * MF_COUNTITEM): the bonuses and power-ups only, never weapons, ammo,
-     * medikits, armors or keys. In vanilla these same things also carry
-     * ALWAYSPICKUP, so a counted item is consumed and counted even when it
-     * gives nothing — the pickup path relies on that coincidence.
+     * MF_COUNTITEM): bonuses and power-ups only. The pickup path relies on
+     * these also being ALWAYSPICKUP in vanilla: counted even when useless.
      *
      * @returns {Set<number>}
      */
@@ -295,8 +287,7 @@ class AbstractGameProfile {
     }
 
     /**
-     * @returns {object} code → DoomWeapon definition (empty when the game's
-     *                   arsenal is not implemented yet)
+     * @returns {object} code → DoomWeapon definition
      */
     buildWeapons() {
         this._generateException('buildWeapons must be implemented');
@@ -472,10 +463,10 @@ class AbstractGameProfile {
      * games reuse songs across levels when a WAD carries fewer music lumps
      * than maps).
      *
-     * @param {string} levelName
+     * @param {string} levelCode
      * @returns {string[]}
      */
-    levelMusicLumps(levelName) {
+    levelMusicLumps(levelCode) {
         this._generateException('levelMusicLumps must be implemented');
         return [];
     }
@@ -567,10 +558,10 @@ class AbstractGameProfile {
     /**
      * Sky texture + horizontal wrap for a level.
      *
-     * @param {string} levelName
+     * @param {string} levelCode
      * @returns {{name: string, wrap: number}}
      */
-    skyForLevel(levelName) {
+    skyForLevel(levelCode) {
         this._generateException('skyForLevel must be implemented');
         return {};
     }
@@ -605,22 +596,15 @@ class AbstractGameProfile {
     }
 
     /**
-     * The splash shown on a liquid this game describes none for — our own
-     * masks, colourised at level load with the average colour of the flat
-     * (DoomGenericSplash). Shared by every game, so it lives here rather than
-     * in one profile; a game with graphics of its own may still override it.
+     * The splash shown on a liquid this game describes none for: our own
+     * masks, colourised at level load with the flat's average colour
+     * (DoomGenericSplash).
      *
-     * The masks are greyscale PNGs WITH an alpha channel: the alpha carries
-     * the shape, and the red channel alone is read as the luminance. Their
-     * size in the world comes from their own pixel size divided by the part's
-     * pixelsPerUnit, so redrawing them at another resolution only means
-     * scaling that figure by the same factor. Every frame is cropped to its
-     * drawing and carries its own anchor IN ITS OWN PIXELS — the point of the
-     * image the splash is born at, exactly as a Doom sprite lump carries its
-     * leftOffset / topOffset.
-     *
-     * The anchors below were measured against the Heretic SPSH sprites these
-     * masks replace: same water ring footprint, same point on the ground.
+     * The masks are greyscale PNGs with alpha (alpha = shape, red = luminance);
+     * world size = pixel size / pixelsPerUnit, so a redraw at another
+     * resolution scales that figure. Each frame is cropped and carries its
+     * anchor in its own pixels, like a sprite's leftOffset / topOffset; the
+     * anchors were measured against the Heretic SPSH sprites they replace.
      *
      * @returns {object}
      */
@@ -632,11 +616,8 @@ class AbstractGameProfile {
             // upright, which no original game does.
             chunkVel: {xVelShift: 8, yVelShift: 8, zVelShift: 8, baseZVel: 2},
             chunkSpin: 90,
-            // The masks are normalised onto the flat's own average colour, so
-            // the splash would come out EXACTLY the shade it stands on — and
-            // its translucency blends the flat back in on top of that. This
-            // lifts it off its background; the clamp keeps the brightest
-            // texels from wrapping.
+            // Tinted with the flat's own average colour, the translucent splash
+            // would vanish into it: this gain lifts it off its background.
             tintGain: 1.3,
             parts: [
                 {

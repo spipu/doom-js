@@ -16,7 +16,7 @@ class AppServiceWorker {
      * @param {WorkerGlobalScope} serviceWorker
      */
     constructor(serviceWorker) {
-        this.serviceWorker = serviceWorker;
+        this.serviceWorker    = serviceWorker;
         this.statsFetchTotal  = 0;
         this.statsFetchServer = 0;
         this.statsFetchCache  = 0;
@@ -125,12 +125,12 @@ class AppServiceWorker {
                         this.logDebug('Get from server', event.request.url);
                         this.statsFetchServer++;
                         return fetch(event.request, {cache: "no-store"})
-                            .then(response => this.cache(event.request, response).then(() => response));
+                            .then(response => this.putInCache(event.request, response).then(() => response));
                     })
         );
     }
 
-    async cache(request, response) {
+    async putInCache(request, response) {
         // A cached HTTP error would be served until the next version bump; ok is also false for error/opaque types.
         if (!response.ok) {
             return;

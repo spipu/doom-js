@@ -1,26 +1,19 @@
 /**
  * Doom HUD coordinator. It owns two views over the same overlay element and
  * toggles which one is visible and updated:
- *   - _game  : the modern graphical status bar (HudGameBar), shown by default
- *   - _debug : the textual debug overlay (HudDoomDebug: fps / position / inputs
- *              / full equipment / level / secrets)
+ *   - _gameBar : the graphical status bar (HudGameBar), shown by default
+ *   - _debug   : the textual debug overlay (HudDoomDebug)
+ * plus the automap layer and the crosshair, shown over either view.
  *
- * ScreenManager drives a single HUD (init + setRatio + update every frame), so
- * the toggle lives here rather than by re-binding the screen: both sub-views
- * init() their own DOM root into the same overlay container, and only the active
- * one is updated (the inactive one is hidden via setVisible). Every full-screen
- * tint is composited once here, on the shared container (_computeScreenTint).
- *
- * The aiming crosshair (a plain cross of two crossing bars, centred on the view
- * point) also lives here so it shows over BOTH views; it follows the
- * display.crosshair setting live (read every frame — a toggle from the help
- * modal applies without reloading).
+ * ScreenManager drives a single HUD, so the toggle lives here rather than in a
+ * screen re-binding. Every full-screen tint is composited once here, on the
+ * shared container (_computeScreenTint).
  */
 class HudDoom extends AbstractHud {
     constructor(engine) {
         super(engine);
         this._debug     = new HudDoomDebug(engine);
-        this._game      = new HudGameBar(engine);
+        this._gameBar   = new HudGameBar(engine);
         this._automap   = new HudAutomap(engine);
         this._mode      = 'game';
         this._crosshair = null;
@@ -29,7 +22,7 @@ class HudDoom extends AbstractHud {
     bindUser(user) {
         this._user = user;
         this._debug.bindUser(user);
-        this._game.bindUser(user);
+        this._gameBar.bindUser(user);
         this._automap.bindUser(user);
         return this;
     }
@@ -41,11 +34,9 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
-    // The game bar needs the game to resolve the active weapon's ammo type and
-    // name; the debug view needs it for the secret count.
     bindGame(game) {
         this._debug.bindGame(game);
-        this._game.bindGame(game);
+        this._gameBar.bindGame(game);
         this._automap.bindGame(game);
         return this;
     }
@@ -70,7 +61,7 @@ class HudDoom extends AbstractHud {
     setRatio(ratio) {
         this._ratio = ratio;
         this._debug.setRatio(ratio);
-        this._game.setRatio(ratio);
+        this._gameBar.setRatio(ratio);
         this._automap.setRatio(ratio);
         return this;
     }
@@ -78,7 +69,7 @@ class HudDoom extends AbstractHud {
     init(container) {
         super.init(container);
         this._debug.init(container);
-        this._game.init(container);
+        this._gameBar.init(container);
         this._buildCrosshair(container);
         // Last, so the map covers the whole HUD; the virtual pad, with its own
         // z-index in the display, still comes over it.
@@ -86,7 +77,6 @@ class HudDoom extends AbstractHud {
         this._applyVisibility();
     }
 
-    // Keyboard toggle between the two views (bound to the H key by DoomGame)
     toggleMode() {
         this._mode = ((this._mode === 'game') ? 'debug' : 'game');
         this._applyVisibility();
@@ -98,9 +88,8 @@ class HudDoom extends AbstractHud {
         this._automap.toggle();
     }
 
-    // What the player was looking at — the active view and whether the map is
-    // open. Carried across a HUD rebuilt on a fresh engine (renderer swap), so
-    // the swap does not throw him back to the game view with the map closed.
+    // Carried across a HUD rebuilt on a fresh engine (renderer swap), so the
+    // player keeps his view and his open map.
     getViewState() {
         return {mode: this._mode, automap: this._automap.isVisible()};
     }
@@ -115,11 +104,12 @@ class HudDoom extends AbstractHud {
 
     update() {
         this._applyScreenFlash();
+        // Read every frame: a toggle from the options applies without reloading.
         if (this._crosshair !== null) {
             this._crosshair.style.display = ((doomSettings.getDisplayCrosshair()) ? 'block' : 'none');
         }
         if (this._mode === 'game') {
-            this._game.update();
+            this._gameBar.update();
         } else {
             this._debug.update();
         }
@@ -127,17 +117,13 @@ class HudDoom extends AbstractHud {
     }
 
     _applyVisibility() {
-        this._game.setVisible(this._mode === 'game');
+        this._gameBar.setVisible(this._mode === 'game');
         this._debug.setVisible(this._mode === 'debug');
     }
 
-    // The ONE aggregation of every screen tint, composited like UZDoom's
-    // V_AddPlayerBlend (v_blend.cpp, same order): the powerup layers first
-    // (POWERUP_SCREEN_TINTS — radiation green, invulnerability gold — solid
-    // until 4*32 remaining tics then strobing), berserk red wash fading out,
-    // then the pickup pulse (BONUS gold) and the damage/death reds merged in:
-    // a decaying red fades back into the layers it was mixed with instead of
-    // dipping through transparent.
+    // Composited in the order of UZDoom's V_AddPlayerBlend (v_blend.cpp):
+    // power-ups, berserk, pickup, damage, death — a decaying red fades back into
+    // the layers beneath instead of dipping through transparent.
     _computeScreenTint() {
         const palette = WadConstants.SCREEN_FLASH_PALETTE;
         const blend   = [0, 0, 0, 0];
@@ -164,11 +150,8 @@ class HudDoom extends AbstractHud {
         return ((blend[3] > 0) ? AbstractHud.rgba(blend, blend[3]) : null);
     }
 
-    // A plain cross centred on the view point (where free-aim shots land):
-    // a full-size wrapper carries the cqh unit (container-type like the game
-    // bar root, letterbox proportional), holding one horizontal and one
-    // vertical bar. Translucent lightly-red tint with a dark halo so it reads
-    // on bright and dark walls alike.
+    // The full-size wrapper is a size container, so the bars follow the
+    // letterbox in cqh; the dark halo keeps them readable on bright walls.
     _buildCrosshair(container) {
         this._crosshair = document.createElement('div');
         Object.assign(this._crosshair.style, {

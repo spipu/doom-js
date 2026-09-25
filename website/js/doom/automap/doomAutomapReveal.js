@@ -8,13 +8,10 @@
  * wall already covers. A wall hidden behind another one therefore stays dark,
  * exactly like the original.
  *
- * Angles are BAM integers like the engine's angle_t, absolute and never
- * relative to the view: a vertex shared by two walls then yields the very same
- * integer, so their covered ranges touch exactly and merge into one. In
- * floating degrees they miss each other by a rounding step, and since the
- * clipper only ever tests ONE range at a time (IsRangeVisible), a distant wall
- * straddling that seam was declared visible. The view window is itself a
- * covered range, inserted like CreateScene does with FrustumAngle.
+ * Angles are absolute BAM integers like angle_t: a vertex shared by two walls
+ * yields the same integer, so their covered ranges touch exactly and merge —
+ * floating degrees would leave a seam the single-range test sees through.
+ * The view window is itself a covered range (CreateScene's FrustumAngle).
  */
 class DoomAutomapReveal {
     /**
@@ -27,25 +24,25 @@ class DoomAutomapReveal {
         this._byLdIdx       = byLdIdx;
         this._heights       = heights;
         this._ranges        = [];      // covered angular spans, sorted and disjoint
-        this._blocked       = false;
+        this._fullyOccluded = false;
         this._revealRangeSq = (WadConstants.AUTOMAP_REVEAL_RANGE * WadConstants.AUTOMAP_REVEAL_RANGE);
-        this._x             = 0;
-        this._y             = 0;
+        this._viewX         = 0;
+        this._viewY         = 0;
     }
 
     // One pass from the player's spot, in Doom units and Doom angles. The
     // window is the game's CURRENT field of view, so a telezoom arrival reveals
     // exactly as wide as it renders.
     revealFrom(doomX, doomY, viewAngle, halfWindow) {
-        this._x = doomX;
-        this._y = doomY;
+        this._viewX = doomX;
+        this._viewY = doomY;
         this._ranges.length = 0;
-        this._blocked = false;
+        this._fullyOccluded = false;
 
         const half = DoomAutomapReveal._bam(halfWindow);
         if (half < DoomAutomapReveal.ANGLE_180) {
             const view = DoomAutomapReveal._bam(viewAngle);
-            this._addSafe(DoomAutomapReveal._wrap(view + half), DoomAutomapReveal._wrap(view - half));
+            this._safeAddRange(DoomAutomapReveal._wrap(view + half), DoomAutomapReveal._wrap(view - half));
         }
         this._descend(this._bsp.nodes.length - 1);
     }
@@ -55,30 +52,29 @@ class DoomAutomapReveal {
     // R_RenderBSPNode: the near child first, so a wall is always met before
     // whatever it hides — the whole point of the clipper.
     _descend(child) {
-        if (this._blocked) {
+        if (this._fullyOccluded) {
             return;
         }
         if (WadBspTree.isLeaf(child)) {
-            this._leaf(WadBspTree.leafIndex(child));
+            this._walkSubsector(WadBspTree.leafIndex(child));
             return;
         }
         const node = this._bsp.nodes[child];
-        const back = (WadGeometry.pointOnLineSide(this._x, this._y, node.x, node.y,
+        const back = (WadGeometry.pointOnLineSide(this._viewX, this._viewY, node.x, node.y,
             node.x + node.dx, node.y + node.dy) === 1);
         this._descend(((back) ? node.leftChild : node.rightChild));
         this._descend(((back) ? node.rightChild : node.leftChild));
     }
 
-    _leaf(ssIdx) {
+    _walkSubsector(ssIdx) {
         const ss = this._bsp.ssectors[ssIdx];
         for (let i = 0; i < ss.segCount; i++) {
-            this._seg(this._bsp.segs[ss.firstSeg + i]);
+            this._walkSeg(this._bsp.segs[ss.firstSeg + i]);
         }
     }
 
-    _seg(seg) {
-        // Like AddLine: a seg with no sidedef of its own neither reveals nor
-        // occludes.
+    _walkSeg(seg) {
+        // AddLine: a seg with no sidedef of its own neither reveals nor occludes.
         if (seg.siFront === null) {
             return;
         }
@@ -89,7 +85,7 @@ class DoomAutomapReveal {
         if (DoomAutomapReveal._wrap(start - end) < DoomAutomapReveal.ANGLE_180) {
             return;
         }
-        if (!this._checkRange(start, end)) {
+        if (!this._safeCheckRange(start, end)) {
             return;
         }
         const line = this._byLdIdx[seg.ldIdx];
@@ -97,7 +93,7 @@ class DoomAutomapReveal {
             line.seen = true;
         }
         if (this._isSolid(seg)) {
-            this._addSafe(start, end);
+            this._safeAddRange(start, end);
         }
     }
 
@@ -106,7 +102,7 @@ class DoomAutomapReveal {
     // anyway. Only the marking is limited — an out-of-range wall still
     // occludes, and what it hides is farther still.
     _inRevealRange(seg) {
-        return (WadGeometry.pointSegmentDistSq(this._x, this._y, seg.x1, seg.y1, seg.x2, seg.y2)
+        return (WadGeometry.pointSegmentDistSq(this._viewX, this._viewY, seg.x1, seg.y1, seg.x2, seg.y2)
             <= this._revealRangeSq);
     }
 
@@ -127,7 +123,7 @@ class DoomAutomapReveal {
 
     // SafeCheckRange: a span straddling the zero seam is tested in two parts,
     // and stays visible as soon as either part is.
-    _checkRange(start, end) {
+    _safeCheckRange(start, end) {
         if (start > end) {
             return (this._rangeVisible(start, DoomAutomapReveal.ANGLE_MAX) || this._rangeVisible(0, end));
         }
@@ -154,7 +150,7 @@ class DoomAutomapReveal {
     }
 
     // SafeAddClipRange
-    _addSafe(start, end) {
+    _safeAddRange(start, end) {
         if (start > end) {
             this._addRange(start, DoomAutomapReveal.ANGLE_MAX);
             this._addRange(0, end);
@@ -176,8 +172,7 @@ class DoomAutomapReveal {
         const mergedLo = ((last > first) ? Math.min(lo, this._ranges[first].lo) : lo);
         const mergedHi = ((last > first) ? Math.max(hi, this._ranges[last - 1].hi) : hi);
         this._ranges.splice(first, last - first, {lo: mergedLo, hi: mergedHi});
-        // Nothing can be revealed once the whole turn is walled off.
-        this._blocked = ((this._ranges.length === 1) && (this._ranges[0].lo === 0)
+        this._fullyOccluded = ((this._ranges.length === 1) && (this._ranges[0].lo === 0)
             && (this._ranges[0].hi === DoomAutomapReveal.ANGLE_MAX));
     }
 
@@ -185,7 +180,7 @@ class DoomAutomapReveal {
 
     _angleTo(x, y) {
         return DoomAutomapReveal._wrap(
-            Math.round(Math.atan2(y - this._y, x - this._x) * DoomAutomapReveal.BAM_PER_RADIAN));
+            Math.round(Math.atan2(y - this._viewY, x - this._viewX) * DoomAutomapReveal.BAM_PER_RADIAN));
     }
 
     static _bam(degrees) {

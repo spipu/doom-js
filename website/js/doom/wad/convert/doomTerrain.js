@@ -7,31 +7,29 @@
  * the shot met: a "+change" floor rewrites that flat at runtime, and the
  * baked geometry would answer with the one the level was built on.
  *
- * Every attack path that can reach the ground comes through splashAt — the
- * shot, the projectile, the falling body, the blast — so a splash exists in
- * exactly one place, and a chunk falling back into the liquid cannot provoke
- * another: only those callers ever ask. Vanilla needs a flag (+DONTSPLASH)
- * for what the single entry point gives here.
+ * Only the shot, the projectile, the falling body and the blast call
+ * splashAt, so a chunk falling back into the liquid never splashes again —
+ * what vanilla needs +DONTSPLASH for.
  */
 class DoomTerrain {
     /**
-     * @param {function}            siAt     (doomX, doomY) → sector index | null
-     * @param {DoomSectorSurfaces}  surfaces live floor flat of each sector
-     * @param {object}              flats    flat name → terrain code
-     * @param {object}              terrains terrain code → splash definition
+     * @param {function}            sectorIndexAt (doomX, doomY) → sector index | null
+     * @param {DoomSectorSurfaces}  surfaces      live floor flat of each sector
+     * @param {object}              flats         flat name → terrain code
+     * @param {object}              terrains      terrain code → splash definition
      */
-    constructor(siAt, surfaces, flats, terrains) {
-        this._siAt     = siAt;
-        this._surfaces = surfaces;
-        this._flats    = flats;
-        this._terrains = terrains;
-        this._effects  = null;
-        this._tints    = {};
+    constructor(sectorIndexAt, surfaces, flats, terrains) {
+        this._sectorIndexAt = sectorIndexAt;
+        this._surfaces      = surfaces;
+        this._flats         = flats;
+        this._terrains      = terrains;
+        this._effects       = null;
+        this._tints         = {};
         // A stream of its own (vanilla's pr_chunk), NOT the game's table: of
         // the four paths that splash, only the falling body exists in the
         // original, so drawing the other three from the shared table would
         // shift every later roll of the game away from it.
-        this._rng      = new DoomRandom();
+        this._rng           = new DoomRandom();
     }
 
     /**
@@ -103,7 +101,7 @@ class DoomTerrain {
      * @returns {object|null} the terrain's splash definition, null on dry ground
      */
     terrainAt(worldX, worldZ) {
-        const si = this._siAt(worldX / WadConstants.SCALE, worldZ / WadConstants.SCALE);
+        const si = this._sectorIndexAt(worldX / WadConstants.SCALE, worldZ / WadConstants.SCALE);
         if (si === null) {
             return null;
         }
@@ -141,23 +139,17 @@ class DoomTerrain {
         if ((terrain === null) || (this._effects === null)) {
             return false;
         }
-        // Read through ?? so a terrain may spell an absent component either
-        // way: by leaving the key out, or by declaring it null as the coding
-        // rules ask for elsewhere.
         const base  = (terrain.base ?? null);
         const chunk = (terrain.chunk ?? null);
         const sound = (terrain.sound ?? null);
-        // Spawning may still come back empty — a WAD naming a splash actor no
-        // profile builds a template for — and such a terrain must report the
-        // silence rather than swallow the caller's own effect.
+        // A WAD may name a splash actor no profile builds: report the silence
+        // rather than swallow the caller's own effect.
         let spawned = false;
         if (base !== null) {
             spawned = ((this._effects.spawn(base, x, y, z, {mirror: this._mirror()}) !== null) || spawned);
         }
         if (chunk !== null) {
-            // Held in locals for the same reason _chunkVelocity is: the draws
-            // must follow a pinned order, not the one an object literal
-            // happens to evaluate its fields in.
+            // Locals pin the random draw order, like _chunkVelocity.
             const velocity = this._chunkVelocity(terrain.chunkVel);
             const mirror   = this._mirror();
             const roll     = this._roll(terrain.chunkSpin ?? null);

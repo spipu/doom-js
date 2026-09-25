@@ -27,26 +27,26 @@ class Light {
     getColorFor(pt, normal, out) {
         const fp = this._finalPosition;
         const dpx = fp[0] - pt[0], dpy = fp[1] - pt[1], dpz = fp[2] - pt[2];
-        const dn = Math.sqrt(dpx*dpx + dpy*dpy + dpz*dpz);
+        const dist = Math.sqrt(dpx*dpx + dpy*dpy + dpz*dpz);
 
-        let f = (normal[0]*dpx + normal[1]*dpy + normal[2]*dpz);
-        if (f < 0.) {
-            f = 0.;
-        } else if (dn) {
-            f /= dn;
+        let intensity = (normal[0]*dpx + normal[1]*dpy + normal[2]*dpz);
+        if (intensity < 0.) {
+            intensity = 0.;
+        } else if (dist) {
+            intensity /= dist;
         }
 
         if (this.range) {
-            const d = (1. - dn / this.range);
-            if (d < 0.) {
-                f = 0.;
+            const falloff = (1. - dist / this.range);
+            if (falloff < 0.) {
+                intensity = 0.;
             } else {
-                f = f * Math.sqrt(d);
+                intensity = intensity * Math.sqrt(falloff);
             }
         }
 
-        out[0] = this.color[0]*f;
-        out[1] = this.color[1]*f;
-        out[2] = this.color[2]*f;
+        out[0] = this.color[0]*intensity;
+        out[1] = this.color[1]*intensity;
+        out[2] = this.color[2]*intensity;
     }
 }

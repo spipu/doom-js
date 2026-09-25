@@ -2,10 +2,8 @@
  * The Icon of Sin's own bookkeeping: which spot the next cube is aimed at, and
  * what that cube hatches.
  *
- * Both answers are level STATE, not behaviour — the rotation must survive a
- * save, and the two verbs that consume it (A_BrainSpit through the attack
- * layer) stay three lines long. Same shape as DoomBossDeath: one service per
- * level, built by the world builder, handed the profile's data.
+ * Kept as level state so the rotation survives a save. One service per level,
+ * built by the world builder from the profile's data.
  */
 class DoomBossBrain {
     /**
@@ -15,11 +13,11 @@ class DoomBossBrain {
      *                             skipped (skills baby and easy)
      */
     constructor(targets, spawns, easy) {
-        this._targets   = targets;
-        this._spawns    = spawns;
-        this._skipEvery = ((easy === true) ? 1 : 0);
-        this._index     = 0;
-        this._skipCount = 0;
+        this._targets     = targets;
+        this._spawns      = spawns;
+        this._skipEvery   = ((easy === true) ? 1 : 0);
+        this._targetIndex = 0;
+        this._skipCount   = 0;
     }
 
     /**
@@ -39,15 +37,14 @@ class DoomBossBrain {
             return null;
         }
         this._skipCount = 0;
-        const spot = this._targets[this._index];
-        this._index = ((this._index + 1) % this._targets.length);
+        const spot = this._targets[this._targetIndex];
+        this._targetIndex = ((this._targetIndex + 1) % this._targets.length);
 
         return spot;
     }
 
     /**
      * Monster a cube hatches, drawn on the vanilla weighted ladder (SpawnFly).
-     * The roll comes from the shared P_Random table, like every other decision.
      *
      * @param {DoomRandom} rng
      * @returns {string} catalog key of the body to spawn
@@ -66,14 +63,14 @@ class DoomBossBrain {
     // The rotation is the only state: the spots themselves are rebuilt with the
     // level, and the random table has its own index in the snapshot.
     exportState() {
-        return {index: this._index, skipCount: this._skipCount};
+        return {index: this._targetIndex, skipCount: this._skipCount};
     }
 
     importState(state) {
         if ((state ?? null) === null) {
             return;
         }
-        this._index     = (state.index ?? 0);
+        this._targetIndex = (state.index ?? 0);
         this._skipCount = (state.skipCount ?? 0);
     }
 }

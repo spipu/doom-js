@@ -8,19 +8,19 @@
  */
 class DoomPlayerWeapon {
     constructor(game, user, spriteBank, rng) {
-        this._game       = game;
-        this._user       = user;
-        this._sprites    = spriteBank;
-        this._rng        = rng;
-        this._hitscan    = null;
+        this._game        = game;
+        this._user        = user;
+        this._sprites     = spriteBank;
+        this._rng         = rng;
+        this._hitscan     = null;
         this._projectiles = null;
 
         this._weaponPsp = { stateKey: null, tics: 0 };
         this._flashPsp  = { stateKey: null, tics: 0 };
-        this._motion    = new DoomWeaponMotion();   // on-screen offset + smoothing
+        this._motion    = new DoomWeaponMotion();
 
-        this._ready         = user.getActiveWeapon();
-        this._pending       = null;
+        this._readyWeapon   = user.getActiveWeapon();
+        this._pendingWeapon = null;
         this._refire        = 0;
         this._attackDown    = false;
         this._fireHeld      = false;
@@ -28,8 +28,8 @@ class DoomPlayerWeapon {
         this._extraLight    = 0;
         this._noiseCallback = null;
 
-        this._ticks = 0;
-        this._acc   = 0;
+        this._ticks      = 0;
+        this._untickedMs = 0;
         this._weaponDown = false;
 
         this._bringUpWeapon();
@@ -63,9 +63,9 @@ class DoomPlayerWeapon {
 
     update(dtMs, fireHeld) {
         this._fireHeld = fireHeld;
-        this._acc += dtMs;
-        while (this._acc >= DoomPlayerWeapon.MS_PER_TIC) {
-            this._acc  -= DoomPlayerWeapon.MS_PER_TIC;
+        this._untickedMs += dtMs;
+        while (this._untickedMs >= DoomPlayerWeapon.MS_PER_TIC) {
+            this._untickedMs -= DoomPlayerWeapon.MS_PER_TIC;
             this._ticks += 1;
             if (this._user.isDead()) {
                 // P_DropWeapon / A_Lower dead case: the weapon slides down at
@@ -84,7 +84,7 @@ class DoomPlayerWeapon {
     }
 
     _tickPsprite(psp) {
-        if (psp.stateKey === null || psp.tics === -1) {
+        if ((psp.stateKey === null) || (psp.tics === -1)) {
             return;
         }
         psp.tics -= 1;
@@ -96,10 +96,10 @@ class DoomPlayerWeapon {
     // --- Weapon switching (retargetable pending weapon) ---
 
     requestWeapon(code) {
-        if (code === null || !this._user.hasWeapon(code) || code === this._target()) {
+        if ((code === null) || !this._user.hasWeapon(code) || (code === this._targetWeapon())) {
             return;
         }
-        this._pending = code;
+        this._pendingWeapon = code;
     }
 
     cycleWeapon(dir) {
@@ -107,15 +107,15 @@ class DoomPlayerWeapon {
         if (owned.length === 0) {
             return;
         }
-        let i = owned.indexOf(this._target());
+        let i = owned.indexOf(this._targetWeapon());
         if (i < 0) {
             i = 0;
         }
         this.requestWeapon(owned[(i + dir + owned.length) % owned.length]);
     }
 
-    _target() {
-        return ((this._pending !== null) ? this._pending : this._ready);
+    _targetWeapon() {
+        return ((this._pendingWeapon !== null) ? this._pendingWeapon : this._readyWeapon);
     }
 
     // --- View sprites for the renderer ---
@@ -125,11 +125,11 @@ class DoomPlayerWeapon {
             return [];
         }
         const out    = [];
-        const weapon = this._spriteDesc(this._weaponPsp, this._stateBright(this._weaponPsp));
+        const weapon = this._viewSpriteOf(this._weaponPsp, this._stateBright(this._weaponPsp));
         if (weapon !== null) {
             out.push(weapon);
         }
-        const flash = this._spriteDesc(this._flashPsp, true);
+        const flash = this._viewSpriteOf(this._flashPsp, true);
         if (flash !== null) {
             out.push(flash);
         }
@@ -138,7 +138,7 @@ class DoomPlayerWeapon {
 
     // Descriptor for the engine's generic overlay primitive: the motion places
     // the sprite in 0..1 screen space; fullbright frames ignore sector shading.
-    _spriteDesc(psp, bright) {
+    _viewSpriteOf(psp, bright) {
         if (psp.stateKey === null) {
             return null;
         }
@@ -164,7 +164,7 @@ class DoomPlayerWeapon {
     // --- State machine (P_SetPsprite / P_MovePsprites) ---
 
     _def() {
-        return this._game.getWeapon(this._ready);
+        return this._game.getWeapon(this._readyWeapon);
     }
 
     _stateOf(psp) {
@@ -195,14 +195,11 @@ class DoomPlayerWeapon {
             }
             stnum = this._def().getState(psp.stateKey).getNext();
             guard += 1;
-        } while (psp.tics === 0 && guard < 64);
+        } while ((psp.tics === 0) && (guard < 64));
     }
 
-    // Generic fire verbs, fully parameterized by the weapon def (pellets,
-    // spread, range, puff, decal, projectiles come from the profile data) —
-    // no game-specific action name may appear here.
-    // The player's weapon channel: a new sound replaces the previous one, the
-    // vanilla CHAN_WEAPON behaviour (the chainsaw idle re-buzzes every ready).
+    // A new sound replaces the previous one: the vanilla CHAN_WEAPON behaviour
+    // (the chainsaw idle re-buzzes every ready).
     _playActionSound(name) {
         const sound = this._def().getActionSound(name);
         if (sound !== null) {
@@ -210,6 +207,8 @@ class DoomPlayerWeapon {
         }
     }
 
+    // Generic verbs parameterized by the weapon def: no game-specific action
+    // name may appear here.
     _runAction(name, psp) {
         this._playActionSound(name);
         switch (name) {
@@ -246,7 +245,7 @@ class DoomPlayerWeapon {
     // --- Action functions (p_pspr.c) ---
 
     _aWeaponReady() {
-        if (this._pending !== null) {
+        if (this._pendingWeapon !== null) {
             this._setState(this._weaponPsp, this._def().getEntry().down);
             return;
         }
@@ -263,7 +262,7 @@ class DoomPlayerWeapon {
     }
 
     _aReFire() {
-        if (this._fireHeld && this._pending === null) {
+        if (this._fireHeld && (this._pendingWeapon === null)) {
             this._refire += 1;
             this._fireWeapon();
             return;
@@ -276,7 +275,7 @@ class DoomPlayerWeapon {
         if (!this._motion.lower(DoomPlayerWeapon.LOWERSPEED)) {
             return;
         }
-        this._ready = ((this._pending !== null) ? this._pending : this._ready);
+        this._readyWeapon = ((this._pendingWeapon !== null) ? this._pendingWeapon : this._readyWeapon);
         this._bringUpWeapon();
     }
 
@@ -331,12 +330,8 @@ class DoomPlayerWeapon {
         this._aFireProjectiles();
     }
 
-    // A_FireMissile / A_FirePlasma / A_FireBFG all decrement the weapon's ammo
-    // (the BFG's 40 cells via getPerShot) before spawning the shot(s) — one
-    // spawn per def entry, a multi-entry def fires a fan (Heretic crossbow).
-    // The ammo guard covers fire cycles with several firing states (Heretic
-    // skullrod: the second state dry-runs when the last rune is gone, like
-    // the ammo check opening every vanilla A_Fire*).
+    // A_FireMissile / A_FirePlasma / A_FireBFG. The ammo guard lets a second
+    // firing state dry-run once the ammo is gone (Heretic skullrod).
     _aFireProjectiles() {
         const type = this._def().getAmmoType();
         if ((type !== null) && (this._user.getAmmo(type) < this._def().getPerShot())) {
@@ -360,9 +355,9 @@ class DoomPlayerWeapon {
     // --- Weapon bring-up / ammo (P_BringUpWeapon / P_CheckAmmo) ---
 
     _bringUpWeapon() {
-        this._pending = null;
+        this._pendingWeapon = null;
         this._motion.dropToBottom();
-        this._user.setActiveWeapon(this._ready);
+        this._user.setActiveWeapon(this._readyWeapon);
         const upSound = this._def().getUpSound();
         if (upSound !== null) {
             doomSound.playAt(upSound, null, {replaceKey: 'player:weapon'});
@@ -392,10 +387,10 @@ class DoomPlayerWeapon {
     _checkAmmo() {
         const def  = this._def();
         const type = def.getAmmoType();
-        if (type === null || this._user.getAmmo(type) >= def.getPerShot()) {
+        if ((type === null) || (this._user.getAmmo(type) >= def.getPerShot())) {
             return true;
         }
-        this._pending = this._pickAmmoWeapon();
+        this._pendingWeapon = this._pickAmmoWeapon();
         this._setState(this._weaponPsp, def.getEntry().down);
         return false;
     }
@@ -435,4 +430,4 @@ class DoomPlayerWeapon {
 
 DoomPlayerWeapon.LOWERSPEED = 6;         // psprite raise/lower speed (units/tic)
 DoomPlayerWeapon.RAISESPEED = 6;
-DoomPlayerWeapon.MS_PER_TIC = 1000 / 35; // 35 tics per second
+DoomPlayerWeapon.MS_PER_TIC = 1000 / 35;

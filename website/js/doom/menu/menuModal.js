@@ -12,10 +12,10 @@ class MenuModal {
     }
 
     /**
-     * @param {string}   message
-     * @param {function} onConfirm
-     * @param {string}   confirmLabel
-     * @param {string}   cancelLabel
+     * @param {string}      message
+     * @param {function}    onConfirm
+     * @param {string|null} confirmLabel
+     * @param {string|null} cancelLabel
      */
     confirm(message, onConfirm, confirmLabel = null, cancelLabel = null) {
         doomSound.playUi('menu/prompt');
@@ -83,9 +83,7 @@ class MenuModal {
 
     /**
      * Error modal: a prominent centred message plus an optional technical detail
-     * (e.g. the top of a stack trace) and a single dismiss button. Used when
-     * level generation fails, so the cause is visible on screen and not only in
-     * the console.
+     * (e.g. the top of a stack trace) and a single dismiss button.
      *
      * @param {string}      message
      * @param {string|null} detail
@@ -195,17 +193,16 @@ class MenuModal {
 
     // Horizontal navigation over a buttons row (Left/Right + hover select,
     // Enter/pad-validate clicks, every back input plays backButton).
-    _attachButtonsNav(buttons, backButton, selected) {
+    _attachButtonsNav(buttons, backButton, selectedIndex) {
         this._nav = new MenuListNavigation(() => backButton.click(), () => !this._isTopOverlay())
             .setEscapeAsBack(true)
             .setHorizontal(true);
         for (const button of buttons) {
             this._nav.addButtonItem(button);
         }
-        this._nav.attach().selectIndex(selected);
+        this._nav.attach().selectIndex(selectedIndex);
     }
 
-    // Fresh overlay + modal + message shell, shared by every modal flavour.
     _createShell(message, modalClass, messageClass) {
         this.close();
 

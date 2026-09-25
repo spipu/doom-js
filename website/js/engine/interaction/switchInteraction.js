@@ -3,7 +3,7 @@ class SwitchInteraction extends AbstractInteraction {
         super();
         this._code         = code;
         this._state        = false;
-        this._onTimer      = 0;
+        this._stateTimer   = 0;
         this._done         = false;
         this._lastInstance = null;
         this.setModeOnce();
@@ -40,17 +40,17 @@ class SwitchInteraction extends AbstractInteraction {
         }
 
         const minTime = ((this._state) ? this._minOnTime : this._minOffTime);
-        if (this._mode !== 'once' && this._onTimer < minTime) {
+        if ((this._mode !== 'once') && (this._stateTimer < minTime)) {
             return;
         }
 
-        if (this._mode === 'timed' && this._state) {
+        if ((this._mode === 'timed') && this._state) {
             return;
         }
 
-        const previous = {state: this._state, onTimer: this._onTimer, done: this._done};
-        this._state   = !this._state;
-        this._onTimer = 0;
+        const previous = {state: this._state, stateTimer: this._stateTimer, done: this._done};
+        this._state      = !this._state;
+        this._stateTimer = 0;
         if (this._mode === 'once') {
             this._done = true;
         }
@@ -58,9 +58,9 @@ class SwitchInteraction extends AbstractInteraction {
         if (this._state) {
             // A refused ON (busy mover) spends nothing: the switch stays usable
             if (this._triggerOn(instance) === false) {
-                this._state   = previous.state;
-                this._onTimer = previous.onTimer;
-                this._done    = previous.done;
+                this._state      = previous.state;
+                this._stateTimer = previous.stateTimer;
+                this._done       = previous.done;
                 return;
             }
         } else {
@@ -70,11 +70,11 @@ class SwitchInteraction extends AbstractInteraction {
     }
 
     update(dt) {
-        this._onTimer += dt;
+        this._stateTimer += dt;
 
-        if (this._mode === 'timed' && this._state && this._onTimer >= this._minOnTime) {
-            this._state   = false;
-            this._onTimer = 0;
+        if ((this._mode === 'timed') && this._state && (this._stateTimer >= this._minOnTime)) {
+            this._state      = false;
+            this._stateTimer = 0;
             this._triggerOff(this._lastInstance);
         }
     }
@@ -82,15 +82,15 @@ class SwitchInteraction extends AbstractInteraction {
     exportState() {
         return {
             state:   this._state,
-            onTimer: this._onTimer,
+            onTimer: this._stateTimer,
             done:    this._done,
         };
     }
 
     importState(state) {
-        this._state   = (state.state === true);
-        this._onTimer = state.onTimer;
-        this._done    = (state.done === true);
+        this._state      = (state.state === true);
+        this._stateTimer = state.onTimer;
+        this._done       = (state.done === true);
     }
 
     // Returns whether the action took (false = refuse the press, see triggered).

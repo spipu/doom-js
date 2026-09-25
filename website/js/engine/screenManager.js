@@ -11,7 +11,7 @@ class ScreenManager {
         this._viewPortWidth     = options.viewPortWidth ?? 64;
         this._virtualWidth      = options.virtualWidth ?? null;
         this._virtualHeight     = options.virtualHeight ?? null;
-        this._hasVirtualDisplay = (this._virtualWidth !== null && this._virtualHeight !== null);
+        this._hasVirtualDisplay = ((this._virtualWidth !== null) && (this._virtualHeight !== null));
         this._ratio             = 1;
         this._canvasId          = screenId + '_canvas';
 
@@ -29,7 +29,7 @@ class ScreenManager {
     }
 
     _initContainer() {
-        this._container = document.createElement('div');
+        this._container                = document.createElement('div');
         this._container.style.position = ((this._fullscreen) ? 'fixed' : 'relative');
         this._container.style.display  = ((this._fullscreen) ? 'block'  : 'inline-block');
 
@@ -67,7 +67,7 @@ class ScreenManager {
     }
 
     _initHudOverlay() {
-        this._hudEl = document.createElement('div');
+        this._hudEl                     = document.createElement('div');
         this._hudEl.style.position      = 'absolute';
         this._hudEl.style.top           = '0';
         this._hudEl.style.left          = '0';
@@ -100,8 +100,7 @@ class ScreenManager {
         return this._canvas;
     }
 
-    // Letterboxed display area (virtual ratio). The virtual gamepad injects
-    // its touch overlay here so it follows the same letterbox as the canvas.
+    // Letterboxed display area, shared by the canvas and any touch overlay
     getDisplay() {
         return this._display;
     }
@@ -110,8 +109,7 @@ class ScreenManager {
         return this._ratio;
     }
 
-    // Width/height aspect of the surface the screen-space overlays map onto —
-    // the virtual display when one is set, the real canvas otherwise.
+    // Aspect of the virtual display when set, of the real canvas otherwise
     getAspectRatio() {
         if (this._hasVirtualDisplay) {
             return this._virtualWidth / this._virtualHeight;
@@ -134,7 +132,7 @@ class ScreenManager {
     _triggerResize() {
         const w = this._container.clientWidth;
         const h = this._container.clientHeight;
-        if (w === 0 || h === 0) {
+        if ((w === 0) || (h === 0)) {
             return;
         }
         this._screenWidth = w;

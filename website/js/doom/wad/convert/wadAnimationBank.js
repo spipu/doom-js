@@ -64,8 +64,7 @@ class WadAnimationBank {
             }
             const ids = sequence.frames.filter((f) => nameToIdx[f] !== undefined).map((f) => nameToIdx[f]);
             if (ids.length > 1) {
-                // Guard a malformed/zero speed (would give a 0/NaN frame duration);
-                // fall back to the vanilla default of 8 tics.
+                // A malformed zero speed would give a 0/NaN frame duration.
                 const tics = ((sequence.speedTics > 0) ? sequence.speedTics : WadConstants.ANIM_DEFAULT_SPEED_TICS);
                 const duration = tics * WadConstants.SECONDS_PER_TIC;
                 // P_UpdateSpecials cycles the whole range: a face painted with
@@ -89,7 +88,7 @@ class WadAnimationBank {
      * @returns {{ids: int[], duration: number}} ids = engine loader ids
      */
     flatSequenceLoaderIds(flatName) {
-        const seq = this._sequences.find((s) => s.isFlat && s.frames.includes(flatName));
+        const seq = this._sequences.find((s) => (s.isFlat && s.frames.includes(flatName)));
         const frames = ((seq !== undefined) ? seq.frames : [flatName]);
         const ids = [];
         for (const name of frames) {
@@ -129,12 +128,12 @@ class WadAnimationBank {
             i += 23;
 
             const nameList = ((isFlat) ? flatNames : wallNames);
-            const fi = nameList.indexOf(firstName);
-            const li = nameList.indexOf(lastName);
-            if ((fi === -1) || (li === -1) || (li < fi)) {
+            const firstIdx = nameList.indexOf(firstName);
+            const lastIdx  = nameList.indexOf(lastName);
+            if ((firstIdx === -1) || (lastIdx === -1) || (lastIdx < firstIdx)) {
                 continue;
             }
-            const frames = nameList.slice(fi, li + 1);
+            const frames = nameList.slice(firstIdx, lastIdx + 1);
             if (frames.length > 1) {
                 sequences.push({isFlat: isFlat, frames: frames, speedTics: speedTics});
             }

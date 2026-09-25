@@ -26,11 +26,11 @@ class WadThingBuilder {
         this._skill          = skill;
         this._monsterCatalog = monsterCatalog;
         this._skillRule      = skillRule;
-        this._skipped      = 0;
-        this._filtered     = 0;
-        this._monsterCount = 0;
-        this._spots        = {};
-        this._paddedFrames = {};   // anim key → padded frame view
+        this._skipped        = 0;
+        this._filtered       = 0;
+        this._monsterCount   = 0;
+        this._spots          = {};
+        this._paddedFrames   = {};   // anim key → padded frame view
     }
 
     /**
@@ -40,24 +40,20 @@ class WadThingBuilder {
      *                      kind, solid, radius, effect}
      */
     buildAll() {
-        const result   = [];
+        const entries  = [];
         const spawners = {};
         this._skipped      = 0;
         this._filtered     = 0;
         this._monsterCount = 0;
         this._spots        = {};
 
-        // Skill bit for the chosen difficulty (Doom P_SpawnMapThing): a thing is
-        // present only if its flags carry this bit. The profile's skill rules
-        // provide it; legacy fallback when a caller passes no rule.
-        // 0-2 → 0x01, 3 → 0x02, 4-5 → 0x04.
+        // P_SpawnMapThing skill bit; without a profile rule: 0-2 → 0x01,
+        // 3 → 0x02, 4-5 → 0x04.
         const skillBit = ((this._skillRule !== null)
             ? this._skillRule.spawnFilterBit
             : ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04)));
 
         for (const thing of this._level.things) {
-            // Monsters route through their own catalog, before the world
-            // things: same multiplayer/skill filters.
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
                 if (((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)
@@ -65,14 +61,14 @@ class WadThingBuilder {
                     this._filtered++;
                     continue;
                 }
-                const spot = this._sectorFinder(thing.x, thing.y);
-                if (spot === null) {
+                const sect = this._sectorFinder(thing.x, thing.y);
+                if (sect === null) {
                     this._skipped++;
                     continue;
                 }
-                const monsterEntry = this._buildMonsterEntry(thing, monsterDef, spot);
+                const monsterEntry = this._buildMonsterEntry(thing, monsterDef, sect);
                 if (monsterEntry !== null) {
-                    result.push(monsterEntry);
+                    entries.push(monsterEntry);
                     this._monsterCount++;
                 }
                 continue;
@@ -83,8 +79,7 @@ class WadThingBuilder {
                 continue;
             }
 
-            // Spots are gathered whole, before any filtering: vanilla
-            // registers every one of them regardless of skill.
+            // Vanilla registers every spot regardless of skill.
             if (desc.kind === 'spot') {
                 if (this._spots[desc.spotGroup] === undefined) {
                     this._spots[desc.spotGroup] = [];
@@ -93,26 +88,21 @@ class WadThingBuilder {
                 continue;
             }
 
-            // Spawner things are gathered per group BEFORE the single-player /
-            // skill filtering: vanilla Heretic collects its mace spots at the
-            // top of P_SpawnMapThing, so the multiplayer-only flag most spots
-            // carry never applies to them. Only ONE random occurrence per
-            // group materializes (a single mace per level).
+            // Heretic collects its mace spots before the skill and multiplayer
+            // filters (P_SpawnMapThing); one random spot per group spawns.
             if (desc.spawnerGroup !== null) {
-                const spot = this._sectorFinder(thing.x, thing.y);
-                if (spot === null) {
+                const sect = this._sectorFinder(thing.x, thing.y);
+                if (sect === null) {
                     this._skipped++;
                     continue;
                 }
                 if (spawners[desc.spawnerGroup] === undefined) {
                     spawners[desc.spawnerGroup] = [];
                 }
-                spawners[desc.spawnerGroup].push({thing, desc, sect: spot});
+                spawners[desc.spawnerGroup].push({thing, desc, sect});
                 continue;
             }
 
-            // Single-player filtering, like the real game: skip multiplayer-only
-            // things and things absent at the chosen difficulty.
             if ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0) {
                 this._filtered++;
                 continue;
@@ -122,8 +112,7 @@ class WadThingBuilder {
                 continue;
             }
 
-            // No containing/near sector found → drop the thing rather than
-            // mis-placing it at height 0.
+            // Dropped rather than misplaced at height 0.
             const sect = this._sectorFinder(thing.x, thing.y);
             if (sect === null) {
                 this._skipped++;
@@ -132,20 +121,20 @@ class WadThingBuilder {
 
             const entry = this._buildEntry(thing, desc, sect);
             if (entry !== null) {
-                result.push(entry);
+                entries.push(entry);
             }
         }
 
         for (const group of Object.keys(spawners)) {
             const candidates = spawners[group];
-            const pick  = candidates[Math.floor(Math.random() * candidates.length)];
-            const entry = this._buildEntry(pick.thing, pick.desc, pick.sect);
+            const pick       = candidates[Math.floor(Math.random() * candidates.length)];
+            const entry      = this._buildEntry(pick.thing, pick.desc, pick.sect);
             if (entry !== null) {
-                result.push(entry);
+                entries.push(entry);
             }
         }
 
-        return result;
+        return entries;
     }
 
     // World descriptor of one placed thing; null when the WAD lacks every
@@ -153,23 +142,17 @@ class WadThingBuilder {
     _buildEntry(thing, desc, sect) {
         const scale = WadConstants.SCALE;
 
-        // Decode every animation frame; skip frames the WAD lacks, skip the
-        // whole thing only if no frame is present.
         const sprites = desc.frames.map((name) => this._spriteBank.get(name)).filter((s) => (s !== null));
         if (sprites.length === 0) {
             return null;
         }
 
-        const view = this._frameView(desc, sprites);
-        const geo  = WadGeometry.spriteBillboardData(view);
-        // Hanging things anchor their top to the ceiling; the rest stand on the floor.
+        const view  = this._frameView(desc, sprites);
+        const geo   = WadGeometry.spriteBillboardData(view);
         const baseH = ((desc.ceiling) ? sect.ch : sect.fh);
 
-        // Doom places the sprite top at floor+topOffset, so the foot lands at
-        // topOffset-height — often a few px below the floor. Vanilla never
-        // clips this vertically (no free look); like modern ports we floor-clip
-        // floor things so feet never sink below the sector floor. Hanging things
-        // keep their (negative) offset so they stay below the ceiling.
+        // Floor things are floor-clipped like modern ports (vanilla lets feet
+        // sink a few pixels, unseen without free look).
         const sink = view.topOffset - view.height;
 
         return {
@@ -178,8 +161,6 @@ class WadThingBuilder {
             animDuration:  desc.animDuration,
             halfWidth:     geo.halfWidth,
             height:        geo.height,
-            // The billboard geometry centres the sprite horizontally; the
-            // vertical offset is floor-clipped for floor things (see `sink`).
             anchorOffsetX: geo.anchorOffsetX,
             anchorOffsetY: ((desc.ceiling) ? sink : Math.max(0, sink)) * scale,
             anchorTop:     desc.ceiling,
@@ -218,12 +199,9 @@ class WadThingBuilder {
         };
     }
 
-    // Render view of a thing's frames: texture ids + the box the billboard quad
-    // is sized on. The quad is static and the animation only swaps textures on
-    // it, so frames of differing boxes would each be rescaled to the first
-    // frame's box (vanilla anchors every frame on its own offsets: the brazier
-    // flame grows, never the statue). Such frames are recomposed on a common
-    // padded canvas; a single frame (or frames sharing one box) passes through.
+    // Texture ids + the box the billboard is sized on. The animation only swaps
+    // textures, so frames of different boxes are padded onto a common canvas
+    // (vanilla anchors each frame on its own offsets).
     _frameView(desc, sprites) {
         const first   = sprites[0];
         const sameBox = sprites.every((s) => (
@@ -248,17 +226,14 @@ class WadThingBuilder {
         return this._paddedFrames[key];
     }
 
-    // Recompose every frame on the union of their vanilla anchor boxes (top at
-    // topOffset, centred on leftOffset), each blitted at its exact vanilla
-    // position inside transparent padding: all frames share one box and the
-    // texture swap never rescales anything.
+    // Every frame blitted at its vanilla position in the union of their boxes.
     _padFrames(sprites) {
         const top   = Math.max(...sprites.map((s) => s.topOffset));
         const foot  = Math.min(...sprites.map((s) => (s.topOffset - s.height)));
         const left  = Math.max(...sprites.map((s) => s.leftOffset));
         const right = Math.max(...sprites.map((s) => (s.width - s.leftOffset)));
-        const w = left + right;
-        const h = top - foot;
+        const w     = left + right;
+        const h     = top - foot;
 
         const texIds = sprites.map((spr) => {
             const src    = loader.textures().get(spr.loaderId);

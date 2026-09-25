@@ -4,15 +4,15 @@
  */
 class WadLiftBuilder extends AbstractMoverBuilder {
     _sectorIds() {
-        return this._analysis.movingFloorDownIds;
+        return this._analysis.liftIds;
     }
 
     _buildOne(si) {
-        const {liftOriginalFh, liftMinAdjFh, liftBaseTargetFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
+        const {liftOriginalFh, liftLowestFh, liftBaseTargetFh, liftMaxAdjFh, liftSectorSpecial} = this._analysis;
         const origFh = liftOriginalFh[si];
         // minFh = lowest point of ANY cycle (static patch, skirt); the base
         // cycle itself travels to its own special's destination.
-        const minFh  = liftMinAdjFh[si];
+        const minFh  = liftLowestFh[si];
         const baseFh = liftBaseTargetFh[si] ?? minFh;
 
         // High end of the travel: origFh for ordinary lifts (they never rise
@@ -26,7 +26,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
             return null;
         }
 
-        const liftName = mover.code;
+        const liftCode = mover.code;
         const mesh = WadMeshBuilder.newMesh();
 
         WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
@@ -35,7 +35,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         // its skirt still has to reach down to minFh.
         const raiseTops  = Object.values(this._analysis.liftRaiseVariants[si] ?? {}).map((r) => r.targetFh);
         const highestFh  = Math.max(maxFh, ...raiseTops);
-        this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh), liftName);
+        this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh), liftCode);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {
@@ -43,14 +43,14 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         }
 
         return {
-            code:         liftName,
+            code:         liftCode,
             textures:     textures,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(liftName, si, origFh, baseFh, maxFh, mesh)
+            instanceData: this._buildInstanceData(liftCode, si, origFh, baseFh, maxFh, mesh)
         };
     }
 
-    _buildInstanceData(liftName, si, origFh, minFh, maxFh, mesh) {
+    _buildInstanceData(liftCode, si, origFh, minFh, maxFh, mesh) {
         const special = this._analysis.liftSectorSpecial[si] ?? 88;
         const floor   = WadConstants.FLOOR_DOWN_BY_SPECIAL[special];
         const speed   = floor.speed;
@@ -61,8 +61,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         const moveS   = WadConstants.moveDurationS(origFh - minFh, speed);
         const waitS   = WadConstants.LIFT_WAIT_TICS * WadConstants.SECONDS_PER_TIC;
 
-        // Every floor-down element is driven externally (switch / walk zone),
-        // never by self-proximity — the instance trigger is always 'none'.
+        // Every floor-down element is driven externally (switch / walk zone).
         const anim     = floor.anim;
         const trigger  = 'none';
         const loop     = floor.loop;
@@ -79,7 +78,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
             const downS   = WadConstants.moveDurationS(origFh - minFh, speed);
             const fullS   = WadConstants.moveDurationS(maxFh - minFh, speed);
             const topS    = WadConstants.moveDurationS(maxFh - origFh, speed);
-            let t = 0.0;
+            let t         = 0.0;
             keyframes = [{t: t, translate: [0, 0, 0], rotate: [0, 0, 0]}];
             if (downS > 0) {
                 t += downS;
@@ -100,7 +99,7 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         }
 
         return {
-            code:              liftName,
+            code:              liftCode,
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
             trigger:           trigger,

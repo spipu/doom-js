@@ -17,10 +17,8 @@ class WadMapAnalyzer {
         this._textureHeightOf = (options?.textureHeightOf ?? (() => null));
     }
 
-    // Iteration source of the MOVER passes only (doors, lifts, rising floors):
-    // the real linedefs plus the tagged boss-death actions, which vanilla
-    // fires from code with no linedef at all (A_BossDeath dummy line). Kept
-    // out of level.linedefs so no geometry-reading pass ever sees them.
+    // Mover passes also iterate the boss-death actions (A_BossDeath dummy line),
+    // kept out of level.linedefs so no geometry pass ever sees them.
     _moverLinedefs() {
         return ((this._bossLinedefs.length === 0)
             ? this._level.linedefs
@@ -34,9 +32,9 @@ class WadMapAnalyzer {
         const liftLowerVariants = this._identifyLiftLowers(lifts);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
-        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.movingFloorDownIds, lifts.instantRaise, lifts.liftOriginalFh);
-        const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.movingFloorDownIds, rising);
-        const stairs = this._identifyStairs(doors.doorSectorIds, lifts.movingFloorDownIds, rising.risingFloorIds);
+        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.liftIds, lifts.instantRaise, lifts.liftOriginalFh);
+        const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.liftIds, rising);
+        const stairs = this._identifyStairs(doors.doorSectorIds, lifts.liftIds, rising.risingFloorIds);
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches(lifts.liftOriginalFh);
@@ -51,10 +49,10 @@ class WadMapAnalyzer {
             doorSectorIds:         doors.doorSectorIds,
             doorProps:             doors.doorProps,
             doorHeights:           doorHeights,
-            movingFloorDownIds:    lifts.movingFloorDownIds,
+            liftIds:               lifts.liftIds,
             liftSectorSpecial:     lifts.liftSectorSpecial,
             liftOriginalFh:        lifts.liftOriginalFh,
-            liftMinAdjFh:          lifts.liftMinAdjFh,
+            liftLowestFh:          lifts.liftLowestFh,
             liftBaseTargetFh:      lifts.liftBaseTargetFh,
             liftMaxAdjFh:          lifts.liftMaxAdjFh,
             liftRaiseVariants:     liftRaiseVariants,
@@ -81,11 +79,9 @@ class WadMapAnalyzer {
         };
     }
 
-    // Sector adjacency graph over the two-sided linedefs: each opening carries
-    // its Doom-space segment, both sector sides and the ML_SOUNDBLOCK flag.
-    // Feeds P_NoiseAlert (sound flood-fill), the monster walk-line crossings,
-    // and later the PVS visibility work — the openness of an opening is NOT
-    // stored here (doors move): consumers evaluate current heights themselves.
+    // Sector adjacency over the two-sided linedefs (P_NoiseAlert flood-fill,
+    // monster line crossings). Openness is not stored: doors move, consumers
+    // read the live heights.
     _buildSectorGraph() {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const lines    = [];
@@ -119,10 +115,8 @@ class WadMapAnalyzer {
         return {lines: lines, bySector: bySector};
     }
 
-    // Light group of a face baked with the given sector's brightness: the sector
-    // index when it carries a light effect (so the per-level light interaction
-    // drives the face at runtime), null otherwise. Shared by the static map
-    // builder, the instance mesh builders and the thing registration.
+    // Light group of a face lit by sector si: si when the sector carries a
+    // light effect driven at runtime, null otherwise.
     static lightGroupOf(analysis, si) {
         return ((analysis.lightSectorIds.has(si)) ? si : null);
     }
@@ -137,7 +131,7 @@ class WadMapAnalyzer {
     _identifyLightSectors() {
         const {linedefs, sidedefs, sectors} = this._level;
 
-        const minNeighbour = {};
+        const darkestNeighbour = {};
         for (const ld of linedefs) {
             if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
@@ -147,8 +141,8 @@ class WadMapAnalyzer {
             if (rSi === lSi) {
                 continue;
             }
-            minNeighbour[rSi] = Math.min(minNeighbour[rSi] ?? 255, sectors[lSi].lightRaw);
-            minNeighbour[lSi] = Math.min(minNeighbour[lSi] ?? 255, sectors[rSi].lightRaw);
+            darkestNeighbour[rSi] = Math.min(darkestNeighbour[rSi] ?? 255, sectors[lSi].lightRaw);
+            darkestNeighbour[lSi] = Math.min(darkestNeighbour[lSi] ?? 255, sectors[rSi].lightRaw);
         }
 
         const lightSectors = [];
@@ -158,7 +152,7 @@ class WadMapAnalyzer {
                 continue;
             }
             const maxLight = sectors[si].lightRaw;
-            let minLight = Math.min(maxLight, minNeighbour[si] ?? maxLight);
+            let minLight = Math.min(maxLight, darkestNeighbour[si] ?? maxLight);
             if ((effect.type === 'strobe') && (minLight === maxLight)) {
                 minLight = 0;
             }
@@ -178,29 +172,21 @@ class WadMapAnalyzer {
         return lightSectors;
     }
 
-    // Walk-over linedefs (W1/WR) that activate a remote tagged element by being
-    // crossed. Each becomes an invisible proximity zone that start()s the tagged
-    // lift/floor/door instances (resolved in WadWalkTriggerBuilder), like a
-    // switch but proximity-activated.
+    // Walk-over linedefs (W1/WR) driving tagged movers, plus the walk-over exits.
     _identifyWalkTriggers() {
         const {linedefs} = this._level;
         const walkTriggers = [];
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            // Walk lifts/floors, plus tagged WALK-triggered doors (specials 2/86/
-            // 90/109, trigger 'proximity' in DOOR_BY_SPECIAL): a remote
-            // door tagged T opens when its trigger line is crossed, not by
-            // approaching the door — e.g. grabbing a key on a pedestal ringed by
-            // such lines opens the doors tagged T elsewhere.
+            // Walk doors (2/86/90/109, 'proximity' in DOOR_BY_SPECIAL) open when
+            // their line is crossed, not when the door is approached.
             const isWalkLift  = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
             const isWalkDoor  = (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'proximity');
             const isWalkStair = WadConstants.STAIR_WALK_SPECIALS.has(ld.special);
-            if ((isWalkLift || isWalkDoor || isWalkStair) && ld.tag !== 0) {
+            if ((isWalkLift || isWalkDoor || isWalkStair) && (ld.tag !== 0)) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
-            // Walk-over exits (52 normal / 124 secret): the level ends when the
-            // line is crossed. No tag requirement — an exit ignores its tag
-            // (vanilla Doom, same rule as the exit switches).
+            // Exits (52 / 124 secret) ignore their tag, like the exit switches.
             if (WadConstants.WALK_EXIT_SPECIALS.has(ld.special)) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special, isExit: true});
             }
@@ -217,23 +203,22 @@ class WadMapAnalyzer {
         const gunTriggers = [];
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            if (WadConstants.GUN_SPECIALS.has(ld.special) && ld.tag !== 0) {
+            if (WadConstants.GUN_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
                 gunTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
         }
         return gunTriggers;
     }
 
-    // Walk-over teleport linedefs (39 W1 / 97 WR). The destination is the thing
-    // type 14 in the sector of the same tag (resolved later in WadWorldBuilder,
-    // which has the thing list + sector lookup).
+    // Teleport linedefs (39 W1 / 97 WR, plus the monster-only ones); the
+    // landing is resolved by WadWorldBuilder, which has the things.
     _identifyTeleporters() {
         const {linedefs} = this._level;
         const teleporters = [];
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
             const monsterOnly = WadConstants.MONSTER_TELEPORT_SPECIALS.has(ld.special);
-            if ((WadConstants.TELEPORT_SPECIALS.has(ld.special) || monsterOnly) && ld.tag !== 0) {
+            if ((WadConstants.TELEPORT_SPECIALS.has(ld.special) || monsterOnly) && (ld.tag !== 0)) {
                 teleporters.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special, monsterOnly: monsterOnly});
             }
         }
@@ -243,21 +228,17 @@ class WadMapAnalyzer {
     // --- Donuts (special 9, S1 — vanilla EV_DoDonut) ---
 
     /**
-     * The tagged sector s1 (the "hole"/pillar) LOWERS to the floor of s3 while
-     * the untagged ring s2 around it RISES to the same height, both at
-     * FLOORSPEED/2; at the ring's arrival its flat becomes s3's and its sector
-     * special is cleared (T_MoveFloor donutRaise — the raised slime no longer
-     * hurts). s2 = the sector across s1's first linedef; s3 = the sector
-     * across s2's first two-sided linedef whose far side is not s1. The hole
-     * rides the floor-down family with a forced target (holeTargetFh); the
-     * ring joins the rising floors (ringTag lets the switch resolve it — a
-     * ring carries no tag of its own).
+     * The tagged hole s1 lowers to s3's floor while the untagged ring s2 rises
+     * to it, then takes s3's flat with its special cleared (T_MoveFloor
+     * donutRaise). s2 = across s1's first linedef; s3 = across s2's first
+     * two-sided linedef not leading back to s1. ringTag stands in for the
+     * ring's missing tag.
      *
      * @returns {{holeTargetFh: object, rings: object, ringTag: object}}
      */
     _identifyDonuts() {
         const {sidedefs, sectors} = this._level;
-        const linedefs = this._moverLinedefs();
+        const linedefs     = this._moverLinedefs();
         const holeTargetFh = {};
         const rings        = {};   // ring si → {targetFh, special, modelSi}
         const ringTag      = {};   // ring si → trigger tag
@@ -287,7 +268,7 @@ class WadMapAnalyzer {
                 let s3 = -1;
                 for (const l2 of linedefs) {
                     const far = otherSide(l2, s2);
-                    if (far !== -1 && far !== s1) {
+                    if ((far !== -1) && (far !== s1)) {
                         s3 = far;
                         break;
                     }
@@ -305,21 +286,18 @@ class WadMapAnalyzer {
     }
 
     /**
-     * Ring half of the donuts: joins the rising floors (fh not patched, moving
-     * top-flat + skirt built by WadRisingFloorBuilder). A ring whose target
-     * does not rise above its own floor is dropped (no movement in vanilla).
-     * Each claimed ring also gets its declared "+change" (the up-table entry:
-     * model sector's flat, special zeroed, at arrival — T_MoveFloor donutRaise).
+     * Donut rings join the rising floors, each with its "+change" (model
+     * sector's flat, special zeroed, on arrival). A ring that would not rise is dropped.
      *
      * @returns {object} claimed ring si → floorChange record
      */
-    _mergeDonutRings(donuts, doorSectorIds, movingFloorDownIds, rising) {
+    _mergeDonutRings(donuts, doorSectorIds, liftIds, rising) {
         const {sectors} = this._level;
         const ringChanges = {};
         for (const key of Object.keys(donuts.rings)) {
             const si   = parseInt(key, 10);
             const ring = donuts.rings[key];
-            if (doorSectorIds.has(si) || movingFloorDownIds.has(si) || rising.risingFloorIds.has(si)) {
+            if (doorSectorIds.has(si) || liftIds.has(si) || rising.risingFloorIds.has(si)) {
                 continue;
             }
             if (ring.targetFh <= sectors[si].fh) {
@@ -345,18 +323,13 @@ class WadMapAnalyzer {
     // (remote door) or by its left sidedef sector (local door, tag == 0).
     _identifyDoors() {
         const {sidedefs, sectors} = this._level;
-        const linedefs = this._moverLinedefs();
+        const linedefs      = this._moverLinedefs();
         const doorSectorIds = new Set();
         const doorProps     = {};   // si → door props (shape in registerDoor)
 
         const registerDoor = (si, door, forceTrigger) => {
-            // Vanilla carries the activation on each linedef, the sector is only
-            // the target: a remote line (walk zone, switch) drives the door
-            // through its own trigger and must not take the manual press away.
-            // Manual specials keep overwriting each other (last wins) — these
-            // props describe the door BODY; what each FACE demands (its key) is
-            // rebuilt from the linedefs by the world builder, so a sector mixing
-            // a keyed face and a free one keeps both rules.
+            // Activation lives on each linedef: a remote line must not take the
+            // manual press away. Per-face keys are rebuilt by the world builder.
             const trigger = forceTrigger ?? door.trigger;
             if ((doorProps[si] !== undefined) && (doorProps[si].trigger === 'action') && (trigger !== 'action')) {
                 return;
@@ -370,27 +343,20 @@ class WadMapAnalyzer {
                 anim:         door.anim,
                 close:        (door.kind === 'close'),
                 ceilingRaise: (door.kind === 'ceilingRaise'),
-                // The 141 silent crusher grinds without a movement sound; the
-                // ceiling specials (40/41/43/44/72) hum the floor loop, not
-                // the door voice (sndseq CeilingNormal).
+                // 141 grinds silently; ceilings 40/41/43/44/72 hum the floor
+                // loop, not the door voice (sndseq CeilingNormal).
                 silent:       (door.silent === true),
                 ceilingSound: (door.ceiling === true),
-                // Doom units left above the floor at the end of a close
-                // (crush ceilings 44/72 stop at floor + 8).
+                // Gap left above the floor when closed (crushers 44/72: 8).
                 closeMargin:  (door.closeMargin ?? 0),
-                // Level-load countdown (s) held before the cycle starts
-                // (timer doors, sector specials 10/14).
+                // Timer doors (sector specials 10/14): countdown before the cycle.
                 timerDelayS:  0,
                 autoStart:    false,
-                // True once ANY face is a door a monster may bump open (the net
-                // effect of the vanilla P_UseSpecialLine whitelist: the plain
-                // repeatable keyless manual door). Accumulated, never
-                // overwritten — one keyed face does not lock the free one out.
+                // Accumulated over the faces: one keyed face must not lock
+                // monsters out of a free one.
                 monsterUse:   ((doorProps[si]?.monsterUse === true) || WadMapAnalyzer._monsterUsableDoor(door, trigger)),
-                // Per-trigger cycles aimed at this door (filled after the
-                // registration loops, preserved when the timer-sector pass
-                // re-registers on top): cycle key → {anim, speed, onlyOnce,
-                // loop, closeMargin}.
+                // cycle key → {anim, speed, onlyOnce, loop, closeMargin}, kept
+                // across re-registrations (timer-sector pass).
                 variants:     (doorProps[si]?.variants ?? {}),
                 // Cycle a press plays instead of the base one (manual opener of a closing door).
                 pressVariant: (doorProps[si]?.pressVariant ?? null)
@@ -415,10 +381,8 @@ class WadMapAnalyzer {
             }
             const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             if (ld.tag !== 0) {
-                // A tagged door driven REMOTELY (walk 'proximity' or switch 'none')
-                // must not self-activate → force 'none', the external trigger
-                // (switch / walk-zone) drives it. A manual 'action' door carrying a
-                // tag (unusual) keeps its natural press trigger so it stays usable.
+                // A remote door must not self-activate; a tagged manual door
+                // keeps its press trigger.
                 const forced = ((door.trigger === 'action') ? null : 'none');
                 for (let si = 0; si < sectors.length; si++) {
                     if ((sectors[si].tag === ld.tag) && !closesFirst(si)) {
@@ -440,15 +404,14 @@ class WadMapAnalyzer {
         // under a closing special keeps its opening panel — the close lines
         // play their own cycle on it.
         for (const ld of linedefs) {
-            if (!WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) || ld.tag === 0) {
+            if (!WadConstants.DOOR_CLOSE_SPECIALS.has(ld.special) || (ld.tag === 0)) {
                 continue;
             }
-            // No registration when the panel has no travel (already at its close
-            // target — e.g. a crush ceiling resting at floor + 8 or below).
+            // Skipped when the panel is already at its close target.
             const door   = WadConstants.DOOR_BY_SPECIAL[ld.special];
             const margin = (door.closeMargin ?? 0);
             for (let si = 0; si < sectors.length; si++) {
-                if (sectors[si].tag === ld.tag && !doorSectorIds.has(si) && sectors[si].ch > sectors[si].fh + margin) {
+                if ((sectors[si].tag === ld.tag) && !doorSectorIds.has(si) && (sectors[si].ch > sectors[si].fh + margin)) {
                     const opener = (manualReopeners.get(si) ?? null);
                     registerDoor(si, door, ((opener !== null) ? 'action' : 'none'));
                     if (opener !== null) {
@@ -459,12 +422,8 @@ class WadMapAnalyzer {
             }
         }
 
-        // Per-trigger behaviour: collect the anim of EVERY door special aimed at
-        // each door, so the builder emits one cycle per anim and the crossed
-        // line's special decides which one runs (vanilla — E1M4 tag 1 mixes 12×
-        // 90 OWC and 4× 86 open-stay; E1M6 tag 1 mixes an open-stay switch with
-        // a close-wait-open line, and E4M9 tag 2 an opener with a crusher).
-        // A closing door collects its openers too: they play from its shut pose.
+        // One cycle per door special aimed at a door: the firing line's special
+        // picks which one runs (E1M4 tag 1 mixes 90 OWC and 86 open-stay).
         for (const ld of linedefs) {
             const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
             if (door === undefined) {
@@ -498,20 +457,16 @@ class WadMapAnalyzer {
         // countdown, no linedef (P_SpawnSpecials). autoStart plays the cycle
         // at load, independently of the trigger.
         for (let si = 0; si < sectors.length; si++) {
-            const sp = sectors[si].special;
-            if (sp === WadConstants.SECTOR_DOOR_CLOSE_SPECIAL && sectors[si].ch > sectors[si].fh) {
-                // The sector may ALSO carry manual DR lines (MAP27): the trap
-                // keyframes own the panel (closed rest → open → hold up to the
-                // countdown → close) and a USE replays the same cycle to
-                // reopen — no softlock. Approximation: the reopened door holds
-                // the full countdown again instead of the 150-tic DR wait
-                // (one keyframe set per door).
+            const special = sectors[si].special;
+            if ((special === WadConstants.SECTOR_DOOR_CLOSE_SPECIAL) && (sectors[si].ch > sectors[si].fh)) {
+                // Manual DR lines on the same sector (MAP27) replay this cycle;
+                // approximation: the reopened door waits the full countdown, not 150 tics.
                 registerDoor(si, WadConstants.DOOR_TIMER_DEFAULTS, null);
                 doorProps[si].anim        = 'trap-close';
                 doorProps[si].onlyOnce    = false;
                 doorProps[si].autoStart   = true;
                 doorProps[si].timerDelayS = WadConstants.SECTOR_DOOR_CLOSE_DELAY_TICS / 35;
-            } else if (sp === WadConstants.SECTOR_DOOR_OPEN_SPECIAL && !doorSectorIds.has(si)) {
+            } else if ((special === WadConstants.SECTOR_DOOR_OPEN_SPECIAL) && !doorSectorIds.has(si)) {
                 // Closed door running ONE open-wait-close cycle 5 min after load.
                 registerDoor(si, WadConstants.DOOR_TIMER_DEFAULTS, 'none');
                 doorProps[si].onlyOnce    = true;
@@ -532,26 +487,20 @@ class WadMapAnalyzer {
     }
 
     // floor_h = max(own fh, min adjacent fh), ceil_h = min adjacent non-sky ch -
-    // DOOR_TRACK_OFFSET. Computed AFTER the lift floor patch (same order as the
-    // Python script). A door's floor never moves (only the ceiling rises), so it
-    // sits at the door's own fh — kept whenever it is at or above the lowest
-    // walkable neighbour (door on a step up: the step belongs on the door line,
-    // not min'd away). Clamped UP to the lowest neighbour for "squished closed"
-    // underground doors (fh=-128) whose own floor is below the walkable level.
-    // The result is patched into sectors[si].fh so the walls (riser steps), the
-    // static flat, the panel and the DOORTRAK all read one consistent floor.
+    // DOOR_TRACK_OFFSET, computed after the lift floor patch. The max lifts
+    // buried doors (fh=-128) to the walkable level; floor_h is written back into
+    // sectors[si].fh so walls, flat, panel and track all share it.
     _computeDoorHeights(doorSectorIds, doorProps) {
         const {linedefs, sidedefs, sectors} = this._level;
         const doorHeights = {};
 
         for (const si of doorSectorIds) {
-            // Closing door: the sector is statically OPEN at its own heights —
-            // the panel travel is simply fh → ch, nothing to patch or clamp.
+            // A closing door rests open: its travel is simply fh → ch.
             if (doorProps[si].close === true) {
                 doorHeights[si] = {floorH: sectors[si].fh, ceilH: sectors[si].ch};
                 continue;
             }
-            const adj = [];
+            const neighbours = [];
             for (const ld of linedefs) {
                 if ((ld.right < 0) || (ld.left < 0)) {
                     continue;
@@ -559,31 +508,29 @@ class WadMapAnalyzer {
                 if (sidedefs[ld.right].sector === si) {
                     const other = sidedefs[ld.left].sector;
                     if (!doorSectorIds.has(other)) {
-                        adj.push(sectors[other]);
+                        neighbours.push(sectors[other]);
                     }
                 } else if (sidedefs[ld.left].sector === si) {
                     const other = sidedefs[ld.right].sector;
                     if (!doorSectorIds.has(other)) {
-                        adj.push(sectors[other]);
+                        neighbours.push(sectors[other]);
                     }
                 }
             }
-            if (adj.length === 0) {
+            if (neighbours.length === 0) {
                 continue;
             }
-            const floorH = Math.max(sectors[si].fh, Math.min(...adj.map((s) => s.fh)));
-            // Ceiling-raise variant (40): target = P_FindHighestCeilingSurrounding
-            // (every neighbour, sky included, no door track offset — p_ceilng.c
-            // raiseToHighest). The floor is never re-patched up: its own half is
-            // handled by the floor-down family (lowerFloorToLowest companion).
+            const floorH = Math.max(sectors[si].fh, Math.min(...neighbours.map((s) => s.fh)));
+            // Ceiling raise (40): P_FindHighestCeilingSurrounding, sky included, no
+            // track offset (p_ceilng.c raiseToHighest); its floor half is a lift.
             if (doorProps[si].ceilingRaise === true) {
-                doorHeights[si] = {floorH: sectors[si].fh, ceilH: Math.max(...adj.map((s) => s.ch))};
+                doorHeights[si] = {floorH: sectors[si].fh, ceilH: Math.max(...neighbours.map((s) => s.ch))};
                 continue;
             }
-            const nonSky = adj.filter((s) => !WadConstants.isSkyFlat(s.ct));
+            const nonSky = neighbours.filter((s) => !WadConstants.isSkyFlat(s.ct));
             const openH  = ((nonSky.length > 0)
                 ? Math.min(...nonSky.map((s) => s.ch)) - WadConstants.DOOR_TRACK_OFFSET
-                : floorH + 128);
+                : floorH + WadConstants.DOOR_SKY_OPEN_HEIGHT);
             // Deliberate deviation: a sector resting open above that target keeps
             // its ceiling instead of vanilla's instant snap down to it.
             doorHeights[si] = {floorH: floorH, ceilH: Math.max(openH, sectors[si].ch)};
@@ -597,19 +544,18 @@ class WadMapAnalyzer {
 
     _identifyLifts(doorSectorIds, donutHoleTargetFh = {}) {
         const {sidedefs, sectors} = this._level;
-        const linedefs = this._moverLinedefs();
-        const movingFloorDownIds = new Set();
-        const liftSectorSpecial  = {};
+        const linedefs          = this._moverLinedefs();
+        const liftIds           = new Set();
+        const liftSectorSpecial = {};
 
         for (const ld of linedefs) {
-            if (WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(ld.special) && ld.tag !== 0) {
-                // A door-claimed sector normally has no moving floor; the ceiling
-                // raisers (40) are the exception — vanilla fires their ceiling AND
-                // floor on the same tag, so the overlap is legitimate there.
+            if (WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
+                // Ceiling raisers (40) move a door's floor too: vanilla fires both
+                // halves on the same tag.
                 const allowDoorOverlap = WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(ld.special);
                 for (let si = 0; si < sectors.length; si++) {
-                    if (sectors[si].tag === ld.tag && (allowDoorOverlap || !doorSectorIds.has(si))) {
-                        movingFloorDownIds.add(si);
+                    if ((sectors[si].tag === ld.tag) && (allowDoorOverlap || !doorSectorIds.has(si))) {
+                        liftIds.add(si);
                         liftSectorSpecial[si] = ld.special;
                     }
                 }
@@ -618,30 +564,26 @@ class WadMapAnalyzer {
 
         // Captured before _patchLiftFloors mutates fh.
         const liftOriginalFh      = {};
-        const liftMinAdjFh        = {};
+        const liftLowestFh        = {};
         const liftMaxAdjFh        = {};
         const liftVanillaTargetFh = {};
         const computeTargets = () => {
-            for (const si of movingFloorDownIds) {
-                const {adjFh, adjAllFh} = this._liftAdjacentFloors(si, movingFloorDownIds);
+            for (const si of liftIds) {
+                const {adjFh, adjAllFh} = this._liftAdjacentFloors(si, liftIds);
                 liftOriginalFh[si] = sectors[si].fh;
                 const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
-                // Donut hole: the target is the floor of the sector beyond the
-                // ring (EV_DoDonut), not an adjacent-floor rule.
+                // Donut hole: lowers to the sector beyond the ring (EV_DoDonut).
                 const target = ((donutHoleTargetFh[si] !== undefined)
                     ? donutHoleTargetFh[si]
                     : WadMapAnalyzer._lowerTargetFh(rule, adjFh, sectors[si].fh));
-                liftMinAdjFh[si] = Math.min(target, sectors[si].fh);
-                // Vanilla destination, for the instant-raise detection only: the
-                // P_Find*FloorSurrounding scans count EVERY neighbour, co-movers
-                // included (unlike adjFh, which feeds the lift patching above).
-                // Lowest seeds at the sector's own floor (p_spec.c — it can never
-                // end up above it, so the lowest family never raises instantly);
-                // highest seeds at -500; turbo adds its 8 only when the highest
-                // neighbour differs from the current floor (p_floor.c turboLower).
-                if (rule === 'highest' || rule === 'highest+8') {
-                    const highest = ((adjAllFh.length === 0) ? -500 : Math.max(...adjAllFh));
-                    liftVanillaTargetFh[si] = highest + (((rule === 'highest+8') && (highest !== sectors[si].fh)) ? 8 : 0);
+                liftLowestFh[si] = Math.min(target, sectors[si].fh);
+                // Vanilla destination (instant-raise detection only): every
+                // neighbour counts, co-movers included. Lowest seeds at the own
+                // floor, highest at -500 (p_spec.c); turbo adds 8 only when the
+                // highest differs from the current floor (p_floor.c turboLower).
+                if ((rule === 'highest') || (rule === 'highest+8')) {
+                    const highest = ((adjAllFh.length === 0) ? WadConstants.HIGHEST_FLOOR_SEED : Math.max(...adjAllFh));
+                    liftVanillaTargetFh[si] = highest + (((rule === 'highest+8') && (highest !== sectors[si].fh)) ? WadConstants.TURBO_LOWER_OFFSET : 0);
                 } else {
                     liftVanillaTargetFh[si] = Math.min(sectors[si].fh, ...adjAllFh);
                 }
@@ -653,66 +595,53 @@ class WadMapAnalyzer {
             }
         };
 
-        // A lift only exists where the floor can actually descend (some adjacent
-        // non-lift floor is lower). A sector that shares a lift tag but has no
-        // lower neighbour — e.g. a large platform tagged alongside the real lift —
-        // is NOT a lift: the builder skips it (origFh <= target → null), but its
-        // static floor was already dropped, leaving a hole. Drop such dead lifts
-        // here so their floor is rendered. Remove them ONE AT A TIME: a dead lift
-        // turns into a normal neighbour once dropped, which can lower a survivor's
-        // target and revive it (its only lower neighbour may itself be a dead lift
-        // still masking it). Dropping a whole batch at once would demote such a
-        // survivor by mistake, so recompute after every single removal.
+        // Lifts with no lower non-lift neighbour cannot descend and are dropped,
+        // one at a time: a dropped lift becomes a plain neighbour and may give
+        // another candidate the lower floor it was missing.
         const instantRaise = {};
         while (true) {
             for (const k of Object.keys(liftOriginalFh)) {
                 delete liftOriginalFh[k];
-                delete liftMinAdjFh[k];
+                delete liftLowestFh[k];
                 delete liftMaxAdjFh[k];
                 delete liftVanillaTargetFh[k];
             }
             computeTargets();
-            // An EV_DoFloor one-way lower whose VANILLA destination is ABOVE the
-            // floor is the vanilla "instant floor rise" trick (pop-up bridge):
-            // the sector leaves this family and becomes an instant rising floor —
-            // it must NOT fall through to the dead-lift demotion below, which
-            // would leave the trigger inert. Removed one at a time too (it
-            // becomes a normal neighbour for the remaining candidates).
-            const instant = [...movingFloorDownIds].find((si) => {
+            // A one-way lower whose vanilla destination is ABOVE the floor is the
+            // instant-rise trick (pop-up bridge): it becomes an instant rising floor.
+            const instant = [...liftIds].find((si) => {
                 return (WadConstants.FLOOR_DOWN_ONEWAY_SPECIALS.has(liftSectorSpecial[si])
-                    && donutHoleTargetFh[si] === undefined
-                    && liftVanillaTargetFh[si] > liftOriginalFh[si]);
+                    && (donutHoleTargetFh[si] === undefined)
+                    && (liftVanillaTargetFh[si] > liftOriginalFh[si]));
             });
             if (instant !== undefined) {
                 instantRaise[instant] = {targetFh: liftVanillaTargetFh[instant], special: liftSectorSpecial[instant]};
-                movingFloorDownIds.delete(instant);
+                liftIds.delete(instant);
                 delete liftSectorSpecial[instant];
                 continue;
             }
-            // A perpetual plat is dead only when its full amplitude is nil
-            // (low == high): it may legitimately start AT its low end and only
-            // travel upward, unlike a one-way/round-trip lower.
-            const dead = [...movingFloorDownIds].find((si) => {
+            // A perpetual plat may rest at its low end: dead only when low == high.
+            const dead = [...liftIds].find((si) => {
                 if (WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si])) {
-                    return (liftMaxAdjFh[si] <= liftMinAdjFh[si]);
+                    return (liftMaxAdjFh[si] <= liftLowestFh[si]);
                 }
-                return (liftOriginalFh[si] <= liftMinAdjFh[si]);
+                return (liftOriginalFh[si] <= liftLowestFh[si]);
             });
             if (dead === undefined) {
                 break;
             }
-            movingFloorDownIds.delete(dead);
+            liftIds.delete(dead);
             delete liftSectorSpecial[dead];
         }
 
         return {
-            movingFloorDownIds: movingFloorDownIds,
+            liftIds:            liftIds,
             liftSectorSpecial:  liftSectorSpecial,
             liftOriginalFh:     liftOriginalFh,
-            // Destination of the base special; liftMinAdjFh is the lowest point
+            // Destination of the base special; liftLowestFh is the lowest point
             // any special brings the floor to (static patch, riser skirt).
-            liftBaseTargetFh:   {...liftMinAdjFh},
-            liftMinAdjFh:       liftMinAdjFh,
+            liftBaseTargetFh:   {...liftLowestFh},
+            liftLowestFh:       liftLowestFh,
             liftMaxAdjFh:       liftMaxAdjFh,
             instantRaise:       instantRaise
         };
@@ -720,7 +649,7 @@ class WadMapAnalyzer {
 
     // Neighbour floors of si: all of them (P_Find*FloorSurrounding) and the
     // non-lift ones alone (lift travel and patching).
-    _liftAdjacentFloors(si, movingFloorDownIds) {
+    _liftAdjacentFloors(si, liftIds) {
         const {sidedefs, sectors} = this._level;
         const adjFh    = [];
         const adjAllFh = [];
@@ -731,11 +660,11 @@ class WadMapAnalyzer {
             const rSi = sidedefs[ld.right].sector;
             const lSi = sidedefs[ld.left].sector;
             const other = ((rSi === si) ? lSi : ((lSi === si) ? rSi : null));
-            if (other === null || other === si) {
+            if ((other === null) || (other === si)) {
                 continue;
             }
             adjAllFh.push(sectors[other].fh);
-            if (!movingFloorDownIds.has(other)) {
+            if (!liftIds.has(other)) {
                 adjFh.push(sectors[other].fh);
             }
         }
@@ -753,7 +682,7 @@ class WadMapAnalyzer {
             return Math.max(...adjFh);
         }
         if (rule === 'highest+8') {
-            return Math.max(...adjFh) + 8;
+            return Math.max(...adjFh) + WadConstants.TURBO_LOWER_OFFSET;
         }
 
         return Math.min(...adjFh);
@@ -772,14 +701,14 @@ class WadMapAnalyzer {
                 continue;
             }
             const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[ld.special];
-            for (const si of lifts.movingFloorDownIds) {
+            for (const si of lifts.liftIds) {
                 const baseSpecial = lifts.liftSectorSpecial[si];
                 if ((sectors[si].tag !== ld.tag) || (ld.special === baseSpecial)
                     || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(baseSpecial)) {
                     continue;
                 }
                 const origFh   = lifts.liftOriginalFh[si];
-                const {adjFh}  = this._liftAdjacentFloors(si, lifts.movingFloorDownIds);
+                const {adjFh}  = this._liftAdjacentFloors(si, lifts.liftIds);
                 const targetFh = Math.min(WadMapAnalyzer._lowerTargetFh(rule.target, adjFh, origFh), origFh);
                 if (targetFh >= origFh) {
                     continue;
@@ -791,7 +720,7 @@ class WadMapAnalyzer {
                     onlyOnce: rule.onlyOnce,
                     targetFh: targetFh
                 };
-                lifts.liftMinAdjFh[si] = Math.min(lifts.liftMinAdjFh[si], targetFh);
+                lifts.liftLowestFh[si] = Math.min(lifts.liftLowestFh[si], targetFh);
             }
         }
 
@@ -800,23 +729,16 @@ class WadMapAnalyzer {
 
     // Patch fh to min(adjacent_fh) so the static map shows the lift in down position
     _patchLiftFloors(lifts) {
-        for (const si of lifts.movingFloorDownIds) {
-            this._level.sectors[si].fh = lifts.liftMinAdjFh[si];
+        for (const si of lifts.liftIds) {
+            this._level.sectors[si].fh = lifts.liftLowestFh[si];
         }
     }
 
-    // Raise specials aimed at a NON-PERPETUAL lift become named cycles on it,
-    // like the per-special door cycles: vanilla computes mover destinations
-    // from the LIVE sector, so a raise may push a plat above its rest and the
-    // lift then cycles on the raised span (MAP30's 140 + 62). Only the
-    // eligible targets qualify (see WadConstants.floorRaiseCycleKey).
-    // The baked start pose is the one the sector actually rests at when the
-    // raise fires: a one-way lower rests LOWERED (MAP20's 36 then 94, E2M4's
-    // 23 then 58), a round-trip lift rests at its original height (MAP30) —
-    // a fixed delta then raises from that pose, like vanilla from the live
-    // floor. Heights come from liftOriginalFh — _patchLiftFloors already
-    // rewrote sectors[si].fh (the crush target only reads ceilings, safe to
-    // share). liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
+    // Raise specials aimed at a non-perpetual lift become named cycles on it
+    // (vanilla raises from the live floor: MAP30's 140 + 62). The start pose is
+    // where the lift rests when the raise fires: lowered for a one-way lower,
+    // original height otherwise. Reads liftOriginalFh: sectors[si].fh is patched.
+    // liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
     _identifyLiftRaises(lifts) {
         const {sectors} = this._level;
         const liftRaiseVariants = {};
@@ -826,7 +748,7 @@ class WadMapAnalyzer {
                 continue;
             }
             const rule = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
-            for (const si of lifts.movingFloorDownIds) {
+            for (const si of lifts.liftIds) {
                 if ((sectors[si].tag !== ld.tag)
                     || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si])) {
                     continue;
@@ -850,28 +772,22 @@ class WadMapAnalyzer {
         return liftRaiseVariants;
     }
 
-    // Rising floors: the floor moves UP once toward a target when its trigger
-    // fires (walk-zone or switch). Unlike lifts, fh is NOT patched — the static
-    // floor stays at its WAD height and the moving top-flat (built by
-    // WadRisingFloorBuilder) sits there and rises. Exclude sectors already
-    // claimed as doors or lifts. The target height follows the vanilla rules
-    // (FLOOR_UP_BY_SPECIAL targets): fixed delta, lowest surrounding ceiling
-    // (clamped to the own ceiling, -8 for crush) or next-higher neighbour
-    // floor. A sector whose target does not rise above its floor is dropped
-    // (no movement in vanilla): its static floor is kept, no dead instance.
-    _identifyRisingFloors(doorSectorIds, movingFloorDownIds, instantRaise = {}, liftOriginalFh = {}) {
+    // Rising floors: unlike lifts, fh is not patched, the moving flat rises from
+    // the WAD height. A target not above the floor means no movement in vanilla:
+    // the sector is dropped.
+    _identifyRisingFloors(doorSectorIds, liftIds, instantRaise = {}, liftOriginalFh = {}) {
         const {sectors} = this._level;
-        const linedefs = this._moverLinedefs();
+        const linedefs              = this._moverLinedefs();
         const risingFloorIds        = new Set();
         const risingFloorSpecial    = {};
         const risingFloorTargetFh   = {};
         const risingFloorInstantIds = new Set();
 
         for (const ld of linedefs) {
-            if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && ld.tag !== 0) {
+            if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
                 for (let si = 0; si < sectors.length; si++) {
-                    if (sectors[si].tag === ld.tag
-                        && !doorSectorIds.has(si) && !movingFloorDownIds.has(si)) {
+                    if ((sectors[si].tag === ld.tag)
+                        && !doorSectorIds.has(si) && !liftIds.has(si)) {
                         const target = this._risingFloorTarget(si, ld.special, liftOriginalFh);
                         if (target > sectors[si].fh) {
                             risingFloorIds.add(si);
@@ -883,19 +799,14 @@ class WadMapAnalyzer {
             }
         }
 
-        // Instant risers (vanilla instant-raise trick, cf. _identifyLifts):
-        // same machinery as a rising floor, with a one-tic timeline.
-        for (const [key, info] of Object.entries(instantRaise)) {
+        for (const [key, raise] of Object.entries(instantRaise)) {
             const si = Number(key);
             risingFloorIds.add(si);
             risingFloorInstantIds.add(si);
-            risingFloorSpecial[si]  = info.special;
-            risingFloorTargetFh[si] = info.targetFh;
+            risingFloorSpecial[si]  = raise.special;
+            risingFloorTargetFh[si] = raise.targetFh;
         }
 
-        // A floor aimed at by a fixed-delta special is staged: its timeline
-        // spans the whole reachable travel and each trigger drives it up to a
-        // target resolved from the live floor (stageRulesFor).
         const risingFloorStaging = {};
         for (const si of risingFloorIds) {
             const staging = ((risingFloorInstantIds.has(si)) ? null : this._risingFloorStaging(si, linedefs));
@@ -916,10 +827,8 @@ class WadMapAnalyzer {
         };
     }
 
-    // Stage rules of a trigger's staged targets: code → {origFh, targetFhFor
-    // (liveFh)}, the destination vanilla EV_DoFloor computes from the LIVE
-    // sector when the trigger fires — liveFloorOf(si) reads a neighbour's
-    // current floor. null when nothing is staged (DoomTriggerTargets.fire).
+    // code → {origFh, targetFhFor(liveFh)} for the staged targets: EV_DoFloor
+    // computes the destination from the live sector. null when nothing is staged.
     static stageRulesFor(analysis, special, targets, liveFloorOf) {
         const raise = WadConstants.FLOOR_UP_BY_SPECIAL[special];
         if (raise === undefined) {
@@ -959,18 +868,17 @@ class WadMapAnalyzer {
         return ((higher.length > 0) ? Math.min(...higher) : null);
     }
 
-    // Floor movers that will get an instance (sector → {code, restFh}): the
-    // single place deciding a lift or a step with no travel yields none.
+    // Floor movers that get an instance: si → {code, restFh}.
     _identifyFloorMovers(lifts, rising, stairs) {
         const {sectors} = this._level;
         const movers = new Map();
         for (const si of rising.risingFloorIds) {
             movers.set(si, {code: 'risingfloor_' + si, restFh: sectors[si].fh});
         }
-        for (const si of lifts.movingFloorDownIds) {
+        for (const si of lifts.liftIds) {
             const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si]);
             const maxFh = ((isPerpetual) ? lifts.liftMaxAdjFh[si] : lifts.liftOriginalFh[si]);
-            if (maxFh > lifts.liftMinAdjFh[si]) {
+            if (maxFh > lifts.liftLowestFh[si]) {
                 movers.set(si, {code: 'lift_' + si, restFh: lifts.liftOriginalFh[si]});
             }
         }
@@ -983,22 +891,18 @@ class WadMapAnalyzer {
         return movers;
     }
 
-    // Staging of a floor aimed at by a fixed-delta raise: vanilla recomputes the
-    // destination from the LIVE floor at each trigger, so the timeline spans
-    // the whole travel — up to the ceiling (where UZDoom clamps) when a line
-    // can fire again or aims at an absolute height, else the sum of the one-use
-    // deltas — and every special aimed at the sector gets its target rule:
-    // {delta} above the live floor (fixed delta, raiseToTexture), {nextHigherOf:
-    // neighbour ids} read live, or {absolute} (surrounding ceilings). One speed
-    // for the whole timeline (the first fixed-delta line's). null = not staged.
+    // Vanilla re-targets a fixed-delta raise from the live floor at each trigger,
+    // so the timeline spans the whole travel: up to the ceiling (UZDoom clamp)
+    // when a line repeats or is not fixed-delta, else the sum of the deltas.
+    // Targets: {delta} | {nextHigherOf: ids} | {absolute}. null = not staged.
     _risingFloorStaging(si, linedefs) {
         const {sectors} = this._level;
-        const sec = sectors[si];
-        const neighbourIds = this._neighbourSectorIds(si);
-        const targets = {};
+        const sec             = sectors[si];
+        const neighbourIds    = this._neighbourSectorIds(si);
+        const targets         = {};
         let firstDeltaSpecial = null;
-        let onceTravel = 0;
-        let openEnded  = false;
+        let onceTravel        = 0;
+        let openEnded         = false;
         for (const ld of linedefs) {
             const rule = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
             if ((ld.tag !== sec.tag) || (ld.tag === 0) || (rule === undefined) || (rule.donutRingOnly === true)) {
@@ -1063,7 +967,6 @@ class WadMapAnalyzer {
         const sec  = sectors[si];
         const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special].target;
 
-        // Fixed delta above the current floor (raiseFloor24/32...)
         if (typeof rule === 'number') {
             return sec.fh + rule;
         }
@@ -1087,7 +990,7 @@ class WadMapAnalyzer {
             : sec.ch);
         target = Math.min(target, sec.ch);
         if (rule === 'lowestCeilingCrush') {
-            target -= 8;
+            target -= WadConstants.RAISE_FLOOR_CRUSH_GAP;
         }
         return target;
     }
@@ -1101,7 +1004,7 @@ class WadMapAnalyzer {
             if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
-            if (sidedefs[ld.right].sector !== si && sidedefs[ld.left].sector !== si) {
+            if ((sidedefs[ld.right].sector !== si) && (sidedefs[ld.left].sector !== si)) {
                 continue;
             }
             for (const sd of [sidedefs[ld.right], sidedefs[ld.left]]) {
@@ -1118,26 +1021,18 @@ class WadMapAnalyzer {
     // --- Floor texture/type changes (the "+change" specials) ---
 
     /**
-     * Resolve, at build time, what each "+change" target sector will become:
-     * the new flat name and (unless 'keep') the new sector special — taken from
-     * the trigger line's front sector, or, for the lowerAndChange 37/84, from
-     * the first neighbour sitting at the destination height (vanilla walks the
-     * sector lines in order). One change per sector: with several change lines
-     * on the same tag, the last one wins (same per-element limitation as the
-     * doors). Fired at 'start' or at 'complete' of the moving instance.
-     * Seeded with the donut ring changes _mergeDonutRings emitted (a tagged
-     * change line on the same sector wins, like everywhere else).
+     * Source sector of each "+change" target: the trigger line's front sector,
+     * or for 37/84 the first neighbour at the destination height. One change
+     * per sector, the last line wins; seeded with the donut ring changes.
      *
-     * @returns {object} si → {flatName, special (number|null), at}
+     * @returns {object} si → {sourceSi, special, at}
      */
     _identifyFloorChanges(lifts, rising, ringChanges) {
         const {linedefs, sidedefs, sectors} = this._level;
         const floorChange = {...ringChanges};
 
         for (const ld of linedefs) {
-            // The donut change (source 'donutModel') is resolved against the
-            // model sector s3 by _mergeDonutRings only — served here, a donut
-            // line would stamp the FRONT sector's flat on the whole tag.
+            // Donut changes come from the model sector (_mergeDonutRings), not the front one.
             if (WadConstants.isDonutSpecial(ld.special)) {
                 continue;
             }
@@ -1150,11 +1045,11 @@ class WadMapAnalyzer {
                 if (sectors[si].tag !== ld.tag) {
                     continue;
                 }
-                const moving = (rising.risingFloorIds.has(si) || lifts.movingFloorDownIds.has(si));
+                const moving = (rising.risingFloorIds.has(si) || lifts.liftIds.has(si));
                 if (!moving) {
                     continue;
                 }
-                // A sector, not a flat: read live at fire time (chained changes)
+                // A sector, not a flat: read live at fire time (chained changes).
                 let sourceSi = frontSi;
                 if (rule.source === 'dest') {
                     sourceSi = this._sectorAtHeight(si, lifts.liftBaseTargetFh[si]);
@@ -1197,23 +1092,19 @@ class WadMapAnalyzer {
     // --- Stairs (build stairs) ---
 
     /**
-     * EV_BuildStairs: a stair special raises a CHAIN of sectors. From each tagged
-     * base sector, raise it by one step, then walk to the adjacent sector that
-     * shares a two-sided line whose FRONT (right) side is the current step AND
-     * whose floor flat matches the base flat; that sector becomes the next step
-     * at the running cumulated height. Like rising floors, fh is NOT patched —
-     * each step's moving top-flat (WadStairBuilder) sits at its WAD height and
-     * rises to its target. Sectors already claimed (doors/lifts/rising) are out.
+     * EV_BuildStairs: from each tagged base sector, chain through the two-sided
+     * lines whose front side is the current step and whose far sector has the
+     * base flat, one step higher each time. fh is not patched.
      *
      * @returns {{stairIds: Set<number>, stairInfo: object, stairStepTag: object}}
      */
-    _identifyStairs(doorSectorIds, movingFloorDownIds, risingFloorIds) {
+    _identifyStairs(doorSectorIds, liftIds, risingFloorIds) {
         const {linedefs, sidedefs, sectors} = this._level;
         const stairIds     = new Set();
         const stairInfo    = {};   // si → {targetFh, special}
         const stairStepTag = {};   // si → trigger tag (the base sector's tag)
 
-        const claimed = (si) => (doorSectorIds.has(si) || movingFloorDownIds.has(si)
+        const claimed = (si) => (doorSectorIds.has(si) || liftIds.has(si)
             || risingFloorIds.has(si) || stairIds.has(si));
 
         const registerStep = (si, targetFh, special, tag) => {
@@ -1222,8 +1113,6 @@ class WadMapAnalyzer {
             stairStepTag[si] = tag;
         };
 
-        // Next step: first two-sided line whose right-side sector is `current`
-        // and whose left-side sector is an unclaimed same-flat sector.
         const nextStep = (current, texture) => {
             for (const ld of linedefs) {
                 if ((ld.right < 0) || (ld.left < 0)) {
@@ -1232,9 +1121,9 @@ class WadMapAnalyzer {
                 if (sidedefs[ld.right].sector !== current) {
                     continue;
                 }
-                const cand = sidedefs[ld.left].sector;
-                if (!claimed(cand) && sectors[cand].ft === texture) {
-                    return cand;
+                const candidate = sidedefs[ld.left].sector;
+                if (!claimed(candidate) && (sectors[candidate].ft === texture)) {
+                    return candidate;
                 }
             }
 
@@ -1242,17 +1131,17 @@ class WadMapAnalyzer {
         };
 
         for (const ld of linedefs) {
-            if (!WadConstants.STAIR_SPECIALS.has(ld.special) || ld.tag === 0) {
+            if (!WadConstants.STAIR_SPECIALS.has(ld.special) || (ld.tag === 0)) {
                 continue;
             }
             const step = WadConstants.STAIR_BY_SPECIAL[ld.special].step;
             for (let base = 0; base < sectors.length; base++) {
-                if (sectors[base].tag !== ld.tag || claimed(base)) {
+                if ((sectors[base].tag !== ld.tag) || claimed(base)) {
                     continue;
                 }
                 const texture = sectors[base].ft;
-                let height  = sectors[base].fh;
-                let current = base;
+                let height    = sectors[base].fh;
+                let current   = base;
                 while (current !== -1) {
                     height += step;
                     registerStep(current, height, ld.special, ld.tag);
@@ -1267,18 +1156,11 @@ class WadMapAnalyzer {
     // --- Switches ---
 
     /**
-     * A switch linedef (S-type special) is a USE-activation point. Two shapes:
-     *  - **panel** ({side, slot, texName}): the wall carries a SWxxx graphic
-     *    (one-sided middle — historic case — or, on a two-sided line, a step
-     *    riser `lower` / header `upper`, either side). The static builder drops
-     *    that exact face and the switch builder rebuilds an interactive quad that
-     *    swaps SW1↔SW2 at the right vertical band.
-     *  - **invisible** ({invisible:true}): a two-sided activation line with NO
-     *    SWxxx graphic (e.g. an SR lift edge, special 62 textured PLAT1) — there
-     *    is no panel to draw/swap, and its wall (the lift riser) is already built
-     *    elsewhere. It becomes an invisible USE zone that start()s the tagged
-     *    targets, the press analog of a walk-trigger zone — so pressing the edge
-     *    actually fires the lift even when no walk line backs it up.
+     * Switch linedefs (S-type specials), in two shapes:
+     *  - panel {side, slot, texName}: the face carrying the SWxxx graphic, which
+     *    the switch builder rebuilds as a swapping quad;
+     *  - {invisible: true}: a two-sided line with no SWxxx graphic (an SR lift
+     *    edge textured PLAT1), which becomes an invisible USE zone.
      *
      * @returns {{ids: Set<number>, walls: Map<number, object>}}
      */
@@ -1298,7 +1180,6 @@ class WadMapAnalyzer {
             const rSd = sidedefs[ld.right];
 
             if (ld.left < 0) {
-                // One-sided: switch graphic on the right middle.
                 if (WadTextureBank.isBlank(rSd.middle)) {
                     continue;
                 }
@@ -1307,8 +1188,6 @@ class WadMapAnalyzer {
                 continue;
             }
 
-            // Two-sided: a SWxxx slot → visible panel; otherwise → invisible USE
-            // zone (the line still activates its target, e.g. an SR lift edge).
             ids.add(ldIdx);
             walls.set(ldIdx, this._findSwitchSlot(rSd, sidedefs[ld.left], liftOriginalFh) ?? {invisible: true});
         }
@@ -1339,10 +1218,8 @@ class WadMapAnalyzer {
         return ((found !== null) ? {side: found.side, slot: found.slot, texName: found.texName} : null);
     }
 
-    // Codes of the built target instances of a given tag, shared by every
-    // "trigger → targets" builder (switch, walk-zone). `families` is a list of
-    // {ids: Set<sectorId>, prefix, built: Set<code>}; the switch passes lifts +
-    // doors, the walk-trigger zone passes lifts + rising floors + doors.
+    // Codes of the built instances of a tag. families: [{ids, prefix, built,
+    // tagOf?}]; tagOf overrides the sector tag (stairs, donut rings).
     static resolveTaggedTargets(sectors, tag, families) {
         const targets = [];
         if (tag === 0) {
@@ -1351,11 +1228,8 @@ class WadMapAnalyzer {
         for (const fam of families) {
             for (const si of fam.ids) {
                 const code = fam.prefix + si;
-                // Default: match the sector's own tag. A family may override with
-                // tagOf(si) — e.g. stairs, where only the base step carries the
-                // trigger tag and the chained steps must resolve by it too.
-                const t = ((fam.tagOf !== undefined) ? fam.tagOf(si) : sectors[si].tag);
-                if (t === tag && fam.built.has(code)) {
+                const sectorTag = ((fam.tagOf !== undefined) ? fam.tagOf(si) : sectors[si].tag);
+                if ((sectorTag === tag) && fam.built.has(code)) {
                     targets.push(code);
                 }
             }
@@ -1364,17 +1238,13 @@ class WadMapAnalyzer {
         return targets;
     }
 
-    // A sector built as a donut RING: only _mergeDonutRings stamps a
-    // donut special into risingFloorSpecial (same idiom as lightGroupOf).
+    // Only _mergeDonutRings stamps a donut special into risingFloorSpecial.
     static isDonutRing(analysis, si) {
         return WadConstants.isDonutSpecial(analysis.risingFloorSpecial[si]);
     }
 
-    // Rising-floor family for resolveTaggedTargets, shared by every trigger
-    // builder (switch, walk, gun, boss). A donut ring carries no tag of its
-    // own: it resolves by the trigger tag stored at identification, and only
-    // for the donut special itself — vanilla moves the untagged ring from
-    // EV_DoDonut alone, never from another special sharing the tag.
+    // An untagged donut ring resolves by its stored trigger tag, and only for
+    // the donut special: vanilla moves it from EV_DoDonut alone.
     static risingFloorFamily(analysis, sectors, built, special) {
         const ringsWanted = WadConstants.isDonutSpecial(special);
         return {ids: analysis.risingFloorIds, prefix: 'risingfloor_', built: built,
@@ -1383,13 +1253,11 @@ class WadMapAnalyzer {
                 : sectors[si].tag)};
     }
 
-    // Complete mover-family list for resolveTaggedTargets, shared by every
-    // full trigger path (switch, walk, boss death). The stairs resolve by the
-    // trigger tag stored per step — only the base carries the sector tag.
-    // built = {lifts, rising, doors, stairs} (built-code sets).
+    // Every mover family for resolveTaggedTargets; built = {lifts, rising,
+    // doors, stairs} code sets. Stair steps resolve by the base step's tag.
     static moverFamilies(analysis, sectors, built, special) {
         return [
-            {ids: analysis.movingFloorDownIds, prefix: 'lift_',        built: built.lifts},
+            {ids: analysis.liftIds, prefix: 'lift_',        built: built.lifts},
             WadMapAnalyzer.risingFloorFamily(analysis, sectors, built.rising, special),
             {ids: analysis.doorSectorIds,      prefix: 'door_',        built: built.doors},
             {ids: analysis.stairIds, prefix: 'stair_', built: built.stairs,
@@ -1402,58 +1270,42 @@ class WadMapAnalyzer {
         return parseInt(code.slice(prefix.length), 10);
     }
 
-    // Splits resolved target codes into {start, reverse} — reverse = played
-    // backward via startReverse(). Shared by the switch and walk builders:
-    // - special 45 (SWITCH_REVERSE_SPECIALS) walks ALL its rising-floor
-    //   targets back down;
-    // - a RAISE special (FLOOR_MOVE_UP) whose tag lands on a LIFT walks the
-    //   lowered platform back up (E1M5/E1M7 bidirectional plats: 70/98 lower
-    //   it, the 91 ring raises it back) instead of re-lowering it;
-    // - symmetrically, a LOWER special (FLOOR_MOVE_DOWN) whose tag lands on a
-    //   RISING FLOOR walks it back down — the two-way floor elevators, one line
-    //   per side (E1M8: the 91 wall raises the shaft, the 82 wall lowers it).
-    //   A ring hit by ITS donut special is exempt: the donut is itself a LOWER
-    //   (the hole descends) yet must START its ring rising (EV_DoDonut, E1M2's
-    //   slime) — any other lower special reaching a ring reverses it normally.
-    // A closing special caught on an OPENING door is NOT a reverse: the door
-    // owns one cycle per special aiming at it, so it starts forward on the
-    // cycle the trigger names (cycleVariant) — that is what keeps the 30 s
-    // reopen of 16/76 and the grind of a crusher.
-    // Each reverse entry carries a timeScale so the backward playback runs at
-    // the VANILLA speed of the reversing special, not at the speed baked into
-    // the target's keyframes (a turbo-lowered plat rises back at FLOORSPEED).
+    // Splits target codes into {start, reverse} (played backward):
+    // - 45 (SWITCH_REVERSE_SPECIALS) reverses all its targets;
+    // - a raise on a lift, without a named cycle, walks it back up (E1M5 plats);
+    // - a lower on a rising floor walks it back down (E1M8 shaft), except a
+    //   ring hit by its own donut special, which must start rising.
+    // Doors never reverse: they own one forward cycle per special.
+    // timeScale replays at the reversing special's vanilla speed.
     static splitReverseTargets(analysis, special, targets) {
-        const rev = (code) => ({
+        const reversed = (code) => ({
             code:      code,
             timeScale: WadMapAnalyzer._specialSpeed(special) / WadMapAnalyzer._targetSpeed(analysis, code)
         });
 
         if (WadConstants.SWITCH_REVERSE_SPECIALS.has(special)) {
-            return {start: [], reverse: targets.map(rev)};
+            return {start: [], reverse: targets.map(reversed)};
         }
         const isRaise  = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
         const isLower  = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
         const raiseKey = WadConstants.floorRaiseCycleKey(special);
-        const start = [];
-        const reverse = [];
+        const start    = [];
+        const reverse  = [];
         for (const code of targets) {
             if (isRaise && code.startsWith('lift_')) {
-                // A raise carrying a NAMED cycle on this lift starts forward
-                // on it (same idiom as the door cycles, speed baked in); the
-                // relative raises keep the reverse playback.
                 const liftSi = WadMapAnalyzer._sectorOfCode(code, 'lift_');
                 if ((raiseKey !== null) && (analysis.liftRaiseVariants[liftSi]?.[raiseKey] !== undefined)) {
                     start.push(code);
                     continue;
                 }
-                reverse.push(rev(code));
+                reverse.push(reversed(code));
                 continue;
             }
             if (isLower && code.startsWith('risingfloor_')) {
                 const ringOfThisDonut = (WadConstants.isDonutSpecial(special)
                     && WadMapAnalyzer.isDonutRing(analysis, WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')));
                 if (!ringOfThisDonut) {
-                    reverse.push(rev(code));
+                    reverse.push(reversed(code));
                     continue;
                 }
             }
@@ -1472,8 +1324,7 @@ class WadMapAnalyzer {
             ?? 1;
     }
 
-    // Forward speed (u/tic) baked into a target instance's own keyframes
-    // (from the special it was built with).
+    // Forward speed (u/tic) baked into a target's keyframes.
     static _targetSpeed(analysis, code) {
         if (code.startsWith('lift_')) {
             const si = WadMapAnalyzer._sectorOfCode(code, 'lift_');

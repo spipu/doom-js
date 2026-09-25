@@ -38,7 +38,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const resolvedTexId = this._resolveTexId(fc, engine.sceneMs);
                 const texture       = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
                 const alpha         = fc.alpha;
-                const clampV        = fc.clampV || false;
+                const clampV        = (fc.clampV || false);
                 const blendAdd      = (fc.blendAdd === true);
 
                 for (const tri of tris) {
@@ -56,17 +56,17 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 
-    // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]
-    // Indices 0-7 used by rasterizer, 8-9 (3D camera XY) used for clipping only
+    // Vertex layout: [sx, sy, cz, r, g, b, u, v, cx, cy]; the camera-space
+    // cx, cy only serve the near clip.
     _buildVertex(out, engine, fc, obj, idx) {
-        const ptIdx = fc.pts[idx];
-        const col  = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
-        const pt3d = obj.pt3d[ptIdx];
-        const pt2d = obj.pt2d[ptIdx];
-        const scroll = this._uvOffset(fc, engine.sceneMs);
-        const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
+        const ptIdx       = fc.pts[idx];
+        const col         = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
+        const pt3d        = obj.pt3d[ptIdx];
+        const pt2d        = obj.pt2d[ptIdx];
+        const scroll      = this._uvOffset(fc, engine.sceneMs);
+        const lightFactor = obj.getFaceLightFactor(fc) * engine.instanceLight;
         out[0] = pt2d[0]; out[1] = pt2d[1]; out[2] = pt3d[2];
-        out[3] = col[0] * lf;  out[4] = col[1] * lf;  out[5] = col[2] * lf;
+        out[3] = col[0] * lightFactor;  out[4] = col[1] * lightFactor;  out[5] = col[2] * lightFactor;
         out[6] = fc.map[idx][0] + scroll[0]; out[7] = fc.map[idx][1] + scroll[1];
         out[8] = pt3d[0]; out[9] = pt3d[1];
     }
@@ -89,15 +89,15 @@ class Object3dRendererFull extends Object3dRendererBase {
 
     _sortVertices() {
         if (
-            (this._p1[1] < this._p2[1] || (this._p1[1] === this._p2[1] && this._p1[0] < this._p2[0])) &&
-            (this._p1[1] < this._p3[1] || (this._p1[1] === this._p3[1] && this._p1[0] < this._p3[0]))
+            ((this._p1[1] < this._p2[1]) || ((this._p1[1] === this._p2[1]) && (this._p1[0] < this._p2[0]))) &&
+            ((this._p1[1] < this._p3[1]) || ((this._p1[1] === this._p3[1]) && (this._p1[0] < this._p3[0])))
         ) {
             if (this._p2[0] > this._p3[0]) {
                 let t = this._p2; this._p2 = this._p3; this._p3 = t;
             }
         } else if (
-            (this._p2[1] < this._p3[1] || (this._p2[1] === this._p3[1] && this._p2[0] < this._p3[0])) &&
-            (this._p2[1] < this._p1[1] || (this._p2[1] === this._p1[1] && this._p2[0] < this._p1[0]))
+            ((this._p2[1] < this._p3[1]) || ((this._p2[1] === this._p3[1]) && (this._p2[0] < this._p3[0]))) &&
+            ((this._p2[1] < this._p1[1]) || ((this._p2[1] === this._p1[1]) && (this._p2[0] < this._p1[0])))
         ) {
             let t = this._p1; this._p1 = this._p2; this._p2 = t;
             if (this._p2[0] > this._p3[0]) {
@@ -218,7 +218,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                 const al = ((xMin < xMax) ? (lx - xMin) / (xMax - xMin) : 0.);
                 const lz = 1. / ((1.-al)/lt0[2] + al/lt1[2]);
 
-                let post = -1;
+                let texel = -1;
                 if (texture) {
                     let xt = Math.trunc(lz * (lt0[6] + dt[6]*al)) % texture.width;
                     if (xt < 0) {
@@ -228,8 +228,8 @@ class Object3dRendererFull extends Object3dRendererBase {
                     let yt = ((clampV)
                         ? Math.min(texture.height - 1, Math.max(0, Math.trunc(ytRaw)))
                         : (Math.trunc(ytRaw) % texture.height + texture.height) % texture.height);
-                    post = 4 * (xt + yt * texture.width);
-                    if (texture.data[post+3] === 0) {
+                    texel = 4 * (xt + yt * texture.width);
+                    if (texture.data[texel+3] === 0) {
                         continue;
                     }
                 }
@@ -244,14 +244,14 @@ class Object3dRendererFull extends Object3dRendererBase {
                     continue;
                 }
 
-                const posi = 4 * (lx + ly * engine.scrWidth);
+                const pixel = 4 * (lx + ly * engine.scrWidth);
                 let r, g, b, a;
 
                 if (texture) {
-                    r = Math.trunc((lt0[3] + dt[3]*al) * texture.data[post+0]);
-                    g = Math.trunc((lt0[4] + dt[4]*al) * texture.data[post+1]);
-                    b = Math.trunc((lt0[5] + dt[5]*al) * texture.data[post+2]);
-                    a = alpha * texture.data[post+3] / 255.;
+                    r = Math.trunc((lt0[3] + dt[3]*al) * texture.data[texel+0]);
+                    g = Math.trunc((lt0[4] + dt[4]*al) * texture.data[texel+1]);
+                    b = Math.trunc((lt0[5] + dt[5]*al) * texture.data[texel+2]);
+                    a = alpha * texture.data[texel+3] / 255.;
                 } else {
                     r = Math.trunc(lt0[3] + dt[3]*al);
                     g = Math.trunc(lt0[4] + dt[4]*al);
@@ -262,20 +262,20 @@ class Object3dRendererFull extends Object3dRendererBase {
                 // Added to the scene instead of replacing it (gzdoom RenderStyle
                 // "Add"): the overflow is clamped by the ImageData itself.
                 if (blendAdd) {
-                    engine.scrData.data[posi+0] += a*r;
-                    engine.scrData.data[posi+1] += a*g;
-                    engine.scrData.data[posi+2] += a*b;
-                    engine.scrData.data[posi+3] += a*255;
+                    engine.scrData.data[pixel+0] += a*r;
+                    engine.scrData.data[pixel+1] += a*g;
+                    engine.scrData.data[pixel+2] += a*b;
+                    engine.scrData.data[pixel+3] += a*255;
                 } else if (a < 1.) {
-                    engine.scrData.data[posi+0] = a*r + (1-a)*engine.scrData.data[posi+0];
-                    engine.scrData.data[posi+1] = a*g + (1-a)*engine.scrData.data[posi+1];
-                    engine.scrData.data[posi+2] = a*b + (1-a)*engine.scrData.data[posi+2];
-                    engine.scrData.data[posi+3] = a*255 + (1-a)*engine.scrData.data[posi+3];
+                    engine.scrData.data[pixel+0] = a*r + (1-a)*engine.scrData.data[pixel+0];
+                    engine.scrData.data[pixel+1] = a*g + (1-a)*engine.scrData.data[pixel+1];
+                    engine.scrData.data[pixel+2] = a*b + (1-a)*engine.scrData.data[pixel+2];
+                    engine.scrData.data[pixel+3] = a*255 + (1-a)*engine.scrData.data[pixel+3];
                 } else {
-                    engine.scrData.data[posi+0] = r;
-                    engine.scrData.data[posi+1] = g;
-                    engine.scrData.data[posi+2] = b;
-                    engine.scrData.data[posi+3] = 255;
+                    engine.scrData.data[pixel+0] = r;
+                    engine.scrData.data[pixel+1] = g;
+                    engine.scrData.data[pixel+2] = b;
+                    engine.scrData.data[pixel+3] = 255;
                 }
             }
         }

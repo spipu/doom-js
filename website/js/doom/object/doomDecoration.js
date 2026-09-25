@@ -1,8 +1,7 @@
 /**
  * A scenery object definition: a world sprite that is not picked up (barrel,
- * lamp, corpse, tree…). Like the other catalog definitions it is immutable and
- * shared; the actual occurrences are engine Instances rebuilt per level from the
- * WAD THINGS lump, so resetOnNewLevel is irrelevant here (no player state).
+ * lamp, corpse, tree…). resetOnNewLevel is irrelevant here: its occurrences are
+ * engine Instances rebuilt per level from the THINGS lump.
  *
  * solid + radius drive the collision phase: a solid decoration blocks the player
  * with a vertical cylinder of that radius (Doom MF_SOLID things); non-solid ones
@@ -10,11 +9,11 @@
  * they anchor their top to the ceiling instead of their foot to the floor.
  */
 class DoomDecoration extends AbstractDoomObject {
-    constructor(data) {
-        super(data, false);
-        this._solid   = (data.solid === true);
-        this._radius  = data.radius ?? 0;
-        this._ceiling = (data.ceiling === true);
+    constructor(definition) {
+        super(definition, false);
+        this._solid   = (definition.solid === true);
+        this._radius  = definition.radius ?? 0;
+        this._ceiling = (definition.ceiling === true);
     }
 
     isSolid() {

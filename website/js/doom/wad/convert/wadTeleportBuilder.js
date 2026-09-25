@@ -1,14 +1,7 @@
 /**
- * Teleport pad builder (linedef specials 39 W1 / 97 WR). A teleport line is
- * modelled as an invisible proximity Instance: a single-point object at the
- * middle of the linedef (so getCenter gives the trigger centre, no faces to
- * render) plus a DoomTeleportInteraction that moves the player to the landing.
- *
- * The destination is the thing type 14 in the sector of the same tag, resolved
- * by WadWorldBuilder and passed in as landingsByTag (tag → {x, y, topY, z, yaw}
- * world — y is the build-time floor, topY the sector ceiling the live ONFLOORZ
- * search starts from).
- * A teleporter whose tag has no landing is skipped.
+ * Teleport pad builder (linedef specials 39 W1 / 97 WR): an invisible zone on
+ * the line plus a DoomTeleportInteraction moving the player to the landing of
+ * the same tag. A teleporter whose tag has no landing is skipped.
  */
 class WadTeleportBuilder {
     /**
@@ -36,13 +29,10 @@ class WadTeleportBuilder {
         return result;
     }
 
-    // --- Internal ---
-
     _buildTeleport(tp) {
         const {linedefs} = this._level;
 
-        // Monster-only lines (125/126) never get a player zone — the monster
-        // system tests them by segment crossing at walk time.
+        // Monster-only lines (125/126): the monster system tests their crossing.
         if (tp.monsterOnly === true) {
             return null;
         }
@@ -54,21 +44,19 @@ class WadTeleportBuilder {
         const ld = linedefs[tp.ldIdx];
         const {mesh, radius, segment} = WadMeshBuilder.buildLineZone(this._level, ld, WadConstants.WALK_ZONE_MARGIN);
 
-        const teleportName = 'teleport_' + tp.ldIdx;
+        const teleportCode = 'teleport_' + tp.ldIdx;
         const onlyOnce = WadConstants.TELEPORT_ONCE_BY_SPECIAL[tp.special] ?? false;
 
         return {
-            code:     teleportName,
+            code:     teleportCode,
             textures: [],
             mesh:     mesh,
-            // Same crossing rule as the walk zones: a pad teleports the player
-            // who walks over its line, not the one standing beside it. Front
-            // side only — EV_Teleport refuses the back of the line, "so you
+            // Front side only: EV_Teleport refuses the back of the line, "so you
             // can get out of the teleporter".
             crossSegment:   segment,
             crossFrontOnly: true,
             instanceData: {
-                code:              teleportName,
+                code:              teleportCode,
                 position:          [0, 0, 0],
                 rotation:          [0, 0, 0],
                 trigger:           'proximity',
@@ -78,11 +66,11 @@ class WadTeleportBuilder {
                 interactionRadius: radius,
                 interactionShape:  'planar',   // walk-over line: fire on XZ crossing, any height
                 damage:            null,
-                interaction:       teleportName,
+                interaction:       teleportCode,
                 keyframes:         []
             },
             interactionSpec: {
-                code:        teleportName,
+                code:        teleportCode,
                 destination: destination
             }
         };

@@ -1,15 +1,14 @@
 /**
- * Modern graphical Doom game HUD (custom, drawn by us — no WAD lumps). A DOM/CSS
- * overlay laid out in the four screen corners over the letterboxed display:
- *   - bottom-left : health bar + armor bar (+ numeric values)
- *   - bottom-right: current weapon ammo (cur/max of its ammo type, '—' if none)
- *   - top-left    : the three coloured keys (lit when owned)
- *   - top-right   : the ARMS panel (weapon slots 1-7) + active weapon name
+ * Graphical game HUD, a DOM/CSS overlay of our own (no WAD lumps) laid out in
+ * the screen corners over the letterboxed display:
+ *   - bottom-left : running power-ups, health and armor bars
+ *   - bottom-right: ammo of the active weapon ('—' if none)
+ *   - top-left    : key pips (lit when owned), secret and kill counts
+ *   - top-right   : weapon slots + active weapon name
+ *   - bottom-centre: optional fps readout
  *
- * It shows the same information as the classic Doom status bar, minus the face.
- * Values are read from the bound DoomUser; the active weapon's ammo type and
- * name come from the DoomGame weapon catalog. Sizes are expressed in cqh on a
- * size container, so the whole bar follows the letterbox height.
+ * Sizes are in cqh on a size container, so the whole bar follows the letterbox
+ * height.
  */
 class HudGameBar extends AbstractHud {
     constructor(engine) {
@@ -22,9 +21,8 @@ class HudGameBar extends AbstractHud {
         this._effectEls = {};
     }
 
-    // The weapon slots and the key set are per-game data: both come from the
-    // game profile, so the panel adapts itself to the loaded WAD's game
-    // (empty layout when no game is bound — nothing to show).
+    // Weapon slots and key set come from the game profile; empty layout when
+    // no game is bound.
     _slotConfig() {
         if (this._game === null) {
             return {count: 0, byWeapon: {}, alwaysOwnedSlot: 0, upgradeWeapon: null};
@@ -58,10 +56,7 @@ class HudGameBar extends AbstractHud {
         this._buildFps();
     }
 
-    // Optional framerate readout, bottom-centre — the only panel that is not in
-    // a corner, and the only one the player can turn off. Same corner block as
-    // the others, so it scales with the letterbox like the whole bar. The debug
-    // view carries its own fps line, so this one serves the game view alone.
+    // The debug view carries its own fps line: this one serves the game view.
     _buildFps() {
         const block = this._createEl('div', this._cornerStyle({bottom: '1em', left: '50%'}));
         block.style.transform = 'translateX(-50%)';
@@ -84,25 +79,25 @@ class HudGameBar extends AbstractHud {
             return;
         }
 
-        const u = this._user;
+        const user = this._user;
 
-        const energy    = u.getEnergy();
-        const maxEnergy = u.getMaxEnergy();
+        const energy    = user.getEnergy();
+        const maxEnergy = user.getMaxEnergy();
         this._els.healthFill.style.width = this._ratioPct(energy, maxEnergy);
         this._els.healthValue.innerText  = String(Math.ceil(energy));
 
         // Armor — value + bar coloured by the armour tier (green ⅓, blue ½)
-        const armor    = u.getArmor();
-        const maxArmor = u.getMaxArmor();
-        const armorColor = ((u.getArmorAbsorb() >= 0.5) ? '#4d9fff' : '#5dd35d');
+        const armor      = user.getArmor();
+        const maxArmor   = user.getMaxArmor();
+        const armorColor = ((user.getArmorAbsorb() >= 0.5) ? '#4d9fff' : '#5dd35d');
         this._els.armorFill.style.width           = this._ratioPct(armor, maxArmor);
         this._els.armorFill.style.backgroundColor = armorColor;
         this._els.armorValue.innerText            = String(Math.ceil(armor));
 
-        this._updateAmmo(u);
-        this._updateArms(u);
-        this._updateKeys(u);
-        this._updateEffects(u);
+        this._updateAmmo(user);
+        this._updateArms(user);
+        this._updateKeys(user);
+        this._updateEffects(user);
 
         if (this._game !== null) {
             this._els.secretsValue.innerText = this._game.getSecretsFound() + '/' + this._game.getSecretsTotal();
@@ -122,20 +117,20 @@ class HudGameBar extends AbstractHud {
         }
     }
 
-    _updateAmmo(u) {
-        const code   = u.getActiveWeapon();
+    _updateAmmo(user) {
+        const code   = user.getActiveWeapon();
         const weapon = ((this._game !== null) ? this._game.getWeapon(code) : null);
         const type   = ((weapon !== null) ? weapon.getAmmoType() : null);
-        this._els.ammoValue.innerText = ((type === null) ? '—' : u.getAmmo(type) + '/' + u.getAmmoMax(type));
+        this._els.ammoValue.innerText = ((type === null) ? '—' : user.getAmmo(type) + '/' + user.getAmmoMax(type));
     }
 
-    _updateArms(u) {
+    _updateArms(user) {
         const slots        = this._slotConfig();
         const slotByWeapon = slots.byWeapon;
-        const code         = u.getActiveWeapon();
+        const code         = user.getActiveWeapon();
         const activeSlot   = (slotByWeapon[code] ?? null);
 
-        const ownedCodes = new Set(u.getOwnedWeaponCodes());
+        const ownedCodes = new Set(user.getOwnedWeaponCodes());
         const ownedSlots = new Set();
         for (const owned of ownedCodes) {
             const slot = slotByWeapon[owned];
@@ -170,35 +165,32 @@ class HudGameBar extends AbstractHud {
         return ((appTranslator.has(translationCode)) ? appTranslator.get(translationCode) : weapon.getName());
     }
 
-    // One line per running power-up: timed ones with a M:SS countdown,
-    // blinking through the vanilla end-of-powerup window in sync with their
-    // screen effect; permanent ones (berserk — the vanilla status-bar face's
-    // job) label only. The blink hides without collapsing (visibility), so
-    // the stack keeps its height.
-    _updateEffects(u) {
-        const effects = u.getEffects();
-        for (const def of HudGameBar.EFFECT_LINE_DEFS) {
-            const el          = this._effectEls[def.code];
-            const remainingMs = effects[def.code];
-            const active      = ((def.timed) ? (remainingMs !== undefined) : u.hasItem(def.code));
+    // Timed power-ups blink in sync with their screen effect near the end;
+    // the blink uses visibility, not display, so the stack keeps its height.
+    _updateEffects(user) {
+        const effects = user.getEffects();
+        for (const effectLine of HudGameBar.EFFECT_LINES) {
+            const el          = this._effectEls[effectLine.code];
+            const remainingMs = effects[effectLine.code];
+            const active      = ((effectLine.timed) ? (remainingMs !== undefined) : user.hasItem(effectLine.code));
             el.style.display = ((active) ? 'block' : 'none');
             if (!active) {
                 continue;
             }
-            if (def.timed) {
+            if (effectLine.timed) {
                 const seconds = Math.ceil(remainingMs / 1000);
-                el.innerText = appTranslator.get(def.labelCode) + ' '
+                el.innerText = appTranslator.get(effectLine.labelCode) + ' '
                     + Math.trunc(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
-                el.style.visibility = ((u.isEffectVisible(def.code)) ? 'visible' : 'hidden');
+                el.style.visibility = ((user.isEffectVisible(effectLine.code)) ? 'visible' : 'hidden');
             } else {
-                el.innerText = appTranslator.get(def.labelCode);
+                el.innerText = appTranslator.get(effectLine.labelCode);
             }
         }
     }
 
-    _updateKeys(u) {
+    _updateKeys(user) {
         const keyColors = this._keyColors();
-        const owned     = new Set(u.getItemCodes());
+        const owned     = new Set(user.getItemCodes());
         for (const key of Object.keys(keyColors)) {
             const el  = this._keyEls[key];
             const lit = owned.has(key);
@@ -212,16 +204,14 @@ class HudGameBar extends AbstractHud {
     _buildHealthArmor() {
         const block = this._createEl('div', this._cornerStyle({ bottom: '1em', left: '1em' }));
 
-        // Running power-up effects, one line each, stacked above the bars —
-        // pre-built in table order and toggled per frame, like the key pips.
         this._els.effects = this._createEl('div', {
             marginBottom: '0.35em', fontSize: '0.8em', fontWeight: '700'
         });
-        for (const def of HudGameBar.EFFECT_LINE_DEFS) {
+        for (const effectLine of HudGameBar.EFFECT_LINES) {
             const el = this._createEl('div', {
                 display: 'none', color: '#ffd75e', textShadow: '0 0 0.2em #000'
             });
-            this._effectEls[def.code] = el;
+            this._effectEls[effectLine.code] = el;
             this._els.effects.appendChild(el);
         }
         block.appendChild(this._els.effects);
@@ -375,12 +365,9 @@ class HudGameBar extends AbstractHud {
     }
 }
 
-// One line per power-up, in display order: the timed effects first (labelled
-// countdown), then the permanent ones carried as items. An effect absent from
-// this table gets no line (berserkFlash, a screen tint with no status of its
-// own); so do the map items, whose effect is a no-op without an automap (user
-// decision). The labels are translation codes served by doomTranslations.
-HudGameBar.EFFECT_LINE_DEFS = [
+// One line per power-up, in display order: the timed effects (countdown), then
+// the permanent ones carried as items. berserkFlash and the map items get none.
+HudGameBar.EFFECT_LINES = [
     {code: 'invulnerability', labelCode: 'effect.invulnerability', timed: true},
     {code: 'radiation',       labelCode: 'effect.radiationSuit',   timed: true},
     {code: 'light',           labelCode: 'effect.light',           timed: true},

@@ -30,14 +30,14 @@ class DoomGunTriggers {
         if (len < 1e-9) {
             return;
         }
-        const ex = x2 + (dx / len) * DoomGunTriggers.IMPACT_SLACK;
-        const ez = z2 + (dz / len) * DoomGunTriggers.IMPACT_SLACK;
+        const endX = x2 + (dx / len) * DoomGunTriggers.IMPACT_SLACK;
+        const endZ = z2 + (dz / len) * DoomGunTriggers.IMPACT_SLACK;
 
         for (const line of this._lines) {
             if (line.used) {
                 continue;
             }
-            if (!WadGeometry.segmentsCross(x1, z1, ex, ez, line.x1, line.z1, line.x2, line.z2)) {
+            if (!WadGeometry.segmentsCross(x1, z1, endX, endZ, line.x1, line.z1, line.x2, line.z2)) {
                 continue;
             }
             line.used = (line.once === true);
@@ -52,7 +52,7 @@ class DoomGunTriggers {
     }
 
     importState(usedFlags) {
-        for (let i = 0; i < this._lines.length && i < usedFlags.length; i++) {
+        for (let i = 0; (i < this._lines.length) && (i < usedFlags.length); i++) {
             this._lines[i].used = usedFlags[i];
         }
     }

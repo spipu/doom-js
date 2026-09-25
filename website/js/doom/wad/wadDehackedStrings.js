@@ -1,17 +1,12 @@
 /**
  * The [STRINGS] section of a WAD's DEHACKED lump (BEX format): the texts a WAD
- * substitutes for the engine's own, keyed by the vanilla string codes.
- *
- * This is what lets a game ship its own story without any transcription on our
- * side — Freedoom redefines E1TEXT, C1TEXT… in its two IWADs. It is also why
- * UZDoom declares those codes EMPTY in language.def: "needed in the string
- * table only so that they can be replaced by Dehacked".
+ * substitutes for the engine's own, keyed by the vanilla string codes
+ * (Freedoom redefines E1TEXT, C1TEXT… this way in its two IWADs).
  *
  * Transcription of PatchStrings (d_dehacked.cpp): 'CODE = value', each fragment
  * trimmed on both sides and appended to the previous one while the line ends
- * with a backslash. Only the BEX [STRINGS] section is read — neither the old
- * format's 'Text' blocks, which replace strings by byte offset, nor the rest of
- * DEHACKED (things, frames, weapons), which is another story entirely.
+ * with a backslash. Only the BEX [STRINGS] section is read: neither the old
+ * format's 'Text' blocks (replaced by byte offset) nor things, frames, weapons.
  */
 class WadDehackedStrings {
     /**
@@ -75,9 +70,8 @@ class WadDehackedStrings {
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
-            // A section header stands alone on its line: the Freedoom lump
-            // also MENTIONS [STRINGS] inside a comment before the real one.
-            // Matched whatever its case, like the vanilla HandleMode stricmp.
+            // A header stands alone on its line (Freedoom mentions [STRINGS]
+            // in a comment first); case-insensitive like HandleMode's stricmp.
             if ((/^\[[A-Za-z]+\]$/).test(line)) {
                 inStrings = (line.toUpperCase() === '[STRINGS]');
                 continue;
@@ -85,12 +79,12 @@ class WadDehackedStrings {
             if (!inStrings || (line === '') || line.startsWith('#')) {
                 continue;
             }
-            const equal = line.indexOf('=');
-            if (equal < 0) {
+            const equalsIndex = line.indexOf('=');
+            if (equalsIndex < 0) {
                 continue;
             }
-            const code = line.slice(0, equal).trim();
-            let value  = line.slice(equal + 1).trim();
+            const code = line.slice(0, equalsIndex).trim();
+            let value  = line.slice(equalsIndex + 1).trim();
             while (value.endsWith('\\') && ((i + 1) < lines.length)) {
                 i++;
                 value = value.slice(0, -1) + lines[i].trim();

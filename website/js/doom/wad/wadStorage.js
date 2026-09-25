@@ -51,20 +51,19 @@ class WadStorage {
                 {storeName: 'wadData', record: {id: meta.id, data: arrayBuffer}}
             ]);
         } catch (error) {
-            if (error && error.name === 'QuotaExceededError') {
+            if (error && (error.name === 'QuotaExceededError')) {
                 throw new WadError('quota-exceeded', 'Storage quota exceeded');
             }
             throw new WadError('storage-unavailable', 'Unable to save the WAD: ' + error.message);
         }
 
-        // The user just chose to store tens of megabytes: the one moment where
-        // asking is understandable. Not awaited — the WAD is already saved, and
-        // the answer to a permission prompt must not hold the screen back.
+        // Asked right after the user chose to store tens of megabytes; not
+        // awaited, a permission prompt must not hold the screen back.
         AppDatabase.requestPersistentStorage();
     }
 
     /**
-     * List all metadata, without ever reading the binaries.
+     * Every metadata record, without reading the binaries.
      *
      * @returns {Promise<object[]>}
      */
@@ -80,7 +79,7 @@ class WadStorage {
         const meta = await this._database.get('wadMeta', id);
         const record = await this._database.get('wadData', id);
 
-        if (meta === null || record === null) {
+        if ((meta === null) || (record === null)) {
             throw new WadError('not-found', 'WAD not found: ' + id);
         }
 

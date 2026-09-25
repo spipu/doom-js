@@ -20,10 +20,10 @@ class DoomMoverSounds {
      * @param {object} doorStyle profile doorSoundStyle()
      */
     constructor(doorStyle) {
-        this._doorStyle = doorStyle;
-        this._loops     = {};
-        this._lastDirs  = {};
-        this._pending   = [];
+        this._doorStyle   = doorStyle;
+        this._loopHandles = {};
+        this._lastDirs    = {};
+        this._pending     = [];
     }
 
     /**
@@ -60,23 +60,23 @@ class DoomMoverSounds {
         }
         if (spec.kind === 'plat') {
             doomSound.playAt(((dir === 0) ? 'plats/pt1_stop' : 'plats/pt1_strt'),
-                inst.getWorldCenter(), {replaceKey: DoomMoverSounds._key(inst)});
+                inst.getWorldCenter(), {replaceKey: DoomMoverSounds._replaceKey(inst)});
             return;
         }
         // Floors and ceilings share the movement loop; only the floors clunk
         // their arrival, and the silent crusher clunks WITHOUT ever humming.
         if (dir !== 0) {
-            if (!spec.silent && (this._loops[inst.getId()] === undefined)) {
+            if (!spec.silent && (this._loopHandles[inst.getId()] === undefined)) {
                 const handle = doomSound.playAt('plats/pt1_mid', inst.getWorldCenter(), {loop: true});
                 if (handle !== null) {
-                    this._loops[inst.getId()] = handle;
+                    this._loopHandles[inst.getId()] = handle;
                 }
             }
             return;
         }
         this._stopLoop(inst);
         if ((spec.kind === 'floor') || spec.silent) {
-            doomSound.playAt('plats/pt1_stop', inst.getWorldCenter(), {replaceKey: DoomMoverSounds._key(inst)});
+            doomSound.playAt('plats/pt1_stop', inst.getWorldCenter(), {replaceKey: DoomMoverSounds._replaceKey(inst)});
         }
     }
 
@@ -87,24 +87,24 @@ class DoomMoverSounds {
             // Raven doors ring their close lump when the panel lands shut
             // (HereticDoorClose stopsound) — a halt after a downward leg.
             if (style.closeArrival && (this._lastDirs[inst.getId()] === -1)) {
-                doomSound.playAt(prefix + 'clos', inst.getWorldCenter(), {replaceKey: DoomMoverSounds._key(inst)});
+                doomSound.playAt(prefix + 'clos', inst.getWorldCenter(), {replaceKey: DoomMoverSounds._replaceKey(inst)});
             }
             return;
         }
         const closeLump = ((style.closeStart === 'open') ? 'open' : 'clos');
         doomSound.playAt(prefix + ((dir > 0) ? 'open' : closeLump),
-            inst.getWorldCenter(), {replaceKey: DoomMoverSounds._key(inst)});
+            inst.getWorldCenter(), {replaceKey: DoomMoverSounds._replaceKey(inst)});
     }
 
     _stopLoop(inst) {
-        const handle = this._loops[inst.getId()];
+        const handle = this._loopHandles[inst.getId()];
         if (handle !== undefined) {
             handle.stop();
-            delete this._loops[inst.getId()];
+            delete this._loopHandles[inst.getId()];
         }
     }
 
-    static _key(inst) {
+    static _replaceKey(inst) {
         return ('mover:' + inst.getId());
     }
 }

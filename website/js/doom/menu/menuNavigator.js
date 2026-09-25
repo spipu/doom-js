@@ -29,9 +29,9 @@ class MenuNavigator {
      * An unknown WAD falls back to the normal WAD list.
      *
      * @param {string|null} wadName       WAD name or id (case-insensitive, with or without ".wad")
-     * @param {string|null} levelCode     level name, e.g. "E1M1" (case-insensitive)
+     * @param {string|null} levelCode     level code, e.g. "E1M1" (case-insensitive)
      * @param {{position: number[], yaw: number, pitch: number}|null} spawnOverride
-     * @param {number} skill   difficulty 1..5 for the direct shortcut (default 3)
+     * @param {number} skill   difficulty 0..5 for the direct shortcut
      */
     start(wadName = null, levelCode = null, spawnOverride = null, skill = MenuNavigator.DEFAULT_SKILL) {
         return this._boot(() => {
@@ -100,11 +100,7 @@ class MenuNavigator {
         this._switchTo(this._wadListScreen);
     }
 
-    /**
-     * Difficulty kept for this session (used by the difficulty screen to
-     * preselect its entry).
-     * @returns {number}
-     */
+    // Difficulty kept for this session, preselected by the difficulty screen.
     getSelectedDifficulty() {
         return this._selectedDifficulty;
     }
@@ -146,12 +142,12 @@ class MenuNavigator {
     /**
      * Difficulty chosen → convert the episode's first level and start playing.
      * @param {object} meta
-     * @param {string} levelName
+     * @param {string} levelCode
      * @param {number} skill
      */
-    startNewGame(meta, levelName, skill) {
+    startNewGame(meta, levelCode, skill) {
         this._selectedDifficulty = skill;
-        this._launchFromWad(meta, levelName);
+        this._launchFromWad(meta, levelCode);
     }
 
     /**
@@ -177,17 +173,14 @@ class MenuNavigator {
         screen.show();
     }
 
-    async _launchFromWad(meta, levelName, spawnOverride = null) {
+    async _launchFromWad(meta, levelCode, spawnOverride = null) {
         const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.level.loading', {level: levelName, wad: meta.name}));
-        await this._launchGame(meta, levelName, spawnOverride, modal, false);
+            .showLoading(appTranslator.get('menu.level.loading', {level: levelCode, wad: meta.name}));
+        await this._launchGame(meta, levelCode, spawnOverride, modal, false);
     }
 
-    // Saved-game counterpart of _launchGame: reads the snapshot, guards its
-    // format version, then launches the saved level with the restore armed.
-    // The spawn override places the player safely (the exact saved Y is
-    // re-applied after the movers are restored); any failure lands on the
-    // same error modal as a normal launch.
+    // Saved-game counterpart of _launchGame. The spawn override only places the
+    // player safely: the exact saved Y is re-applied after the movers.
     async _launchFromSave(meta, saveMeta) {
         const modal = new MenuModal(this._display)
             .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: meta.name}));
@@ -216,18 +209,15 @@ class MenuNavigator {
         }
     }
 
-    // Shared tail of both launch paths, with the same failure modal on any
-    // error. fallbackToFirst is the direct test shortcut's behaviour (unknown
-    // or null level → first one of the WAD); the menu path stays strict — a
-    // stale registry name surfaces as an error instead of silently launching
-    // the wrong level.
+    // fallbackToFirst is for the direct test shortcut only: the menu path stays
+    // strict so a stale level code surfaces as an error, not the wrong level.
     async _launchGame(meta, levelCode, spawnOverride, modal, fallbackToFirst) {
         try {
             const wadFile   = await this._registry.getWadFile(meta.id);
             doomSound.loadForWad(wadFile, meta.id);
-            const levelName = ((fallbackToFirst) ? this._resolveLevel(wadFile, levelCode) : levelCode);
+            const startCode = ((fallbackToFirst) ? this._resolveLevel(wadFile, levelCode) : levelCode);
             const game = new DoomGame();
-            await game.startFromWad(wadFile, levelName, meta, spawnOverride, this._selectedDifficulty);
+            await game.startFromWad(wadFile, startCode, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
             this._closeMenus();
         } catch (error) {
@@ -235,9 +225,7 @@ class MenuNavigator {
         }
     }
 
-    // Surface a level-launch failure as a centred modal (on top of the console
-    // log) so the cause is immediately visible, then drop back to the WAD's
-    // menu (or to the WAD list when no WAD is known).
+    // Drops back to the WAD's menu, or to the WAD list when no WAD is known.
     _showBuildError(error, modal, meta = null) {
         console.error(error);
         loader.reset();
@@ -266,13 +254,13 @@ class MenuNavigator {
      * @param {string} wadName
      * @param {string|null} levelCode
      * @param {object|null} spawnOverride
-     * @param {number} skill   difficulty 1..5 (default 3)
+     * @param {number} skill   difficulty 0..5
      */
     async _startDirect(wadName, levelCode, spawnOverride, skill = MenuNavigator.DEFAULT_SKILL) {
         this._selectedDifficulty = skill;
 
-        const list = await this._registry.getList();
-        const meta = this._findWad(list, wadName);
+        const wads = await this._registry.getList();
+        const meta = this._findWad(wads, wadName);
         if (meta === null) {
             console.warn('Spipu-Doom: unknown WAD "' + wadName + '", showing the WAD list.');
             this.showWadList();
@@ -284,14 +272,9 @@ class MenuNavigator {
         await this._launchGame(meta, levelCode, spawnOverride, modal, true);
     }
 
-    /**
-     * @param {object[]} list metadata list
-     * @param {string} wadName
-     * @returns {object|null} the matching metadata, or null
-     */
-    _findWad(list, wadName) {
+    _findWad(wads, wadName) {
         const target = wadName.toLowerCase().replace(/\.wad$/, '');
-        for (const meta of list) {
+        for (const meta of wads) {
             if ((meta.id === target) || (meta.name.toLowerCase() === wadName.toLowerCase())) {
                 return meta;
             }

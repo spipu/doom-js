@@ -1,8 +1,7 @@
 /**
- * Menu of one selected WAD, between the WAD list and the difficulty screen:
- * new game, options, about. The panel subtitle is the WAD title alone; the
- * standard bottom button reads "Quit {wad}" and returns to the WAD list, like
- * the back inputs (Backspace / Escape / gamepad circle).
+ * Menu of one selected WAD, between the WAD list and the episode screen: new
+ * game, load, options, about, bug report. The bottom button reads "Quit {wad}"
+ * and returns to the WAD list, like the back inputs.
  */
 class WadMenuScreen extends AbstractMenuScreen {
     /**

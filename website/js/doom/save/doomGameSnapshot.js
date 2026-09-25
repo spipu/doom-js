@@ -15,10 +15,10 @@
  */
 class DoomGameSnapshot {
     /**
-     * @param {object} context - {wadId, levelCode, skill, user, rng, monsters,
-     *                            projectiles, gunTriggers, sectorSurfaces, secretsFound,
-     *                            killsCount, itemsFound, levelTimeMs,
-     *                            setCounters}
+     * @param {object} context - {wadId, levelCode, skill, user, rng, collision,
+     *                            monsters, projectiles, gunTriggers, sectorSurfaces,
+     *                            automap, secretsFound, killsCount, itemsFound,
+     *                            levelTimeMs, setCounters}
      * @returns {object} JSON-safe snapshot
      */
     capture(context) {
@@ -55,13 +55,11 @@ class DoomGameSnapshot {
         };
     }
 
-    // Applies a snapshot on the freshly rebuilt level — called once everything
-    // is built and wired, before the first frame runs. The player equipment is
-    // restored earlier by DoomGame (it replaces the loadout branch of _init).
+    // Runs once the rebuilt level is wired, before the first frame. The player
+    // equipment is restored earlier by DoomGame, in place of the level loadout.
     apply(context, snapshot) {
-        // itemsFound and levelTimeMs postdate FORMAT_VERSION 2: absent from the
-        // saves written before them, and the version is compared strictly
-        // (bumping it would throw every existing save away).
+        // itemsFound and levelTimeMs postdate FORMAT_VERSION 2; the version is
+        // compared strictly, so bumping it would discard every existing save.
         context.setCounters(snapshot.stats.secretsFound, snapshot.stats.killsCount,
             (snapshot.stats.itemsFound ?? 0), (snapshot.stats.levelTimeMs ?? 0));
         // Surfaces first: the mover hooks replayed by the instance import read
@@ -79,9 +77,8 @@ class DoomGameSnapshot {
             context.automap.importState(snapshot.automap ?? null);
         }
         context.monsters.importState(snapshot.monsters);
-        // Missiles last: an owner or a homing lock is resolved against the
-        // bodies the line above just brought back. Absent from the saves
-        // written before they were persisted.
+        // Missiles last: owners and homing locks resolve against the monsters
+        // restored just above. Older saves carry no missiles.
         context.projectiles.importState(snapshot.projectiles ?? null);
         loader.instances().flushRemovals();
 
@@ -113,26 +110,23 @@ class DoomGameSnapshot {
         return states;
     }
 
-    // Rebuilt instances are patched by code; one absent from the snapshot was
-    // consumed before the save when it is a pickup (removed again here), and
-    // is ignored otherwise. A snapshot code unknown to the rebuild is simply
-    // never visited; a deeper mismatch (edited WAD breaking a ride or drop
-    // code) surfaces through the launch error modal.
+    // A pickup absent from the snapshot was consumed before the save and is
+    // removed again; any other absent instance keeps its rebuilt state.
     _applyInstances(states, collision) {
         loader.instances().getAll().forEach((instance) => {
             const code = instance.getCode();
             if ((code === null) || code.startsWith(DoomGameSnapshot.MONSTER_PREFIX)) {
                 return;
             }
-            const data = states[code];
-            if (data === undefined) {
+            const state = states[code];
+            if (state === undefined) {
                 if (code.startsWith(DoomGameSnapshot.PICKUP_PREFIX)) {
                     loader.instances().scheduleRemoval(instance);
                 }
                 return;
             }
-            const rideOn = ((data.rideOnCode !== null) ? loader.instances().getByCode(data.rideOnCode) : null);
-            instance.importAnimState(data, rideOn);
+            const rideOn = ((state.rideOnCode !== null) ? loader.instances().getByCode(state.rideOnCode) : null);
+            instance.importAnimState(state, rideOn);
             if (instance.isCollidable()) {
                 collision.syncBoxFor(instance);
             }
@@ -161,7 +155,7 @@ class DoomGameSnapshot {
     }
 }
 
-// Instance code prefixes of the world builder (_registerThings / _registerMonsterThing)
+// Instance code prefixes of WadWorldBuilder (_registerThings / _registerMonsterThing)
 DoomGameSnapshot.MONSTER_PREFIX = 'monster_';
 DoomGameSnapshot.PICKUP_PREFIX  = 'pickup_';
 // Extra height given to the initial spawn override: a Y exactly at floor level

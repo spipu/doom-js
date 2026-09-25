@@ -48,21 +48,19 @@ class DoomMonsterDef {
             this._expandGroup(raw, group, (overrides[group] ?? this._sprite), data.states[group]);
         }
         for (const key of Object.keys(raw)) {
-            const st = raw[key];
-            this._states[key] = new DoomMonsterState(st.sprite, st.frame, st.tics, st.action, st.args,
-                this._resolveNext(raw, key, st.next), st.bright, st.fast);
+            const desc = raw[key];
+            this._states[key] = new DoomMonsterState(desc.sprite, desc.frame, desc.tics, desc.action, desc.args,
+                this._resolveNext(raw, key, desc.next), desc.bright, desc.fast);
         }
     }
 
     _expandGroup(raw, group, sprite, tuples) {
         const expanded = [];
         for (const [frames, tics, action, next, bright, fast] of tuples) {
-            // A zscript action takes parameters, and two states of one monster
-            // may call the same verb with different ones (the ophidian's two
-            // projectiles). The tuple therefore accepts either a bare name or
-            // a [name, args] pair, transcribed straight from the state line.
-            const named = (Array.isArray(action) ? action[0] : (action ?? null));
-            const args  = (Array.isArray(action) ? action[1] : null);
+            // A bare name, or a [name, args] pair when two states of one monster
+            // call the same verb with different parameters (the ophidian's shots).
+            const actionName = (Array.isArray(action) ? action[0] : (action ?? null));
+            const args       = (Array.isArray(action) ? action[1] : null);
             for (let i = 0; i < frames.length; i++) {
                 // The zscript action runs on EVERY state of the multi-letter
                 // line ('AABBCCDD 4 A_Chase' = 8 chase steps); only the jump
@@ -72,7 +70,7 @@ class DoomMonsterDef {
                     sprite: sprite,
                     frame:  frames[i],
                     tics:   tics,
-                    action: named,
+                    action: actionName,
                     args:   args,
                     next:   ((last) ? (next ?? null) : null),
                     bright: (bright === true),

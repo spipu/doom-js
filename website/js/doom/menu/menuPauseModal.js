@@ -15,9 +15,6 @@ class MenuPauseModal extends AbstractGameMenuModal {
         this._onResume = null;
     }
 
-    /**
-     * @param {function} callback
-     */
     setOnResume(callback) {
         this._onResume = callback;
 

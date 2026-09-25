@@ -23,7 +23,7 @@ class InteractionLoader extends AbstractLoader {
         document.head.appendChild(script);
     }
 
-    // Register an already instantiated AbstractInteraction, without any script tag
+    // An already instantiated AbstractInteraction, no script tag
     loadFromData(interaction) {
         this._loaded = false;
         const entity = this._create(

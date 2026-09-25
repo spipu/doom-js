@@ -16,12 +16,12 @@
 class HudAutomap extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._game    = null;
-        this._automap = null;
-        this._colors  = null;
-        this._keys    = {};
-        this._buckets = {};
-        this._locked  = [];
+        this._game        = null;
+        this._automap     = null;
+        this._colors      = null;
+        this._keyColors   = {};
+        this._buckets     = {};
+        this._lockedLines = [];
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role] = [];
         }
@@ -64,9 +64,9 @@ class HudAutomap extends AbstractHud {
      */
     bindAutomap(automap) {
         const profile = this._game.getGameProfile();
-        this._automap = automap;
-        this._colors  = profile.automapColors();
-        this._keys    = profile.hudKeyColors();
+        this._automap   = automap;
+        this._colors    = profile.automapColors();
+        this._keyColors = profile.hudKeyColors();
         this._applyBackground();
         this._width = 0;   // force the layout on the next frame
 
@@ -157,7 +157,7 @@ class HudAutomap extends AbstractHud {
             return;
         }
         this._ctx.clearRect(0, 0, this._width, this._height);
-        this._collect();
+        this._collectLines();
         this._strokeBuckets();
         this._strokeLocked();
         this._drawPlayer();
@@ -184,15 +184,10 @@ class HudAutomap extends AbstractHud {
         return true;
     }
 
-    // Ratio preserved: a stretched plan reads false. The plan is turned a
-    // quarter when that fits BIGGER, which in a landscape panel means a level
-    // taller than wide — it would otherwise waste both side margins. The
-    // criterion is the fitted scale itself rather than the level's shape: it is
-    // what we actually want, and it holds whatever the panel's proportions.
-    //
-    // The mapping is kept as the coefficients of Doom → panel, so the quarter
-    // turn costs no test per drawn point: [xFactor, yFactor, offset] per screen
-    // axis, north to the RIGHT once turned.
+    // Ratio preserved; the plan is turned a quarter whenever that gives a
+    // bigger fitted scale, whatever the panel's proportions. The mapping is kept
+    // as [xFactor, yFactor, offset] per screen axis so the turn costs no test
+    // per drawn point (north to the RIGHT once turned).
     _layout() {
         const bounds = this._automap.getBounds();
         const spanX  = Math.max(bounds[2] - bounds[0], 1);
@@ -239,19 +234,19 @@ class HudAutomap extends AbstractHud {
             (((this._mapY[0] * cos) + (this._mapY[1] * sin)) / this._scale)];
     }
 
-    _collect() {
+    _collectLines() {
         const allMap = ((this._game !== null) && this._game.hasMapPowerup(this._user));
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role].length = 0;
         }
-        this._locked.length = 0;
+        this._lockedLines.length = 0;
         for (const line of this._automap.getLines()) {
             const role = this._automap.roleOf(line, allMap);
             if (role === null) {
                 continue;
             }
             if (role === 'locked') {
-                this._locked.push(line);
+                this._lockedLines.push(line);
                 continue;
             }
             this._buckets[role].push(line);
@@ -275,13 +270,12 @@ class HudAutomap extends AbstractHud {
         }
     }
 
-    // One stroke each: a handful of locked lines per level, each in the colour
-    // of the key it demands, or the profile's flat one for a key without. Drawn
-    // thicker so the door one is looking for stands out of the plan.
+    // One stroke per line, in the colour of the key it demands (the profile's
+    // flat locked colour otherwise): only a handful per level.
     _strokeLocked() {
         this._ctx.lineWidth = (this._lineWidth * HudAutomap.LOCKED_WIDTH_FACTOR);
-        for (const line of this._locked) {
-            this._ctx.strokeStyle = (this._keys[line.keyCode] ?? AbstractHud.rgba(this._colors.locked, 1));
+        for (const line of this._lockedLines) {
+            this._ctx.strokeStyle = (this._keyColors[line.keyCode] ?? AbstractHud.rgba(this._colors.locked, 1));
             this._ctx.beginPath();
             this._ctx.moveTo(this._screenX(line.x1, line.y1), this._screenY(line.x1, line.y1));
             this._ctx.lineTo(this._screenX(line.x2, line.y2), this._screenY(line.x2, line.y2));
@@ -289,9 +283,8 @@ class HudAutomap extends AbstractHud {
         }
     }
 
-    // The marker size does NOT follow the fitting factor: on a wide level that
-    // would shrink it to nothing. Its heading goes through _screenDir, so it
-    // turns with the plan.
+    // The marker size does NOT follow the fitted scale: a wide level would
+    // shrink it to nothing.
     _drawPlayer() {
         const doomX = this._user.getCameraX() / WadConstants.SCALE;
         const doomY = this._user.getCameraZ() / WadConstants.SCALE;

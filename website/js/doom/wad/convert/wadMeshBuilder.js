@@ -22,14 +22,9 @@ class WadMeshBuilder {
         return Math.sqrt(dx * dx + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
     }
 
-    // Invisible trigger zone on a linedef, shared by the walk triggers, the
-    // teleporters and the invisible USE switches: a one-point mesh (getCenter =
-    // the zone centre) at the middle of the line, at player-centre height above
-    // the front sector floor, with a radius spanning the whole line + margin.
-    // The world segment comes back with it, for the consumers whose zone fires
-    // on a CROSSING rather than on proximity (see WadLineCrossing) — they pass
-    // their own, wider margin: reaching the line is a USE range, sampling the
-    // approach to it is not.
+    // Invisible trigger zone on a linedef: a one-point mesh at the line middle,
+    // player-centre height, radius spanning the line + margin. The segment is
+    // returned for the zones firing on a crossing (WadLineCrossing).
     static buildLineZone(level, ld, margin = WadConstants.DOOR_ACTION_RADIUS) {
         const {vertexes, sidedefs, sectors} = level;
         const SCALE = WadConstants.SCALE;
@@ -54,8 +49,6 @@ class WadMeshBuilder {
     }
 
     // Moving top flat of a sector (floor surface at origFh, normal up).
-    // Shared by the lift and rising-floor builders; the stair builder keeps
-    // its own raw-chains variant (see there).
     static addSectorTopFlat(mesh, level, bank, analysis, si, origFh) {
         const sec = level.sectors[si];
         const ft = bank.ensureFlatTex(sec.ft);
@@ -66,22 +59,17 @@ class WadMeshBuilder {
             {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si), noDecal: bank.isLiquidFlat(sec.ft)});
     }
 
-    // Full floor or ceiling flat of a sector, from its linedef-chain polygons
-    // and their holes (without the holes a ring sector would get a solid disc
-    // over the inner one). A sector whose chains do not close has no usable
-    // contour: it takes the BSP subsector fans instead, which is what the
-    // carve was added for — the chains stay the shape of everything else,
-    // because ONE boundary per sector cannot disagree with itself, while two
-    // carved neighbours can (E1M2 sector 142 lost a 227-unit sliver of
-    // ceiling to a linedef line prolonged past its seg).
+    // Floor or ceiling flat from the linedef chains and their holes; only an
+    // unclosed sector takes the BSP subsector fans, since two carved neighbours
+    // can disagree on their shared boundary (E1M2 sector 142).
     static addSectorFlat(mesh, level, texIdx, si, yHeight, isFloor, light, options = {}) {
         const flatOptions = {...options, light: light};
         const {vertexes, linedefs, sidedefs} = level;
 
         const chainPolys = WadSectorPolygons.closedOutersWithHoles(si, linedefs, sidedefs, vertexes);
         if (chainPolys !== null) {
-            for (const p of chainPolys) {
-                WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, {...flatOptions, holes: p.holes});
+            for (const poly of chainPolys) {
+                WadMeshBuilder.addFlatPolygon(mesh, texIdx, poly.outer, yHeight, isFloor, {...flatOptions, holes: poly.holes});
             }
             return;
         }
@@ -94,25 +82,23 @@ class WadMeshBuilder {
             return;
         }
         // Neither closes nor carves: the open chains are all this sector has.
-        for (const p of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
-            WadMeshBuilder.addFlatQuad(mesh, texIdx, p.outer, yHeight, isFloor, {...flatOptions, holes: p.holes});
+        for (const poly of WadSectorPolygons.outersWithHoles(si, linedefs, sidedefs, vertexes)) {
+            WadMeshBuilder.addFlatPolygon(mesh, texIdx, poly.outer, yHeight, isFloor, {...flatOptions, holes: poly.holes});
         }
     }
 
-    // One CONVEX flat polygon fanned from its first vertex ((numlines - 2)
-    // triangles, GZDoom hw_vertexbuilder) — the per-subsector path, no
-    // triangulator involved.
+    // Convex flat fanned from its first vertex (GZDoom hw_vertexbuilder).
     static addConvexFlat(mesh, texIdx, convexPolyDoom, yHeight, isFloor, options = {}) {
         if (convexPolyDoom.length < 3) {
             return;
         }
-        const o = WadMeshBuilder._orientFlat(
+        const oriented = WadMeshBuilder._orientFlat(
             convexPolyDoom.map((v) => WadGeometry.doomToWorld(v[0], v[1])), convexPolyDoom);
         const tris = [];
-        for (let i = 1; i < o.xz.length - 1; i++) {
+        for (let i = 1; i < oriented.xz.length - 1; i++) {
             tris.push([0, i, i + 1]);
         }
-        WadMeshBuilder._emitFlatFaces(mesh, texIdx, o.xz, o.poly, tris, yHeight, isFloor, options);
+        WadMeshBuilder._emitFlatFaces(mesh, texIdx, oriented.xz, oriented.poly, tris, yHeight, isFloor, options);
     }
 
     // Flat winding convention (triangulate() and the fans expect it): reverse
@@ -194,7 +180,7 @@ class WadMeshBuilder {
         if (yBot >= yTop) {
             return;
         }
-        if (texW <= 0 || texH <= 0) {
+        if ((texW <= 0) || (texH <= 0)) {
             return;
         }
 
@@ -211,12 +197,11 @@ class WadMeshBuilder {
         mesh.points.push([x2, yTop, z2]);
         mesh.points.push([x1, yTop, z1]);
 
-        const c = Math.trunc(light);
+        const shade = Math.trunc(light);
 
-        // One fresh color array per face: the engine fcAdd normalizes the
-        // array in place, a shared array would be normalized several times
+        // One color array per face: fcAdd normalizes it in place.
         const buildFace = (ptsList, mapList) => {
-            const face = {pts: ptsList, color: [c, c, c]};
+            const face = {pts: ptsList, color: [shade, shade, shade]};
             if (texIdx >= 0) {
                 face.texture = texIdx + 1;
                 face.map     = mapList;
@@ -236,8 +221,7 @@ class WadMeshBuilder {
             if (passableShot) {
                 face.passableShot = true;
             }
-            if (uScrollTexels !== 0 && texIdx >= 0) {
-                // Texel rate → UV fraction per second (the texture width lives here)
+            if ((uScrollTexels !== 0) && (texIdx >= 0)) {
                 face.uvScroll = {u: uScrollTexels / texW, v: 0};
             }
             if (lightGroup !== null) {
@@ -275,7 +259,7 @@ class WadMeshBuilder {
      *                     the sky shows through), noDecal (takes no impact decal —
      *                     liquids)}
      */
-    static addFlatQuad(mesh, texIdx, polyVerts2d, yHeight, isFloor, options = {}) {
+    static addFlatPolygon(mesh, texIdx, polyVerts2d, yHeight, isFloor, options = {}) {
         if (polyVerts2d.length < 3) {
             return;
         }
@@ -292,38 +276,32 @@ class WadMeshBuilder {
         WadMeshBuilder._emitFlatFaces(mesh, texIdx, flat.xz, flat.poly, flat.tris, yHeight, isFloor, options);
     }
 
-    // Triangulation of a flat with holes: the legacy path (bridge-cut merge of
-    // the holes, then ear-clipping) is kept whenever it covers the flat
-    // EXACTLY — the very count of its triangles says nothing of where they
-    // land, a tangled bridge cut yields the right number of ears with some of
-    // them overlapping. Those sectors keep a byte-identical mesh; every other
-    // one takes the robust earcut path fed with the outer and its holes as
-    // separate rings (never pre-merged: that is how it copes with touching
-    // holes). Returns {xz (world), poly (Doom twin), tris}.
+    // The bridge-cut ear-clipping is kept when it covers the flat exactly, else
+    // earcut takes the holes as separate rings (it copes with touching holes).
+    // Returns {xz (world), poly (Doom twin), tris}.
     static _triangulateWithHoles(outerDoom, holes, targetArea) {
-        const merged = WadTriangulator.mergeHolesIntoPolygon([...outerDoom], holes);
-        const o      = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(merged), merged);
-        const legacy = WadTriangulator.triangulate(o.xz);
-        if (WadMeshBuilder._triangulationFits(o.xz, legacy, targetArea)) {
-            return {xz: o.xz, poly: o.poly, tris: legacy};
+        const merged   = WadTriangulator.mergeHolesIntoPolygon([...outerDoom], holes);
+        const oriented = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(merged), merged);
+        const earClip  = WadTriangulator.triangulate(oriented.xz);
+        if (WadMeshBuilder._triangulationFits(oriented.xz, earClip, targetArea)) {
+            return {xz: oriented.xz, poly: oriented.poly, tris: earClip};
         }
-        const ec = WadTriangulator.triangulateWithHoles(
+        const earcut = WadTriangulator.triangulateWithHoles(
             WadMeshBuilder._toWorld(outerDoom), holes.map((h) => WadMeshBuilder._toWorld(h)));
 
-        return {xz: ec.vertices, poly: [...outerDoom, ...holes.flat()], tris: ec.tris};
+        return {xz: earcut.vertices, poly: [...outerDoom, ...holes.flat()], tris: earcut.tris};
     }
 
-    // Same choice for a simple polygon (triangulate() requires CCW winding,
-    // CW polygons are reversed first).
+    // Same choice for a simple polygon.
     static _triangulateSimple(polyDoom, targetArea) {
-        const o      = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(polyDoom), polyDoom);
-        const legacy = WadTriangulator.triangulate(o.xz);
-        if (WadMeshBuilder._triangulationFits(o.xz, legacy, targetArea)) {
-            return {xz: o.xz, poly: o.poly, tris: legacy};
+        const oriented = WadMeshBuilder._orientFlat(WadMeshBuilder._toWorld(polyDoom), polyDoom);
+        const earClip  = WadTriangulator.triangulate(oriented.xz);
+        if (WadMeshBuilder._triangulationFits(oriented.xz, earClip, targetArea)) {
+            return {xz: oriented.xz, poly: oriented.poly, tris: earClip};
         }
-        const ec = WadTriangulator.triangulateWithHoles(o.xz, null);
+        const earcut = WadTriangulator.triangulateWithHoles(oriented.xz, null);
 
-        return {xz: ec.vertices, poly: o.poly, tris: ec.tris};
+        return {xz: earcut.vertices, poly: oriented.poly, tris: earcut.tris};
     }
 
     static _toWorld(polyDoom) {
@@ -364,29 +342,27 @@ class WadMeshBuilder {
         return (Math.abs(sum - targetArea) <= WadMeshBuilder.FLAT_AREA_EPSILON);
     }
 
-    // Shared emitter of triangulated flat faces (points, UVs, winding, flags)
-    // — fed by addFlatQuad (chain polygons) and addConvexFlat (BSP fans).
-    static _emitFlatFaces(mesh, texIdx, xz, polyLocal, tris, yHeight, isFloor, options) {
+    static _emitFlatFaces(mesh, texIdx, xz, polyDoom, tris, yHeight, isFloor, options) {
         const lightGroup    = (options.lightGroup ?? null);
         const uScroll       = (options.uScroll ?? 0);
         const collisionOnly = (options.collisionOnly === true);
         const noDecal       = (options.noDecal === true);
-        const c    = Math.trunc(options.light ?? 128);
-        const base = mesh.points.length;
+        const shade         = Math.trunc(options.light ?? 128);
+        const base          = mesh.points.length;
         for (const [x, z] of xz) {
             mesh.points.push([x, yHeight * WadConstants.SCALE, z]);
         }
 
         // Vanilla maps flats as v = -y/64 (R_MapPlane); Object3d.fcAdd flips V
         // (1 - v) at load, so the vanilla minus is authored as +y here.
-        const flatUv = (idx) => [polyLocal[idx][0] / 64.0, polyLocal[idx][1] / 64.0];
+        const flatUv = (idx) => [polyDoom[idx][0] / 64.0, polyDoom[idx][1] / 64.0];
 
-        for (const [a, b, cIdx] of tris) {
-            // CCW polygon → floors swap [a,b,c] to [a,c,b] for an upward normal
-            const order = ((isFloor) ? [a, cIdx, b] : [a, b, cIdx]);
+        for (const [a, b, c] of tris) {
+            // Floors swap the winding for an upward normal.
+            const order = ((isFloor) ? [a, c, b] : [a, b, c]);
             const face  = {
                 pts:   order.map((idx) => (base + idx + 1)),
-                color: [c, c, c]
+                color: [shade, shade, shade]
             };
             if (texIdx >= 0) {
                 face.texture = texIdx + 1;
@@ -448,7 +424,7 @@ class WadMeshBuilder {
     static applyAnimMap(faces, animMap) {
         for (const face of faces) {
             const idx = face.texture;
-            if (idx !== undefined && animMap[idx] !== undefined) {
+            if ((idx !== undefined) && (animMap[idx] !== undefined)) {
                 face.textures = animMap[idx];
                 delete face.texture;
             }

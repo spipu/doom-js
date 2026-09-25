@@ -2,7 +2,7 @@ class HudDebug extends AbstractHud {
     constructor(engine) {
         super(engine);
         this._descriptions = [];
-        this._el           = null;
+        this._panel        = null;
     }
 
     addDescription(message) {
@@ -15,21 +15,21 @@ class HudDebug extends AbstractHud {
 
         container.style.containerType = 'size';
 
-        this._el = document.createElement('div');
-        this._el.style.position   = 'absolute';
-        this._el.style.bottom     = '1cqh';
-        this._el.style.left       = '1cqh';
-        this._el.style.color      = '#aaa';
-        this._el.style.fontFamily = 'monospace';
-        this._el.style.fontSize   = '2.8cqh';
-        this._el.style.whiteSpace = 'pre';
-        this._el.style.textAlign  = 'left';
-        container.appendChild(this._el);
+        this._panel                  = document.createElement('div');
+        this._panel.style.position   = 'absolute';
+        this._panel.style.bottom     = '1cqh';
+        this._panel.style.left       = '1cqh';
+        this._panel.style.color      = '#aaa';
+        this._panel.style.fontFamily = 'monospace';
+        this._panel.style.fontSize   = '2.8cqh';
+        this._panel.style.whiteSpace = 'pre';
+        this._panel.style.textAlign  = 'left';
+        container.appendChild(this._panel);
     }
 
     setVisible(visible) {
-        if (this._el !== null) {
-            this._el.style.display = ((visible) ? 'block' : 'none');
+        if (this._panel !== null) {
+            this._panel.style.display = ((visible) ? 'block' : 'none');
         }
     }
 
@@ -49,7 +49,7 @@ class HudDebug extends AbstractHud {
         for (const message of this._descriptions) {
             lines.push(message);
         }
-        this._el.innerText = lines.join('\n');
+        this._panel.innerText = lines.join('\n');
     }
 
     _buildEngine() {

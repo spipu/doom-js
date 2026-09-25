@@ -162,7 +162,7 @@ class SoundEffectPlayer {
         }
         const range  = (options.limitRange ?? 0);
         const origin = (options.origin ?? null);
-        let count = 0;
+        let count    = 0;
         for (const channel of this._channels) {
             if (!channel.playing || (channel.key !== key)) {
                 continue;

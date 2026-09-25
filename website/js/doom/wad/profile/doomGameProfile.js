@@ -1,6 +1,7 @@
 /**
  * id Software Doom/Doom II profile (M_DOOM title graphic). Same behaviour as
- * the default profile, plus the id episode titles.
+ * the default profile, plus the id episode and level names, finale texts and
+ * level patches.
  */
 class DoomGameProfile extends DefaultGameProfile {
     getCode() {

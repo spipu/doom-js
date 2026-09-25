@@ -1,56 +1,42 @@
 /**
- * Uniform 2D index over the XZ plane for a set of triangles that never moves
- * (the static world colliders). A query returns only the triangles of the cells
- * it actually touches, so the collision scans stop being O(whole level): on a
- * mid-size level, a floor query goes from a few thousand candidates to a few
- * dozen.
+ * Uniform XZ grid over a set of static triangles (read through their
+ * xMin/xMax/zMin/zMax bounds): a query only returns the triangles of the cells
+ * it touches.
  *
- * Generic engine structure: it only reads the axis-aligned bounds every triangle
- * already carries (xMin/xMax/zMin/zMax) and knows nothing of what they are.
- *
- * Buckets are stored as two typed arrays (offset table + item list) rather than
- * an array of arrays: one allocation for the whole index and none per query. A
- * triangle overlapping several cells is listed in each of them, so a query
- * dedups through a stamp table — a triangle already collected carries the
- * current query id.
+ * Buckets live in two typed arrays (offset table + item list), so there is no
+ * allocation per query. A triangle spanning several cells is listed in each, and
+ * a stamp table holding the last query id dedups it.
  */
 class SpatialGrid {
-    /**
-     * @param {object[]} triangles - triangles carrying xMin/xMax/zMin/zMax
-     */
     constructor(triangles) {
-        this._tris    = triangles;
-        this._cols    = 0;
-        this._rows    = 0;
-        this._cell    = 1;
-        this._minX    = 0;
-        this._minZ    = 0;
-        this._maxX    = 0;
-        this._maxZ    = 0;
-        this._start   = null;   // Int32Array(cells + 1): first item index of each cell
-        this._items   = null;   // Int32Array: triangle indexes, grouped by cell
-        this._stamp   = null;   // Int32Array(triangles.length): last query that collected each triangle
-        this._queryId = 0;
-        this._bounds  = [0, 0, 0, 0];   // scratch of _cellBounds
+        this._tris     = triangles;
+        this._cols     = 0;
+        this._rows     = 0;
+        this._cellSize = 1;
+        this._minX     = 0;
+        this._minZ     = 0;
+        this._maxX     = 0;
+        this._maxZ     = 0;
+        this._start    = null;   // Int32Array(cells + 1): first item index of each cell
+        this._items    = null;   // Int32Array: triangle indexes, grouped by cell
+        this._stamp    = null;   // Int32Array(triangles.length): last query that collected each triangle
+        this._queryId  = 0;
+        this._bounds   = [0, 0, 0, 0];   // scratch of _cellBounds
         this._build();
     }
 
-    // An empty set (a level with no ceiling geometry) indexes nothing; every
-    // query answers 0 and the caller simply finds no candidate.
     isEmpty() {
         return (this._start === null);
     }
 
-    // --- Queries: append the candidates into `out` from index n, return the
-    // new count. `out` belongs to the caller and is reused across queries, so
-    // entries past the returned count are stale leftovers. Appending (rather
-    // than filling from 0) lets a caller gather several indexes into one buffer.
+    // --- Queries: append the candidates into `out` from index n and return the
+    // new count; entries past it are stale leftovers of earlier queries.
 
     queryCircle(px, pz, r, out, n = 0) {
         return this._collectRange(px - r, pz - r, px + r, pz + r, out, n);
     }
 
-    // Swept circle of a wall resolution: the bounding box of the whole sweep.
+    // Bounding box of the whole sweep
     querySegment(cx, cz, vx, vz, r, out, n = 0) {
         return this._collectRange(
             Math.min(cx, cx + vx) - r, Math.min(cz, cz + vz) - r,
@@ -58,19 +44,14 @@ class SpatialGrid {
             out, n);
     }
 
-    // Cells crossed by a ray, walked one by one (DDA) instead of taking the
-    // bounding box of the whole segment — over a long shot the box covers a
-    // large part of the level while the walk visits a handful of cells.
-    //
-    // The direction is the 3D one: only its XZ part drives the walk, and the
-    // distance travelled on the plane is maxDist scaled by that part.
+    // Cells crossed by a ray, walked one by one (DDA). The direction is the 3D
+    // one: its XZ part drives the walk and scales maxDist on the plane.
     queryRay(ox, oz, dx, dz, maxDist, out, n = 0) {
         if (this.isEmpty()) {
             return n;
         }
         const len = Math.sqrt(dx * dx + dz * dz);
-        // Vertical shot: the XZ projection degenerates to a point, so the whole
-        // ray lives in the single cell above/below the origin.
+        // Vertical ray: a single cell
         if (len < 1e-9) {
             if ((ox < this._minX) || (ox > this._maxX) || (oz < this._minZ) || (oz > this._maxZ)) {
                 return n;
@@ -81,9 +62,8 @@ class SpatialGrid {
 
         const ux = dx / len;
         const uz = dz / len;
-        // An unbounded ray (raycast defaults to Infinity) is clamped to the
-        // grid span: past it there is nothing left to hit.
-        const span   = this._cell * (this._cols + this._rows);
+        // An unbounded ray is clamped to the grid span
+        const span   = this._cellSize * (this._cols + this._rows);
         const travel = Math.min(maxDist * len, span);
         const clip   = this._clipToGrid(ox, oz, ux, uz, travel);
         if (clip === null) {
@@ -97,12 +77,12 @@ class SpatialGrid {
         const stepCol = ((ux > 0) ? 1 : -1);
         const stepRow = ((uz > 0) ? 1 : -1);
         // Distance to the next boundary on each axis, then one full cell each time
-        const boundX = this._minX + (col + ((ux > 0) ? 1 : 0)) * this._cell;
-        const boundZ = this._minZ + (row + ((uz > 0) ? 1 : 0)) * this._cell;
+        const boundX = this._minX + (col + ((ux > 0) ? 1 : 0)) * this._cellSize;
+        const boundZ = this._minZ + (row + ((uz > 0) ? 1 : 0)) * this._cellSize;
         let tNextCol = ((ux !== 0) ? (clip.t0 + (boundX - sx) / ux) : Infinity);
         let tNextRow = ((uz !== 0) ? (clip.t0 + (boundZ - sz) / uz) : Infinity);
-        const tCol = ((ux !== 0) ? Math.abs(this._cell / ux) : Infinity);
-        const tRow = ((uz !== 0) ? Math.abs(this._cell / uz) : Infinity);
+        const tCol = ((ux !== 0) ? Math.abs(this._cellSize / ux) : Infinity);
+        const tRow = ((uz !== 0) ? Math.abs(this._cellSize / uz) : Infinity);
 
         this._nextQuery();
         while (true) {
@@ -132,9 +112,7 @@ class SpatialGrid {
 
     // --- Internal ---
 
-    // Parametric clip of the ray against the grid rectangle: {t0, t1} of the
-    // portion inside it, or null when it never enters (a shot fired outside the
-    // indexed area, away from it).
+    // {t0, t1} of the ray portion inside the grid, or null when it never enters
     _clipToGrid(ox, oz, ux, uz, travel) {
         let t0 = 0;
         let t1 = travel;
@@ -191,8 +169,7 @@ class SpatialGrid {
         return n;
     }
 
-    // Query ids are the dedup key, so they must never wrap onto a stale stamp:
-    // clearing the table on overflow costs one pass every few billion queries.
+    // Query ids must never wrap onto a stale stamp
     _nextQuery() {
         this._queryId++;
         if (this._queryId === 0x7fffffff) {
@@ -202,15 +179,14 @@ class SpatialGrid {
     }
 
     _col(x) {
-        return Math.min(this._cols - 1, Math.max(0, Math.floor((x - this._minX) / this._cell)));
+        return Math.min(this._cols - 1, Math.max(0, Math.floor((x - this._minX) / this._cellSize)));
     }
 
     _row(z) {
-        return Math.min(this._rows - 1, Math.max(0, Math.floor((z - this._minZ) / this._cell)));
+        return Math.min(this._rows - 1, Math.max(0, Math.floor((z - this._minZ) / this._cellSize)));
     }
 
-    // Clamped cell range covering a box, written into the shared scratch as
-    // [c0, r0, c1, r1] (consume it immediately).
+    // Clamped [c0, r0, c1, r1] covering a box, in a shared scratch array
     _cellBounds(xMin, zMin, xMax, zMax) {
         this._bounds[0] = this._col(xMin);
         this._bounds[1] = this._row(zMin);
@@ -235,17 +211,14 @@ class SpatialGrid {
         const extentX = Math.max(maxX - minX, 1e-6);
         const extentZ = Math.max(maxZ - minZ, 1e-6);
 
-        // Cell size aimed at TARGET_PER_CELL triangles per bucket, then widened
-        // if needed so the grid itself stays small whatever the level size. It
-        // is derived from the data, never from a game constant: the engine has
-        // no idea what one world unit means.
+        // Sized from the data (TARGET_PER_CELL), widened to cap the grid size
         let cell = Math.sqrt((extentX * extentZ * SpatialGrid.TARGET_PER_CELL) / tris.length);
         cell = Math.max(cell, extentX / SpatialGrid.MAX_PER_AXIS, extentZ / SpatialGrid.MAX_PER_AXIS);
         if (!(cell > 0)) {
             cell = 1;
         }
 
-        this._cell = cell;
+        this._cellSize = cell;
         this._minX = minX;
         this._minZ = minZ;
         this._maxX = maxX;
@@ -287,11 +260,8 @@ class SpatialGrid {
     }
 }
 
-// Sizing target of _build: triangles per cell counted ONCE each. A bucket
-// actually holds more, because a triangle overlapping several cells is listed in
-// each of them — measured straddle factor ≈ 3.6 on a Doom level, so ~12 here
-// gives buckets of ~20 and a circle query (1 to 4 cells) collects a few dozen
-// candidates instead of the level's few thousand.
+// Triangles per cell counted once each; straddling triangles (≈ 3.6 cells each
+// on a measured level) make real buckets hold ~20.
 SpatialGrid.TARGET_PER_CELL = 12;
-// Hard cap on the cell count per axis, so a huge level cannot blow up the index.
+// Cap on the cell count per axis
 SpatialGrid.MAX_PER_AXIS = 256;

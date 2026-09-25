@@ -26,17 +26,14 @@ class AbstractHud {
         this._container = container;
     }
 
-    // Show/hide the HUD (used by the Doom HUD coordinator to toggle views).
-    // No-op by default; concrete HUDs that own a root element override it.
+    // Overridden by HUDs that own a root element
     setVisible(visible) {
     }
 
     update() {
     }
 
-    // Full-screen feedback tint, painted once per frame on the HUD container.
-    // The whole policy lives in ONE aggregation point, _computeScreenTint —
-    // game HUDs override it with their own rules and colors.
+    // The tint policy lives in _computeScreenTint, which game HUDs override
     _applyScreenFlash() {
         if ((this._user === null) || (this._container === null)) {
             return;
@@ -44,9 +41,7 @@ class AbstractHud {
         this._container.style.backgroundColor = (this._computeScreenTint() ?? 'transparent');
     }
 
-    // Aggregates every tint source into one CSS color (null = none). Default:
-    // death > decaying damage flash > decaying pickup pulse, with neutral
-    // engine colors; the flash values live on the User and decay there.
+    // One CSS colour or null. Default priority: death > damage > pickup.
     _computeScreenTint() {
         if (this._user.isDead()) {
             return AbstractHud.rgba([255, 0, 0], 0.5);
@@ -61,12 +56,8 @@ class AbstractHud {
         return null;
     }
 
-    // Merge one tint INTO the accumulated [r, g, b, a] blend, in place
-    // (V_AddBlend, v_blend.cpp — originally from Quake 2). The accumulated
-    // layers keep dstA/outA of the color and the new tint takes the rest —
-    // algebraically the EARLIER layers sit in front, though a strong new
-    // alpha still dominates. Stacked sources thus fade through each other
-    // instead of switching abruptly.
+    // Merges one tint into the [r, g, b, a] blend in place (V_AddBlend,
+    // v_blend.cpp), so stacked sources fade through each other.
     static addBlend(blend, rgb, alpha) {
         if (alpha <= 0) {
             return;

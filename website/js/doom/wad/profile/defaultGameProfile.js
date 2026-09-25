@@ -282,8 +282,7 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // The MF_COUNTITEM things of info.c: the two bonuses, the two spheres and
     // the power-ups. Deliberate deviation from the zscript, which dropped the
-    // flag on RadSuit (doomartifacts.zs) — the original counts it, and so do
-    // we (user decision).
+    // flag on RadSuit (doomartifacts.zs): the original counts it.
     countedItemTypes() {
         return new Set([
             2014, 2015,                    // health bonus, armor bonus
@@ -412,9 +411,8 @@ class DefaultGameProfile extends AbstractGameProfile {
                 states: this._demonStates()
             }),
             58: new DoomMonsterDef({
-                // Demon data + translucency: zscript Spectre = RenderStyle
-                // OptFuzzy / Alpha 0.5; we render it as a 0.3-alpha shadow
-                // (user decision, no software fuzz effect).
+                // zscript Spectre = RenderStyle OptFuzzy / Alpha 0.5; drawn
+                // as a 0.3-alpha shadow instead (no software fuzz effect).
                 code: 'spectre', name: 'Spectre', sprite: 'SARG', alpha: 0.3,
                 health: 150, radius: 30, height: 56, mass: 400, speed: 10, painChance: 180,
                 flags: {shadow: true},
@@ -661,16 +659,16 @@ class DefaultGameProfile extends AbstractGameProfile {
     // degrees per DoomRandom difference unit (horizontal <<18 / <<19, the SSG
     // vertical slope <<5 turned into a pitch angle).
     buildWeapons() {
-        const MELEE = 1.0, HITSCAN = 32.0;
-        const SPREAD = 360 / 16384;
-        const SSG_H  = 360 / 8192;
-        const SSG_V  = (180 / Math.PI) / 2048;
-        const READY  = { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', flash: 'flash1' };
+        const MELEE_RANGE = 1.0, HITSCAN_RANGE = 32.0;
+        const SPREAD      = 360 / 16384;
+        const SSG_H       = 360 / 8192;
+        const SSG_V       = (180 / Math.PI) / 2048;
+        const GUN_ENTRY   = { ready: 'ready', down: 'down', up: 'up', atk: 'fire1', flash: 'flash1' };
 
-        const data = [
+        const weaponDefs = [
             {
                 code: 'fist', name: 'Fist', ammoType: null, ammoUse: 0,
-                pellets: 1, spreadH: SPREAD, range: MELEE,
+                pellets: 1, spreadH: SPREAD, range: MELEE_RANGE,
                 damage: {base: 2, dice: 10}, berserkItem: 'berserk', berserkFactor: 10,
                 meleeHitSound: '*fist',
                 puffType: 'puff', decalType: 'bulletChip',
@@ -683,7 +681,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'chainsaw', name: 'Chainsaw', ammoType: null, ammoUse: 0,
-                pellets: 1, spreadH: SPREAD, range: MELEE,
+                pellets: 1, spreadH: SPREAD, range: MELEE_RANGE,
                 damage: {base: 2, dice: 10}, kickback: 0,
                 upSound: 'weapons/sawup', meleeHitSound: 'weapons/sawhit', meleeMissSound: 'weapons/sawfull',
                 actionSounds: {ready: 'weapons/sawidle'},
@@ -697,10 +695,10 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'pistol', name: 'Pistol', ammoType: 'bullets', ammoUse: 1,
-                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN_RANGE, accurateFirst: true,
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
-                viewSprite: 'PISG', flashSprite: 'PISF', entry: READY,
+                viewSprite: 'PISG', flashSprite: 'PISF', entry: GUN_ENTRY,
                 actionSounds: {fireHitscan: 'weapons/pistol'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -711,10 +709,10 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'shotgun', name: 'Shotgun', ammoType: 'shells', ammoUse: 1,
-                pellets: 7, spreadH: SPREAD, range: HITSCAN,
+                pellets: 7, spreadH: SPREAD, range: HITSCAN_RANGE,
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
-                viewSprite: 'SHTG', flashSprite: 'SHTF', entry: READY,
+                viewSprite: 'SHTG', flashSprite: 'SHTF', entry: GUN_ENTRY,
                 actionSounds: {fireHitscan: 'weapons/shotgf'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -726,10 +724,10 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'supershotgun', name: 'Super Shotgun', ammoType: 'shells', ammoUse: 2,
-                pellets: 20, spreadH: SSG_H, spreadV: SSG_V, range: HITSCAN,
+                pellets: 20, spreadH: SSG_H, spreadV: SSG_V, range: HITSCAN_RANGE,
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
-                viewSprite: 'SHT2', flashSprite: 'SHT2', entry: READY,
+                viewSprite: 'SHT2', flashSprite: 'SHT2', entry: GUN_ENTRY,
                 actionSounds: {fireHitscan: 'weapons/sshotf', openShotgun2: 'weapons/sshoto', loadShotgun2: 'weapons/sshotl', closeShotgun2: 'weapons/sshotc'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -742,10 +740,10 @@ class DefaultGameProfile extends AbstractGameProfile {
             },
             {
                 code: 'chaingun', name: 'Chaingun', ammoType: 'bullets', ammoUse: 1,
-                pellets: 1, spreadH: SPREAD, range: HITSCAN, accurateFirst: true,
+                pellets: 1, spreadH: SPREAD, range: HITSCAN_RANGE, accurateFirst: true,
                 damage: {base: 5, dice: 3},
                 puffType: 'puff', decalType: 'bulletChip',
-                viewSprite: 'CHGG', flashSprite: 'CHGF', entry: READY,
+                viewSprite: 'CHGG', flashSprite: 'CHGF', entry: GUN_ENTRY,
                 actionSounds: {fireHitscanFlash1: 'weapons/chngun', fireHitscanFlash2: 'weapons/chngun'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -756,7 +754,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'rocket', name: 'Rocket Launcher', ammoType: 'rockets', ammoUse: 1,
                 projectiles: [{kind: 'rocket'}], autoFire: false,
-                viewSprite: 'MISG', flashSprite: 'MISF', entry: READY,
+                viewSprite: 'MISG', flashSprite: 'MISF', entry: GUN_ENTRY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['B', 8, 'gunFlash', 'fire2'], fire2: ['B', 12, 'fireProjectiles', 'fire3'], fire3: ['B', 0, 'refire', 'ready'],
@@ -769,7 +767,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'plasma', name: 'Plasma Rifle', ammoType: 'cells', ammoUse: 1,
                 projectiles: [{kind: 'plasma'}],
-                viewSprite: 'PLSG', flashSprite: 'PLSF', entry: READY,
+                viewSprite: 'PLSG', flashSprite: 'PLSF', entry: GUN_ENTRY,
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
                     fire1: ['A', 3, 'fireProjectilesRandFlash', 'fire2'], fire2: ['B', 20, 'refire', 'ready'],
@@ -779,7 +777,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             {
                 code: 'bfg', name: 'BFG9000', ammoType: 'cells', ammoUse: 40,
                 projectiles: [{kind: 'bfg'}], autoFire: false,
-                viewSprite: 'BFGG', flashSprite: 'BFGF', entry: READY,
+                viewSprite: 'BFGG', flashSprite: 'BFGF', entry: GUN_ENTRY,
                 actionSounds: {bfgSound: 'weapons/bfgf'},
                 main: {
                     ready: ['A', 1, 'ready', 'ready'], down: ['A', 1, 'lower', 'down'], up: ['A', 1, 'raise', 'up'],
@@ -791,7 +789,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         ];
 
         const catalog = {};
-        for (const entry of data) {
+        for (const entry of weaponDefs) {
             catalog[entry.code] = new DoomWeaponDef(entry);
         }
         return catalog;
@@ -801,10 +799,9 @@ class DefaultGameProfile extends AbstractGameProfile {
     // info.c). alpha/additive follow gzdoom: the rocket blast is opaque smoke,
     // the plasma/BFG blasts glow (RenderStyle "Add", Alpha 0.75), every monster
     // fireball and its death glow too (+ZDOOMTRANS actors: imp, cacodemon,
-    // baron, mancubus, revenant tracer, arachnotron at 0.75), the puff is
-    // translucent (0.4 — user setting; gzdoom's BulletPuff is Alpha 0.5,
-    // doommisc.zs), floats up 1 map unit/tic and starts a melee hit at frame C
-    // (meleeStart 2, no bright spark).
+    // baron, mancubus, revenant tracer, arachnotron at 0.75). The puff is
+    // lighter than gzdoom's BulletPuff (0.4 vs Alpha 0.5, doommisc.zs), floats
+    // up 1 map unit/tic and starts a melee hit at frame C (no bright spark).
     effectTemplates() {
         return [
             {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, meleeStart: 2},
@@ -816,7 +813,6 @@ class DefaultGameProfile extends AbstractGameProfile {
             // P_SpawnBlood: momz 2 under mobj gravity (1/tic²); big hits show
             // the full splash, weaker ones start deeper in (monsterDamageRules).
             {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false},
-            // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
             // Every monster missile's Death animation, plus the revenant's
             // smoke trail and the archvile's hellfire.
             {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
@@ -835,6 +831,7 @@ class DefaultGameProfile extends AbstractGameProfile {
                 alpha: 1, rise: 0, additive: false},
             {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
                 frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true, spawnSound: ['vile/firestrt', 'vile/firecrkl']},
+            // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
             {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
         ];
     }
@@ -882,9 +879,8 @@ class DefaultGameProfile extends AbstractGameProfile {
         ];
     }
 
-    // Vanilla P_CheckAmmo preference chain; min carries the two explicit
-    // thresholds (> 2 shells for the SSG, > 40 cells for the BFG — a generic
-    // >= perShot would give 2 and 40, a subtle regression).
+    // Vanilla P_CheckAmmo preference chain; min carries its two strict
+    // thresholds (> 2 shells for the SSG, > 40 cells for the BFG).
     weaponFallbackOrder() {
         return [
             {code: 'plasma'},
@@ -954,7 +950,7 @@ class DefaultGameProfile extends AbstractGameProfile {
 
     // Doom SNDINFO transcription (filter/game-doomchex/sndinfo.txt): logical
     // names, $random groups, $alias links and the $limit/$pitchshift overrides.
-    // The player set is the 'male' table (acted simplification); the game-wide
+    // The player set is the 'male' table (deliberate simplification); the game-wide
     // $pitchshiftrange 4 lives in soundPitchRange, the saw block narrows to 3.
     soundDefs() {
         return {
@@ -1186,10 +1182,10 @@ class DefaultGameProfile extends AbstractGameProfile {
     // ones (linuxdoom s_sound.c spmus), so E4 falls back on that table when
     // the own lump is absent (Freedoom provides real E4 lumps). MAPxx plays
     // the ordered commercial list (mapinfo/doom2.txt, mus_runnin + map − 1).
-    levelMusicLumps(levelName) {
-        const code = WadLevelCode.parse(levelName);
+    levelMusicLumps(levelCode) {
+        const code = WadLevelCode.parse(levelCode);
         if (code.episode !== null) {
-            const candidates = ['D_' + levelName];
+            const candidates = ['D_' + levelCode];
             if (code.episode === 4) {
                 candidates.push(DefaultGameProfile.E4_MUSIC_REUSE[code.map - 1]);
             }
@@ -1219,7 +1215,7 @@ class DefaultGameProfile extends AbstractGameProfile {
     // Vanilla Doom hardcoded animation sequences (p_spec.c, 8 tics per frame),
     // used when the WAD has no ANIMATED lump.
     vanillaAnimSequences() {
-        const raw = [
+        const sequences = [
             [true,  ['NUKAGE1', 'NUKAGE2', 'NUKAGE3']],
             [true,  ['FWATER1', 'FWATER2', 'FWATER3', 'FWATER4']],
             [true,  ['SWATER1', 'SWATER2', 'SWATER3', 'SWATER4']],
@@ -1244,7 +1240,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             [false, ['DBRAIN1', 'DBRAIN2', 'DBRAIN3', 'DBRAIN4']]
         ];
 
-        return raw.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: 8}));
+        return sequences.map((entry) => ({isFlat: entry[0], frames: entry[1], speedTics: 8}));
     }
 
     // The animated floors of p_spec.c are all liquids but the RROCK rock —
@@ -1284,9 +1280,9 @@ class DefaultGameProfile extends AbstractGameProfile {
     // Vanilla sky texture by level: E<m>M<n> → SKY<m> (m clamped 1..4);
     // MAP<nn> → SKY1 (1-11) / SKY2 (12-20) / SKY3 (21+). Fallback SKY1.
     // Wrap: vanilla repeats the 256-px sky ~4× per 360°.
-    skyForLevel(levelName) {
+    skyForLevel(levelCode) {
         const wrap = 4;
-        const code = WadLevelCode.parse(levelName);
+        const code = WadLevelCode.parse(levelCode);
         if (code.episode !== null) {
             return {name: 'SKY' + Math.min(4, Math.max(1, code.episode)), wrap: wrap};
         }
@@ -1315,7 +1311,7 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
-    // Faithful to UZDoom's decaldef.txt: per-weapon graphic + scale + shade;
+    // UZDoom decaldef.txt: per-weapon graphic + scale + shade;
     // translucency + a luminance gain lifting the soft burns above the
     // shader's a<0.5 cutout (chips are already crisp). shade 'bfg' resolves
     // to bfgDecalShade() (green id art, bluish freedoom art).

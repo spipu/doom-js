@@ -1,12 +1,12 @@
 class Object3dRendererBase {
     constructor() {
-        this._col       = [0, 0, 0];
-        this._lightTemp = [0, 0, 0];
-        this._uvOff     = [0, 0];
-        this._spriteCanvases = new WeakMap();
-        this._queue      = new FaceDepthQueue();
-        this._styles     = [];
-        this._styleIndex = new Map();
+        this._litColor          = [0, 0, 0];
+        this._lightContribution = [0, 0, 0];
+        this._uvOffsetOut       = [0, 0];
+        this._spriteCanvases    = new WeakMap();
+        this._queue             = new FaceDepthQueue();
+        this._styles            = [];
+        this._styleIndex        = new Map();
     }
 
     isAvailable() {
@@ -43,7 +43,7 @@ class Object3dRendererBase {
         const geometry = this._queue.getGeometry();
         const styles   = this._queue.getStyles();
         const order    = this._queue.sorted();
-        let current = -1;
+        let current    = -1;
         for (let i = 0; i < order.length; i++) {
             const t = order[i];
             if (styles[t] !== current) {
@@ -124,8 +124,8 @@ class Object3dRendererBase {
         ctx.save();
         // Never filtered: these renderers sample their texels nearest-neighbour.
         ctx.imageSmoothingEnabled = false;
-        ctx.globalAlpha = alpha;
-        ctx.filter      = 'brightness(' + lit + ')';
+        ctx.globalAlpha           = alpha;
+        ctx.filter                = 'brightness(' + lit + ')';
         ctx.drawImage(
             this._spriteCanvas(tex),
             x * engine.scrWidth,
@@ -180,19 +180,19 @@ class Object3dRendererBase {
     // layout-agnostic, the depth sits at index 2 and _clipVertex packs the
     // vertices it creates.
     _clipNear(engine, v0, v1, v2) {
-        const zNear  = engine.zBuffer.getNear();
-        const verts  = [v0, v1, v2];
-        const inside = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
-        const cnt    = inside.filter(Boolean).length;
+        const zNear       = engine.zBuffer.getNear();
+        const verts       = [v0, v1, v2];
+        const inside      = [(v0[2] >= zNear), (v1[2] >= zNear), (v2[2] >= zNear)];
+        const insideCount = inside.filter(Boolean).length;
 
-        if (cnt === 3) {
+        if (insideCount === 3) {
             return [[v0, v1, v2]];
         }
-        if (cnt === 0) {
+        if (insideCount === 0) {
             return [];
         }
 
-        if (cnt === 1) {
+        if (insideCount === 1) {
             const i = inside.indexOf(true);
             const j = (i + 1) % 3;
             const k = (i + 2) % 3;
@@ -203,7 +203,7 @@ class Object3dRendererBase {
             ]];
         }
 
-        // cnt === 2 : quad → 2 triangles
+        // Two vertices inside: the clipped quad splits into two triangles.
         const iOut = inside.indexOf(false);
         const iIn1 = (iOut + 1) % 3;
         const iIn2 = (iOut + 2) % 3;
@@ -242,9 +242,8 @@ class Object3dRendererBase {
         );
     }
 
-    // Back-face culling: a face whose normal points away from the camera is
-    // skipped. Vertices are in camera space, so the test is normal·firstVertex
-    // (>= 0 means the face turns away from the eye at the origin).
+    // Camera space puts the eye at the origin, so normal·vertex >= 0 means the
+    // face turns away from it.
     _isBackFace(normal, pt) {
         return ((normal[0] * pt[0] + normal[1] * pt[1] + normal[2] * pt[2]) >= 0);
     }
@@ -261,7 +260,7 @@ class Object3dRendererBase {
     // texture-repeat wrap downstream keeps full float precision) plus the
     // anchor following a named instance's vertical shift. Shared array.
     _uvOffset(fc, sceneMs) {
-        const off = this._uvOff;
+        const off = this._uvOffsetOut;
         off[0] = 0;
         off[1] = 0;
         if (fc.uvScroll) {
@@ -283,17 +282,17 @@ class Object3dRendererBase {
     }
 
     _pointColor(engine, color, pt, normal) {
-        const col = this._col;
+        const col = this._litColor;
         col[0] = engine.ambientLight[0];
         col[1] = engine.ambientLight[1];
         col[2] = engine.ambientLight[2];
 
-        const tmp = this._lightTemp;
+        const contribution = this._lightContribution;
         for (let k = 0; k < engine.lightList.length; k++) {
-            engine.lightList[k].getColorFor(pt, normal, tmp);
-            col[0] += tmp[0];
-            col[1] += tmp[1];
-            col[2] += tmp[2];
+            engine.lightList[k].getColorFor(pt, normal, contribution);
+            col[0] += contribution[0];
+            col[1] += contribution[1];
+            col[2] += contribution[2];
         }
 
         if (col[0] < 0.) {

@@ -14,8 +14,8 @@ class Face {
         this.noDecal       = false;
         this.animTextures  = animTextures;
         this.uvScroll      = uvScroll;
-        // {code, v, instance}: V shifted by the vertical shift of the instance
-        // `code` times v (instance resolved lazily by the renderers)
+        // {code, v, instance}: V follows v × the vertical shift of instance
+        // `code`, resolved lazily by the renderers
         this.uvAnchor      = uvAnchor;
         this.lightGroup    = lightGroup;
         this.normal        = [0, 0, 0];

@@ -11,11 +11,11 @@
  * object on the floor; null for definitions that never appear in the world.
  */
 class AbstractDoomObject {
-    constructor(data, defaultResetOnNewLevel) {
-        this._code   = data.code;
-        this._name   = data.name;
-        this._sprite = data.sprite ?? null;
-        this._resetOnNewLevel = ((data.resetOnNewLevel !== undefined) ? (data.resetOnNewLevel === true) : defaultResetOnNewLevel);
+    constructor(definition, defaultResetOnNewLevel) {
+        this._code            = definition.code;
+        this._name            = definition.name;
+        this._sprite          = definition.sprite ?? null;
+        this._resetOnNewLevel = ((definition.resetOnNewLevel !== undefined) ? (definition.resetOnNewLevel === true) : defaultResetOnNewLevel);
     }
 
     getCode() {

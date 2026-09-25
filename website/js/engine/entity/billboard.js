@@ -1,17 +1,10 @@
 /**
- * A camera-facing sprite quad. Generic engine entity (no game knowledge): it is
- * an Object3d whose four corners are rebuilt every frame in camera space,
- * instead of having its local geometry transformed by the view matrix. It is a
- * cylindrical (Y-axis) billboard: the vertical edge stays aligned with world up
- * (m.v[1] expressed in camera space) and the quad only yaws around that axis to
- * face the viewer, so the sprite leans naturally in perspective when the camera
- * pitches up or down.
+ * Camera-facing sprite quad whose four corners are rebuilt in camera space every
+ * frame. Cylindrical: the vertical edge stays on world up and the quad only yaws,
+ * so the sprite leans in perspective when the camera pitches.
  *
- * The quad is anchored at its foot (floor) or top (ceiling, hanging things):
- * the entity origin is that anchor, placed by the world at the sector floor or
- * ceiling. Width/height are world units; anchorOffsetX/Y shift the sprite
- * horizontally/vertically (Doom sprite leftoffset/topoffset). The quad colour
- * carries the sector light level so sprites match the static lighting of walls.
+ * The entity origin is the quad's foot, or its top for hanging sprites.
+ * Width/height are world units; anchorOffsetX/Y shift the sprite along the quad.
  */
 class Billboard extends Object3d {
     constructor(id, url, callback) {
@@ -24,29 +17,23 @@ class Billboard extends Object3d {
         this._anchorTop     = false;
     }
 
-    // Configure the billboard from a descriptor and build its quad in one call.
-    // data = {textures:[id…], halfWidth, height, anchorOffsetX?, anchorOffsetY?,
-    //         anchorTop?, light?, animDuration?, lightGroup?, tint?}. anchorTop anchors
-    //         the TOP at the origin (ceiling/hanging) instead of the foot (floor).
-    //         light (0-255) is the sector brightness baked into the face colour;
-    //         lightGroup tags the faces for dynamic group light factors; flipX
-    //         mirrors the sprite left to right (the caller mirrors
-    //         anchorOffsetX with it). The four corner slots are overwritten each
-    //         frame by ptTransform; UVs account for the v-flip applied by fcAdd
-    //         (corners: 0 BL, 1 BR, 2 TR, 3 TL).
-    configure(data) {
-        this._halfWidth     = data.halfWidth;
-        this._height        = data.height;
-        this._anchorOffsetX = (data.anchorOffsetX ?? 0);
-        this._anchorOffsetY = (data.anchorOffsetY ?? 0);
-        this._anchorTop     = (data.anchorTop === true);
-        this.setRenderTint(data.tint ?? null);
+    // descriptor = {textures:[id…], halfWidth, height, anchorOffsetX?, anchorOffsetY?,
+    //   anchorTop?, light? (0-255), alpha?, additive?, animDuration?, lightGroup?,
+    //   tint?, flipX?}. flipX does not mirror anchorOffsetX: the caller does.
+    // Corners: 0 BL, 1 BR, 2 TR, 3 TL; the UVs account for fcAdd's v-flip.
+    configure(descriptor) {
+        this._halfWidth     = descriptor.halfWidth;
+        this._height        = descriptor.height;
+        this._anchorOffsetX = (descriptor.anchorOffsetX ?? 0);
+        this._anchorOffsetY = (descriptor.anchorOffsetY ?? 0);
+        this._anchorTop     = (descriptor.anchorTop === true);
+        this.setRenderTint(descriptor.tint ?? null);
 
-        const light      = (data.light ?? 255);
-        const alpha      = (data.alpha ?? 1);
-        const additive   = (data.additive === true);
-        const lightGroup = (data.lightGroup ?? null);
-        const textureIds = data.textures;
+        const light      = (descriptor.light ?? 255);
+        const alpha      = (descriptor.alpha ?? 1);
+        const additive   = (descriptor.additive === true);
+        const lightGroup = (descriptor.lightGroup ?? null);
+        const textureIds = descriptor.textures;
         for (const tid of textureIds) {
             this.textureAddById(tid);
         }
@@ -54,15 +41,13 @@ class Billboard extends Object3d {
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
         this.ptAdd(0, 0, 0);
-        const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (data.animDuration ?? 0)} : null);
-        // A fresh colour array per face (fcAdd normalises it in place); the alpha
-        // slot is added only when translucent, leaving opaque billboards untouched.
+        const anim = ((textureIds.length > 1) ? {ids: textureIds.map((t, k) => k + 1), duration: (descriptor.animDuration ?? 0)} : null);
+        // A fresh colour array per face: fcAdd normalises it in place
         const i0 = this.faceCount;
-        const uv = Billboard.quadUv(data.flipX === true);
+        const uv = Billboard.quadUv(descriptor.flipX === true);
         this.fcAdd(1, 2, 3, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, uv[0], true, false, false, anim, null, lightGroup);
         this.fcAdd(1, 3, 4, ((alpha < 1) ? [light, light, light, alpha] : [light, light, light]), 1, uv[1], true, false, false, anim, null, lightGroup);
-        // Additive blend (gzdoom RenderStyle "Add"): energy sprites glow instead
-        // of just fading. Tagged post-hoc like isAlpha, so Face stays untouched.
+        // Additive blend (gzdoom RenderStyle "Add")
         if (additive) {
             this.faceList[i0].blendAdd     = true;
             this.faceList[i0 + 1].blendAdd = true;
@@ -70,12 +55,7 @@ class Billboard extends Object3d {
         return this;
     }
 
-    /**
-     * UVs of the quad's two triangles, mirrored left to right when asked.
-     *
-     * @param {boolean} flipX
-     * @returns {number[][][]}
-     */
+    // UVs of the quad's two triangles
     static quadUv(flipX) {
         const u = ((value) => ((flipX) ? 1 - value : value));
 
@@ -85,47 +65,33 @@ class Billboard extends Object3d {
         ];
     }
 
-    // Sprite height (world units). Used by Collision to derive the box collider's
-    // vertical interval from the body, so no separate collision height is stored.
+    // World units; also the vertical extent of a box collider
     getHeight() {
         return this._height;
     }
 
-    // Radius around getCenter() enclosing the quad. Overridden because the base
-    // class derives it from the local vertices, which are all (0,0,0) here (the
-    // corners are rebuilt in camera space every frame) — it would report 0 and
-    // any bounding-sphere test upstream (frustum culling) would drop the sprite
-    // as soon as its centre left the volume.
+    // Overridden: the local vertices are all (0,0,0), so the base radius is 0
     getBoundingRadius() {
         return Math.sqrt(this._halfWidth * this._halfWidth + (this._height * this._height) / 4);
     }
 
-    // The body centre (local), so Instance worldCenter sits at the sprite's
-    // middle (used by collision/pickup later) rather than at the anchor.
+    // Sprite middle rather than the anchor
     getCenter() {
         const halfH = this._height / 2;
         const cy = ((this._anchorTop) ? (this._anchorOffsetY - halfH) : (this._anchorOffsetY + halfH));
         return [this._anchorOffsetX, cy, 0];
     }
 
-    // Override: place a cylindrical (Y-axis) billboard in camera space. `roll`
-    // (radians, from the instance being drawn) spins it in its own plane. The
-    // entity origin (0,0,0) transformed by the view matrix is the matrix
-    // translation column — the anchor (sprite foot, or top for hanging things)
-    // in camera space. The vertical edge follows world up in camera space
-    // (m.v[1], the camera-space image of the local Y axis); the right edge is
-    // cross(up, anchorDir), horizontal and facing the camera. The face normal is
-    // set toward the camera so back-face culling keeps the quad (cull test is
-    // normal·pt >= 0).
+    // The anchor in camera space is the matrix translation row, world up is
+    // m.v[1]. `roll` (radians) spins the quad in its own plane. The normal is
+    // turned toward the camera so back-face culling keeps the quad.
     ptTransform(m, minZ = 0, roll = 0) {
         const px = m.v[3][0];
         const py = m.v[3][1];
         const pz = m.v[3][2];
 
-        // R_ProjectSprite MINZ: an anchor at or behind the near plane would
-        // yaw the quad almost edge-on through the camera plane — a giant
-        // smeared wedge writing near depth over the scene. Vanilla drops the
-        // sprite entirely; the collapsed quad has no area to rasterize.
+        // R_ProjectSprite MINZ: behind the near plane the quad would turn
+        // edge-on through the camera; collapsed, it draws nothing.
         if (pz < minZ) {
             for (let k = 0; k < 4; k++) {
                 this._setPt(k, 0, 0, 0);
@@ -133,7 +99,6 @@ class Billboard extends Object3d {
             return this;
         }
 
-        // World up in camera space (normalised).
         let ux = m.v[1][0];
         let uy = m.v[1][1];
         let uz = m.v[1][2];
@@ -142,10 +107,7 @@ class Billboard extends Object3d {
         uy /= ul;
         uz /= ul;
 
-        // Right edge = cross(up, anchorDir): horizontal in world, perpendicular
-        // to the viewing direction so the quad faces the camera in yaw. Falls
-        // back to the camera X axis in the degenerate case (sprite seen straight
-        // along world up).
+        // Right edge = cross(up, anchorDir); camera X when seen straight along up
         let rx = uy * pz - uz * py;
         let ry = uz * px - ux * pz;
         let rz = ux * py - uy * px;
@@ -160,8 +122,6 @@ class Billboard extends Object3d {
         ry /= rl;
         rz /= rl;
 
-        // Roll: the two basis vectors turn inside the quad's own plane, so the
-        // sprite spins on screen and still faces the camera whatever the angle.
         if (roll !== 0) {
             const cos = Math.cos(roll);
             const sin = Math.sin(roll);
@@ -180,12 +140,10 @@ class Billboard extends Object3d {
         const ox = this._anchorOffsetX;
         const oy = this._anchorOffsetY;
 
-        // Anchor shifted by the Doom leftoffset/topoffset along the quad basis.
         const ax = px + ox * rx + oy * ux;
         const ay = py + ox * ry + oy * uy;
         const az = pz + ox * rz + oy * uz;
 
-        // Foot of the sprite (top anchor subtracts a full height).
         const fx = ((this._anchorTop) ? ax - h * ux : ax);
         const fy = ((this._anchorTop) ? ay - h * uy : ay);
         const fz = ((this._anchorTop) ? az - h * uz : az);
@@ -198,8 +156,7 @@ class Billboard extends Object3d {
         this._setPt(2, tx + hw * rx, ty + hw * ry, tz + hw * rz);
         this._setPt(3, tx - hw * rx, ty - hw * ry, tz - hw * rz);
 
-        // Face normal = cross(right, up), flipped to point toward the camera
-        // (anchor in front of the camera ⇒ n·anchor < 0 keeps the quad).
+        // cross(right, up), flipped toward the camera
         let nx = ry * uz - rz * uy;
         let ny = rz * ux - rx * uz;
         let nz = rx * uy - ry * ux;

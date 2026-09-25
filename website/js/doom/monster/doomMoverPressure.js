@@ -29,7 +29,7 @@
  * crush flag — vanilla runs that branch BEFORE the crushchange test, so a door
  * closing normally destroys it just like a crusher does. Items the map placed
  * are not dropped: like every non-shootable thing they go through untouched.
- * Deviation, documented: containment by the body's centre (m.si) where
+ * Deviation: containment by the body's centre (m.si) where
  * vanilla tests the box.
  */
 class DoomMoverPressure {
@@ -265,11 +265,11 @@ class DoomMoverPressure {
     // the damage does its work, but the head stays under the panel — never
     // below the sector floor.
     _clampUnderCeiling(m, heights) {
-        const S    = WadConstants.SCALE;
-        const pos  = m.inst.getTransform().position;
-        const topY = Math.max(heights.fh * S, heights.ch * S - m.def.getHeight() * S);
-        if (pos[1] > topY) {
-            m.inst.translate(0, topY - pos[1], 0);
+        const S        = WadConstants.SCALE;
+        const pos      = m.inst.getTransform().position;
+        const maxFeetY = Math.max(heights.fh * S, heights.ch * S - m.def.getHeight() * S);
+        if (pos[1] > maxFeetY) {
+            m.inst.translate(0, maxFeetY - pos[1], 0);
             if (this._collision !== null) {
                 this._collision.syncBoxFor(m.inst);
             }

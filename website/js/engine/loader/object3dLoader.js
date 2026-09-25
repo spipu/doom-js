@@ -3,6 +3,7 @@ class Object3dLoader extends AbstractLoader {
         super('object3d', loadedCallback);
     }
 
+    // objects.html reloads the same URL into a fresh entity on purpose
     _alreadyLoaded(url) {
         return null;
     }
@@ -11,9 +12,8 @@ class Object3dLoader extends AbstractLoader {
         return new Object3d(id, url, callback);
     }
 
-    // In-memory camera-facing sprite. Creates a Billboard explicitly (it shares
-    // the Object3d id space so Instances can resolve it), reusing the base
-    // registration. data = {textures, halfWidth, height, anchorOffsetX?, anchorOffsetY?, anchorTop?, light?, animDuration?}.
+    // Billboards share the Object3d id space so instances can resolve them.
+    // data: see Billboard.configure.
     loadBillboardFromData(code, data) {
         const entity = new Billboard(this._entities.length, null, () => this._checkFullyLoaded());
         this._registerNewEntity(code, entity);
@@ -23,7 +23,7 @@ class Object3dLoader extends AbstractLoader {
         return entity.getId();
     }
 
-    // Texture entries: url string (loaded via TextureLoader) or number (already loaded texture id)
+    // Texture entries: a url, or an already loaded texture id
     _populateFromData(entity, data) {
         entity.setRenderTint(data.tint ?? null);
         (data.textures || []).forEach((t) => ((typeof t === 'number') ? entity.textureAddById(t) : entity.textureAdd(t)));
@@ -44,9 +44,6 @@ class Object3dLoader extends AbstractLoader {
                 ((f.lightGroup     !== undefined) ? f.lightGroup     : null),
                 ((f.uvAnchor       !== undefined) ? f.uvAnchor       : null)
             );
-            // collisionOnly = collision geometry, never rendered;
-            // passableShot = hitscans and projectiles pass through;
-            // noDecal = the surface takes no impact decal
             const fc = entity.faceList[entity.getFaceCount() - 1];
             if (f.collisionOnly === true) {
                 fc.collisionOnly = true;

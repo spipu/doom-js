@@ -1,11 +1,6 @@
 /**
- * Generic translation catalog of the webapp — reusable in any project, with no
- * knowledge of the games, the screens or the languages it serves.
- *
- * The application stacks its catalogs (addCatalog), pushes the current language
- * (setLanguage) and reads every user-facing text through a CODE (get): the code
- * is what lives in the calling code, so a text exists in exactly one place and a
- * new language is one more field per entry, never a sweep of the call sites.
+ * Generic translation catalog: the application adds its catalogs, sets the
+ * current language and reads every user-facing text by code.
  *
  * A catalog is a flat map of dotted codes to their translations:
  *   {'menu.back': {fr: 'Retour', en: 'Back'}, …}
@@ -13,25 +8,20 @@
  * Parameterised texts carry {placeholders} filled from the params object:
  *   get('menu.loading', {level: 'E1M1'}) → 'Chargement du niveau E1M1'
  *
- * Nothing is ever silently empty: a missing code returns the code itself (so the
- * hole shows on screen instead of a blank), a missing translation falls back to
- * the fallback language, and each problem is logged ONCE — a text read every
- * frame must not flood the console.
+ * An unknown code returns the code itself, a missing translation falls back to
+ * the fallback language, and each problem is logged once.
  */
 class AppTranslator {
     constructor() {
-        // Prototype-less map: a catalog is data, possibly built elsewhere, and a
-        // code named '__proto__' must be an entry — never a prototype change.
-        this._catalog  = Object.create(null);
-        this._language = null;
-        this._fallback = null;
-        this._warned   = new Set();
+        // Prototype-less, so a code named '__proto__' stays a plain entry.
+        this._catalog          = Object.create(null);
+        this._language         = null;
+        this._fallbackLanguage = null;
+        this._loggedWarnings   = new Set();
     }
 
     /**
-     * Merge a catalog into the registry. A code declared twice is an authoring
-     * mistake (two owners for one text), not an override: the last one wins and
-     * says so.
+     * A code declared twice is logged as an authoring mistake; the last one wins.
      *
      * @param {object} catalog - {code: {language: text}}
      */
@@ -47,10 +37,7 @@ class AppTranslator {
     }
 
     /**
-     * Language every get() answers in. Unknown to this class: it is just the
-     * field name read in the catalog entries.
-     *
-     * @param {string} language - e.g. 'fr'
+     * @param {string} language - field read in the catalog entries, e.g. 'fr'
      */
     setLanguage(language) {
         this._language = language;
@@ -63,28 +50,21 @@ class AppTranslator {
     }
 
     /**
-     * Language used when an entry has no text for the current one — the
-     * reference language of the catalog.
+     * Language used when an entry has no text for the current one.
      *
      * @param {string} language
      */
     setFallbackLanguage(language) {
-        this._fallback = language;
+        this._fallbackLanguage = language;
 
         return this;
     }
 
-    /**
-     * @param {string} code
-     * @returns {boolean} true when the catalog carries that code
-     */
     has(code) {
         return (this._catalog[code] !== undefined);
     }
 
     /**
-     * Translated text of a code, with its {placeholders} filled.
-     *
      * @param {string} code
      * @param {object} params - {placeholder: value}
      * @returns {string} the code itself when it is unknown
@@ -99,7 +79,7 @@ class AppTranslator {
         let text = entry[this._language];
         if (text === undefined) {
             this._warnOnce('code [' + code + '] has no [' + this._language + '] translation');
-            text = entry[this._fallback];
+            text = entry[this._fallbackLanguage];
         }
         if (text === undefined) {
             return code;
@@ -109,10 +89,8 @@ class AppTranslator {
     }
 
     /**
-     * BCP 47 locale of the current language, for the formatting the platform
-     * owns (dates, numbers) rather than the catalog: toLocaleDateString,
-     * Intl.NumberFormat… Falls back to the language code itself, which the Intl
-     * API accepts for a bare language.
+     * BCP 47 locale of the current language, for Intl formatting. Falls back to
+     * the bare language code, which Intl also accepts.
      *
      * @returns {string} e.g. 'fr-FR'
      */
@@ -122,8 +100,7 @@ class AppTranslator {
 
     // --- Internal ---
 
-    // {name} → params.name. An absent parameter leaves its marker in place: a
-    // visible {level} is a readable bug, 'undefined' is not.
+    // An absent parameter keeps its {marker}: more telling on screen than 'undefined'.
     _fillPlaceholders(text, params, code) {
         return text.replace(/\{([a-zA-Z0-9_]+)\}/g, (marker, name) => {
             if (params[name] === undefined) {
@@ -134,13 +111,12 @@ class AppTranslator {
         });
     }
 
-    // One log per distinct problem: these paths run on every render (and on
-    // every frame for the HUD), so repeating would bury everything else.
+    // The HUD reads its texts every frame: a repeated warning would flood the console.
     _warnOnce(message) {
-        if (this._warned.has(message)) {
+        if (this._loggedWarnings.has(message)) {
             return;
         }
-        this._warned.add(message);
+        this._loggedWarnings.add(message);
         console.warn('AppTranslator - ' + message);
     }
 }

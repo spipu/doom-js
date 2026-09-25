@@ -27,9 +27,9 @@ class InputGamepad {
             return false;
         }
         const previousIndex = this._index;
-        const pads = navigator.getGamepads();
-        let index    = null;
-        let fallback = null;
+        const pads          = navigator.getGamepads();
+        let index           = null;
+        let fallback        = null;
         for (let i = 0; i < pads.length; i++) {
             if ((pads[i] === null) || !pads[i].connected) {
                 continue;
@@ -193,9 +193,7 @@ class InputGamepad {
         return pad;
     }
 
-    // Dead zone with rescale: the value restarts at 0 on the dead zone edge
-    // and still reaches 1 at full deflection. The slot (0-3) goes through the
-    // axis map to reach the real hardware axis.
+    // The slot (0-3) goes through the axis map to reach the hardware axis.
     _axis(slot) {
         const pad   = this._getPad();
         const index = this._axisMap[slot];

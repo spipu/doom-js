@@ -164,11 +164,10 @@ class DoomHitscan {
         this._effects.spawnPuff(spec.puff, at[0], at[1], at[2], false);
     }
 
-    // Unit ray of a yaw/pitch pair, in the engine's world convention.
     static _direction(yaw, pitch) {
         const yawR   = yaw * DEG_TO_RAD;
         const pitchR = pitch * DEG_TO_RAD;
-        const cp = Math.cos(pitchR);
+        const cp     = Math.cos(pitchR);
 
         return [Math.sin(yawR) * cp, Math.sin(pitchR), Math.cos(yawR) * cp];
     }
@@ -211,16 +210,11 @@ class DoomHitscan {
         if (this._terrain !== null) {
             this._terrain.splashAtHit(hit);
         }
-        // Persistent impact mark on the wall (self-filters floors/ceilings);
-        // a null decal type leaves no mark (Heretic melee weapons). Spawned
-        // BEFORE the puff: instances draw in id order and an additive puff
-        // writes no depth — a decal drawn after it would paint over it even
-        // though the puff sits 4 map units in front.
+        // Spawned BEFORE the puff: instances draw in id order and an additive
+        // puff writes no depth, so a later decal would cover it.
         if ((this._decals !== null) && (def.getDecalType() !== null)) {
             this._decals.spawnDecal(def.getDecalType(), hit, [dx, dy, dz]);
         }
-        // Pull the puff in front of the surface (vanilla: 4 map units back).
-        // The puff and decal are per-weapon def data (profile catalogs).
         const at = WadGeometry.pullBack(hit.point, [dx, dy, dz]);
         this._effects.spawnPuff(def.getPuffType(), at[0], at[1], at[2], melee);
     }

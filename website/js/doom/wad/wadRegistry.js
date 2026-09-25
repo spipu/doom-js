@@ -1,6 +1,6 @@
 /**
- * Business facade of the WAD management - the only API used by the menu screens.
- * Validates the files (WadFile.parse) BEFORE storing them.
+ * Facade of the WAD management, the only API the menu screens use. A file is
+ * validated (WadFile.parse) before it is stored.
  */
 class WadRegistry {
     /**
@@ -62,14 +62,14 @@ class WadRegistry {
      * @returns {string|null} null when the path is not a repository file
      */
     static normalizeUrlGithub(url) {
-        const parts = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:raw|blob)\/(.+)$/);
-        if (parts === null) {
+        const pathMatch = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:raw|blob)\/(.+)$/);
+        if (pathMatch === null) {
             return null;
         }
         // github.com spells the ref as refs/heads|refs/tags, the raw host does not
-        const ref = parts[3].replace(/^refs\/(?:heads|tags)\//, '');
+        const ref = pathMatch[3].replace(/^refs\/(?:heads|tags)\//, '');
 
-        return 'https://raw.githubusercontent.com/' + parts[1] + '/' + parts[2] + '/' + ref + url.search;
+        return 'https://raw.githubusercontent.com/' + pathMatch[1] + '/' + pathMatch[2] + '/' + ref + url.search;
     }
 
     /**
@@ -77,10 +77,8 @@ class WadRegistry {
      * it serves the download from the network and never duplicates a 30 MB WAD
      * in the Cache Storage.
      *
-     * Built through URL rather than by concatenation: appended by hand, the
-     * marker lands INSIDE a fragment when the URL has one (…doom.wad#sha256),
-     * and since Request.url drops fragments the worker would never see it. A
-     * relative URL is resolved against the page, exactly like fetch would.
+     * Built through URL: concatenated by hand, the marker would land inside a
+     * fragment (…doom.wad#sha256), which Request.url drops.
      *
      * @param {string} url
      * @returns {string}
@@ -93,9 +91,8 @@ class WadRegistry {
     }
 
     /**
-     * Download a WAD from an URL and store it.
-     * Raw fetch (no appBootstrap.buildUrl), with swBypass=1 so that the
-     * Service Worker does not duplicate the WAD in the Cache Storage.
+     * Download a WAD from an URL and store it: raw fetch (no
+     * appBootstrap.buildUrl) through bypassUrl.
      *
      * @param {string} rawUrl
      * @returns {Promise<object>} the stored metadata
@@ -124,7 +121,7 @@ class WadRegistry {
     }
 
     /**
-     * Read a local file and store it.
+     * Store a local file.
      *
      * @param {File} file
      * @returns {Promise<object>} the stored metadata
@@ -163,8 +160,6 @@ class WadRegistry {
     }
 
     /**
-     * Entry point for the dynamic conversion (phase 2).
-     *
      * @param {string} id
      * @returns {Promise<WadFile>} the parsed WAD file
      */
@@ -188,7 +183,7 @@ class WadRegistry {
 
     // --- Internal ---
 
-    // Group the level names into episodes: an ExMy map belongs to episode x,
+    // Group the level codes into episodes: an ExMy map belongs to episode x,
     // which starts at its lowest y; everything else (MAPxx sets, free-form
     // markers) forms one single episode starting at the first level listed.
     static _episodeStarts(levels) {

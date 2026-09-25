@@ -17,7 +17,7 @@ class DoomTeleportInteraction extends AbstractInteraction {
         this._destination = destination;
         this._monsters    = monsters;
         this._game        = game;
-        this._cooldown    = 0;
+        this._cooldownMs  = 0;
     }
 
     get code() {
@@ -25,7 +25,7 @@ class DoomTeleportInteraction extends AbstractInteraction {
     }
 
     triggered(instance) {
-        if (this._cooldown > 0) {
+        if (this._cooldownMs > 0) {
             return;
         }
         const world = loader.world().get();
@@ -79,12 +79,12 @@ class DoomTeleportInteraction extends AbstractInteraction {
         }
         user.freezeControls(WadConstants.TELEPORT_FREEZE_TICS * WadConstants.SECONDS_PER_TIC);
 
-        this._cooldown = WadConstants.TELEPORT_COOLDOWN_MS;
+        this._cooldownMs = WadConstants.TELEPORT_COOLDOWN_MS;
     }
 
     update(dt) {
-        if (this._cooldown > 0) {
-            this._cooldown -= dt;
+        if (this._cooldownMs > 0) {
+            this._cooldownMs -= dt;
         }
     }
 }

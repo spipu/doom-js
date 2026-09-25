@@ -3,11 +3,8 @@
  * (post-patch) values corrected by the current offset of the sector's mover
  * instance — a door's ceiling is its panel bottom (closed rest = its floor),
  * while a lift, rising floor or stair top rests at its original height and
- * carries the instance's Y delta.
- *
- * One formula, three consumers: the sound flood measures the opening of a line
- * with it, the mover pressure the gap a body must fit in, and the automap tells
- * a floor step from a ceiling step by it.
+ * carries the instance's Y delta. Read by the sound flood, the mover pressure
+ * and the automap.
  */
 class DoomSectorHeights {
     /**

@@ -1,8 +1,8 @@
 class AppDatabase {
-    /** @type {string}      */ dbName;
-    /** @type {int}         */ dbVersion;
-    /** @type {object[]}    */ storeDefinitions;
-    /** @type {IDBDatabase} */ db;
+    /** @type {string}      */ _dbName;
+    /** @type {int}         */ _dbVersion;
+    /** @type {object[]}    */ _storeDefinitions;
+    /** @type {IDBDatabase} */ _db;
 
     /**
      * @param {string}   dbName
@@ -10,14 +10,14 @@ class AppDatabase {
      * @param {object[]} storeDefinitions - [{name: string, keyPath: string}]
      */
     constructor(dbName, dbVersion, storeDefinitions) {
-        this.dbName = dbName;
-        this.dbVersion = dbVersion;
-        this.storeDefinitions = storeDefinitions;
-        this.db = null;
+        this._dbName = dbName;
+        this._dbVersion = dbVersion;
+        this._storeDefinitions = storeDefinitions;
+        this._db = null;
     }
 
     isOpen() {
-        return (this.db !== null);
+        return (this._db !== null);
     }
 
     async open() {
@@ -29,10 +29,10 @@ class AppDatabase {
             throw new Error('IndexedDB is not available in this browser');
         }
 
-        this.db = await new Promise((resolve, reject) => {
-            const request = window.indexedDB.open(this.dbName, this.dbVersion);
+        this._db = await new Promise((resolve, reject) => {
+            const request = window.indexedDB.open(this._dbName, this._dbVersion);
             request.onupgradeneeded = () => {
-                this.createMissingStores(request.result);
+                this._createMissingStores(request.result);
             };
             request.onsuccess = () => {
                 resolve(request.result);
@@ -48,8 +48,8 @@ class AppDatabase {
     /**
      * @param {IDBDatabase} db
      */
-    createMissingStores(db) {
-        for (const definition of this.storeDefinitions) {
+    _createMissingStores(db) {
+        for (const definition of this._storeDefinitions) {
             if (!db.objectStoreNames.contains(definition.name)) {
                 db.createObjectStore(definition.name, {keyPath: definition.keyPath});
             }
@@ -61,16 +61,16 @@ class AppDatabase {
     }
 
     async get(storeName, key) {
-        const store = this.transaction([storeName], 'readonly').objectStore(storeName);
-        const result = await this.promisifyRequest(store.get(key));
+        const store = this._transaction([storeName], 'readonly').objectStore(storeName);
+        const result = await this._promisifyRequest(store.get(key));
 
         return ((result === undefined) ? null : result);
     }
 
     async getAll(storeName) {
-        const store = this.transaction([storeName], 'readonly').objectStore(storeName);
+        const store = this._transaction([storeName], 'readonly').objectStore(storeName);
 
-        return this.promisifyRequest(store.getAll());
+        return this._promisifyRequest(store.getAll());
     }
 
     async delete(storeName, key) {
@@ -78,28 +78,27 @@ class AppDatabase {
     }
 
     /**
-     * Write all the records in a single transaction (atomicity).
+     * Writes every record in a single transaction.
      *
      * @param {object[]} records - [{storeName: string, record: object}]
      */
     async putMulti(records) {
-        // Writing nothing is a legitimate no-op; IndexedDB refuses a transaction
-        // without a store, so the empty batch never reaches it.
+        // IndexedDB refuses a transaction over zero stores.
         if (records.length === 0) {
             return;
         }
         const storeNames = [...new Set(records.map((item) => item.storeName))];
-        const transaction = this.transaction(storeNames, 'readwrite');
+        const transaction = this._transaction(storeNames, 'readwrite');
 
         for (const item of records) {
             transaction.objectStore(item.storeName).put(item.record);
         }
 
-        await this.promisifyTransaction(transaction);
+        await this._promisifyTransaction(transaction);
     }
 
     /**
-     * Delete all the keys in a single transaction (atomicity).
+     * Deletes every key in a single transaction.
      *
      * @param {object[]} keys - [{storeName: string, key: *}]
      */
@@ -108,24 +107,24 @@ class AppDatabase {
             return;
         }
         const storeNames = [...new Set(keys.map((item) => item.storeName))];
-        const transaction = this.transaction(storeNames, 'readwrite');
+        const transaction = this._transaction(storeNames, 'readwrite');
 
         for (const item of keys) {
             transaction.objectStore(item.storeName).delete(item.key);
         }
 
-        await this.promisifyTransaction(transaction);
+        await this._promisifyTransaction(transaction);
     }
 
-    transaction(storeNames, mode) {
+    _transaction(storeNames, mode) {
         if (!this.isOpen()) {
             throw new Error('Database is not open');
         }
 
-        return this.db.transaction(storeNames, mode);
+        return this._db.transaction(storeNames, mode);
     }
 
-    promisifyRequest(request) {
+    _promisifyRequest(request) {
         return new Promise((resolve, reject) => {
             request.onsuccess = () => {
                 resolve(request.result);
@@ -137,14 +136,9 @@ class AppDatabase {
     }
 
     /**
-     * Asks the browser to exempt this origin from storage eviction. Without it
-     * the storage is best-effort: a large store can be dropped when the disk is
-     * under pressure, or after a while without a visit.
-     *
-     * Origin-wide, hence static — it covers every database AND the Service
-     * Worker cache at once. Call it on a deliberate user action that stores
-     * something big: Firefox raises a permission prompt, which only makes sense
-     * to the user at that moment.
+     * Asks the browser to exempt this origin (every database and the Service
+     * Worker cache) from storage eviction. Call it on a user action that stores
+     * something big: Firefox shows a permission prompt.
      *
      * @returns {Promise<boolean>} true when the origin is persisted
      */
@@ -166,7 +160,7 @@ class AppDatabase {
         }
     }
 
-    promisifyTransaction(transaction) {
+    _promisifyTransaction(transaction) {
         return new Promise((resolve, reject) => {
             transaction.oncomplete = () => {
                 resolve();

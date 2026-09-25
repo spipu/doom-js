@@ -2,10 +2,9 @@
  * Ray and overlap queries against the LIVE bodies — the questions the engine's
  * own collision cannot answer, because it only ever knows triangles.
  *
- * Three shapes of question, one per caller family: a shot travelling a segment
- * (traceRay, every hitscan and missile), a horizontal aim looking for whoever
- * stands along a bearing (aimRay, the BFG spray), and "who is standing HERE"
- * (bodyAt, a mine that never moves — the maulotaur's floor fire).
+ * Three questions: a shot travelling a segment (ray, every hitscan and
+ * missile), a horizontal aim along a bearing (aim, the BFG spray), and "who is
+ * standing HERE" (bodyAt, the maulotaur's floor fire).
  *
  * A body is a vertical cylinder: the actor radius of its instance and the
  * height of its DEFINITION, never the box of the billboard currently drawn.
@@ -41,8 +40,7 @@ class DoomMonsterTrace {
         const exclude  = (opts.exclude ?? null);
         const immuneTo = (opts.immuneTo ?? null);
         // +THRUGHOST (the knight's axes, the lich's ice ball, the Heretic
-        // weapons): the shot goes clean through a phantom, which is the whole
-        // point of the ghost variants.
+        // weapons): the shot goes clean through a phantom.
         const thruGhost = (opts.thruGhost === true);
         let best = null;
         const consider = (ref, cx, cz, radius, feetY, topY) => {
@@ -97,9 +95,8 @@ class DoomMonsterTrace {
     }
 
     /**
-     * The first live body standing on a spot — the overlap answer the ray
-     * cannot give, because a mine never moves along a segment. This is how the
-     * maulotaur's floor fire knows it has been trodden on.
+     * The first live body standing on a spot: how a mine that never moves (the
+     * maulotaur's floor fire) knows it has been trodden on.
      *
      * @param {object} opts {exclude?, immuneTo?, includePlayer?}
      * @returns {{ref, point}|null}

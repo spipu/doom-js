@@ -1,7 +1,7 @@
 /**
  * Level codes of the Doom map format, parsed in one place: "ExMy" for the
  * episodic games, "MAPnn" for the flat ones, case-insensitive. Everything that
- * reasons on a level name — progression, episode grouping, music, skies,
+ * reasons on a level code — progression, episode grouping, music, skies,
  * titles, DEHACKED keys — asks here instead of matching the patterns itself.
  */
 class WadLevelCode {

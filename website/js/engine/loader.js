@@ -1,13 +1,13 @@
 class Loader {
     constructor() {
-        this._callback = null;
-        this._loaded   = false;
-        this._batching = false;
-        this._textureLoader      = new TextureLoader(() => this._checkFullyLoaded());
-        this._object3dLoader     = new Object3dLoader(() => this._checkFullyLoaded());
-        this._instanceLoader     = new InstanceLoader(() => this._checkFullyLoaded());
-        this._interactionLoader  = new InteractionLoader(() => this._checkFullyLoaded());
-        this._worldLoader        = new WorldLoader(() => this._checkFullyLoaded());
+        this._callback          = null;
+        this._loaded            = false;
+        this._batching          = false;
+        this._textureLoader     = new TextureLoader(() => this._checkFullyLoaded());
+        this._object3dLoader    = new Object3dLoader(() => this._checkFullyLoaded());
+        this._instanceLoader    = new InstanceLoader(() => this._checkFullyLoaded());
+        this._interactionLoader = new InteractionLoader(() => this._checkFullyLoaded());
+        this._worldLoader       = new WorldLoader(() => this._checkFullyLoaded());
     }
 
     reset() {
@@ -21,8 +21,8 @@ class Loader {
         this._textureLoader.reset();
     }
 
-    // Suspend the global check during a synchronous in-memory build:
-    // without it, each loadFromData would trigger finalizeInit on everything
+    // Suspends the global check during a synchronous in-memory build, which
+    // would otherwise run finalizeInit on everything after each loadFromData
     beginBatch() {
         this._batching = true;
     }
@@ -39,8 +39,7 @@ class Loader {
         }
     }
 
-    // Drop the ready callback once consumed, so runtime entity registrations
-    // (e.g. weapon/puff sprites spawned after loading) don't re-invoke it.
+    // Once consumed, so entities registered at runtime don't re-invoke it
     clearCallback() {
         this._callback = null;
         return this;

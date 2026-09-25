@@ -20,15 +20,14 @@ class DoomThingCatalog {
         this._thingTypes  = thingTypes;
     }
 
-    // Build the rotation-0 lump names for an animated sprite, e.g.
+    // Rotation-0 lump names of an animated sprite:
     // ('BON1', 'ABCD') → ['BON1A0', 'BON1B0', 'BON1C0', 'BON1D0'].
-    // Static: the profiles use it while building their data tables.
     static animFrames(base, letters) {
-        const result = [];
-        for (const ch of letters) {
-            result.push(base + ch + '0');
+        const frames = [];
+        for (const letter of letters) {
+            frames.push(base + letter + '0');
         }
-        return result;
+        return frames;
     }
 
     // Resolve a THING type to a uniform world descriptor, or null if the
@@ -38,24 +37,22 @@ class DoomThingCatalog {
         if (entry === undefined) {
             return null;
         }
-        // A spot is not a body: nothing is drawn, only its position is kept,
-        // under the GROUP its game names it by — D'Sparil hops from one
-        // 'bossSpot' to the next, the Icon of Sin spits at its 'bossTarget'
-        // ones, and the two lists must never mix.
+        // A spot only keeps its position, filed under its group: D'Sparil's
+        // 'bossSpot' and the Icon of Sin's 'bossTarget' lists must never mix.
         if (entry.kind === 'spot') {
             return {kind: 'spot', spotGroup: entry.group, code: null, frames: [], animDuration: 0,
                 solid: false, radius: 0, ceiling: false, effect: null, spawnerGroup: null};
         }
         if (entry.kind === 'decoration') {
-            const def = this._decorations[entry.code];
+            const decoration = this._decorations[entry.code];
             return {
                 kind:         'decoration',
                 code:         entry.code,
-                frames:       (entry.frames ?? [def.getSprite()]),
+                frames:       (entry.frames ?? [decoration.getSprite()]),
                 animDuration: (entry.animDuration ?? 0),
-                solid:        ((entry.solid !== undefined) ? (entry.solid === true) : def.isSolid()),
-                radius:       def.getRadius(),
-                ceiling:      def.isCeiling(),
+                solid:        ((entry.solid !== undefined) ? (entry.solid === true) : decoration.isSolid()),
+                radius:       decoration.getRadius(),
+                ceiling:      decoration.isCeiling(),
                 effect:       null,
                 spawnerGroup: null
             };

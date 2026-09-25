@@ -90,23 +90,19 @@ class MenuDom {
         return (container.querySelector('.doom-menu-overlay') !== null);
     }
 
-    // Locale-formatted size in the current locale's digits and the translated
-    // unit (WAD list entries).
     static formatSize(bytes) {
-        const decimal = (value) => new Intl.NumberFormat(appTranslator.getLocale(), {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(value);
+        const oneDecimal = (value) => new Intl.NumberFormat(appTranslator.getLocale(), {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(value);
         if (bytes >= 1048576) {
-            return decimal(bytes / 1048576) + ' ' + appTranslator.get('unit.megabyte');
+            return oneDecimal(bytes / 1048576) + ' ' + appTranslator.get('unit.megabyte');
         }
         if (bytes >= 1024) {
-            return decimal(bytes / 1024) + ' ' + appTranslator.get('unit.kilobyte');
+            return oneDecimal(bytes / 1024) + ' ' + appTranslator.get('unit.kilobyte');
         }
 
         return bytes + ' ' + appTranslator.get('unit.byte');
     }
 
-    // Locale-formatted "date hour:minute[:second]" of a timestamp (WAD list
-    // entries, save slots — the latter with seconds: two saves may land in the
-    // same minute) — the words come from the translator, the format from Intl.
+    // Seconds are for the save slots: two saves may land in the same minute.
     static formatDate(timestamp, withSeconds = false) {
         const date        = new Date(timestamp);
         const locale      = appTranslator.getLocale();

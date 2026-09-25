@@ -277,8 +277,7 @@ class Inputs {
         return this._keyboard.readKey('KeyO');
     }
 
-    // Keyboard-only: toggle between the game HUD and the debug HUD.
-    // Reads the keyboard directly so gamepad / virtual gamepad never trigger it.
+    // Keyboard-only: toggles between the game HUD and the debug HUD.
     readButtonToggleHud() {
         return this._keyboard.readAction('toggleHud');
     }
@@ -332,9 +331,7 @@ class Inputs {
         return ((positive) ? 1 : 0) - ((negative) ? 1 : 0);
     }
 
-    // Rescales the joy1 vector so the movement stick saturates to full at
-    // MOVE_SATURATION of its travel, keeping its direction. Pad path only —
-    // keyboard axes are already ±1 and the look stick (joy2) is untouched.
+    // Pad path only: keyboard axes are already ±1.
     _saturateMove(x, y) {
         const mag = Math.sqrt((x * x) + (y * y));
         if (mag < 1e-10) {

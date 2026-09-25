@@ -4,16 +4,12 @@
  *
  * Two halves. The GATES (checkMeleeRange / decideMissileAttack) are called by
  * A_Chase before it walks, and decide whether the body switches to its Melee
- * or Missile state — they are the whole reason a monster claws at arm's length
- * and only lobs a fireball now and then. The VERBS are the state actions those
- * states run; each one is a transcription of its zscript twin, parameterised by
- * profile data (damage rolls, projectile kinds, spreads) so no monster name
- * ever appears here.
+ * or Missile state. The VERBS are the actions those states run, each one a
+ * transcription of its zscript twin parameterised by profile data (damage
+ * rolls, projectile kinds, spreads), so no monster name appears here.
  *
- * Everything a verb needs to hurt somebody goes out through the shared
- * pipelines — DoomHitscan for bullets, DoomProjectileSystem for missiles,
- * DoomMonsterDamage for the blow itself — so a monster's attack and the
- * player's travel the exact same code.
+ * Every hit goes through the pipelines the player's attacks use: DoomHitscan,
+ * DoomProjectileSystem and DoomMonsterDamage.
  */
 class DoomMonsterAttack {
     /**
@@ -72,11 +68,7 @@ class DoomMonsterAttack {
     // the rarer the shot. A monster just hurt fires back at once, one still in
     // its reaction delay never fires, a melee fighter holds fire inside its own
     // threshold (the revenant's fist), and the archvile gives up past its
-    // maximum range.
-    //
-    // Named a decision and not a check: like the source, it CONSUMES the
-    // MF_JUSTHIT flag it answers on, so calling it twice in a tic would not
-    // give the same answer.
+    // maximum range. Not idempotent: like the source, it CONSUMES MF_JUSTHIT.
     decideMissileAttack(m) {
         // Pacifist skill: the jet never fires, so no Missile state is entered
         // (charges, fans, spat souls and the archvile's fire all live there).
@@ -599,9 +591,8 @@ class DoomMonsterAttack {
 }
 
 // Every attack verb of the two bestiaries, mapped onto the generic handler that
-// reproduces it. A name absent from this table is not an attack — the monster
-// system tries its own (chase, death, boss) tables next, and anything left is a
-// sound, which this engine has none of.
+// reproduces it. A name absent from this table is not an attack: the monster
+// system tries its own (chase, death, boss) verbs next.
 DoomMonsterAttack.VERBS = {
     // Facing (and the sound-only flourishes around it)
     A_FaceTarget:              '_face',

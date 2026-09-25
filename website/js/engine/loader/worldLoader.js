@@ -5,8 +5,7 @@ class WorldLoader {
         this.reset();
     }
 
-    // The player class is injectable so a game can supply its own User subclass
-    // without the engine knowing about it (kept generic).
+    // A game may supply its own User subclass
     setUserClass(userClass) {
         this._userClass = userClass;
         return this;
@@ -31,9 +30,7 @@ class WorldLoader {
         this._initialiseEntityFromUrl(this._world);
     }
 
-    // Create the World from in-memory data. The map object, the instances and
-    // the interactions must have been registered in their loaders beforehand
-    // (World.getMap() and World.getInstances() read them from the loaders).
+    // The map, instances and interactions must already be in their loaders
     loadFromData(data) {
         if (this._world !== null) {
             throw new Error('World is already loaded');
@@ -45,10 +42,9 @@ class WorldLoader {
         this._populateWorld(this._world, data);
     }
 
-    // Shared by the in-memory and the URL loading paths.
     _populateWorld(world, data) {
         world
-            .setUser(this._initUser(data.user))
+            .setUser(this._createUser(data.user))
             .setBackground(data.background || [0, 0, 0])
             .setSky(data.sky || null)
             .setLightAmbient(data.lights.ambient)
@@ -68,45 +64,45 @@ class WorldLoader {
         });
     }
 
-    _initUser(dataUser) {
+    _createUser(userDef) {
         const UserClass = this._userClass;
-        const user = new UserClass(dataUser.position[0], dataUser.position[1], dataUser.position[2], dataUser.yaw, dataUser.pitch, dataUser.maxEnergy)
-            .setHeight(dataUser.height)
-            .setEyeRatio(dataUser.eyeRatio);
+        const user = new UserClass(userDef.position[0], userDef.position[1], userDef.position[2], userDef.yaw, userDef.pitch, userDef.maxEnergy)
+            .setHeight(userDef.height)
+            .setEyeRatio(userDef.eyeRatio);
 
-        if (dataUser.radius          !== undefined) {
-            user.setRadius(dataUser.radius);
+        if (userDef.radius          !== undefined) {
+            user.setRadius(userDef.radius);
         }
-        if (dataUser.gravity         !== undefined) {
-            user.setGravity(dataUser.gravity);
+        if (userDef.gravity         !== undefined) {
+            user.setGravity(userDef.gravity);
         }
-        if (dataUser.maxJumpVelocity !== undefined) {
-            user.setMaxJumpVelocity(dataUser.maxJumpVelocity);
+        if (userDef.maxJumpVelocity !== undefined) {
+            user.setMaxJumpVelocity(userDef.maxJumpVelocity);
         }
-        if (dataUser.maxSlopeAngle   !== undefined) {
-            user.setMaxSlopeAngle(dataUser.maxSlopeAngle);
+        if (userDef.maxSlopeAngle   !== undefined) {
+            user.setMaxSlopeAngle(userDef.maxSlopeAngle);
         }
-        if (dataUser.moveSpeed       !== undefined) {
-            user.setMoveSpeed(dataUser.moveSpeed);
+        if (userDef.moveSpeed       !== undefined) {
+            user.setMoveSpeed(userDef.moveSpeed);
         }
-        if (dataUser.stepHeight      !== undefined) {
-            user.setStepHeight(dataUser.stepHeight);
+        if (userDef.stepHeight      !== undefined) {
+            user.setStepHeight(userDef.stepHeight);
         }
-        if (dataUser.voidKillY       !== undefined) {
-            user.setVoidKillY(dataUser.voidKillY);
+        if (userDef.voidKillY       !== undefined) {
+            user.setVoidKillY(userDef.voidKillY);
         }
-        if (dataUser.fallSafeFactor  !== undefined) {
-            user.setFallSafeFactor(dataUser.fallSafeFactor);
+        if (userDef.fallSafeFactor  !== undefined) {
+            user.setFallSafeFactor(userDef.fallSafeFactor);
         }
-        if (dataUser.fallMaxFactor   !== undefined) {
-            user.setFallMaxFactor(dataUser.fallMaxFactor);
+        if (userDef.fallMaxFactor   !== undefined) {
+            user.setFallMaxFactor(userDef.fallMaxFactor);
         }
 
         return user;
     }
 
     get() {
-        if (this._world === null || !this._loaded) {
+        if ((this._world === null) || !this._loaded) {
             throw new Error('World is not yet loaded');
         }
 

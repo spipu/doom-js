@@ -11,7 +11,7 @@ class WadPalette {
 
         const dv = wadFile.getLump('PLAYPAL');
         for (let i = 0; i < 256; i++) {
-            if (dv !== null && dv.byteLength >= (i + 1) * 3) {
+            if ((dv !== null) && (dv.byteLength >= (i + 1) * 3)) {
                 this._colors.push([dv.getUint8(i * 3), dv.getUint8(i * 3 + 1), dv.getUint8(i * 3 + 2)]);
             } else {
                 this._colors.push([i, i, i]);

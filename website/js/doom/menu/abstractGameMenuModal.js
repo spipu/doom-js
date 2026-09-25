@@ -16,12 +16,9 @@ class AbstractGameMenuModal extends AbstractMenuListModal {
         this._onQuit        = null;
         this._titleProvider = null;
         this._saveContext   = null;
-        this._stacked       = {};
+        this._stackedModals = {};
     }
 
-    /**
-     * @param {function} callback
-     */
     setOnQuit(callback) {
         this._onQuit = callback;
 
@@ -63,28 +60,25 @@ class AbstractGameMenuModal extends AbstractMenuListModal {
     }
 
     _teardown() {
-        for (const key of Object.keys(this._stacked)) {
-            this._stacked[key].setOnClose(null).close();
-            delete this._stacked[key];
+        for (const key of Object.keys(this._stackedModals)) {
+            this._stackedModals[key].setOnClose(null).close();
+            delete this._stackedModals[key];
         }
     }
 
-    // Stacked child modal, silenced by the top-overlay rule until it closes;
-    // this modal is then fully re-rendered — a language change must reach
-    // its title and entries.
+    // This modal is re-rendered when the stacked child closes: a language
+    // change must reach its title and entries.
     _openStacked(key, modal) {
-        this._stacked[key] = modal.setOnClose(() => {
-            delete this._stacked[key];
+        this._stackedModals[key] = modal.setOnClose(() => {
+            delete this._stackedModals[key];
             this.show();
         });
 
         return modal;
     }
 
-    // Loading a slot replaces the running game (the game closes this modal on
-    // its way out) and a written save resumes it. show() is async (it reads
-    // the slots): the modal is memoed BEFORE calling it, so close() always
-    // holds the modal, never a promise.
+    // The modal is stored BEFORE the async show(), so _teardown always holds
+    // the modal, never a promise.
     _openSlots(mode, onSaved = null) {
         this._openStacked('slots', new MenuSaveSlotsModal(this._display)
             .setMode(mode)

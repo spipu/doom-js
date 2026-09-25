@@ -12,19 +12,19 @@
  */
 class DoomProjectileSystem {
     constructor(spriteBank, effects, rng, decals, profile, monsters = null, damageModule = null) {
-        this._effects   = effects;
-        this._rng       = rng;
-        this._decals    = decals;
-        this._monsters  = monsters;
-        this._damage    = damageModule;
-        this._collision = null;
-        this._user      = null;
-        this._terrain   = null;
-        this._fast      = false;
-        this._active    = [];
-        this._acc       = 0;
-        this._ticCount  = 0;
-        this._defs      = this._buildDefs(spriteBank, profile);
+        this._effects    = effects;
+        this._rng        = rng;
+        this._decals     = decals;
+        this._monsters   = monsters;
+        this._damage     = damageModule;
+        this._collision  = null;
+        this._user       = null;
+        this._terrain    = null;
+        this._fast       = false;
+        this._active     = [];
+        this._untickedMs = 0;
+        this._ticCount   = 0;
+        this._defs       = this._buildDefs(spriteBank, profile);
     }
 
     setWorld(collision, user) {
@@ -49,7 +49,7 @@ class DoomProjectileSystem {
         return this;
     }
 
-    // Flight speed of a kind under the current skill (world units per tic).
+    // World units per tic.
     _speedOf(def) {
         return (((this._fast) && (def.fastSpeed !== null)) ? def.fastSpeed : def.speed);
     }
@@ -158,11 +158,8 @@ class DoomProjectileSystem {
         };
     }
 
-    // In-flight sprite lookup. Projectiles are directional: the rocket ships only
-    // rotation frames (MISLA1/5/6/7/8, no MISLA0), the plasma/BFG balls are
-    // non-rotating (…A0). A single camera-facing billboard can't do 8-way
-    // rotation, so pick the best available single view — rotation 0 when present,
-    // else the rear view (5, seen as the shot flies away), else rotation 1.
+    // A single billboard cannot rotate 8 ways, and the rocket ships no MISLA0:
+    // take rotation 0 when present, else the rear view 5, else rotation 1.
     _pickSprite(bank, base, letter) {
         return bank.getFrameView(base, letter, DoomProjectileSystem.VIEW_PREFERENCE);
     }
@@ -181,10 +178,10 @@ class DoomProjectileSystem {
         const speed  = this._speedOf(def);
         const yawR   = yawDeg * DEG_TO_RAD;
         const pitchR = user.pitch * DEG_TO_RAD;
-        const cp = Math.cos(pitchR);
-        const dx = Math.sin(yawR) * cp;
-        const dy = Math.sin(pitchR);
-        const dz = Math.cos(yawR) * cp;
+        const cp     = Math.cos(pitchR);
+        const dx     = Math.sin(yawR) * cp;
+        const dy     = Math.sin(pitchR);
+        const dz     = Math.cos(yawR) * cp;
 
         let vx = dx * speed;
         let vy = dy * speed;
@@ -206,7 +203,7 @@ class DoomProjectileSystem {
             originY = user.y + def.spawnHeight + vy;
         }
 
-        return this._spawnRaw(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz, user);
+        return this._launch(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz, user);
     }
 
     /**
@@ -269,7 +266,7 @@ class DoomProjectileSystem {
             vz = Math.cos(yaw) * flat;
         }
 
-        const shot = this._spawnRaw(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter), vx, vy, vz, shooter);
+        const shot = this._launch(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter), vx, vy, vz, shooter);
         if (shot === null) {
             return null;
         }
@@ -302,15 +299,15 @@ class DoomProjectileSystem {
             return null;
         }
         const originY = DoomActorRef.feetY(shooter) + (opts.height ?? WadConstants.MISSILE_SPAWN_HEIGHT) * WadConstants.SCALE;
-        const toX = spot.x - DoomActorRef.x(shooter);
-        const toY = spot.y - originY;
-        const toZ = spot.z - DoomActorRef.z(shooter);
-        const length = Math.hypot(toX, toY, toZ);
-        const speed  = this._speedOf(def);
+        const toX     = spot.x - DoomActorRef.x(shooter);
+        const toY     = spot.y - originY;
+        const toZ     = spot.z - DoomActorRef.z(shooter);
+        const length  = Math.hypot(toX, toY, toZ);
+        const speed   = this._speedOf(def);
         if ((length < 1e-6) || (speed <= 0)) {
             return null;
         }
-        const shot = this._spawnRaw(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter),
+        const shot = this._launch(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter),
             (toX / length) * speed, (toY / length) * speed, (toZ / length) * speed, shooter);
         if (shot === null) {
             return null;
@@ -321,10 +318,8 @@ class DoomProjectileSystem {
         return shot;
     }
 
-    // Register one in-flight projectile from an explicit origin and velocity —
-    // shared by the player muzzle, the monster muzzle and the bounce-spawned
-    // balls. owner is the body it may never hit and the one its kills go to.
-    _spawnRaw(def, x, y, z, vx, vy, vz, owner = null) {
+    // owner is the body the shot may never hit and the one its kills go to.
+    _launch(def, x, y, z, vx, vy, vz, owner = null) {
         const p = {
             def,
             owner,
@@ -376,9 +371,8 @@ class DoomProjectileSystem {
             growTics:  p.growTics,
             ownerCode: DoomMonsterSystem.actorCode(p.owner),
             seekCode:  DoomMonsterSystem.actorCode(p.seekTarget),
-            // A cube in flight: where it goes and when it lands. New fields,
-            // read back with a default — the format version is compared
-            // strictly, so bumping it would throw every existing save away.
+            // Read back with a default: bumping the strictly compared save
+            // format version would discard every existing save.
             spot:        p.spot,
             arrivalTics: p.arrivalTics
         }));
@@ -394,14 +388,14 @@ class DoomProjectileSystem {
             if ((def === null) || (def === undefined)) {
                 continue;
             }
-            const p = this._spawnRaw(def, rec.position[0], rec.position[1], rec.position[2],
+            const p = this._launch(def, rec.position[0], rec.position[1], rec.position[2],
                 rec.velocity[0], rec.velocity[1], rec.velocity[2], this._monsters.actorByCode(rec.ownerCode));
-            p.seekTarget = this._monsters.actorByCode(rec.seekCode);
-            p.tics       = rec.tics;
-            p.traveled   = rec.traveled;
-            p.dropped    = rec.dropped;
-            p.bounces    = rec.bounces;
-            p.growTics   = rec.growTics;
+            p.seekTarget  = this._monsters.actorByCode(rec.seekCode);
+            p.tics        = rec.tics;
+            p.traveled    = rec.traveled;
+            p.dropped     = rec.dropped;
+            p.bounces     = rec.bounces;
+            p.growTics    = rec.growTics;
             p.spot        = (rec.spot ?? null);
             p.arrivalTics = (rec.arrivalTics ?? 0);
         }
@@ -411,9 +405,9 @@ class DoomProjectileSystem {
         if (this._active.length === 0) {
             return;
         }
-        this._acc += dtMs;
-        while (this._acc >= DoomProjectileSystem.MS_PER_TIC) {
-            this._acc -= DoomProjectileSystem.MS_PER_TIC;
+        this._untickedMs += dtMs;
+        while (this._untickedMs >= DoomProjectileSystem.MS_PER_TIC) {
+            this._untickedMs -= DoomProjectileSystem.MS_PER_TIC;
             this._ticCount++;
             this._stepTic();
         }
@@ -510,11 +504,8 @@ class DoomProjectileSystem {
                 // velocity, no move this tic — the flight resumes next tic
                 // (vanilla P_FloorBounceMissile cancels the move too).
             } else {
-                // In-flight trail (Heretic A_PhoenixPuff), left at the current
-                // position before the move so it lags behind the shot — never on
-                // tic 0 (that would drop a puff in the player's eye; vanilla state
-                // actions only run from the first state transition). The cadence
-                // is profile data; a def without it stays inert.
+                // Trail (A_PhoenixPuff) dropped before the move so it lags the
+                // shot; never on tic 0, where vanilla runs no state action yet.
                 if ((p.def.trailEveryTics > 0) && (p.tics > 0) && ((p.tics % p.def.trailEveryTics) === 0)) {
                     if (p.def.trailEffect !== null) {
                         this._effects.spawn(p.def.trailEffect, p.x, p.y, p.z);
@@ -625,7 +616,7 @@ class DoomProjectileSystem {
             return;
         }
         const scatter = p.def.trailScatter;
-        this._spawnRaw(def,
+        this._launch(def,
             p.x + (this._rng.nextDiff() / 255) * scatter,
             p.y,
             p.z + (this._rng.nextDiff() / 255) * scatter,
@@ -643,11 +634,11 @@ class DoomProjectileSystem {
         if (!p.dropped) {
             p.dropped = true;
             if (p.def.dropSpeed > 0) {
-                const h = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
-                if (h > 0) {
-                    const k = p.def.dropSpeed / h;
-                    p.vx *= k;
-                    p.vz *= k;
+                const flatSpeed = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
+                if (flatSpeed > 0) {
+                    const rescale = p.def.dropSpeed / flatSpeed;
+                    p.vx *= rescale;
+                    p.vz *= rescale;
                 }
                 p.vy *= 0.5;
             }
@@ -747,16 +738,16 @@ class DoomProjectileSystem {
         // up-velocity minus 1 u/tic, perpendicular to its heading (±90°), plus
         // half the ball's horizontal velocity; same (damped) vertical velocity.
         if (bounce.spawnKind !== undefined) {
-            const tinyDef = this._defs[bounce.spawnKind];
-            const h     = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
-            const tinyH = p.vy - scale;
-            if ((tinyDef !== null) && (tinyDef !== undefined) && (h > 0) && (tinyH > 0)) {
+            const sideBallDef = this._defs[bounce.spawnKind];
+            const flatSpeed   = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
+            const sideSpeed   = p.vy - scale;
+            if ((sideBallDef !== null) && (sideBallDef !== undefined) && (flatSpeed > 0) && (sideSpeed > 0)) {
                 for (const side of [1, -1]) {
-                    this._spawnRaw(tinyDef,
+                    this._launch(sideBallDef,
                         p.x, p.y, p.z,
-                        (p.vz / h) * side * tinyH + p.vx * 0.5,
+                        (p.vz / flatSpeed) * side * sideSpeed + p.vx * 0.5,
                         p.vy,
-                        (-p.vx / h) * side * tinyH + p.vz * 0.5,
+                        (-p.vx / flatSpeed) * side * sideSpeed + p.vz * 0.5,
                         p.owner);
                 }
             }
@@ -764,14 +755,10 @@ class DoomProjectileSystem {
         return true;
     }
 
-    // Impact: spawn the explosion pulled a little off the surface (like the puff),
-    // then the rocket's radius splash.
+    // The explosion is pulled a little off the surface, like the puff.
     _explode(p, hit) {
-        // Persistent scorch on the wall (self-filters floors/ceilings); a null
-        // decal type leaves no mark. Spawned BEFORE the explosion effect:
-        // instances draw in id order and an additive explosion writes no depth
-        // — a decal drawn after it would paint over it (same rule as the puff
-        // in DoomHitscan).
+        // Spawned BEFORE the explosion: instances draw in id order and an
+        // additive explosion writes no depth, so a later decal would cover it.
         if ((this._decals !== null) && (p.def.decalType !== null)) {
             this._decals.spawnDecal(p.def.decalType, hit, [p.dx, p.dy, p.dz]);
         }
@@ -848,26 +835,25 @@ class DoomProjectileSystem {
             if (aim === null) {
                 continue;
             }
-            const c  = aim.record.inst.getWorldCenter();
-            const dx = c[0] - ox;
-            const dy = c[1] - oy;
-            const dz = c[2] - oz;
-            const d  = Math.hypot(dx, dy, dz);
-            if ((d > 1e-6) && (this._collision.raycast(ox, oy, oz, dx / d, dy / d, dz / d, d, {floors: true, ceilings: true, dynamic: true}) !== null)) {
+            const center   = aim.record.inst.getWorldCenter();
+            const dx       = center[0] - ox;
+            const dy       = center[1] - oy;
+            const dz       = center[2] - oz;
+            const distance = Math.hypot(dx, dy, dz);
+            if ((distance > 1e-6) && (this._collision.raycast(ox, oy, oz, dx / distance, dy / distance, dz / distance, distance, {floors: true, ceilings: true, dynamic: true}) !== null)) {
                 continue;
             }
             let damage = 0;
             for (let j = 0; j < spray.damageCount; j++) {
                 damage += (this._rng.next() & 7) + 1;
             }
-            this._effects.spawn(spray.effect, c[0], c[1], c[2]);
+            this._effects.spawn(spray.effect, center[0], center[1], center[2]);
             this._damage.damage(aim.record, damage,
-                {point: [c[0], c[1], c[2]], source: this._user, srcX: ox, srcZ: oz});
+                {point: [center[0], center[1], center[2]], source: this._user, srcX: ox, srcZ: oz});
         }
     }
 }
 
-// Rotations a single in-flight billboard settles for, best first
 DoomProjectileSystem.VIEW_PREFERENCE = ['0', '5', '1'];
 DoomProjectileSystem.MS_PER_TIC = 1000 / 35;
 DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe lifetime

@@ -13,7 +13,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
      *                                       BACKWARD (lower-back 45, close lines shutting
      *                                       an opening door, raise lines lifting a lowered
      *                                       plat) — timeScale keeps the vanilla reverse speed
-     * @param {string|null} cycleVariant    - per-trigger cycle key (door anim@speed or lift raise:*)
+     * @param {string|null} cycleVariant   - per-trigger cycle key (door anim@speed or lift raise:*)
      * @param {int|null}    restIndex      - local texture index of the SW1 face
      * @param {int|null}    swapIndex      - local texture index of the SW2 partner
      */
@@ -94,9 +94,6 @@ class DoomSwitchInteraction extends SwitchInteraction {
         // its dedicated lump (p_switch.c / p_spec.c).
         doomSound.playAt(((this._exitCallback !== null) ? 'switches/exitbutn' : 'switches/normbutn'),
             ((instance !== null) ? instance.getWorldCenter() : null));
-        // Swap to SW2 only when the panel has a partner: a non-SW switch wall
-        // (or an invisible USE zone with no faces) keeps its face untouched
-        // instead of being blanked to a null textureId.
         this._swapFaces(instance, this._swapIndex);
         this._applyRemoteSwap(true);
 
@@ -156,7 +153,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         const onSeg = (p) => (WadGeometry.pointSegmentDistSq(p[0], p[2], x1, z1, x2, z2)
             < DoomSwitchInteraction.REMOTE_SWAP_EPS_SQ);
 
-        return obj.faceList.filter((fc) => (fc.textureId === spec.restTexId)
-            && fc.pts.every((pi) => onSeg(obj.ptOrigin[pi])));
+        return obj.faceList.filter((fc) => ((fc.textureId === spec.restTexId)
+            && fc.pts.every((pi) => onSeg(obj.ptOrigin[pi]))));
     }
 }

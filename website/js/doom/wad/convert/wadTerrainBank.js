@@ -3,16 +3,9 @@
  * splashes (transposition of P_ParseTerrain / ParseSplash / ParseTerrain /
  * ParseFloor, p_terrain.cpp).
  *
- * The game profile provides the tables of the original game; a WAD shipping
- * its own TERRAIN lump overlays them entry by entry, the lump always winning
- * as it does for ANIMATED and SWITCHES. A custom WAD can therefore give a
- * splash to flats the original game never had, and take one away by routing a
- * flat to Null.
- *
- * The lump names ZDoom ACTOR classes for the splash pieces, which no engine
- * but ZDoom can instantiate: the known ones map onto the effect templates the
- * profile builds, and anything else resolves to nothing rather than to a
- * guess.
+ * The profile provides the original game's tables; a TERRAIN lump overlays
+ * them entry by entry, like ANIMATED and SWITCHES. Its ZDoom actor classes map
+ * onto the profile's effect templates, unknown ones onto nothing.
  */
 class WadTerrainBank {
     /**
@@ -23,9 +16,9 @@ class WadTerrainBank {
         this._wadFile  = wadFile;
         this._profile  = profile;
 
-        this._flats    = {};   // flat name (uppercase) → terrain code
-        this._terrains = {};   // terrain code → {base?, chunk?, chunkVel?, sound?}
-        this._splashes = {};   // splash name (lowercase) → the same shape
+        this._flats    = {};          // flat name (uppercase) → terrain code
+        this._terrains = {};          // terrain code → {base?, chunk?, chunkVel?, sound?}
+        this._splashes = {};          // splash name (lowercase) → the same shape
         this._liquids  = new Set();   // terrain codes the lump flagged liquid
     }
 
@@ -40,8 +33,7 @@ class WadTerrainBank {
         try {
             this._overlayLump(WadFile.lumpText(lump));
         } catch (error) {
-            // A malformed lump must not break the level conversion: what was
-            // overlaid so far is kept, the profile covers the rest.
+            // Keeps what was overlaid so far, the profile covers the rest.
             console.warn('WadTerrainBank - malformed TERRAIN lump: ' + error.message);
         }
 
@@ -101,10 +93,7 @@ class WadTerrainBank {
                 this._parseFloor(cursor, skipping);
                 continue;
             }
-            // defaultterrain names the terrain of every flat the lump does not
-            // list: read and dropped, since a table of the liquid flats has no
-            // way to carry "all the others" and no WAD gives that default a
-            // liquid anyway.
+            // Dropped: a table of liquid flats cannot carry "all the others".
             if (word === 'defaultterrain') {
                 this._word(cursor);
                 continue;
@@ -178,12 +167,8 @@ class WadTerrainBank {
         return (this._liquids.has(terrain) || (Object.keys(splash).length > 0));
     }
 
-    // Body of a splash or terrain block: `key value` pairs, except for the few
-    // keywords that are bare flags and take no value. The brace may be
-    // preceded by `modify` (which keeps the previous definition's fields
-    // instead of resetting them — we overlay either way), and by nothing else:
-    // scanning further would silently swallow the entries that follow a block
-    // whose brace is missing.
+    // `key value` pairs, bare flag keywords aside. Only `modify` may precede the
+    // brace: scanning further would swallow the entries after a brace-less block.
     _parseBlock(cursor) {
         if (this._peek(cursor) === 'modify') {
             cursor.i++;

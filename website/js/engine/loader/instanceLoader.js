@@ -8,10 +8,8 @@ class InstanceLoader extends AbstractLoader {
         this._pendingRemoval = [];
     }
 
-    // Runtime despawn (e.g. a picked-up item): queued during World.update and
-    // applied by flushRemovals() once the per-frame loops are done, so the
-    // entity list is never mutated mid-iteration. The slot is deleted (a hole),
-    // which forEach/every/map skip — every per-frame consumer keeps working.
+    // Applied by flushRemovals() after the frame loops. The slot becomes a hole,
+    // which forEach/every/map skip.
     scheduleRemoval(instance) {
         this._pendingRemoval.push(instance.getId());
         return this;
@@ -43,8 +41,6 @@ class InstanceLoader extends AbstractLoader {
         return new Instance(id, url, callback);
     }
 
-    // The instance reads its own descriptor (Instance.populate); the loader
-    // only owns the code registry it maintains for getByCode.
     _populateFromData(entity, data) {
         entity.populate(data);
         if (entity.getCode() !== null) {

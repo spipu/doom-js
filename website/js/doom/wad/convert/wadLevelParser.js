@@ -10,22 +10,22 @@
 class WadLevelParser {
     /**
      * @param {WadFile} wadFile
-     * @param {string}  levelName
+     * @param {string}  levelCode
      */
-    constructor(wadFile, levelName) {
+    constructor(wadFile, levelCode) {
         this._wadFile   = wadFile;
-        this._levelName = levelName;
+        this._levelCode = levelCode;
     }
 
     /**
-     * @returns {{vertexes: number[][], linedefs: object[], sidedefs: object[], sectors: object[], things: object[], reject: Uint8Array|null}}
+     * @returns {{vertexes: number[][], linedefs: object[], sidedefs: object[], sectors: object[], things: object[], reject: Uint8Array|null, bsp: object|null}}
      */
     parse() {
-        const lumps = this._wadFile.getMapLumps(this._levelName);
+        const lumps = this._wadFile.getMapLumps(this._levelCode);
 
         for (const required of ['VERTEXES', 'LINEDEFS', 'SIDEDEFS', 'SECTORS', 'THINGS']) {
             if (lumps[required] === undefined) {
-                throw new WadError('invalid-format', 'Level ' + this._levelName + ': missing lump ' + required);
+                throw new WadError('invalid-format', 'Level ' + this._levelCode + ': missing lump ' + required);
             }
         }
 

@@ -31,7 +31,7 @@ class SoundMusicPlayer {
         this._chain      = Promise.resolve();
 
         soundEngine.onRunning(() => {
-            this._poke();
+            this._scheduleSync();
         });
     }
 
@@ -40,7 +40,7 @@ class SoundMusicPlayer {
      */
     setSynth(synth) {
         this._synth = synth;
-        return this._poke();
+        return this._scheduleSync();
     }
 
     /**
@@ -49,7 +49,7 @@ class SoundMusicPlayer {
     setBank(bytes) {
         this._bank       = bytes;
         this._bankLoaded = false;
-        return this._poke();
+        return this._scheduleSync();
     }
 
     /**
@@ -60,7 +60,7 @@ class SoundMusicPlayer {
      */
     setVolumeGate(fraction) {
         this._audible = (fraction > 0);
-        return this._poke();
+        return this._scheduleSync();
     }
 
     /**
@@ -72,16 +72,15 @@ class SoundMusicPlayer {
             return this;   // the same song keeps playing (vanilla S_ChangeMusic)
         }
         this._request = {track: track, loop: (loop === true)};
-        return this._poke();
+        return this._scheduleSync();
     }
 
     stop() {
         this._request = null;
-        return this._poke();
+        return this._scheduleSync();
     }
 
-    // Serialized reconciliation of the requested state onto the synth.
-    _poke() {
+    _scheduleSync() {
         this._chain = this._chain
             .then(() => this._sync())
             .catch((error) => {

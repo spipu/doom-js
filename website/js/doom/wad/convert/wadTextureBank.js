@@ -3,9 +3,8 @@
  * patches), decodes the flats, and registers each produced ImageData directly
  * in the engine TextureLoader (in-memory, no file ever written).
  *
- * Indices are 0-based and shared between walls and flats (like the Python
- * tex_paths list); the name registry prefixes flats with 'FLAT_' to avoid
- * collisions with wall textures of the same name.
+ * Indices are 0-based and shared between walls and flats; flats are keyed
+ * 'FLAT_' + name so a same-named wall texture does not collide.
  */
 class WadTextureBank {
     /**
@@ -18,7 +17,7 @@ class WadTextureBank {
         this._wadFile = wadFile;
         this._palette = palette;
         this._profile = profile;
-        this._terrain = terrainBank;
+        this._terrainBank = terrainBank;
 
         this._pnames      = [];
         this._patches     = {};   // name → DataView
@@ -87,14 +86,8 @@ class WadTextureBank {
     }
 
     /**
-     * Sky texture: composed like a wall, then prepared by _prepareSky — the dead
-     * bottom rows (Doom sky textures pad the bottom with transparent or pure-black
-     * rows, e.g. doom1 SKY1 = 8 empty rows) are cropped so the texture stops at
-     * its real content, and any stray transparent pixels are filled horizontally
-     * so it is fully OPAQUE. Otherwise Texture.isAlpha() flags it → the WebGL
-     * renderer falls back to NEAREST (pixelated) and the dead area shows as black
-     * streaks. Cached under a dedicated 'SKY_' key so a same-named wall texture
-     * keeps its own (alpha-preserving) entry.
+     * Sky texture: composed like a wall, then made opaque by _prepareSky. Keyed
+     * 'SKY_' + name so a same-named wall texture keeps its alpha.
      *
      * @param {string} name
      * @returns {int} 0-based texture index, or -1 if absent
@@ -134,13 +127,10 @@ class WadTextureBank {
     }
 
     /**
-     * Read straight from the pre-indexed TEXTURE1/2 header: this is a metrics
-     * probe (P_FindShortestTextureAround), it must not compose nor register
-     * the texture for rendering.
-     *
-     * A blank name is texture 0 for vanilla (R_TextureNumForName), so it
-     * measures as the first TEXTURE1 entry: that quirk is what keeps the
-     * raiseToTexture switch blocks at their original height.
+     * Metrics probe (P_FindShortestTextureAround) read from the TEXTURE1/2
+     * header, without composing the texture. A blank name is texture 0 in
+     * vanilla (R_TextureNumForName): that quirk keeps the raiseToTexture
+     * blocks at their original height.
      *
      * @param {string} name
      * @returns {int|null} wall texture height in Doom units, null if absent
@@ -216,25 +206,25 @@ class WadTextureBank {
             return null;
         }
 
-        const dv = entry.dv;
-        const o  = entry.offset;
+        const dv     = entry.dv;
+        const offset = entry.offset;
         const {width: w, height: h} = WadTextureBank._headerDims(entry);
-        const pc = dv.getUint16(o + 20, true);
+        const patchCount = dv.getUint16(offset + 20, true);
 
         const image = new ImageData(w, h);
-        for (let p = 0; p < pc; p++) {
-            const po = o + 22 + p * 10;
-            const ox = dv.getInt16(po, true);
-            const oy = dv.getInt16(po + 2, true);
-            const pi = dv.getUint16(po + 4, true);
-            if (pi >= this._pnames.length) {
+        for (let p = 0; p < patchCount; p++) {
+            const patchOffset = offset + 22 + p * 10;
+            const ox = dv.getInt16(patchOffset, true);
+            const oy = dv.getInt16(patchOffset + 2, true);
+            const pnameIndex = dv.getUint16(patchOffset + 4, true);
+            if (pnameIndex >= this._pnames.length) {
                 continue;
             }
-            const patchData = this._patches[this._pnames[pi]];
-            if (patchData === undefined) {
+            const patchLump = this._patches[this._pnames[pnameIndex]];
+            if (patchLump === undefined) {
                 continue;
             }
-            const patch = WadPicture.patchToImageData(patchData, this._palette);
+            const patch = WadPicture.patchToImageData(patchLump, this._palette);
             WadPicture.pastePatch(image, patch, ox, oy);
         }
 
@@ -258,10 +248,10 @@ class WadTextureBank {
             this._patches = this._wadFile.getLumpsBetween('PP_START', 'PP_END');
         }
         if (Object.keys(this._patches).length === 0) {
-            // Last resort: collect patch lumps by name from PNAMES
+            // No patch markers: look the PNAMES entries up by name.
             for (const pn of this._pnames) {
                 const dv = this._wadFile.getLump(pn);
-                if (dv !== null && dv.byteLength > 8) {
+                if ((dv !== null) && (dv.byteLength > 8)) {
                     this._patches[pn] = dv;
                 }
             }
@@ -287,13 +277,11 @@ class WadTextureBank {
     }
 
     isLiquidFlat(name) {
-        return this._terrain.isLiquid(name);
+        return this._terrainBank.isLiquid(name);
     }
 
     _initSwitchPairs() {
-        // Engine-hardcoded pairs of the game profile first (e.g. Heretic's
-        // SW1OFF ↔ SW1ON), then the SWITCHES lump overrides when present —
-        // the WAD data always wins over the profile fallback.
+        // Profile pairs (Heretic's SW1OFF ↔ SW1ON), overridden by the SWITCHES lump.
         for (const pair of this._profile.switchPairs()) {
             this._switchPairs[pair[0]] = pair[1];
             this._switchPairs[pair[1]] = pair[0];
@@ -305,47 +293,44 @@ class WadTextureBank {
         }
         let i = 0;
         while (i + 20 <= dv.byteLength) {
-            const n1 = WadFile.readName(dv, i, 9).toUpperCase();
-            const n2 = WadFile.readName(dv, i + 9, 9).toUpperCase();
-            if (n1 === '') {
+            const sw1Name = WadFile.readName(dv, i, 9).toUpperCase();
+            const sw2Name = WadFile.readName(dv, i + 9, 9).toUpperCase();
+            if (sw1Name === '') {
                 break;
             }
-            this._switchPairs[n1] = n2;
-            this._switchPairs[n2] = n1;
+            this._switchPairs[sw1Name] = sw2Name;
+            this._switchPairs[sw2Name] = sw1Name;
             i += 20;
         }
     }
 
     /**
-     * Prepare a sky texture: crop the contiguous dead bottom rows (every pixel
-     * transparent or near-black — the padding Doom adds below the sky image) so
-     * the texture stops exactly at its real content, then fill any stray
-     * transparent pixels horizontally so it is fully opaque (→ LINEAR filtering).
-     * Never stretches vertically: the texture ends sharp, the background shows
-     * below the horizon (the sky shader does the cut).
+     * Crops the dead bottom rows Doom pads its skies with (doom1 SKY1: 8), then
+     * fills stray transparent pixels: an alpha texture would get NEAREST
+     * filtering in WebGL and show the dead rows as black streaks.
      *
      * @returns {ImageData}
      */
     static _prepareSky(image) {
         const w = image.width;
-        const d = image.data;
+        const pixels = image.data;
         let h = image.height;
-        while (h > 1 && WadTextureBank._isDeadRow(d, w, h - 1)) {
+        while ((h > 1) && WadTextureBank._isDeadRow(pixels, w, h - 1)) {
             h--;
         }
-        const out = new ImageData(w, h);
-        out.data.set(d.subarray(0, w * h * 4));
-        WadTextureBank._fillTransparentHorizontally(out);
+        const cropped = new ImageData(w, h);
+        cropped.data.set(pixels.subarray(0, w * h * 4));
+        WadTextureBank._fillTransparentHorizontally(cropped);
 
-        return out;
+        return cropped;
     }
 
-    // A row is "dead" when no pixel is real (each is transparent or near-black).
-    static _isDeadRow(d, w, y) {
+    // Dead: every pixel transparent or near-black.
+    static _isDeadRow(pixels, w, y) {
         const row = y * w * 4;
         for (let x = 0; x < w; x++) {
             const p = row + x * 4;
-            if (d[p + 3] >= 255 && (d[p] + d[p + 1] + d[p + 2]) > 6) {
+            if ((pixels[p + 3] >= 255) && ((pixels[p] + pixels[p + 1] + pixels[p + 2]) > 6)) {
                 return false;
             }
         }
@@ -353,46 +338,44 @@ class WadTextureBank {
         return true;
     }
 
-    // Fill transparent pixels from the nearest opaque pixel on the same row
-    // (forward then backward pass) — closes any column gaps without ever
-    // stretching vertically. Leaves a fully-transparent row untouched.
+    // Forward then backward pass copying the last opaque pixel of the row.
     static _fillTransparentHorizontally(image) {
         const w = image.width;
         const h = image.height;
-        const d = image.data;
+        const pixels = image.data;
         for (let y = 0; y < h; y++) {
             const row = y * w * 4;
-            let lr = 0;
-            let lg = 0;
-            let lb = 0;
-            let have = false;
+            let lastR = 0;
+            let lastG = 0;
+            let lastB = 0;
+            let hasOpaque = false;
             for (let x = 0; x < w; x++) {
                 const p = row + x * 4;
-                if (d[p + 3] >= 255) {
-                    lr = d[p];
-                    lg = d[p + 1];
-                    lb = d[p + 2];
-                    have = true;
-                } else if (have) {
-                    d[p]     = lr;
-                    d[p + 1] = lg;
-                    d[p + 2] = lb;
-                    d[p + 3] = 255;
+                if (pixels[p + 3] >= 255) {
+                    lastR = pixels[p];
+                    lastG = pixels[p + 1];
+                    lastB = pixels[p + 2];
+                    hasOpaque = true;
+                } else if (hasOpaque) {
+                    pixels[p]     = lastR;
+                    pixels[p + 1] = lastG;
+                    pixels[p + 2] = lastB;
+                    pixels[p + 3] = 255;
                 }
             }
-            have = false;
+            hasOpaque = false;
             for (let x = w - 1; x >= 0; x--) {
                 const p = row + x * 4;
-                if (d[p + 3] >= 255) {
-                    lr = d[p];
-                    lg = d[p + 1];
-                    lb = d[p + 2];
-                    have = true;
-                } else if (have) {
-                    d[p]     = lr;
-                    d[p + 1] = lg;
-                    d[p + 2] = lb;
-                    d[p + 3] = 255;
+                if (pixels[p + 3] >= 255) {
+                    lastR = pixels[p];
+                    lastG = pixels[p + 1];
+                    lastB = pixels[p + 2];
+                    hasOpaque = true;
+                } else if (hasOpaque) {
+                    pixels[p]     = lastR;
+                    pixels[p + 1] = lastG;
+                    pixels[p + 2] = lastB;
+                    pixels[p + 3] = 255;
                 }
             }
         }

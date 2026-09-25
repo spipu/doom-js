@@ -2,10 +2,10 @@
  * Converter of the WAD's GENMIDI lump (DMX OPL2 bank, 175 instruments) into a
  * WOPL v3 bank, the only format libADLMIDI accepts at runtime.
  *
- * Both layouts are transcribed from their reference implementations, never
- * from memory: DMX side from OPL3BankEditor format_dmxopl2.cpp (+ doomwiki
- * GENMIDI), WOPL side from its official specification and the same editor's
- * format_wohlstand_opl3.cpp writer. The net field mapping is a raw-register
+ * Both layouts are transcribed from their reference implementations: DMX side
+ * from OPL3BankEditor format_dmxopl2.cpp (+ doomwiki GENMIDI), WOPL side from
+ * its official specification and the same editor's format_wohlstand_opl3.cpp
+ * writer. The net field mapping is a raw-register
  * passthrough — the editor's internal inversions cancel out — with a single
  * composition: the WOPL 0x40 register byte packs (KSL & 0xC0) | (level & 0x3F).
  *
@@ -41,12 +41,12 @@ class WadGenmidi {
         }
         const namesPresent = (dv.byteLength >= (WadGenmidi.RECORDS_END + (WadGenmidi.RECORD_COUNT * WadGenmidi.NAME_SIZE)));
         for (let i = 0; i < WadGenmidi.RECORD_COUNT; i++) {
-            const record = 8 + (i * WadGenmidi.RECORD_SIZE);
-            const target = ((i < 128)
+            const recordOffset = 8 + (i * WadGenmidi.RECORD_SIZE);
+            const instrumentOffset = ((i < 128)
                 ? (melodicBase + (i * WadGenmidi.WOPL_INST_SIZE))
                 : (percussionBase + ((WadGenmidi.PERCUSSION_FIRST_NOTE + i - 128) * WadGenmidi.WOPL_INST_SIZE)));
-            const name = (namesPresent ? (WadGenmidi.RECORDS_END + (i * WadGenmidi.NAME_SIZE)) : -1);
-            WadGenmidi._writeInstrument(out, view, target, dv, record, name);
+            const nameOffset = (namesPresent ? (WadGenmidi.RECORDS_END + (i * WadGenmidi.NAME_SIZE)) : -1);
+            WadGenmidi._writeInstrument(out, view, instrumentOffset, dv, recordOffset, nameOffset);
         }
 
         return out;
@@ -76,45 +76,45 @@ class WadGenmidi {
     }
 
     // One 36-byte DMX record into one 66-byte WOPL v3 instrument entry.
-    static _writeInstrument(out, view, target, dv, record, name) {
-        const flags       = dv.getUint16(record, true);
+    static _writeInstrument(out, view, instrumentOffset, dv, recordOffset, nameOffset) {
+        const flags       = dv.getUint16(recordOffset, true);
         const fixed       = ((flags & WadGenmidi.DMX_FLAG_FIXED_PITCH) !== 0);
         const doubleVoice = ((flags & WadGenmidi.DMX_FLAG_DOUBLE_VOICE) !== 0);
-        const idata       = record + 4;
+        const voiceOffset = recordOffset + 4;
 
-        if (name >= 0) {
+        if (nameOffset >= 0) {
             for (let i = 0; i < (WadGenmidi.NAME_SIZE - 1); i++) {
-                out[target + i] = dv.getUint8(name + i);
+                out[instrumentOffset + i] = dv.getUint8(nameOffset + i);
             }
         }
         // Note offsets carry the reference reader's +12 bias; a fixed-pitch
         // instrument ignores its offsets entirely (DMX rule).
-        view.setInt16(target + 32, (fixed ? 12 : (dv.getInt16(idata + 14, true) + 12)), false);
-        view.setInt16(target + 34, (fixed ? 12 : (dv.getInt16(idata + 30, true) + 12)), false);
-        out[target + 36] = 0;
-        out[target + 37] = ((dv.getUint8(record + 2) - 128) & 0xFF);
-        out[target + 38] = dv.getUint8(record + 3);
-        out[target + 39] = ((doubleVoice ? (WadGenmidi.WOPL_FLAG_4OP | WadGenmidi.WOPL_FLAG_PSEUDO_4OP) : 0)
+        view.setInt16(instrumentOffset + 32, (fixed ? 12 : (dv.getInt16(voiceOffset + 14, true) + 12)), false);
+        view.setInt16(instrumentOffset + 34, (fixed ? 12 : (dv.getInt16(voiceOffset + 30, true) + 12)), false);
+        out[instrumentOffset + 36] = 0;
+        out[instrumentOffset + 37] = ((dv.getUint8(recordOffset + 2) - 128) & 0xFF);
+        out[instrumentOffset + 38] = dv.getUint8(recordOffset + 3);
+        out[instrumentOffset + 39] = ((doubleVoice ? (WadGenmidi.WOPL_FLAG_4OP | WadGenmidi.WOPL_FLAG_PSEUDO_4OP) : 0)
             | (fixed ? WadGenmidi.WOPL_FLAG_FIXED_NOTE : 0));
-        out[target + 40] = dv.getUint8(idata + 6);
-        out[target + 41] = dv.getUint8(idata + 22);
+        out[instrumentOffset + 40] = dv.getUint8(voiceOffset + 6);
+        out[instrumentOffset + 41] = dv.getUint8(voiceOffset + 22);
 
         // WOPL operator order: carrier1, modulator1, carrier2, modulator2 —
         // a DMX voice lays out its modulator first (offset 0), carrier at 7.
-        WadGenmidi._writeOperator(out, target + 42, dv, idata + 7);
-        WadGenmidi._writeOperator(out, target + 47, dv, idata + 0);
-        WadGenmidi._writeOperator(out, target + 52, dv, idata + 23);
-        WadGenmidi._writeOperator(out, target + 57, dv, idata + 16);
+        WadGenmidi._writeOperator(out, instrumentOffset + 42, dv, voiceOffset + 7);
+        WadGenmidi._writeOperator(out, instrumentOffset + 47, dv, voiceOffset + 0);
+        WadGenmidi._writeOperator(out, instrumentOffset + 52, dv, voiceOffset + 23);
+        WadGenmidi._writeOperator(out, instrumentOffset + 57, dv, voiceOffset + 16);
     }
 
     // A 6-byte DMX operator (AVEKM, AtDec, SusRel, WF, KSL, level) into the
     // 5 raw OPL registers of a WOPL operator (0x20, 0x40, 0x60, 0x80, 0xE0).
-    static _writeOperator(out, offset, dv, op) {
-        out[offset]     = dv.getUint8(op);
-        out[offset + 1] = ((dv.getUint8(op + 4) & 0xC0) | (dv.getUint8(op + 5) & 0x3F));
-        out[offset + 2] = dv.getUint8(op + 1);
-        out[offset + 3] = dv.getUint8(op + 2);
-        out[offset + 4] = dv.getUint8(op + 3);
+    static _writeOperator(out, registerOffset, dv, operatorOffset) {
+        out[registerOffset]     = dv.getUint8(operatorOffset);
+        out[registerOffset + 1] = ((dv.getUint8(operatorOffset + 4) & 0xC0) | (dv.getUint8(operatorOffset + 5) & 0x3F));
+        out[registerOffset + 2] = dv.getUint8(operatorOffset + 1);
+        out[registerOffset + 3] = dv.getUint8(operatorOffset + 2);
+        out[registerOffset + 4] = dv.getUint8(operatorOffset + 3);
     }
 }
 

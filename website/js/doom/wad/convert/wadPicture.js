@@ -30,7 +30,7 @@ class WadPicture {
                 off += 2;
                 for (let j = 0; j < count; j++) {
                     const y = topDelta + j;
-                    if (y >= 0 && y < h) {
+                    if ((y >= 0) && (y < h)) {
                         const color = palette.getColor(dv.getUint8(off));
                         const p = (y * w + x) * 4;
                         pixels[p]     = color[0];
@@ -84,12 +84,12 @@ class WadPicture {
     static pastePatch(dest, src, ox, oy) {
         for (let y = 0; y < src.height; y++) {
             const dy = oy + y;
-            if (dy < 0 || dy >= dest.height) {
+            if ((dy < 0) || (dy >= dest.height)) {
                 continue;
             }
             for (let x = 0; x < src.width; x++) {
                 const dx = ox + x;
-                if (dx < 0 || dx >= dest.width) {
+                if ((dx < 0) || (dx >= dest.width)) {
                     continue;
                 }
                 const s = (y * src.width + x) * 4;

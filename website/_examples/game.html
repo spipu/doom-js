@@ -22,12 +22,12 @@ let light1   = null;
 let light2   = null;
 let light3   = null;
 
-let obj_x =-5.;
-let obj_y = 0.;
-let obj_z =-10.;
-let obj_a = -0.;
-const obj_dv = 0.015;
-const obj_da = 0.1;
+let vanX =-5.;
+let vanY = 0.;
+let vanZ =-10.;
+let vanAngle = -0.;
+const VAN_SPEED = 0.015;
+const VAN_TURN_SPEED = 0.1;
 
 function init()
 {
@@ -59,10 +59,10 @@ function init()
     ;
     screen.bindHud(hudDebug);
 
-    engine.lightAmbient([40., 40., 40.]);
-    engine.lightAdd(light1);
-    engine.lightAdd(light2);
-    engine.lightAdd(light3);
+    engine.setLightAmbient([40., 40., 40.]);
+    engine.addLight(light1);
+    engine.addLight(light2);
+    engine.addLight(light3);
 
     requestAnimationFrame(animate);
 }
@@ -70,21 +70,21 @@ function init()
 function animate(timestamp)
 {
     engine.calculateDeltaTime(timestamp);
-    const t_d = engine.getDeltaTime();
+    const dt = engine.getDeltaTime();
 
     const joyX = inputs.readJoy1X();
     const joyY = inputs.readJoy1Y();
     if (joyY !== 0)
     {
-        obj_a += t_d * obj_da * joyX * ((joyY > 0) ? 1 : -1);
-        obj_x += t_d * obj_dv * joyY * Math.cos(DEG_TO_RAD * obj_a);
-        obj_z -= t_d * obj_dv * joyY * Math.sin(DEG_TO_RAD * obj_a);
+        vanAngle += dt * VAN_TURN_SPEED * joyX * ((joyY > 0) ? 1 : -1);
+        vanX += dt * VAN_SPEED * joyY * Math.cos(DEG_TO_RAD * vanAngle);
+        vanZ -= dt * VAN_SPEED * joyY * Math.sin(DEG_TO_RAD * vanAngle);
     }
 
-    if (obj_x < -25.) { obj_x = -25.; }
-    if (obj_x >  25.) { obj_x =  25.; }
-    if (obj_z < -15.) { obj_z = -15.; }
-    if (obj_z >  15.) { obj_z =  15.; }
+    if (vanX < -25.) { vanX = -25.; }
+    if (vanX >  25.) { vanX =  25.; }
+    if (vanZ < -15.) { vanZ = -15.; }
+    if (vanZ >  15.) { vanZ =  15.; }
 
     engine.drawInit();
 
@@ -95,8 +95,8 @@ function animate(timestamp)
     engine.lightCalculatePosition(light1);
 
     engine.matrixPush();
-    engine.matrixTranslate(obj_x, obj_y, obj_z);
-    engine.matrixRotateY(obj_a);
+    engine.matrixTranslate(vanX, vanY, vanZ);
+    engine.matrixRotateY(vanAngle);
     engine.lightCalculatePosition(light2);
     engine.lightCalculatePosition(light3);
     engine.drawObject(loader.objects().getByCode('van'));

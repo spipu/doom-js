@@ -13,13 +13,8 @@
  * AudioContext itself is a page-lifetime resource and is never recreated.
  */
 class DoomSoundSystem {
-    // Synthesized interface tones (SoundSynth.tone parameters), deliberately
-    // WAD-independent: light neutral clicks instead of the vanilla gunshot
-    // lumps, identical whatever the game. The partial set reproduces the
-    // spectral signature of the escape-game UI click (scenario/_default/sound/
-    // sound_click.mp3, CC0): a low knock with its 860/2220 Hz companions and a
-    // bright ~6.6 kHz transient, all gone within ~10 ms — band ratios and
-    // envelope matched by measurement against the source file.
+    // Interface tones are synthesized, not WAD lumps, so the menus click the
+    // same in every game; the partials match a measured CC0 click (sound_click.mp3).
     static UI_TONE_PARTIALS = [
         {ratio: 1,     gain: 1},
         {ratio: 1.39,  gain: 1.15, decayMul: 0.8},
@@ -54,21 +49,21 @@ class DoomSoundSystem {
     };
 
     constructor() {
-        this._engine       = null;
-        this._samples      = null;
-        this._player       = null;
-        this._catalog      = null;
-        this._wadId        = null;
-        this._listener     = new DoomSoundListener();
-        this._pitchRange   = 0;
-        this._positional   = [];
-        this._uiToneIds    = {};
-        this._tracks       = null;
-        this._music        = null;
-        this._desiredMusic = null;
-        this._profile      = null;
-        this._wadFile      = null;
-        this._sequences    = null;
+        this._engine             = null;
+        this._samples            = null;
+        this._effectPlayer       = null;
+        this._catalog            = null;
+        this._wadId              = null;
+        this._listener           = new DoomSoundListener();
+        this._pitchRange         = 0;
+        this._positionalChannels = [];
+        this._uiToneIds          = {};
+        this._tracks             = null;
+        this._music              = null;
+        this._desiredMusic       = null;
+        this._profile            = null;
+        this._wadFile            = null;
+        this._sequences          = null;
     }
 
     // Idempotent — called on every menu boot (the navigator is recreated):
@@ -76,11 +71,11 @@ class DoomSoundSystem {
     // (the settings are loaded just before in the boot chain).
     boot() {
         if (this._engine === null) {
-            this._engine  = new SoundEngine().installUnlockListeners();
-            this._samples = new SoundSampleLoader(this._engine);
-            this._player  = new SoundEffectPlayer(this._engine);
-            this._tracks  = new SoundTrackLoader();
-            this._music   = new SoundMusicPlayer(this._engine).setSynth(new SoundMusicSynthAdlMidi(
+            this._engine       = new SoundEngine().installUnlockListeners();
+            this._samples      = new SoundSampleLoader(this._engine);
+            this._effectPlayer = new SoundEffectPlayer(this._engine);
+            this._tracks       = new SoundTrackLoader();
+            this._music        = new SoundMusicPlayer(this._engine).setSynth(new SoundMusicSynthAdlMidi(
                 appBootstrap.buildUrl(DoomSoundSystem.LIBADLMIDI_PROCESSOR_URL),
                 appBootstrap.buildUrl(DoomSoundSystem.LIBADLMIDI_WASM_URL)
             ));
@@ -151,7 +146,7 @@ class DoomSoundSystem {
         const desiredMusic = this._desiredMusic;
         this.reset();
         this._desiredMusic = desiredMusic;
-        this._wadId   = wadId;
+        this._wadId        = wadId;
         const profile = new GameProfileList().getForWad(wadFile);
         this._catalog = new DoomSoundCatalog(profile.soundDefs());
         for (const lumpName of this._catalog.lumpNames()) {
@@ -165,7 +160,7 @@ class DoomSoundSystem {
         this._wadFile = wadFile;
         this._profile = profile;
         const wopl    = WadGenmidi.toWopl(wadFile.getLump('GENMIDI'));
-        this._music.setBank((wopl !== null) ? wopl.buffer : null);
+        this._music.setBank(((wopl !== null) ? wopl.buffer : null));
         // Sound sequences: the WAD's own SNDSEQ lump wins (Hexen), else the
         // profile's transcription (Heretic ambients), else an empty catalog.
         const sndseq    = wadFile.getLump('SNDSEQ');
@@ -206,18 +201,18 @@ class DoomSoundSystem {
         if (this._engine === null) {
             return this;
         }
-        this._player.stopAll().setPaused(false);
+        this._effectPlayer.stopAll().setPaused(false);
         this._samples.reset();
         this._registerUiTones();
         this._music.stop().setBank(null);
         this._tracks.reset();
-        this._desiredMusic = null;
-        this._wadFile      = null;
-        this._profile      = null;
-        this._sequences    = null;
-        this._catalog      = null;
-        this._wadId        = null;
-        this._positional   = [];
+        this._desiredMusic       = null;
+        this._wadFile            = null;
+        this._profile            = null;
+        this._sequences          = null;
+        this._catalog            = null;
+        this._wadId              = null;
+        this._positionalChannels = [];
 
         return this;
     }
@@ -231,8 +226,8 @@ class DoomSoundSystem {
      */
     bindLevel(user) {
         this._listener.setUser(user);
-        if (this._player !== null) {
-            this._player.setPaused(false);
+        if (this._effectPlayer !== null) {
+            this._effectPlayer.setPaused(false);
         }
 
         return this;
@@ -242,9 +237,9 @@ class DoomSoundSystem {
     // menus keep talking), the listener lets its player go.
     unbindLevel() {
         this._listener.clearUser();
-        this._positional = [];
-        if (this._player !== null) {
-            this._player.stopAll(false).setPaused(false);
+        this._positionalChannels = [];
+        if (this._effectPlayer !== null) {
+            this._effectPlayer.stopAll(false).setPaused(false);
         }
 
         return this;
@@ -258,8 +253,8 @@ class DoomSoundSystem {
      * @param {boolean} paused
      */
     setPaused(paused) {
-        if (this._player !== null) {
-            this._player.setPaused(paused);
+        if (this._effectPlayer !== null) {
+            this._effectPlayer.setPaused(paused);
         }
 
         return this;
@@ -278,14 +273,14 @@ class DoomSoundSystem {
     playAt(name, origin, options = {}) {
         // One single resolution: a $random group must hand the SAME pick to
         // the sample lookup and to the start rules (key, limit, pitch).
-        const entry = this._resolvedSample(name);
+        const entry = this._resolveSample(name);
         if (entry === null) {
             return null;
         }
         const {resolved, sample} = entry;
         const attenuation = (options.attenuation ?? WadConstants.SOUND_ATTN.norm);
-        const params      = this._listener.paramsFor(origin, attenuation);
-        const handle      = this._player.play(sample, {
+        const params      = this._listener.gainAndPanFor(origin, attenuation);
+        const handle      = this._effectPlayer.play(sample, {
             gain:       params.gain,
             pan:        params.pan,
             pitch:      DoomSoundListener.pitchFor(resolved.pitch ?? this._pitchRange),
@@ -298,7 +293,7 @@ class DoomSoundSystem {
             replaceKey: (options.replaceKey ?? null)
         });
         if ((handle !== null) && (origin !== null) && (attenuation !== 0)) {
-            this._positional.push({handle: handle, origin: origin, attenuation: attenuation});
+            this._positionalChannels.push({handle: handle, origin: origin, attenuation: attenuation});
         }
 
         return handle;
@@ -308,13 +303,13 @@ class DoomSoundSystem {
     // listener (S_UpdateSounds) — called by the game loop; the origin arrays
     // are live references, a moving emitter updates them in place.
     update() {
-        for (let i = this._positional.length - 1; i >= 0; i--) {
-            const entry = this._positional[i];
+        for (let i = this._positionalChannels.length - 1; i >= 0; i--) {
+            const entry = this._positionalChannels[i];
             if (!entry.handle.isPlaying()) {
-                this._positional.splice(i, 1);
+                this._positionalChannels.splice(i, 1);
                 continue;
             }
-            const params = this._listener.paramsFor(entry.origin, entry.attenuation);
+            const params = this._listener.gainAndPanFor(entry.origin, entry.attenuation);
             entry.handle.setGain(params.gain);
             entry.handle.setPan(params.pan);
         }
@@ -336,7 +331,7 @@ class DoomSoundSystem {
         }
         const tone = (DoomSoundSystem.UI_SOUND_TONES[name] ?? null);
         if (tone !== null) {
-            this._player.play(this._samples.get(this._uiToneIds[tone]), {gain: WadConstants.MENU_SOUND_VOLUME, ui: true});
+            this._effectPlayer.play(this._samples.get(this._uiToneIds[tone]), {gain: WadConstants.MENU_SOUND_VOLUME, ui: true});
         }
 
         return this;
@@ -424,7 +419,7 @@ class DoomSoundSystem {
         return null;
     }
 
-    _resolvedSample(name) {
+    _resolveSample(name) {
         if (this._catalog === null) {
             return null;
         }

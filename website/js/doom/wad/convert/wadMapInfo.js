@@ -1,35 +1,17 @@
 /**
- * Per-map progression of a WAD — the single owner of "which level comes next"
- * and of "which story text closes a chapter" (see finaleFor).
+ * Per-map progression of a WAD: which level comes next and which story text
+ * closes a chapter.
  *
- * Every level of the WAD gets a default entry synthesized from the vanilla
- * engine rules (G_DoCompleted applied to the level names, since the original
- * WAD format carries no progression data). The per-game slots (episode
- * secret returns, MAPxx secret maps) come from the game profile
- * (progressionRules) — only the name-pattern mechanics live here:
- * - ExMy: secret exit → ExM9; normal exit from ExM9 → per-episode return;
- *   normal exit from the episode-end map (ExM8) → end of game (ga_victory);
- *   otherwise sequential lump order.
- * - MAPxx: secret exit → the secret slot (the super-secret slot when already
- *   on the secret one); normal exit from either slot → the secret return;
- *   both exits of the end slot (MAP30) → end of game (cast call);
- *   otherwise sequential lump order.
- * - explicitRoutes of the profile override the patterns for listed maps
- *   (Heretic hidden episode: E6M3 loops back to E6M1).
- * - A routed target absent from the WAD falls back to sequential; a null
- *   target means end of game (back to the menu).
+ * Defaults follow the vanilla G_DoCompleted rules applied to the level codes,
+ * the per-game slots coming from the profile's progressionRules:
+ * - ExMy: secret exit → ExM9; ExM9 → per-episode return; ExM8 → end of game;
+ * - MAPxx: secret exit → secret slot (super-secret from the secret one); both
+ *   slots → secret return; MAP30 → end of game;
+ * - otherwise lump order; explicitRoutes override the patterns, a target
+ *   absent from the WAD falls back to lump order, null means end of game.
  *
- * When the WAD provides a UMAPINFO lump (cross-port spec rev 2.2), its
- * entries overlay the defaults field by field: next / nextsecret (a lump
- * entry without nextsecret routes its secret exit to the NORMAL target, per
- * spec — even on a map with a natural secret exit; a target absent from the
- * WAD is ignored with a warning), endgame / endpic / endbunny / endcast
- * (end of game: both exits → null), levelname (HUD display), music (the
- * level's song lump), intertext / intertextsecret (the story text of each
- * exit, "-" for none — a map the lump describes ignores the cluster texts
- * entirely). Every other key is parsed and skipped. The spec does not define
- * comments, but real lumps carry C-style ones — // and slash-star blocks are
- * tolerated.
+ * A UMAPINFO lump (spec rev 2.2) overlays the defaults field by field; unknown
+ * keys are skipped. C-style comments, absent from the spec, are tolerated.
  */
 class WadMapInfo {
     /**
@@ -62,8 +44,7 @@ class WadMapInfo {
         try {
             this._overlayLump(WadFile.lumpText(lump));
         } catch (error) {
-            // A malformed lump must not break the level conversion: the maps
-            // overlaid so far are kept, the defaults cover the rest.
+            // Keeps the maps overlaid so far, the defaults cover the rest.
             console.warn('WadMapInfo - malformed UMAPINFO lump: ' + error.message);
         }
     }
@@ -75,7 +56,7 @@ class WadMapInfo {
      * @param {boolean} secret  true when leaving through a secret exit
      * @returns {string|null} null = end of game (back to the menu)
      */
-    nextLevelName(current, secret) {
+    nextLevelCode(current, secret) {
         const entry = this._entries[current];
         if (entry === undefined) {
             return null;
@@ -131,7 +112,7 @@ class WadMapInfo {
         }
         const cluster = this._clusterOf(current);
         const exit    = (clusters.texts[cluster]?.exit ?? null);
-        const next    = this.nextLevelName(current, secret);
+        const next    = this.nextLevelCode(current, secret);
         if (next === null) {
             return WadMapInfo._finaleCode(exit);
         }
@@ -149,10 +130,8 @@ class WadMapInfo {
         return ((code !== null) ? {code: code} : null);
     }
 
-    // Cluster of a level, from the profile's rules applied to the name
-    // patterns — same split as _vanillaNext: the per-game slots come from the
-    // profile, the pattern mechanics live here. null = outside every cluster
-    // (an unrecognized name shows no text, and never matches another one).
+    // Cluster of a level from the profile rules, null outside every cluster
+    // (never equal to another level's).
     _clusterOf(name) {
         const clusters = this._rules.clusters;
         const upper    = name.toUpperCase();
@@ -177,16 +156,15 @@ class WadMapInfo {
 
     // --- Vanilla defaults ---
 
-    // G_DoCompleted name-pattern rules; the per-game slots come from the
-    // profile's progressionRules (see class header).
+    // G_DoCompleted name-pattern rules (see class header).
     _vanillaNext(current, secret) {
         const index = this._levels.indexOf(current);
-        const sequential = ((index >= 0 && index + 1 < this._levels.length) ? this._levels[index + 1] : null);
+        const sequential = (((index >= 0) && (index + 1 < this._levels.length)) ? this._levels[index + 1] : null);
 
         const explicit = (this._rules.explicitRoutes ?? {})[current];
         if (explicit !== undefined) {
             const target = ((secret === true) ? explicit.nextsecret : explicit.next);
-            return ((target !== null && this._levels.includes(target)) ? target : sequential);
+            return (((target !== null) && this._levels.includes(target)) ? target : sequential);
         }
 
         let routed = null;
@@ -214,7 +192,7 @@ class WadMapInfo {
             }
         }
 
-        return ((routed !== null && this._levels.includes(routed)) ? routed : sequential);
+        return (((routed !== null) && this._levels.includes(routed)) ? routed : sequential);
     }
 
     // --- UMAPINFO lump ---
@@ -240,9 +218,8 @@ class WadMapInfo {
         }
     }
 
-    // Body of one MAP block, overlaid onto the map's default entry (created on
-    // the fly for a map absent from the WAD — harmless, it is never current).
-    // Returns the index of the token following the block.
+    // Overlays one MAP block onto the map's entry; returns the index of the
+    // token after the block.
     _overlayBlock(tokens, i, mapName) {
         const entry = (this._entries[mapName] ?? {next: null, nextsecret: null, levelname: null, music: []});
         const seen  = {nextsecret: false, end: false};
@@ -290,7 +267,6 @@ class WadMapInfo {
         if ((key === 'next') || (key === 'nextsecret')) {
             const target = first.toUpperCase();
             if (!this._levels.includes(target)) {
-                // An authoring error must not crash the chain: keep the default.
                 console.warn('WadMapInfo - MAP ' + mapName + ': ' + key + ' [' + target + '] is not a level of this WAD');
                 return;
             }

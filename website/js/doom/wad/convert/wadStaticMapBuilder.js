@@ -29,8 +29,8 @@ class WadStaticMapBuilder {
         this._buildWalls(mesh);
         this._buildFlats(mesh);
 
-        // The map references the whole bank as built so far (like the Python
-        // tex_paths snapshot); faces already hold global 1-based indices.
+        // The map references the whole bank built so far: its faces already hold
+        // global indices.
         const allIndices = [];
         for (let i = 0; i < this._bank.count(); i++) {
             allIndices.push(i);
@@ -61,12 +61,11 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            const rSd  = sidedefs[ld.right];
-            const rSec = sectors[rSd.sector];
+            const rSd     = sidedefs[ld.right];
+            const rSec    = sectors[rSd.sector];
             const rIsDoor = doorSectorIds.has(rSd.sector);
 
-            // Scrolling wall (48): vanilla animates the FRONT sidedef's texture
-            // offset only, so the scroll rate applies to right-side faces alone
+            // Scrolling wall (48): vanilla scrolls the front sidedef only.
             const uScroll = (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0);
 
             if (ld.left < 0) {
@@ -75,7 +74,7 @@ class WadStaticMapBuilder {
                     continue;
                 }
                 if (rIsDoor) {
-                    // One-sided lateral wall of a door sector (DOORTRAK)
+                    // Door track (DOORTRAK)
                     if (doorHeights[rSd.sector] === undefined) {
                         continue;
                     }
@@ -98,7 +97,6 @@ class WadStaticMapBuilder {
                         {xOff: rSd.xo, yOff: yo, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector)});
                     continue;
                 }
-                // One-sided linedef → solid wall
                 const texName = rSd.middle;
                 const ti = this._bank.ensureWallTex(texName);
                 if (ti >= 0) {
@@ -114,16 +112,13 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            // --- Two-sided linedef ---
-            const lSd  = sidedefs[ld.left];
-            const lSec = sectors[lSd.sector];
+            const lSd     = sidedefs[ld.left];
+            const lSec    = sectors[lSd.sector];
             const lIsDoor = doorSectorIds.has(lSd.sector);
 
-            // A two-sided switch graphic (on a lower/upper) is rebuilt as an
-            // interactive instance, so drop that exact face here to avoid a
-            // double draw / z-fighting (mirrors the one-sided skip above).
-            const swWall = switchWalls.get(ldIdx) ?? null;
-            const isSwitchFace = (side, slot) => ((swWall !== null) && (swWall.side === side) && (swWall.slot === slot));
+            // The switch builder rebuilds the switch face.
+            const switchWall = switchWalls.get(ldIdx) ?? null;
+            const isSwitchFace = (side, slot) => ((switchWall !== null) && (switchWall.side === side) && (switchWall.slot === slot));
 
             const rFh = rSec.fh;
             const rCh = rSec.ch;
@@ -133,19 +128,15 @@ class WadStaticMapBuilder {
             const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
             const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
 
-            // Doom sky rule: when BOTH ceilings are sky, the upper between them
-            // is not drawn — the sky is continuous (no band above the opening).
-            const ceilSky = (WadConstants.isSkyFlat(rSec.ct) && WadConstants.isSkyFlat(lSec.ct));
+            // Doom sky rule: no upper wall between two sky ceilings.
+            const bothCeilingsSky = (WadConstants.isSkyFlat(rSec.ct) && WadConstants.isSkyFlat(lSec.ct));
 
-            // Lower wall: step up from right sector floor to left sector floor.
-            // Door sectors are allowed here (no !isDoor guard): a door on a step
-            // up (own fh patched above its lowest neighbour) needs this riser on
-            // the door line — flush doors give lFh == rFh and build nothing. The
-            // upper walls below stay door-guarded (the door panel covers them).
-            if (lFh > rFh && !isSwitchFace('right', 'lower')) {
+            // Lower walls are built on door lines too: a door on a step up needs
+            // its riser. Upper walls are left to the door panel.
+            if ((lFh > rFh) && !isSwitchFace('right', 'lower')) {
                 const tex = this._wallTexOrFlat(rSd.lower, lSec.ft);
                 if (tex !== null) {
-                    // lower_unpeg: texture hangs from the front ceiling (rCh) rather than the floor
+                    // Lower-unpegged: the texture hangs from the front ceiling.
                     const yo = rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0);
                     WadMeshBuilder.addWallQuad(mesh, tex.index,
                         wx1, wz1, wx2, wz2,
@@ -155,8 +146,7 @@ class WadStaticMapBuilder {
                 }
             }
 
-            // Lower wall from left side (door sectors allowed, see above)
-            if (rFh > lFh && !isSwitchFace('left', 'lower')) {
+            if ((rFh > lFh) && !isSwitchFace('left', 'lower')) {
                 const tex = this._wallTexOrFlat(lSd.lower, rSec.ft);
                 if (tex !== null) {
                     const yo = lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0);
@@ -168,13 +158,9 @@ class WadStaticMapBuilder {
                 }
             }
 
-            // Upper wall: ceiling step down from right sector to left sector.
-            // Skipped only when the LOWER-ceiling side is a door — its panel
-            // covers the band. When the door side has the HIGHER ceiling (a
-            // crusher next to a closed spacer sector), the band between the
-            // neighbour's ceiling and the door's open ceiling is a static wall
-            // (DOORTRAK precedent: the descending panel occludes it).
-            if (lCh < rCh && !lIsDoor && !ceilSky && !isSwitchFace('right', 'upper')) {
+            // Skipped only when the low-ceiling side is a door (its panel covers
+            // the band); a door on the tall side keeps a static wall.
+            if ((lCh < rCh) && !lIsDoor && !bothCeilingsSky && !isSwitchFace('right', 'upper')) {
                 const tex = this._wallTexOrFlat(rSd.upper, lSec.ct);
                 if (tex !== null) {
                     // Default: bottom of texture at lower ceiling. DONTPEGTOP: top of texture at higher ceiling.
@@ -187,8 +173,7 @@ class WadStaticMapBuilder {
                 }
             }
 
-            // Upper wall from left side (same door rule, mirrored)
-            if (rCh < lCh && !rIsDoor && !ceilSky && !isSwitchFace('left', 'upper')) {
+            if ((rCh < lCh) && !rIsDoor && !bothCeilingsSky && !isSwitchFace('left', 'upper')) {
                 const tex = this._wallTexOrFlat(lSd.upper, rSec.ct);
                 if (tex !== null) {
                     const yo = lSd.yo + ((upperUnpeg) ? 0 : (tex.height - (lCh - rCh)));
@@ -204,16 +189,13 @@ class WadStaticMapBuilder {
                 this._buildUpperJumpGuard(mesh, rSec, lSec, wx1, wz1, wx2, wz2, wallLen);
             }
 
-            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall);
+            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall);
 
-            // ML_BLOCKING two-sided line (windows, balustrades): impassable
-            // for players and monsters whatever the opening heights, shots
-            // and projectiles exempt (PIT_CheckLine, p_map.c). A door side
-            // uses its OPEN ceiling: the flag still blocks under a raised
-            // panel (the sector's static ch is the closed height).
+            // ML_BLOCKING stops walkers at any height, not shots (PIT_CheckLine);
+            // a door side uses its open ceiling, its static ch being the closed one.
             if ((ld.flags & WadConstants.ML_BLOCKING) !== 0) {
-                const rChEff = ((rIsDoor && doorHeights[rSd.sector] !== undefined) ? doorHeights[rSd.sector].ceilH : rCh);
-                const lChEff = ((lIsDoor && doorHeights[lSd.sector] !== undefined) ? doorHeights[lSd.sector].ceilH : lCh);
+                const rChEff = ((rIsDoor && (doorHeights[rSd.sector] !== undefined)) ? doorHeights[rSd.sector].ceilH : rCh);
+                const lChEff = ((lIsDoor && (doorHeights[lSd.sector] !== undefined)) ? doorHeights[lSd.sector].ceilH : lCh);
                 this._buildBlockingWall(mesh, rFh, rChEff, lFh, lChEff, wx1, wz1, wx2, wz2, wallLen);
             }
         }
@@ -239,11 +221,11 @@ class WadStaticMapBuilder {
     // Middle textures: shown once (no vertical tiling), from the side whose
     // sidedef carries it only, like vanilla. Without ML_BLOCKING: a passable
     // "false wall".
-    _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, swWall) {
+    _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall) {
         const {doorSectorIds} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
-        const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
+        const lowerUnpeg       = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
         const midPassableUser  = ((ld.flags & WadConstants.ML_BLOCKING) === 0);
         const midPassableEnemy = (midPassableUser && ((ld.flags & WadConstants.ML_BLOCKMONSTERS) === 0));
 
@@ -253,7 +235,7 @@ class WadStaticMapBuilder {
         const lCh = lSec.ch;
 
         for (const [mSd, mSec, side] of [[rSd, rSec, 'right'], [lSd, lSec, 'left']]) {
-            if ((swWall !== null) && (swWall.side === side) && (swWall.slot === 'middle')) {
+            if ((switchWall !== null) && (switchWall.side === side) && (switchWall.slot === 'middle')) {
                 continue;
             }
             if (WadTextureBank.isBlank(mSd.middle)) {
@@ -277,12 +259,10 @@ class WadStaticMapBuilder {
             let ytop;
             let yo;
             if (lowerUnpeg) {
-                // DONTPEGBOTTOM: texture bottom anchored at floor, extends upward once
                 ybot = botDu;
                 ytop = Math.min(topDu, botDu + th);
                 yo = mSd.yo + (th - (ytop - ybot));
             } else {
-                // Default: texture top anchored at ceiling, hangs down once
                 ytop = topDu;
                 ybot = Math.max(botDu, topDu - th);
                 yo = mSd.yo;
@@ -291,12 +271,9 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            // Scrolling wall (48): only the FRONT (right) sidedef's offset is
-            // animated in vanilla
             const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
 
-            // Shots never test middle textures in vanilla (P_ShootTraverse
-            // only checks the line opening)
+            // Shots never test middle textures (P_ShootTraverse checks the opening only).
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,
                 ybot * SCALE, ytop * SCALE,
@@ -346,8 +323,8 @@ class WadStaticMapBuilder {
             return;
         }
         const rightIsTall = (rSec.ch > lSec.ch);
-        const tall = ((rightIsTall) ? rSec : lSec);
-        const low  = ((rightIsTall) ? lSec : rSec);
+        const tall        = ((rightIsTall) ? rSec : lSec);
+        const low         = ((rightIsTall) ? lSec : rSec);
         if (!WadConstants.isSkyFlat(tall.ct) || WadConstants.isSkyFlat(low.ct)) {
             return;
         }
@@ -359,9 +336,8 @@ class WadStaticMapBuilder {
         this._addCollisionBand(mesh, topDu, topDu + WadConstants.JUMP_GUARD_HEIGHT, wx1, wz1, wx2, wz2, wallLen, flip);
     }
 
-    // Invisible, shot-transparent collision band (Doom units). 64×64 = dummy
-    // texture dims (only there to pass the addWallQuad guard; the UVs are
-    // dropped on a textureless face). flip orients it like the wall it caps.
+    // Invisible, shot-transparent collision band; 64×64 only passes the
+    // addWallQuad size guard, a textureless face has no UVs.
     _addCollisionBand(mesh, botDu, topDu, wx1, wz1, wx2, wz2, wallLen, flip = false) {
         const SCALE = WadConstants.SCALE;
         WadMeshBuilder.addWallQuad(mesh, -1,
@@ -375,16 +351,14 @@ class WadStaticMapBuilder {
 
     _buildFlats(mesh) {
         const {sectors} = this._level;
-        const {doorSectorIds, movingFloorDownIds, risingFloorIds, stairIds} = this._analysis;
+        const {doorSectorIds, liftIds, risingFloorIds, stairIds} = this._analysis;
 
         for (let si = 0; si < sectors.length; si++) {
             const sec = sectors[si];
 
             if (doorSectorIds.has(si)) {
-                // Ceiling-raiser also claimed as a moving floor (40): the lift's
-                // moving top-flat covers the floor — only the ceiling side is
-                // door-handled, so skip the static floor flat (z-fighting).
-                if (!movingFloorDownIds.has(si)) {
+                // A ceiling raiser (40) is also a lift, whose top flat covers the floor.
+                if (!liftIds.has(si)) {
                     this._buildDoorSectorFlat(mesh, si, sec);
                 }
                 continue;
@@ -392,30 +366,25 @@ class WadStaticMapBuilder {
 
             const floorSky = WadConstants.isSkyFlat(sec.ft);
             const ft = ((floorSky) ? -1 : this._bank.ensureFlatTex(sec.ft));
-            const hasSky = WadConstants.isSkyFlat(sec.ct);
-            const ct = ((hasSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
+            const ceilingSky = WadConstants.isSkyFlat(sec.ct);
+            const ct = ((ceilingSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
-            // Visual eastward flat drift (Heretic scrolling lava / east
-            // conveyors): map units per tic → UV fraction per second (a flat
-            // texel = 1 map unit, 64 per tile); negative offset = the pattern
-            // flows toward +x (east).
+            // Heretic eastward flat scroll: map units per tic → UV per second
+            // (64 units per tile); the negative sign makes it flow east.
             const flatScroll = (WadConstants.SECTOR_FLAT_SCROLL_BY_SPECIAL[sec.special] ?? 0);
             const uScroll    = ((flatScroll !== 0) ? (-flatScroll / WadConstants.SECONDS_PER_TIC / 64) : 0);
 
-            // Skip the static floor for lifts, rising floors AND stairs — in
-            // every case a moving top-flat covers it (otherwise z-fighting).
-            if (!movingFloorDownIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
+            // Floor movers draw their own top flat.
+            if (!liftIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
                 if (floorSky) {
-                    // Sky floor (MAP20's exit pit): vanilla draws the SKY
-                    // there (R_Subsector floorpic == skyflatnum) — the flat
-                    // stays solid but invisible, the sky shows through.
+                    // Sky floor (MAP20's exit pit): solid but invisible, vanilla
+                    // draws the sky there (R_Subsector).
                     WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, sec.fh, true, sec.light, {collisionOnly: true});
                 } else if (ft >= 0) {
                     WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
                         {lightGroup: this._lightGroupOf(si), uScroll: uScroll, noDecal: this._bank.isLiquidFlat(sec.ft)});
                 }
             }
-            // Sky flats skipped — outdoor areas have no ceiling geometry
             if (ct >= 0) {
                 WadMeshBuilder.addSectorFlat(mesh, this._level, ct, si, sec.ch, false, sec.light,
                     {lightGroup: this._lightGroupOf(si), noDecal: this._bank.isLiquidFlat(sec.ct)});
@@ -423,11 +392,8 @@ class WadStaticMapBuilder {
         }
     }
 
-    // Door sector: floor only. sec.fh was already patched by the analyzer to the
-    // door's effective floor (max of own fh and the lowest walkable neighbour),
-    // so the threshold sits at its real height and the step up to it is rendered
-    // as a riser on the door line. The ceiling is omitted — the door instance
-    // covers it.
+    // Door sector: floor only (fh already patched by the analyzer), the door
+    // instance covers the ceiling.
     _buildDoorSectorFlat(mesh, si, sec) {
         const ft = this._bank.ensureFlatTex(sec.ft);
         if (ft < 0) {

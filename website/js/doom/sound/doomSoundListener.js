@@ -47,7 +47,7 @@ class DoomSoundListener {
      * @param {number} attenuation distance multiplier (0 = full volume, centred)
      * @returns {{gain: number, pan: number}}
      */
-    paramsFor(origin, attenuation) {
+    gainAndPanFor(origin, attenuation) {
         if ((origin === null) || (attenuation === 0) || (this._user === null)) {
             return {gain: 1, pan: 0};
         }

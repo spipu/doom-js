@@ -1,13 +1,12 @@
 class Collision {
     constructor() {
-        this._static      = []; // [{floors, ceilings, walls, grids}] — grids index the three lists
-        this._dynamic     = []; // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, platformDeltaApplied}]
-        this._boxes       = []; // [{cx, cz, half, yBottom, yTop}] — static Doom-style square decoration blockers
-        this._prevUserPos = null; // player position at the end of the previous pressure pass
+        this._static      = [];                            // [{floors, ceilings, walls, grids}] — grids index the three lists
+        this._dynamic     = [];                            // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, platformDeltaApplied}]
+        this._boxes       = [];                            // [{instance, cx, cz, half, yBottom, yTop}] — axis-aligned square blockers
+        this._prevUserPos = null;                          // player position at the end of the previous pressure pass
         this._tfDelta     = {dx: 0, dy: 0, dz: 0, dRy: 0}; // scratch of _transformDelta
-        // Candidate buffers of the spatial queries, one per family so a query
-        // that gathers two kinds in a row (the pinch predicate: floors then
-        // ceilings) never overwrites the set it is still scanning.
+        // One candidate buffer per family: the pinch test gathers floors then
+        // ceilings and must not overwrite the set it is still scanning.
         this._floorScratch = [];
         this._ceilScratch  = [];
         this._wallScratch  = [];
@@ -26,11 +25,8 @@ class Collision {
             return;
         }
 
-        // Doom-style square blocker (decorations, bodies): an axis-aligned box
-        // centred on the thing point, with a vertical interval derived from the
-        // sprite body. A box that moves under its own steam or dies must be
-        // pushed back through syncBoxFor / removeBoxFor by its owner; one
-        // standing on a moving floor follows it through syncRidingBoxes.
+        // A box its owner moves or removes must be re-synced through
+        // syncBoxFor / removeBoxFor; one riding a moving floor follows on its own.
         if (instance.getCollisionShape() === 'box') {
             const box = {instance: instance, cx: 0, cz: 0, half: 0, yBottom: 0, yTop: 0};
             this._refreshBox(box);
@@ -66,10 +62,8 @@ class Collision {
         }
     }
 
-    // Box blockers standing on a moving floor: their instance already followed
-    // it (Instance._syncRide moved the sprite and the world centre), so the box
-    // just re-reads them. Without this a torch riding a lift would keep blocking
-    // at the platform's rest height and let the player walk through its sprite.
+    // Box blockers riding a moving floor re-read the position their instance
+    // already followed (Instance._syncRide).
     syncRidingBoxes() {
         for (const box of this._boxes) {
             if (box.instance.getRideOn() !== null) {
@@ -78,7 +72,6 @@ class Collision {
         }
     }
 
-    // Re-read a box blocker's position/interval from its instance (owner moved it).
     syncBoxFor(instance) {
         for (const box of this._boxes) {
             if (box.instance === instance) {
@@ -88,14 +81,11 @@ class Collision {
         }
     }
 
-    // Whether an instance still owns a box blocker (a restored corpse must
-    // know if its unblocking already happened).
     hasBoxFor(instance) {
         return this._boxes.some((box) => (box.instance === instance));
     }
 
-    // Drop an instance's box blocker (its body stopped blocking). Safe against
-    // an absent box (already removed, or never a box collider).
+    // Safe on an instance with no box
     removeBoxFor(instance) {
         for (let i = 0; i < this._boxes.length; i++) {
             if (this._boxes[i].instance === instance) {
@@ -140,16 +130,13 @@ class Collision {
         return this._findCeiling(px, pz, r, headY, Collision.DYN_NEAR);
     }
 
-    // Nearest triangle hit by the ray (origin, unit direction), within maxDist.
-    // Walls are always tested; floors/ceilings/dynamic movers are opt-in via
-    // opts, and shot-passable faces (movement-only blockers) join in with
-    // opts.includeShotPassable. Returns {point, dist, normal, tri} or null.
-    // dist is in world units (the direction must be normalised).
+    // Nearest hit along a normalised direction: {point, dist, normal, tri} or
+    // null. Walls always; opts {floors, ceilings, dynamic, includeShotPassable}.
     raycast(ox, oy, oz, dx, dy, dz, maxDist = Infinity, opts = {}) {
         const tris  = this._rayScratch;
         const count = this._gatherRay(ox, oz, dx, dz, maxDist, tris, opts);
-        let best  = null;
-        let bestT = maxDist;
+        let best    = null;
+        let bestT   = maxDist;
         for (let i = 0; i < count; i++) {
             const tri = tris[i];
             if (tri.passableShot && (opts.includeShotPassable !== true)) {
@@ -160,24 +147,16 @@ class Collision {
                 continue;
             }
             const t = (tri.d - (tri.n[0]*ox + tri.n[1]*oy + tri.n[2]*oz)) / denom;
-            if (t < 0 || t > bestT) {
+            if ((t < 0) || (t > bestT)) {
                 continue;
             }
             const px = ox + t*dx, py = oy + t*dy, pz = oz + t*dz;
-            // Broadphase: reject on the triangle AABB (6 compares) before the
-            // costly point-in-triangle test. Matters for multi-ray shots
-            // (the super shotgun casts 20 rays through every wall).
-            //
-            // Slackened on every axis: an axis-aligned triangle — every Doom
-            // floor and ceiling — has a box of ZERO thickness on that axis,
-            // while the ray/plane solve lands its point an ulp off the plane.
-            // Compared strictly, the box then rejects hits the exact test
-            // below would accept, and the shot silently passes through the
-            // floor at a handful of angles.
+            // AABB slackened on every axis: a flat triangle has a zero-thickness
+            // box, and the ray/plane solve lands an ulp off it.
             const eps = Collision.RAY_AABB_EPSILON;
-            if (px < tri.xMin - eps || px > tri.xMax + eps
-                || py < tri.yMin - eps || py > tri.yMax + eps
-                || pz < tri.zMin - eps || pz > tri.zMax + eps) {
+            if ((px < tri.xMin - eps) || (px > tri.xMax + eps)
+                || (py < tri.yMin - eps) || (py > tri.yMax + eps)
+                || (pz < tri.zMin - eps) || (pz > tri.zMax + eps)) {
                 continue;
             }
             if (!this._pointInTri(px, py, pz, tri)) {
@@ -189,11 +168,7 @@ class Collision {
         return best;
     }
 
-    // Candidate triangles of a ray, appended into `out`; returns how many. The
-    // static indexes are walked cell by cell along the ray (a shot crossing a
-    // level touches a handful of cells, where its bounding box would cover a
-    // large part of it); the dynamic movers stay linear. Walls always, floors
-    // and ceilings opt-in, static before dynamic.
+    // Candidates of a ray, appended into `out`; returns how many.
     _gatherRay(ox, oz, dx, dz, maxDist, out, opts) {
         let n = 0;
         for (const sc of this._static) {
@@ -223,8 +198,8 @@ class Collision {
     // ignoreBoxOf: a moving box body resolves against everything BUT its own
     // blocker (which sits at its own centre and would pin it in place).
     resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0, ignoreBoxOf = null) {
-        const tris = this._wallScratch;
-        let count  = this._gatherWalls(cx, cz, vx, vz, r, tris, true);
+        const tris  = this._wallScratch;
+        let count   = this._gatherWalls(cx, cz, vx, vz, r, tris, true);
         const res   = this._resolveWallFrom(cx, cz, vx, vz, r, feetY, h, tris, count, stepHeight);
         const boxed = this._resolveBoxes(res.x, res.z, r, feetY, h, ignoreBoxOf);
 
@@ -233,18 +208,14 @@ class Collision {
         if ((ejectX === 0) && (ejectZ === 0)) {
             return boxed;
         }
-        // The box ejection goes through the wall resolution too: applied raw
-        // it can shove a squeezed body through a wall; resolved, the body
-        // slides ALONG it. Any overlap the wall prevents us from clearing is
-        // left for the following frames — resolving once here keeps this bounded.
+        // The box ejection is itself wall-resolved, or it could shove a squeezed
+        // body through a wall; any overlap left is cleared on later frames.
         count = this._gatherWalls(res.x, res.z, ejectX, ejectZ, r, tris, true);
         return this._resolveWallFrom(res.x, res.z, ejectX, ejectZ, r, feetY, h, tris, count, stepHeight);
     }
 
-    // Doom-style square blockers: push the player cylinder out of any overlapping
-    // decoration box along the axis of least penetration (which preserves the
-    // tangential motion → sliding along faces). Purely 2D + a vertical gate
-    // (feet/head vs box bottom/top), no sqrt. A few passes settle corners/multi-box.
+    // Push the cylinder out of each overlapping box along the axis of least
+    // penetration, which keeps the tangential motion (sliding along faces).
     _resolveBoxes(x, z, r, feetY, h, ignoreBoxOf = null) {
         if (this._boxes.length === 0) {
             return { x, z };
@@ -252,25 +223,25 @@ class Collision {
         const headY = feetY + h;
         for (let pass = 0; pass < 3; pass++) {
             let moved = false;
-            for (const b of this._boxes) {
-                if (b.instance === ignoreBoxOf) {
+            for (const box of this._boxes) {
+                if (box.instance === ignoreBoxOf) {
                     continue;
                 }
-                if (feetY >= b.yTop || headY <= b.yBottom) {
+                if ((feetY >= box.yTop) || (headY <= box.yBottom)) {
                     continue;
                 }
-                const sum = b.half + r;
-                const ox  = sum - Math.abs(x - b.cx);
-                const oz  = sum - Math.abs(z - b.cz);
-                if (ox <= 0 || oz <= 0) {
+                const reach    = box.half + r;
+                const overlapX = reach - Math.abs(x - box.cx);
+                const overlapZ = reach - Math.abs(z - box.cz);
+                if ((overlapX <= 0) || (overlapZ <= 0)) {
                     continue;
                 }
                 moved = true;
-                if (ox < oz) {
-                    x += ((x >= b.cx) ? ox : -ox);
+                if (overlapX < overlapZ) {
+                    x += ((x >= box.cx) ? overlapX : -overlapX);
                     continue;
                 }
-                z += ((z >= b.cz) ? oz : -oz);
+                z += ((z >= box.cz) ? overlapZ : -overlapZ);
             }
             if (!moved) {
                 break;
@@ -293,36 +264,34 @@ class Collision {
             }
             const {dx, dy, dz, dRy} = this._transformDelta(dc.instance.getTransform(), prevTf);
 
-            if (Math.abs(dx) < 1e-8 && Math.abs(dy) < 1e-8 && Math.abs(dz) < 1e-8 && Math.abs(dRy) < 1e-8) {
+            if ((Math.abs(dx) < 1e-8) && (Math.abs(dy) < 1e-8) && (Math.abs(dz) < 1e-8) && (Math.abs(dRy) < 1e-8)) {
                 continue;
             }
 
-            // Is player standing on top of this instance?
             const floorY = this._scanFloors(user.x, user.z, user.getRadius(), Infinity, dc.floors, dc.floors.length).y;
-            if (floorY === -Infinity || Math.abs(user.y - floorY) > 0.15) {
+            if ((floorY === -Infinity) || (Math.abs(user.y - floorY) > 0.15)) {
                 continue;
             }
 
             const origX = user.x, origY = user.y, origZ = user.z;
 
-            // Step 1: polar rotation — orbit user around previous platform center by dRy
-            const prevCx = prevTf.position[0] + prevTf.deltaTranslate[0];
-            const prevCz = prevTf.position[2] + prevTf.deltaTranslate[2];
-            const relX   = user.x - prevCx;
-            const relZ   = user.z - prevCz;
-            const r      = Math.sqrt(relX*relX + relZ*relZ);
-            const newAng = Math.atan2(relZ, relX) - dRy * DEG_TO_RAD;
-            const rotX   = prevCx + r * Math.cos(newAng);
-            const rotZ   = prevCz + r * Math.sin(newAng);
-            const res1   = this._resolveStaticWalls(user, rotX - user.x, rotZ - user.z);
-            user.x = res1.x; user.z = res1.z;
+            // Orbit around the platform's previous centre, then follow its drift
+            const prevCx  = prevTf.position[0] + prevTf.deltaTranslate[0];
+            const prevCz  = prevTf.position[2] + prevTf.deltaTranslate[2];
+            const relX    = user.x - prevCx;
+            const relZ    = user.z - prevCz;
+            const r       = Math.sqrt(relX*relX + relZ*relZ);
+            const newAng  = Math.atan2(relZ, relX) - dRy * DEG_TO_RAD;
+            const rotX    = prevCx + r * Math.cos(newAng);
+            const rotZ    = prevCz + r * Math.sin(newAng);
+            const orbited = this._resolveStaticWalls(user, rotX - user.x, rotZ - user.z);
+            user.x = orbited.x; user.z = orbited.z;
 
-            // Step 2: platform translation drift (dx, dz)
-            const res2 = this._resolveStaticWalls(user, dx, dz);
-            user.x = res2.x; user.z = res2.z;
+            const drifted = this._resolveStaticWalls(user, dx, dz);
+            user.x = drifted.x; user.z = drifted.z;
 
-            // Y: clamp against static geometry so the player detaches when the platform
-            // passes through a floor (descending) or a ceiling (ascending).
+            // Clamped to the static world: the player detaches when the platform
+            // passes through a floor or a ceiling.
             const newY = user.y + dy;
             if (dy < 0) {
                 const staticFloor = this._getStaticFloor(user.x, user.z, user.getRadius());
@@ -341,10 +310,8 @@ class Collision {
         }
     }
 
-    // Step 5b — mover-caused pressure ('stall'/'reverse'), resolved BEFORE the
-    // riding and the player's own movement: the mover is rolled back (and
-    // possibly reversed) while the player has not moved yet, so his movement
-    // resolution never sees the mover's advanced (overlapping) pose.
+    // World.update step 5b, before riding and the player's move: rolling the
+    // mover back first keeps its advanced (overlapping) pose out of his resolution.
     resolveMoverPressure(user) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {
@@ -358,10 +325,8 @@ class Collision {
         this._prevUserPos = {x: user.x, y: user.y, z: user.z};
     }
 
-    // Step 8 — after riding and the player's movement: crush pressure (the
-    // pinch depends on the player's final position) and the riding leftovers
-    // of solid movers (a platform push that squeezed the player into one —
-    // the mover's own move was already handled at 5b).
+    // World.update step 8: crush pressure (the pinch needs the player's final
+    // position) and the riding leftovers of solid movers.
     resolveObjectPlayerBlockage(user) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {
@@ -392,13 +357,9 @@ class Collision {
         }
     }
 
-    // Crush mover: no rollback. Pinch predicate (local floor/ceiling gap vs
-    // player height — vanilla PIT_ChangeSector) instead of the cylinder/walls
-    // test: a crush floor presses a player standing ON its top faces. The
-    // pressure engages only when caused by the mover's own movement, then
-    // lasts while the pinch does (a player trapped under a stopped crusher
-    // stays in pressure, so the mover stays passable and he can always leave);
-    // damage only ticks while the mover actually moves (EV_CeilingCrushStop).
+    // No rollback, and a pinch test (PIT_ChangeSector) rather than the cylinder
+    // one. Engaged by the mover's own move, kept while the pinch lasts so a
+    // player under a stopped crusher can still leave; damage only while it moves.
     _resolveCrushPressure(user, dc, prev) {
         const inst = dc.instance;
         if (!this._userPinchedBy(user, dc)) {
@@ -411,22 +372,17 @@ class Collision {
         }
         inst.setBlockedPressing(true);
         inst.setCrushActive(moved);
-        // The crusher moves through the squeezed player: keep his head under
-        // the static ceiling (the body sinks into the mover while the damage
-        // does its work) — vanilla clips the body, it NEVER ejects it above
-        // the map. Safe here: crush movers are never rolled back.
+        // Vanilla clips the squeezed body into the mover, never ejecting it
+        // above the map: only the static ceiling bounds the head.
         const staticCeil = this._getStaticCeiling(user.x, user.z, user.getRadius(), user.y);
         if (staticCeil !== Infinity) {
             user.y = Math.min(user.y, staticCeil - user.getCurrentHeight());
         }
     }
 
-    // Solid mover ('stall'/'reverse'): rollback when its movement causes the
-    // overlap. The pre-existing-overlap guard is split into its real cases:
-    // standing on top (riding artifact), mover at rest, overlap created by
-    // the PLAYER's own move this frame (resolveWall's job) — anything else is
-    // a chronic entrapment (missed frame) and the mover is stalled anyway
-    // instead of walking through the player.
+    // Rolled back when its own move causes the overlap. An overlap that already
+    // existed is left alone unless the player was trapped there last frame too:
+    // the mover then stalls rather than walking through him.
     _resolveSolidPressure(user, dc, prev) {
         const inst = dc.instance;
         if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
@@ -434,11 +390,8 @@ class Collision {
             return;
         }
         if (this._standsOnInstance(user, dc)) {
-            // Rider. Normal ride is the riding's job (step 6, the ride is not
-            // applied yet at 5b) — but a rider squeezed between this mover's
-            // rising floor and a ceiling IS a pressure (T_PlatRaise crushed):
-            // the walls/ceilings cylinder test is blind to it (they are all
-            // below his feet), hence the pinch predicate.
+            // A rider squeezed between this rising floor and a ceiling is a
+            // pressure (T_PlatRaise) the cylinder test cannot see.
             if (!this._userPinchedBy(user, dc)) {
                 inst.setBlockedPressing(false);
                 return;
@@ -455,9 +408,8 @@ class Collision {
                 return;
             }
             if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
-                // Chronic-entrapment rescue: only for a mover coming DOWN onto
-                // the player — a rising one is moving away (an opening door
-                // overlapped by a wedged player must keep opening and free him).
+                // Only a mover coming down: an opening door must keep opening
+                // to free a wedged player.
                 if (this._moverFrameDeltaY(dc, prev) >= -1e-8) {
                     return;
                 }
@@ -484,9 +436,8 @@ class Collision {
             return false;
         }
         const r = user.getRadius();
-        // 0.15 above the feet: at 5b the ride is not applied yet, the mover's
-        // top may be up to a frame of travel above them (same tolerance as
-        // the standing test).
+        // 0.15 above the feet: at 5b the ride is not applied yet, so the mover's
+        // top may still be a frame of travel above them.
         const floorY = this._findFloor(user.x, user.z, r, user.y + 0.15, Collision.DYN_ALL).y;
         if (floorY === -Infinity) {
             return false;
@@ -495,13 +446,13 @@ class Collision {
         return ((ceilY - floorY) < (user.getCurrentHeight() - 1e-4));
     }
 
-    // Same standing test as applyPlatformRiding (feet on the top faces)
+    // Same standing test as applyPlatformRiding
     _standsOnInstance(user, dc) {
         const floorY = this._scanFloors(user.x, user.z, user.getRadius(), Infinity, dc.floors, dc.floors.length).y;
         return ((floorY !== -Infinity) && (Math.abs(user.y - floorY) <= 0.15));
     }
 
-    // Frame delta of a mover between two transforms (shared scratch object)
+    // Returns the shared scratch object
     _transformDelta(cur, prev) {
         const d = this._tfDelta;
         d.dx  = (cur.position[0] + cur.deltaTranslate[0]) - (prev.position[0] + prev.deltaTranslate[0]);
@@ -513,7 +464,7 @@ class Collision {
 
     _moverMovedSince(dc, prev) {
         const d = this._transformDelta(dc.instance.getTransform(), prev);
-        return (Math.abs(d.dx) >= 1e-8 || Math.abs(d.dy) >= 1e-8 || Math.abs(d.dz) >= 1e-8 || Math.abs(d.dRy) >= 1e-8);
+        return ((Math.abs(d.dx) >= 1e-8) || (Math.abs(d.dy) >= 1e-8) || (Math.abs(d.dz) >= 1e-8) || (Math.abs(d.dRy) >= 1e-8));
     }
 
     _moverFrameDeltaY(dc, prev) {
@@ -537,9 +488,7 @@ class Collision {
             tri.noDecal      = Collision._refusesDecal(fc);
             this._classifyTri(tri, floors, ceilings, walls);
         }
-        // Static geometry never moves, so it is indexed once here: without it
-        // every query would scan the whole level (a floor lookup on a mid-size
-        // map tests a few thousand triangles to keep three).
+        // Static geometry never moves, so it is indexed once
         const grids = {
             floors:   new SpatialGrid(floors),
             ceilings: new SpatialGrid(ceilings),
@@ -548,15 +497,11 @@ class Collision {
         return { floors, ceilings, walls, grids };
     }
 
-    // An impact decal needs a drawn surface that accepts one: collision-only
-    // geometry has nothing to mark, and the game flags the surfaces it wants
-    // left bare (liquids).
     static _refusesDecal(fc) {
         return ((fc.noDecal === true) || (fc.collisionOnly === true));
     }
 
-    // The triangle keeps its kind: a raycast hit tells its surface apart
-    // without re-deriving it from the normal.
+    // The kind is kept on the triangle so a raycast hit can tell its surface
     _classifyTri(tri, floors, ceilings, walls) {
         if (tri.n[1] > Collision.HORIZONTAL_NY) {
             tri.kind = Collision.KIND_FLOOR;
@@ -592,8 +537,8 @@ class Collision {
     }
 
     _updateDynamicCollider(dc) {
-        const tf  = dc.instance.getTransform();
-        const m   = Matrix.composeInstanceTransform(tf);
+        const tf     = dc.instance.getTransform();
+        const m      = Matrix.composeInstanceTransform(tf);
         const floors = [], ceilings = [], walls = [];
         for (const [la, lb, lc, noDecal] of dc.localTris) {
             const wa = m.multiplyPosition([...la, 1]);
@@ -603,9 +548,7 @@ class Collision {
             if (!tri) {
                 continue;
             }
-            // Back-reference to the owning mover: a decal on a moving wall
-            // (door/lift) rides it. Static map tris (built elsewhere) never
-            // carry this, so hit.tri.instance === undefined marks a static wall.
+            // Lets a decal ride its mover; static tris leave it undefined.
             tri.instance = dc.instance;
             tri.noDecal  = noDecal;
             this._classifyTri(tri, floors, ceilings, walls);
@@ -625,16 +568,15 @@ class Collision {
         let C = [cx, cz], V = [vx, vz];
         let prevNx = null, prevNz = null;
 
-        // Depenetration, iterated: in an acute corner the push out of one wall
-        // lands in the other.
+        // Iterated: in an acute corner the push out of one wall lands in the other
         for (let pass = 0; pass < Collision.DEPENETRATION_PASSES; pass++) {
             let pushed = false;
             for (let i = 0; i < count; i++) {
                 const tri = tris[i];
-                if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
+                if ((feetY >= tri.yMax) || (feetY + h <= tri.yMin)) {
                     continue;
                 }
-                if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
+                if ((stepHeight > 0) && (tri.yMax <= feetY + stepHeight)) {
                     continue;
                 }
                 const pts = tri.pts;
@@ -649,7 +591,7 @@ class Collision {
                     const ex = C[0] - (P[0] + t*sdx);
                     const ez = C[1] - (P[2] + t*sdz);
                     const dist = Math.sqrt(ex*ex + ez*ez);
-                    if (dist < r && dist > 1e-6) {
+                    if ((dist < r) && (dist > 1e-6)) {
                         const push = r - dist;
                         C[0] += (ex / dist) * push;
                         C[1] += (ez / dist) * push;
@@ -669,11 +611,11 @@ class Collision {
 
             let tMin = 1.0, bestNx = 0, bestNz = 0, hit = false;
 
-            const check = (tri) => {
-                if (feetY >= tri.yMax || feetY + h <= tri.yMin) {
+            const sweepTri = (tri) => {
+                if ((feetY >= tri.yMax) || (feetY + h <= tri.yMin)) {
                     return;
                 }
-                if (stepHeight > 0 && tri.yMax <= feetY + stepHeight) {
+                if ((stepHeight > 0) && (tri.yMax <= feetY + stepHeight)) {
                     return;
                 }
                 if (!this._aabbXZSweep(C[0], C[1], V[0], V[1], r, tri)) {
@@ -682,13 +624,13 @@ class Collision {
                 const [A, B, Ct] = tri.pts;
                 for (const [P, Q] of [[A,B],[B,Ct],[Ct,A]]) {
                     const res = this._sweptCircleVsSegment(C[0], C[1], V[0], V[1], P[0], P[2], Q[0], Q[2], r);
-                    if (res && res.t < tMin) {
+                    if (res && (res.t < tMin)) {
                         tMin = res.t; bestNx = res.nx; bestNz = res.nz; hit = true;
                     }
                 }
             };
             for (let i = 0; i < count; i++) {
-                check(tris[i]);
+                sweepTri(tris[i]);
             }
 
             C[0] += (tMin - ((hit) ? EPSILON : 0)) * V[0];
@@ -720,9 +662,9 @@ class Collision {
             return false;
         }
         const h = user.getCurrentHeight();
-        // Floors excluded: standing on an object's floor is normal (platform riding), not a block
+        // Floors excluded: standing on a mover is riding it, not being blocked
         for (const tri of dc.walls) {
-            if (user.y >= tri.yMax || user.y + h <= tri.yMin) {
+            if ((user.y >= tri.yMax) || (user.y + h <= tri.yMin)) {
                 continue;
             }
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
@@ -730,7 +672,7 @@ class Collision {
             }
         }
         for (const tri of dc.ceilings) {
-            if (user.y >= tri.yMax || user.y + h <= tri.yMin) {
+            if ((user.y >= tri.yMax) || (user.y + h <= tri.yMin)) {
                 continue;
             }
             if (this._circleIntersectsTri(user.x, user.z, user.getRadius(), tri)) {
@@ -745,8 +687,8 @@ class Collision {
     }
 
     _cylinderIntersectsAtTransform(px, py, pz, r, h, dc, tf) {
-        const m  = Matrix.composeInstanceTransform(tf);
-        const cw = m.multiplyPosition([dc.centerLocal[0], dc.centerLocal[1], dc.centerLocal[2], 1]);
+        const m    = Matrix.composeInstanceTransform(tf);
+        const cw   = m.multiplyPosition([dc.centerLocal[0], dc.centerLocal[1], dc.centerLocal[2], 1]);
         const bpDx = px - cw[0], bpDz = pz - cw[2];
         if (Math.sqrt(bpDx*bpDx + bpDz*bpDz) > r + dc.bRadius) {
             return false;
@@ -762,7 +704,7 @@ class Collision {
             if (tri.n[1] > 0.7) {
                 continue;
             }
-            if (py >= tri.yMax || py + h <= tri.yMin) {
+            if ((py >= tri.yMax) || (py + h <= tri.yMin)) {
                 continue;
             }
             if (this._circleIntersectsTri(px, pz, r, tri)) {
@@ -772,7 +714,7 @@ class Collision {
         return false;
     }
 
-    // --- Private: static-only floor/ceiling (used by platform riding Y clamp) ---
+    // --- Private: static-only floor/ceiling ---
 
     _getStaticFloor(px, pz, r) {
         return this._findFloor(px, pz, r, Infinity, Collision.DYN_NONE).y;
@@ -797,16 +739,8 @@ class Collision {
         return this._scanCeilings(px, pz, r, headY, tris, count);
     }
 
-    // Candidate triangles of a circle query on the given face slot ('floors' |
-    // 'ceilings'), appended into `out`; returns how many. The static colliders
-    // answer through their spatial index, the dynamic ones stay linear (a
-    // handful of triangles each, rebuilt every frame). Static go FIRST: a height
-    // tie must keep the static winner, which carries no owning instance.
-    //
-    // dynamics picks the movers — DYN_NONE (static world only), DYN_NEAR (those
-    // whose broadphase circle is reached, minus a crush mover pressing the
-    // player: its ceiling leaves his queries), DYN_ALL (everything, so a
-    // pressing mover still counts in the pinch gap).
+    // Candidates of a circle query on 'floors' or 'ceilings', appended into
+    // `out`; returns how many. Static first: a height tie keeps the static winner.
     _gather(slot, px, pz, r, out, dynamics) {
         let n = 0;
         for (const sc of this._static) {
@@ -815,11 +749,8 @@ class Collision {
         if (dynamics === Collision.DYN_NONE) {
             return n;
         }
-        // A crush mover pressing the player is passable for him, so its CEILING
-        // must leave his queries (no head clamp under it, lateral clearance
-        // ignores it). Its floor still counts — he may be standing on it. Not
-        // under DYN_ALL: the pinch predicate needs the pressing mover to keep
-        // closing the gap.
+        // A pressing crush mover's ceiling leaves the player's queries (he may
+        // still stand on its floor); DYN_ALL keeps it for the pinch gap.
         const skipCrushPassable = ((slot === 'ceilings') && (dynamics === Collision.DYN_NEAR));
         for (const dc of this._dynamic) {
             if (skipCrushPassable && dc.instance.isCrushPassable()) {
@@ -833,18 +764,9 @@ class Collision {
         return n;
     }
 
-    // Candidate wall triangles of a swept circle, appended into `out`. Movers
-    // join in for the player's own movement — except a crush mover pressing him
-    // (vanilla lateral escape) — but never for the platform-riding drift, which
-    // resolves against the static world alone.
-    //
-    // The queried band is the sweep widened by the travel length AND by twice
-    // the radius, not just by the radius: the resolution slides along what it
-    // hits (so a wall met only after a deflection must already be in the set)
-    // and the depenetration pass can push the circle out by up to one radius
-    // before it even starts moving. A body buried DEEPER than its own radius
-    // inside a block could still be walked past the band, but the physics never
-    // lets one get there.
+    // Candidate walls of a swept circle, appended into `out`. The band is widened
+    // by the travel length and twice the radius: the slide can meet walls after
+    // a deflection, and depenetration can move the circle by one radius first.
     _gatherWalls(cx, cz, vx, vz, r, out, includeMovers) {
         const margin = 2 * r + Math.sqrt(vx * vx + vz * vz);
         let n = 0;
@@ -880,10 +802,8 @@ class Collision {
 
     // --- Private: floor/ceiling scans (single implementation behind every query) ---
 
-    // Highest floor triangle under the (px, pz, r) circle at or below
-    // maxSearchY, among the first `count` candidates: {y, n} — n is null when
-    // nothing matched. The result object is reused across calls (one query is
-    // always consumed before the next starts).
+    // Highest floor under the circle at or below maxSearchY: {y, n, tri}, n and
+    // tri null when nothing matched. The result object is shared across calls.
     _scanFloors(px, pz, r, maxSearchY, tris, count) {
         let maxY    = -Infinity;
         let bestN   = null;
@@ -897,7 +817,7 @@ class Collision {
                 continue;
             }
             const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > maxY && y <= maxSearchY) {
+            if ((y > maxY) && (y <= maxSearchY)) {
                 maxY    = y;
                 bestN   = tri.n;
                 bestTri = tri;
@@ -922,7 +842,7 @@ class Collision {
                 continue;
             }
             const y = (tri.d - tri.n[0]*px - tri.n[2]*pz) / tri.n[1];
-            if (y > headY && y < minY) {
+            if ((y > headY) && (y < minY)) {
                 minY = y;
             }
         }
@@ -939,15 +859,15 @@ class Collision {
     // --- Private: 2D XZ geometry ---
 
     _aabbXZ(px, pz, r, tri) {
-        return (px + r >= tri.xMin && px - r <= tri.xMax
-            && pz + r >= tri.zMin && pz - r <= tri.zMax);
+        return ((px + r >= tri.xMin) && (px - r <= tri.xMax)
+            && (pz + r >= tri.zMin) && (pz - r <= tri.zMax));
     }
 
     _aabbXZSweep(cx, cz, vx, vz, r, tri) {
         const minX = Math.min(cx, cx+vx) - r, maxX = Math.max(cx, cx+vx) + r;
         const minZ = Math.min(cz, cz+vz) - r, maxZ = Math.max(cz, cz+vz) + r;
-        return (maxX >= tri.xMin && minX <= tri.xMax
-            && maxZ >= tri.zMin && minZ <= tri.zMax);
+        return ((maxX >= tri.xMin) && (minX <= tri.xMax)
+            && (maxZ >= tri.zMin) && (minZ <= tri.zMax));
     }
 
     _cross2D(ux, uz, vx, vz) {
@@ -969,22 +889,21 @@ class Collision {
         const d0 = this._cross2D(B[0]-A[0], B[2]-A[2], px-A[0], pz-A[2]);
         const d1 = this._cross2D(C[0]-B[0], C[2]-B[2], px-B[0], pz-B[2]);
         const d2 = this._cross2D(A[0]-C[0], A[2]-C[2], px-C[0], pz-C[2]);
-        if ((d0>=0 && d1>=0 && d2>=0) || (d0<=0 && d1<=0 && d2<=0)) {
+        if (((d0>=0) && (d1>=0) && (d2>=0)) || ((d0<=0) && (d1<=0) && (d2<=0))) {
             return true;
         }
-        return (this._distToSegment(px, pz, A[0],A[2], B[0],B[2]) < r
-            || this._distToSegment(px, pz, B[0],B[2], C[0],C[2]) < r
-            || this._distToSegment(px, pz, C[0],C[2], A[0],A[2]) < r);
+        return ((this._distToSegment(px, pz, A[0],A[2], B[0],B[2]) < r)
+            || (this._distToSegment(px, pz, B[0],B[2], C[0],C[2]) < r)
+            || (this._distToSegment(px, pz, C[0],C[2], A[0],A[2]) < r));
     }
 
-    // Same-side test on the triangle plane: the point (assumed coplanar, from a
-    // ray-plane hit) is inside when it stays on one side of every edge.
+    // Point assumed coplanar (a ray-plane hit)
     _pointInTri(px, py, pz, tri) {
         const [A, B, C] = tri.pts;
         const e0 = this._edgeSide(A, B, px, py, pz, tri.n);
         const e1 = this._edgeSide(B, C, px, py, pz, tri.n);
         const e2 = this._edgeSide(C, A, px, py, pz, tri.n);
-        return ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0));
+        return (((e0 >= 0) && (e1 >= 0) && (e2 >= 0)) || ((e0 <= 0) && (e1 <= 0) && (e2 <= 0)));
     }
 
     _edgeSide(P, Q, px, py, pz, n) {
@@ -1003,7 +922,7 @@ class Collision {
             return this._sweptCircleVsPoint(cx, cz, vx, vz, ax, az, r);
         }
 
-        const nix = -sdz / slen, niz = sdx / slen;
+        const nix  = -sdz / slen, niz = sdx / slen;
         const dist = nix * (cx - ax) + niz * (cz - az);
         const vn   = nix * vx + niz * vz;
         if (Math.abs(vn) > 1e-10) {
@@ -1012,9 +931,9 @@ class Collision {
             // wall is a hit at t = 0: the exact-contact case would otherwise give
             // a rounding-sign t and let the whole move pass through the wall.
             const t  = ((((sn * dist) <= r) && ((sn * vn) < 0)) ? 0 : (sn * r - dist) / vn);
-            if (t >= 0 && t <= 1) {
+            if ((t >= 0) && (t <= 1)) {
                 const s = (cx + t*vx - ax) * (sdx/slen) + (cz + t*vz - az) * (sdz/slen);
-                if (s >= 0 && s <= slen) {
+                if ((s >= 0) && (s <= slen)) {
                     return { t, nx: sn * nix, nz: sn * niz };
                 }
             }
@@ -1025,7 +944,7 @@ class Collision {
         if (ra && rb) {
             return ((ra.t < rb.t) ? ra : rb);
         }
-        return ra || rb;
+        return (ra || rb);
     }
 
     _sweptCircleVsPoint(cx, cz, vx, vz, sx, sz, r) {
@@ -1041,7 +960,7 @@ class Collision {
         }
         // Already touching the point and moving toward it (b < 0): hit at t = 0.
         const t = (((c <= 0) && (b < 0)) ? 0 : (-b - Math.sqrt(disc)) / (2*a));
-        if (t < 0 || t > 1) {
+        if ((t < 0) || (t > 1)) {
             return null;
         }
         const hx = cx + t*vx - sx, hz = cz + t*vz - sz;
@@ -1053,15 +972,14 @@ class Collision {
     }
 }
 
-// Which dynamic movers join a circle query (see _gather)
 Collision.DEPENETRATION_PASSES = 4;
+// Which movers join a circle query: none, those within broadphase reach, all
 Collision.DYN_NONE = 0;
 Collision.DYN_NEAR = 1;
 Collision.DYN_ALL  = 2;
 // |normal.y| from which a triangle is a floor or a ceiling rather than a wall
 Collision.HORIZONTAL_NY = 0.7;
-// Slack of the raycast broadphase box (world units): far above the rounding of
-// the ray/plane solve, far below anything the geometry can tell apart.
+// Slack of the raycast AABB test (world units)
 Collision.RAY_AABB_EPSILON = 1e-6;
 Collision.KIND_FLOOR    = 'floor';
 Collision.KIND_CEILING  = 'ceiling';

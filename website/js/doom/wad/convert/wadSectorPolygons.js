@@ -9,35 +9,30 @@ class WadSectorPolygons {
      *
      * @returns {number[][]}
      */
-    static buildSectorPolygons(sectorId, linedefs, sidedefs, vertexes) {
+    static buildSectorChains(sectorId, linedefs, sidedefs, vertexes) {
         return WadSectorPolygons.buildChains(sectorId, linedefs, sidedefs, vertexes).chains;
     }
 
     /**
-     * Walk the sector's boundary into simple closed loops, plus how many walks
-     * ended in a DEAD END instead of closing back on their first vertex. An
-     * open walk is not a contour: the sector's linedefs do not describe its
-     * shape (doom2 MAP21's sector 50 has 2 linedefs and 4 loose endpoints),
-     * and its flats need the BSP carve.
+     * Walk the sector's boundary into simple closed loops, counting the walks
+     * that hit a dead end: such a sector needs the BSP carve (doom2 MAP21's
+     * sector 50).
      *
-     * Every edge is directed with the sector on its RIGHT, so the walk is the
-     * face tracing of a planar graph: where a vertex offers several ways out
-     * (two lobes pinched on one vertex, a hole touching its contour), the
-     * sharpest right turn is the one that stays along the region the incoming
-     * edge bounds. A loop that still comes back through a vertex (a hole
-     * reached through its pinch) is cut there into its simple loops.
+     * Edges are directed with the sector on their right, so at a vertex with
+     * several exits the sharpest right turn follows the incoming edge's region.
+     * A loop passing a vertex twice is cut into its simple loops.
      *
      * @returns {{chains: number[][], openCount: number}}
      */
     static buildChains(sectorId, linedefs, sidedefs, vertexes) {
         const edges = [];
         for (const ld of linedefs) {
-            if (ld.right >= 0 && ld.right < sidedefs.length) {
+            if ((ld.right >= 0) && (ld.right < sidedefs.length)) {
                 if (sidedefs[ld.right].sector === sectorId) {
                     edges.push([ld.v1, ld.v2]);
                 }
             }
-            if (ld.left >= 0 && ld.left < sidedefs.length) {
+            if ((ld.left >= 0) && (ld.left < sidedefs.length)) {
                 if (sidedefs[ld.left].sector === sectorId) {
                     edges.push([ld.v2, ld.v1]);
                 }
@@ -48,16 +43,14 @@ class WadSectorPolygons {
             return {chains: [], openCount: 0};
         }
 
-        // Adjacency: start vertex → list of end vertices
-        const adj = new Map();
+        const outEdges = new Map();
         for (const [a, b] of edges) {
-            if (!adj.has(a)) {
-                adj.set(a, []);
+            if (!outEdges.has(a)) {
+                outEdges.set(a, []);
             }
-            adj.get(a).push(b);
+            outEdges.get(a).push(b);
         }
 
-        // Walk chains, consuming each directed edge at most once
         const used = new Set();
         const chains = [];
         let openCount = 0;
@@ -65,7 +58,7 @@ class WadSectorPolygons {
             if (used.has(startA + ',' + startB)) {
                 continue;
             }
-            const {chain, closed} = WadSectorPolygons._walkFrom(startA, startB, adj, used, vertexes);
+            const {chain, closed} = WadSectorPolygons._walkFrom(startA, startB, outEdges, used, vertexes);
             if (chain.length < 3) {
                 continue;
             }
@@ -117,10 +110,7 @@ class WadSectorPolygons {
     }
 
     /**
-     * Outer polygons of a sector with their assigned holes — the shared shape
-     * every flat builder needs (static map, moving lift/rising-floor tops,
-     * door bottoms). Without the holes, a ring sector (donut) would get a
-     * solid disc overlapping the inner sector. Polygons as [x, y] Doom coords.
+     * Outer polygons of a sector with their holes, as [x, y] Doom coords.
      *
      * @returns {{outer: number[][], holes: number[][][]|null}[]}
      */
@@ -130,11 +120,8 @@ class WadSectorPolygons {
     }
 
     /**
-     * Same outers, but null when the sector's chains do not ALL close: such a
-     * boundary is unusable and only the BSP carve can shape the flats. Where
-     * they do close (all but 42 sectors over the five Doom-format IWADs) the
-     * sector has a SINGLE exact boundary, so two neighbouring flats cannot
-     * disagree — which per-subsector carving does.
+     * Same outers, but null unless every chain closes: only the BSP carve can
+     * then shape the flats.
      *
      * @returns {{outer: number[][], holes: number[][][]|null}[]|null}
      */
@@ -171,11 +158,8 @@ class WadSectorPolygons {
         return outers.map((outer, i) => ({outer: outer, holes: ((owned[i].length > 0) ? owned[i] : null)}));
     }
 
-    // Point-in-sector over a polygon cache ([{outers, ...}]): the SMALLEST
-    // containing outer wins — the cache outers keep the holes inside, so a
-    // nested sector is contained by its parent's outer too and only the area
-    // tie-break picks it. The shared no-BSP lookup (thing placement, weapon
-    // sector light). Returns the cache entry, or null.
+    // Cache entry ([{outers, ...}]) of the smallest outer containing the point:
+    // outers keep their holes inside, so a parent contains its nested sectors.
     static smallestContaining(sectorPolys, doomX, doomY) {
         let bestArea = null;
         let best     = null;
@@ -197,23 +181,23 @@ class WadSectorPolygons {
 
     // One walk from the directed edge a→b, until it comes back to a (closed)
     // or runs out of unused edges (dead end).
-    static _walkFrom(a, b, adj, used, vertexes) {
+    static _walkFrom(a, b, outEdges, used, vertexes) {
         const chain = [a, b];
         used.add(a + ',' + b);
         let prev = a;
         let cur  = b;
         while (true) {
-            const nxt = WadSectorPolygons._nextVertex(prev, cur, adj, used, vertexes);
-            if (nxt === null) {
+            const next = WadSectorPolygons._nextVertex(prev, cur, outEdges, used, vertexes);
+            if (next === null) {
                 return {chain: chain, closed: false};
             }
-            used.add(cur + ',' + nxt);
-            if (nxt === a) {
+            used.add(cur + ',' + next);
+            if (next === a) {
                 return {chain: chain, closed: true};
             }
-            chain.push(nxt);
+            chain.push(next);
             prev = cur;
-            cur  = nxt;
+            cur  = next;
         }
     }
 
@@ -223,22 +207,20 @@ class WadSectorPolygons {
         return ((loop.length >= 3) && (WadGeometry.polygonAreaSign(loop.map((vi) => vertexes[vi])) !== 0));
     }
 
-    // Next vertex of the walk out of cur, arrived at from prev: the unused
-    // edge making the sharpest right turn, a straight-back U-turn last. With
-    // a single way out the choice is forced.
-    static _nextVertex(prev, cur, adj, used, vertexes) {
-        const nexts = (adj.get(cur) ?? []).filter((v) => !used.has(cur + ',' + v));
-        if (nexts.length === 0) {
+    // Unused exit of cur making the sharpest right turn, a U-turn last.
+    static _nextVertex(prev, cur, outEdges, used, vertexes) {
+        const exits = (outEdges.get(cur) ?? []).filter((v) => !used.has(cur + ',' + v));
+        if (exits.length === 0) {
             return null;
         }
-        if (nexts.length === 1) {
-            return nexts[0];
+        if (exits.length === 1) {
+            return exits[0];
         }
-        const inX = vertexes[cur][0] - vertexes[prev][0];
-        const inY = vertexes[cur][1] - vertexes[prev][1];
+        const inX    = vertexes[cur][0] - vertexes[prev][0];
+        const inY    = vertexes[cur][1] - vertexes[prev][1];
         let best     = null;
         let bestTurn = Infinity;
-        for (const v of nexts) {
+        for (const v of exits) {
             const outX  = vertexes[v][0] - vertexes[cur][0];
             const outY  = vertexes[v][1] - vertexes[cur][1];
             const cross = (inX * outY) - (inY * outX);
@@ -273,11 +255,8 @@ class WadSectorPolygons {
         return [chain];
     }
 
-    // A hole lies inside an outer when a point strictly inside the hole is
-    // inside the outer — its first vertex may sit ON the outer's boundary (a
-    // hole touching its contour), where a point-in-polygon test answers either
-    // way — and the outer is the larger of the two: boundary loops never
-    // cross, so the same point test also holds for an island INSIDE the hole.
+    // Tested on a point strictly inside the hole: its vertices may sit on the
+    // outer's boundary. The area check rules out an island inside the hole.
     static _holeInside(hole, outer) {
         if (Math.abs(WadGeometry.polygonAreaSign(hole)) >= Math.abs(WadGeometry.polygonAreaSign(outer))) {
             return false;

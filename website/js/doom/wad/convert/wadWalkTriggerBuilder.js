@@ -1,16 +1,8 @@
 /**
- * Walk-trigger builder (W1/WR lines driving lifts, floors, doors, ceilings,
- * stairs — see WALK_TRIGGER_SPECIALS). A walk-over line is modelled as an
- * invisible proximity Instance at the middle of the linedef (one point, no
- * faces) whose DoomWalkTriggerInteraction start()s (or pause()s, for the stop
- * lines) the tagged target instances when crossed — the same "trigger →
- * targets" pattern as a switch, but proximity-activated.
- *
- * Targets are the lift/rising-floor/door instances of the same tag, resolved
- * from the built-code sets (so a tag with no built element yields no target).
- *
- * Walk-over exits (52 normal / 124 secret) reuse the same zone with no targets:
- * crossing the line fires the exit callback (level end) instead.
+ * Walk-trigger builder (W1/WR lines): an invisible zone on the line whose
+ * DoomWalkTriggerInteraction starts (or, for the stop lines, pauses) the built
+ * movers of its tag when crossed. Walk-over exits (52 / 124 secret) reuse the
+ * zone with no targets.
  */
 class WadWalkTriggerBuilder {
     /**
@@ -45,38 +37,32 @@ class WadWalkTriggerBuilder {
         return result;
     }
 
-    // --- Internal ---
-
     _buildWalkTrigger(wt) {
         const {linedefs} = this._level;
 
-        // An exit line ends the level and ignores its tag (vanilla Doom): no
-        // targets, and the zone is kept even though nothing is tag-resolved.
+        // An exit ignores its tag (vanilla).
         const isExit  = (wt.isExit === true);
         const targets = ((isExit) ? [] : this._resolveTargets(wt.tag, wt.special));
-        if (targets.length === 0 && !isExit) {
+        if ((targets.length === 0) && !isExit) {
             return null;
         }
         const split = WadMapAnalyzer.splitReverseTargets(this._analysis, wt.special, targets);
 
-        // Zone at floor level on the linedef, so a player walking the line
-        // crosses it — unlike self-proximity on a raised lift.
         const ld = linedefs[wt.ldIdx];
         const {mesh, radius, segment} = WadMeshBuilder.buildLineZone(this._level, ld, WadConstants.WALK_ZONE_MARGIN);
 
-        const walkName = 'walk_' + wt.ldIdx;
-        // Exits are all W1 (once); other specials carry their own W1/WR flag.
+        const walkCode = 'walk_' + wt.ldIdx;
+        // Exits are all W1.
         const onlyOnce = (isExit || !WadConstants.specialRepeats(wt.special));
 
         return {
-            code:     walkName,
+            code:     walkCode,
             textures: [],
             mesh:     mesh,
-            // Fires on a real crossing, not on proximity (WadLineCrossing) —
-            // outside instanceData: this stays a game-side rule.
+            // Kept out of instanceData: the crossing rule is game-side (WadLineCrossing).
             crossSegment: segment,
             instanceData: {
-                code:              walkName,
+                code:              walkCode,
                 position:          [0, 0, 0],
                 rotation:          [0, 0, 0],
                 trigger:           'proximity',
@@ -86,17 +72,14 @@ class WadWalkTriggerBuilder {
                 interactionRadius: radius,
                 interactionShape:  'planar',   // walk-over line: fire on XZ crossing, any height
                 damage:            null,
-                interaction:       walkName,
+                interaction:       walkCode,
                 keyframes:         []
             },
             interactionSpec: {
-                code:           walkName,
+                code:           walkCode,
                 targets:        split.start,
                 reverseTargets: split.reverse,
                 stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
-                // Per-trigger cycle key (door OWC vs open-stay, lift raise);
-                // null when the special names none, ignored by targets that
-                // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(wt.special),
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start, this._liveFloorOf),
                 isExit:         isExit,

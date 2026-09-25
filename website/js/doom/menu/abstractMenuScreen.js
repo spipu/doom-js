@@ -104,10 +104,8 @@ class AbstractMenuScreen {
         return this._statusEl;
     }
 
-    // Right-aligned actions row with the standard back button; the label may
-    // be overridden (the WAD menu reads "Quit {wad}" on the same button).
     // Registered as the navigation's bottom target: Down past the list lands
-    // on it, and every back input plays it (press feedback included).
+    // on it, and every back input plays it.
     _addBackButton(panel, label = null) {
         const actions = this._addElement('div', 'doom-menu-actions', panel);
         const button  = this._addButton((label ?? appTranslator.get('menu.back')), () => {
@@ -213,7 +211,7 @@ class AbstractMenuScreen {
     // An error outside the WadError set is a genuine bug: it shows its raw
     // English message, which is what a report needs.
     _showError(error) {
-        const codes = {
+        const translationCodes = {
             'fetch-offline':       'error.fetchOffline',
             'fetch-blocked':       'error.fetchBlocked',
             'fetch-http':          'error.fetchHttp',
@@ -225,12 +223,12 @@ class AbstractMenuScreen {
         };
 
         const code = ((error instanceof WadError) ? error.getCode() : null);
-        if (codes[code] === undefined) {
+        if (translationCodes[code] === undefined) {
             this._setError(appTranslator.get('error.generic', {message: error.message}));
             return;
         }
         const detail = error.getDetail();
-        this._setError(appTranslator.get(codes[code]) + ((detail !== null) ? ' (' + detail + ')' : ''));
+        this._setError(appTranslator.get(translationCodes[code]) + ((detail !== null) ? ' (' + detail + ')' : ''));
     }
 
 }

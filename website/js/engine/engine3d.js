@@ -2,35 +2,33 @@ const DEG_TO_RAD = Math.PI / 180;
 
 class Engine3d {
     constructor(screenManager, renderer) {
-        this.scrWidth   = 0;
-        this.scrHeight  = 0;
-        this.background = [0, 0, 0];
-        this.sky        = null;       // {loaderId, wrap} cylindrical-sky descriptor, or null
-        this.depthShading = null;     // depth-based light attenuation curve params, or null
-        this.lightOverride = null;    // global light floor 0..1 (scene-wide fullbright), or null
-        this.lightBoost    = 0;       // additive scene-wide light 0..1 (brief flashes), 0 = off
+        this.scrWidth         = 0;
+        this.scrHeight        = 0;
+        this.background       = [0, 0, 0];
+        this.sky              = null; // {loaderId, wrap} cylindrical-sky descriptor, or null
+        this.depthShading     = null; // depth-based light attenuation curve params, or null
+        this.lightOverride    = null; // global light floor 0..1 (scene-wide fullbright), or null
+        this.lightBoost       = 0;    // additive scene-wide light 0..1 (brief flashes), 0 = off
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
-        this.instanceLight = 1;       // light multiplier of the instance being drawn; neutral outside drawInstance (the static map)
-        this.instanceRoll  = 0;       // billboard spin of the instance being drawn; upright outside drawInstance
+        this.instanceLight    = 1;    // light multiplier of the instance being drawn (1 for the static map)
+        this.instanceRoll     = 0;    // billboard spin of the instance being drawn
         this.textureSmoothing = true; // texture filter: smoothed, or raw texels
-        this.viewYaw    = 0;          // cached in setCamera for the sky pass
-        this.viewPitch  = 0;
-        this.viewMatrix = new Matrix();
-        this.fov        = 0.0;
-        // Frustum half-slopes, filled by preComputeViewport. Infinite until then
-        // so a half-configured viewport rejects NOTHING: the visibility test must
-        // fail open — silently culling the whole scene would be far worse than
-        // drawing a few instances too many.
+        this.viewYaw          = 0;    // cached in setCamera for the sky pass
+        this.viewPitch        = 0;
+        this.viewMatrix       = new Matrix();
+        this.fov              = 0.0;
+        // Frustum half-slopes, infinite until preComputeViewport so a
+        // half-configured viewport culls nothing.
         this._frustumTanX = Infinity;
         this._frustumTanY = Infinity;
         this._frustumKX   = Infinity;
         this._frustumKY   = Infinity;
-        this.viewXMin   = 0.0;
-        this.viewXMax   = 0.0;
-        this.viewYMin   = 0.0;
-        this.viewYMax   = 0.0;
-        this.lightList  = [];
-        this.zBuffer    = new ZBuffer();
+        this.viewXMin     = 0.0;
+        this.viewXMax     = 0.0;
+        this.viewYMin     = 0.0;
+        this.viewYMax     = 0.0;
+        this.lightList    = [];
+        this.zBuffer      = new ZBuffer();
 
         this._renderer = renderer;
 
@@ -40,8 +38,7 @@ class Engine3d {
         this._deltaLast        = null;
         this._currentTimestamp = 0;
         this._fpsLastCheck     = null;
-        // Scene clock (ms), advanced by calculateDeltaTime: what the renderers
-        // resolve an animated texture's current frame against.
+        // Scene clock (ms) the renderers resolve animated texture frames against
         this.sceneMs           = 0;
 
         this.viewMatrix.identity();
@@ -61,7 +58,6 @@ class Engine3d {
     }
 
     destroy() {
-        // no-op
     }
 
     calculateDeltaTime(timestamp) {
@@ -76,9 +72,7 @@ class Engine3d {
         return this._deltaTime;
     }
 
-    // Forgets the last frame timestamp: the next calculateDeltaTime returns a
-    // zero delta and the scene clock stays put — call it when resuming after
-    // a pause, so the frozen time does not leak into the first live frame.
+    // Call on resume so the paused time does not leak into the first live frame
     resetDeltaClock() {
         this._deltaLast = null;
         return this;
@@ -97,67 +91,54 @@ class Engine3d {
         return this;
     }
 
-    // Depth-based light attenuation of the scene geometry (per pixel), or null
-    // to disable. Parametric curve, the game supplies its constants:
+    // Per-pixel depth light attenuation (WebGL only), or null to disable:
     //   {visibility, visibilityMax, shadeBase, shadeScale, rampCount, strength}
-    //   vis    = min(visibility / viewDepth, visibilityMax)
-    //   shade  = shadeBase − shadeScale × light      (light = per-vertex level
-    //            0..1, derived from the face colour × its lightGroup factor)
+    //   vis      = min(visibility / viewDepth, visibilityMax)
+    //   shade    = shadeBase − shadeScale × light      (light: vertex level 0..1)
     //   darkness = clamp((shade − vis) × (rampCount−1), 0, rampCount−1) / rampCount
-    //   applied as colour × (1 − strength × darkness)   (strength 0..1)
-    // Applied by the WebGL renderer only — the CPU renderers ignore it, like
-    // the sky. Game-agnostic.
+    //   colour  ×= 1 − strength × darkness
     setDepthShading(params) {
         this.depthShading = params;
         return this;
     }
 
-    // Global light floor (0..1, null = off): every face is lit at least to
-    // this level and the depth shading is bypassed while it is set — a scene-
-    // wide "fullbright" primitive (vision power-ups, debug). Applied by the
-    // WebGL renderer only, like the depth shading. Game-agnostic.
+    // Scene-wide light floor 0..1 (null = off) that also bypasses the depth
+    // shading. WebGL only.
     setLightOverride(value) {
         this.lightOverride = value;
         return this;
     }
 
-    // Global additive light (0..1, 0 = off): added to the light of every
-    // non-fullbright face, and to the light level the depth shading reads —
-    // a scene-wide "brief flash" primitive (muzzle flashes, lightning).
-    // Applied by the WebGL renderer only, like the light floor. Game-agnostic.
+    // Scene-wide additive light 0..1 on every non-fullbright face, depth shading
+    // included. WebGL only.
     setLightBoost(value) {
         this.lightBoost = value;
         return this;
     }
 
-    // Register a callback drawn after the whole scene (over it, no depth), for
-    // 2D screen overlays. It receives (renderer, engine) and draws through the
-    // renderer's generic drawScreenSprite. null clears it. Game-agnostic.
+    // 2D overlay drawn over the finished scene, called with (renderer, engine)
     setOverlayCallback(callback) {
         this._overlayCallback = callback;
         return this;
     }
 
-    // Texture filter of the whole scene: true = smoothed (interpolated
-    // texels), false = raw texels. Applied by the WebGL renderer only — the
-    // CPU renderers always sample the nearest texel, like the sky and the
-    // depth shading. Game-agnostic.
+    // WebGL only: the CPU renderers always sample the nearest texel.
     setTextureSmoothing(smooth) {
         this.textureSmoothing = smooth;
         return this;
     }
 
     setScreen(w, h) {
-        this.scrWidth      = w;
-        this.scrHeight     = h;
+        this.scrWidth         = w;
+        this.scrHeight        = h;
         this.scrCanvas.width  = w;
         this.scrCanvas.height = h;
         this.preComputeViewport();
         return this;
     }
 
-    setFov(angle_fov) {
-        this.fov = DEG_TO_RAD * angle_fov;
+    setFov(degrees) {
+        this.fov = DEG_TO_RAD * degrees;
         this.preComputeViewport();
         return this;
     }
@@ -201,10 +182,8 @@ class Engine3d {
         this.projScaleX = factorX;
         this.projScaleY = factorY;
 
-        // Frustum half-slopes, derived from the projection itself rather than
-        // from the FOV: a point is on screen while |x/z| <= tanX and |y/z| <=
-        // tanY. The k factors normalise the side planes (x - tanX·z = 0), so a
-        // sphere test is one multiply and one compare per plane.
+        // Derived from the projection, not the FOV: on screen while |x/z| <= tanX
+        // and |y/z| <= tanY. k normalises the side planes for the sphere test.
         this._frustumTanX = this.scrWidth  / (2 * factorX);
         this._frustumTanY = this.scrHeight / (2 * factorY);
         this._frustumKX   = Math.sqrt(1 + this._frustumTanX * this._frustumTanX);
@@ -215,17 +194,17 @@ class Engine3d {
         const bg = world.getBackground();
         this.setBackground(bg[0], bg[1], bg[2]);
         this.setSky(world.getSky());
-        this.lightAmbient(world.getLightAmbient());
-        world.getLights().forEach((l) => this.lightAdd(l));
+        this.setLightAmbient(world.getLightAmbient());
+        world.getLights().forEach((l) => this.addLight(l));
         return this;
     }
 
-    lightAmbient(color) {
+    setLightAmbient(color) {
         this.ambientLight = color;
         return this;
     }
 
-    lightAdd(light) {
+    addLight(light) {
         this.lightList.push(light);
         return this;
     }
@@ -343,20 +322,12 @@ class Engine3d {
         return this;
     }
 
-    // Frustum test of an instance's bounding sphere, in camera space (z = depth
-    // ahead, x = right, y = up — the convention the projection already imposes).
-    // Rejects what the camera cannot see BEFORE any per-vertex work: on a busy
-    // level most instances are behind the player or off to the sides, and each
-    // one costs a transform pass, a VBO fill and a draw call.
-    //
-    // The render offset (game-driven draw-time smoothing) is absorbed into the
-    // radius rather than into the centre: the composed transform applies the
-    // position translation before the rotations, so an offset added to it does
-    // not come out as a pure world translation. Bounding it is exact enough and
-    // costs nothing.
+    // Bounding-sphere frustum test in camera space. The render offset widens the
+    // radius instead of moving the centre: applied before the rotations, it is
+    // not a pure world translation.
     isInView(instance) {
-        const c = instance.getWorldCenter();
-        const m = this.viewMatrix.v;
+        const c  = instance.getWorldCenter();
+        const m  = this.viewMatrix.v;
         const cz = m[0][2]*c[0] + m[1][2]*c[1] + m[2][2]*c[2] + m[3][2];
         const r  = instance.getObject().getBoundingRadius() + instance.getRenderOffsetBound() + instance.getRenderRollBound();
         if ((cz + r < this.zBuffer.getNear()) || (cz - r > this.zBuffer.getFar())) {
@@ -371,8 +342,7 @@ class Engine3d {
     }
 
     drawFinish() {
-        // end() first: it flushes the frame (full pushes its pixel buffer
-        // there), so an overlay drawn before would be wiped.
+        // end() flushes the frame and would wipe an overlay drawn before it
         this._renderer.end(this);
         if (this._overlayCallback !== null) {
             this._overlayCallback(this._renderer, this);

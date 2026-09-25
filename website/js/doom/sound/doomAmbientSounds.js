@@ -11,10 +11,10 @@
  */
 class DoomAmbientSounds {
     constructor() {
-        this._loops        = [];
-        this._environments = new Set();
-        this._machine      = null;
-        this._started      = false;
+        this._loops          = [];
+        this._environments   = new Set();
+        this._sequencePlayer = null;
+        this._started        = false;
     }
 
     /**
@@ -46,37 +46,36 @@ class DoomAmbientSounds {
             for (const loop of this._loops) {
                 loop.handle = doomSound.playAt(loop.name, loop.origin, {loop: true});
             }
-            this._machine = this._buildMachine();
+            this._sequencePlayer = this._buildSequencePlayer();
         }
-        if (this._machine !== null) {
-            this._machine.update(dt);
+        if (this._sequencePlayer !== null) {
+            this._sequencePlayer.update(dt);
         }
 
         return this;
     }
 
-    // One scheduler machine for the whole level (the vanilla ambient queue):
-    // the slot named by the level's environments is the sequence to run, its
-    // random picks limited to the environments present on the map.
-    _buildMachine() {
+    // One player for the whole level (the vanilla ambient queue): it runs the
+    // environments' slot sequence, its random picks limited to the map's environments.
+    _buildSequencePlayer() {
         const sequences = doomSound.getSequences();
         if ((sequences === null) || (this._environments.size === 0)) {
             return null;
         }
         const candidates = [];
-        let scheduler = null;
+        let schedulerName = null;
         for (const environment of this._environments) {
             const name = sequences.environmentSequence(environment);
             if (name === null) {
                 continue;
             }
             candidates.push(name);
-            scheduler = (scheduler ?? sequences.byName(name).slot);
+            schedulerName = (schedulerName ?? sequences.byName(name).slot);
         }
-        if ((candidates.length === 0) || (scheduler === null) || (sequences.byName(scheduler) === null)) {
+        if ((candidates.length === 0) || (schedulerName === null) || (sequences.byName(schedulerName) === null)) {
             return null;
         }
 
-        return new DoomSoundSequencePlayer(sequences, scheduler, {candidates: candidates});
+        return new DoomSoundSequencePlayer(sequences, schedulerName, {candidates: candidates});
     }
 }

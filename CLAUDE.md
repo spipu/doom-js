@@ -44,6 +44,11 @@
 * Champs privés préfixés `_`, exposés par des accesseurs explicites ; les setters de configuration chaînables retournent `this`.
 * Indentation de 4 espaces, toujours des accolades, early return plutôt qu'imbrication.
 * Parenthèses systématiques autour des ternaires et des comparaisons composées : `((a !== null) ? a : b)`, `((x > 0) && (y === true))`.
+  * Un ternaire est toujours parenthésé, y compris en argument : `f(((a !== null) ? a : b))`.
+  * Chaque comparaison opérande d'un `&&` / `||` est parenthésée : `if ((a < 0) || (b < 0))`.
+  * Une expression logique utilisée comme valeur (affectation, `return`, corps de fonction fléchée) est parenthésée : `const ok = ((a !== null) && b);`. Pas en argument d'appel ni en condition d'un `if` / `while`, dont les parenthèses la délimitent déjà : `f(a && b)`, pas `f((a && b))`.
+  * Jamais de parenthèses doublées (`((x))`) ni de parenthèses qui ne délimitent rien de plus.
+* Alignement : dans un bloc de lignes consécutives, les `=` d'affectations successives sont alignés, et les commentaires de fin de ligne partagent une même colonne. Les déclarations (`const` / `let`) et les affectations forment des blocs distincts.
 * Comparaisons strictes (`===` / `!==`), `??` pour les valeurs par défaut, `null` pour l'absence de valeur.
 * Constantes en `MAJUSCULES_SNAKE`, en statique de classe ou affectées après la classe (`DoomPlayerWeapon.MS_PER_TIC = …`) ; jamais de nombre magique en ligne — les valeurs de jeu vont dans `WadConstants` ou dans un profil.
 * Code et commentaires en anglais.

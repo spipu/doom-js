@@ -1,7 +1,7 @@
 /**
  * Switch instances builder (transposition of the switch generation phase of
- * convert_wad.py main()): SW1 quad + SW2 partner texture (local index 2, not
- * referenced by the faces — swapped at runtime by the interaction).
+ * convert_wad.py main()): SW1 quad plus its SW2 partner texture, referenced
+ * by no face and swapped in at runtime by the interaction.
  */
 class WadSwitchBuilder {
     /**
@@ -43,27 +43,25 @@ class WadSwitchBuilder {
     // --- Internal ---
 
     _buildSwitch(ldIdx) {
-        const slotInfo = this._analysis.switchWalls.get(ldIdx);
-        if (slotInfo === undefined) {
+        const switchWall = this._analysis.switchWalls.get(ldIdx);
+        if (switchWall === undefined) {
             return null;
         }
 
         const ld = this._level.linedefs[ldIdx];
-        const switchName = 'switch_' + ldIdx;
+        const switchCode = 'switch_' + ldIdx;
         const isExit = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
-        // An exit special ends the level and ignores its tag (vanilla Doom): it
-        // must not also start tag-matching elements (e.g. a neighbouring lift).
+        // An exit ignores its tag (vanilla).
         const targets = ((isExit) ? [] : this._resolveTargets(ld));
         const split   = WadMapAnalyzer.splitReverseTargets(this._analysis, ld.special, targets);
 
-        const geom = ((slotInfo.invisible === true)
+        const geom = ((switchWall.invisible === true)
             ? this._buildUseZoneGeometry(ld)
-            : this._buildPanelGeometry(ld, slotInfo));
+            : this._buildPanelGeometry(ld, switchWall));
         if (geom === null) {
             return null;
         }
-        // A switch with no panel of its own and nothing to fire is dead weight;
-        // a visible panel is always kept — it may be an exit or just cosmetic.
+        // A visible panel is kept even when it fires nothing.
         if ((geom.textures.length === 0) && (targets.length === 0) && !isExit) {
             return null;
         }
@@ -71,12 +69,12 @@ class WadSwitchBuilder {
         const interactionConfig = WadConstants.SWITCH_INTERACTION_BY_SPECIAL[ld.special] ?? WadConstants.SWITCH_INTERACTION_DEFAULT;
 
         return {
-            code:       switchName,
+            code:       switchCode,
             linedef:    ldIdx,
             textures:   geom.textures,
             mesh:       geom.mesh,
             instanceData: {
-                code:              switchName,
+                code:              switchCode,
                 position:          [0, 0, 0],
                 rotation:          [0, 0, 0],
                 trigger:           'action',
@@ -85,14 +83,13 @@ class WadSwitchBuilder {
                 collisionShape:    geom.collisionShape,
                 interactionRadius: geom.radius,
                 damage:            null,
-                interaction:       switchName,
-                // Locked-door switch (99/133-137): the key is checked at USE
-                // time on the trigger, like vanilla EV_DoLockedDoor.
+                interaction:       switchCode,
+                // Locked-door switches (99/133-137), EV_DoLockedDoor.
                 keyRequired:       WadConstants.DOOR_BY_SPECIAL[ld.special]?.key ?? null,
                 keyframes:         []
             },
             interactionSpec: {
-                code:           switchName,
+                code:           switchCode,
                 mode:           interactionConfig.mode,
                 tOn:            interactionConfig.minOnMs,
                 tOff:           interactionConfig.minOffMs,
@@ -100,9 +97,6 @@ class WadSwitchBuilder {
                 swapIndex:      (geom.swapIndex ?? null),
                 targets:        split.start,
                 reverseTargets: split.reverse,
-                // Per-trigger cycle key (door OWC vs open-stay, lift raise);
-                // null when the special names none, ignored by targets that
-                // do not declare it.
                 cycleVariant:   WadConstants.cycleKeyForSpecial(ld.special),
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start, this._liveFloorOf),
                 remoteSwap:     (geom.remoteSwap ?? null),
@@ -112,23 +106,20 @@ class WadSwitchBuilder {
         };
     }
 
-    // Visible switch panel: a textured quad swapping SW1↔SW2 on trigger. Its
-    // face is removed from the static map, so the instance carries the wall
-    // ('faces' collision: a one-sided panel blocks; a two-sided step riser is
-    // stepped over or blocks per its height, like any static wall face).
-    _buildPanelGeometry(ld, slotInfo) {
+    // Visible switch panel swapping SW1↔SW2. The static map drops its face, so
+    // the instance collides in its place.
+    _buildPanelGeometry(ld, switchWall) {
         const SCALE = WadConstants.SCALE;
         const {vertexes} = this._level;
 
-        const ti = this._bank.ensureWallTex(slotInfo.texName);
+        const ti = this._bank.ensureWallTex(switchWall.texName);
         if (ti < 0) {
             return null;
         }
-        // A graphic painted on a mover's own face (door panel, riser): a static
-        // quad over it would z-fight at rest and hang in the air once it moves.
-        const moverCode = this._moverCodeForSlot(ld, slotInfo);
+        // On a mover's own face a static quad would z-fight, then hang in the air.
+        const moverCode = this._moverCodeForSlot(ld, switchWall);
         if (moverCode !== null) {
-            return this._buildMoverZoneGeometry(ld, slotInfo, ti, moverCode);
+            return this._buildMoverZoneGeometry(ld, switchWall, ti, moverCode);
         }
         const {width: tw, height: th} = this._bank.getDims(ti);
 
@@ -138,23 +129,17 @@ class WadSwitchBuilder {
         const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
         const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
 
-        const band = this._switchBand(ld, slotInfo, th);
+        const band = this._switchBand(ld, switchWall, th);
 
-        // A switch graphic on a mover's riser parked level at build time
-        // (MAP19: SW1GRAY1 on the lower of a plat edge, exposed only once the
-        // plat has risen) yields a zero-height band: no panel to draw or
-        // collide with, and a degenerate zero-radius zone that could never
-        // fire. Fall back to the invisible USE zone; the mover's own riser
-        // shows the graphic, so the SW1↔SW2 swap is delegated to its faces.
+        // Zero-height band: the graphic sits on a flush-parked mover's riser
+        // (MAP19's plat edge), so the swap is delegated to the mover's faces.
         if (band.yTopDu <= band.yBotDu) {
-            return this._buildMoverZoneGeometry(ld, slotInfo, ti, this._anyMoverOn(ld));
+            return this._buildMoverZoneGeometry(ld, switchWall, ti, this._anyMoverOn(ld));
         }
 
-        // SW2 partner (local index 2, swapped at runtime). A non-SW switch wall
-        // has no partner → no index 2; DoomSwitchInteraction then simply does not
-        // swap (it guards on an undefined index 2) instead of going black.
-        const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
-        const ti2 = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
+        // A non-SW switch wall has no partner: the interaction then does not swap.
+        const partnerName = this._bank.getSwitchPartner(switchWall.texName);
+        const partnerTi = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
 
         const mesh = WadMeshBuilder.newMesh();
         WadMeshBuilder.addWallQuad(mesh, ti,
@@ -164,62 +149,54 @@ class WadSwitchBuilder {
             {xOff: band.sd.xo, yOff: band.yo, flip: band.flip, light: band.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, band.lightSi),
                 uvAnchor: (band.uvAnchor ?? null)});
 
-        // remapLocalTextures orders the LOCAL indices by ascending bank index:
-        // the SW2 may have entered the bank before the SW1 (used as a plain
-        // decoration elsewhere), so the actual local positions are computed
-        // here and carried to the interaction.
-        const extras = ((ti2 >= 0) ? [ti2 + 1] : []);
+        // Local indices follow the bank order, and the SW2 may precede the SW1.
+        const extras = ((partnerTi >= 0) ? [partnerTi + 1] : []);
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
         const restIndex = localIndices.indexOf(ti) + 1;
-        const swapIndex = ((ti2 >= 0) ? localIndices.indexOf(ti2) + 1 : null);
+        const swapIndex = ((partnerTi >= 0) ? localIndices.indexOf(partnerTi) + 1 : null);
 
         return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
-            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: this._riserSwapSpec(ld, slotInfo, ti, ti2)};
+            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: this._riserSwapSpec(ld, switchWall, ti, partnerTi)};
     }
 
     // The riser a floor mover raises along the line repeats the SW graphic and swaps
     // along: the far mover borrows this side's lower, the near one only when the far is blank.
-    _riserSwapSpec(ld, slotInfo, ti, ti2) {
-        const near = ((slotInfo.side === 'right') ? ld.right : ld.left);
-        const far  = ((slotInfo.side === 'right') ? ld.left : ld.right);
+    _riserSwapSpec(ld, switchWall, ti, partnerTi) {
+        const near      = ((switchWall.side === 'right') ? ld.right : ld.left);
+        const far       = ((switchWall.side === 'right') ? ld.left : ld.right);
         const moverCode = (this._builtFloorMoverOf(far) ?? this._builtFloorMoverOf(near));
-        if ((moverCode === null) || (ti2 < 0)) {
+        if ((moverCode === null) || (partnerTi < 0)) {
             return null;
         }
 
-        return this._remoteSwapSpec(ld, moverCode, ti, ti2);
+        return this._remoteSwapSpec(ld, moverCode, ti, partnerTi);
     }
 
-    // Invisible USE zone: a switch-special line with no SWxxx graphic (e.g. an
-    // SR lift edge). One point, no faces, no collision — the wall it sits on (a
-    // lift riser, a step) is already drawn elsewhere; pressing within the radius
-    // fires the targets. The USE analog of a walk-trigger zone.
+    // Invisible USE zone of a switch line with no SWxxx graphic (an SR lift edge).
     _buildUseZoneGeometry(ld) {
         const zone = WadMeshBuilder.buildLineZone(this._level, ld);
 
         return {textures: [], mesh: zone.mesh, radius: zone.radius, collisionShape: 'none'};
     }
 
-    // Invisible USE zone for a switch whose SW graphic lives on a mover's own
-    // face: the SW1↔SW2 feedback is delegated to that mover's faces, matched
-    // at runtime on the linedef segment by the interaction (remoteSwap).
-    _buildMoverZoneGeometry(ld, slotInfo, ti, moverCode) {
+    // Invisible USE zone of a switch whose graphic lives on a mover's face,
+    // which swaps in its place (remoteSwap).
+    _buildMoverZoneGeometry(ld, switchWall, ti, moverCode) {
         const geom = this._buildUseZoneGeometry(ld);
 
-        const partnerName = this._bank.getSwitchPartner(slotInfo.texName);
-        const ti2         = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
-        if (moverCode === null || ti2 < 0) {
+        const partnerName = this._bank.getSwitchPartner(switchWall.texName);
+        const partnerTi   = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
+        if ((moverCode === null) || (partnerTi < 0)) {
             return geom;
         }
 
-        geom.remoteSwap = this._remoteSwapSpec(ld, moverCode, ti, ti2);
+        geom.remoteSwap = this._remoteSwapSpec(ld, moverCode, ti, partnerTi);
 
         return geom;
     }
 
-    // spec consumed by DoomSwitchInteraction.setRemoteSwap: the mover's faces
-    // on the linedef segment carrying the SW1 texture swap to the SW2 one.
-    _remoteSwapSpec(ld, moverCode, ti, ti2) {
+    // DoomSwitchInteraction.setRemoteSwap spec.
+    _remoteSwapSpec(ld, moverCode, ti, partnerTi) {
         const {vertexes} = this._level;
         const [wx1, wz1] = WadGeometry.doomToWorld(...vertexes[ld.v1]);
         const [wx2, wz2] = WadGeometry.doomToWorld(...vertexes[ld.v2]);
@@ -228,33 +205,28 @@ class WadSwitchBuilder {
             moverCode: moverCode,
             seg:       [wx1, wz1, wx2, wz2],
             restTexId: this._bank.getLoaderId(ti),
-            swapTexId: this._bank.getLoaderId(ti2)
+            swapTexId: this._bank.getLoaderId(partnerTi)
         };
     }
 
     /**
-     * Built mover whose own mesh draws the face carrying the switch graphic AT
-     * REST: the panel of a door (upper band — the face belongs to the sector
-     * across the line, the one whose ceiling moves) or the riser of a lift
-     * (lower band, far side — parked up, its riser spans the step, and a
-     * static panel would hang in the air once it lowers). Up movers (rising
-     * floors, stairs) rest with their risers buried below the floor: their
-     * band keeps its static panel, and the flush-parked case still falls back
-     * through the degenerate-band path. null = a plain static wall.
+     * Built mover whose mesh draws the switch face at rest: the door across an
+     * upper, the lift across a lower. Up movers rest with their risers buried,
+     * so their band keeps a static panel. null = a plain static wall.
      *
      * @returns {string|null} instance code
      */
-    _moverCodeForSlot(ld, slotInfo) {
+    _moverCodeForSlot(ld, switchWall) {
         if (ld.left < 0) {
             return null;
         }
         const {sidedefs} = this._level;
-        const far = sidedefs[((slotInfo.side === 'right') ? ld.left : ld.right)].sector;
+        const far = sidedefs[((switchWall.side === 'right') ? ld.left : ld.right)].sector;
 
-        if (slotInfo.slot === 'upper') {
+        if (switchWall.slot === 'upper') {
             return ((this._builtDoorCodes.has('door_' + far)) ? ('door_' + far) : null);
         }
-        if ((slotInfo.slot === 'lower') && this._builtLiftCodes.has('lift_' + far)) {
+        if ((switchWall.slot === 'lower') && this._builtLiftCodes.has('lift_' + far)) {
             return ('lift_' + far);
         }
 
@@ -279,8 +251,7 @@ class WadSwitchBuilder {
         return (((floorCode !== null) && this._isBuiltMover(floorCode)) ? floorCode : null);
     }
 
-    // Last-resort resolution for a panel with no geometry of its own (flush
-    // parked, degenerate band): any mover touching the line, floors first.
+    // Any built mover touching the line, floors first.
     _anyMoverOn(ld) {
         const {sidedefs} = this._level;
         for (const sd of [ld.right, ld.left]) {
@@ -299,9 +270,7 @@ class WadSwitchBuilder {
         return null;
     }
 
-    // Action radius: half the 3D bounding diagonal + margin. The trigger is 3D
-    // and the wall centre is at mid-height, so the height must be included — a
-    // small fixed radius would force the player to hug the panel.
+    // Half the 3D bounding diagonal + margin: the trigger is 3D, centred at mid-height.
     _meshRadius(mesh) {
         const xs = mesh.points.map((p) => p[0]);
         const ys = mesh.points.map((p) => p[1]);
@@ -313,9 +282,6 @@ class WadSwitchBuilder {
         return Math.sqrt(dx * dx + dy * dy + dz * dz) / 2.0 + WadConstants.DOOR_ACTION_RADIUS;
     }
 
-    // Tagged lift + rising-floor + door instances of the same tag (shared
-    // resolver). start() is type-agnostic, so a remote door (trigger 'none')
-    // opens exactly like a switch-driven lift or rising floor.
     _resolveTargets(ld) {
         return WadMapAnalyzer.resolveTaggedTargets(this._level.sectors, ld.tag, WadMapAnalyzer.moverFamilies(
             this._analysis, this._level.sectors,
@@ -324,25 +290,21 @@ class WadSwitchBuilder {
     }
 
     /**
-     * Vertical band, pegging and winding of the switch quad — replicates exactly
-     * the static wall section the SW graphic sits on, so the swapped texture
-     * stays aligned: a one-sided full-height middle, or the lower (step riser) /
-     * upper (ceiling header) of a two-sided line, from either side.
+     * Band, pegging and winding of the switch quad, matching the static wall
+     * section it replaces.
      *
      * @returns {{sd, yBotDu, yTopDu, yo, flip, light, lightSi, uvAnchor?}} heights in Doom units
      */
-    _switchBand(ld, slotInfo, th) {
+    _switchBand(ld, switchWall, th) {
         const {sidedefs, sectors} = this._level;
-        const rSd  = sidedefs[ld.right];
-        const rSec = sectors[rSd.sector];
+        const rSd        = sidedefs[ld.right];
+        const rSec       = sectors[rSd.sector];
         const lowerUnpeg = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
         const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
 
-        if (slotInfo.slot === 'middle') {
-            // A switch inside a DOOR sector spans the door's OPEN heights,
-            // like the static one-sided door walls (DOORTRAK rule): hidden
-            // inside the closed shutter, revealed when it opens (MAP20's
-            // SW1GARG alcove) — the door slab has no face on a one-sided edge.
+        if (switchWall.slot === 'middle') {
+            // Inside a door sector: the door's open heights, like DOORTRAK
+            // (MAP20's SW1GARG alcove).
             const doorH = this._analysis.doorHeights[rSd.sector];
             const yBot  = ((doorH !== undefined) ? doorH.floorH : rSec.fh);
             const yTop  = ((doorH !== undefined) ? doorH.ceilH : rSec.ch);
@@ -353,13 +315,13 @@ class WadSwitchBuilder {
 
         const lSd  = sidedefs[ld.left];
         const lSec = sectors[lSd.sector];
-        const rFh = rSec.fh;
-        const rCh = rSec.ch;
-        const lFh = lSec.fh;
-        const lCh = lSec.ch;
+        const rFh  = rSec.fh;
+        const rCh  = rSec.ch;
+        const lFh  = lSec.fh;
+        const lCh  = lSec.ch;
 
-        if (slotInfo.slot === 'lower') {
-            if (slotInfo.side === 'right') {
+        if (switchWall.slot === 'lower') {
+            if (switchWall.side === 'right') {
                 return {sd: rSd, yBotDu: rFh, yTopDu: lFh,
                     yo: rSd.yo + ((lowerUnpeg) ? (rCh - lFh) : 0), flip: true, light: rSec.light, lightSi: rSd.sector};
             }
@@ -367,8 +329,7 @@ class WadSwitchBuilder {
                 yo: lSd.yo + ((lowerUnpeg) ? (lCh - rFh) : 0), flip: false, light: lSec.light, lightSi: lSd.sector};
         }
 
-        // upper
-        if (slotInfo.side === 'right') {
+        if (switchWall.side === 'right') {
             return {sd: rSd, yBotDu: lCh, yTopDu: rCh,
                 yo: rSd.yo + ((upperUnpeg) ? 0 : (th - (rCh - lCh))), flip: true, light: rSec.light, lightSi: rSd.sector};
         }

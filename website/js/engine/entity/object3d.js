@@ -9,21 +9,16 @@ class Object3d extends AbstractLoadedEntity {
         this.faceList      = [];
         this.faceCount     = 0;
         this._textureIds   = [];
-        // Face indices sorted by pass, filled by finalizeInit: the opaque ones
-        // first, then those the renderer blends last. Public like the rest of
-        // the geometry data (pt3d, faceList…), which the renderers read every
-        // frame — walking these two lists is what keeps the alpha pass behind
-        // the solid one.
-        this.opaqueFaces   = [];
-        this.alphaFaces    = [];
+        // Face indices per render pass, filled by finalizeInit: blended faces
+        // are drawn after the opaque ones.
+        this.opaqueFaces        = [];
+        this.alphaFaces         = [];
         this._groupLightFactors = {};
         this._faceGroupsVersion = 0;
         this._renderTint        = null;
     }
 
-    // Signals that the faces' texture assignment changed (a switch swapping
-    // SW1↔SW2, a "+change" floor swapping its flat). Renderers may cache how they
-    // batch faces by draw state; this is what tells them to rebuild it.
+    // Faces changed texture: renderers rebuild their cached draw-state batches
     invalidateFaceGroups() {
         this._faceGroupsVersion++;
     }
@@ -32,9 +27,7 @@ class Object3d extends AbstractLoadedEntity {
         return this._faceGroupsVersion;
     }
 
-    // Dynamic light factor of a face group (faces tagged with the same
-    // lightGroup): 1 = baked color untouched. Pushed each frame by game code
-    // (e.g. Doom sector light effects), read by the renderers.
+    // Light factor of the faces sharing a lightGroup; 1 = baked colour untouched
     setGroupLightFactor(group, factor) {
         this._groupLightFactors[group] = factor;
     }
@@ -201,7 +194,7 @@ class Object3d extends AbstractLoadedEntity {
             if (fc.collisionOnly === true) {
                 continue;
             }
-            fc.isAlpha = ((fc.alpha < 1) || (fc.blendAdd === true) || (fc.textureId !== null && loader.textures().get(fc.textureId).isAlpha()));
+            fc.isAlpha = ((fc.alpha < 1) || (fc.blendAdd === true) || ((fc.textureId !== null) && loader.textures().get(fc.textureId).isAlpha()));
             ((fc.isAlpha) ? this.alphaFaces : this.opaqueFaces).push(k);
         }
     }
@@ -242,8 +235,7 @@ class Object3d extends AbstractLoadedEntity {
     ptProjection(engine) {
         for (let k = 0; k < this.ptCount; k++) {
             const p = this.pt2d[k];
-            // Guard against division by a null/negative depth: the full/webgl
-            // renderers near-clip upstream so z > 0 there, but flat/fast do not.
+            // The flat/fast renderers do not near-clip, so z can be <= 0 here
             const z = ((this.pt3d[k][2] > 1e-5) ? this.pt3d[k][2] : 1e-5);
             p[0] = Math.trunc(engine.projScaleX * this.pt3d[k][0] / z - engine.projOffsetX);
             p[1] = Math.trunc(-engine.projScaleY * this.pt3d[k][1] / z - engine.projOffsetY);

@@ -109,12 +109,9 @@ class DoomMonsterDamage {
         this._retarget(victim, opts);
     }
 
-    // ReactToDamage's target switch: a damaged body turns on whoever hit it —
-    // the player, or another monster (infighting). Species plays NO part here
-    // (OkayToSwitchTarget only refuses it under +NOINFIGHTSPECIES, which no
-    // monster of either bestiary carries): two zombies really do turn on each
-    // other, and what keeps a crowd from tearing itself apart over one stray
-    // fireball is the MISSILE immunity, not this rule.
+    // ReactToDamage's target switch: a damaged body turns on whoever hit it,
+    // player or monster. Species plays NO part here (no monster carries
+    // +NOINFIGHTSPECIES); same-species peace comes from the missile immunity.
     _retarget(victim, opts) {
         const source = (opts.source ?? null);
         if ((opts.noRetarget === true) || (source === null) || (source === victim)) {
@@ -202,14 +199,9 @@ class DoomMonsterDamage {
         }
     }
 
-    // P_CheckSplash: a blast going off within its own reach of the ground
-    // splashes the liquid under it, from the floor rather than from its own
-    // height. Vanilla never alerts the monsters from this one.
-    //
-    // The floor search is capped at the blast's own height, like the floorz
-    // vanilla reads off the actor: uncapped it answers the HIGHEST floor of
-    // that column — a lift or door top far above — and the splash would hang
-    // in mid-air over the explosion.
+    // P_CheckSplash: a blast within its own reach of the ground splashes the
+    // liquid under it, from the floor. The floor search is capped at the blast
+    // height (vanilla floorz): uncapped, a lift top far above would answer.
     _splashBlast(x, y, z, reach) {
         if (this._terrain === null) {
             return;

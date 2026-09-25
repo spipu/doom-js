@@ -1,6 +1,5 @@
 /**
- * The application's external links, in one place: every screen that opens or
- * prints one reads it here, so an address changes in a single spot.
+ * External links of the application.
  */
 class DoomExternalLinks {
 }

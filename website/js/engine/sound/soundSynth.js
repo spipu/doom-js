@@ -35,7 +35,7 @@ class SoundSynth {
         const length    = Math.round(durationS * rate);
         const release   = Math.min(Math.round((SoundSynth.RELEASE_MS / 1000) * rate), length);
         const samples   = new Float32Array(length);
-        let peak = 0;
+        let peak        = 0;
         for (let i = 0; i < length; i++) {
             const t       = (i / rate);
             // Linear glide from frequency to frequency×drop: the phase is the
@@ -43,7 +43,7 @@ class SoundSynth {
             const phase   = (2 * Math.PI * params.frequency * (t - ((1 - drop) * t * t / (2 * durationS))));
             const attack  = ((attackS > 0) ? Math.min(t / attackS, 1) : 1);
             const fadeOut = ((release > 0) ? Math.min((length - 1 - i) / release, 1) : 1);
-            let value = 0;
+            let value     = 0;
             for (const partial of partials) {
                 value += partial.gain * Math.sin(phase * partial.ratio) * Math.exp(-t / (decayS * (partial.decayMul ?? 1)));
             }

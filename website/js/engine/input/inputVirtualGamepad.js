@@ -38,14 +38,14 @@ class InputVirtualGamepad {
 
         // Single source for the red control palette (sticks, buttons, bands).
         this._color = {
-            stickRing:  'rgba(220, 60, 50, 0.7)',   // stick base outline
-            stickFill:  'rgba(220, 60, 50, 0.12)',  // stick base background
-            stickKnob:  'rgba(220, 60, 50, 0.55)',  // stick thumb knob
-            btnBorder:  'rgba(220, 60, 50, 0.8)',   // button outline, idle
-            btnFill:    'rgba(220, 60, 50, 0.18)',  // button background, idle
-            btnLabel:   'rgba(255, 220, 210, 0.9)', // button icon
-            btnDownBorder: 'rgba(255, 130, 120, 1)', // button outline, pressed
-            btnDownFill:   'rgba(220, 60, 50, 0.6)', // button background, pressed
+            stickRing:  'rgba(220, 60, 50, 0.7)',     // stick base outline
+            stickFill:  'rgba(220, 60, 50, 0.12)',    // stick base background
+            stickKnob:  'rgba(220, 60, 50, 0.55)',    // stick thumb knob
+            btnBorder:  'rgba(220, 60, 50, 0.8)',     // button outline, idle
+            btnFill:    'rgba(220, 60, 50, 0.18)',    // button background, idle
+            btnLabel:   'rgba(255, 220, 210, 0.9)',   // button icon
+            btnDownBorder: 'rgba(255, 130, 120, 1)',  // button outline, pressed
+            btnDownFill:   'rgba(220, 60, 50, 0.6)',  // button background, pressed
             bandBorder:    'rgba(220, 60, 50, 0.45)', // fire/aim boundary
             hintRing:      'rgba(220, 60, 50, 0.35)'  // resting move-stick hint
         };
@@ -437,17 +437,11 @@ class InputVirtualGamepad {
 
     // --- Touch handling ---
 
-    // Overlay geometry in the same coordinate space as touch clientX/clientY,
-    // corrected for the iOS visual-viewport offset. After a rotation into
-    // landscape the Safari toolbar collapses: the visual viewport shifts up by
-    // its height (visualViewport.offsetTop becomes negative) but
-    // getBoundingClientRect still reports the fixed overlay at its old top, so
-    // raw "clientY - rect.top" lands too high. Folding offsetLeft/offsetTop into
-    // the rect realigns both; it is a no-op when the offset is 0 (portrait,
-    // landscape at launch, desktop).
+    // Touch coordinates drift from getBoundingClientRect once iOS Safari's
+    // toolbar collapses after a rotation: the visual-viewport offset realigns them.
     _overlayRect() {
-        const r  = this._overlay.getBoundingClientRect();
-        const vv = window.visualViewport;
+        const r    = this._overlay.getBoundingClientRect();
+        const vv   = window.visualViewport;
         const offX = ((vv) ? vv.offsetLeft : 0);
         const offY = ((vv) ? vv.offsetTop  : 0);
         return { left: (r.left + offX), top: (r.top + offY), width: r.width, height: r.height };
@@ -637,20 +631,17 @@ class InputVirtualGamepad {
         joy.y = ((isMove) ? -out.y : out.y) * scale;
     }
 
-    // Dead zone of a gesture: the firing gesture is a MODE of the aim stick
-    // (locked at touchstart), not a third stick.
-    _zoneKey(owned) {
+    // The firing gesture is a mode of the aim stick, not a third stick.
+    _deadZoneKey(owned) {
         if (owned.kind === 'move') {
             return 'move';
         }
         return ((owned.fire) ? 'fire' : 'aim');
     }
 
-    // Radial dead zone with rescale, taken from the gesture: the value restarts
-    // at 0 on the dead-zone edge and still reaches 1 at full deflection.
     _applyDeadZone(nx, ny, owned) {
         const mag    = Math.min(Math.sqrt((nx * nx) + (ny * ny)), 1);
-        const scaled = Inputs.rescaleDeadZone(mag, this._deadZone[this._zoneKey(owned)]);
+        const scaled = Inputs.rescaleDeadZone(mag, this._deadZone[this._deadZoneKey(owned)]);
         if (scaled === 0) {
             return {x: 0, y: 0};
         }

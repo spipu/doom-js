@@ -18,8 +18,8 @@ class WadDoorBuilder extends AbstractMoverBuilder {
 
         let hasBounds = false;
         for (const ld of linedefs) {
-            if ((ld.right >= 0 && sidedefs[ld.right].sector === si)
-                || (ld.left >= 0 && sidedefs[ld.left].sector === si)) {
+            if (((ld.right >= 0) && (sidedefs[ld.right].sector === si))
+                || ((ld.left >= 0) && (sidedefs[ld.left].sector === si))) {
                 hasBounds = true;
                 break;
             }
@@ -29,7 +29,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         }
 
         const {floorH, ceilH} = doorHeights[si];
-        const doorName = 'door_' + si;
+        const doorCode = 'door_' + si;
 
         const mesh = WadMeshBuilder.newMesh();
         this._buildPanels(mesh, si, floorH);
@@ -41,45 +41,38 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         }
 
         return {
-            code:         doorName,
+            code:         doorCode,
             textures:     textures,
             mesh:         mesh,
-            instanceData: this._buildInstanceData(doorName, si, floorH, ceilH, mesh)
+            instanceData: this._buildInstanceData(doorCode, si, floorH, ceilH, mesh)
         };
     }
 
-    // Full-height panels: from the adjacent floor to the neighbour's static
-    // ceiling, riding with the panel (door on right → flip=false, door on
-    // left → flip=true, facing the neighbour). Texture: the neighbour-side
-    // upper (the viewer-side sidedef, as vanilla renders it) — toward ANOTHER
-    // door/crusher sector, whose slot draws no static band and whose own panel
-    // cannot cover this one's flank when the two desynchronise (adjacent
-    // crushers on different tags), the OWN upper serves as fallback. The
-    // parked flank also stands in for the static upper band between the two
-    // ceilings.
+    // Full-height panels, from the adjacent floor to the neighbour's static
+    // ceiling, facing the neighbour. Texture: the neighbour-side upper, as
+    // vanilla renders it; toward ANOTHER door sector, which draws no static
+    // band and may desynchronise (adjacent crushers on different tags), the
+    // OWN upper serves as fallback.
     _buildPanels(mesh, si, floorH) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         const {doorSectorIds, doorHeights} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         for (const ld of linedefs) {
-            if (ld.right < 0 || ld.left < 0) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
             }
-            const rSi2 = sidedefs[ld.right].sector;
-            const lSi2 = sidedefs[ld.left].sector;
-            const doorOnRight = (rSi2 === si);
-            if (!doorOnRight && lSi2 !== si) {
+            const rightSi     = sidedefs[ld.right].sector;
+            const leftSi      = sidedefs[ld.left].sector;
+            const doorOnRight = (rightSi === si);
+            if (!doorOnRight && (leftSi !== si)) {
                 continue;
             }
-            const neighbourSi  = ((doorOnRight) ? lSi2 : rSi2);
+            const neighbourSi  = ((doorOnRight) ? leftSi : rightSi);
             const neighbourSec = sectors[neighbourSi];
-            // Ceiling the flank rises against: an opening door neighbour is
-            // stored closed in the WAD (raw ch == fh) but still opens — judge
-            // and span with its patched open ceiling. Closed non-door
-            // neighbours (e.g. the spacer block between two crusher rows) stay
-            // skipped: no opening ever sees this face — and it would z-fight
-            // the static riser drawn on the same edge.
+            // A door neighbour is stored closed in the WAD: span up to its open
+            // ceiling. A closed non-door neighbour never shows this face (and it
+            // would z-fight the static riser on the same edge).
             const neighbourCh = (doorHeights[neighbourSi]?.ceilH ?? neighbourSec.ch);
             if (neighbourCh <= neighbourSec.fh) {
                 continue;
@@ -87,10 +80,10 @@ class WadDoorBuilder extends AbstractMoverBuilder {
 
             const neighbourSd = sidedefs[((doorOnRight) ? ld.left : ld.right)];
             const ownSd       = sidedefs[((doorOnRight) ? ld.right : ld.left)];
-            const validUpper  = (sd) => ((WadTextureBank.isBlank(sd.upper)) ? null : sd);
+            const withUpper   = (sd) => ((WadTextureBank.isBlank(sd.upper)) ? null : sd);
             const srcSd = ((doorSectorIds.has(neighbourSi))
-                ? (validUpper(neighbourSd) ?? validUpper(ownSd))
-                : validUpper(neighbourSd));
+                ? (withUpper(neighbourSd) ?? withUpper(ownSd))
+                : withUpper(neighbourSd));
             if (srcSd === null) {
                 continue;
             }
@@ -131,7 +124,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             {lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, si), noDecal: this._bank.isLiquidFlat(sec.ct)});
     }
 
-    _buildInstanceData(doorName, si, floorH, ceilH, mesh) {
+    _buildInstanceData(doorCode, si, floorH, ceilH, mesh) {
         const props = this._analysis.doorProps[si];
         // The closing and trap cycles own their rest pose; the others rest at the sector's own ceiling.
         const ownsRest  = ((props.close === true) || (props.anim === 'trap-close'));
@@ -147,20 +140,17 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         // Timer door 14: hold the (closed) rest position for the level-load
         // countdown, then run the normal open-wait-close cycle once. The trap
         // shape (10) consumes its countdown inside its own keyframes.
-        if (props.timerDelayS > 0 && props.anim !== 'trap-close') {
+        if ((props.timerDelayS > 0) && (props.anim !== 'trap-close')) {
             keyframes = [keyframes[0], ...keyframes.map((k) => ({...k, t: k.t + props.timerDelayS}))];
         }
 
-        // One cycle per special aiming at this door, the crossed line picking
-        // its own at start() time: E1M4 tag 1 mixes two open cycles, E1M6 tag 1
-        // an open-stay with a close-wait-open, E4M9 tag 2 an opener with a
-        // crusher. Declared only when a special asks for something OTHER than
-        // the base timeline. A timer door's base carries the level-load
-        // countdown and no special declares it, so its default stays null —
-        // start() then falls back to that base instead of a variant.
-        const baseKey       = WadConstants.doorCycleKey(props.anim, speedTics);
-        const variantNames  = Object.keys(props.variants ?? {});
-        const baseIsVariant = variantNames.includes(baseKey);
+        // One cycle per special aiming at this door (E1M6 tag 1 mixes an
+        // open-stay with a close-wait-open), declared only when one differs from
+        // the base timeline. A timer door's default stays null: start() falls
+        // back to the base, which carries the level-load countdown.
+        const baseKey        = WadConstants.doorCycleKey(props.anim, speedTics);
+        const variantNames   = Object.keys(props.variants ?? {});
+        const baseIsVariant  = variantNames.includes(baseKey);
         let keyframeVariants = null;
         if (variantNames.some((key) => (key !== baseKey))) {
             keyframeVariants = {};
@@ -172,7 +162,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         const press = WadConstants.doorPressProfile(props.anim, speedTics, props.closeMargin);
 
         return {
-            code:              doorName,
+            code:              doorCode,
             position:          [0, 0, 0],
             rotation:          [0, 0, 0],
             trigger:           props.trigger,
@@ -180,8 +170,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
             loop:              props.loop,
             onlyOnce:          props.onlyOnce,
             collisionShape:    'faces',
-            // Remote doors (trigger 'none') are opened only by their switch, so
-            // they carry no proximity radius — same convention as switch-driven lifts.
+            // Remote doors (trigger 'none') are opened only by their switch.
             interactionRadius: ((props.trigger === 'none') ? null : radius),
             damage:            null,
             ...WadConstants.pressCycleFields(press),
@@ -210,8 +199,8 @@ class WadDoorBuilder extends AbstractMoverBuilder {
     _cycleKeyframes(anim, speedTics, closeMargin, floorH, ceilH, restDu, timerDelayS = 0) {
         const travelY = (ceilH - floorH) * WadConstants.SCALE;
         const marginY = closeMargin * WadConstants.SCALE;
-        const openS   = (ceilH - floorH - restDu) / speedTics / 35.0;
-        const closeS  = (ceilH - floorH - closeMargin) / speedTics / 35.0;
+        const openS   = WadConstants.moveDurationS(ceilH - floorH - restDu, speedTics);
+        const closeS  = WadConstants.moveDurationS(ceilH - floorH - closeMargin, speedTics);
 
         // Descends to the floor — or to floor + closeMargin for the crush
         // ceilings 44/72 (lowerAndCrush stops 8 above it) — and stays there.
@@ -244,7 +233,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         }
         // close30ThenOpen: close, wait 30 s, reopen to the parked rest.
         if (anim === 'close-wait-open') {
-            const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS / 35.0;
+            const reopenWaitS = WadConstants.DOOR_CLOSE_REOPEN_WAIT_TICS * WadConstants.SECONDS_PER_TIC;
             return [
                 {t: 0.0,                         translate: [0, travelY, 0], rotate: [0, 0, 0]},
                 {t: openS,                       translate: [0, 0, 0],       rotate: [0, 0, 0]},
@@ -262,7 +251,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
     _openCycleKeyframes(anim, speedTics, floorH, ceilH, restDu) {
         const restY   = restDu * WadConstants.SCALE;
         const travelY = (ceilH - floorH) * WadConstants.SCALE;
-        const openS   = (ceilH - floorH - restDu) / speedTics / 35.0;
+        const openS   = WadConstants.moveDurationS(ceilH - floorH - restDu, speedTics);
 
         if (anim === 'one-way') {
             return [
@@ -270,7 +259,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
                 {t: openS, translate: [0, travelY, 0], rotate: [0, 0, 0]}
             ];
         }
-        const waitS = WadConstants.DOOR_WAIT_TICS / 35.0;
+        const waitS = WadConstants.DOOR_WAIT_TICS * WadConstants.SECONDS_PER_TIC;
         const tRest = openS + waitS + openS;
 
         return [

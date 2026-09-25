@@ -24,7 +24,7 @@ class DoomDecals {
     // bfgDecalShade() (freedoom art uses a bluish 80 80 ff, id Doom 80 ff 80).
     constructor(decalTextures, rng, profile) {
         this._rng       = rng;
-        this._permanent = [];   // instIds of permanent decals (FIFO, capped)
+        this._permanent = [];   // instIds, FIFO capped at MAX
         this._fading    = [];   // {instId, steps, elapsed, shown} — BFG lightning
         this._templates = this._buildTemplates(decalTextures, profile);
     }
@@ -112,9 +112,9 @@ class DoomDecals {
     // colour so the baked shade shows through unchanged; alpha < 1 → translucent.
     // fx/fy mirror the UVs (randomflipx/y).
     _quadObject(texId, raw, scale, alpha, fx, fy) {
-        const s  = WadConstants.SCALE;
-        const hw = (raw.width  * scale * s) / 2;
-        const hh = (raw.height * scale * s) / 2;
+        const s      = WadConstants.SCALE;
+        const hw     = (raw.width  * scale * s) / 2;
+        const hh     = (raw.height * scale * s) / 2;
         const points = [[-hw, -hh, 0], [hw, -hh, 0], [hw, hh, 0], [-hw, hh, 0]];
         const color  = ((alpha < 1) ? [255, 255, 255, alpha] : [255, 255, 255]);
         const faces  = [
@@ -124,7 +124,6 @@ class DoomDecals {
         return loader.objects().loadFromData(null, { textures: [texId], points, faces });
     }
 
-    // decaldef randomflipx/y.
     _flipUv(uv, fx, fy) {
         return uv.map((c) => [((fx) ? 1 - c[0] : c[0]), ((fy) ? 1 - c[1] : c[1])]);
     }
@@ -147,14 +146,14 @@ class DoomDecals {
         }
         const rotation = DoomDecals._rotationFor(hit.tri.kind, nx, nz, rayDir);
         const owner    = hit.tri.instance;
-        const off      = DoomDecals.OFFSET;
+        const offset   = DoomDecals.OFFSET;
 
         if (type === 'bfg') {
-            this._spawn('bfgscrc', hit.point, nx, ny, nz, off, rotation, owner, false);
-            this._spawn('bfglite', hit.point, nx, ny, nz, off + DoomDecals.LITE_LIFT, rotation, owner, true);
+            this._spawn('bfgscrc', hit.point, nx, ny, nz, offset, rotation, owner, false);
+            this._spawn('bfglite', hit.point, nx, ny, nz, offset + DoomDecals.LITE_LIFT, rotation, owner, true);
             return;
         }
-        this._spawn(type, hit.point, nx, ny, nz, off, rotation, owner, false);
+        this._spawn(type, hit.point, nx, ny, nz, offset, rotation, owner, false);
     }
 
     // Instance rotation laying the +Z quad on the surface. A wall yaws it onto
@@ -169,7 +168,7 @@ class DoomDecals {
         return [((kind === Collision.KIND_FLOOR) ? -90 : 90), 0, spin];
     }
 
-    _spawn(key, hitPoint, nx, ny, nz, off, rotation, owner, isFade) {
+    _spawn(key, hitPoint, nx, ny, nz, offset, rotation, owner, isFade) {
         const variants = this._templates[key];
         if ((variants === undefined) || (variants.length === 0)) {
             return;
@@ -178,7 +177,7 @@ class DoomDecals {
         const objId   = ((isFade) ? variant.steps[0] : variant);
         const instId  = loader.instances().spawnFromData(null, {
             object:         objId,
-            position:       [hitPoint[0] + nx * off, hitPoint[1] + ny * off, hitPoint[2] + nz * off],
+            position:       [hitPoint[0] + nx * offset, hitPoint[1] + ny * offset, hitPoint[2] + nz * offset],
             rotation:       rotation,
             trigger:        'none',
             loop:           false,
@@ -209,28 +208,28 @@ class DoomDecals {
             return;
         }
         const kept = [];
-        for (const f of this._fading) {
-            const inst = loader.instances().get(f.instId);
+        for (const fade of this._fading) {
+            const inst = loader.instances().get(fade.instId);
             if (inst === undefined) {
                 continue;
             }
-            f.elapsed += dtMs;
-            const t = f.elapsed / 1000;
-            if (t < DoomDecals.FADE_START) {
-                kept.push(f);
+            fade.elapsed += dtMs;
+            const seconds = fade.elapsed / 1000;
+            if (seconds < DoomDecals.FADE_START) {
+                kept.push(fade);
                 continue;
             }
-            const p = (t - DoomDecals.FADE_START) / DoomDecals.FADE_TIME;
-            if (p >= 1) {
+            const progress = (seconds - DoomDecals.FADE_START) / DoomDecals.FADE_TIME;
+            if (progress >= 1) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
             }
-            const step = Math.min(f.steps.length - 1, Math.floor(p * f.steps.length));
-            if (step !== f.shown) {
-                inst.setObject(f.steps[step]);
-                f.shown = step;
+            const step = Math.min(fade.steps.length - 1, Math.floor(progress * fade.steps.length));
+            if (step !== fade.shown) {
+                inst.setObject(fade.steps[step]);
+                fade.shown = step;
             }
-            kept.push(f);
+            kept.push(fade);
         }
         this._fading = kept;
     }
@@ -238,7 +237,7 @@ class DoomDecals {
 
 DoomDecals.MAX        = 256;                       // FIFO cap on permanent decals
 DoomDecals.OFFSET     = 0.75 * WadConstants.SCALE; // push off the surface (anti z-fight)
-DoomDecals.LITE_LIFT  = 1.92 * WadConstants.SCALE; // BFG flash floats 0.03 m in front of its scorch (coplanar it was barely visible)
+DoomDecals.LITE_LIFT  = 1.92 * WadConstants.SCALE; // BFG flash floats in front of its scorch, coplanar it barely shows
 DoomDecals.FADE_STEPS = 8;
 DoomDecals.FADE_START = 1.0;                        // GoAway2 DecayStart (s)
 DoomDecals.FADE_TIME  = 3.0;                        // GoAway2 DecayTime (s)

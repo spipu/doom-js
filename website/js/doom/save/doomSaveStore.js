@@ -76,10 +76,6 @@ class DoomSaveStore {
         ]);
     }
 
-    /**
-     * @param {string} wadId
-     * @param {number} slot
-     */
     async remove(wadId, slot) {
         const id = DoomSaveStore.saveId(wadId, slot);
         await this._database.deleteMulti([

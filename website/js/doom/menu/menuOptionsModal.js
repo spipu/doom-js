@@ -1,22 +1,15 @@
 /**
- * Options modal of the menus, opened from a WAD's menu screen — show() starts
- * on the options root (display / controls / reset), showAbout() starts
- * directly on the About page (the ? button of the WAD list and the About entry
- * of a WAD's menu). A page stack sharing one MenuListNavigation: the root
- * lists the topics (scrolling list, same mouse/keyboard/gamepad navigation as
- * the screens), entering a topic pushes a page, and the title shows the
- * breadcrumb of the stack ("Options > Contrôles"). The bottom-right button
- * reads "Retour" everywhere in options mode (the root closes back to the WAD
- * menu) and "Fermer" on the direct About popup; Escape, Backspace and the
- * gamepad circle follow the same back path.
+ * Options modal of the menus: show() opens the options root (settings topics,
+ * controls, reset), showAbout() and showHelp() open a standalone page. A page
+ * stack sharing one MenuListNavigation: entering a topic pushes a page and the
+ * title shows the breadcrumb of the stack ("Options > Controls").
  */
 class MenuOptionsModal extends AbstractMenuListModal {
     static get DEVICE_REFRESH_MS() {
         return 500;
     }
 
-    // Settings key prefixes of each input mode (DoomSettings definitions) —
-    // keyboard+mouse carries both the mouse options and the key bindings.
+    // Settings key prefixes of each input mode (DoomSettings definitions).
     static get SETTING_PREFIXES_BY_MODE() {
         return {
             gamepad:        ['pad.'],
@@ -25,9 +18,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         };
     }
 
-    // The browser's own names do the job (getLayoutMap below is layout
-    // aware, the code suffixes read fine elsewhere) — the only key whose
-    // name needs an override is the space bar.
+    // Keys whose layout / code-suffix name does not read well.
     static get KEY_LABELS() {
         return {
             Space: 'key.space'
@@ -43,7 +34,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._titleEl        = null;
         this._bodyEl         = null;
         this._actionButton   = null;
-        this._stack          = [];
+        this._pageStack      = [];
         this._pageTimer      = null;
         this._deviceLineEl   = null;
         this._controlsMode   = null;
@@ -57,13 +48,10 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return this._open('options', 'menu.game.options', () => this._buildRoot());
     }
 
-    // Opens the modal directly on the About page (no options root underneath).
     showAbout() {
         return this._open('standalone', 'help.about', () => this._buildAbout());
     }
 
-    // Same, on the Help page: how to get a WAD and install the app. Carried by
-    // the WAD list only, so the in-game About stays what it was.
     showHelp() {
         return this._open('standalone', 'help.guide', () => this._buildHelp());
     }
@@ -75,7 +63,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._titleEl      = titleEl;
         this._bodyEl       = bodyEl;
         this._actionButton = button;
-        this._stack        = [];
+        this._pageStack    = [];
         this._pushPage(titleCode, builder);
 
         return this;
@@ -88,8 +76,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
     // --- Page stack ---
 
-    // Inputs are ignored while the modal is closed, a key capture is running,
-    // or another overlay (reset confirmation…) sits ABOVE this one.
+    // Also blocked while a key capture is running.
     _navBlocked() {
         return ((this._captureHandler !== null) || !this._isTopOverlay());
     }
@@ -97,29 +84,26 @@ class MenuOptionsModal extends AbstractMenuListModal {
     // titleCode, not a resolved label: the breadcrumb is rebuilt from the codes
     // at every render, so a language switch reaches the pages already stacked.
     _pushPage(titleCode, builder, noBack = false) {
-        this._stack.push({titleCode: titleCode, builder: builder, noBack: (noBack === true)});
+        this._pageStack.push({titleCode: titleCode, builder: builder, noBack: (noBack === true)});
         this._renderPage();
     }
 
-    // Close at the root, pop deeper — same path as Backspace and the gamepad
-    // back button.
     _onBack() {
-        if (this._stack.length <= 1) {
+        if (this._pageStack.length <= 1) {
             this.close();
             return;
         }
-        this._stack.pop();
+        this._pageStack.pop();
         this._renderPage();
     }
 
     _renderPage() {
         this._clearPageTimer();
-        const current = this._stack[this._stack.length - 1];
-        this._titleEl.textContent        = this._stack.map((page) => appTranslator.get(page.titleCode)).join(' > ');
-        // The options root closes back to the WAD menu, so its button reads
-        // "Retour" like the sub-pages; the direct About popup reads "Fermer".
+        const current = this._pageStack[this._pageStack.length - 1];
+        this._titleEl.textContent        = this._pageStack.map((page) => appTranslator.get(page.titleCode)).join(' > ');
+        // The options root closes back to the menu it came from: "Back" there too.
         const rootCode                   = ((this._mode === 'standalone') ? 'menu.close' : 'menu.back');
-        this._actionButton.textContent   = appTranslator.get(((this._stack.length > 1) ? 'menu.back' : rootCode));
+        this._actionButton.textContent   = appTranslator.get(((this._pageStack.length > 1) ? 'menu.back' : rootCode));
         // A capture page cannot be left by any mean but pressing a key.
         this._actionButton.style.display = ((current.noBack === true) ? 'none' : '');
         this._bodyEl.innerHTML           = '';
@@ -131,8 +115,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }
     }
 
-    // Pages carrying live content (the detected device) refresh on a small
-    // interval, dropped as soon as the page changes or the modal closes.
     _clearPageTimer() {
         if (this._pageTimer !== null) {
             clearInterval(this._pageTimer);
@@ -152,8 +134,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._nav.selectFirst();
     }
 
-    // Wipes every saved setting after a nested confirmation (its overlay
-    // stacks above this modal and suspends our navigation, DOM-detected).
+    // Wipes every saved setting after a confirmation.
     _confirmReset() {
         this._confirm(appTranslator.get('help.resetConfirm'), () => {
             doomSettings.resetAll().applyToInputs(new Inputs()).applyToTranslator(appTranslator);
@@ -162,12 +143,8 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, null, appTranslator.get('menu.back'));
     }
 
-    // Adapts to what the game itself would use (same device priority as
-    // Inputs): virtual gamepad on touch-only devices, the named physical
-    // gamepad when one is active, keyboard+mouse otherwise. The settings list
-    // is auto-built from the DoomSettings definitions matching the device's
-    // key prefix; Enter on a bool entry flips it (label left, value right).
-    // Refreshed live — a device change rebuilds the page, like in game.
+    // Lists the settings of the device the game itself would use (Inputs'
+    // priority); a device change rebuilds the page.
     _buildControls() {
         const inputs = new Inputs();
         this._controlsMode = inputs.getMode();
@@ -175,8 +152,8 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
         for (const prefix of MenuOptionsModal.SETTING_PREFIXES_BY_MODE[this._controlsMode]) {
-            for (const def of doomSettings.getDefinitions(prefix)) {
-                this._addSettingItem(list, def, inputs);
+            for (const definition of doomSettings.getDefinitions(prefix)) {
+                this._addSettingItem(list, definition, inputs);
             }
         }
         this._nav.selectFirst();
@@ -190,14 +167,11 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, MenuOptionsModal.DEVICE_REFRESH_MS);
     }
 
-    // Device-agnostic settings page (display, gameplay): every setting of one
-    // prefix, same rows as the controls page — no device line, no refresh
-    // timer, nothing to adapt to the active input.
     _buildSettingsPage(prefix) {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        for (const def of doomSettings.getDefinitions(prefix)) {
-            this._addSettingItem(list, def, inputs);
+        for (const definition of doomSettings.getDefinitions(prefix)) {
+            this._addSettingItem(list, definition, inputs);
         }
         this._nav.selectFirst();
     }
@@ -214,72 +188,66 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return appTranslator.get('device.keyboardMouse');
     }
 
-    _addSettingItem(listEl, def, inputs) {
+    _addSettingItem(listEl, definition, inputs) {
         let valueEl = null;
-        const item = this._nav.addItemIn(listEl, appTranslator.get(def.nameCode), () => {
-            if (def.type === 'char') {
-                this._startKeyCapture(def, inputs);
+        const item = this._nav.addItemIn(listEl, appTranslator.get(definition.nameCode), () => {
+            if (definition.type === 'char') {
+                this._startKeyCapture(definition, inputs);
                 return;
             }
-            this._stepSettingValue(def, inputs, valueEl, 1);
-        }, ((def.type === 'char') ? null : (dir) => {
-            this._stepSettingValue(def, inputs, valueEl, dir);
+            this._stepSettingValue(definition, inputs, valueEl, 1);
+        }, ((definition.type === 'char') ? null : (dir) => {
+            this._stepSettingValue(definition, inputs, valueEl, dir);
         }));
-        valueEl = MenuDom.addText(item, 'doom-menu-item-value', this._settingValueText(def));
+        valueEl = MenuDom.addText(item, 'doom-menu-item-value', this._settingValueText(definition));
 
         return item;
     }
 
-    // The language is the one value that rewrites the WHOLE page — its own row
-    // included — so the page is rebuilt instead of patched, keeping the
-    // selection where it was.
-    _stepSettingValue(def, inputs, valueEl, dir) {
-        const next = ((def.type === 'bool')
-            ? !(doomSettings.get(def.key) === true)
-            : doomSettings.nextListValue(def, dir));
+    // The language rewrites the WHOLE page, so the page is rebuilt instead of
+    // patched, keeping the selection.
+    _stepSettingValue(definition, inputs, valueEl, dir) {
+        const next = ((definition.type === 'bool')
+            ? !(doomSettings.get(definition.key) === true)
+            : doomSettings.nextListValue(definition, dir));
 
-        doomSettings.set(def.key, next).applyToInputs(inputs).applyToTranslator(appTranslator);
+        doomSettings.set(definition.key, next).applyToInputs(inputs).applyToTranslator(appTranslator);
         doomSound.applyVolumes();
 
-        if (def.key === 'display.language') {
+        if (definition.key === 'display.language') {
             this._restoreIndex = this._nav.getSelectedIndex();
             this._renderPage();
             return;
         }
-        valueEl.textContent = this._settingValueText(def);
+        valueEl.textContent = this._settingValueText(definition);
     }
 
-    _settingValueText(def) {
-        if (def.type === 'bool') {
-            const valueCode = ((doomSettings.get(def.key) === true) ? 'value.yes' : 'value.no');
+    _settingValueText(definition) {
+        if (definition.type === 'bool') {
+            const valueCode = ((doomSettings.get(definition.key) === true) ? 'value.yes' : 'value.no');
 
             return appTranslator.get(valueCode);
         }
-        if (def.type === 'list') {
-            return doomSettings.getListLabel(def);
+        if (definition.type === 'list') {
+            return doomSettings.getListLabel(definition);
         }
-        if (def.type === 'char') {
-            return this._keyLabel(doomSettings.get(def.key));
+        if (definition.type === 'char') {
+            return this._keyLabel(doomSettings.get(definition.key));
         }
 
-        return String(doomSettings.get(def.key));
+        return String(doomSettings.get(definition.key));
     }
 
     // --- Key binding capture ---
 
-    // Dedicated page that can only be left by pressing a key: the pressed key
-    // is saved for the binding (and removed from any other binding carrying
-    // it — one key, one action), then the settings list comes back on the
-    // same row. The listener runs in capture phase so neither the list
-    // navigation nor the game shortcuts see the press; F1-F12 stay with the
-    // browser.
-    _startKeyCapture(def, inputs) {
-        // Consumed by the settings list re-render on the way back — never by
-        // the (list-less) capture page itself.
+    // A page left only by pressing a key: one key, one action, so the key is
+    // unbound elsewhere. Capture phase, so neither the list navigation nor the
+    // game shortcuts see the press.
+    _startKeyCapture(definition, inputs) {
         const returnIndex = this._nav.getSelectedIndex();
-        this._pushPage(def.nameCode, () => {
+        this._pushPage(definition.nameCode, () => {
             MenuDom.addText(this._bodyEl, 'doom-menu-modal-line',
-                appTranslator.get('help.keyCapture', {action: appTranslator.get(def.nameCode)}));
+                appTranslator.get('help.keyCapture', {action: appTranslator.get(definition.nameCode)}));
         }, true);
 
         this._captureHandler = (event) => {
@@ -292,11 +260,11 @@ class MenuOptionsModal extends AbstractMenuListModal {
             if (event.repeat) {
                 return;
             }
-            doomSettings.unbindKeyCode(event.code, def.key);
-            doomSettings.set(def.key, event.code);
+            doomSettings.unbindKeyCode(event.code, definition.key);
+            doomSettings.set(definition.key, event.code);
             doomSettings.applyToInputs(inputs);
             this._stopKeyCapture();
-            this._stack.pop();
+            this._pageStack.pop();
             this._restoreIndex = returnIndex;
             this._renderPage();
         };
@@ -310,8 +278,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }
     }
 
-    // Real keyboard layout (code → printed character), Chrome/Edge only —
-    // loaded once per modal, null elsewhere (code-suffix fallback below).
+    // Real keyboard layout (code → printed character), Chrome/Edge only.
     _loadLayoutMap() {
         if ((this._layoutMap !== null) || !navigator.keyboard || !navigator.keyboard.getLayoutMap) {
             return;

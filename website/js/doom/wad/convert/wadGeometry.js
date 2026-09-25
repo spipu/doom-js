@@ -3,13 +3,13 @@
  * All static methods. 2D points are [x, y] arrays in Doom units or world units.
  */
 class WadGeometry {
-    // Convert Doom map coordinates to world (x, z) or (x, y, z).
-    // Doom x → world x, Doom y → world z (same sign — not negated).
-    static doomToWorld(dx, dy, dzHeight = null) {
+    // Doom x → world x, Doom y → world z (same sign — not negated); with a
+    // height, returns (x, y, z).
+    static doomToWorld(dx, dy, doomHeight = null) {
         const x = dx * WadConstants.SCALE;
         const z = dy * WadConstants.SCALE;
-        if (dzHeight !== null) {
-            return [x, dzHeight * WadConstants.SCALE, z];
+        if (doomHeight !== null) {
+            return [x, doomHeight * WadConstants.SCALE, z];
         }
 
         return [x, z];
@@ -49,7 +49,6 @@ class WadGeometry {
         return [point[0] - dir[0] * back, point[1] - dir[1] * back, point[2] - dir[2] * back];
     }
 
-    // 2D length of a wall segment in Doom units.
     static wallLengthDoom(vertexes, v1, v2) {
         const dx = vertexes[v2][0] - vertexes[v1][0];
         const dy = vertexes[v2][1] - vertexes[v1][1];
@@ -162,7 +161,6 @@ class WadGeometry {
         return !(hasNeg && hasPos);
     }
 
-    // Ray-casting point-in-polygon test in 2D.
     static pointInPolygon2d(px, pz, poly) {
         let inside = false;
         const n = poly.length;
@@ -196,7 +194,7 @@ class WadGeometry {
         const dx    = x2 - x1;
         const dz    = z2 - z1;
         const lenSq = (dx * dx) + (dz * dz);
-        let t = ((lenSq > 0) ? ((((px - x1) * dx) + ((pz - z1) * dz)) / lenSq) : 0);
+        let t       = ((lenSq > 0) ? ((((px - x1) * dx) + ((pz - z1) * dz)) / lenSq) : 0);
         t = Math.max(0, Math.min(1, t));
         const cx = x1 + (t * dx);
         const cz = z1 + (t * dz);

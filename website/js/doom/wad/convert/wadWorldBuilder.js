@@ -1,6 +1,6 @@
 /**
  * Conversion orchestrator: builds a complete engine world in memory from a
- * parsed WAD file and a level name — textures (ImageData), map object,
+ * parsed WAD file and a level code — textures (ImageData), map object,
  * door/lift/switch objects + instances, interactions, world + user.
  *
  * Everything is registered through the loadFromData methods of the engine
@@ -10,7 +10,7 @@
 class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
-     * @param {string}  levelName
+     * @param {string}  levelCode
      * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, game: DoomGame, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; thingCatalog
      *                  (DoomGame) maps THING types to world sprites/pickups; skill
@@ -18,11 +18,11 @@ class WadWorldBuilder {
      *                  game receives the level stats (secrets) and pickups;
      *                  profile carries the per-game policy (Doom by default).
      */
-    constructor(wadFile, levelName, options = null) {
+    constructor(wadFile, levelCode, options = null) {
         options = options ?? {};
 
         this._wadFile        = wadFile;
-        this._levelName      = levelName;
+        this._levelCode      = levelCode;
         this._onLevelExit    = options.onLevelExit ?? null;
         this._thingCatalog   = options.thingCatalog ?? null;
         this._skill          = options.skill ?? 3;
@@ -39,9 +39,8 @@ class WadWorldBuilder {
     // Async only to yield to the browser between the heavy phases, so the
     // loading modal stays painted. The engine registration itself is synchronous.
     async build() {
-        // Per-game policy FIRST: the profile's table extensions land in the
-        // WadConstants baseline, then the xlat rewrites the level specials —
-        // every analyzer/builder/interaction only ever sees internal codes.
+        // Profile extensions first, then the xlat: every later pass only sees
+        // internal special codes.
         WadConstants.applyGameExtensions(this._profile.wadConstantsExtensions());
 
         const palette  = new WadPalette(this._wadFile);
@@ -49,10 +48,10 @@ class WadWorldBuilder {
         const bank     = new WadTextureBank(this._wadFile, palette, this._profile, terrains).init();
         const animBank = new WadAnimationBank(this._wadFile, bank, this._profile).init();
 
-        const level    = new WadLevelParser(this._wadFile, this._levelName).parse();
+        const level    = new WadLevelParser(this._wadFile, this._levelCode).parse();
         const patches  = await this._applyLevelPatches(level);
-        // BSP tree (null on missing/foreign lumps → chain-polygon fallback):
-        // subsector flats stay correct on UNCLOSED sectors (MAP21 sector 50).
+        // null on missing/foreign lumps (chain-polygon fallback); keeps the flats
+        // of unclosed sectors right (MAP21 sector 50).
         level.bspTree = WadBspTree.build(level);
         new WadSpecialTranslator(this._profile).translate(level);
         const bossActions = this._levelBossActions();
@@ -61,7 +60,7 @@ class WadWorldBuilder {
             textureHeightOf: ((name) => bank.wallTextureHeight(name))
         }).analyze();
         this._level       = level;
-        this._sectorPolys = null;   // walked on demand, see _sectorPolyCache
+        this._sectorPolys = null;
 
         // Doors
         const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
@@ -81,7 +80,7 @@ class WadWorldBuilder {
             builtLiftCodes.add(lift.code);
         }
 
-        // Rising floors (walk-over floor raises, e.g. special 58)
+        // Rising floors
         const risingFloors = new WadRisingFloorBuilder(level, analysis, bank, animBank).buildAll();
         const builtRisingCodes = new Set();
         for (const floor of risingFloors) {
@@ -89,25 +88,20 @@ class WadWorldBuilder {
             builtRisingCodes.add(floor.code);
         }
 
-        // Stairs (build-stairs 7/8/100/127): one one-way rising step per sector,
-        // start()ed together by their switch (7/127) or walk-zone (8/100)
+        // Stairs
         const stairs = new WadStairBuilder(level, analysis, bank, animBank).buildAll();
         const builtStairCodes = new Set();
         for (const step of stairs) {
             this._registerInstance(step, bank, WadConstants.MOVER_TINT);
             builtStairCodes.add(step.code);
         }
-        // A predicted mover whose geometry came out empty has no instance: the
-        // consumers below (static walls, switches, floor changes) must not
-        // look it up.
+        // A predicted mover with empty geometry has no instance to look up.
         for (const [si, mover] of [...analysis.floorMovers]) {
             if (!builtLiftCodes.has(mover.code) && !builtRisingCodes.has(mover.code) && !builtStairCodes.has(mover.code)) {
                 analysis.floorMovers.delete(si);
             }
         }
-        // Live floor of a sector at trigger time (the staged raises resolve
-        // their targets against it): the height service is built with the
-        // level data, before anything can fire.
+        // _sectorHeights is set later with the level data, before anything fires.
         const liveFloorOf = ((si) => this._sectorHeights.floorOf(si));
 
         // Static map
@@ -115,7 +109,6 @@ class WadWorldBuilder {
         loader.objects().loadFromData('map', WadMeshBuilder.toLoaderData(mapData.textures, mapData.mesh, bank));
         await this._yield();
 
-        // Movement sounds of every built mover (sndseq behaviours).
         this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
 
         // Switches + interactions
@@ -131,15 +124,14 @@ class WadWorldBuilder {
             if (spec.remoteSwap) {
                 interaction.setRemoteSwap(spec.remoteSwap);
             }
-            if (spec.isExit && this._onLevelExit !== null) {
+            if (spec.isExit && (this._onLevelExit !== null)) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
             loader.interactions().loadFromData(interaction);
         }
         await this._yield();
 
-        // Walk triggers (W1/WR lines that activate a remote tagged element by
-        // being crossed — invisible proximity zones that start() their targets)
+        // Walk triggers
         const walkTriggers = new WadWalkTriggerBuilder(
             level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes, liveFloorOf).buildAll();
         for (const wt of walkTriggers) {
@@ -148,22 +140,21 @@ class WadWorldBuilder {
             const spec = wt.interactionSpec;
             const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.cycleVariant);
             interaction.setStageRules(spec.stageRules);
-            if (spec.isExit && this._onLevelExit !== null) {
+            if (spec.isExit && (this._onLevelExit !== null)) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
             loader.interactions().loadFromData(interaction);
         }
 
-        // Gun (impact) triggers (G1/GR lines 24/46/47): no zone — the weapon
-        // hitscan tests every shot trace against these segments at fire time
-        // (P_ShootSpecialLine) and start()s the tagged movers.
+        // Gun triggers (G1/GR): no zone, the hitscan tests each shot against
+        // their segments (P_ShootSpecialLine).
         if (this._game !== null) {
             const gunLines = new WadGunTriggerBuilder(
                 level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf).buildAll();
             this._game.setGunTriggers(new DoomGunTriggers(gunLines));
         }
 
-        // Teleporters (walk-over → landing thing type 14 of the same tag)
+        // Teleporters
         const landings = this._buildTeleportLandings(level);
         const teleporters = new WadTeleportBuilder(level, analysis, landings).buildAll();
         for (const tp of teleporters) {
@@ -174,28 +165,18 @@ class WadWorldBuilder {
         }
         await this._yield();
 
-        // Sector membership test of the runtime zone interactions: with a BSP
-        // it is the tree itself (exact, unclosed sectors included) and EVERY
-        // sector carrying the special becomes a zone; without it the polygon
-        // outers stay both the filter and the runtime test.
-        const bspTree  = level.bspTree;
-        const sectorAt = ((bspTree !== null)
+        const bspTree     = level.bspTree;
+        const bspSectorAt = ((bspTree !== null)
             ? ((doomX, doomY) => bspTree.findSector(doomX, doomY))
             : null);
-        // The one point-to-sector lookup every runtime service shares (sector
-        // light, terrain): the BSP answer when the level has a tree — vanilla
-        // R_PointInSubsector — and the polygon cache otherwise. The cache is
-        // resolved HERE rather than read through the builder at query time: a
-        // closure over the builder would keep it, and the whole level data it
-        // holds, alive for as long as the level runs.
-        const siAt = ((sectorAt !== null)
-            ? sectorAt
+        // Resolved here: a closure over the builder would keep the whole level
+        // data alive for as long as the level runs.
+        const sectorIdAt = ((bspSectorAt !== null)
+            ? bspSectorAt
             : WadWorldBuilder._polygonLookup(this._sectorPolyCache()));
 
-        // Sector damage (sector specials 4/5/7/16/11): one per-level interaction
-        // polling the player's sector every 32-tic window. The "+change" target
-        // sectors are included too (their special mutates at runtime).
-        const damageZones = this._sectorZones(analysis, sectorAt,
+        // The "+change" targets are zones too: their special changes at runtime.
+        const damageZones = this._sectorZones(analysis, bspSectorAt,
             (si, special) => ((WadConstants.SECTOR_DAMAGE_BY_SPECIAL[special] !== undefined)
                 || (analysis.floorChange[si] !== undefined)),
             (zone, special) => {
@@ -208,11 +189,8 @@ class WadWorldBuilder {
             this._game.setSectorDamage(damageInteraction);
         }
 
-        // Sector pushes (wind / conveyors) and low-friction ground: one
-        // per-level interaction feeding the player's ActorExternalForces each
-        // frame. Same zone shape as the damage interaction; the tables are
-        // empty outside the game profiles that fill them (Heretic).
-        const pushZones = this._sectorZones(analysis, sectorAt,
+        // Wind, conveyors and ice (tables empty outside Heretic).
+        const pushZones = this._sectorZones(analysis, bspSectorAt,
             (si, special) => ((WadConstants.SECTOR_PUSH_BY_SPECIAL[special] !== undefined)
                 || (WadConstants.SECTOR_FRICTION_BY_SPECIAL[special] !== undefined)),
             (zone, special) => {
@@ -223,47 +201,34 @@ class WadWorldBuilder {
             loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem));
         }
 
-        // Dynamic sector lights (sector specials 1/2/3/4/8/12/13/17): one
-        // per-level interaction stepping the vanilla p_lights.c thinkers and
-        // driving the lightGroup factors of the static map faces.
         let lightInteraction = null;
         if (analysis.lightSectors.length > 0) {
             lightInteraction = new DoomSectorLightInteraction(analysis.lightSectors);
             loader.interactions().loadFromData(lightInteraction);
         }
 
-        // Secret sectors (special 9): the level total is a game stat, each
-        // secret is credited once when the player stands on its floor.
-        const secretZones = this._sectorZones(analysis, sectorAt,
+        const secretZones = this._sectorZones(analysis, bspSectorAt,
             (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
         if (this._game !== null) {
             this._game.setSecretsTotal(secretZones.list.length);
             if (secretZones.list.length > 0) {
                 loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
             }
-            // Sector-light lookup: shades the weapon view sprite by the
-            // player's sector, pulsing with the sector's light effect through
-            // the interaction's live factor.
-            this._game.setSectorLight(new DoomSectorLight(siAt, lightInteraction, level.sectors));
+            this._game.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
         }
 
-        // "+change" floors: swap the moving top-flat texture (and the sector's
-        // damage special) when the movement starts or completes.
         const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
 
-        // Terrain of the ground: what a shot, a shell, a falling body or a
-        // blast leaves where it meets a liquid. Reads the sector's LIVE flat,
-        // so a "+change" floor turning to water splashes as water.
-        this._game.setTerrain(new DoomTerrain(siAt, surfaces, terrains.flats(), terrains.terrains())
+        // Reads the live flat: a "+change" floor turned to water splashes as water.
+        this._game.setTerrain(new DoomTerrain(sectorIdAt, surfaces, terrains.flats(), terrains.terrains())
             .setLiquidTints(this._liquidTints(analysis, terrains, bank)));
 
-        // Things (decorations + pickups) as billboard sprites
+        // Things
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
         this._registerAmbientSounds(level);
         await this._yield();
 
-        // One height service for the monsters and the map, carried by this data.
         const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction);
         if (this._monsterSystem !== null) {
             this._monsterSystem.setLevelData(levelData).setExitCallback(this._onLevelExit);
@@ -272,10 +237,9 @@ class WadWorldBuilder {
         const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes);
         this._wireBossBrain();
 
-        // World + user
         loader.world().loadFromData(this._buildDefinition(level, bank));
 
-        console.log('WadWorldBuilder - ' + this._levelName + ' [profile ' + this._profile.getCode() + ']: '
+        console.log('WadWorldBuilder - ' + this._levelCode + ' [profile ' + this._profile.getCode() + ']: '
             + bank.count() + ' textures, ' + doors.length + ' doors, '
             + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
             + stairs.length + ' stairs, '
@@ -292,28 +256,19 @@ class WadWorldBuilder {
 
     // --- Internal ---
 
-    // Build the world things from the THINGS lump: one shared Billboard Object3d
-    // per sprite (deduplicated), one Instance per occurrence. No-op without a
-    // thing catalog. Solid decorations get a Doom-style square 'box' collider;
-    // the rest (pickups, gore, pools…) are non-blocking ('none'). Pickups get a
-    // proximity trigger + a DoomPickupInteraction that applies the effect and
-    // despawns the sprite when picked up.
-    // One motion-sound spec per built mover: doors and crushing ceilings from
-    // their sector props (blaze = the ×4 speeds, the 141 crusher is silent),
-    // lifts as plats, rising floors and stair steps as floors. Every other
-    // closing "door" (the 40-44/72 ceiling specials share the door family)
-    // keeps the door voice — an accepted deviation on those rare specials.
+    // Accepted deviation: the 40-44/72 ceiling specials without a ceiling flag
+    // keep the door voice.
     _registerMoverSounds(analysis, doors, lifts, risingFloors, stairs) {
         if (this._game === null) {
             return;
         }
         const sounds = new DoomMoverSounds(this._profile.doorSoundStyle());
-        const wire = (built, spec) => {
+        const registerAll = (built, spec) => {
             for (const item of built) {
                 sounds.register(item.code, spec(item));
             }
         };
-        wire(doors, (door) => {
+        registerAll(doors, (door) => {
             const props   = (analysis.doorProps[parseInt(door.code.slice('door_'.length), 10)] ?? {});
             const ceiling = ((props.anim === 'crusher') || (props.ceilingRaise === true) || (props.ceilingSound === true));
             return {
@@ -322,14 +277,14 @@ class WadWorldBuilder {
                 silent: (props.silent === true)
             };
         });
-        wire(lifts, () => ({kind: 'plat', blaze: false, silent: false}));
-        wire(risingFloors, () => ({kind: 'floor', blaze: false, silent: false}));
-        wire(stairs, () => ({kind: 'floor', blaze: false, silent: false}));
+        registerAll(lifts, () => ({kind: 'plat', blaze: false, silent: false}));
+        registerAll(risingFloors, () => ({kind: 'floor', blaze: false, silent: false}));
+        registerAll(stairs, () => ({kind: 'floor', blaze: false, silent: false}));
         this._game.setMoverSounds(sounds);
     }
 
-    // Ambient sound points (profile table, ednum → loop/random spec): the
-    // things the catalog skips on purpose — no body, only a place that sounds.
+    // Ambient sound things (profile table, ednum → loop/random spec): no body,
+    // only a place that sounds.
     _registerAmbientSounds(level) {
         const table = this._profile.ambientSounds();
         const kinds = Object.keys(table);
@@ -356,6 +311,8 @@ class WadWorldBuilder {
         }
     }
 
+    // One shared billboard per sprite variant, one instance per thing; pickups
+    // get a proximity trigger and a DoomPickupInteraction.
     _registerThings(level, palette, analysis, builtFloorCodes) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0, monsters: 0};
@@ -369,8 +326,7 @@ class WadWorldBuilder {
             (x, y) => this._findSector(x, y),
             this._skill,
             this._monsterCatalog,
-            // Out-of-range dev-starter skill → null → the builder's legacy
-            // bit fallback (monsters stay enabled).
+            // Out-of-range dev skill: null, the builder falls back to the flag bits.
             (this._profile.skillRules()[this._skill] ?? null)
         );
         const things = builder.buildAll();
@@ -379,54 +335,44 @@ class WadWorldBuilder {
         const monsterBillboardIds = {};
         let   killsTotal          = 0;
         let   itemsTotal          = 0;
-        // vanilla total_items: fixed at load from the MAP things alone, so the
-        // drops spawned later can never inflate it (P_SpawnMobj).
+        // vanilla total_items counts the map things alone, never the drops (P_SpawnMobj).
         const countedItems = this._profile.countedItemTypes();
         for (let i = 0; i < things.length; i++) {
-            const t = things[i];
-            if (t.kind === 'monster') {
-                this._registerMonsterThing(t, i, analysis, builtFloorCodes, monsterBillboardIds);
-                if (t.def.getFlags().countsKill !== false) {
+            const thing = things[i];
+            if (thing.kind === 'monster') {
+                this._registerMonsterThing(thing, i, analysis, builtFloorCodes, monsterBillboardIds);
+                if (thing.def.getFlags().countsKill !== false) {
                     killsTotal++;
                 }
                 continue;
             }
-            // Dedup the shared Object3d per (sprite, sector light, light group):
-            // the sector brightness is baked into the billboard colour, so the
-            // same sprite in differently-lit sectors needs distinct objects — and
-            // a sprite in a light-effect sector needs its own object too, so the
-            // dynamic group factor does not spill onto its twins elsewhere.
-            const isPickup   = (t.kind === 'pickup');
-            const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, t.si);
-            // The pickup tint joins the key: two things sharing a sprite must not
-            // share an object when only one of them is to be grabbed.
-            const objKey     = t.key + '|' + t.light + '|' + lightGroup + '|' + isPickup;
+            // The sector light is baked into the billboard and the light group
+            // drives it at runtime, so both split the shared object.
+            const isPickup   = (thing.kind === 'pickup');
+            const lightGroup = WadMapAnalyzer.lightGroupOf(analysis, thing.si);
+            const objKey     = thing.key + '|' + thing.light + '|' + lightGroup + '|' + isPickup;
             if (billboardIds[objKey] === undefined) {
                 billboardIds[objKey] = loader.objects().loadBillboardFromData(null, {
                     billboard:     true,
-                    textures:      t.texIds,
-                    animDuration:  t.animDuration,
-                    halfWidth:     t.halfWidth,
-                    height:        t.height,
-                    anchorOffsetX: t.anchorOffsetX,
-                    anchorOffsetY: t.anchorOffsetY,
-                    anchorTop:     t.anchorTop,
-                    light:         t.light,
+                    textures:      thing.texIds,
+                    animDuration:  thing.animDuration,
+                    halfWidth:     thing.halfWidth,
+                    height:        thing.height,
+                    anchorOffsetX: thing.anchorOffsetX,
+                    anchorOffsetY: thing.anchorOffsetY,
+                    anchorTop:     thing.anchorTop,
+                    light:         thing.light,
                     lightGroup:    lightGroup,
                     tint:          ((isPickup) ? WadConstants.PICKUP_TINT : null)
                 });
             }
-            const countsItem = (isPickup && countedItems.has(t.type));
+            const countsItem = (isPickup && countedItems.has(thing.type));
             const code       = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
             if (countsItem) {
                 itemsTotal++;
             }
-            // A thing standing on a moving floor spawns at the floor's ORIGINAL
-            // height (the sector fh was patched to the low position for the
-            // static map) and rides the floor instance (vanilla: things follow
-            // their sector floor — a chainsaw on a donut pillar rides it down).
-            const ride = this._resolveThingFloor(t, analysis, builtFloorCodes);
-            const position = [t.position[0], t.position[1] + ride.liftY, t.position[2]];
+            const ride = this._resolveThingFloor(thing, analysis, builtFloorCodes);
+            const position = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
             loader.instances().loadFromData(null, {
                 code:                  code,
                 object:                billboardIds[objKey],
@@ -434,16 +380,12 @@ class WadWorldBuilder {
                 rotation:              [0, 0, 0],
                 trigger:               ((isPickup) ? 'proximity' : 'none'),
                 loop:                  false,
-                // Not onlyOnce: an un-consumed pickup (full health, owned weapon)
-                // must stay grabbable when the player returns — it re-tests every
-                // frame it is overlapped (like Doom's P_TouchSpecialThing) and is
-                // despawned only once actually consumed.
+                // An unconsumed pickup (full health) stays grabbable (P_TouchSpecialThing).
                 onlyOnce:              false,
-                collisionShape:        ((t.solid) ? 'box' : 'none'),
-                collisionRadius:       t.radius,
-                // A pickup reaches in a cylinder, so a key on a ledge is taken
-                // from the floor below: vanilla never mixes the footprint with
-                // the vertical reach (PIT_CheckThing / P_TouchSpecialThing).
+                collisionShape:        ((thing.solid) ? 'box' : 'none'),
+                collisionRadius:       thing.radius,
+                // Cylinder reach: a key on a ledge is taken from the floor below
+                // (PIT_CheckThing / P_TouchSpecialThing).
                 interactionRadius:     ((isPickup) ? WadConstants.PICKUP_RADIUS : null),
                 interactionShape:      ((isPickup) ? 'cylinder' : 'sphere'),
                 interactionReachBelow: ((isPickup) ? WadConstants.PICKUP_REACH_BELOW : 0),
@@ -454,10 +396,8 @@ class WadWorldBuilder {
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
-            // A pickup with no game (catalog-less build) keeps the sprite but
-            // never fires — harmless. With a game, wire its effect interaction.
             if (isPickup && (this._game !== null)) {
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, t.effect, this._game, countsItem));
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._game, countsItem));
             }
         }
         if (this._game !== null) {
@@ -484,18 +424,16 @@ class WadWorldBuilder {
     }
 
     /**
-     * Billboard OBJECT per (sprite view, alpha, ceiling anchor), deduplicated
-     * across the level. The alpha and the ceiling flag belong in the key: the
-     * spectre shares the demon's SARG lumps and the Heretic ghosts share their
-     * base monsters', and the flag decides which end of the quad is anchored.
+     * Billboard object per (sprite view, alpha, ceiling anchor): the spectre
+     * shares the demon's SARG lumps, the Heretic ghosts their base monsters'.
      *
      * @returns {object} view key → array of object ids (one per rotation)
      */
     _monsterBillboards(frames, alpha, ceiling, billboardIds) {
         const scale = WadConstants.SCALE;
-        const out   = {};
+        const objectIdsByView = {};
         for (const viewKey of Object.keys(frames)) {
-            out[viewKey] = frames[viewKey].map((spr) => {
+            objectIdsByView[viewKey] = frames[viewKey].map((spr) => {
                 const objKey = spr.loaderId + '|' + alpha + '|' + ceiling;
                 if (billboardIds[objKey] === undefined) {
                     const geo  = WadGeometry.spriteBillboardData(spr);
@@ -518,16 +456,11 @@ class WadWorldBuilder {
             });
         }
 
-        return out;
+        return objectIdsByView;
     }
 
-    // Views of the monsters this game spawns mid-fight (the elemental's lost
-    // souls, D'Sparil rising out of his mount), built INSIDE the batch like
-    // every other template — a body born during a fight has no chance to load
-    // a sprite. They go through the SAME billboard construction as the placed
-    // bodies: the monster system spawns instances, which want object ids.
-    // Probed quietly: an IWAD without a type of its bigger sibling (Doom 1 and
-    // the Icon's brood) simply cannot spawn it.
+    // Monsters spawned mid-fight (lost souls, D'Sparil), built inside the batch:
+    // nothing can load at runtime. A type missing from the IWAD is skipped.
     _registerRuntimeSpawnables(spriteBank, billboardIds) {
         if ((this._monsterSystem === null) || (this._monsterCatalog === null)) {
             return;
@@ -549,10 +482,8 @@ class WadWorldBuilder {
         this._monsterSystem.setSpawnables(catalog);
     }
 
-    // Flattened-corpse billboard (vanilla S_GIBS pool, what a corpse ground by
-    // a mover turns into), built INSIDE the batch like the drop templates.
-    // Probed quietly: a profile without one (Heretic) or a WAD lacking the
-    // sprite leaves the corpses untouched.
+    // Crushed-corpse billboard (vanilla S_GIBS), built inside the batch; none
+    // for a profile or WAD without the sprite.
     _registerCrushedCorpseView(spriteBank) {
         if (this._monsterSystem === null) {
             return;
@@ -565,12 +496,8 @@ class WadWorldBuilder {
         this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump), WadConstants.MONSTER_TINT));
     }
 
-    // Floor-anchored sprite billboard, shared by the batch templates (drop
-    // pickups, crushed corpse, each passing its own tint): the sprite offset
-    // overflow hangs above the floor, never below. Baked fullbright with no light group like the
-    // monster views: the spawn sector is unknown here, so the monster system
-    // pushes the sector lighting per instance (the crushed corpse keeps its
-    // monster's instance and inherits it).
+    // Floor-anchored billboard of the runtime templates, baked fullbright: the
+    // spawn sector is unknown, the monster system lights each instance.
     _groundSpriteBillboard(spr, tint) {
         const geo = WadGeometry.spriteBillboardData(spr);
         return loader.objects().loadBillboardFromData(null, {
@@ -586,33 +513,30 @@ class WadWorldBuilder {
         });
     }
 
-    // Pickup templates for everything this level's monsters can drop, built
-    // INSIDE the batch (billboards + one DoomPickupInteraction per distinct
-    // item/amount pair — an interaction cannot register at runtime, only the
-    // drop instances spawn at death). The catalog is handed to the monster
-    // system, keyed like DoomMonsterSystem._spawnDrops looks it up.
+    // Drop templates, one interaction per item/amount pair, built inside the
+    // batch: interactions cannot register at runtime, only instances spawn.
     _registerMonsterDrops(things, spriteBank) {
         if ((this._monsterSystem === null) || (this._game === null)) {
             return;
         }
         const types   = this._profile.dropItemTypes();
         const catalog = {};
-        for (const t of things) {
-            if (t.kind !== 'monster') {
+        for (const thing of things) {
+            if (thing.kind !== 'monster') {
                 continue;
             }
-            for (const d of t.def.getDropItems()) {
-                const key = DoomMonsterSystem.dropKey(d);
-                if ((catalog[key] !== undefined) || (types[d.item] === undefined)) {
+            for (const drop of thing.def.getDropItems()) {
+                const key = DoomMonsterSystem.dropKey(drop);
+                if ((catalog[key] !== undefined) || (types[drop.item] === undefined)) {
                     continue;
                 }
-                const type = types[d.item];
+                const type = types[drop.item];
                 const spr  = spriteBank.get(type.sprite);
                 if (spr === null) {
                     continue;
                 }
-                const effect = ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (d.amount ?? 0)});
-                const code   = 'drop_' + d.item + '_' + (d.amount ?? 'x');
+                const effect = ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (drop.amount ?? 0)});
+                const code   = 'drop_' + drop.item + '_' + (drop.amount ?? 'x');
                 catalog[key] = {
                     code:  code,
                     objId: this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT)
@@ -623,35 +547,25 @@ class WadWorldBuilder {
         this._monsterSystem.setDrops(catalog);
     }
 
-    // One monster: a shared billboard per (rotation view, alpha, ceiling anchor)
-    // — each view keeps its own vanilla anchor, the runtime swaps the instance
-    // object per frame/octant (the doomEffects pattern, no padded canvas). The
-    // alpha MUST be part of the dedup key: the spectre shares the demon's SARG
-    // lumps and the Heretic ghosts share their base monsters' sprites; the
-    // ceiling flag too, since it decides the vertical anchoring of the quad.
-    //
-    // Views are baked at FULL light with no light group: a body MOVES, so
-    // DoomMonsterSystem pushes its lighting per instance from the sector it
-    // currently stands in. Baking the spawn sector here would freeze it.
-    _registerMonsterThing(t, i, analysis, builtFloorCodes, billboardIds) {
+    // Views baked fullbright: a body moves, so the monster system lights it
+    // from its current sector.
+    _registerMonsterThing(thing, i, analysis, builtFloorCodes, billboardIds) {
+        const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.isCeiling(), billboardIds);
 
-        const frames = this._monsterBillboards(t.frames, t.alpha, t.def.isCeiling(), billboardIds);
-
-        const code  = 'monster_' + i;
-        const ride  = this._resolveThingFloor(t, analysis, builtFloorCodes);
-        const idle0 = t.def.getState('spawn0');
+        const code       = 'monster_' + i;
+        const ride       = this._resolveThingFloor(thing, analysis, builtFloorCodes);
+        const spawnState = thing.def.getState('spawn0');
         loader.instances().loadFromData(null, {
             code:            code,
-            object:          frames[DoomMonsterDef.viewKey(idle0.getSprite(), idle0.getFrame())][0],
-            position:        [t.position[0], t.position[1] + ride.liftY, t.position[2]],
+            object:          frames[DoomMonsterDef.viewKey(spawnState.getSprite(), spawnState.getFrame())][0],
+            position:        [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]],
             rotation:        [0, 0, 0],
             trigger:         'none',
             loop:            false,
             onlyOnce:        false,
-            // +NOBLOCKMAP (the Icon of Sin's eye): a body nothing collides
-            // with — it blocks neither the player nor a shot.
-            collisionShape:  ((t.def.getFlags().noBlockmap === true) ? 'none' : 'box'),
-            collisionRadius: t.radius,
+            // +NOBLOCKMAP (the Icon of Sin's eye) blocks neither player nor shot.
+            collisionShape:  ((thing.def.getFlags().noBlockmap === true) ? 'none' : 'box'),
+            collisionRadius: thing.radius,
             keyframes:       []
         });
         const inst = loader.instances().getByCode(code);
@@ -659,24 +573,22 @@ class WadWorldBuilder {
             inst.setRideOn(loader.instances().getByCode(ride.floorCode));
         }
         if (this._monsterSystem !== null) {
-            const spawnPos = [t.position[0], t.position[1] + ride.liftY, t.position[2]];
+            const spawnPos = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
             this._monsterSystem.add({
                 code:   code,
                 inst:   inst,
-                def:    t.def,
-                facing: t.facing,
-                flags:  t.flags,
+                def:    thing.def,
+                facing: thing.facing,
+                flags:  thing.flags,
                 frames: frames,
-                si:     t.si,
-                // Nightmare respawn returns the monster to its ORIGINAL map
-                // spot with its THINGS facing and ambush flag (P_NightmareRespawn)
-                spawn:  {position: spawnPos, facing: t.facing, flags: t.flags, si: t.si}
+                si:     thing.si,
+                // P_NightmareRespawn returns to the original spot and flags.
+                spawn:  {position: spawnPos, facing: thing.facing, flags: thing.flags, si: thing.si}
             });
         }
     }
 
-    // The reveal IS a BSP walk, so no valid nodes means no map. The tree's
-    // presence is the validity gate: it checked the lumps.
+    // The reveal is a BSP walk: no valid tree, no map.
     _registerAutomap(level, heights) {
         if ((this._game === null) || (level.bspTree === null)) {
             return;
@@ -684,16 +596,9 @@ class WadWorldBuilder {
         this._game.setAutomap(new DoomAutomap(new WadAutomapBuilder(level).build(), heights));
     }
 
-    // Level data of the monster AI, plus the sector-height service built from
-    // it: sector graph, REJECT table, sector resolver over the polygon cache
-    // (kept alive by the closure, like the sector-light handoff), the
-    // effective-height inputs of the sound flood (static sector heights, door
-    // panel floors, resting floor heights of the patched lifts), the mover
-    // instance code of every moving sector (codes only listed when actually
-    // built: getByCode never throws downstream), and the lines a monster may
-    // fire by CROSSING them during a walk step (vanilla P_CrossSpecialLine:
-    // the shared walk zones 4/10/88, consumed for everyone, and the teleports
-    // — 39/97 shared, 125/126 monster-only).
+    // Level data of the monster AI and the sector-height service built from it.
+    // Only built mover codes are listed, so getByCode never throws downstream;
+    // monsterLines are the lines a monster fires by crossing (P_CrossSpecialLine).
     _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction) {
         const doorFloorH = {};
         const moverCodes = {};
@@ -704,9 +609,6 @@ class WadWorldBuilder {
             if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
                 const props = analysis.doorProps[si];
                 doorFloorH[si] = analysis.doorHeights[si].floorH;
-                // Monster-usable as soon as ONE face is a plain manual door
-                // (the analyzer accumulates it per face): a keyed face on the
-                // same sector does not lock the free one out.
                 moverCodes[si] = {
                     kind:       'door',
                     code:       'door_' + si,
@@ -714,8 +616,8 @@ class WadWorldBuilder {
                 };
             }
         }
-        const monsterLines = [];
-        const vx = level.vertexes;
+        const monsterLines       = [];
+        const vx                 = level.vertexes;
         const builtWalkCodes     = new Set(walkTriggers.map((w) => w.code));
         const builtTeleportCodes = new Set(teleporters.map((t) => t.code));
         for (const tp of analysis.teleporterLinedefs) {
@@ -749,7 +651,7 @@ class WadWorldBuilder {
             });
         }
 
-        const data = {
+        const levelData = {
             sectorGraph:  analysis.sectorGraph,
             reject:       level.reject,
             numSectors:   level.sectors.length,
@@ -759,37 +661,26 @@ class WadWorldBuilder {
             restFh:       analysis.liftOriginalFh,
             moverCodes:   moverCodes,
             monsterLines: monsterLines,
-            // Positions the game aims at, by group: where D'Sparil reappears
-            // ('bossSpot'), where the Icon of Sin sends its cubes ('bossTarget').
+            // 'bossSpot' (D'Sparil reappears), 'bossTarget' (Icon of Sin cubes).
             spots:        (this._spots ?? {}),
-            levelName:    this._levelName,
-            // mapinfo `allowmonstertelefrags`: on this map a teleporting
-            // monster stomps whoever holds its arrival spot.
-            monstersTelefrag: this._profile.monsterTelefragMaps().includes(this._levelName),
-            // Live brightness factor of a sector (1 without a light effect),
-            // the very source the weapon shading reads.
+            levelCode:    this._levelCode,
+            // mapinfo `allowmonstertelefrags`.
+            monstersTelefrag: this._profile.monsterTelefragMaps().includes(this._levelCode),
             lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1)),
-            // Whether a sector's brightness moves on its own (light thinker):
-            // its bodies must then be re-lit every frame, the others only on a
-            // sector or state change.
+            // Bodies in these sectors are re-lit every frame, others on change only.
             hasLightEffect: ((si) => analysis.lightSectorIds.has(si))
         };
-        // The sound flood, the mover pressure and the map share this instance.
-        data.heights = new DoomSectorHeights(data);
-        this._sectorHeights = data.heights;
+        levelData.heights = new DoomSectorHeights(levelData);
+        this._sectorHeights = levelData.heights;
 
-        return data;
+        return levelData;
     }
 
-    // Moving floor under a thing: the built lift / rising-floor / stair
-    // instance of the thing's sector, plus the Y shift back to the ORIGINAL
-    // floor height for the lowered lifts (their sector fh is patched down for
-    // the static map, but the platform RESTS at its original height). The
-    // thing then rides that instance (setRideOn), box blocker of a solid
-    // decoration included (Collision.syncRidingBoxes).
-    _resolveThingFloor(t, analysis, builtFloorCodes) {
+    // Floor instance a thing rides, plus the Y shift back to a lift's rest
+    // height: its sector fh is patched to the low position.
+    _resolveThingFloor(thing, analysis, builtFloorCodes) {
         const SCALE = WadConstants.SCALE;
-        const sec = this._findSector(t.position[0] / SCALE, t.position[2] / SCALE);
+        const sec = this._findSector(thing.position[0] / SCALE, thing.position[2] / SCALE);
         if (sec === null) {
             return {floorCode: null, liftY: 0};
         }
@@ -808,11 +699,9 @@ class WadWorldBuilder {
         return {floorCode: null, liftY: 0};
     }
 
-    // "+change" of a moving floor, at start or at completion: the top flat and
-    // the damage special come from the SOURCE sector's live surface (vanilla
-    // reads line->frontsector at fire time, so chained changes propagate). No
-    // texture registers outside the batch: every reachable flat resolves here.
-    // Returns the live surface registry, which the terrain reads too.
+    // "+change" floors read the source sector's live surface when they fire
+    // (vanilla line->frontsector, so chains propagate). Every reachable flat is
+    // resolved here: no texture can register outside the batch.
     _wireFloorChanges(analysis, animBank, damageInteraction) {
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
         this._game.setSectorSurfaces(surfaces);
@@ -821,7 +710,7 @@ class WadWorldBuilder {
         for (const key of Object.keys(analysis.floorChange)) {
             const si     = parseInt(key, 10);
             const change = analysis.floorChange[key];
-            const code = (analysis.floorMovers.get(si)?.code ?? null);
+            const code   = (analysis.floorMovers.get(si)?.code ?? null);
             if ((code === null) || code.startsWith('stair_')) {
                 continue;
             }
@@ -833,7 +722,7 @@ class WadWorldBuilder {
                 sequences.get(flat).ids.forEach((id) => ownIds.add(id));
             }
             const inst  = loader.instances().getByCode(code);
-            const apply = () => {
+            const applyChange = () => {
                 const flat    = surfaces.flatOf(change.sourceSi);
                 const special = WadMapAnalyzer.changeSpecial(change.special, surfaces.specialOf(change.sourceSi));
                 const newSeq  = sequences.get(flat) ?? {ids: [], duration: 0};
@@ -857,18 +746,17 @@ class WadWorldBuilder {
                 }
             };
             if (change.at === 'complete') {
-                inst.setOnComplete(apply);
+                inst.setOnComplete(applyChange);
             } else {
-                inst.setOnStart(apply);
+                inst.setOnStart(applyChange);
             }
         }
 
         return surfaces;
     }
 
-    // Average colour of every liquid flat the level can show — its own and
-    // those its "+change" chains bring in. Measured on the flat's own pixels:
-    // it is what the generic splash of a splashless game is colourised with.
+    // Average colour of every liquid flat the level can show, used to tint the
+    // generic splash of a game without splash sprites.
     _liquidTints(analysis, terrains, bank) {
         const tints = {};
         for (let si = 0; si < this._level.sectors.length; si++) {
@@ -905,9 +793,9 @@ class WadWorldBuilder {
     // tint: flat colour of the whole body in the textureless renderers, null for
     // the trigger zones, which carry no face to paint.
     _registerInstance(built, bank, tint = null) {
-        const data = WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank);
-        data.tint  = tint;
-        const objectId = loader.objects().loadFromData(null, data);
+        const objectData = WadMeshBuilder.toLoaderData(built.textures, built.mesh, bank);
+        objectData.tint  = tint;
+        const objectId = loader.objects().loadFromData(null, objectData);
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
     }
 
@@ -928,7 +816,7 @@ class WadWorldBuilder {
             if (hit === null) {
                 return false;
             }
-            // Stopped short of the line so a shared corner counts as its wall
+            // Stopped short of the line so a shared corner counts as its wall.
             const reach = hit * WadConstants.USE_TRACE_STOP_RATIO;
 
             return !this._useTraceBlocked(user.x, user.z, user.x + (dx * reach), user.z + (dz * reach), ownIdx);
@@ -974,11 +862,7 @@ class WadWorldBuilder {
         return this._useLineCache;
     }
 
-    // Locked switches (the blaze 99/133-137) only fire if the player holds the
-    // key: the engine calls this opaque predicate before the trigger (the
-    // runtime user is a DoomUser), like vanilla EV_DoLockedDoor checking the
-    // keys at USE time. A switch is one linedef, so its key needs no face
-    // arbitration — doors go through _applyDoorUseGuard instead.
+    // Locked switches (99/133-137) check the key at USE time (EV_DoLockedDoor).
     _applyKeyGuard(built) {
         const keyCode = built.instanceData.keyRequired;
         if (keyCode) {
@@ -989,7 +873,7 @@ class WadWorldBuilder {
     // Catalogued fixes of the known maps (UZDoom LevelCompatibility), keyed by
     // the map's own fingerprint, applied before anything reads the records.
     async _applyLevelPatches(level) {
-        const entry = doomLevelPatches.get(await this._wadFile.mapChecksum(this._levelName));
+        const entry = doomLevelPatches.get(await this._wadFile.mapChecksum(this._levelCode));
         if (entry === null) {
             return 0;
         }
@@ -1001,40 +885,35 @@ class WadWorldBuilder {
     // 'MAP07-2' suffix distinguishes two boss groups on one map.
     _levelBossActions() {
         const actions = this._profile.bossActions();
-        const result = [];
+        const levelActions = [];
         for (const key of Object.keys(actions)) {
-            if (key.split('-')[0] === this._levelName) {
-                result.push({key: key, ...actions[key]});
+            if (key.split('-')[0] === this._levelCode) {
+                levelActions.push({key: key, ...actions[key]});
             }
         }
-        return result;
+        return levelActions;
     }
 
-    // Vanilla fires these actions from code on a dummy line: when no real
-    // mover linedef aims at the tag, a virtual one makes the analyzer build
-    // the mover (E1M8's 666 block has no linedef at all). Where the WAD
-    // carries its own line (MAP07's 666), the author's line wins.
+    // Vanilla fires these from a dummy line: a virtual linedef lets the analyzer
+    // build a mover no real line aims at (E1M8's 666); a real line wins (MAP07).
     _bossVirtualLinedefs(level, bossActions) {
-        const isMover = (sp) => ((WadConstants.DOOR_BY_SPECIAL[sp] !== undefined)
-            || WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(sp)
-            || WadConstants.FLOOR_MOVE_UP_SPECIALS.has(sp));
+        const isMover = (special) => ((WadConstants.DOOR_BY_SPECIAL[special] !== undefined)
+            || WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special)
+            || WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special));
         const virtual = [];
         for (const action of bossActions) {
             if (action.exit === true) {
                 continue;
             }
             if (!level.linedefs.some((ld) => ((ld.tag === action.tag) && isMover(ld.special)))) {
-                // v1/v2 = -1: an accidental vertex read fails loudly (undefined
-                // destructuring) instead of producing silent NaN geometry.
+                // v1/v2 = -1 so an accidental vertex read fails loudly, not as NaN geometry.
                 virtual.push({special: action.special, tag: action.tag, left: -1, right: -1, v1: -1, v2: -1});
             }
         }
         return virtual;
     }
 
-    // The Icon of Sin's bookkeeping, on the levels that carry its target spots
-    // (MAP30 and any PWAD doing the same): the rotation of those spots and the
-    // weighted draw of what a cube hatches.
+    // Icon of Sin target rotation and cube spawns, on levels with its target spots.
     _wireBossBrain() {
         const targets = ((this._spots ?? {}).bossTarget ?? []);
         if ((this._monsterSystem === null) || (targets.length === 0)) {
@@ -1052,8 +931,6 @@ class WadWorldBuilder {
         const defs = this._monsterCatalog.getAllDefs();
         const rules = [];
         for (const action of bossActions) {
-            // Same target model as the switch/walk/gun paths: full family list,
-            // reverse split and per-special cycle key.
             const targets = ((action.exit === true) ? [] : WadMapAnalyzer.resolveTaggedTargets(level.sectors, action.tag, WadMapAnalyzer.moverFamilies(
                 analysis, level.sectors,
                 {lifts: builtLiftCodes, rising: builtRisingCodes, doors: builtDoorCodes, stairs: builtStairCodes},
@@ -1078,9 +955,8 @@ class WadWorldBuilder {
         return rules.length;
     }
 
-    // Walk-over zones and teleport pads fire on a real CROSSING of their
-    // linedef (vanilla P_CrossSpecialLine), not on proximity: the engine zone
-    // keeps its circle as a broadphase and this guard has the last word.
+    // Walk zones and teleports fire on a real crossing (P_CrossSpecialLine): the
+    // engine proximity circle is only the broadphase.
     _applyCrossingGuard(built) {
         if (built.crossSegment === undefined) {
             return;
@@ -1091,9 +967,8 @@ class WadWorldBuilder {
             instance.addTriggerCondition((user) => crossing.crossedBy(user));
             return;
         }
-        // A back-side crossing never fires (EV_Teleport), but it still spends
-        // a W1 line: vanilla clears the special whatever the outcome
-        // (p_spec.c case 39), same rule as the monster path.
+        // A back-side crossing never teleports but still spends a W1 line
+        // (p_spec.c case 39).
         const spendOnRefuse = (built.instanceData.onlyOnce === true);
         instance.addTriggerCondition((user) => {
             const side = crossing.crossingSideBy(user);
@@ -1107,22 +982,10 @@ class WadWorldBuilder {
         });
     }
 
-    // USE rules of a manual door, which vanilla carries per LINEDEF while the
-    // engine offers one radius around the whole body. The nearest OPENING of
-    // the door (its two-sided faces — the jambs are walls nobody presses
-    // through) stands in for the line P_UseSpecialLine would pick, and it alone
-    // answers:
-    //  - a face carrying no manual door special answers nothing, so a door
-    //    whose special sits on one linedef only is not openable from the other
-    //    corridor (E1M2's tag-7 door: by hand from its own side, by its switch
-    //    from anywhere else), and a shootable face (46) stays deaf to USE —
-    //    vanilla ignores the impact specials there (E1M2's vent door);
-    //  - it is usable from its FRONT side alone (`if (side) return false`);
-    //  - it demands the key IT carries, so a sector mixing a locked face and a
-    //    free one keeps both (E1M7's yellow doors open freely from inside,
-    //    E3M7's red ones stay locked from the corridor).
-    // A door with no usable opening keeps the plain radius: its press is the
-    // timer-sector cycle replay, which no linedef declares.
+    // Vanilla USE rules are per linedef, the engine has one radius per body: the
+    // nearest two-sided face stands in for the line P_UseSpecialLine picks. It
+    // must carry a manual door special, is usable from its front only, and
+    // demands its own key. A door with no usable face (timer sector) keeps the radius.
     _applyDoorUseGuard(built, level) {
         if (built.instanceData.trigger !== 'action') {
             return;
@@ -1162,8 +1025,7 @@ class WadWorldBuilder {
             if (nearest.usable !== true) {
                 return false;
             }
-            // Front side only: cross < 0 is the right sidedef (see
-            // _nearestSideSector), i.e. the face vanilla lets a press through.
+            // cross < 0 is the front (right) side.
             if (WadGeometry.cross2d([nearest.x1, nearest.z1], [nearest.x2, nearest.z2], [user.x, user.z]) > 0) {
                 return false;
             }
@@ -1176,14 +1038,9 @@ class WadWorldBuilder {
         const spawn = this._computeSpawn(level);
         const defaults = WadConstants.USER_DEFAULTS;
 
-        // Sky texture (SKYx by episode/map). Decoded as a wall texture; null if
-        // the WAD lacks it → renderer falls back to the solid background.
-        // The sky's "cap" colour (average of its top row) doubles as the scene
-        // background: in WebGL the sky quad draws only the textured band and
-        // discards above/below (the clear colour shows through); in the CPU full
-        // renderer the sky holes already show the background — so a sky-coloured
-        // background gives a solid sky there for free, without a sky pass.
-        const skyPolicy = this._profile.skyForLevel(this._levelName);
+        // The sky's top-row colour doubles as the background: it shows above the
+        // WebGL sky band and through the CPU renderer's sky holes.
+        const skyPolicy = this._profile.skyForLevel(this._levelCode);
         const skyIdx = bank.ensureSkyTex(skyPolicy.name);
         let sky = null;
         let background = WadConstants.DEFAULT_BACKGROUND;
@@ -1220,14 +1077,11 @@ class WadWorldBuilder {
         };
     }
 
-    // Solid "cap" colours derived like modern ports from the sky texture rows
-    // (vanilla Doom has no such field): the TOP row average is the scene
-    // background (above the sky band, CPU sky holes), the BOTTOM row average
-    // fills below the horizon (sky floors, looking down past the band) — so
-    // both seams with the texture stay smooth.
+    // Average colour of the sky's top or bottom row, filling above and below the
+    // sky band like modern ports (vanilla has no such colour).
     _skyCapColor(loaderId, row = 'top') {
         const tex = loader.textures().get(loaderId);
-        const d = tex.data;
+        const pixels = tex.data;
         const w = tex.width;
         const rowStart = ((row === 'bottom') ? (4 * w * (tex.height - 1)) : 0);
         let r = 0;
@@ -1235,22 +1089,19 @@ class WadWorldBuilder {
         let b = 0;
         for (let x = 0; x < w; x++) {
             const p = rowStart + 4 * x;
-            r += d[p];
-            g += d[p + 1];
-            b += d[p + 2];
+            r += pixels[p];
+            g += pixels[p + 1];
+            b += pixels[p + 2];
         }
 
         return [Math.round(r / w), Math.round(g / w), Math.round(b / w)];
     }
 
-    // Player spawn from the THINGS lump (type 1 = Player 1 start).
-    // Doom angle 0 = east, 90 = north; engine yaw 0 = north (+Z), 90 = east (+X).
-    // The spawn Y is the floor height of the spawn sector + a small snap margin
-    // (the fixed 0.3 of the Python script only worked for floors near 0).
+    // Player 1 start (thing type 1), just above its sector floor.
     _computeSpawn(level) {
         const player1 = level.things.find((t) => t.type === 1);
         if (player1 === undefined) {
-            return {x: -6.5, y: 0.3, z: 4.0, yaw: 90};
+            return {...WadConstants.FALLBACK_SPAWN};
         }
 
         const sect    = this._findSector(player1.x, player1.y);
@@ -1258,54 +1109,45 @@ class WadWorldBuilder {
 
         return {
             x:   player1.x * WadConstants.SCALE,
-            y:   floorFh * WadConstants.SCALE + 0.3,
+            y:   floorFh * WadConstants.SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
             z:   player1.y * WadConstants.SCALE,
             yaw: WadGeometry.doomAngleYaw(player1.angle)
         };
     }
 
-    // Teleport landings: every thing type 14, mapped by the tag of the sector
-    // that contains it, to a world-space destination {x, y, topY, z, yaw}.
-    // The arrival height is resolved LIVE at teleport time (EV_Teleport lands
-    // at ONFLOORZ — the landing sector may be a mover): topY = the sector
-    // ceiling, the search top for the runtime floor lookup (never patched,
-    // never below its floor); y = the build-time floor + snap margin, kept as
-    // the fallback when no floor answers.
+    // Teleport landings by sector tag: {x, y, topY, z, yaw} in world space.
+    // EV_Teleport lands ONFLOORZ on a possibly moving sector, so the floor is
+    // searched live from topY (the ceiling); y is the build-time fallback.
     _buildTeleportLandings(level) {
         const SCALE = WadConstants.SCALE;
         const landings = {};
-        for (const t of level.things) {
-            if (t.type !== WadConstants.TELEPORT_LANDING_THING) {
+        for (const thing of level.things) {
+            if (thing.type !== WadConstants.TELEPORT_LANDING_THING) {
                 continue;
             }
-            const sec = this._findSector(t.x, t.y);
+            const sec = this._findSector(thing.x, thing.y);
             if ((sec === null) || (sec.tag === 0)) {
                 continue;
             }
             landings[sec.tag] = {
-                x:    t.x * SCALE,
-                y:    sec.fh * SCALE + 0.3,
+                x:    thing.x * SCALE,
+                y:    sec.fh * SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
                 topY: sec.ch * SCALE,
-                z:    t.y * SCALE,
-                yaw:  WadGeometry.doomAngleYaw(t.angle)
+                z:    thing.y * SCALE,
+                yaw:  WadGeometry.doomAngleYaw(thing.angle)
             };
         }
         return landings;
     }
 
-    // Point-to-sector lookup over a resolved polygon cache, closing over that
-    // array alone (see the siAt of build()).
+    // Closes over the polygon array alone, not over the builder.
     static _polygonLookup(sectorPolys) {
         return ((doomX, doomY) => (WadSectorPolygons.smallestContaining(sectorPolys, doomX, doomY)?.si ?? null));
     }
 
     /**
-     * Sector outer polygons + floor/ceiling/light, walked once and memoized:
-     * _findSector is then a cheap point test per thing instead of rebuilding
-     * polygons. Lazy on purpose — with a usable BSP the tree answers every
-     * containment query (sectorAt) and this cache is only the fallback path,
-     * so building it up front would walk every sector's linedef chains for
-     * nothing on every level.
+     * Sector outer polygons, built lazily: with a BSP the tree answers every
+     * containment query and this cache is only the fallback.
      *
      * @returns {object[]} [{si, fh, ch, light, tag, special, outers}]
      */
@@ -1321,7 +1163,7 @@ class WadWorldBuilder {
         const {vertexes, linedefs, sidedefs, sectors} = level;
         const cache = [];
         for (let si = 0; si < sectors.length; si++) {
-            const chains = WadSectorPolygons.buildSectorPolygons(si, linedefs, sidedefs, vertexes);
+            const chains = WadSectorPolygons.buildSectorChains(si, linedefs, sidedefs, vertexes);
             if (chains.length === 0) {
                 continue;
             }
@@ -1334,15 +1176,10 @@ class WadWorldBuilder {
         return cache;
     }
 
-    // Zones of the runtime sector interactions (damage / push / secret),
-    // behind the shared DoomSectorZones locator. With a BSP every sector
-    // carrying the special is a zone (membership is the tree, so the unclosed
-    // sectors the polygon cache dropped are back in — secret total included);
-    // without it, the cache stays the filter and the zones carry their polygon
-    // outers for the runtime test. Floors are read live from the height
-    // service, resolved lazily: it is built with the level data, after the
-    // zones, and the interactions only run once the level is up.
-    _sectorZones(analysis, sectorAt, predicate, decorate) {
+    // Zones of the damage / push / secret interactions. With a BSP every sector
+    // qualifies (unclosed ones included); without, the zones carry their polygon
+    // outers. _sectorHeights is read lazily: it is built after the zones.
+    _sectorZones(analysis, bspSectorAt, predicate, decorate) {
         const zones = [];
         const pushZone = (si, special, outers) => {
             if (!predicate(si, special)) {
@@ -1357,23 +1194,18 @@ class WadWorldBuilder {
             }
             zones.push(zone);
         };
-        if (sectorAt !== null) {
+        if (bspSectorAt !== null) {
             this._level.sectors.forEach((sec, si) => pushZone(si, sec.special, null));
         } else {
             for (const s of this._sectorPolyCache()) {
                 pushZone(s.si, s.special, s.outers);
             }
         }
-        return new DoomSectorZones(zones, sectorAt, (si) => (this._sectorHeights.floorOf(si) * WadConstants.SCALE));
+        return new DoomSectorZones(zones, bspSectorAt, (si) => (this._sectorHeights.floorOf(si) * WadConstants.SCALE));
     }
 
-    // Find the sector at a point. BSP path first (R_PointInSubsector — the
-    // vanilla answer, O(log n), correct on unclosed sectors); its null
-    // (unattributed leaf) and the no-BSP case fall back to the polygon walk:
-    // smallest containing outer (nested sectors — the cache's outers keep the
-    // holes inside), then the nearest sector within THING_SECTOR_MAX_DIST,
-    // beyond which the caller drops the thing rather than mis-placing it.
-    // Returns {si, fh, ch, light, tag} (Doom units) or null.
+    // BSP first (R_PointInSubsector), then the smallest containing polygon, then
+    // the nearest sector within THING_SECTOR_MAX_DIST. {si, fh, ch, light, tag} or null.
     _findSector(doomX, doomY) {
         const bsp = this._level.bspTree;
         if (bsp !== null) {
@@ -1391,9 +1223,7 @@ class WadWorldBuilder {
         return this._nearestSideSector(doomX, doomY);
     }
 
-    // Fallback when no polygon contains the point: nearest linedef, then the
-    // sector on the side the point lies (front/back sidedef per cross product).
-    // Beyond THING_SECTOR_MAX_DIST, or with no facing sector → null.
+    // Sector on the point's side of the nearest linedef, null beyond THING_SECTOR_MAX_DIST.
     _nearestSideSector(doomX, doomY) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
         let bestDist = Infinity;
@@ -1413,11 +1243,10 @@ class WadWorldBuilder {
 
         const a = vertexes[bestLd.v1];
         const b = vertexes[bestLd.v2];
-        // cross < 0 → point on the right side of v1→v2 (Doom front/right sidedef).
-        // Prefer the sidedef facing the point; fall back to the other side.
-        const side = WadGeometry.cross2d(a, b, [doomX, doomY]);
-        const near = ((side < 0) ? bestLd.right : bestLd.left);
-        const far  = ((side < 0) ? bestLd.left : bestLd.right);
+        // cross < 0: the point is on the front (right) side.
+        const side  = WadGeometry.cross2d(a, b, [doomX, doomY]);
+        const near  = ((side < 0) ? bestLd.right : bestLd.left);
+        const far   = ((side < 0) ? bestLd.left : bestLd.right);
         const sdIdx = ((near >= 0) ? near : far);
         if (sdIdx < 0) {
             return null;

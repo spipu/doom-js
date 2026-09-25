@@ -6,11 +6,9 @@
  * mouse hover (armed by a real mouse move), keyboard (arrows move, Enter
  * validates, Backspace goes back) and gamepad (d-pad or left stick with
  * auto-repeat, button 0 validates, button 1 goes back). The selection clamps
- * at both ends (no wrap-around), and an optional side button above the list
- * joins the vertical flow (Up on the first entry / Down to come back). The
- * owner provides the back action and the blocked state (its own modality);
- * while blocked, the pad states keep tracking so lifting the block never
- * replays a stale edge.
+ * at both ends (no wrap-around); an optional row of side buttons above the list
+ * and a bottom button below it join the vertical flow. The owner provides the
+ * back action and the blocked state (its own modality).
  */
 class MenuListNavigation {
     static get PAD_POLL_MS() {
@@ -41,25 +39,25 @@ class MenuListNavigation {
      * @param {function} isBlocked returns true while the inputs must be ignored
      */
     constructor(onBack, isBlocked) {
-        this._onBack       = onBack;
-        this._isBlocked    = isBlocked;
-        this._escapeAsBack = false;
-        this._items        = [];
-        this._index        = -1;
-        this._sideButtons  = [];
-        this._sideIndex    = -1;
-        this._bottomButton = null;
-        this._onBottom     = false;
-        this._horizontal   = false;
-        this._keyProxy     = this._onKeyDown.bind(this);
-        this._mouseProxy   = this._onMouseMove.bind(this);
-        this._mouseArmed   = false;
-        this._pad          = new InputGamepad();
-        this._padTimer     = null;
-        this._padSeen      = false;
-        this._padState     = {validate: false, back: false};
-        this._padHeldY     = {dir: 0, ms: 0};
-        this._padHeldX     = {dir: 0, ms: 0};
+        this._onBack            = onBack;
+        this._isBlocked         = isBlocked;
+        this._escapeAsBack      = false;
+        this._items             = [];
+        this._index             = -1;
+        this._sideButtons       = [];
+        this._sideIndex         = -1;
+        this._bottomButton      = null;
+        this._bottomFocused     = false;
+        this._horizontal        = false;
+        this._keyDownListener   = this._onKeyDown.bind(this);
+        this._mouseMoveListener = this._onMouseMove.bind(this);
+        this._mouseArmed        = false;
+        this._pad               = new InputGamepad();
+        this._padTimer          = null;
+        this._padSeen           = false;
+        this._padState          = {validate: false, back: false};
+        this._padHeldY          = {dir: 0, ms: 0};
+        this._padHeldX          = {dir: 0, ms: 0};
     }
 
     // Horizontal list (a confirm modal's buttons row): Left/Right move the
@@ -80,8 +78,8 @@ class MenuListNavigation {
     }
 
     attach() {
-        document.addEventListener('keydown', this._keyProxy);
-        document.addEventListener('mousemove', this._mouseProxy);
+        document.addEventListener('keydown', this._keyDownListener);
+        document.addEventListener('mousemove', this._mouseMoveListener);
         this._mouseArmed   = false;
         this._padSeen      = false;
         this._padHeldY.dir = 0;
@@ -96,8 +94,8 @@ class MenuListNavigation {
     }
 
     detach() {
-        document.removeEventListener('keydown', this._keyProxy);
-        document.removeEventListener('mousemove', this._mouseProxy);
+        document.removeEventListener('keydown', this._keyDownListener);
+        document.removeEventListener('mousemove', this._mouseMoveListener);
         if (this._padTimer !== null) {
             clearInterval(this._padTimer);
             this._padTimer = null;
@@ -106,10 +104,8 @@ class MenuListNavigation {
         return this;
     }
 
-    // Only the list: the side and bottom buttons are not list content, and this
-    // runs on every refresh — dropping their highlight there would undo a focus
-    // deliberately placed by the screen. A rebuild resets them through
-    // setSideButtons / setBottomButton anyway.
+    // Only the list: this runs on every refresh, and dropping the side or
+    // bottom highlight there would undo a focus deliberately placed by the screen.
     clear() {
         this._items = [];
         this._index = -1;
@@ -117,11 +113,9 @@ class MenuListNavigation {
         return this;
     }
 
-    // Optional targets sitting above the list, in visual left-to-right order,
-    // reached by pressing Up on the first entry (and Down to come back): the
-    // WAD screen's language and help buttons. They form a row, so Left / Right
-    // walks it. Highlighted through a dedicated class; Enter / validate clicks
-    // the focused one, so the press feedback plays like a mouse click.
+    // Row above the list, in left-to-right order, reached by Up on the first
+    // entry and walked with Left / Right. Validate clicks the focused button,
+    // so its press feedback plays.
     setSideButtons(elements) {
         this._sideButtons = elements;
         this._sideIndex   = -1;
@@ -129,27 +123,23 @@ class MenuListNavigation {
         return this;
     }
 
-    // Puts the highlight on one of the side buttons, so an action that rebuilds
-    // its own screen can hand the focus back where the user left it. An element
-    // that is not in the row simply clears the highlight.
+    // Lets a screen that rebuilds itself hand the focus back to the button
+    // just pressed; an element outside the row clears the highlight.
     focusSideButton(el) {
         this._focusSideAt(this._sideButtons.indexOf(el));
 
         return this;
     }
 
-    // Bottom counterpart of the side button: Down past the last entry lands
-    // on the screen's action button (back / quit), Up climbs back into the
-    // list. It also becomes the target of every back input (see _goBack).
+    // Down past the last entry lands on it, Up climbs back into the list. It
+    // also becomes the target of every back input (see _goBack).
     setBottomButton(el) {
         this._bottomButton = el;
-        this._onBottom     = false;
+        this._bottomFocused = false;
 
         return this;
     }
 
-    // The returned item can carry extra children (an infos line, a delete
-    // button...).
     addItemIn(listEl, labelText, onActivate, onAdjust = null) {
         const item = MenuDom.addListItem(listEl, labelText);
         this.addItem(item, onActivate, onAdjust);
@@ -157,10 +147,9 @@ class MenuListNavigation {
         return item;
     }
 
-    // Registers a list entry: a click presses it (feedback then action),
-    // hovering selects it — but only after a real mouse move, so a list
-    // scrolling under a resting pointer does not steal the selection from the
-    // keyboard/gamepad. onAdjust (Left/Right, pad X) cycles the entry's value.
+    // Hover selects only after a real mouse move, so a list scrolling under a
+    // resting pointer does not steal the selection from the keyboard/gamepad.
+    // onAdjust (Left/Right, pad X) cycles the entry's value.
     addItem(el, onActivate, onAdjust = null) {
         const entry = {el: el, action: onActivate, adjust: onAdjust};
         el.addEventListener('click', () => {
@@ -192,7 +181,7 @@ class MenuListNavigation {
     // Initial selection only: a highlight deliberately put on a side or bottom
     // button wins over the convenience of landing on the first entry.
     selectFirst() {
-        if ((this._items.length > 0) && (this._sideIndex === -1) && !this._onBottom) {
+        if ((this._items.length > 0) && (this._sideIndex === -1) && !this._bottomFocused) {
             this.selectIndex(0);
         }
 
@@ -225,10 +214,8 @@ class MenuListNavigation {
         return this;
     }
 
-    // Scrolls the list itself (scrollTop) instead of scrollIntoView: the
-    // latter may scroll any scrollable ancestor, page included — on iOS that
-    // page nudge collapses the Safari toolbar, resizes the viewport and makes
-    // the whole em-sized menu grow.
+    // Not scrollIntoView: it may scroll the page too, and on iOS that collapses
+    // the Safari toolbar, resizes the viewport and makes the em-sized menu grow.
     _scrollListTo(el) {
         const list = el.parentElement;
         if (list === null) {
@@ -248,10 +235,8 @@ class MenuListNavigation {
         }
     }
 
-    // Clamped at both ends — no wrap-around; up on the first entry reaches
-    // the side button, down past the last one reaches the bottom button.
-    // The cursor sound plays only when the highlight actually moved (a step
-    // against a clamped end stays silent).
+    // The cursor sound plays only when the highlight actually moved: a step
+    // against a clamped end stays silent.
     moveSelection(delta) {
         const before = this._focusSignature();
         this._moveSelectionStep(delta);
@@ -263,7 +248,7 @@ class MenuListNavigation {
     }
 
     _focusSignature() {
-        return (this._index + '|' + this._sideIndex + '|' + this._onBottom);
+        return (this._index + '|' + this._sideIndex + '|' + this._bottomFocused);
     }
 
     _moveSelectionStep(delta) {
@@ -273,7 +258,7 @@ class MenuListNavigation {
             }
             return this;
         }
-        if (this._onBottom) {
+        if (this._bottomFocused) {
             if (delta < 0) {
                 this._focusBottom(false);
             }
@@ -309,7 +294,7 @@ class MenuListNavigation {
             this._sideButtons[this._sideIndex].click();
             return this;
         }
-        if (this._onBottom && (this._bottomButton !== null)) {
+        if (this._bottomFocused && (this._bottomButton !== null)) {
             this._bottomButton.click();
             return this;
         }
@@ -335,11 +320,9 @@ class MenuListNavigation {
         MenuDom.press(entry.el, 'doom-menu-item-pressed', entry.action);
     }
 
-    // Left/Right: the selection itself in a horizontal list, otherwise the
-    // selected entry's value adjustment (a settings row cycling its value).
+    // Left/Right walks the side row, moves a horizontal list, or cycles the
+    // selected entry's value.
     _stepSideways(dir) {
-        // The corner buttons are a row: Left / Right walks it, whatever the
-        // axis of the list underneath.
         if (this._sideIndex !== -1) {
             this._focusSideAt(Math.max(0, Math.min(this._sideButtons.length - 1, this._sideIndex + dir)));
             return;
@@ -348,7 +331,7 @@ class MenuListNavigation {
             this.moveSelection(dir);
             return;
         }
-        if (this._onBottom) {
+        if (this._bottomFocused) {
             return;
         }
         const entry = this._items[this._index];
@@ -361,37 +344,33 @@ class MenuListNavigation {
     // Validate (Enter / gamepad button 0) on a page without any list entry
     // (the About popup): the back action is the only thing to validate.
     _validate() {
-        if ((this._items.length === 0) && (this._sideIndex === -1) && !this._onBottom) {
+        if ((this._items.length === 0) && (this._sideIndex === -1) && !this._bottomFocused) {
             this._goBack();
             return;
         }
         this.activateSelection();
     }
 
-    // Every back input (Backspace, Escape, gamepad back) plays the screen's
-    // bottom button when it has one — same press feedback and same action as
-    // a click on it.
+    // Every back input plays the bottom button when there is one, so it gets
+    // the same press feedback and action as a click.
     _goBack() {
         if (this._bottomButton !== null) {
             this._bottomButton.click();
             return;
         }
-        // A back routed through the bottom button plays its click feedback
-        // (menu/choose); only the button-less path carries the backup sound.
         doomSound.playUi('menu/backup');
         this._onBack();
     }
 
     // --- Internal ---
 
-    // Entering the row from the list lands on its last button — the rightmost
-    // one, the help the screen has always carried there.
+    // Entering the row from the list lands on its rightmost button.
     _focusSideFromList() {
         this._focusSideAt(this._sideButtons.length - 1);
     }
 
-    // Moves the highlight between the list and the side buttons: -1 leaves the
-    // row. The list keeps its index, only the visible highlight switches.
+    // -1 leaves the row. The list keeps its index, only the visible highlight
+    // switches.
     _focusSideAt(index) {
         if (index === this._sideIndex) {
             return;
@@ -411,15 +390,15 @@ class MenuListNavigation {
         }
     }
 
-    _focusBottom(on) {
-        if ((this._bottomButton === null) || (on === this._onBottom)) {
+    _focusBottom(focused) {
+        if ((this._bottomButton === null) || (focused === this._bottomFocused)) {
             return;
         }
-        this._onBottom = on;
-        this._bottomButton.classList.toggle('doom-menu-button-focus', on);
+        this._bottomFocused = focused;
+        this._bottomButton.classList.toggle('doom-menu-button-focus', focused);
         const entry = this._items[this._index];
         if (entry !== undefined) {
-            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), !on);
+            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), !focused);
         }
     }
 
@@ -504,13 +483,13 @@ class MenuListNavigation {
 
     _readPad() {
         if (!this._pad.isAvailable()) {
-            this._padSeen    = false;
-            this._padHeldDir = 0;
+            this._padSeen      = false;
+            this._padHeldY.dir = 0;
+            this._padHeldX.dir = 0;
             return;
         }
-        // While blocked (a modal owns the inputs) the button states keep
-        // tracking, so the press that closes the modal is not replayed here
-        // as a fresh edge once the block lifts.
+        // Button states keep tracking while blocked, so the press that closes
+        // a modal is not replayed as a fresh edge once the block lifts.
         if (this._isBlocked()) {
             this._padState.validate = this._pad.readButtonValidate();
             this._padState.back     = this._pad.readButtonBack();

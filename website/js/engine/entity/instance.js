@@ -13,7 +13,6 @@ class Instance extends AbstractLoadedEntity {
         this._delta             = { translate: [0, 0, 0], rotate: [0, 0, 0] };
         this._prevTransform     = null;
 
-        // Animation playback (keyframes-driven)
         this._animKeyframes      = [];
         // name → {keyframes, onlyOnce, loop?, blockedBehavior?,
         // blockedSlowFactor?, crushDamage?, nextDefaultVariant?}: per-trigger
@@ -38,7 +37,6 @@ class Instance extends AbstractLoadedEntity {
         // resumes the run as it was, instead of beginning a new one.
         this._animPaused         = false;
 
-        // Trigger / interaction (how the animation is activated)
         this._trigger                = 'none';
         this._interactionRadius      = null;
         // Shape of the proximity test around the radius: 'sphere' measures in
@@ -95,8 +93,8 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * Called with the new vertical direction (-1/0/+1) every time the keyframe
-     * animation starts moving, reverses, or comes to rest — plateaus included.
+     * Called with the new vertical direction (-1/0/+1) whenever the animation
+     * starts moving, reverses or comes to rest, plateaus included.
      *
      * @param {function} fn (dir) => void
      */
@@ -104,12 +102,8 @@ class Instance extends AbstractLoadedEntity {
         this._onMotionChange = fn;
     }
 
-    /**
-     * While muted, motion changes are neither tracked nor notified: a pressure
-     * stall pauses and resumes as if the mover had never stopped moving.
-     *
-     * @param {boolean} muted
-     */
+    // While muted, motion changes are neither tracked nor notified, so a
+    // pressure stall goes unnoticed.
     setMotionNotifyMuted(muted) {
         this._motionNotifyMuted = (muted === true);
         return this;
@@ -138,15 +132,11 @@ class Instance extends AbstractLoadedEntity {
         };
         this._applyCycle(null);
         this._computeWorldCenter();
-        // Timer-armed elements (e.g. Doom sector-special doors) play their
-        // cycle from level load, independently of the trigger.
         if (this._autoStart) {
             this.start();
         }
     }
 
-    // Re-point the instance at another already-loaded object (e.g. an animated
-    // effect stepping through its frame billboards). Re-resolves the center.
     setObject(objectId) {
         this._objectId = objectId;
         this._object   = loader.objects().get(objectId);
@@ -154,14 +144,11 @@ class Instance extends AbstractLoadedEntity {
         return this;
     }
 
-    // The moving floor this instance rides (null when grounded on static
-    // floor) — lets a spawned child inherit its parent's ride.
+    // null when standing on static floor
     getRideOn() {
         return this._rideOn;
     }
 
-    // Move the instance keeping its cached world centre in sync (the pattern
-    // of _syncRide, exposed for game-driven bodies: knockback, falls).
     translate(dx, dy, dz) {
         this._position[0]    += dx;
         this._position[1]    += dy;
@@ -169,9 +156,7 @@ class Instance extends AbstractLoadedEntity {
         this._worldCenter[0] += dx;
         this._worldCenter[1] += dy;
         this._worldCenter[2] += dz;
-        // A ridden instance re-expresses its base at the new Y (the setRideOn
-        // mid-travel invariant), so the next ride sync moves it by the floor's
-        // FUTURE delta only instead of snapping it back to the old altitude.
+        // Re-bases the ride at the new Y, or the next sync would snap it back
         if (this.getRideOn() !== null) {
             this.setRideOn(this._rideOn);
         }
@@ -186,19 +171,16 @@ class Instance extends AbstractLoadedEntity {
         this._worldCenter = [p[0], p[1], p[2]];
     }
 
-    // Opaque gates evaluated before a proximity/action trigger may fire (e.g. a
-    // locked door checking the player holds the key). The predicates are
-    // supplied by the game layer; the engine stays generic and ANDs them —
-    // several rules may guard one instance (key + crossing + side).
+    // Predicates ANDed before a proximity/action trigger may fire (a locked
+    // door checking the key)
     addTriggerCondition(fn) {
         this._triggerConditions.push(fn);
         return this;
     }
 
-    // Every predicate runs, whatever the ones before answered: a STATEFUL gate
-    // (a line-crossing sampler) must keep sampling even while another one
-    // refuses, or it reads a stale position the frame the refusal lifts.
-    _conditionMet(user) {
+    // No short-circuit: a stateful gate (line-crossing sampler) must keep
+    // sampling while another one refuses.
+    _conditionsMet(user) {
         let met = true;
         for (const fn of this._triggerConditions) {
             const ok = (fn(user) === true);
@@ -268,10 +250,8 @@ class Instance extends AbstractLoadedEntity {
         this._computeWorldCenter();
     }
 
-    // Plain-data snapshot of the mutable animation/transform state, restorable
-    // by importAnimState after a deterministic rebuild of the same scene. The
-    // ridden floor is referenced by its code (a reference would not survive
-    // serialization); the interpolation delta is derived, so it is not exported.
+    // Plain-data snapshot restorable by importAnimState after a deterministic
+    // rebuild of the same scene; the ridden floor is referenced by its code.
     exportAnimState() {
         return {
             position:       [...this._position],
@@ -292,37 +272,31 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * Counterpart of exportAnimState. The saved cycle is re-applied first (it
-     * swaps the timeline and its playback rules), then the raw fields overwrite
-     * it. The ride is restored directly — setRideOn() would recompute the base
-     * against the mover's CURRENT delta, while the saved base already matches
-     * the restored mover pose. The lifecycle hooks are replayed when the
-     * restored state says they already fired: their effects (e.g. a floor
-     * texture change) belong to the animation's progress, not to the freshly
-     * rebuilt scene.
+     * The ride is restored as saved: setRideOn() would re-base it on the mover's
+     * current delta. Lifecycle hooks that already fired are replayed, their
+     * effects (a floor texture change) being part of the progress.
      *
-     * @param {object} data
-     * @param {Instance|null} rideOnInstance resolved from data.rideOnCode by the caller
+     * @param {object} state from exportAnimState
+     * @param {Instance|null} rideOnInstance resolved from state.rideOnCode by the caller
      */
-    importAnimState(data, rideOnInstance = null) {
-        if (this._cycleOf(data.variant) !== null) {
-            this._applyCycle(data.variant);
+    importAnimState(state, rideOnInstance = null) {
+        if (this._cycleOf(state.variant) !== null) {
+            this._applyCycle(state.variant);
         }
-        // A default handed over by a completed cycle (nextDefaultVariant) is
-        // state, not derived — older saves without the field keep the loaded one.
-        this._animDefaultVariant = (data.defaultVariant ?? this._animDefaultVariant);
-        this._position         = [...data.position];
-        this._rotation         = [...data.rotation];
-        this._animTime         = data.time;
-        this._animPlaying      = data.playing;
-        this._animReverse      = data.reverse;
-        this._animReverseScale = data.reverseScale;
-        this._animStopTime     = (data.stopTime ?? null);
-        this._animPaused       = (data.paused ?? false);
-        this._animDone         = data.done;
-        this._rideOn           = rideOnInstance;
-        this._rideBaseY        = data.rideBaseY;
-        this._rideLastDy       = data.rideLastDy;
+        // Older saves lack the field and keep the loaded default
+        this._animDefaultVariant = (state.defaultVariant ?? this._animDefaultVariant);
+        this._position           = [...state.position];
+        this._rotation           = [...state.rotation];
+        this._animTime           = state.time;
+        this._animPlaying        = state.playing;
+        this._animReverse        = state.reverse;
+        this._animReverseScale   = state.reverseScale;
+        this._animStopTime       = (state.stopTime ?? null);
+        this._animPaused         = (state.paused ?? false);
+        this._animDone           = state.done;
+        this._rideOn             = rideOnInstance;
+        this._rideBaseY          = state.rideBaseY;
+        this._rideLastDy         = state.rideLastDy;
         this._computeWorldCenter();
 
         const firstT  = ((this._animKeyframes.length > 0) ? this._animKeyframes[0].t : 0);
@@ -356,10 +330,8 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
-    // Crush damage: dealt in windows of windowS seconds while the mover both
-    // presses the player AND moves (PIT_ChangeSector: 10 hp every 4 tics).
-    // The clock is primed to windowS on the pressing rising edge, so the
-    // first hit lands immediately.
+    // One hit per windowS while pressing AND moving (PIT_ChangeSector); the
+    // clock is primed on the pressing edge so the first hit is immediate.
     _crushDamageTick(user, dt) {
         if ((this._crushDamage === null) || (this._crushActive !== true) || user.isDead()) {
             return;
@@ -379,8 +351,7 @@ class Instance extends AbstractLoadedEntity {
         return this._blockedPressing;
     }
 
-    // A crush mover currently pressing the player is passable for him (the
-    // vanilla lateral escape): its walls/ceilings leave the player queries.
+    // Vanilla lateral escape: a pressing crusher is passable for the player
     isCrushPassable() {
         return ((this._blockedBehavior === 'crush') && (this._blockedPressing === true));
     }
@@ -400,12 +371,8 @@ class Instance extends AbstractLoadedEntity {
         this._crushActive = active;
     }
 
-    // Stand this instance on a moving floor instance: its Y (and derived world
-    // centre) follows the floor's animation delta each frame — a pickup on a
-    // lowering pillar rides down with it. The base is expressed at the
-    // floor's rest pose: an instance attached MID-TRAVEL (a decal shot on a
-    // moving platform) already contains the current delta in its position,
-    // and must not be shifted by it a second time on the next sync.
+    // Y then follows the floor's animation delta. The base is taken at the
+    // floor's rest pose, since a position set mid-travel already includes it.
     setRideOn(floorInstance) {
         const dy = floorInstance.getTransform().deltaTranslate[1];
 
@@ -431,14 +398,8 @@ class Instance extends AbstractLoadedEntity {
     }
 
     /**
-     * Fill the instance from its descriptor — the ONE place that knows the
-     * shape of an `.instance.json` (or of the equivalent object a runtime
-     * spawn hands over). It lives here rather than in the loader: the fields
-     * belong to the instance, and a loader poking them from outside would tie
-     * every future field to a second file.
-     *
-     * The time bounds are NOT derived here: finalizeInit installs the loaded
-     * cycle and computes them.
+     * Fill the instance from an `.instance.json` descriptor or a runtime spawn's
+     * equivalent. The time bounds are computed later by finalizeInit.
      *
      * @param {object} data {code, object (loader id or url), position, rotation,
      *                       trigger, loop, onlyOnce, collisionShape,
@@ -450,8 +411,7 @@ class Instance extends AbstractLoadedEntity {
      *                       defaultVariant}
      */
     populate(data) {
-        // Null, never undefined: runtime spawns (effects, projectiles, decals)
-        // omit the key, and every consumer tests the code against null.
+        // Runtime spawns omit the key; consumers test against null
         this.setCode(data.code ?? null);
         this._objectId                = ((typeof data.object === 'number') ? data.object : loader.objects().load(data.object));
         this._position                = data.position;
@@ -479,10 +439,10 @@ class Instance extends AbstractLoadedEntity {
         return this;
     }
 
-    // dt in ms, user must expose getCenterX/Y/Z() and getFeetY(), action = E key state
+    // dt in ms; action = use-button state
     update(dt, user, action) {
         this._syncRide();
-        if (this._animKeyframes.length === 0 && this._interaction === null) {
+        if ((this._animKeyframes.length === 0) && (this._interaction === null)) {
             return;
         }
         // A done cycle still listens when a variant can follow it (start() accepts one).
@@ -528,16 +488,13 @@ class Instance extends AbstractLoadedEntity {
         this._noteMotionDir(((!this._animPlaying || (Math.abs(dy) <= Instance.MOTION_EPSILON)) ? 0 : Math.sign(dy)));
     }
 
-    // A once-only trigger that already fired (or was force-stopped) is spent
-    // for every actor — game code syncing its own crossing bookkeeping.
+    // A once-only trigger that already fired is spent for every actor
     isTriggerSpent() {
         return this._animDone;
     }
 
-    // Purely visual position offset consumed at DRAW time only (the physics
-    // body never moves): game code smoothing stepped logical motion — actors
-    // advancing by teleport-steps at a fixed tick rate — hands the shrinking
-    // gap to the renderer here. Null when unused (zero cost).
+    // Draw-time position offset (the physics body stays put), used to smooth
+    // tick-stepped motion
     setRenderOffset(dx, dy, dz) {
         this._renderOffset = [dx, dy, dz];
     }
@@ -546,9 +503,7 @@ class Instance extends AbstractLoadedEntity {
         this._renderOffset = null;
     }
 
-    // Upper bound of how far the render offset can push the drawn body away
-    // from its world centre — the frustum test widens its sphere by it instead
-    // of trying to place the offset centre exactly.
+    // Widens the frustum-test sphere rather than moving its centre
     getRenderOffsetBound() {
         if (this._renderOffset === null) {
             return 0;
@@ -557,9 +512,8 @@ class Instance extends AbstractLoadedEntity {
         return Math.sqrt(o[0]*o[0] + o[1]*o[1] + o[2]*o[2]);
     }
 
-    // Light multiplier consumed at DRAW time only (1 = baked colours
-    // untouched): two instances sharing one object may be lit differently, so
-    // a moving body can follow the lighting of the area it crosses.
+    // Draw-time light multiplier (1 = baked colours), so instances sharing an
+    // object can be lit differently
     setRenderLight(factor) {
         this._renderLight = factor;
     }
@@ -568,9 +522,7 @@ class Instance extends AbstractLoadedEntity {
         return this._renderLight;
     }
 
-    // Spin consumed at DRAW time only, in radians, and meaningful to the
-    // camera-facing bodies alone: a billboard turns by it in its own plane, so
-    // two instances of one sprite can face different ways. 0 = upright.
+    // Draw-time billboard spin in its own plane, in radians (0 = upright)
     setRenderRoll(radians) {
         this._renderRoll = radians;
     }
@@ -579,10 +531,7 @@ class Instance extends AbstractLoadedEntity {
         return this._renderRoll;
     }
 
-    // How far the roll can push the drawn body out of the bounding sphere its
-    // object reports: that sphere is centred on the body's UNROLLED centre,
-    // while a roll turns it around the entity origin instead. Zero cost while
-    // the body stands upright, like the render offset's own bound.
+    // The roll turns the body around its origin, not its bounding-sphere centre
     getRenderRollBound() {
         if (this._renderRoll === 0) {
             return 0;
@@ -609,13 +558,10 @@ class Instance extends AbstractLoadedEntity {
         };
     }
 
-    // Fire this trigger zone programmatically for a non-player actor (game
-    // code detecting its own crossings): same consumption path as the player
-    // proximity check — start(), notify the interaction, and a zero-keyframe
-    // zone stops immediately, so a once-only line is consumed for everyone.
-    // No-op on a spent or busy zone. Returns true when it fired.
+    // Fires the zone for a non-player actor, consuming it like the player path.
+    // Returns true when it fired (never on a spent or busy zone).
     fireZoneTrigger() {
-        if (this._trigger === 'none' || this._animDone || this._animPlaying) {
+        if ((this._trigger === 'none') || this._animDone || this._animPlaying) {
             return false;
         }
         this.start();
@@ -626,9 +572,7 @@ class Instance extends AbstractLoadedEntity {
         return true;
     }
 
-    // Interaction hand-off of a trigger that just started: a zone with no
-    // keyframes stops right away (its once-only flag consumes it). Shared by
-    // the player proximity path and fireZoneTrigger.
+    // A zone with no keyframes stops right away, so its once-only flag spends it
     _notifyTriggered() {
         if (this._interaction === null) {
             return false;
@@ -641,11 +585,8 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
-    // Reach of a proximity/action trigger, per interaction shape. A cylinder
-    // keeps the two axes apart: the vertical window is measured from this
-    // instance's live base (so a body riding a lift follows it) to the user's
-    // feet, and the radius stays a plain ground footprint — where a sphere lets
-    // a tall target eat into the horizontal reach.
+    // A cylinder measures its vertical window from the live base to the user's
+    // feet, so a tall target does not eat into the horizontal reach.
     _inInteractionRange(user) {
         const dx    = user.getCenterX() - this._worldCenter[0];
         const dz    = user.getCenterZ() - this._worldCenter[2];
@@ -664,7 +605,7 @@ class Instance extends AbstractLoadedEntity {
     }
 
     _checkTrigger(user, action) {
-        if (this._trigger === 'none' || this._animPlaying) {
+        if ((this._trigger === 'none') || this._animPlaying) {
             return false;
         }
 
@@ -675,15 +616,14 @@ class Instance extends AbstractLoadedEntity {
                 this.start();
                 break;
             case 'proximity':
-                if (inRange && this._conditionMet(user)) {
+                if (inRange && this._conditionsMet(user)) {
                     this.start();
                 }
                 break;
             case 'action':
                 if (inRange && action) {
-                    // Reported either way: a refused press (locked door) is a
-                    // use failure the world voices at the end of the frame.
-                    const accepted = this._conditionMet(user);
+                    // Reported either way: a refused press is a use failure
+                    const accepted = this._conditionsMet(user);
                     user.noteUseTarget(accepted);
                     if (accepted) {
                         this.start();
@@ -699,20 +639,15 @@ class Instance extends AbstractLoadedEntity {
         return false;
     }
 
-    // variant: name of the cycle to play (keyframeVariants of the loaded
-    // data), null = the default one — the crossed line's special picks it
-    // (a door tag mixing open-stay and close-wait-open lines).
-    // Returns whether the trigger was taken (false while busy, or when the cycle
-    // cannot start from the current pose): a switch only spends itself on a
-    // taken action. A finished one-way re-triggered on its cycle counts as taken.
+    // variant: a keyframeVariants name, null = the default cycle. Returns whether
+    // the trigger was taken: false while busy or when the cycle cannot start
+    // from the current pose (a switch only spends itself on a taken action).
     start(variant = null) {
         if (this._animPlaying) {
             return false;
         }
-        // A cycle paused mid-travel (stop line, vanilla stasis) resumes as-is
-        // whatever the trigger asks for: P_ActivateInStasis re-awakens the
-        // parked thinker, it never re-reads the activating line's action — the
-        // parked run's own stop time is kept for the same reason.
+        // P_ActivateInStasis: a parked cycle resumes as-is, whatever the trigger
+        // asks for, stop time included.
         if (this._isPausedMidCycle()) {
             this._animPaused  = false;
             this._animPlaying = true;
@@ -722,11 +657,8 @@ class Instance extends AbstractLoadedEntity {
             return true;
         }
         this._animStopTime = null;
-        // Another cycle is a NEW cycle, not the re-trigger of a spent one
-        // (vanilla spawns a fresh thinker), so a done animation accepts it.
-        // One trigger key is broadcast to every tagged target whatever its
-        // family: a key this instance does not declare falls back to its
-        // default cycle, exactly like a null-variant trigger.
+        // Another cycle is a fresh thinker, so a done animation accepts it. An
+        // undeclared key falls back to the default cycle (keys are broadcast).
         let wanted = (variant ?? this._animDefaultVariant);
         let cycle  = this._cycleOf(wanted);
         if ((wanted !== null) && (cycle === null)) {
@@ -734,23 +666,19 @@ class Instance extends AbstractLoadedEntity {
             cycle  = this._cycleOf(wanted);
         }
         const switching = ((wanted !== this._animActiveVariant) && (cycle !== null));
-        // Re-triggering a done one-way is a vanilla no-op, and it would reset
-        // the time while _animDone still blocks update() — a zombie state that
-        // also locks out startReverse().
+        // Vanilla no-op; resetting the time here would leave a stuck state
         if (this._animDone && !switching) {
             return true;
         }
         if (switching) {
-            // A cycle plays from its first keyframe, so the body must already
-            // sit there: a closing cycle rests OPEN, an opening one CLOSED, and
-            // applying either from the wrong pose teleports the panel.
+            // Applied from another pose than its first keyframe, it would teleport
             if (!this._poseIsCycleStart(wanted)) {
                 return false;
             }
             this._applyCycle(wanted);
         }
         this._animPlaying = true;
-        if (this._animKeyframes.length > 0 && this._animTime >= this._animMaxTime) {
+        if ((this._animKeyframes.length > 0) && (this._animTime >= this._animMaxTime)) {
             this._animTime = this._animKeyframes[0].t;
         }
         if (this._onStart !== null) {
@@ -760,11 +688,8 @@ class Instance extends AbstractLoadedEntity {
         return true;
     }
 
-    // start() that pauses once the forward timeline has raised the body by
-    // `dy` (world units) from its rest pose: a mover driven to a target
-    // resolved at trigger time. Same contract as start(): false only while
-    // busy; a target already reached is taken with nothing to do. A run
-    // parked mid-travel resumes toward its own target (see start()).
+    // start() that pauses once the body has risen `dy` world units from rest.
+    // A target already reached counts as taken.
     startUntilVerticalDelta(dy, variant = null) {
         if (this._animPlaying) {
             return false;
@@ -784,8 +709,7 @@ class Instance extends AbstractLoadedEntity {
         return taken;
     }
 
-    // First time of the forward timeline where the vertical delta reaches dy:
-    // null when the timeline never gets there (the run then plays to its end).
+    // null when the timeline never gets there
     _timeAtVerticalDelta(dy) {
         const kf = this._animKeyframes;
         if ((kf.length === 0) || (dy <= kf[0].translate[1])) {
@@ -846,9 +770,7 @@ class Instance extends AbstractLoadedEntity {
         return true;
     }
 
-    // Freezes the animation in place (Doom EV_StopPlat stasis): keeps the
-    // current time and direction so a later start() resumes exactly where it
-    // stopped. Harmless on an instance that is not playing.
+    // EV_StopPlat stasis: a later start() resumes where it stopped
     pause() {
         this._animPaused  = (this._animPlaying && (this._animKeyframes.length > 0)
             && (this._animTime > this._animKeyframes[0].t) && (this._animTime < this._animMaxTime));
@@ -856,16 +778,11 @@ class Instance extends AbstractLoadedEntity {
         this._noteMotionDir(0);
     }
 
-    // Replay the keyframes backward from the current position. No-op while
-    // playing or when already back at the first keyframe. Clears _animDone so
-    // a finished one-way animation can be walked back; reaching the origin
-    // re-arms start() (the element is genuinely at rest again). timeScale
-    // slows (< 1) or speeds up the reverse playback relative to the forward
-    // timeline — a floor lowered at turbo speed may legally rise back at the
-    // (slower) speed of the raise special that reverses it.
-    // Same contract as start(): false only while busy.
+    // Plays the keyframes backward, even on a finished one-way. timeScale lets
+    // the return run at another speed (a turbo lower reversed by a slow raise).
+    // Returns false only while busy.
     startReverse(timeScale = 1) {
-        if (this._animPlaying || this._animKeyframes.length === 0) {
+        if (this._animPlaying || (this._animKeyframes.length === 0)) {
             return false;
         }
         if (this._animTime <= this._animKeyframes[0].t) {
@@ -881,11 +798,8 @@ class Instance extends AbstractLoadedEntity {
         return true;
     }
 
-    // Mover pressing the player with blockedBehavior 'reverse': head back the
-    // other way (vanilla T_VerticalDoor going back up, T_PlatRaise going back
-    // down). Already reversing (the re-close is the opening segment replayed
-    // backward): flip forward again — full reopening then the normal cycle.
-    // Otherwise the pause()+startReverse() pattern lifts the playing guard.
+    // blockedBehavior 'reverse' (T_VerticalDoor, T_PlatRaise): a reversing
+    // mover flips forward again, a forward one starts reversing.
     reverseBlocked() {
         if (!this._animPlaying) {
             return;
@@ -927,14 +841,14 @@ class Instance extends AbstractLoadedEntity {
         let k0 = this._animKeyframes[0];
         let k1 = this._animKeyframes[this._animKeyframes.length - 1];
         for (let i = 0; i < this._animKeyframes.length - 1; i++) {
-            if (this._animTime >= this._animKeyframes[i].t && this._animTime <= this._animKeyframes[i + 1].t) {
+            if ((this._animTime >= this._animKeyframes[i].t) && (this._animTime <= this._animKeyframes[i + 1].t)) {
                 k0 = this._animKeyframes[i];
                 k1 = this._animKeyframes[i + 1];
                 break;
             }
         }
 
-        if (k0 === k1 || k1.t === k0.t) {
+        if ((k0 === k1) || (k1.t === k0.t)) {
             return {translate: [...k0.translate], rotate: [...k0.rotate]};
         }
 
@@ -954,8 +868,7 @@ class Instance extends AbstractLoadedEntity {
         };
     }
 
-    // World Y travelled from the rest pose: animation delta plus any ride or
-    // game-driven move of the position (texture anchoring of faces).
+    // Animation delta plus any ride or game-driven move since load
     getVerticalShift() {
         return (this._position[1] - this._restY) + this._delta.translate[1];
     }

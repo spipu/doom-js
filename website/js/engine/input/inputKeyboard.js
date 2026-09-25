@@ -3,10 +3,8 @@ let InputKeyboard_private = null;
 class InputKeyboard {
     // Default binding of each game action: ONE physical key code per action
     // (layout independent: WASD = ZQSD on AZERTY), '' = unmapped.
-    // ⚠️ Crouch on left Ctrl: held with the key printing 'q' (strafe left on
-    // AZERTY, fire on QWERTY) it QUITS Firefox — a browser-privileged
-    // shortcut no page JS can cancel; the dev Playwright profile disables
-    // it, players may rebind.
+    // Trap: crouch (left Ctrl) held with the key printing 'q' QUITS Firefox, a
+    // shortcut no page JS can cancel (the dev Playwright profile disables it).
     static get DEFAULT_MAPPING() {
         return {
             forward:     'KeyW',
@@ -43,10 +41,8 @@ class InputKeyboard {
 
         document.addEventListener('keydown', (e) => {
             this._keys.add(e.code);
-            // Suppress the interceptable browser shortcuts (Ctrl+S/D/F…) while
-            // playing — but never inside a text field (menu URL paste).
-            // Ctrl+Q/Ctrl+W are browser-privileged: they CANNOT be cancelled
-            // from page JS (see the DEFAULT_MAPPING warning).
+            // Browser shortcuts (Ctrl+S/D/F…) are cancelled outside text fields;
+            // Ctrl+Q/Ctrl+W are privileged and cannot be.
             const typing = ((e.target instanceof HTMLInputElement) || (e.target instanceof HTMLTextAreaElement));
             if (e.ctrlKey && !typing && (e.code.startsWith('Key') || e.code.startsWith('Digit'))) {
                 e.preventDefault();

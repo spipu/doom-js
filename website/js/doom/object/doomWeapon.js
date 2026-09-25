@@ -4,11 +4,11 @@
  * DoomUser.
  */
 class DoomWeapon extends AbstractDoomObject {
-    constructor(data) {
-        super(data, false);
-        this._ammoType = data.ammoType ?? null;
-        this._perShot  = data.perShot ?? 0;
-        this._damage   = data.damage ?? 0;
+    constructor(definition) {
+        super(definition, false);
+        this._ammoType = definition.ammoType ?? null;
+        this._perShot  = definition.perShot ?? 0;
+        this._damage   = definition.damage ?? 0;
     }
 
     getAmmoType() {

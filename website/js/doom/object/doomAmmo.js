@@ -8,12 +8,12 @@
  * per type on DoomUser (shared pool across weapons).
  */
 class DoomAmmo extends AbstractDoomObject {
-    constructor(data) {
-        super(data, false);
-        this._maxNormal = data.maxNormal ?? 0;
-        this._maxPack   = data.maxPack ?? 0;
-        this._clip      = data.clip ?? 0;
-        this._packGive  = data.packGive ?? this._clip;
+    constructor(definition) {
+        super(definition, false);
+        this._maxNormal = definition.maxNormal ?? 0;
+        this._maxPack   = definition.maxPack ?? 0;
+        this._clip      = definition.clip ?? 0;
+        this._packGive  = definition.packGive ?? this._clip;
     }
 
     getMaxNormal() {

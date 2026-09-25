@@ -1,9 +1,7 @@
 /**
  * Map patch catalogs of the games (UZDoom's LevelCompatibility transcribed,
- * see website/assets/uzdoom/), fetched at startup like the finale texts and
- * keyed by the SHA-256 of a map's own lumps (WadFile.mapChecksum): a map is
- * recognised whatever WAD carries it. A catalog that fails to load leaves its
- * maps unpatched.
+ * see website/assets/uzdoom/), keyed by the SHA-256 of a map's own lumps
+ * (WadFile.mapChecksum) so a map is recognised whatever WAD carries it.
  */
 class DoomLevelPatches {
     constructor() {
@@ -37,5 +35,4 @@ class DoomLevelPatches {
     }
 }
 
-// Global instance (loaded once from doom/main.js), like doomFinaleTexts.
 const doomLevelPatches = new DoomLevelPatches();

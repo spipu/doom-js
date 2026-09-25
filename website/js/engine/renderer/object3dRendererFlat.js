@@ -41,8 +41,8 @@ class Object3dRendererFlat extends Object3dRendererBase {
         const r     = Math.trunc(col[0] * light);
         const g     = Math.trunc(col[1] * light);
         const b     = Math.trunc(col[2] * light);
-        const key = (r << 16) | (g << 8) | b;
-        const id  = this._styleSlot(key);
+        const key   = (r << 16) | (g << 8) | b;
+        const id    = this._styleSlot(key);
         if (id !== -1) {
             return id;
         }

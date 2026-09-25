@@ -1,9 +1,7 @@
 /**
- * One reading of a body, whoever it is: the player (a DoomUser) or a monster
- * (a DoomMonsterSystem record). Every attack rule of the original is written
- * against `AActor`, which both of them are there — melee reach, missile aim,
- * damage, retargeting. Without this adapter each of those rules would have to
- * be written twice, and the infighting could never share the player's code.
+ * Uniform read access to a body, either the player (a DoomUser) or a monster
+ * (a DoomMonsterSystem record): the original writes every attack rule against
+ * `AActor`, so melee reach, aim, damage and retargeting are written once here.
  *
  * A monster record is recognised by its engine instance; anything else is the
  * player. Distances come back in WORLD units, like the collision layer.
@@ -25,7 +23,6 @@ class DoomActorRef {
         return ((DoomActorRef.isPlayer(ref)) ? ref.z : ref.inst.getTransform().position[2]);
     }
 
-    // Feet altitude — the actor origin in both worlds.
     static feetY(ref) {
         return ((DoomActorRef.isPlayer(ref)) ? ref.y : ref.inst.getTransform().position[1]);
     }
@@ -55,9 +52,8 @@ class DoomActorRef {
         return ((DoomActorRef.isPlayer(ref)) ? ref.isDead() : (ref.dead === true));
     }
 
-    // Heading in DOOM degrees (0 = east), the space every attack angle of the
-    // sources is written in — the player's engine yaw is converted, a monster
-    // already stores it that way.
+    // Heading in DOOM degrees (0 = east), the space of every attack angle of
+    // the sources; a monster already stores it that way.
     static facing(ref) {
         return ((DoomActorRef.isPlayer(ref)) ? WadGeometry.doomAngleYaw(ref.yaw) : ref.facing);
     }
@@ -117,8 +113,6 @@ class DoomActorRef {
         return ((DoomActorRef.isPlayer(ref)) ? null : ref.def.getCode());
     }
 
-    // Squared 2D distance between two bodies (world units) — the shape every
-    // range test wants, none of them needing the square root.
     static distance2dSq(a, b) {
         const dx = DoomActorRef.x(a) - DoomActorRef.x(b);
         const dz = DoomActorRef.z(a) - DoomActorRef.z(b);

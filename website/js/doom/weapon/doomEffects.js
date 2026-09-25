@@ -10,11 +10,11 @@
  */
 class DoomEffects {
     constructor(spriteBank, rng, profile) {
-        this._rng       = rng;
-        this._active    = [];
-        this._acc       = 0;
-        this._collision = null;
-        this._templates = this._buildTemplates(spriteBank, profile);
+        this._rng        = rng;
+        this._active     = [];
+        this._untickedMs = 0;
+        this._collision  = null;
+        this._templates  = this._buildTemplates(spriteBank, profile);
     }
 
     /**
@@ -143,8 +143,7 @@ class DoomEffects {
         return frames;
     }
 
-    // Weapon puff at a world impact point; the template is per-weapon def data,
-    // a melee hit starts at the template's meleeStart frame.
+    // A melee hit starts at the template's meleeStart frame.
     spawnPuff(name, x, y, z, melee) {
         const tpl = this._templates[name];
         if ((tpl === null) || (tpl === undefined)) {
@@ -153,10 +152,10 @@ class DoomEffects {
         this.spawn(name, x, y, z, {startFrame: ((melee) ? tpl.meleeStart : 0)});
     }
 
-    // EV_Teleport fog pair: one at the old spot, one TELEPORT_FOG_AHEAD units
-    // ahead of the arrival — world-forward of a Doom angle is (cos, sin) — so
-    // it is not hidden in the teleported body.
     /**
+     * EV_Teleport fog pair: the arrival fog stands TELEPORT_FOG_AHEAD units
+     * ahead so the teleported body does not hide it.
+     *
      * @param {boolean} silent skips the teleport ring — an actor carrying its
      *                  own teleport voice (D'Sparil's zap) keeps the fogs only
      */
@@ -201,10 +200,10 @@ class DoomEffects {
         // the game's table keeps the vanilla sequence.
         const facing     = (((opts.mirror === true) && (tpl.mirrored !== null)) ? tpl.mirrored : tpl);
         const startFrame = (opts.startFrame ?? 0);
-        const jz = ((tpl.rise > 0) ? (this._rng.next() - this._rng.next()) / 4096 : 0);  // puff z-rand
+        const jitterY    = ((tpl.rise > 0) ? (this._rng.next() - this._rng.next()) / 4096 : 0);
         const instId = loader.instances().spawnFromData(null, {
             object:         facing.frames[startFrame].objId,
-            position:       [x, y + tpl.spawnHeight + jz, z],
+            position:       [x, y + tpl.spawnHeight + jitterY, z],
             rotation:       [0, 0, 0],
             trigger:        'none',
             loop:           false,
@@ -275,39 +274,39 @@ class DoomEffects {
         if (this._active.length === 0) {
             return;
         }
-        this._acc += dtMs;
-        while (this._acc >= DoomEffects.MS_PER_TIC) {
-            this._acc -= DoomEffects.MS_PER_TIC;
+        this._untickedMs += dtMs;
+        while (this._untickedMs >= DoomEffects.MS_PER_TIC) {
+            this._untickedMs -= DoomEffects.MS_PER_TIC;
             this._stepTic();
         }
     }
 
     _stepTic() {
         const kept = [];
-        for (const p of this._active) {
-            const inst = loader.instances().get(p.instId);
+        for (const effect of this._active) {
+            const inst = loader.instances().get(effect.instId);
             if (inst === undefined) {
                 continue;
             }
-            p.elapsed += 1;
-            const frame = this._frameAt(p);
-            if (frame >= p.frames.length) {
+            effect.elapsed += 1;
+            const frame = this._frameAt(effect);
+            if (frame >= effect.frames.length) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
             }
-            if (frame !== p.shown) {
-                inst.setObject(p.frames[frame].objId);
-                p.shown = frame;
+            if (frame !== effect.shown) {
+                inst.setObject(effect.frames[frame].objId);
+                effect.shown = frame;
             }
-            this._drift(p, inst);
-            if (p.follow !== null) {
-                const at  = DoomActorRef.aheadOf(p.follow.ref, p.follow.ahead);
+            this._drift(effect, inst);
+            if (effect.follow !== null) {
+                const at  = DoomActorRef.aheadOf(effect.follow.ref, effect.follow.ahead);
                 const pos = inst.getTransform().position;
                 pos[0] = at[0];
-                pos[1] = at[1] + p.tpl.spawnHeight;
+                pos[1] = at[1] + effect.tpl.spawnHeight;
                 pos[2] = at[2];
             }
-            kept.push(p);
+            kept.push(effect);
         }
         this._active = kept;
     }
@@ -315,56 +314,50 @@ class DoomEffects {
     // Per-tic displacement (momz, map units/tic) of a drifting effect: the
     // upward rise every template may carry, and the sideways throw a spawn may
     // have been given. A landed one holds still on its final frames.
-    _drift(p, inst) {
-        if (p.landed || !p.drifts) {
+    _drift(effect, inst) {
+        if (effect.landed || !effect.drifts) {
             return;
         }
         const scale = WadConstants.SCALE;
         const fromY = inst.getTransform().position[1];
-        inst.translate(p.vx * scale, p.vy * scale, p.vz * scale);
-        if (p.tpl.gravity > 0) {
-            p.vy -= p.tpl.gravity;
+        inst.translate(effect.vx * scale, effect.vy * scale, effect.vz * scale);
+        if (effect.tpl.gravity > 0) {
+            effect.vy -= effect.tpl.gravity;
         }
-        if ((p.tpl.landing !== null) && (this._collision !== null)) {
-            this._land(p, inst, fromY);
+        if ((effect.tpl.landing !== null) && (this._collision !== null)) {
+            this._land(effect, inst, fromY);
         }
     }
 
-    // Reaching the floor clamps the effect onto it and hands the animation
-    // over to the landing timeline, from its first frame. Tested AFTER the
-    // move, so a chunk thrown up out of its own surface does not land on the
-    // tic it was born; the search is capped at the height it comes FROM, which
-    // is the whole interval it just crossed — capped at where it arrives, a
-    // tic long enough to overshoot the floor would leave it above the cap and
-    // the chunk would fall through.
-    _land(p, inst, fromY) {
+    // Tested AFTER the move so a chunk thrown out of its surface does not land
+    // at birth; the floor search is capped at the height it comes FROM, or a
+    // tic overshooting the floor would let it fall through.
+    _land(effect, inst, fromY) {
         const pos    = inst.getTransform().position;
         const floorY = this._collision.getFloor(pos[0], pos[2], 0, Math.max(fromY, pos[1]));
         if ((floorY === -Infinity) || (pos[1] > floorY)) {
             return;
         }
         inst.translate(0, floorY - pos[1], 0);
-        p.landed    = true;
-        p.frames    = p.facing.landing.frames;
-        p.frameTics = p.facing.landing.frameTics;
-        p.start     = 0;
-        p.elapsed   = 0;
-        p.shown     = 0;
-        inst.setObject(p.frames[0].objId);
+        effect.landed    = true;
+        effect.frames    = effect.facing.landing.frames;
+        effect.frameTics = effect.facing.landing.frameTics;
+        effect.start     = 0;
+        effect.elapsed   = 0;
+        effect.shown     = 0;
+        inst.setObject(effect.frames[0].objId);
     }
 
-    // Current frame index for an effect that has run `elapsed` tics from `start`
-    // of its timeline, walking the per-frame durations; returns the frame count
-    // once finished.
-    _frameAt(p) {
+    // Returns the frame count once the timeline is finished.
+    _frameAt(effect) {
         let acc = 0;
-        for (let i = p.start; i < p.frames.length; i++) {
-            acc += p.frameTics[i];
-            if (p.elapsed < acc) {
+        for (let i = effect.start; i < effect.frames.length; i++) {
+            acc += effect.frameTics[i];
+            if (effect.elapsed < acc) {
                 return i;
             }
         }
-        return p.frames.length;
+        return effect.frames.length;
     }
 }
 

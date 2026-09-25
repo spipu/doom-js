@@ -1,24 +1,23 @@
 class Object3dRendererWebGL extends Object3dRendererBase {
     constructor() {
         super();
-        this._program  = null;
-        this._vbo      = null;
-        this._texCache = new WeakMap();
-        this._groupCache = new WeakMap();      // obj → {version, groups}: draw-state partition, see _groupsFor
-        this._vertexData = new Float32Array(0); // grown on demand, never reallocated per frame
-        this._texList   = [];       // every uploaded texture, to re-filter them on a smoothing toggle
-        this._smoothing = null;     // filter currently applied to them (null = not applied yet)
-        this._loc      = {};
-        this._skyProgram = null;   // dedicated full-screen sky program (lazy)
-        this._skyVbo     = null;
-        this._skyLoc     = {};
-        this._overlayProgram = null;   // dedicated screen-space overlay-sprite program (lazy)
-        this._overlayVbo     = null;
-        this._overlayLoc     = {};
-        // Neutral depth-shading parameters (engine.depthShading === null):
-        // every term zeroes out so the attenuation is exactly 1.0 — rampCount
-        // stays non-zero because the shader divides by it.
-        this._dsNeutral = {visibility: 0.0, visibilityMax: 0.0, shadeBase: 0.0, shadeScale: 0.0, rampCount: 32.0, strength: 0.0};
+        this._program          = null;
+        this._vbo              = null;
+        this._texCache         = new WeakMap();
+        this._groupCache       = new WeakMap();       // obj → {version, groups}: draw-state partition, see _groupsFor
+        this._vertexData       = new Float32Array(0); // grown on demand, never reallocated per frame
+        this._uploadedTextures = [];                  // to re-filter them on a smoothing toggle
+        this._appliedSmoothing = null;                // null = no filter applied yet
+        this._loc              = {};
+        this._skyProgram       = null;                // built on the first sky frame
+        this._skyVbo           = null;
+        this._skyLoc           = {};
+        this._overlayProgram   = null;                // built on the first screen sprite
+        this._overlayVbo       = null;
+        this._overlayLoc       = {};
+        // Attenuation exactly 1.0; rampCount stays non-zero because the shader
+        // divides by it.
+        this._neutralDepthShading = {visibility: 0.0, visibilityMax: 0.0, shadeBase: 0.0, shadeScale: 0.0, rampCount: 32.0, strength: 0.0};
     }
 
     get code() {
@@ -39,7 +38,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     }
 
     initCanvas(canvas) {
-        const ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        const ctx = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
         if (!ctx) {
             throw new Error('WebGL not available');
         }
@@ -245,11 +244,10 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         this._overlayVbo = gl.createBuffer();
     }
 
-    // Compile + link a vertex/fragment program (shared by every pass).
     _linkProgram(gl, vsSrc, fsSrc) {
         const program = gl.createProgram();
-        gl.attachShader(program, this._compile(gl, gl.VERTEX_SHADER, vsSrc));
-        gl.attachShader(program, this._compile(gl, gl.FRAGMENT_SHADER, fsSrc));
+        gl.attachShader(program, this._compileShader(gl, gl.VERTEX_SHADER, vsSrc));
+        gl.attachShader(program, this._compileShader(gl, gl.FRAGMENT_SHADER, fsSrc));
         gl.linkProgram(program);
         return program;
     }
@@ -270,22 +268,20 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer.getNear());
         gl.uniform1f(loc.far,  engine.zBuffer.getFar());
 
-        // Depth shading curve — read every draw so a toggle applies instantly.
-        // An active light override (> 0) floors every face's light in the
-        // shader AND bypasses the curve (a fullbright scene has no distance
-        // attenuation).
-        const ov = ((((engine.lightOverride ?? 0) > 0)) ? engine.lightOverride : null);
-        const ds = (((engine.depthShading !== null) && (ov === null)) ? engine.depthShading : this._dsNeutral);
-        gl.uniform1f(loc.dsVis,      ds.visibility);
-        gl.uniform1f(loc.dsVisMax,   ds.visibilityMax);
-        gl.uniform1f(loc.dsBase,     ds.shadeBase);
-        gl.uniform1f(loc.dsScale,    ds.shadeScale);
-        gl.uniform1f(loc.dsRamp,     ds.rampCount);
-        gl.uniform1f(loc.dsStrength, ds.strength);
+        // An active light override also bypasses the depth curve: a fullbright
+        // scene has no distance attenuation.
+        const lightOverride = ((((engine.lightOverride ?? 0) > 0)) ? engine.lightOverride : null);
+        const shading = (((engine.depthShading !== null) && (lightOverride === null)) ? engine.depthShading : this._neutralDepthShading);
+        gl.uniform1f(loc.dsVis,      shading.visibility);
+        gl.uniform1f(loc.dsVisMax,   shading.visibilityMax);
+        gl.uniform1f(loc.dsBase,     shading.shadeBase);
+        gl.uniform1f(loc.dsScale,    shading.shadeScale);
+        gl.uniform1f(loc.dsRamp,     shading.rampCount);
+        gl.uniform1f(loc.dsStrength, shading.strength);
 
         for (const group of this._groupsFor(obj)) {
-            const data = this._ensureVertexData(group.faces.length * 3 * 9);
-            let di = 0;
+            const vertices = this._ensureVertexData(group.faces.length * 3 * 9);
+            let floatCount = 0;
             for (const k of group.faces) {
                 const fc  = obj.faceList[k];
                 // Back-face culling lives here rather than in the grouping: the
@@ -294,28 +290,26 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 if (this._isBackFace(fc.normal, obj.pt3d[fc.pts[0]])) {
                     continue;
                 }
-                // Scroll and anchor offsets baked into the per-frame VBO: the fract() wrap in the
-                // fragment shader absorbs the (already wrapped) offset.
-                const scroll = this._uvOffset(fc, engine.sceneMs);
-                const lf     = obj.getFaceLightFactor(fc) * engine.instanceLight;
-                // Light level (0..1) fed to the depth shading curve: max of the
-                // face colour (before the ambient of _pointColor) times the live
-                // light factor. Untextured face colours are 0..255.
-                const fcMax   = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
-                const fcLight = Math.min(1.0, ((group.texId !== null) ? fcMax : fcMax / 255.0) * lf);
+                // The fract() wrap in the fragment shader absorbs the (already
+                // wrapped) scroll offset baked in here.
+                const scroll      = this._uvOffset(fc, engine.sceneMs);
+                const lightFactor = obj.getFaceLightFactor(fc) * engine.instanceLight;
+                // Depth-curve light level (0..1), taken before the ambient of
+                // _pointColor. Untextured face colours are 0..255.
+                const colorMax  = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
+                const faceLight = Math.min(1.0, ((group.texId !== null) ? colorMax : colorMax / 255.0) * lightFactor);
                 for (let v = 0; v < 3; v++) {
                     const ptIdx = fc.pts[v];
-                    const pt  = obj.pt3d[ptIdx];
-                    const col = this._pointColor(engine, fc.color, pt, fc.normal);
-                    const uv  = ((fc.map) ? fc.map[v] : [0, 0]);
-                    data[di++] = pt[0];  data[di++] = pt[1];  data[di++] = pt[2];
-                    data[di++] = col[0] * lf; data[di++] = col[1] * lf; data[di++] = col[2] * lf;
-                    data[di++] = uv[0] + scroll[0];  data[di++] = uv[1] + scroll[1];
-                    data[di++] = fcLight;
+                    const pt    = obj.pt3d[ptIdx];
+                    const col   = this._pointColor(engine, fc.color, pt, fc.normal);
+                    const uv    = ((fc.map) ? fc.map[v] : [0, 0]);
+                    vertices[floatCount++] = pt[0];  vertices[floatCount++] = pt[1];  vertices[floatCount++] = pt[2];
+                    vertices[floatCount++] = col[0] * lightFactor; vertices[floatCount++] = col[1] * lightFactor; vertices[floatCount++] = col[2] * lightFactor;
+                    vertices[floatCount++] = uv[0] + scroll[0];  vertices[floatCount++] = uv[1] + scroll[1];
+                    vertices[floatCount++] = faceLight;
                 }
             }
-            // Every face of the group turned away: nothing to upload or draw.
-            if (di === 0) {
+            if (floatCount === 0) {
                 continue;
             }
 
@@ -334,7 +328,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
-            gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, di), gl.DYNAMIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices.subarray(0, floatCount), gl.DYNAMIC_DRAW);
 
             const stride = 9 * 4;
             gl.enableVertexAttribArray(loc.aPos);
@@ -348,10 +342,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
             gl.uniform1f(loc.alpha, group.alpha);
             gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
-            // Additive groups (energy glows) carry their own light — flooring
-            // or boosting them would oversaturate the accumulation, so they
-            // keep theirs.
-            gl.uniform1f(loc.lightFloor, (((ov !== null) && !group.blendAdd) ? ov : 0));
+            // Flooring or boosting an additive glow would oversaturate the
+            // accumulation.
+            gl.uniform1f(loc.lightFloor, (((lightOverride !== null) && !group.blendAdd) ? lightOverride : 0));
             gl.uniform1f(loc.lightBoost, ((group.blendAdd) ? 0 : engine.lightBoost));
             if (texture) {
                 gl.uniform1i(loc.hasTex, 1);
@@ -362,23 +355,15 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 gl.uniform1i(loc.hasTex, 0);
             }
 
-            gl.drawArrays(gl.TRIANGLES, 0, di / 9);
+            gl.drawArrays(gl.TRIANGLES, 0, floatCount / 9);
         }
-        // Restore the default blend state for the next object / pass.
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.depthMask(true);
     }
 
-    // Faces of an object grouped by draw state (texture / animation set / face
-    // opacity / clamp / additive), opaque groups first then translucent ones —
-    // alpha faces discard their transparent pixels in the shader, so depth is
-    // written only where the texture is opaque.
-    //
-    // Cached per object: the grouping walks every face and builds a string key
-    // for each, which on the level map means tens of thousands of key builds per
-    // frame for a partition that almost never changes. It is rebuilt only when
-    // the object reports a new face-groups version (a switch swapping SW1↔SW2,
-    // a "+change" floor swapping its flat).
+    // Faces grouped by draw state, opaque groups first. Cached per object and
+    // rebuilt only on a new face-groups version: the string keys cost tens of
+    // thousands of builds per frame on a level map.
     _groupsFor(obj) {
         const cached = this._groupCache.get(obj);
         if ((cached !== undefined) && (cached.version === obj.getFaceGroupsVersion())) {
@@ -389,8 +374,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         const collect = (faceIndices) => {
             for (const k of faceIndices) {
                 const fc       = obj.faceList[k];
-                const clampV   = fc.clampV || false;
-                const blendAdd = fc.blendAdd || false;
+                const clampV   = (fc.clampV || false);
+                const blendAdd = (fc.blendAdd || false);
                 const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
                 const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd;
                 if (!groups.has(key)) {
@@ -428,28 +413,27 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         if (this._texCache.has(texture)) {
             return this._texCache.get(texture);
         }
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
+        const glTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, glTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this._premultiply(texture.data));
         this._applyTextureFilter(gl);
-        // Always CLAMP_TO_EDGE: repetition is handled by fract() in the fragment shader,
-        // preventing LINEAR filter from bleeding across the tile boundary at v=1.0.
+        // Repetition is done by fract() in the shader, so LINEAR filtering
+        // cannot bleed across the tile boundary at v=1.0.
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        this._texCache.set(texture, tex);
-        this._texList.push(tex);
-        return tex;
+        this._texCache.set(texture, glTexture);
+        this._uploadedTextures.push(glTexture);
+        return glTexture;
     }
 
-    // The filter is a per-texture GL parameter, so a toggle of
-    // engine.textureSmoothing re-applies it to everything already uploaded —
-    // hence the list beside the (non-enumerable) WeakMap cache.
+    // The filter is a per-texture GL parameter, hence the list beside the
+    // (non-enumerable) WeakMap cache.
     _syncTextureFilter(gl, engine) {
-        if (engine.textureSmoothing === this._smoothing) {
+        if (engine.textureSmoothing === this._appliedSmoothing) {
             return;
         }
-        this._smoothing = engine.textureSmoothing;
-        for (const tex of this._texList) {
+        this._appliedSmoothing = engine.textureSmoothing;
+        for (const tex of this._uploadedTextures) {
             gl.bindTexture(gl.TEXTURE_2D, tex);
             this._applyTextureFilter(gl);
         }
@@ -461,17 +445,14 @@ class Object3dRendererWebGL extends Object3dRendererBase {
     _applyTextureFilter(gl) {
         // Tested on false, so the not-applied-yet state falls back to the
         // smoothed default instead of the opt-in one.
-        const filter = ((this._smoothing === false) ? gl.NEAREST : gl.LINEAR);
+        const filter = ((this._appliedSmoothing === false) ? gl.NEAREST : gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
     }
 
-    // Premultiplied alpha upload: with straight alpha, LINEAR filtering blends
-    // the transparent texels' black RGB into the opaque edges (grey fringe);
-    // with RGB×α and (ONE, ONE_MINUS_SRC_ALPHA) the interpolation is correct.
-    // Works on a copy: the source ImageData is shared with the software
-    // renderers, which expect straight alpha.
-    // (UNPACK_PREMULTIPLY_ALPHA_WEBGL is ignored for ArrayBufferView uploads.)
+    // Straight alpha would let LINEAR filtering blend the transparent texels'
+    // black into opaque edges. A copy: the software renderers share the source
+    // and expect straight alpha (UNPACK_PREMULTIPLY_ALPHA_WEBGL ignores typed arrays).
     _premultiply(pixels) {
         const src  = new Uint8Array(pixels.buffer);
         const data = new Uint8Array(src.length);
@@ -627,7 +608,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
 
-    _compile(gl, type, src) {
+    _compileShader(gl, type, src) {
         const shader = gl.createShader(type);
         gl.shaderSource(shader, src);
         gl.compileShader(shader);

@@ -1,9 +1,7 @@
 /**
- * Screen after the episode choice: pick the skill (difficulty), then the new
- * game starts on the episode's first level. The chosen skill is handed to the
- * converter, which filters the THINGS lump exactly like the real game (skill
- * bits + the multiplayer-only flag), so a single-player session shows the
- * same things as vanilla Doom.
+ * Screen after the episode choice: pick the skill, then the new game starts on
+ * the episode's first level. The converter filters the THINGS lump by that
+ * skill like vanilla does.
  */
 class DifficultyScreen extends AbstractMenuScreen {
     /**
@@ -16,11 +14,8 @@ class DifficultyScreen extends AbstractMenuScreen {
         this._wadMeta = null;
         this._episode = null;
 
-        // Skill 1..5 maps to the thing flag bits in the converter (1-2 → 0x01,
-        // 3 → 0x02, 4-5 → 0x04). Skill 0 is our own exploration mode: the
-        // skill-1 world with monsters disabled. The displayed names are a
-        // generic scale served by the translator ('difficulty.<skill>'), not the
-        // vanilla titles ("I'm too young to die" … "Nightmare!").
+        // Skill 0 is our own exploration mode: the skill-1 world without
+        // monsters. The names are a generic scale, not the vanilla titles.
         this._skills = [0, 1, 2, 3, 4, 5];
     }
 

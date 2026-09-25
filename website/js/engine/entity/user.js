@@ -6,7 +6,7 @@ class User {
         this.yaw   = yaw;
         this.pitch = pitch;
 
-        // Physics params (all have setters)
+        // Physics params
         this._height           = 0.85;
         this._eyeRatio         = 0.82;
         this._crouchRatio      = 0.55;
@@ -27,9 +27,7 @@ class User {
         this._maxEnergy        = maxEnergy;
         this._moveSpeed        = 0.003;
         this._turnSpeed        = 0.1;
-        // Fall damage: on by default, its two thresholds expressed as multiples
-        // of the actor height — nothing billed below the safe one, the full
-        // energy bar at the max one. A game with another scale overrides them.
+        // Fall thresholds in actor heights: nothing below safe, full energy at max
         this._fallDamage       = true;
         this._fallSafeFactor   = 2.5;
         this._fallMaxFactor    = 10;
@@ -67,18 +65,15 @@ class User {
         this._pickupFlash    = 0;
         this._deathRoll      = 0;
         this._deathEyeRatio  = 1.0;
-        // Kill plane: falling below this y (out of the map) kills the player.
-        // null = disabled.
+        // Falling below this y kills the player (null = disabled)
         this._voidKillY      = null;
 
-        // Smooth step up: when the body is snapped onto a step, the eye keeps
-        // its world height (negative offset) and catches up with the body in
-        // a gravity-driven free rise (vel += g·dt), re-latching on the real
-        // height once the gap is crossed — frame-rate independent.
+        // Smooth step: the eye keeps its height when the body snaps onto a step,
+        // then catches up in a gravity-driven rise
         this._stepViewOffset = 0;   // metres, <= 0
         this._stepViewVel    = 0;   // m/s catch-up speed
 
-        // Armor (defensive stat: absorbs a fraction of incoming damage)
+        // Armor absorbs a fraction of incoming damage
         this._armor       = 0;
         this._maxArmor    = 0;
         this._armorAbsorb = 0;
@@ -214,10 +209,8 @@ class User {
         return this;
     }
 
-    // Heal by amount, clamped to cap (defaults to the normal max). cap may exceed
-    // _maxEnergy for over-heal pickups (soul sphere → 200) and never lowers a
-    // value already above it. Returns true only if energy actually rose (drives
-    // the Doom "don't consume the pickup when already full" rule).
+    // cap may exceed the max (over-heal) and never lowers a higher value.
+    // Returns whether energy rose, so a pickup is not wasted when full.
     addEnergy(amount, cap = this._maxEnergy) {
         const ceiling = Math.max(cap, this._energy);
         const next    = Math.min(this._energy + amount, ceiling);
@@ -293,8 +286,7 @@ class User {
         return this._pickupFlash;
     }
 
-    // Brief golden screen pulse on item pickup (Doom bonuscount). Decays in
-    // updateMove like the damage flash; the HUD composites the two.
+    // Screen pulse on pickup (bonuscount), decaying like the damage flash
     flashPickup() {
         this._pickupFlash = Math.max(this._pickupFlash, 0.5);
         return this;
@@ -311,7 +303,7 @@ class User {
 
     // --- Energy ---
 
-    // Immediate death, bypassing the armor (void fall, kill plane).
+    // Bypasses the armor
     kill() {
         this._energy      = 0;
         this._dead        = true;
@@ -328,8 +320,7 @@ class User {
             }
         }
 
-        // The energy floor hides how far below zero a killing blow went; the
-        // overkill is kept for the game layer (death scream selection).
+        // Kept for the game layer: the energy floor hides it
         this._lastOverkill = Math.max(0, delta - this._energy);
         this._energy = Math.max(0, this._energy - delta);
         if (this._energy <= 0) {
@@ -349,9 +340,7 @@ class User {
     }
 
     /**
-     * A blow that throws the body off the ground (a blast under the feet): it
-     * replaces the vertical velocity the way a jump does, and arms the fall
-     * bookkeeping so the landing is billed like any other.
+     * Replaces the vertical velocity like a jump and arms the fall tracking.
      *
      * @param {number} velocity m/s, positive upward
      */
@@ -363,8 +352,7 @@ class User {
         return this;
     }
 
-    // Discontinuous displacement (teleport, respawn): the body keeps no
-    // momentum, no environmental push and no pending fall from the old spot.
+    // After a teleport or respawn
     haltMotion() {
         this._vx             = 0;
         this._vz             = 0;
@@ -384,8 +372,7 @@ class User {
         this._externalForces.beginFrame();
     }
 
-    // scale: signed -1..+1 — keyboard gives ±1, sticks their analog deflection.
-    // +1 = forward, -1 = backward
+    // scale: -1..+1, +1 = forward
     move(scale) {
         if (this.isDead() || (scale === 0)) {
             return;
@@ -395,7 +382,7 @@ class User {
         this._walking = true;
     }
 
-    // +1 = right, -1 = left
+    // scale: -1..+1, +1 = right
     strafe(scale) {
         if (this.isDead() || (scale === 0)) {
             return;
@@ -414,15 +401,15 @@ class User {
         this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this._turnSpeed));
     }
 
-    setWalkSlow(bool) {
+    setWalkSlow(slow) {
         if (!this.isDead()) {
-            this._walkSlow = bool;
+            this._walkSlow = slow;
         }
     }
 
-    setCrouch(bool) {
+    setCrouch(crouched) {
         if (!this.isDead()) {
-            this._crouchTarget = ((bool) ? 1 : 0);
+            this._crouchTarget = ((crouched) ? 1 : 0);
         }
     }
 
@@ -440,28 +427,24 @@ class User {
 
     // --- Game hooks (no-ops here) ---
 
-    // Landing after a fall of the given height (metres) — fires whatever the
-    // fall-damage setting says, a game may voice a hard landing it never bills.
+    // fallDist in metres. Fires even with fall damage off: a game may voice a
+    // landing it never bills.
     _onLanded(fallDist) {
     }
 
-    // A jump actually executed (not just requested).
+    // A jump actually executed, not just requested
     _onJumped() {
     }
 
-    // A use press that reached nothing usable — refused by a trigger condition,
-    // or swallowed by a plain wall within the probe distance. Public: the
-    // world decides once the frame's instances have all reported.
+    // A use press refused by a trigger condition or swallowed by a wall;
+    // called by the world once every instance has reported.
     notifyUseFailed() {
     }
 
     // --- Use feedback bookkeeping (fed by the instances during the update) ---
 
     /**
-     * Distance of the wall probe behind a use press that reached no trigger
-     * (game value — the engine default just spans arm's length).
-     *
-     * @param {number} distance metres
+     * @param {number} distance metres, of the wall probe behind a use press
      */
     setUseProbeDistance(distance) {
         this._useProbeDistance = distance;
@@ -472,20 +455,14 @@ class User {
         return (this._useProbeDistance ?? 1);
     }
 
-    /**
-     * An action-triggered instance in range reports here whether it accepted
-     * the press — a refusal (locked door) is a use failure the world turns
-     * into feedback once the frame's instances have all spoken.
-     *
-     * @param {boolean} accepted
-     */
+    // Reported by each action-triggered instance in range
     noteUseTarget(accepted) {
         this._useSeen     = true;
         this._useAccepted = (this._useAccepted || (accepted === true));
         return this;
     }
 
-    // One-shot read by the world at the end of the update.
+    // Read and reset by the world at the end of the update
     consumeUseState() {
         const state = {seen: (this._useSeen === true), accepted: (this._useAccepted === true)};
         this._useSeen     = false;
@@ -512,8 +489,6 @@ class User {
             return;
         }
         const fallDist = this._fallPeakY - this.y;
-        // Cleared whatever follows: kept, the next fall would measure from
-        // this one's peak and bill the two together.
         this._fallPeakY = null;
         this._onLanded(fallDist);
         if (!this._fallDamage) {
@@ -543,8 +518,8 @@ class User {
         }
 
         const dt    = this._deltaTime;
-        const dt_ms = Math.min(dt, 200);
-        const dt_s  = dt_ms / 1000;
+        const dtMs  = Math.min(dt, 200);
+        const dtS   = dtMs / 1000;
 
         // 0. Prep
         this._wasOnGround = this._onGround;
@@ -557,7 +532,7 @@ class User {
             this._jumpBuffer = Math.max(0, this._jumpBuffer - dt);
         }
 
-        // 2. Jump buffer: memorize jump intent if in air
+        // 2. Jump buffer
         if (this._jumpPressed && !this._onGround && !this._canJump) {
             this._jumpBuffer = this._jumpBufferTime;
         }
@@ -569,8 +544,8 @@ class User {
                 let targetVx = 0;
                 let targetVz = 0;
                 if (inputLen > 1e-10) {
-                    // Clamp to 1 instead of normalizing: keyboard diagonals stay
-                    // capped, analog partial deflections keep their magnitude
+                    // Clamped rather than normalised: analog deflections keep
+                    // their magnitude
                     const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
                     let speed = this._moveSpeed;
                     if (this._walkSlow) {
@@ -585,20 +560,18 @@ class User {
                     this._vx = targetVx;
                     this._vz = targetVz;
                 } else {
-                    // Slippery ground: inertial blend toward the same target
-                    // speed — per tick `v = v*f + target*(1-f)`, closed form
-                    // over the frame. Sluggish start, long slide, identical
-                    // top speed.
-                    const keep = Math.pow(friction, dt_s * ActorExternalForces.TICK_RATE);
+                    // Slippery ground: per tick `v = v*f + target*(1-f)`, in
+                    // closed form over the frame
+                    const keep = Math.pow(friction, dtS * ActorExternalForces.TICK_RATE);
                     this._vx = this._vx * keep + targetVx * (1 - keep);
                     this._vz = this._vz * keep + targetVz * (1 - keep);
                 }
             } else if (inputLen > 1e-10) {
-                // Air steering: nudge velocity toward desired direction
+                // Air steering
                 const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
                 const nudge = this._moveSpeed * this._airControl;
-                this._vx += this._inputX * norm * nudge * dt_s;
-                this._vz += this._inputZ * norm * nudge * dt_s;
+                this._vx += this._inputX * norm * nudge * dtS;
+                this._vz += this._inputZ * norm * nudge * dtS;
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
                 if (vLen > this._moveSpeed) {
                     this._vx = this._vx / vLen * this._moveSpeed;
@@ -606,23 +579,20 @@ class User {
                 }
             }
         }
-        // Environment push (wind/conveyors): its own velocity channel,
-        // integrated at tick rate and summed into the frame displacement so a
-        // single resolveWall call keeps wall sliding correct. It applies to a
-        // DEAD player too (GZDoom-style: the corpse keeps drifting on the
-        // current) — only the input velocity dies with the player.
-        this._externalForces.integrate(dt_s);
+        // Environment push summed into one displacement so a single resolveWall
+        // keeps sliding right; a corpse keeps drifting (GZDoom).
+        this._externalForces.integrate(dtS);
         const inputVx = ((this.isDead()) ? 0 : this._vx);
         const inputVz = ((this.isDead()) ? 0 : this._vz);
-        const vx = inputVx * dt_ms + this._externalForces.getVelX() * dt_s;
-        const vz = inputVz * dt_ms + this._externalForces.getVelZ() * dt_s;
-        if (Math.abs(vx) > 1e-10 || Math.abs(vz) > 1e-10) {
+        const vx = inputVx * dtMs + this._externalForces.getVelX() * dtS;
+        const vz = inputVz * dtMs + this._externalForces.getVelZ() * dtS;
+        if ((Math.abs(vx) > 1e-10) || (Math.abs(vz) > 1e-10)) {
             const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight);
-            const blocked = (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8);
+            const blocked = ((Math.abs(res.x - this.x) < 1e-8) && (Math.abs(res.z - this.z) < 1e-8));
             if (!blocked) {
                 const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
                 const destCeil  = collision.getCeiling(res.x, res.z, this._radius, ((destFloor !== -Infinity) ? destFloor + this._stepHeight : this.y));
-                if (destFloor === -Infinity || destCeil - destFloor >= this.getCurrentHeight()) {
+                if ((destFloor === -Infinity) || (destCeil - destFloor >= this.getCurrentHeight())) {
                     this.x = res.x;
                     this.z = res.z;
                 }
@@ -632,14 +602,14 @@ class User {
         }
 
         // 4. Gravity
-        this._vy -= this._gravity * dt_s;
+        this._vy -= this._gravity * dtS;
         if (this._vy < 0) {
-            this._vy -= this._gravity * this._apexGravityBoost * dt_s;
+            this._vy -= this._gravity * this._apexGravityBoost * dtS;
         }
         this._vy = Math.max(this._vy, -this._maxFallSpeed);
 
         // 5. Jump trigger
-        if ((this._jumpPressed || this._jumpBuffer > 0) && (this._canJump || this._coyoteTimer > 0)) {
+        if ((this._jumpPressed || (this._jumpBuffer > 0)) && (this._canJump || (this._coyoteTimer > 0))) {
             this._vy          = this._maxJumpVelocity;
             this._canJump     = false;
             this._coyoteTimer = 0;
@@ -649,15 +619,15 @@ class User {
         }
 
         // 6. Jump cut (variable height — applied once on release)
-        if (!this._jumpHeld && this._vy > 0) {
+        if (!this._jumpHeld && (this._vy > 0)) {
             this._vy      *= 0.5;
             this._jumpHeld = true;
         }
 
-        // 7. Vertical movement — check ceiling before moving to prevent tunneling upward
+        // 7. Vertical movement, ceiling read before moving against upward tunnelling
         const yBeforeVertical = this.y;
         const ceilBefore = collision.getCeiling(this.x, this.z, this._radius, this.y + this.getCurrentHeight());
-        this.y += this._vy * dt_s;
+        this.y += this._vy * dtS;
         if (this.y + this.getCurrentHeight() > ceilBefore) {
             this.y   = ceilBefore - this.getCurrentHeight();
             if (this._vy > 0) {
@@ -665,21 +635,18 @@ class User {
             }
         }
 
-        // 8. Floor check — maxSearchY prevents floors above the player (e.g. a rising lift)
-        //    from being mistaken for the ground and invalidating the onGround state.
+        // 8. Floor check, capped so a floor above (a rising lift) is not the ground
         const maxFloorSearch = yBeforeVertical + this._stepHeight;
-        const floorY      = collision.getFloor(this.x, this.z, this._radius, maxFloorSearch);
-        const floorNormal = collision.getFloorNormal(this.x, this.z, this._radius, maxFloorSearch);
-        const maxSlopeCos = Math.cos(this._maxSlopeAngle * DEG_TO_RAD);
+        const floorY         = collision.getFloor(this.x, this.z, this._radius, maxFloorSearch);
+        const floorNormal    = collision.getFloorNormal(this.x, this.z, this._radius, maxFloorSearch);
+        const maxSlopeCos    = Math.cos(this._maxSlopeAngle * DEG_TO_RAD);
 
-        if (floorNormal && floorNormal[1] < maxSlopeCos) {
-            // Too steep — no snapping
+        if (floorNormal && (floorNormal[1] < maxSlopeCos)) {
+            // Too steep
             this._onGround = false;
-        } else if (floorY !== -Infinity && this.y <= floorY && floorY <= yBeforeVertical + this._stepHeight) {
-            // Walking up a step: the lift is smoothed on the camera, not the
-            // body (vanilla smooth step up). Measured from the pre-gravity y —
-            // the per-frame gravity dip below the floor must NOT feed the
-            // smoother (it fires every frame and makes the view oscillate).
+        } else if ((floorY !== -Infinity) && (this.y <= floorY) && (floorY <= yBeforeVertical + this._stepHeight)) {
+            // Step up, smoothed on the camera. Measured from the pre-gravity y:
+            // the per-frame gravity dip would make the view oscillate.
             if (this._wasOnGround) {
                 this._smoothStepUp(floorY - yBeforeVertical);
             }
@@ -699,13 +666,11 @@ class User {
                 this._jumpBuffer = 0;
                 this._startFall();
             }
-        } else if (this._wasOnGround && this._vy <= 0 && floorY !== -Infinity
-            && (yBeforeVertical - floorY) > 0 && (yBeforeVertical - floorY) <= this._stepHeight) {
-            // Walking down a step (drop within stepHeight, not jumping): the
-            // body stays grounded on the lower floor, and the camera keeps its
-            // height then falls back at 0.6×g (symmetric smooth step, down).
+        } else if (this._wasOnGround && (this._vy <= 0) && (floorY !== -Infinity)
+            && ((yBeforeVertical - floorY) > 0) && ((yBeforeVertical - floorY) <= this._stepHeight)) {
+            // Step down: grounded on the lower floor, smoothed on the camera
             this._smoothStepDown(yBeforeVertical - floorY);
-            this.y = floorY;
+            this.y         = floorY;
             this._vy       = 0;
             this._onGround = true;
             this._canJump  = true;
@@ -717,9 +682,8 @@ class User {
             this._onGround = false;
         }
 
-        // Kill plane: fell out of the map (below every floor) → the body rests
-        // clamped on the plane and the player dies (death animation).
-        if (this._voidKillY !== null && this.y < this._voidKillY) {
+        // Kill plane
+        if ((this._voidKillY !== null) && (this.y < this._voidKillY)) {
             this.y   = this._voidKillY;
             this._vy = 0;
             if (!this._dead) {
@@ -727,7 +691,6 @@ class User {
             }
         }
 
-        // Track fall peak while airborne
         if (!this._onGround) {
             if (this._wasOnGround) {
                 this._startFall();
@@ -736,22 +699,19 @@ class User {
         }
 
         // 9. Ground snapping (gentle slopes / stairs)
-        if (this._wasOnGround && !this._onGround && !(this._vy > 0) && floorY !== -Infinity) {
+        if (this._wasOnGround && !this._onGround && !(this._vy > 0) && (floorY !== -Infinity)) {
             const snapDist = this.y - floorY;
-            if (snapDist > 0 && snapDist < this._groundSnapDist) {
+            if ((snapDist > 0) && (snapDist < this._groundSnapDist)) {
                 this.y = floorY;
                 this._onGround = true;
             }
         }
 
-        // 10. No ceiling re-check after the ground snap: a mover pressing down
-        // on the player is resolved by rolling the mover back
-        // (resolveObjectPlayerBlockage), NOT by clamping the player under it —
-        // a feet-level clamp would push the player through the floor before
-        // the rollback runs.
+        // 10. No ceiling re-check after the snap: a mover pressing down is rolled
+        // back later; clamping here would push the player through the floor.
 
         // 11. Crouch animation
-        const crouchDelta = this._crouchSpeed * dt_s;
+        const crouchDelta = this._crouchSpeed * dtS;
         if (this._crouchTarget === 1) {
             this._crouchProgress = Math.min(1, this._crouchProgress + crouchDelta);
         } else {
@@ -764,14 +724,12 @@ class User {
         // 12. Real XZ velocity
         const dxActual = this.x - this._prevX;
         const dzActual = this.z - this._prevZ;
-        this._realVelocityXZ = ((dt_s > 0) ? Math.sqrt(dxActual*dxActual + dzActual*dzActual) / dt_s : 0);
+        this._realVelocityXZ = ((dtS > 0) ? Math.sqrt(dxActual*dxActual + dzActual*dzActual) / dtS : 0);
         this._prevX = this.x;
         this._prevZ = this.z;
 
-        // 13. Head bob — gated on player INPUT (_walking), not just real
-        // displacement: being pushed around (wind, conveyor) must not play
-        // the walk animation.
-        if (this._onGround && this._walking && this._realVelocityXZ > 0.01) {
+        // 13. Head bob, gated on input so being pushed does not play it
+        if (this._onGround && this._walking && (this._realVelocityXZ > 0.01)) {
             this._walkAngle += dt * 0.6;
             if (this._walkAngle > 360) {
                 this._walkAngle -= 360;
@@ -782,7 +740,7 @@ class User {
 
         // 14. Strafe lean
         const targetLean = this._strafeDir * this._maxLean;
-        const leanDelta  = this._leanSpeed * dt_s;
+        const leanDelta  = this._leanSpeed * dtS;
         if (this._strafeLean < targetLean) {
             this._strafeLean = Math.min(targetLean, this._strafeLean + leanDelta);
         } else {
@@ -794,47 +752,44 @@ class User {
 
         // 16. Energy / pickup flash fade
         if (this._energyFlash > 0) {
-            this._energyFlash = Math.max(0, this._energyFlash - dt_s);
+            this._energyFlash = Math.max(0, this._energyFlash - dtS);
         }
         if (this._pickupFlash > 0) {
-            this._pickupFlash = Math.max(0, this._pickupFlash - dt_s);
+            this._pickupFlash = Math.max(0, this._pickupFlash - dtS);
         }
 
-        // 16b. Smooth step recovery: the camera moves toward the body at 0.6×
-        // the world gravity (up after a step up, down after a step down) and
-        // re-latches on the real height when the gap is crossed.
+        // 16b. Smooth step recovery at 0.6×g toward the body
         if (this._stepViewOffset !== 0) {
             const dir = ((this._stepViewOffset < 0) ? 1 : -1);
-            this._stepViewVel    += 0.6 * this._gravity * dt_s;
-            this._stepViewOffset += dir * this._stepViewVel * dt_s;
+            this._stepViewVel    += 0.6 * this._gravity * dtS;
+            this._stepViewOffset += dir * this._stepViewVel * dtS;
             if (dir * this._stepViewOffset >= 0) {
                 this._stepViewOffset = 0;
                 this._stepViewVel    = 0;
             }
         }
 
-        // 17. Death animation — roll camera sideways and lower eye height
+        // 17. Death animation
         if (this._dead) {
             if (this._deathRoll < 30) {
-                this._deathRoll = Math.min(30, this._deathRoll + 30 * dt_s);
+                this._deathRoll = Math.min(30, this._deathRoll + 30 * dtS);
             }
             if (this._deathEyeRatio > 0.3) {
-                this._deathEyeRatio = Math.max(0.3, this._deathEyeRatio - 0.7 * dt_s);
+                this._deathEyeRatio = Math.max(0.3, this._deathEyeRatio - 0.7 * dtS);
             }
         }
     }
 
     _tryStepUp(collision, vx, vz) {
-        // No ceiling guard here: a local check would refuse legal steps in any
-        // low corridor, and a too-low destination is already refused upstream
-        // (normal-path clearance check; its upper wall blocks both passes).
+        // No ceiling guard: it would refuse legal steps in low corridors, and a
+        // too-low destination is already refused upstream.
         const testY = this.y + this._stepHeight;
         const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());
-        if (Math.abs(res.x - this.x) < 1e-8 && Math.abs(res.z - this.z) < 1e-8) {
+        if ((Math.abs(res.x - this.x) < 1e-8) && (Math.abs(res.z - this.z) < 1e-8)) {
             return false;
         }
         const newFloor = collision.getFloor(res.x, res.z, this._radius);
-        if (newFloor === -Infinity || newFloor < testY - this._stepHeight - 0.01) {
+        if ((newFloor === -Infinity) || (newFloor < testY - this._stepHeight - 0.01)) {
             return false;
         }
         this.x = res.x;
@@ -844,12 +799,8 @@ class User {
         return true;
     }
 
-    // Smooth step up: keep the eye at its pre-step world height and let the
-    // recovery pass (16b) catch up gravity-style. The offset is floored at
-    // half the eye height (vanilla clamps viewheight at VIEWHEIGHT/2). Rises
-    // below 3 cm (~2 doom units) are ignored: they are frame noise (gravity
-    // dip, slow platform ride), not steps — smoothing them wobbles the view.
-    // The catch-up speed is kept across chained steps (stairs feel continuous).
+    // Offset floored at half the eye height (VIEWHEIGHT/2). Rises under 3 cm
+    // are frame noise, not steps: smoothing them wobbles the view.
     _smoothStepUp(rise) {
         if (rise < 0.03) {
             return;
@@ -858,8 +809,6 @@ class User {
         this._stepViewOffset = Math.max(this._stepViewOffset - rise, -maxDrop);
     }
 
-    // Symmetric: walking down a step, the camera keeps its height (positive
-    // offset) and the recovery pass brings it down at 0.6×g.
     _smoothStepDown(drop) {
         if (drop < 0.03) {
             return;
@@ -896,7 +845,7 @@ class User {
     getCameraY() {
         const baseH = ((this._dead) ? this._height : this.getCurrentHeight());
         const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
-        const bob   = ((!this._dead && this._onGround && this._walking && this._realVelocityXZ > 0.01)
+        const bob   = ((!this._dead && this._onGround && this._walking && (this._realVelocityXZ > 0.01))
             ? 0.05 * Math.sin(this._walkAngle * DEG_TO_RAD) : 0);
         return this.y + eyeH * (1 + bob) + this._stepViewOffset;
     }

@@ -21,20 +21,20 @@ class DoomWeaponDef extends DoomWeapon {
         // chainsaw/gauntlets); berserkFactor multiplies the fist under the
         // strength power-up; puffOnMonsters shows the puff on flesh (Heretic
         // sparks) instead of hiding it behind the blood.
-        this._damageSpec    = data.damage ?? null;
-        this._kickback      = data.kickback ?? null;
-        this._berserkItem   = data.berserkItem ?? null;
-        this._berserkFactor = data.berserkFactor ?? 1;
+        this._damageSpec     = data.damage ?? null;
+        this._kickback       = data.kickback ?? null;
+        this._berserkItem    = data.berserkItem ?? null;
+        this._berserkFactor  = data.berserkFactor ?? 1;
         this._puffOnMonsters = (data.puffOnMonsters === true);
-        this._projectiles   = data.projectiles ?? [];
-        this._puffType      = data.puffType ?? null;
-        this._decalType     = data.decalType ?? null;
-        this._ammoGive      = data.ammoGive ?? null;
-        this._yAdjust       = data.yAdjust ?? 0;
-        this._autoFire      = (data.autoFire !== false);
-        this._accurateFirst = (data.accurateFirst === true);
-        this._viewSprite    = data.viewSprite;
-        this._flashSprite   = data.flashSprite ?? null;
+        this._projectiles    = data.projectiles ?? [];
+        this._puffType       = data.puffType ?? null;
+        this._decalType      = data.decalType ?? null;
+        this._ammoGive       = data.ammoGive ?? null;
+        this._yAdjust        = data.yAdjust ?? 0;
+        this._autoFire       = (data.autoFire !== false);
+        this._accurateFirst  = (data.accurateFirst === true);
+        this._viewSprite     = data.viewSprite;
+        this._flashSprite    = data.flashSprite ?? null;
         // Sound events of the weapon (logical names of the profile's sound
         // table): actionSounds maps a psprite ACTION name to the sound its
         // zscript state line starts; the melee pair splits on the outcome
@@ -45,13 +45,13 @@ class DoomWeaponDef extends DoomWeapon {
         this._meleeMissSound = data.meleeMissSound ?? null;
         this._upSound        = data.upSound ?? null;
         this._impactSound    = data.impactSound ?? null;
-        this._entry         = data.entry;
-        this._states        = this._buildStates(data);
+        this._entry          = data.entry;
+        this._states         = this._buildStates(data);
     }
 
     _buildStates(data) {
         const states = {};
-        const add = (group, sprite, groupBright) => {
+        const addGroup = (group, sprite, groupBright) => {
             if (!group) {
                 return;
             }
@@ -60,8 +60,8 @@ class DoomWeaponDef extends DoomWeapon {
                 states[key] = new DoomWeaponState(sprite, frame, tics, action ?? null, next ?? null, (groupBright || (bright === true)));
             }
         };
-        add(data.main,  this._viewSprite,  false);
-        add(data.flash, this._flashSprite, true);
+        addGroup(data.main,  this._viewSprite,  false);
+        addGroup(data.flash, this._flashSprite, true);
         return states;
     }
 

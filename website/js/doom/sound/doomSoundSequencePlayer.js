@@ -4,17 +4,15 @@
  * delays, volume moves, random picks among the level's candidate sequences
  * (Heretic's ambient scheduler), restart loops.
  *
- * Today's machines are position-less (the ambient scripts): the sequence
- * volume is pushed straight onto the channel. A positioned machine (Hexen's
- * mover sequences) will need the live attenuation × volume product — the
- * origin already travels, the product is the part left for that chantier.
+ * Only position-less sequences run today (ambient scripts): the volume goes
+ * straight onto the channel, ignoring the live attenuation a mover would need.
  */
 class DoomSoundSequencePlayer {
     // Volume commands are percentages (zdoom.org/wiki/SNDSEQ).
     static FULL_VOLUME = 100;
     // Commands executed per update at most — a data loop must never hang the
     // frame (a well-formed sequence always reaches a wait or its end).
-    static STEP_GUARD  = 64;
+    static MAX_STEPS_PER_UPDATE = 64;
 
     /**
      * @param {DoomSoundSequences} sequences
@@ -70,7 +68,7 @@ class DoomSoundSequencePlayer {
 
         let guard = 0;
         while (!this._done && (this._waitTics <= 0) && (this._waitHandle === null)
-            && (guard < DoomSoundSequencePlayer.STEP_GUARD)) {
+            && (guard < DoomSoundSequencePlayer.MAX_STEPS_PER_UPDATE)) {
             guard++;
             this._step();
         }

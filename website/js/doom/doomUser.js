@@ -1,28 +1,21 @@
 /**
- * The Doom player. Extends the generic engine User (physics + health + armor)
- * and adds the Doom equipment STATE: owned weapons, the active weapon, the
- * shared ammo pool, the held items and the active timed effects.
- *
- * It only carries state — never the definitions, which live on DoomGame. The
- * starting loadout is poured in by DoomGame after construction (DoomUser is
- * built deep in the engine loader, which knows nothing about Doom).
+ * The Doom player: the engine User plus the equipment state (weapons, ammo,
+ * items, timed effects). The definitions live on DoomGame, which also pours in
+ * the starting loadout after the engine loader has built the player.
  */
 class DoomUser extends User {
     constructor(x, y, z, yaw, pitch, maxEnergy) {
         super(x, y, z, yaw, pitch, maxEnergy);
 
-        this._weapons      = {};   // code -> {owned: bool}
-        this._activeWeapon = null;
-        this._ammo         = {};   // code -> count
-        this._ammoMax      = {};   // code -> max
-        this._items        = new Set();
+        this._weapons         = {};   // code -> {owned: bool}
+        this._activeWeapon    = null;
+        this._ammo            = {};   // code -> count
+        this._ammoMax         = {};   // code -> max
+        this._items           = new Set();
         this._effects         = {};   // code -> remaining time (ms)
         this._damageFactor    = 1;    // skill-derived, set by DoomGame per level
         this._exitSectorProbe = null; // (user) → bool, set by DoomGame per level
         this._controlFreezeS  = 0;
-        // Jumping and crouching are ours, not the engine's: vanilla Doom has
-        // neither, so the two keys are simply not listened to when the player
-        // turns them off (game.jump / game.crouch settings).
         this._jumpAllowed     = true;
         this._crouchAllowed   = true;
         this._landingSplash   = null; // (x, y, z) => void, set by DoomGame per level
@@ -33,17 +26,14 @@ class DoomUser extends User {
         return this;
     }
 
-    // Tells whether the player stands in a level-exit sector (null = none on
-    // the level): no blow may kill them there, see takeDamage.
+    // (user) → bool, null when the level has no exit sector; see takeDamage.
     setExitSectorProbe(probe) {
         this._exitSectorProbe = probe;
         return this;
     }
 
-    // P_Teleport freeze (reactiontime, Player.TeleportFreezeTime): movement,
-    // turning and jumping are ignored while the timer runs — the player
-    // watches the arrival fog. Firing stays allowed, like vanilla. Transient
-    // by design: not part of the saved state.
+    // P_Teleport freeze (reactiontime): movement, turning and jumping are
+    // ignored, firing stays allowed like vanilla. Not part of the saved state.
     freezeControls(seconds) {
         this._controlFreezeS = seconds;
         return this;
@@ -100,13 +90,12 @@ class DoomUser extends User {
 
     // releaseJump stays open: swallowing it would leave the jump held.
 
-    // A forbidden crouch asks to STAND, never just ignores the call: the
-    // setting may go off while the player is down, and he must come back up.
-    setCrouch(bool) {
+    // A forbidden crouch still stands the player up: the setting may go off while he is down.
+    setCrouch(crouched) {
         if (this.isControlFrozen()) {
             return;
         }
-        super.setCrouch(bool && this._crouchAllowed);
+        super.setCrouch(crouched && this._crouchAllowed);
     }
 
     // --- Weapons ---
@@ -145,14 +134,14 @@ class DoomUser extends User {
         return this;
     }
 
-    giveAmmo(type, n) {
+    giveAmmo(type, amount) {
         const max = (this._ammoMax[type] ?? 0);
-        this._ammo[type] = Math.min(max, (this._ammo[type] ?? 0) + n);
+        this._ammo[type] = Math.min(max, (this._ammo[type] ?? 0) + amount);
         return this;
     }
 
-    useAmmo(type, n) {
-        this._ammo[type] = Math.max(0, (this._ammo[type] ?? 0) - n);
+    useAmmo(type, amount) {
+        this._ammo[type] = Math.max(0, (this._ammo[type] ?? 0) - amount);
         return this;
     }
 
@@ -180,16 +169,12 @@ class DoomUser extends User {
         return this;
     }
 
-    // Invulnerability fully blocks damage while active (the other timed
-    // effects are consumed by their own systems: sector damage, the screen
-    // tints, the light override, the weapon alpha).
     takeDamage(delta) {
         if (this.hasEffect('invulnerability')) {
             return;
         }
-        // Vanilla P_DamageMobj applies the skill damage factor BEFORE the
-        // armor absorption, and only when damage > 1 (the int truncation is
-        // not replicated — this engine deals float damage).
+        // P_DamageMobj: skill factor before the armor, only when damage > 1
+        // (no int truncation, this engine deals float damage).
         if (delta > 1) {
             delta = delta * this._damageFactor;
         }
@@ -204,9 +189,8 @@ class DoomUser extends User {
         this._voiceDamage(wasAlive, energyBefore);
     }
 
-    // Pain and death cries (P_KillMobj / P_DamageMobj): the extreme scream
-    // plays past 50 health points below zero — the engine clamps the energy,
-    // so the overkill comes from its own bookkeeping. Position-less voice.
+    // P_KillMobj / P_DamageMobj cries. The engine clamps the energy, so the
+    // extreme-death overkill comes from its own bookkeeping.
     _voiceDamage(wasAlive, energyBefore) {
         if (!wasAlive || (this.getEnergy() >= energyBefore)) {
             return;
@@ -222,9 +206,7 @@ class DoomUser extends User {
     // --- Player feedback hooks (engine no-ops overridden) ---
 
     /**
-     * What the player disturbs where they land (the level's terrain service).
-     * A callback like the exit-sector probe: the player knows how hard they
-     * came down, the world knows what they came down on.
+     * Splash spawned where the player lands (the level's terrain service).
      *
      * @param {function|null} callback (x, y, z) => void
      */
@@ -233,9 +215,7 @@ class DoomUser extends User {
         return this;
     }
 
-    // A corpse never grunts: a body knocked off a ledge or a posthumous use
-    // press stays silent (vanilla stops voicing at death). The splash, being
-    // physical and not vocal, does not care whether the body still lives.
+    // A corpse never grunts (vanilla), but still splashes.
     _onLanded(fallDist) {
         if (!this.isDead() && (fallDist >= (WadConstants.LAND_GRUNT_FALL_UNITS * WadConstants.SCALE))) {
             doomSound.playAt('*land', null, {replaceKey: 'player:voice'});
@@ -247,8 +227,7 @@ class DoomUser extends User {
     }
 
     _onJumped() {
-        // dsjump ships in no IWAD (silence expected on Doom); Heretic vanilla
-        // has no jump either, so its plrjmp lump does not exist — silent too.
+        // No IWAD ships a jump sound (dsjump, plrjmp): silent on vanilla data.
         if (!this.isDead()) {
             doomSound.playAt('*jump', null, {replaceKey: 'player:voice'});
         }
@@ -264,10 +243,8 @@ class DoomUser extends User {
         return (this._effects[code] !== undefined);
     }
 
-    // Running AND outside the blink-off phases of the vanilla end-of-powerup
-    // strobe (ST_doPaletteStuff) — the single visibility rule shared by the
-    // screen tints, the HUD countdown lines, the light override and the
-    // weapon alpha.
+    // Running and outside the blink-off phases of the end-of-powerup strobe
+    // (ST_doPaletteStuff).
     isEffectVisible(code) {
         const remainingMs = this._effects[code];
         return ((remainingMs !== undefined) && WadConstants.powerupVisibleMs(remainingMs));
@@ -283,10 +260,8 @@ class DoomUser extends User {
     }
 
     // --- Inter-level persistence ---
-    // The DoomUser is rebuilt for each level (the engine loader instantiates a
-    // fresh one from the WAD spawn). To carry equipment over, DoomGame snapshots
-    // the state before loader.reset() and re-applies it on the next level, then
-    // calls resetForNewLevel to drop the level-scoped possessions.
+    // The player is rebuilt for each level: DoomGame exports the state before
+    // loader.reset() and imports it into the next one.
     exportState() {
         const weapons = {};
         for (const code of Object.keys(this._weapons)) {
@@ -327,7 +302,7 @@ class DoomUser extends User {
             this.addEffect(code, state.effects[code]);
         }
 
-        // maxArmor before armor so the setArmor clamp keeps the carried value
+        // maxArmor first, or the setArmor clamp would cut the carried value.
         this.setEnergy(state.energy);
         this.setMaxArmor(state.maxArmor);
         this.setArmor(state.armor);
@@ -335,7 +310,7 @@ class DoomUser extends User {
         return this;
     }
 
-    // --- Read accessors for the HUD (no direct private-field access) ---
+    // --- Read accessors for the HUD ---
 
     getOwnedWeaponCodes() {
         return Object.keys(this._weapons).filter((code) => this.hasWeapon(code));
@@ -350,12 +325,10 @@ class DoomUser extends User {
     }
 
     // --- Inter-level reset ---
-    // Data-driven: drop every held item whose definition is flagged
-    // resetOnNewLevel, and clear all timed effects (level-scoped). Weapons,
-    // ammo, energy and armor persist. lookup exposes getItem(code).
-    resetForNewLevel(lookup) {
+    // Drops the items flagged resetOnNewLevel and every timed effect.
+    resetForNewLevel(itemCatalog) {
         for (const code of Array.from(this._items)) {
-            const def = lookup.getItem(code);
+            const def = itemCatalog.getItem(code);
             if ((def !== null) && (def !== undefined) && (def.isResetOnNewLevel() === true)) {
                 this._items.delete(code);
             }

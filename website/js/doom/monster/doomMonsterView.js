@@ -2,9 +2,8 @@
  * How a body is DRAWN: which of its eight rotation views shows, how bright the
  * instance is lit, and how its teleport-stepped motion is smoothed on screen.
  *
- * Nothing here touches the simulation — a body walks, fights and dies exactly
- * the same with this module doing nothing. It is the seam between the 35 Hz
- * logic and the frame rate.
+ * Nothing here touches the simulation: it only turns the 35 Hz logic into
+ * frames.
  */
 class DoomMonsterView {
     constructor() {
@@ -124,17 +123,17 @@ class DoomMonsterView {
         if (m.blend === null) {
             return;
         }
-        const k = (clockMs - m.blend.t0) / m.blend.dur;
-        if (k >= 1) {
+        const progress = (clockMs - m.blend.t0) / m.blend.dur;
+        if (progress >= 1) {
             m.inst.clearRenderOffset();
             m.blend = null;
             return;
         }
         const p = m.inst.getTransform().position;
         m.inst.setRenderOffset(
-            (m.blend.fx - p[0]) * (1 - k),
-            (m.blend.fy - p[1]) * (1 - k),
-            (m.blend.fz - p[2]) * (1 - k)
+            (m.blend.fx - p[0]) * (1 - progress),
+            (m.blend.fy - p[1]) * (1 - progress),
+            (m.blend.fz - p[2]) * (1 - progress)
         );
     }
 

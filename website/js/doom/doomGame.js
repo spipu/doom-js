@@ -10,8 +10,8 @@ class DoomGame {
         this._wadMeta           = null;
         this._mapInfo           = null;
         this._dehackedStrings   = null;
+        this._levelCode         = null;
         this._levelName         = null;
-        this._levelDisplayName  = null;
         this._spawnOverride     = null;
         this._skill             = 3;
         this._carriedState      = null;
@@ -33,51 +33,48 @@ class DoomGame {
         this._levelEntryState   = null;   // player equipment as the level began (restart)
         this._restartState      = null;   // entry state to pour into the level being restarted
         this._animateCallback   = this._animate.bind(this);
-        this._resetLevelStats();   // declares the per-level counters and clock
+        this._resetLevelStats();
 
-        // Weapon firing (built per level)
-        this._playerWeapon    = null;
-        this._weaponSprites   = null;
+        this._playerWeapon     = null;
+        this._weaponSprites    = null;
         this._availableWeapons = null;   // codes whose sprites exist in this WAD
-        this._effects         = null;    // transient sprite effects (puffs, explosions)
-        this._hitscan         = null;
-        this._projectiles     = null;    // rocket / plasma / BFG shots
-        this._decals          = null;    // persistent wall impact decals
-        this._sectorLight     = null;    // player-sector light lookup (weapon shading)
-        this._sectorDamage    = null;    // damage-sector interaction (exit-sector probe of the player)
-        this._gunTriggers     = null;    // impact-special lines (shot-activated movers)
-        this._sectorSurfaces  = null;    // live floor flats/specials rewritten by the "+change" floors (builder-fed)
-        this._terrain         = null;    // ground terrain + its splashes (builder-fed)
-        this._moverSounds     = null;    // per-level mover motion sounds (builder-fed)
-        this._ambientSounds   = null;    // per-level ambient sound points (builder-fed)
-        this._automap         = null;    // level automap (null when the WAD has no usable BSP)
-        this._rendererCode    = null;    // renderer the current engine was built on (null = no engine yet)
-        this._depthShadingOn  = null;    // last states pushed to the engine / player (null = never)
-        this._texSmoothingOn  = null;
-        this._fallDamageOn    = null;
-        this._jumpOn          = null;
-        this._crouchOn        = null;
-        this._fov             = WadConstants.PLAYER_FOV;   // current Doom FOV (telezoom eases it back)
-        this._fovTicAcc       = 0;
-        this._rng             = new DoomRandom();
+        this._effects          = null;   // transient sprite effects (puffs, explosions)
+        this._hitscan          = null;
+        this._projectiles      = null;
+        this._decals           = null;
+        this._sectorLight      = null;
+        this._sectorDamage     = null;
+        this._gunTriggers      = null;   // shot-activated lines
+        this._sectorSurfaces   = null;   // floor flats/specials rewritten by the "+change" floors
+        this._terrain          = null;
+        this._moverSounds      = null;
+        this._ambientSounds    = null;
+        this._automap          = null;   // null when the WAD has no usable BSP
+        this._rendererCode     = null;   // renderer the current engine was built on
+        this._depthShadingOn   = null;   // last states pushed to the engine / player (null = never)
+        this._texSmoothingOn   = null;
+        this._fallDamageOn     = null;
+        this._jumpOn           = null;
+        this._crouchOn         = null;
+        this._fov              = WadConstants.PLAYER_FOV;
+        this._fovUntickedMs    = 0;
+        this._rng              = new DoomRandom();
 
-        // Per-game policy + shared immutable definitions (the per-player state
-        // lives on DoomUser). The default profile covers the pre-WAD state;
-        // startFromWad re-detects and rebuilds from the real WAD's profile.
+        // Placeholder until startFromWad detects the WAD's profile.
         this._gameProfile    = new DefaultGameProfile();
         this._weapons        = {};
         this._ammoTypes      = {};
         this._items          = {};
         this._thingCatalog   = null;
         this._monsterCatalog = null;
-        this._monsters       = null;   // runtime monster system (built per level)
-        this._monsterDamage  = null;   // shared damage pipeline (built per level)
-        this._monsterAttack  = null;   // monster attack layer (built per level)
+        this._monsters       = null;
+        this._monsterDamage  = null;
+        this._monsterAttack  = null;
         this._skillTable     = null;
         this._buildCatalogs();
     }
 
-    // --- Catalogs of definitions (all per-game data comes from the profile) ---
+    // --- Catalogs of definitions ---
     _buildCatalogs() {
         this._ammoTypes      = this._gameProfile.buildAmmoTypes();
         this._weapons        = this._gameProfile.buildWeapons();
@@ -100,8 +97,8 @@ class DoomGame {
         return (this._weapons[code] ?? null);
     }
 
-    // True when the weapon's sprites exist in the current WAD. Before the sprite
-    // bank is built (staging off), everything is treated as available.
+    // True when the weapon's sprites exist in the current WAD; always true
+    // before the sprite bank is built.
     isWeaponAvailable(code) {
         return ((this._availableWeapons === null) || this._availableWeapons.has(code));
     }
@@ -114,9 +111,7 @@ class DoomGame {
         return (this._items[code] ?? null);
     }
 
-    // True while the player holds an item revealing the whole map. Data-driven
-    // so every game follows: Doom's computer map and Heretic's map scroll both
-    // declare `effect: 'map'`.
+    // Doom's computer map and Heretic's map scroll both declare `effect: 'map'`.
     hasMapPowerup(user) {
         for (const code of Object.keys(this._items)) {
             if ((this._items[code].getEffect() === 'map') && user.hasItem(code)) {
@@ -129,10 +124,8 @@ class DoomGame {
 
     // --- Pickups ---
 
-    // Apply a picked-up thing's effect descriptor to the player. Returns true
-    // when something was actually consumed — false leaves the sprite on the
-    // ground (Doom does not pick up health/armor/ammo already full, nor a
-    // weapon/key already held). Effect shapes come from the profile's thing types (DoomThingCatalog).
+    // False leaves the thing on the ground (health/armor/ammo already full, key
+    // already held). Effect shapes come from DoomThingCatalog.
     applyPickup(user, effect) {
         const consumed = this._applyPickupEffect(user, effect);
         if (consumed) {
@@ -185,8 +178,7 @@ class DoomGame {
             return this._pickupItem(user, effect.item);
         }
         if (effect.mega !== undefined) {
-            // Megasphere-like: SETS health to the given value (p_inter.c, it
-            // does not add) and grants the given armour class.
+            // p_inter.c: the megasphere SETS the health, it does not add.
             const healed  = user.addEnergy(effect.mega.health, effect.mega.health);
             const armored = this._pickupArmor(user, effect.mega.armor);
             return (healed || armored);
@@ -194,22 +186,19 @@ class DoomGame {
         return false;
     }
 
-    // Extra ammo on the easiest and hardest skills — the factor is per-game
-    // profile data (Doom ×2, Heretic ×1.5).
     _ammoMultiplier() {
         return this._skillRule().ammoFactor;
     }
 
-    // Give ammo and report whether the counter actually rose (it stays put when
-    // already at the cap). Centralises the clamp-and-detect used by every path.
+    // True when the counter actually rose (it stays put at the cap).
     _grantAmmo(user, type, amount) {
         const before = user.getAmmo(type);
         user.giveAmmo(type, amount);
         return (user.getAmmo(type) > before);
     }
 
-    // Vanilla sets pendingweapon → the weapon is raised by the psprite
-    // machine. Instant swap only before the controller exists.
+    // Vanilla pendingweapon: the psprite machine raises it. Instant swap only
+    // before the controller exists.
     _raiseWeapon(user, code) {
         if (code === null) {
             return;
@@ -223,8 +212,6 @@ class DoomGame {
 
     _pickupWeapon(user, code, dropped = false) {
         const def = this.getWeapon(code);
-        // Unknown weapon, or one whose sprites are absent from this WAD (e.g. the
-        // super shotgun in Doom 1): not handed out.
         if ((def === null) || !this.isWeaponAvailable(code)) {
             return false;
         }
@@ -234,18 +221,14 @@ class DoomGame {
             this._raiseWeapon(user, code);
             gaveWeapon = true;
         }
-        // Ammo handed out with the weapon: the def's own ammoGive when the game
-        // sets one (Heretic per-weapon amounts), else the Doom 2 × clip rule —
-        // further doubled on skill 1/5. An already-owned weapon is still
-        // collected as long as it tops up ammo; it only stays on the ground
-        // when ammo is already full.
+        // Heretic sets a per-weapon ammoGive, Doom gives two clips. An owned
+        // weapon is still picked up as long as it tops up ammo.
         let gaveAmmo = false;
         const ammoType = def.getAmmoType();
         if (ammoType !== null) {
-            // A weapon dropped by a monster hands out HALF its ammo (vanilla
-            // wp_dropped), still skill-multiplied.
-            const base   = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this.getAmmo(ammoType).getClip() * 2);
-            gaveAmmo = this._grantAmmo(user, ammoType, base * ((dropped) ? 0.5 : 1) * this._ammoMultiplier());
+            // A weapon dropped by a monster gives half (vanilla wp_dropped).
+            const baseAmmo = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this.getAmmo(ammoType).getClip() * 2);
+            gaveAmmo = this._grantAmmo(user, ammoType, baseAmmo * ((dropped) ? 0.5 : 1) * this._ammoMultiplier());
         }
         return (gaveWeapon || gaveAmmo);
     }
@@ -260,27 +243,22 @@ class DoomGame {
     _pickupBackpack(user) {
         for (const code of Object.keys(this._ammoTypes)) {
             user.setAmmoMax(code, this._ammoTypes[code].getMaxPack());
-            // Doom's backpack also grants one base clip of each ammo type.
             this._grantAmmo(user, code, this._ammoTypes[code].getPackGive() * this._ammoMultiplier());
         }
         return true;
     }
 
-    // spec = {points, absorb} — the armour classes are per-game catalog data
-    // (Doom green 100/⅓ + blue 200/½, Heretic silver 100/½ + enchanted 200/¾).
+    // spec = {points, absorb}: an armour class of the game catalog.
     _pickupArmor(user, spec) {
         if (user.getArmor() >= spec.points) {
             return false;
         }
-        // The 0→200 ceiling is fixed (set in the loadout); a pickup only sets the
-        // armour points and the absorption fraction of its type.
         user.setArmor(spec.points);
         user.setArmorAbsorb(spec.absorb);
         return true;
     }
 
-    // absorb = the fraction granted when the bonus lands on a bare player
-    // (catalog data — Doom's helmet bonus gives the green class).
+    // absorb = the fraction granted when the bonus lands on a bare player.
     _pickupArmorBonus(user, amount, absorb) {
         if (user.getArmor() >= user.getMaxArmor()) {
             return false;
@@ -301,11 +279,8 @@ class DoomGame {
             user.addEffect(def.getEffect(), def.getDuration());
             return true;
         }
-        // Pickup heal (catalog data — Doom's berserk, vanilla P_GivePower
-        // pw_strength): the heal happens BEFORE the already-owned check, so
-        // every sphere re-heals and is consumed even when already held — and
-        // each pickup restarts the fading red wash (PowerStrength resets its
-        // EffectTics on re-pickup).
+        // Berserk (P_GivePower pw_strength): heals before the already-owned
+        // check, so every pack is consumed and restarts the red wash.
         if (def.getPickupHeal() !== null) {
             user.giveItem(code);
             user.addEnergy(def.getPickupHeal(), def.getPickupHeal());
@@ -313,7 +288,6 @@ class DoomGame {
             this._raiseWeapon(user, def.getPickupWeapon());
             return true;
         }
-        // Key or permanent power-up: a key already held leaves the sprite.
         if (user.hasItem(code)) {
             return false;
         }
@@ -321,9 +295,6 @@ class DoomGame {
         return true;
     }
 
-    // Pour the game's canonical starting loadout (profile data) on the freshly
-    // built DoomUser: all weapon slots declared, the starting weapons owned,
-    // the ammo counters initialised to their normal cap with the starting ammo.
     _setupLoadout(user) {
         const loadout = this._gameProfile.startingLoadout();
 
@@ -344,14 +315,11 @@ class DoomGame {
             user.giveAmmo(code, loadout.ammo[code]);
         }
 
-        // The armour is a single 0→max counter; a pickup only sets the points
-        // and the absorption fraction of its type. The player starts at 0.
         user.setMaxArmor(loadout.maxArmor);
         user.setArmor(0);
     }
 
-    // Debug cheat (the 'o' key): full kit through the normal DoomUser grant
-    // paths — same ammo caps and armour ceiling as the pickups.
+    // Debug cheat (the 'o' key).
     _applyCheatFullKit() {
         const user = this._world.getUser();
 
@@ -378,19 +346,17 @@ class DoomGame {
         user.setArmorAbsorb(armor.absorb);
     }
 
-    // Debug helper: force the player to a chosen location instead of the WAD
-    // spawn. The given Y is used as the floor-search ceiling (exactly like the
-    // initial snap in World.finalizeInit), so the player is dropped onto the
-    // floor below it rather than left embedded or floating.
+    // Debug helper. The given Y is the floor-search ceiling, like the initial
+    // snap in World.finalizeInit: the player drops onto the floor below it.
     _applySpawnOverride() {
         if (this._spawnOverride === null) {
             return;
         }
-        const user = this._world.getUser();
-        const pos  = this._spawnOverride.position;
-        user.x     = pos[0];
-        user.y     = pos[1];
-        user.z     = pos[2];
+        const user     = this._world.getUser();
+        const position = this._spawnOverride.position;
+        user.x     = position[0];
+        user.y     = position[1];
+        user.z     = position[2];
         user.yaw   = this._spawnOverride.yaw;
         user.pitch = this._spawnOverride.pitch;
         user.syncPositionTracking();
@@ -401,13 +367,12 @@ class DoomGame {
         }
     }
 
-    // --- Level secrets (sector special 9) ---
+    // --- Level data fed by the world builder ---
 
     setSecretsTotal(total) {
         this._secretsTotal = total;
     }
 
-    // Sector-light lookup handed over by the world builder (weapon shading).
     setSectorLight(sectorLight) {
         this._sectorLight = sectorLight;
     }
@@ -416,8 +381,6 @@ class DoomGame {
         this._sectorDamage = sectorDamage;
     }
 
-    // Impact-special lines handed over by the world builder (gun triggers,
-    // tested by the hitscan against every shot trace).
     setMoverSounds(moverSounds) {
         this._moverSounds = moverSounds;
         return this;
@@ -436,8 +399,6 @@ class DoomGame {
         this._sectorSurfaces = sectorSurfaces;
     }
 
-    // Ground terrain of the level: what a shot, a shell, a falling body or a
-    // blast leaves where it meets a liquid.
     setTerrain(terrain) {
         this._terrain = terrain;
     }
@@ -446,30 +407,28 @@ class DoomGame {
         this._automap = automap;
     }
 
-    // Transient effect spawner — built after the world, so build-time
-    // consumers (teleport interactions) read it lazily at trigger time.
+    // Built after the world: build-time consumers (teleports) must read it at trigger time.
     getEffects() {
         return this._effects;
     }
 
-    // ZDoom telezoom (deliberate borrow, cvar telezoom): a teleport arrival
-    // widens the FOV instantly, then _updateTeleZoom eases it back per tic.
+    // Borrowed from ZDoom (cvar telezoom): a teleport arrival widens the FOV,
+    // then _updateTeleZoom eases it back.
     startTeleZoom() {
-        this._fov       = Math.min(WadConstants.TELEZOOM_FOV_MAX, WadConstants.PLAYER_FOV + WadConstants.TELEZOOM_FOV_BOOST);
-        this._fovTicAcc = 0;
+        this._fov           = Math.min(WadConstants.TELEZOOM_FOV_MAX, WadConstants.PLAYER_FOV + WadConstants.TELEZOOM_FOV_BOOST);
+        this._fovUntickedMs = 0;
         this._applyFov();
     }
 
-    // CheckFOV ease-back: max(TELEZOOM_STEP_MIN, diff × TELEZOOM_STEP_FACTOR)
-    // degrees per tic, snapping once the gap drops under the minimum step.
+    // ZDoom CheckFOV, per tic.
     _updateTeleZoom(dt) {
         if (this._fov === WadConstants.PLAYER_FOV) {
             return;
         }
         const msPerTic = WadConstants.SECONDS_PER_TIC * 1000;
-        this._fovTicAcc += dt;
-        while (this._fovTicAcc >= msPerTic) {
-            this._fovTicAcc -= msPerTic;
+        this._fovUntickedMs += dt;
+        while (this._fovUntickedMs >= msPerTic) {
+            this._fovUntickedMs -= msPerTic;
             const diff = this._fov - WadConstants.PLAYER_FOV;
             if (Math.abs(diff) < WadConstants.TELEZOOM_STEP_MIN) {
                 this._fov = WadConstants.PLAYER_FOV;
@@ -508,8 +467,7 @@ class DoomGame {
         this._killsCount++;
     }
 
-    // A_VileChase put a body back on its feet: vanilla Revive raises the level
-    // total with it, so the ratio stays honest when it is killed again.
+    // A resurrected monster counts again in the total (A_VileChase / Revive).
     addKillTotal() {
         this._killsTotal++;
     }
@@ -522,9 +480,8 @@ class DoomGame {
         return this._killsTotal;
     }
 
-    // Level stats (vanilla totalsecret / totalkills / totalitems + leveltime):
-    // scoped to ONE level, so they are cleared on every start — the totals are
-    // pushed back by the world builder as it registers the things.
+    // Vanilla totalsecret / totalkills / totalitems + leveltime; the totals
+    // are pushed back by the world builder.
     _resetLevelStats() {
         this._secretsFound   = 0;
         this._secretsTotal   = 0;
@@ -546,13 +503,8 @@ class DoomGame {
         this._itemsFound++;
     }
 
-    // Real time between two frames — NOT the engine delta, which is clamped to
-    // 50 ms to keep a long frame from breaking the physics and would make this
-    // clock lag whenever the game dips below 20 fps. The frozen frames (pause,
-    // end-of-level tally) keep the stamp fresh without accumulating, so their
-    // duration simply never enters the total. A gap too long to be a rendered
-    // frame is a backgrounded tab, where requestAnimationFrame stops: the world
-    // did not advance either, so that time is not play time.
+    // Real time, not the engine delta, which is clamped to 50 ms and would lag
+    // below 20 fps. Frozen frames and backgrounded-tab gaps are not counted.
     _tickLevelClock(timestamp) {
         const now = ((typeof timestamp === 'number') ? timestamp : performance.now());
         const step = ((this._levelClockLast !== null) ? (now - this._levelClockLast) : 0);
@@ -564,25 +516,20 @@ class DoomGame {
 
     // --- Save / load ---
 
-    // Arms the next startFromWad to restore a saved game on top of the rebuilt
-    // level (see DoomGameSnapshot). Consumed by _init.
+    // Restored by the next startFromWad, on top of the rebuilt level.
     setRestoreSnapshot(snapshot) {
         this._restoreSnapshot = snapshot;
         return this;
     }
 
-    // Snapshot of the running level (save game) — captured while the game is
-    // frozen under the pause menu, so the state is coherent.
     captureSnapshot() {
         return new DoomGameSnapshot().capture(this._snapshotContext());
     }
 
-    // Explicit dependencies of the snapshot service — it never reaches into
-    // the game's privates.
     _snapshotContext() {
         return {
             wadId:        ((this._wadMeta !== null) ? this._wadMeta.id : null),
-            levelCode:    this._levelName,
+            levelCode:    this._levelCode,
             skill:        this._skill,
             user:         this._world.getUser(),
             collision:    this._world.getCollision(),
@@ -605,33 +552,26 @@ class DoomGame {
         };
     }
 
-    // spawnOverride is a debug helper: when set ({position, yaw, pitch}) the
-    // player is forced to that location after the world is built, instead of the
-    // WAD spawn (see _applySpawnOverride).
-    async startFromWad(wadFile, levelName, wadMeta = null, spawnOverride = null, skill = null) {
+    // spawnOverride = {position, yaw, pitch}, debug only (see _applySpawnOverride).
+    async startFromWad(wadFile, levelCode, wadMeta = null, spawnOverride = null, skill = null) {
         this._wadFile     = wadFile;
         this._gameProfile = new GameProfileList().getForWad(wadFile);
         this._buildCatalogs();
-        this._mapInfo     = new WadMapInfo(wadFile, this._gameProfile);
+        this._mapInfo         = new WadMapInfo(wadFile, this._gameProfile);
         this._dehackedStrings = new WadDehackedStrings(wadFile);
-        this._levelName   = levelName;
-        this._levelDisplayName = this._resolveLevelName();
-        this._spawnOverride = spawnOverride;
+        this._levelCode       = levelCode;
+        this._levelName       = this._resolveLevelName();
+        this._spawnOverride   = spawnOverride;
         if (wadMeta !== null) {
             this._wadMeta = wadMeta;
         }
-        // Skill is given on the first launch by the menu and kept across the
-        // level chain (the exit-switch transition calls startFromWad without it).
+        // Null on a level transition: the skill carries over.
         if (skill !== null) {
             this._skill = skill;
         }
 
-        // Snapshot the player equipment BEFORE loader.reset() destroys the world.
-        // Null on the first level (fresh game) → _init pours the starting loadout;
-        // set on a level transition → _init restores it then resets level-scoped.
-        // A dead player carries nothing: G_DoLoadLevel reborns them at the
-        // starting loadout (PST_DEAD → PST_REBORN). A restart replays the
-        // equipment the level began with instead.
+        // Exported before loader.reset() destroys the world. A dead player
+        // carries nothing (G_DoLoadLevel PST_DEAD → PST_REBORN).
         if (this._restartState !== null) {
             this._carriedState = this._restartState;
             this._restartState = null;
@@ -641,10 +581,8 @@ class DoomGame {
         }
 
         this._resetLevelStats();
-        // The builder only sets one when it can: a BSP-less level must not
-        // inherit the previous map.
-        this._automap = null;
-        // Builder-fed too: never inherited from the previous level.
+        // Builder-fed, and not always set: never inherit the previous level's.
+        this._automap       = null;
         this._moverSounds   = null;
         this._ambientSounds = null;
         this._sectorDamage  = null;
@@ -652,16 +590,15 @@ class DoomGame {
 
         this._teardownLevel();
         loader.beginBatch();
-        // The monster system is created BEFORE the builder: the builder feeds
-        // it while pre-building every (frame × rotation) billboard inside the
-        // batch (an object registered after endBatch would re-fire the loader).
-        // The skill rule must be known at add() time (InstantReaction).
+        // Built before the builder, which feeds it inside the batch (an object
+        // registered after endBatch would re-fire the loader). The skill rule
+        // must be known at add() time (InstantReaction).
         this._monsters = new DoomMonsterSystem();
         this._monsters.setSkillRule(this._skillRule());
         this._monsters.setRandom(this._rng);
         this._monsters.setNightmareFast(this._gameProfile.nightmareFast());
         this._monsters.setMonsterSounds(this._gameProfile.monsterSounds());
-        await new WadWorldBuilder(wadFile, levelName, {
+        await new WadWorldBuilder(wadFile, levelCode, {
             onLevelExit: (secret) => {
                 this._onLevelExit(secret);
             },
@@ -673,45 +610,32 @@ class DoomGame {
             monsterSystem: this._monsters
         }).build();
 
-        // Pre-decode every weapon view/flash frame INSIDE the batch: decoding a
-        // sprite registers a texture, and any registration after endBatch would
-        // re-trigger the loader's global check (and _init) mid-render.
+        // Decoded inside the batch: a texture registered after endBatch would
+        // re-trigger the loader (and _init).
         this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
         this._availableWeapons = new Set();
         for (const code of Object.keys(this._weapons)) {
             const def = this._weapons[code];
-            // A weapon "exists" in this WAD only if its sprites are present
-            // (e.g. the super shotgun / SHT2 is absent from Doom 1 WADs).
-            // Probe quietly, then decode only the frames we will actually use.
+            // E.g. the super shotgun sprites are absent from Doom 1 WADs.
             const readyLump = def.getState(def.getEntry().ready).getLump();
             if (this._weaponSprites.has(readyLump)) {
                 this._availableWeapons.add(code);
                 this._weaponSprites.decode(def.getSpriteLumps());
             }
         }
-        // Effect + projectile sprites are built here too, inside the batch, so no
-        // billboard object is registered after endBatch (which would re-fire the
-        // loader). The projectile system gets its world (collision + user) in _init.
+        // Effect and projectile billboards: inside the batch too.
         this._effects     = new DoomEffects(this._weaponSprites, this._rng, this._gameProfile);
-        // Impact decals: textures + quad templates are built here in the batch,
-        // from the game profile's decal set. Skipped only if the decal graphics
-        // haven't finished decoding yet (first-level race).
+        // Skipped if the decal graphics are not decoded yet (first-level race).
         this._decals = ((doomImageAssets.isReady()) ? new DoomDecals(doomImageAssets, this._rng, this._gameProfile) : null);
-        // Our own addition: a game with no splash of its own gets one anyway,
-        // baked here in the batch from the greyscale masks and the colour of
-        // each liquid flat the level uses.
+        // Not vanilla: a game with no splash of its own gets a generic one,
+        // tinted with the colour of each liquid flat.
         if ((this._terrain !== null) && doomImageAssets.isReady()) {
             new DoomGenericSplash(doomImageAssets, this._effects, this._gameProfile).apply(this._terrain);
         }
-        // Shared damage pipeline of the shootable bodies — wired to the world
-        // in _init, consumed by hitscan, projectiles and the bodies' own
-        // A_Explode (barrels).
         this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._gameProfile.monsterDamageRules(), this);
         this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
         this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._gameProfile, this._monsters, this._monsterDamage);
         this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
-        // The attack layer: the gates A_Chase decides on, and every A_* verb of
-        // the bestiary. Its channels are wired in _init, once the world exists.
         this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
         this._monsters.setAttack(this._monsterAttack);
 
@@ -723,30 +647,23 @@ class DoomGame {
 
     _init() {
         this._world = loader.world().get();
-        // Loading is done; drop the callback so runtime texture/instance spawns
-        // (weapon frames, puffs, projectiles) never re-enter _init.
+        // Runtime spawns (puffs, projectiles) must never re-enter _init.
         loader.clearCallback();
 
         const user = this._world.getUser();
         if (this._restoreSnapshot !== null) {
-            // Saved-game restore: the full saved equipment comes back, keys
-            // and timed effects included — no per-level reset.
+            // Keys and timed effects included: no per-level reset.
             user.importState(this._restoreSnapshot.player.state);
         } else if (this._carriedState === null) {
             this._setupLoadout(user);
         } else {
-            // Carry equipment over, then drop the level-scoped possessions
-            // (keys, timed effects) — weapons/ammo/energy/armor persist.
             user.importState(this._carriedState);
             user.resetForNewLevel(this);
         }
-        // Skill-derived, re-applied on every level — never part of the
-        // carried equipment state.
         user.setDamageFactor(this._skillRule().damageFactor);
         user.setExitSectorProbe(((this._sectorDamage !== null)
-            ? ((u) => this._sectorDamage.isExitSectorAt(u.x, u.z))
+            ? ((player) => this._sectorDamage.isExitSectorAt(player.x, player.z))
             : null));
-        // The player disturbs a liquid he drops into, like any other body.
         user.setLandingSplash(((this._terrain !== null)
             ? ((x, y, z) => this._terrain.splashAt(x, y, z))
             : null));
@@ -759,33 +676,22 @@ class DoomGame {
             this._wakeLock.init();
         }
 
-        // Inputs owns the keyboard singleton — created once, reused across levels
+        // Created once: it owns the keyboard singleton.
         if (this._inputs === null) {
             this._inputs = new Inputs();
         }
-        this._fov       = WadConstants.PLAYER_FOV;
-        this._fovTicAcc = 0;
-        // Dropped BEFORE the display is built: startFromWad replays _init on
-        // the same instance for the next level, and _buildDisplay only wires
-        // the weapon overlay when a controller exists — reading the previous
-        // level's one would arm the overlay over a controller about to go.
+        this._fov           = WadConstants.PLAYER_FOV;
+        this._fovUntickedMs = 0;
+        // Before _buildDisplay, which would otherwise wire the overlay on the
+        // previous level's controller.
         this._playerWeapon = null;
         this._buildDisplay();
 
-        // Weapon firing: a fresh psprite controller per level, RNG cleared like
-        // vanilla M_ClearRandom. It brings the active weapon up on construction —
-        // skipped entirely while the player has no weapon (a game whose arsenal
-        // is not built yet): no controller, no overlay, nothing to decode.
+        // Vanilla M_ClearRandom.
         this._rng.reset();
-        // Monsters + the shared damage pipeline (blood, pain, death, thrust):
-        // wired before the hitscan so every attack channel lands on the bodies.
         this._monsters.setWorld(this._world.getCollision(), this._world.getUser());
         this._monsterDamage.setWorld(this._world.getCollision(), this._world.getUser());
         this._hitscan = new DoomHitscan(this._world.getCollision(), this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
-        // Splashes: the terrain spawns them through the effects, and every path
-        // that can reach the ground asks it (shot, shell, falling body — the
-        // player's included, wired above — and blast). The effects need the
-        // world of their own accord: a thrown chunk lands on its floor.
         this._effects.setWorld(this._world.getCollision());
         if (this._terrain !== null) {
             this._terrain.setEffects(this._effects);
@@ -803,27 +709,20 @@ class DoomGame {
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
         }
 
-        // Saved-game restore, once everything is built and wired but before
-        // the first frame: patch the dynamic state over the fresh level.
         if (this._restoreSnapshot !== null) {
             new DoomGameSnapshot().apply(this._snapshotContext(), this._restoreSnapshot);
             this._restoreSnapshot = null;
             this._engine.resetDeltaClock();
         }
 
-        // Require a release before the first press (a button held during the
-        // level start must not immediately quit it)
+        // A button held during the level start must not open the pause at once.
         this._pauseWasDown = true;
 
-        // The sound system survives the levels: rebind its listener on THIS
-        // level's player (and lift any freeze left by an exit modal), and
-        // start the level's own song.
+        // Also lifts the sound freeze left by an exit modal.
         doomSound.bindLevel(this._world.getUser());
-        doomSound.playLevelMusic(this._mapInfo.musicLumpsFor(this._levelName));
-        // Use-failure wall probe at the vanilla USERANGE.
+        doomSound.playLevelMusic(this._mapInfo.musicLumpsFor(this._levelCode));
         this._world.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
-        // Mover motion sounds, declared during the batch, wired now that the
-        // loader can hand the instances out.
+        // Declared during the batch, wired now that the loader hands the instances out.
         if (this._moverSounds !== null) {
             this._moverSounds.wireAll();
         }
@@ -833,14 +732,9 @@ class DoomGame {
     }
 
     /**
-     * Builds the screen, the engine and the HUD — the three objects tied to the
-     * canvas. Called at level init, and again on a renderer change: a canvas
-     * carries one context type for its whole life (2D or WebGL), so switching
-     * renderer means a new canvas, hence a new ScreenManager and a new engine.
-     * Everything else (loader, world, player, monsters, sounds) survives.
-     *
-     * The renderer instance is always fresh: Object3dRendererList hands out a
-     * new one per call, and the old one holds handles of a context that is gone.
+     * Builds the screen, the engine and the HUD: the objects tied to the canvas.
+     * Also called on a renderer change, since a canvas keeps one context type
+     * (2D or WebGL) for its whole life.
      */
     _buildDisplay() {
         this._screen = new ScreenManager('screen', {
@@ -849,24 +743,18 @@ class DoomGame {
             virtualHeight: 1080
         });
 
-        // The devices are re-bound to the new screen (mouse canvas, touch overlay)
         this._inputs.bindScreen(this._screen);
         doomSettings.applyToInputs(this._inputs);
-        // Not a setting but a property of the level: no map, no touch target.
         this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
 
-        // The memo holds the WANTED code, never the effective one: the list
-        // silently falls back to 'full' when a renderer is unavailable, and
-        // memoizing that fallback would make every frame see a mismatch and
-        // rebuild the display forever.
+        // The wanted code, not the effective one: the list falls back to 'full'
+        // when a renderer is unavailable, which would trigger a rebuild every frame.
         this._rendererCode = doomSettings.getDisplayRenderer();
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer(this._rendererCode));
-        // The current fov, never a reset: a telezoom in progress must survive a
-        // renderer swap (_init sets the starting value before calling us).
+        // Not reset: a telezoom in progress must survive a renderer swap.
         this._applyFov();
         this._engine.setZBuffer(0.1, 100);
-        // The engine and the player are rebuilt on each level: re-arm every
-        // memoized setting so all of them are pushed onto the fresh pair.
+        // Forces every setting to be pushed onto the fresh engine.
         this._depthShadingOn = null;
         this._texSmoothingOn = null;
         this._fallDamageOn   = null;
@@ -878,7 +766,7 @@ class DoomGame {
             .bindUser(this._world.getUser())
             .bindInputs(this._inputs)
             .bindGame(this)
-            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelName, this._skill, this._levelDisplayName)
+            .setLevelInfo(((this._wadMeta !== null) ? this._wadMeta.id : null), this._levelCode, this._skill, this._levelName)
             .addDescription('(c)2026 Spipu')
         ;
         if (this._automap !== null) {
@@ -889,40 +777,28 @@ class DoomGame {
 
         this._engine.initFromWorld(this._world);
 
-        // Null on a level init (the controller is built just after), set on a
-        // renderer swap mid-level: the fresh engine needs its overlay back.
+        // Only on a renderer swap: at level init the controller is built afterwards.
         if (this._playerWeapon !== null) {
             this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
         }
     }
 
     /**
-     * Renderer setting, read on every live frame: a change rebuilds the screen,
-     * the engine and the HUD around a new canvas, keeping the level running.
-     *
-     * Deliberately NOT part of _applySettings, which also runs on the frozen
-     * frames of the pause and of the exit modals: the pause overlay and the
-     * screen container are both fixed without a z-index, so their stacking is
-     * DOM order — a screen rebuilt under an open menu would cover it. Waiting
-     * for a live frame also batches the change: stepping through the four
-     * values while paused costs ONE rebuild, the one the player settles on.
+     * Rebuilds the display on a renderer change, on live frames only: the menus
+     * and the screen are stacked by DOM order, so a screen rebuilt under an open
+     * menu would cover it. It also costs one rebuild for several changes.
      */
     _applyRendererSetting() {
         const wanted = doomSettings.getDisplayRenderer();
         if (wanted === this._rendererCode) {
             return;
         }
-        // A menu display stacked over the game forbids the rebuild: it is a
-        // sibling of the screen container inside #screen, both fixed without a
-        // z-index, so the fresh canvas would be appended after it and cover it.
-        // The pause never reaches here (its frames return early), the death
-        // menu does — it freezes nothing.
+        // The death menu does not freeze the game, so its frames reach here.
         if ((this._pauseDisplay !== null) || (this._deathDisplay !== null)) {
             return;
         }
         const viewState = this._hud.getViewState();
-        // Before the canvas goes: bindCanvas clears the lock flag without
-        // exiting the lock, which would leave releaseLock() a no-op afterwards.
+        // Before the canvas goes: bindCanvas clears the lock flag without exiting the lock.
         this._inputs.releaseMouse();
         this._screen.destroyContainer();
         this._buildDisplay();
@@ -935,14 +811,11 @@ class DoomGame {
         }
         this._tickLevelClock(timestamp);
 
-        // Pause button (press edge): toggle the pause menu over the frozen
-        // game — read every frame, paused included, to keep the edge state.
+        // Read on paused frames too, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning && (this._deathModal === null)) {
             if (this._paused) {
-                // A stacked modal (options, save slots, confirm) handles the
-                // Escape key itself as one step back: the toggle only leaves
-                // the pause from its root.
+                // A stacked modal handles Escape itself as one step back.
                 if (this._pauseModal.isAtRoot()) {
                     this._leavePause();
                 }
@@ -952,12 +825,8 @@ class DoomGame {
         }
         this._pauseWasDown = pauseDown;
 
-        // Frozen frame: no other input read (the modal owns them, and some
-        // reads are consuming), no time step — just redraw the same image (a
-        // resize would otherwise wipe the canvas) under the pause overlay.
-        // Display settings stay live: the stacked options modal can toggle them.
-        // The end-of-level tally freezes the same way: the player reads it at
-        // leisure and the level clock stops with the world.
+        // Frozen frame (pause, tally): the modal owns the inputs, the image is
+        // redrawn since a resize wipes the canvas, the settings stay live.
         if (this._paused || this._transitioning) {
             this._applySettings();
             this._engine.displayWorld(this._world);
@@ -966,21 +835,18 @@ class DoomGame {
             return;
         }
 
-        // Cheat key (press edge): hand the player the full test kit
         const cheatDown = this._inputs.readButtonCheatFullKit();
         if (cheatDown && !this._cheatWasDown) {
             this._applyCheatFullKit();
         }
         this._cheatWasDown = cheatDown;
 
-        // HUD toggle (press edge): switch between the game HUD and the debug HUD
         const hudDown = this._inputs.readButtonToggleHud();
         if (hudDown && !this._hudWasDown) {
             this._hud.toggleMode();
         }
         this._hudWasDown = hudDown;
 
-        // Map toggle (press edge): a layer, the game keeps running under it.
         const mapDown = this._inputs.readButtonMap();
         if (mapDown && !this._mapWasDown) {
             this._hud.toggleAutomap();
@@ -1002,7 +868,7 @@ class DoomGame {
 
             const wheel = this._inputs.readWeaponWheel();
             for (let n = 0; n < Math.abs(wheel); n++) {
-                this._playerWeapon.cycleWeapon((wheel > 0) ? 1 : -1);
+                this._playerWeapon.cycleWeapon(((wheel > 0) ? 1 : -1));
             }
         }
 
@@ -1011,8 +877,7 @@ class DoomGame {
         this._world.update(dt, this._inputs);
         this._world.getUser().updateEffects(dt);
         this._trackDeath(dt);
-        // Vanilla marks its lines from the renderer, so the map memorises what
-        // the player sees whether it is on screen or not.
+        // Vanilla marks the lines from the renderer, even with the map closed.
         if (this._automap !== null) {
             this._automap.reveal(this._world.getUser(), this._fov / 2);
         }
@@ -1035,13 +900,12 @@ class DoomGame {
         if (this._decals !== null) {
             this._decals.update(dt);
         }
-        // Playing world sounds follow the moving listener (S_UpdateSounds).
+        // S_UpdateSounds.
         doomSound.update();
         if (this._ambientSounds !== null) {
             this._ambientSounds.update(dt);
         }
-        // Before every push onto the engine: a swap replaces it, and the
-        // settings, the fov and the effect state must land on the new one.
+        // Before every push onto the engine, which a swap replaces.
         this._applyRendererSetting();
         this._applySettings();
         this._updateTeleZoom(dt);
@@ -1052,10 +916,7 @@ class DoomGame {
         requestAnimationFrame(this._animateCallback);
     }
 
-    // display.* and game.* settings pushed to the engine and to the player
-    // when they change (read every frame — a toggle from the options, which
-    // the pause menu reaches mid-level, applies live). The diminishing curve
-    // constants live in WadConstants.
+    // Read every frame so a change from the pause options applies live.
     _applySettings() {
         const user = this._world.getUser();
         this._depthShadingOn = this._pushSetting(
@@ -1080,10 +941,7 @@ class DoomGame {
             (on) => user.setCrouchAllowed(on));
     }
 
-    // Engine-facing state of the running effects, re-derived every frame:
-    // night vision (Doom light visor / Heretic torch) = scene-wide light
-    // floor, blinking through the vanilla end-of-powerup window; muzzle
-    // flash extralight = scene-wide light boost while the flash runs.
+    // Night vision (light visor / torch) and the muzzle flash extralight.
     _pushEffectDisplay(user) {
         this._engine.setLightOverride(((user.isEffectVisible('light'))
             ? WadConstants.NIGHT_VISION_LIGHT : null));
@@ -1098,28 +956,19 @@ class DoomGame {
         return wanted;
     }
 
-    // Engine overlay callback: draw the weapon view sprite (+ muzzle flash) over
-    // the scene. The controller returns rects normalised on the 320x200
-    // psprite canvas — a 4:3 design (1.2 tall pixels) — so on a wider screen
-    // the weapon layer is squeezed around the centre to keep its vanilla
-    // proportions (gzdoom-like) instead of being stretched to the full width:
-    // asymmetric weapons (Heretic gauntlets, the Doom fist) stay where the
-    // original game puts them.
+    // The 4:3 psprite layer is squeezed around the centre on a wider screen
+    // (like GZDoom) rather than stretched, so asymmetric weapons stay in place.
     _drawWeaponOverlay(renderer, engine) {
-        const k = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
-        // Partial invisibility: the weapon in hand fades out, flashing back
-        // solid through the vanilla end-of-powerup blink.
+        const squeeze = DoomGame.PSPRITE_ASPECT / this._screen.getAspectRatio();
         const alpha = ((this._world.getUser().isEffectVisible('invisibility'))
             ? WadConstants.INVISIBILITY_WEAPON_ALPHA : 1);
-        for (const spr of this._playerWeapon.getViewSprites()) {
-            renderer.drawScreenSprite(engine, spr.texId, 0.5 + (spr.x - 0.5) * k, spr.y, spr.w * k, spr.h, spr.light, alpha);
+        for (const sprite of this._playerWeapon.getViewSprites()) {
+            renderer.drawScreenSprite(engine, sprite.texId, 0.5 + (sprite.x - 0.5) * squeeze, sprite.y, sprite.w * squeeze, sprite.h, sprite.light, alpha);
         }
     }
 
-    // Stop the running level and wipe every loader (rAF first: World.update
-    // reads the loaders each frame). The mouse goes back to the browser —
-    // a gamepad pause can leave the pointer lock engaged. Inputs are null
-    // until the first level built its screen (startFromWad tears down first).
+    // A gamepad pause can leave the pointer lock engaged. Inputs are null
+    // before the first level.
     _teardownLevel() {
         if (this._inputs !== null) {
             this._inputs.releaseMouse();
@@ -1130,10 +979,6 @@ class DoomGame {
 
     // --- Pause menu ---
 
-    // Freeze the game under the pause modal: no time step runs while paused
-    // (engine clock untouched → animated textures, movers, monsters, weapons
-    // and screen flashes all hold still). The mouse goes back to the browser
-    // and the touch pad hides under the overlay.
     _enterPause() {
         this._paused = true;
         doomSound.playUi('menu/activate').setPaused(true);
@@ -1150,9 +995,7 @@ class DoomGame {
             .show(() => this._pauseTitle());
     }
 
-    // Save/load wiring of the pause menu — the frozen game captures a coherent
-    // snapshot. Null without stored WAD metadata (direct test shortcut): saves
-    // are partitioned by WAD, there is nothing to key them on.
+    // Null without WAD metadata (direct test shortcut): saves are keyed by WAD.
     _saveContext() {
         if (this._wadMeta === null) {
             return null;
@@ -1163,7 +1006,7 @@ class DoomGame {
                 id:            DoomSaveStore.saveId(this._wadMeta.id, slot),
                 wadId:         this._wadMeta.id,
                 slot:          slot,
-                levelCode:     this._levelName,
+                levelCode:     this._levelCode,
                 skill:         this._skill,
                 savedAt:       Date.now(),
                 formatVersion: DoomSaveStore.FORMAT_VERSION,
@@ -1174,12 +1017,8 @@ class DoomGame {
         };
     }
 
-    // Back to the game: the delta clock restarts from zero so the paused
-    // wall-time never reaches the world, and the mouse is grabbed back — a
-    // click/Enter resume carries the user activation the lock needs; an
-    // Escape resume does not (the browser refuses it), the player re-clicks
-    // the canvas, the pre-existing recovery. Quitting the level skips the
-    // grab — the canvas is about to be destroyed.
+    // The browser refuses the mouse grab on an Escape resume (no user
+    // activation): the player re-clicks the canvas.
     _leavePause(backToGame = true) {
         doomSound.playUi('menu/clear').setPaused(false);
         this._pauseModal.close();
@@ -1198,26 +1037,20 @@ class DoomGame {
         }
     }
 
-    // "{wad} — Episode {n}" — the episode digit comes from the level name
-    // (a MAPxx game is its single episode 1); without stored meta (direct
-    // test shortcut) the level name stands in for the WAD.
+    // "{wad} — Episode {n}"; a MAPxx game is episode 1.
     _pauseTitle() {
-        const episode  = (WadLevelCode.parse(this._levelName).episode ?? 1);
-        const wadTitle = ((this._wadMeta !== null) ? WadRegistry.displayTitle(this._wadMeta) : this._levelName);
+        const episode  = (WadLevelCode.parse(this._levelCode).episode ?? 1);
+        const wadTitle = ((this._wadMeta !== null) ? WadRegistry.displayTitle(this._wadMeta) : this._levelCode);
 
         return wadTitle + ' — ' + appTranslator.get('menu.episode.item', {episode: episode});
     }
 
-    // Leave the current level (pause menu quit entry) and go back to the
-    // WAD's menu.
     _quitToMenu() {
         this._teardownLevel();
         this._backToMenu();
     }
 
-    // Load a saved game from the pause or death menu: the running level only
-    // goes down once the save proved readable and compatible — a broken slot
-    // must not cost the current (unsaved) game.
+    // The running level only goes down once the save proved readable and compatible.
     async _loadFromSave(saveMeta) {
         const display = (this._pauseDisplay ?? this._deathDisplay);
         let snapshot = null;
@@ -1238,8 +1071,6 @@ class DoomGame {
         new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
     }
 
-    // Whichever game menu is up (pause or death) goes down without a return
-    // to the game: the level is about to be torn down.
     _closeGameMenu() {
         if (this._pauseModal !== null) {
             this._leavePause(false);
@@ -1251,10 +1082,8 @@ class DoomGame {
 
     // --- Death menu ---
 
-    // A moment after the player dies, the death menu opens over the level,
-    // which keeps running (vanilla lets the monsters roam around the corpse).
-    // Never during a level exit: the tally owns the screen, and the reborn
-    // rule of startFromWad handles the dead player.
+    // The level keeps running under the death menu, like vanilla. Never during
+    // a level exit: the tally owns the screen.
     _trackDeath(dt) {
         if (!this._world.getUser().isDead()) {
             this._deathClockMs = 0;
@@ -1295,30 +1124,26 @@ class DoomGame {
         this._deathDisplay = null;
     }
 
-    // Replay the current level with the equipment the player entered it with
-    // (the level-start autosave of the modern ports), through the same frozen
-    // loading flow as a level exit.
+    // Replays the level with the equipment it began with (the level-start
+    // autosave of the modern ports).
     _restartLevel() {
         this._transitioning = true;
         this._closeDeathMenu();
         this._restartState = this._levelEntryState;
 
         const display = new MenuDisplay('screen').init(true);
-        this._startNextLevel(display, new MenuModal(display), this._levelName);
+        this._startNextLevel(display, new MenuModal(display), this._levelCode);
     }
 
-    // Back to the played WAD's menu (pause, end of game, failed chain
-    // conversion), carrying the skill of the interrupted game so a new one
-    // preselects it — or to the WAD list when no meta is known (direct test
-    // shortcut).
+    // Carries the skill over so a new game preselects it.
     _backToMenu() {
         this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill));
     }
 
-    _leaveLevelTo(open) {
+    _leaveLevelTo(openMenu) {
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
-            open(navigator, this._wadMeta);
+            openMenu(navigator, this._wadMeta);
             return;
         }
         navigator.start();
@@ -1326,8 +1151,7 @@ class DoomGame {
 
     // --- Level transition ---
 
-    // Stop the animation loop and remove the screen — must be done before
-    // loader.reset(), the running world reads its data from the loaders
+    // Before loader.reset(): the running world reads its data from the loaders.
     _stopLevel() {
         this._running = false;
         doomSound.unbindLevel();
@@ -1337,45 +1161,32 @@ class DoomGame {
         }
     }
 
-    // Called by an exit interaction (switch 11/51 or walk-over 52/124): the
-    // end-of-level tally, then the next level on the player's press (or back to
-    // the menu after the last level of the WAD). The secret flag routes to the
-    // secret level instead of the sequential one.
+    // Called by an exit line: the tally, the optional story text, then the
+    // next level (or back to the menu after the last one).
     _onLevelExit(secret = false) {
         if (this._transitioning) {
             return;
         }
         this._transitioning = true;
-        // A corpse pushed over an exit line, or a boss finished after the
-        // player's death: the exit wins over the death menu.
+        // A corpse pushed over an exit line: the exit wins over the death menu.
         if (this._deathModal !== null) {
             this._closeDeathMenu();
         }
-        // The exit modals freeze the game exactly like the pause: the playing
-        // sounds hold with it (the next level's bindLevel lifts the freeze).
-        // The intermission song covers the tally and the story text (vanilla),
-        // until the next level's own music takes over.
+        // The next level's bindLevel lifts the freeze.
         doomSound.setPaused(true).playIntermissionMusic();
 
-        // Progression owned by WadMapInfo: vanilla defaults synthesized from
-        // the level names, overlaid by the UMAPINFO lump when the WAD has one
-        // (null = end of game → back to the menu).
-        const nextLevel = this._mapInfo.nextLevelName(this._levelName, secret === true);
+        // Null at the end of the game.
+        const nextLevel = this._mapInfo.nextLevelCode(this._levelCode, secret === true);
 
-        // The tally waits for a press: the mouse has to go back to the browser
-        // (a pointer-locked canvas swallows every click on the button) and the
-        // virtual pad out of the way, exactly like the pause.
+        // A pointer-locked canvas would swallow the clicks on the tally button.
         this._inputs.releaseMouse().setVirtualPadVisible(false);
 
-        // Over the game like the pause: the tally now waits for a press, so the
-        // frozen level stays visible behind it instead of a black screen.
         const display = new MenuDisplay('screen').init(true);
         const modal = new MenuModal(display);
         const title = this._tallyTitle(nextLevel);
         const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
 
-        // The story text comes after the tally (vanilla order): the tally then
-        // only offers to move on, and the text carries the real next action.
+        // Vanilla order: the story text comes after the tally.
         const finaleText = this._finaleText(secret === true);
         const tallyCode  = ((finaleText !== null) ? 'game.finale.continue' : buttonCode);
 
@@ -1384,8 +1195,7 @@ class DoomGame {
                 this._startNextLevel(display, modal, nextLevel);
                 return;
             }
-            // The story screen has its own song, like the original
-            // (gameinfo finalemusic — D_VICTOR / D_READ_M / MUS_CPTD).
+            // gameinfo finalemusic (D_VICTOR / D_READ_M / MUS_CPTD).
             doomSound.playFinaleMusic();
             modal.finale(finaleText, appTranslator.get(buttonCode), () => {
                 this._startNextLevel(display, modal, nextLevel);
@@ -1393,36 +1203,30 @@ class DoomGame {
         });
     }
 
-    // Closing sentence of the tally: the end of the episode or of the game when
-    // nothing follows, else the level — named when it has a name.
     _tallyTitle(nextLevel) {
         if (nextLevel === null) {
-            return appTranslator.get(((WadLevelCode.isEpisodic(this._levelName)) ? 'game.episode.finished' : 'game.finished'));
+            return appTranslator.get(((WadLevelCode.isEpisodic(this._levelCode)) ? 'game.episode.finished' : 'game.finished'));
         }
-        if (this._levelDisplayName !== null) {
-            return appTranslator.get('game.level.finishedNamed', {level: this._levelName, name: this._levelDisplayName});
+        if (this._levelName !== null) {
+            return appTranslator.get('game.level.finishedNamed', {level: this._levelCode, name: this._levelName});
         }
 
-        return appTranslator.get('game.level.finished', {level: this._levelName});
+        return appTranslator.get('game.level.finished', {level: this._levelCode});
     }
 
-    // Readable name of the running level, in the vanilla order of precedence:
-    // the WAD's own UMAPINFO, its DEHACKED replacement of the HUSTR string
-    // (Freedoom), then the game's transcribed table. Null when nobody names it.
+    // Vanilla precedence: UMAPINFO, the DEHACKED HUSTR replacement (Freedoom),
+    // then the game's transcribed table.
     _resolveLevelName() {
-        return (this._mapInfo.levelNameFor(this._levelName)
-            ?? this._dehackedStrings.levelName(this._levelName, this._gameProfile.levelNameStringPrefix())
-            ?? this._gameProfile.levelNames()[this._levelName]
+        return (this._mapInfo.levelNameFor(this._levelCode)
+            ?? this._dehackedStrings.levelName(this._levelCode, this._gameProfile.levelNameStringPrefix())
+            ?? this._gameProfile.levelNames()[this._levelCode]
             ?? null);
     }
 
-    // Story text closing this level, or null when the chapter is not over.
-    // The three layers the vanilla engine stacks, in order: the WAD's own text
-    // (UMAPINFO, untranslatable), the WAD's replacement of the vanilla string
-    // (DEHACKED — how Freedoom tells its own story), then the game's
-    // transcribed catalog, which is the only translated one.
+    // Null when the chapter is not over. Precedence: UMAPINFO, the DEHACKED
+    // replacement (Freedoom), then the game's catalog, the only translated one.
     _finaleText(secret) {
-        const finale = this._mapInfo.finaleFor(this._levelName, secret);
+        const finale = this._mapInfo.finaleFor(this._levelCode, secret);
         if (finale === null) {
             return null;
         }
@@ -1433,8 +1237,7 @@ class DoomGame {
         return ((text !== null) ? DoomFinaleTexts.reflow(text) : null);
     }
 
-    // The three vanilla scores plus the level clock. A score with nothing to
-    // find on this level reads "none" instead of a meaningless 0/0.
+    // A score with nothing to find reads "none" instead of 0/0.
     _tallyLines() {
         const score = (code, found, total) => ({
             label: appTranslator.get(code),
@@ -1451,8 +1254,7 @@ class DoomGame {
         ];
     }
 
-    // Elapsed time as M:SS (H:MM:SS past the hour) — the colon reads the same
-    // in every language, only the percent sign needs the locale.
+    // M:SS, or H:MM:SS past the hour.
     static formatDuration(ms) {
         const total   = Math.max(0, Math.floor(ms / 1000));
         const seconds = String(total % 60).padStart(2, '0');
@@ -1464,8 +1266,7 @@ class DoomGame {
             : (minutes + ':' + seconds));
     }
 
-    // Truncated like the vanilla integer division: 199 items out of 200 must
-    // read 99 %, never the 100 % a rounded ratio would show.
+    // Truncated like the vanilla integer division: 199/200 reads 99 %, not 100 %.
     static formatPercent(found, total) {
         const percent = Math.floor((found * 100) / total);
 
@@ -1475,7 +1276,6 @@ class DoomGame {
 
     async _startNextLevel(display, modal, nextLevel) {
         if (nextLevel === null) {
-            // Last level of the WAD → back to the WAD's menu
             this._teardownLevel();
             modal.close();
             display.destroy();
@@ -1491,8 +1291,6 @@ class DoomGame {
             display.destroy();
             this._transitioning = false;
         } catch (error) {
-            // Conversion failure mid-chain: clean up and fall back to the
-            // WAD's menu (same recovery as the end of a game).
             console.error(error);
             loader.reset();
             modal.close();

@@ -1,6 +1,6 @@
 /**
  * Screen after "New game": pick the episode, native Doom flow. The episodes
- * are detected from the WAD's level names and named by the game profile
+ * are detected from the WAD's level codes and named by the game profile
  * (WadRegistry.getEpisodes). The screen always shows, even for a single
  * unnamed episode (MAPxx sets show one bare "Episode 1" entry) — a
  * standardized flow rather than the vanilla Doom II menu skip.

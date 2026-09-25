@@ -1,30 +1,15 @@
 /**
- * Persistent game settings, stored in the `settings` store of the spipudoom
- * IndexedDB base ({key, value} rows).
+ * Persistent game settings, stored as {key, value} rows in the `settings` store
+ * of the spipudoom IndexedDB base. The settings UI is built from DEFINITIONS
+ * and uses the generic get(); the game reads the dedicated getters.
  *
- * Every setting is declared in DEFINITIONS (key, name translation code, type,
- * default): the settings UI is built from that table (filtered by key
- * prefix, one prefix per input device), init() loads all the saved rows in
- * one pass at boot, set() persists a new value. The generic get() serves the
- * settings UI; the game code reads the dedicated getters (one per setting).
- *
- * Types: 'bool' (yes/no), 'char' (one physical key code, captured in the UI)
- * and 'list' — a closed set of values the definition carries as
- * `values: [{code, ...}]`, of any length: the stored value is the code, the
- * UI shows the label and steps through the list (nextListValue). A list value
- * says how it is labelled in exactly one of three ways (see getListLabel):
- * `label` = a literal proper name, never translated (a language autonym,
- * 'WebGL'); `labelCode` = a translation code, for a value whose label is a
- * description; `format` = no label at all, the code itself rendered in the
- * current locale (percentages).
+ * Types: 'bool', 'char' (one physical key code) and 'list' (the stored value is
+ * one of `values: [{code, ...}]`). A list value carries exactly one of: `label`
+ * (a proper name, never translated), `labelCode` (a translation code) or
+ * `format` (the code rendered in the current locale, e.g. percentages).
  */
 class DoomSettings {
     /**
-     * Values of a percent-coded 'list' setting: only the raw percent as a code.
-     * The label is NOT stored — it is formatted at display time from the
-     * current locale (see getListLabel), so '7.5' reads '7,5 %' in French and
-     * '7.5 %' in English.
-     *
      * @param {number[]} percents
      * @returns {object[]} [{code, format}]
      */
@@ -32,63 +17,48 @@ class DoomSettings {
         return percents.map((percent) => ({code: String(percent), format: 'percent'}));
     }
 
-    // Dead zones offered for the virtual pad's gestures: fine steps at the
-    // bottom of the scale, which is where a touch stick needs them (a floating
-    // stick re-centres at every touch, there is no hardware drift to absorb).
+    // Fine steps at the low end: a floating touch stick re-centres at every
+    // touch, so there is no hardware drift to absorb.
     static get DEAD_ZONE_VALUES() {
         return DoomSettings.percentValues([0, 2.5, 5, 7.5, 10, 15]);
     }
 
-    // Output sensitivities offered for the firing gesture; 100 % = the speed of
-    // the silent aim gesture.
+    // 100 % = the speed of the non-firing aim gesture.
     static get SENSITIVITY_VALUES() {
         return DoomSettings.percentValues([60, 70, 80, 90, 100]);
     }
 
-    // Volume steps of the two sound settings. The quadratic loudness curve
-    // lives in the engine (SoundEngine), not here: the stored code is the raw
-    // percent the player chose.
     static get VOLUME_VALUES() {
         return DoomSettings.percentValues([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
     }
 
     static get DEFINITIONS() {
         return [
-            // Display options ('display.' prefix = the "Affichage" help page).
             {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'en', label: 'English'}, {code: 'fr', label: 'Français'}, {code: 'it', label: 'Italiano'}, {code: 'es', label: 'Español'}]},
-            // Codes are the keys of Object3dRendererList and must stay in step
-            // with them. WebGL is the only hardware-accelerated one; the three
-            // others are CPU rasterizers, named by what they can draw.
+            // Codes must match the keys of Object3dRendererList.
             {key: 'display.renderer',             nameCode: 'settings.display.renderer',           type: 'list', default: 'webgl', values: [{code: 'webgl', label: 'WebGL'}, {code: 'full', labelCode: 'value.renderer.softwareTextured'}, {code: 'flat', labelCode: 'value.renderer.softwareFlat'}, {code: 'fast', labelCode: 'value.renderer.softwareWireframe'}]},
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
             {key: 'display.show_fps',             nameCode: 'settings.display.showFps',            type: 'bool', default: false},
-            // Gameplay rules ('game.' prefix = the "Jeu" help page). None of
-            // the three exists in vanilla Doom: fall damage stays OFF to match
-            // it, while jumping and crouching are offered on — they cost
-            // nothing to a player who ignores them, unlike damage he never
-            // asked for.
+            // None of these exists in vanilla: fall damage stays off to match it,
+            // jumping and crouching are on since they cost nothing when unused.
             {key: 'game.fall_damage',             nameCode: 'settings.game.fallDamage',            type: 'bool', default: false},
             {key: 'game.jump',                    nameCode: 'settings.game.jump',                  type: 'bool', default: true},
             {key: 'game.crouch',                  nameCode: 'settings.game.crouch',                type: 'bool', default: true},
-            // Sound volumes ('sound.' prefix = the "Son" help page). 100% is
-            // the UZDoom default for both (snd_sfxvolume / snd_musicvolume).
+            // 100 % is the UZDoom default (snd_sfxvolume / snd_musicvolume).
             {key: 'sound.volume_music',           nameCode: 'settings.sound.volumeMusic',          type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
             {key: 'sound.volume_effects',         nameCode: 'settings.sound.volumeEffects',        type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
-            // Per-device look options.
             {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
-            // The firing gesture is the upper band of the aim stick, not a
-            // third stick. Codes are raw percents (see getPercent).
+            // The firing gesture is the upper band of the aim stick, not a third stick.
             {key: 'virtual_pad.move_dead_zone',   nameCode: 'settings.virtualPad.moveDeadZone',    type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
             {key: 'virtual_pad.aim_dead_zone',    nameCode: 'settings.virtualPad.aimDeadZone',     type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
             {key: 'virtual_pad.fire_dead_zone',   nameCode: 'settings.virtualPad.fireDeadZone',    type: 'list', default: '7.5', values: DoomSettings.DEAD_ZONE_VALUES},
             {key: 'virtual_pad.fire_sensitivity', nameCode: 'settings.virtualPad.fireSensitivity', type: 'list', default: '80', values: DoomSettings.SENSITIVITY_VALUES},
             {key: 'mouse.y_inverse',              nameCode: 'settings.mouse.yInverse',             type: 'bool', default: false},
-            // Keyboard bindings ('char' = one PHYSICAL key code, captured in
-            // the settings UI). action = the engine mapping slot; the
-            // defaults mirror InputKeyboard.DEFAULT_MAPPING one for one.
+            // action = the engine mapping slot; the defaults mirror
+            // InputKeyboard.DEFAULT_MAPPING.
             {key: 'keyboard.forward',             nameCode: 'settings.keyboard.forward',           type: 'char', default: 'KeyW',      action: 'forward'},
             {key: 'keyboard.backward',            nameCode: 'settings.keyboard.backward',          type: 'char', default: 'KeyS',      action: 'backward'},
             {key: 'keyboard.strafe_left',         nameCode: 'settings.keyboard.strafeLeft',        type: 'char', default: 'KeyA',      action: 'strafeLeft'},
@@ -111,9 +81,7 @@ class DoomSettings {
 
     constructor() {
         this._database = null;
-        // Prototype-less maps: the keys come from the database, and a row keyed
-        // '__proto__' would otherwise mutate the prototype chain instead of
-        // being stored as a plain value.
+        // Prototype-less: the keys come from the database, and '__proto__' must stay a plain key.
         this._values   = Object.create(null);
         this._defaults = Object.create(null);
         for (const def of DoomSettings.DEFINITIONS) {
@@ -122,8 +90,7 @@ class DoomSettings {
     }
 
     /**
-     * Loads every saved setting at once. Unsaved keys keep their default; a
-     * storage failure keeps all the defaults (the game stays playable).
+     * A storage failure keeps all the defaults.
      *
      * @param {AppDatabase} database - the opened spipudoom database
      */
@@ -143,15 +110,8 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Rewrites every stored value that no longer matches its declaration back
-     * to its default, in memory AND in the store — a list value dropped by an
-     * evolution of the table, a hand-edited base. Done once here, before any
-     * screen or game reads a setting, so no consumer downstream has to guard:
-     * Object3dRendererList, for one, THROWS on a renderer code it does not
-     * know, which would make every level launch fail with no way out of the UI.
-     * An unsaved key is left alone — it already answers with its default.
-     */
+    // Resets every stored value its definition no longer accepts, before any
+    // consumer reads it: Object3dRendererList throws on an unknown renderer code.
     _repairValues() {
         for (const def of DoomSettings.DEFINITIONS) {
             const value = this._values[def.key];
@@ -164,9 +124,7 @@ class DoomSettings {
     }
 
     /**
-     * Whether a value is one this definition can hold: a listed code for a
-     * 'list', a real boolean for a 'bool', a string for a 'char' (any physical
-     * key code, '' meaning unmapped).
+     * A 'char' accepts any string, '' meaning unmapped.
      *
      * @param {object} def - a DEFINITIONS entry
      * @param {*} value
@@ -186,27 +144,19 @@ class DoomSettings {
         return true;
     }
 
-    // Definitions whose key starts with the given prefix — the settings UI
-    // builds its pages this way: one section per device ('pad.',
-    // 'virtual_pad.', 'mouse.', 'keyboard.') plus the display page
-    // ('display.').
     getDefinitions(prefix) {
         return DoomSettings.DEFINITIONS.filter((def) => def.key.startsWith(prefix));
     }
 
-    // Exact-key lookup: getDefinitions matches a PREFIX, so it answers with a
-    // family — a caller driving one known setting needs its declaration alone.
     getDefinition(key) {
         return (DoomSettings.DEFINITIONS.find((def) => (def.key === key)) ?? null);
     }
 
-    // Raw read (settings UI); an unset key falls back to its default.
     get(key) {
         return ((this._values[key] !== undefined) ? this._values[key] : this._defaults[key]);
     }
 
-    // Updates the value and persists it. Fire-and-forget write: the in-memory
-    // value is authoritative for the session even if the write fails.
+    // Fire-and-forget write: the in-memory value stands even if the write fails.
     set(key, value) {
         this._values[key] = value;
         if (this._database !== null) {
@@ -218,27 +168,21 @@ class DoomSettings {
         return this;
     }
 
-    // Fraction 0..1 of a percent-coded 'list' value ('7.5' → 0.075) — the shape
-    // every percentage setting uses (see percentValues).
+    // Fraction 0..1 of a percent-coded 'list' value ('7.5' → 0.075).
     getPercent(key) {
         const percent = parseFloat(this.get(key));
         if (Number.isFinite(percent)) {
             return (percent / 100);
         }
-        // Stored value outside the list (a value code dropped by an evolution, a
-        // hand-edited base): fall back to the default rather than let a NaN
-        // travel into the physics, where it silently freezes the stick.
+        // A NaN reaching the physics would silently freeze the stick.
         console.warn('DoomSettings - [' + key + '] is not a number, falling back to its default');
 
         return (parseFloat(this._defaults[key]) / 100);
     }
 
     /**
-     * Label of the current value of a 'list' setting — what the UI displays:
-     * the entry's literal label, the translation of its label code, or its
-     * formatted rendering when it carries a format tag instead. A saved code
-     * missing from the list (a value dropped since) falls back to the code
-     * itself rather than showing an empty row.
+     * Displayed label of the current value of a 'list' setting; a code missing
+     * from the list shows as itself.
      *
      * @param {object} def - a 'list' definition
      * @returns {string}
@@ -256,10 +200,6 @@ class DoomSettings {
     }
 
     /**
-     * Rendering of a label-less list value, in the current locale: a 'percent'
-     * code reads '7,5 %' in French and '7.5%' in English — the separator and
-     * the spacing before the sign are the platform's business, not ours.
-     *
      * @param {object} entry - a 'list' value {code, format}
      * @returns {string}
      */
@@ -273,23 +213,21 @@ class DoomSettings {
     }
 
     /**
-     * Next value of a 'list' setting, wrapping back to the first — the step
-     * applied when the UI activates its row. An unknown current value restarts
-     * at the first entry.
+     * Neighbour value of a 'list' setting, wrapping around; an unknown current
+     * value restarts at the first entry.
      *
      * @param {object} def - a 'list' definition
+     * @param {int} direction - 1 for the next value, -1 for the previous one
      * @returns {string} the new code
      */
-    nextListValue(def, dir = 1) {
+    nextListValue(def, direction = 1) {
         const codes = def.values.map((item) => item.code);
         const index = codes.indexOf(this.get(def.key));
 
-        return codes[((index + dir + codes.length) % codes.length)];
+        return codes[((index + direction + codes.length) % codes.length)];
     }
 
-    // Removes the given key code from every OTHER keyboard binding that
-    // carries it (a key can only serve one action) — the emptied binding is
-    // saved as '' (unmapped).
+    // A key serves one action only: every other binding holding it becomes '' (unmapped).
     unbindKeyCode(code, exceptKey) {
         for (const def of DoomSettings.DEFINITIONS) {
             if ((def.type === 'char') && (def.key !== exceptKey) && (this.get(def.key) === code)) {
@@ -300,9 +238,7 @@ class DoomSettings {
         return this;
     }
 
-    // Keyboard mapping for the engine ({action: code}): only the bindings
-    // explicitly SAVED by the player override the engine defaults; a ''
-    // value unmaps the action.
+    // {action: code}: only the bindings saved by the player override the engine defaults.
     getKeyboardMapping() {
         const mapping = {};
         for (const def of DoomSettings.DEFINITIONS) {
@@ -314,10 +250,8 @@ class DoomSettings {
         return mapping;
     }
 
-    // Deletes EVERY saved setting — everything falls back to the defaults.
-    // The whole store is wiped (not just the known keys), so orphan rows of
-    // older versions go away too. In-memory values reset immediately, the
-    // store wipe is fire-and-forget like set().
+    // Wipes the whole store, not just the known keys, so orphan rows of older
+    // versions go too. Fire-and-forget like set().
     resetAll() {
         this._values = Object.create(null);
         if (this._database !== null) {
@@ -331,8 +265,6 @@ class DoomSettings {
         return this;
     }
 
-    // Pushes the input-related settings onto the engine Inputs — called at
-    // game init and after every change from the settings UI.
     applyToInputs(inputs) {
         inputs.setLookInvertY('gamepad', this.getPadYInverse());
         inputs.setLookInvertY('virtualGamepad', this.getVirtualPadYInverse());
@@ -348,12 +280,6 @@ class DoomSettings {
         return this;
     }
 
-    /**
-     * Pushes the language onto the translator — called at boot and after every
-     * change from the settings UI, like applyToInputs.
-     *
-     * @param {AppTranslator} translator
-     */
     applyToTranslator(translator) {
         translator.setLanguage(this.getDisplayLanguage());
 
@@ -370,7 +296,7 @@ class DoomSettings {
         return (this.get('virtual_pad.y_inverse') === true);
     }
 
-    // Fractions of the stick travel.
+    // Fraction of the stick travel.
     getVirtualPadMoveDeadZone() {
         return this.getPercent('virtual_pad.move_dead_zone');
     }
@@ -383,7 +309,7 @@ class DoomSettings {
         return this.getPercent('virtual_pad.fire_dead_zone');
     }
 
-    // Output sensitivity of the firing gesture (1 = the silent aim speed).
+    // 1 = the speed of the non-firing aim gesture.
     getVirtualPadFireSensitivity() {
         return this.getPercent('virtual_pad.fire_sensitivity');
     }
@@ -396,9 +322,6 @@ class DoomSettings {
         return this.get('display.language');
     }
 
-    // Renderer code handed to Object3dRendererList (which falls back to 'full'
-    // on its own when the chosen one is unavailable). Always one of the codes
-    // the definition lists: init() repairs the store before anything reads it.
     getDisplayRenderer() {
         return this.get('display.renderer');
     }
@@ -431,7 +354,7 @@ class DoomSettings {
         return (this.get('game.crouch') === true);
     }
 
-    // Fractions 0..1 handed to the SoundEngine, which owns the loudness curve.
+    // Linear fraction 0..1: the SoundEngine owns the loudness curve.
     getSoundVolumeMusic() {
         return this.getPercent('sound.volume_music');
     }

@@ -1,13 +1,9 @@
 /**
  * Save slots modal (load and save modes), stacked over the WAD menu or the
  * pause menu. Always shows the MAX_SLOTS slots: a used one displays its level,
- * difficulty and date plus a delete cross (confirmed); a free one reads
- * "empty" — selectable to save, inert to load. Saving over a used slot asks
- * for confirmation; a "saving" loading modal covers the write for at least
- * SAVING_DISPLAY_MS, then the save hands over to the owner's onSaved callback
- * (the pause resumes the game) or, without one, refreshes the list in place.
- * The bottom "Back" button (same path as Backspace / the gamepad back button)
- * closes back to the owner in both modes.
+ * difficulty and date plus a delete cross; a free one is selectable to save,
+ * inert to load. After a save, the owner's onSaved callback takes over (the
+ * pause resumes the game); without one, the list refreshes in place.
  */
 class MenuSaveSlotsModal extends AbstractMenuListModal {
     static MODE_LOAD = 'load';
@@ -37,27 +33,22 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
         return this;
     }
 
-    /**
-     * WAD whose slots are shown — its id partitions the saves and its display
-     * title prefixes the modal title.
-     * @param {object} wadMeta
-     */
     setWad(wadMeta) {
         this._wadMeta = wadMeta;
 
         return this;
     }
 
-    // Load mode: fired with the chosen slot's metadata; the modal closed
-    // itself (onClose neutralized) before the call.
+    // Load mode: fired with the chosen slot's metadata, once the modal closed
+    // itself (onClose neutralized).
     setOnLoad(callback) {
         this._onLoad = callback;
 
         return this;
     }
 
-    // Save mode: fired once the slot is written; the modal closed itself
-    // (onClose neutralized) before the call.
+    // Save mode: fired once the slot is written and the modal closed itself
+    // (onClose neutralized).
     setOnSaved(callback) {
         this._onSaved = callback;
 
@@ -113,7 +104,7 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
         if (meta === null) {
             const emptyLabel = slotLabel + ' — ' + appTranslator.get('menu.save.empty');
             if (this._mode === MenuSaveSlotsModal.MODE_SAVE) {
-                this._nav.addItemIn(listEl, emptyLabel, () => this._doSave(slot));
+                this._nav.addItemIn(listEl, emptyLabel, () => this._saveToSlot(slot));
                 return;
             }
             MenuDom.addListItem(listEl, emptyLabel).classList.add('doom-menu-item-disabled');
@@ -142,17 +133,17 @@ class MenuSaveSlotsModal extends AbstractMenuListModal {
 
     _confirmOverwrite(slot) {
         this._confirm(appTranslator.get('menu.save.overwriteConfirm', {n: slot}), () => {
-            this._doSave(slot);
+            this._saveToSlot(slot);
         });
     }
 
-    _doSave(slot) {
-        const meta     = this._saveContext.buildMeta(slot);
-        const snapshot = this._saveContext.capture();
-        const saving   = new MenuModal(this._display).showLoading(appTranslator.get('menu.save.saving'));
-        const held     = new Promise((resolve) => setTimeout(resolve, MenuSaveSlotsModal.SAVING_DISPLAY_MS));
-        Promise.all([doomSaveStore.write(meta, snapshot), held])
-            .finally(() => saving.close())
+    _saveToSlot(slot) {
+        const meta           = this._saveContext.buildMeta(slot);
+        const snapshot       = this._saveContext.capture();
+        const savingModal    = new MenuModal(this._display).showLoading(appTranslator.get('menu.save.saving'));
+        const minimumDisplay = new Promise((resolve) => setTimeout(resolve, MenuSaveSlotsModal.SAVING_DISPLAY_MS));
+        Promise.all([doomSaveStore.write(meta, snapshot), minimumDisplay])
+            .finally(() => savingModal.close())
             .then(() => this._onWritten())
             .catch((error) => this._showStorageError(error));
     }

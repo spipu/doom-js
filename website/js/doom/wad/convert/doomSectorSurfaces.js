@@ -10,8 +10,8 @@ class DoomSectorSurfaces {
     constructor(sectors) {
         this._originalFlats    = sectors.map((sector) => sector.ft);
         this._originalSpecials = sectors.map((sector) => sector.special);
-        this._flats    = [...this._originalFlats];
-        this._specials = [...this._originalSpecials];
+        this._flats            = [...this._originalFlats];
+        this._specials         = [...this._originalSpecials];
     }
 
     flatOf(si) {

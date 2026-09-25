@@ -26,11 +26,11 @@ class DoomGenericSplash {
      * @param {AbstractGameProfile} profile owner of the splash table
      */
     constructor(assets, effects, profile) {
-        this._assets  = assets;
-        this._effects = effects;
-        this._splash  = profile.genericSplash();
-        this._cache   = null;
-        this._scale   = null;
+        this._assets         = assets;
+        this._effects        = effects;
+        this._splash         = profile.genericSplash();
+        this._maskCache      = null;
+        this._luminanceScale = null;
     }
 
     /**
@@ -132,8 +132,8 @@ class DoomGenericSplash {
     // Every mask of the table, or null as soon as one is missing: a half-built
     // splash would animate into holes.
     _masks() {
-        if (this._cache !== null) {
-            return this._cache;
+        if (this._maskCache !== null) {
+            return this._maskCache;
         }
         const masks = {};
         for (const part of this._splash.parts) {
@@ -145,7 +145,7 @@ class DoomGenericSplash {
                 masks[frame.key] = raw;
             }
         }
-        this._cache = masks;
+        this._maskCache = masks;
 
         return masks;
     }
@@ -153,8 +153,8 @@ class DoomGenericSplash {
     // One factor for the WHOLE set, never per frame: a per-frame normalisation
     // would even out the frames and flatten the fade the animation lives on.
     _normalizer(masks) {
-        if (this._scale !== null) {
-            return this._scale;
+        if (this._luminanceScale !== null) {
+            return this._luminanceScale;
         }
         let total = 0;
         let count = 0;
@@ -169,9 +169,9 @@ class DoomGenericSplash {
             }
         }
         const mean = ((count === 0) ? 255 : (total / count));
-        this._scale = ((mean > 0) ? (255 / mean) : 1);
+        this._luminanceScale = ((mean > 0) ? (255 / mean) : 1);
 
-        return this._scale;
+        return this._luminanceScale;
     }
 }
 

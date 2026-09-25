@@ -33,14 +33,14 @@ class AppDefinition {
         this._version = null;
         this._files = null;
 
-        const values = localStorage.getItem(this._storageKey());
-        if (!values) {
+        const storedManifest = localStorage.getItem(this._storageKey());
+        if (!storedManifest) {
             return false;
         }
 
         let parsed;
         try {
-            parsed = JSON.parse(values);
+            parsed = JSON.parse(storedManifest);
         } catch {
             return false;
         }
@@ -162,14 +162,14 @@ class AppBootstrap {
 
     fetchJson(url, callback) {
         fetch(this.buildUrl(url))
-            .then(r => {
-                if (!r.ok) {
-                    throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ' ' + response.statusText);
                 }
-                return r.json();
+                return response.json();
             })
-            .then(data => callback(data))
-            .catch(e => this.logError('Failed to load "' + url + '"', e));
+            .then(json => callback(json))
+            .catch(error => this.logError('Failed to load "' + url + '"', error));
     }
 
     init() {
@@ -199,7 +199,7 @@ class AppBootstrap {
             .then(() => {
                 navigator.serviceWorker.ready.then((registration) => {
                     this.serviceWorker = registration;
-                    navigator.serviceWorker.onmessage = this.serviceWorkerListen.bind(this);
+                    navigator.serviceWorker.onmessage = this.onServiceWorkerMessage.bind(this);
                     this.checkVersion();
                 });
             })
@@ -215,7 +215,7 @@ class AppBootstrap {
         this.checkVersion();
     }
 
-    serviceWorkerListen(event) {
+    onServiceWorkerMessage(event) {
         let message = JSON.parse(event.data);
         let eventCode = message.code;
         let eventContext = message.context;
@@ -317,7 +317,7 @@ class AppBootstrap {
         if ("serviceWorker" in navigator) {
             let registration = await navigator.serviceWorker.getRegistration();
             if (registration && registration.active) {
-                navigator.serviceWorker.onmessage = this.serviceWorkerListen.bind(this);
+                navigator.serviceWorker.onmessage = this.onServiceWorkerMessage.bind(this);
                 registration.active.postMessage("clearCache");
                 return;
             }
@@ -349,7 +349,7 @@ class AppBootstrap {
     }
 
     async loadNextAsset() {
-        if (await this.resourceLoad(this.appDefinition.getFile('assets', this.currentFile))) {
+        if (await this.loadResource(this.appDefinition.getFile('assets', this.currentFile))) {
             this.assetSuccess();
         }
     }
@@ -443,10 +443,10 @@ class AppBootstrap {
         this.readyCallback();
     }
 
-    async resourceLoad(url) {
+    async loadResource(url) {
         try {
             let response = await fetch(this.buildUrl(url))
-            if (response.status >= 200 && response.status < 300) {
+            if ((response.status >= 200) && (response.status < 300)) {
                 return true;
             }
         } catch {

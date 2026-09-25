@@ -16,6 +16,7 @@ class WadGunTriggerBuilder {
      * @param {object}      analysis
      * @param {Set<string>} builtRisingCodes
      * @param {Set<string>} builtDoorCodes
+     * @param {function}    liveFloorOf
      */
     constructor(level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf) {
         this._level            = level;
@@ -26,17 +27,17 @@ class WadGunTriggerBuilder {
     }
 
     /**
-     * @returns {object[]} [{x1, z1, x2, z2, once, used, targets, cycleVariant}]
+     * @returns {object[]} [{x1, z1, x2, z2, y, once, used, targets, cycleVariant, stageRules}]
      */
     buildAll() {
-        const result = [];
+        const triggers = [];
         for (const gt of this._analysis.gunTriggerLinedefs) {
             const built = this._buildGunTrigger(gt);
             if (built !== null) {
-                result.push(built);
+                triggers.push(built);
             }
         }
-        return result;
+        return triggers;
     }
 
     // --- Internal ---

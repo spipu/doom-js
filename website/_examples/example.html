@@ -32,9 +32,9 @@ function init()
     ;
     screen.bindHud(hudDebug);
 
-    engine.lightAmbient([40., 40., 40.]);
-    engine.lightAdd(new Light([255., 50., 50.], 50, [10.,0, 10.]));
-    engine.lightAdd(new Light([50., 255., 50.], 50, [-10.,0, 10.]));
+    engine.setLightAmbient([40., 40., 40.]);
+    engine.addLight(new Light([255., 50., 50.], 50, [10.,0, 10.]));
+    engine.addLight(new Light([50., 255., 50.], 50, [-10.,0, 10.]));
 
     animate();
     setInterval(animate, 1000);

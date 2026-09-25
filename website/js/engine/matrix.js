@@ -1,8 +1,6 @@
 class Matrix {
-    // Instance transform composition — the SINGLE source of truth shared by
-    // the render (Engine3d.drawInstance), the collision colliders and the
-    // world-center computation: position translation, base rotation X/Z/Y,
-    // then the animation delta translation and delta rotation X/Z/Y.
+    // Shared by rendering, collision and world centres: position, rotation
+    // X/Z/Y, then the animation delta translation and delta rotation X/Z/Y.
     static composeInstanceTransform(tf) {
         const [px, py, pz]    = tf.position;
         const [irx, iry, irz] = tf.rotation;
@@ -41,7 +39,7 @@ class Matrix {
     }
 
     constructor() {
-        this.v    = [[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.]];
+        this.v     = [[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.]];
         this.stack = [];
     }
 

@@ -19,7 +19,7 @@ class DoomSectorLightInteraction extends AbstractInteraction {
      */
     constructor(lightSectors) {
         super();
-        this._states  = lightSectors.map((s) => this._initState(s));
+        this._states  = lightSectors.map((lightSector) => this._initState(lightSector));
         this._clockS  = 0;
         this._targets = null;
         // Lookup by sector index, so the weapon shading can read the same live
@@ -83,24 +83,24 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     // async strobes start with a random 1-8 tic offset, sync ones at 1
     // (P_SpawnStrobeFlash), flicker with (P_Random()&64)+1 (P_SpawnLightFlash),
     // fire flicker with its 4-tic period (P_SpawnFireFlicker).
-    _initState(s) {
+    _initState(lightSector) {
         const st = {
-            si:       s.si,
-            type:     s.type,
-            darkTics: s.darkTics,
-            maxLight: s.maxLight,
-            minLight: s.minLight,
-            light:    s.maxLight,
+            si:       lightSector.si,
+            type:     lightSector.type,
+            darkTics: lightSector.darkTics,
+            maxLight: lightSector.maxLight,
+            minLight: lightSector.minLight,
+            light:    lightSector.maxLight,
             dir:      -1,
             count:    1
         };
-        if (s.type === 'flicker') {
+        if (lightSector.type === 'flicker') {
             st.count = (this._rand() & WadConstants.LIGHT_FLASH_MAX_MASK) + 1;
         }
-        if (s.type === 'strobe') {
-            st.count = ((s.sync) ? 1 : (this._rand() & 7) + 1);
+        if (lightSector.type === 'strobe') {
+            st.count = ((lightSector.sync) ? 1 : (this._rand() & 7) + 1);
         }
-        if (s.type === 'fire') {
+        if (lightSector.type === 'fire') {
             st.count = WadConstants.LIGHT_FIRE_PERIOD_TICS;
         }
 

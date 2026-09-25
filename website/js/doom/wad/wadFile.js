@@ -22,7 +22,7 @@ class WadFile {
         }
 
         const magic = this._readName(0, 4);
-        if (magic !== 'IWAD' && magic !== 'PWAD') {
+        if ((magic !== 'IWAD') && (magic !== 'PWAD')) {
             throw new WadError('invalid-format', 'Invalid WAD magic: ' + magic);
         }
 
@@ -44,16 +44,13 @@ class WadFile {
             // Only lumps with content: markers (size 0) may carry an arbitrary
             // filepos that vanilla never reads — no reason to reject the WAD.
             const lump = this._lumps[this._lumps.length - 1];
-            if (lump.size > 0 && lump.offset + lump.size > this._buffer.byteLength) {
+            if ((lump.size > 0) && (lump.offset + lump.size > this._buffer.byteLength)) {
                 throw new WadError('invalid-format', 'Lump [' + lump.name + '] exceeds the file size');
             }
         }
 
         return this;
     }
-
-
-
 
     /**
      * Return a DataView on the content of a lump (equiv. WAD.get).
@@ -74,7 +71,7 @@ class WadFile {
     }
 
     /**
-     * Return all the level names: any lump immediately followed by a THINGS lump
+     * Return all the level codes: any lump immediately followed by a THINGS lump
      * (generalization of WAD.first_map_name).
      *
      * @returns {string[]}
@@ -102,23 +99,23 @@ class WadFile {
     getLumpsBetween(startName, endName) {
         this._requireParsed();
 
-        const result = {};
-        let active = false;
+        const lumps = {};
+        let inRange = false;
         for (const lump of this._lumps) {
             if (lump.name === startName) {
-                active = true;
+                inRange = true;
                 continue;
             }
             if (lump.name === endName) {
-                active = false;
+                inRange = false;
                 continue;
             }
-            if (active && lump.size > 0) {
-                result[lump.name] = this._lumpView(lump);
+            if (inRange && (lump.size > 0)) {
+                lumps[lump.name] = this._lumpView(lump);
             }
         }
 
-        return result;
+        return lumps;
     }
 
     /**
@@ -130,27 +127,27 @@ class WadFile {
     getMapLumps(mapName) {
         this._requireParsed();
 
-        const order = [
+        const mapLumpNames = [
             'THINGS', 'LINEDEFS', 'SIDEDEFS', 'VERTEXES', 'SEGS',
             'SSECTORS', 'NODES', 'SECTORS', 'REJECT', 'BLOCKMAP'
         ];
 
-        const result = {};
-        let found = false;
+        const lumps = {};
+        let inMap = false;
         for (const lump of this._lumps) {
             if (lump.name === mapName) {
-                found = true;
+                inMap = true;
                 continue;
             }
-            if (found) {
-                if (!order.includes(lump.name)) {
+            if (inMap) {
+                if (!mapLumpNames.includes(lump.name)) {
                     break;
                 }
-                result[lump.name] = this._lumpView(lump);
+                lumps[lump.name] = this._lumpView(lump);
             }
         }
 
-        return result;
+        return lumps;
     }
 
     /**
@@ -169,16 +166,16 @@ class WadFile {
         if (mapIndex < 0) {
             return null;
         }
-        const parts = [this._lumps[mapIndex]];
+        const hashedLumps = [this._lumps[mapIndex]];
         for (const name of WadFile.CHECKSUM_LUMPS) {
             const lump = this._mapSubLump(mapIndex, name);
             if (lump !== null) {
-                parts.push(lump);
+                hashedLumps.push(lump);
             }
         }
-        const bytes = new Uint8Array(parts.reduce((total, lump) => (total + lump.size), 0));
+        const bytes = new Uint8Array(hashedLumps.reduce((total, lump) => (total + lump.size), 0));
         let offset = 0;
-        for (const lump of parts) {
+        for (const lump of hashedLumps) {
             bytes.set(new Uint8Array(this._buffer, lump.offset, lump.size), offset);
             offset += lump.size;
         }
@@ -200,9 +197,8 @@ class WadFile {
 
     /**
      * NUL-terminated fixed-width name of the WAD binary formats (lump
-     * directory, but also every name field of the map lumps: textures, flats,
-     * animation entries). Static: the converter parsers read their own
-     * DataView, they have no WadFile instance.
+     * directory, texture/flat/animation name fields). Static: the converter
+     * parsers hold a DataView, not a WadFile.
      *
      * @param {DataView} dv
      * @returns {string} raw, unchanged case
@@ -222,8 +218,7 @@ class WadFile {
 
     /**
      * Whole content of a text lump (UMAPINFO, DEHACKED) as a string, byte for
-     * byte. Static for the same reason as readName: the parsers hold a
-     * DataView, not a WadFile.
+     * byte. Static for the same reason as readName.
      *
      * @param {DataView} dv
      * @returns {string}

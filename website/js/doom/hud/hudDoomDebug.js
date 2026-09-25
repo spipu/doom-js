@@ -14,12 +14,8 @@ class HudDoomDebug extends HudDebug {
         this._game      = null;
     }
 
-    // The WAD id and level code are not player state — they belong to the
-    // running level (DoomGame owns them) and are pushed in here only for display.
-    // The [LEVEL] line is rendered in the exact form expected by
-    // MenuNavigator.start(wadName, levelCode, ...) so a spawn can be reproduced
-    // straight from a screenshot; the optional readable level name is
-    // appended AFTER those three fields.
+    // The [LEVEL] line starts with the arguments of MenuNavigator.start()
+    // (wad / level / skill) so a spawn can be reproduced from a screenshot.
     setLevelInfo(wadId, levelCode, skill, levelName = null) {
         this._wadId     = wadId;
         this._levelCode = levelCode;
@@ -28,7 +24,6 @@ class HudDoomDebug extends HudDebug {
         return this;
     }
 
-    // Live level stats (secrets found/total) are read off the game each frame
     bindGame(game) {
         this._game = game;
         return this;
@@ -37,12 +32,12 @@ class HudDoomDebug extends HudDebug {
     update() {
         super.update();
         if (this._user) {
-            this._el.innerText = this._buildEquipment() + '\n' + this._el.innerText;
+            this._panel.innerText = this._buildDoomStatus() + '\n' + this._panel.innerText;
         }
     }
 
-    _buildEquipment() {
-        const u = this._user;
+    _buildDoomStatus() {
+        const user = this._user;
         const lines = [];
 
         lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?')
@@ -54,19 +49,19 @@ class HudDoomDebug extends HudDebug {
             lines.push('[KILLS] ' + this._game.getKillsCount() + '/' + this._game.getKillsTotal());
         }
 
-        lines.push('[ARMOR] ' + Math.ceil(u.getArmor()) + '/' + u.getMaxArmor()
-            + ' (' + Math.round(u.getArmorAbsorb() * 100) + '%)');
+        lines.push('[ARMOR] ' + Math.ceil(user.getArmor()) + '/' + user.getMaxArmor()
+            + ' (' + Math.round(user.getArmorAbsorb() * 100) + '%)');
 
-        const owned = u.getOwnedWeaponCodes();
-        lines.push('[WEAPON] active=' + u.getActiveWeapon()
+        const owned = user.getOwnedWeaponCodes();
+        lines.push('[WEAPON] active=' + user.getActiveWeapon()
             + ' | owned: ' + ((owned.length > 0) ? owned.join(' ') : '-'));
 
         const ammo = ['bullets', 'shells', 'rockets', 'cells']
-            .map((type) => type + ':' + u.getAmmo(type) + '/' + u.getAmmoMax(type));
+            .map((type) => type + ':' + user.getAmmo(type) + '/' + user.getAmmoMax(type));
         lines.push('[AMMO] ' + ammo.join(' '));
 
-        const items   = u.getItemCodes();
-        const effects = Object.entries(u.getEffects())
+        const items   = user.getItemCodes();
+        const effects = Object.entries(user.getEffects())
             .map(([code, ms]) => code + '(' + Math.ceil(ms / 1000) + 's)');
         lines.push('[ITEMS] ' + ((items.length > 0) ? items.join(' ') : '-')
             + ' | fx: ' + ((effects.length > 0) ? effects.join(' ') : '-'));

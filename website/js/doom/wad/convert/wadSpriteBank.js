@@ -1,15 +1,10 @@
 /**
- * Sprite registry of the converter: decodes Doom sprite lumps (those between
- * the S_START / S_END markers, same patch format as wall patches) and registers
- * each produced ImageData directly in the engine TextureLoader (in-memory).
+ * Sprite registry of the converter: decodes the sprite lumps (between S_START /
+ * S_END, patch format) into engine textures, cached by lump name.
  *
  * A sprite lump is named <prefix><frame><rotation>, e.g. 'MEDIA0' (medikit,
- * frame A, rotation 0). Decorations and pickups are non-rotating, so their
- * world sprite is the rotation-0 lump (…A0); that full lump name is what a Doom
- * definition stores in its `sprite` field. Results are cached by name.
- *
- * The patch header is: width@0, height@2, leftOffset@4, topOffset@6 (both signed),
- * then the column offset table @8. The offsets are read here for anchoring.
+ * frame A, rotation 0); non-rotating things use the rotation-0 lump.
+ * Patch header: width@0, height@2, leftOffset@4, topOffset@6 (both signed).
  */
 class WadSpriteBank {
     /**
@@ -20,10 +15,10 @@ class WadSpriteBank {
         this._wadFile = wadFile;
         this._palette = palette;
 
-        this._sprites  = {};    // name → DataView
-        this._cache    = {};    // name → {loaderId, width, height, leftOffset, topOffset}
-        this._rotIndex = null;  // 'PREFXFR' (prefix+frame+rotation) → {lump, mirrored}
-        this._warned   = new Set();
+        this._sprites       = {};    // name → DataView
+        this._cache         = {};    // name → {loaderId, width, height, leftOffset, topOffset}
+        this._rotationIndex = null;  // 'PREFXFR' (prefix+frame+rotation) → {lump, mirrored}
+        this._warned        = new Set();
     }
 
     init() {
@@ -35,8 +30,7 @@ class WadSpriteBank {
         return this;
     }
 
-    // True if the lump exists in the WAD, without decoding or warning — used to
-    // probe whether a weapon is present before deciding to decode its frames.
+    // Probe without decoding or warning.
     has(name) {
         return (this._sprites[name] !== undefined);
     }
@@ -86,13 +80,13 @@ class WadSpriteBank {
      * @returns {object[]|null}
      */
     getFrameRotations(base, letter, quiet = false) {
-        if (this._rotIndex === null) {
+        if (this._rotationIndex === null) {
             this._buildRotationIndex();
         }
 
         const views = [];
         for (let rot = 1; rot <= 8; rot++) {
-            const ref = this._rotIndex[base + letter + rot];
+            const ref = this._rotationIndex[base + letter + rot];
             if (ref === undefined) {
                 break;
             }
@@ -119,11 +113,9 @@ class WadSpriteBank {
     }
 
     /**
-     * ONE view of a frame, for a body drawn on a single billboard (a flying
-     * projectile). Rotations are tried in the caller's order of preference and
-     * resolved through the rotation index, not the raw lump names: a fully
-     * rotating sprite is often stored mirrored ('SPAXA2A8'), so probing
-     * 'SPAXA1' by name finds nothing while the frame exists in full.
+     * One view of a frame, for a single-billboard body (a projectile), by
+     * rotation preference. Resolved through the rotation index: a mirrored
+     * lump ('SPAXA2A8') has no name of its own for each rotation.
      *
      * @param {string}   base       4-char sprite prefix
      * @param {string}   letter     frame letter
@@ -132,7 +124,7 @@ class WadSpriteBank {
      * @returns {object|null}
      */
     getFrameView(base, letter, preference) {
-        if (this._rotIndex === null) {
+        if (this._rotationIndex === null) {
             this._buildRotationIndex();
         }
         for (const rot of preference) {
@@ -142,7 +134,7 @@ class WadSpriteBank {
                 }
                 continue;
             }
-            const ref = this._rotIndex[base + letter + rot];
+            const ref = this._rotationIndex[base + letter + rot];
             if (ref !== undefined) {
                 return ((ref.mirrored) ? this._getMirrored(ref.lump) : this.get(ref.lump));
             }
@@ -154,13 +146,13 @@ class WadSpriteBank {
     // One pass over the lump names: a 6-char name holds one (frame, rotation)
     // pair at chars 4-5, an 8-char name holds a second, mirrored pair at 6-7.
     _buildRotationIndex() {
-        this._rotIndex = {};
+        this._rotationIndex = {};
         for (const name of Object.keys(this._sprites)) {
             if (name.length >= 6) {
-                this._rotIndex[name.slice(0, 4) + name[4] + name[5]] = {lump: name, mirrored: false};
+                this._rotationIndex[name.slice(0, 4) + name[4] + name[5]] = {lump: name, mirrored: false};
             }
             if (name.length === 8) {
-                this._rotIndex[name.slice(0, 4) + name[6] + name[7]] = {lump: name, mirrored: true};
+                this._rotationIndex[name.slice(0, 4) + name[6] + name[7]] = {lump: name, mirrored: true};
             }
         }
     }

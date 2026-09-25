@@ -90,10 +90,7 @@ class WadBspTree {
     }
 
     // The carved polygons and the raw lumps only serve the build; findSector
-    // needs the nodes and the subsector→sector table alone. Frees the carved
-    // per-subsector polygons and this tree's own level/lump references — the
-    // parsed level itself stays alive through the monster system's runtime
-    // findSector (its polygon fallback needs it).
+    // needs the nodes and the subsector→sector table alone.
     releaseBuildData() {
         this._level       = null;
         this._bsp         = null;
@@ -160,17 +157,14 @@ class WadBspTree {
                 return;
             }
             const {vertexes, linedefs} = this._level;
-            const ss   = this._bsp.ssectors[ssIdx];
-            const segs = this._bsp.segs;
+            const ss    = this._bsp.ssectors[ssIdx];
+            const segs  = this._bsp.segs;
             let clipped = poly;
             for (let i = 0; i < ss.segCount; i++) {
                 const seg = segs[ss.firstSeg + i];
-                // Clip along the LINEDEF's exact line, not the seg's: split
-                // segs carry INTEGER-rounded vertexes (vanilla format), so a
-                // diagonal seg's own line deviates from the true boundary and
-                // the carve would leave "slime trail" slivers on the neighbour.
-                // Only the seg's extent is rounded — its supporting line is
-                // the linedef's; direction 1 runs the linedef backward.
+                // Clip along the LINEDEF's exact line: split segs carry integer-
+                // rounded vertexes, so a diagonal seg's own line leaves "slime
+                // trail" slivers on the neighbour. Direction 1 runs it backward.
                 const ld = linedefs[seg.linedef];
                 const [x1, y1] = vertexes[ld.v1];
                 const [x2, y2] = vertexes[ld.v2];
@@ -198,12 +192,10 @@ class WadBspTree {
     }
 
     // Convex polygon clipped by a half-plane of the directed line (px, py) +
-    // t·(dx, dy): keepLeft keeps cross >= 0 (vanilla R_PointOnSide back side),
-    // else the right side. The signed distance is NORMALIZED by the line
-    // length so LINE_EPS is in map units whatever the partition length, and
-    // the ±EPS band is symmetric — an on-line vertex survives on BOTH sides,
-    // closing hairline gaps where a partition is collinear with a seg (very
-    // common: nodebuilders split along seg lines).
+    // t·(dx, dy): keepLeft keeps cross >= 0 (vanilla R_PointOnSide back side).
+    // The distance is normalized so LINE_EPS is in map units, and an on-line
+    // vertex survives on BOTH sides: no hairline gap where a partition runs
+    // along a seg.
     static _clipHalfPlane(poly, px, py, dx, dy, keepLeft) {
         const len = Math.hypot(dx, dy);
         if (len < 1e-9) {
