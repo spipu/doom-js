@@ -797,6 +797,15 @@ class WadWorldBuilder {
         objectData.tint  = tint;
         const objectId = loader.objects().loadFromData(null, objectData);
         loader.instances().loadFromData(null, {...built.instanceData, object: objectId});
+        this._applyDeadUseGuard(built);
+    }
+
+    // P_DeathThink skips P_UseLines: a dead player presses nothing.
+    _applyDeadUseGuard(built) {
+        if (built.instanceData.trigger !== 'action') {
+            return;
+        }
+        loader.instances().getByCode(built.code).addTriggerCondition((user) => !user.isDead());
     }
 
     // P_UseLines: 64 units straight ahead, first line met, front side only —
