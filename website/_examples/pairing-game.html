@@ -72,6 +72,7 @@ let guest          = null;
 let pairing        = null;
 let scene          = null;
 let inputs         = null;
+let sampler        = null;
 let lobby          = [];
 let turn           = 0;
 let turnSentAt     = 0;
@@ -116,7 +117,8 @@ function pairingView(captions)
 
 function createInputs()
 {
-    inputs = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
+    inputs  = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
+    sampler = new InputCommandSampler(inputs);
     for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
@@ -184,9 +186,10 @@ function animateMain(timestamp)
     if (isAwaitingCommands(timestamp)) {
         return;
     }
-    const dt = scene.beginFrame(timestamp);
+    const dt      = scene.beginFrame(timestamp);
+    const command = sampler.collect(dt).sample();
     if (isDriving()) {
-        scene.drive(dt, inputs.readJoy1X(), inputs.readJoy1Y());
+        scene.drive(dt, command.getMoveX(), command.getMoveY());
         scene.render();
     }
     broadcastState(timestamp);

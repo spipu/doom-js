@@ -74,11 +74,11 @@ class DoomUser extends User {
         super.strafe(scale);
     }
 
-    lookMouse(dx, dy) {
+    look(yaw, pitch) {
         if (this.isControlFrozen()) {
             return;
         }
-        super.lookMouse(dx, dy);
+        super.look(yaw, pitch);
     }
 
     pressJump() {

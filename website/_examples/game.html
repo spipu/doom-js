@@ -17,13 +17,15 @@
 let scene    = null;
 let hudDebug = null;
 let inputs   = null;
+let sampler  = null;
 
 function init()
 {
     scene = new DemoVanScene('screen');
     // The demo only steers: every pad target it has no use for is withdrawn
     // (the aim stick has no such switch and stays).
-    inputs = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
+    inputs  = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
+    sampler = new InputCommandSampler(inputs);
     for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
@@ -40,8 +42,9 @@ function init()
 
 function animate(timestamp)
 {
-    const dt = scene.beginFrame(timestamp);
-    scene.drive(dt, inputs.readJoy1X(), inputs.readJoy1Y());
+    const dt      = scene.beginFrame(timestamp);
+    const command = sampler.collect(dt).sample();
+    scene.drive(dt, command.getMoveX(), command.getMoveY());
     scene.render();
     requestAnimationFrame(animate);
 }

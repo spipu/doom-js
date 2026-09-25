@@ -57,7 +57,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
 - **Options & persistent settings**: Display, Game, Multiplayer, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset. The Multiplayer page, offered from a WAD's menu only, holds the cooperative and deathmatch game settings and the player's nickname, typed on an on-screen keyboard laid out like the interface language's (AZERTY in French, QWERTY otherwise) and walked with the mouse, touch, arrows or gamepad, or on the physical keyboard — never through the OS keyboard.
 - **Renderer choice**: the Display page picks one of the four rendering modes (see **The 3D engine** below), WebGL by default. A change applies to the running level without reloading it: the screen, the engine and the HUD are rebuilt on the next live frame, the level and the player carry on untouched.
-- **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity.
+- **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity. The devices never reach the simulation directly: a command sampler turns them into one plain-data command per turn — movement axes, look angles in degrees, named buttons — which the world consumes.
 - **Translation (en / fr / it / es)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
 - **Robustness**: a failed level build reports its cause and returns to the WAD list; a stored setting that no longer matches what its declaration allows is repaired at startup (a text setting keeps what its sanitising accepts, any other falls back to its default); every menu screen shows the aggregated version, the webapp stats and the copyright.
 
@@ -159,8 +159,8 @@ website/
         ├── engine3d.js          Viewport, lights, render loop, frustum culling
         ├── collision.js         FPS physics: spatially indexed triangles, box blockers, mover pressure
         ├── spatialGrid.js       Uniform XZ grid over a static triangle set
-        ├── entity/              Object3d, Billboard, Instance (keyframes/triggers/cycles), User, World, external forces
-        ├── input/               Unified inputs: keyboard, mouse, gamepad, virtual touch gamepad
+        ├── entity/              Object3d, Billboard, Instance (keyframes/triggers/cycles), User, UserCommand, World, external forces
+        ├── input/               Unified inputs: keyboard, mouse, gamepad, virtual touch gamepad, and the command sampler
         ├── interaction/         Interaction bases (switch modes once/timed/toggle)
         ├── loader/              URL or in-memory loaders (textures, objects, instances, interactions, world)
         ├── sound/               Audio primitives: shared AudioContext with music/effects buses, in-memory PCM samples, tone synthesis, music player over a swappable synth contract
@@ -214,7 +214,8 @@ function init() {
     const world = loader.world().get();
     screen = new ScreenManager('screen', { fullscreen: true });  // or { width, height }
                                                                  // or { fullscreen: true, virtualWidth: 1920, virtualHeight: 1080 }
-    inputs = new Inputs().bindScreen(screen);  // one single instance per page, rebound on each level
+    inputs  = new Inputs().bindScreen(screen);  // one single instance per page, rebound on each level
+    sampler = new InputCommandSampler(inputs);  // the devices, turned into one command per turn
     engine = new Engine3d(screen, new Object3dRendererList().getRenderer('webgl'));  // binds itself to the screen
     const hud = new HudDebug(engine)
         .bindUser(world.getUser()).bindInputs(inputs)
@@ -227,7 +228,8 @@ function init() {
 
 function animate(timestamp) {
     engine.calculateDeltaTime(timestamp);
-    world.update(engine.getDeltaTime(), inputs);
+    const dt = engine.getDeltaTime();
+    world.update(dt, sampler.collect(dt).sample());
     engine.displayWorld(world);
     screen.update(); // updates HUD overlay
     requestAnimationFrame(animate);

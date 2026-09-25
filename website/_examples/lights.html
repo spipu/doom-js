@@ -18,6 +18,7 @@ let engine   = null;
 let screen   = null;
 let hudDebug = null;
 let inputs   = null;
+let sampler  = null;
 let light1   = null;
 let light2   = null;
 let light3   = null;
@@ -39,7 +40,8 @@ function init()
     });
     // The demo only steers: every pad target it has no use for is withdrawn
     // (the aim stick has no such switch and stays).
-    inputs = new Inputs().bindScreen(screen).setMouseLockAllowed(false);
+    inputs  = new Inputs().bindScreen(screen).setMouseLockAllowed(false);
+    sampler = new InputCommandSampler(inputs);
     for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
@@ -67,10 +69,11 @@ function init()
 function animate(timestamp)
 {
     engine.calculateDeltaTime(timestamp);
-    const dt = engine.getDeltaTime();
+    const dt      = engine.getDeltaTime();
+    const command = sampler.collect(dt).sample();
 
-    lightHeight += dt * LIGHT_SPEED * inputs.readJoy1Y();
-    lightRadius += dt * LIGHT_SPEED * inputs.readJoy1X();
+    lightHeight += dt * LIGHT_SPEED * command.getMoveY();
+    lightRadius += dt * LIGHT_SPEED * command.getMoveX();
 
     if (lightHeight < 0)  { lightHeight = 0; }
     if (lightHeight > 30) { lightHeight = 30; }

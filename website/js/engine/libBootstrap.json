@@ -1,5 +1,5 @@
 {
-    "version": "v2.326",
+    "version": "v2.327",
     "files": {
         "assets": [],
         "css": [],
@@ -13,6 +13,7 @@
             "/js/engine/entity/billboard.js",
             "/js/engine/entity/texture.js",
             "/js/engine/entity/actorExternalForces.js",
+            "/js/engine/entity/userCommand.js",
             "/js/engine/entity/user.js",
             "/js/engine/entity/world.js",
             "/js/engine/interaction/abstractInteraction.js",
@@ -51,6 +52,7 @@
             "/js/engine/input/inputGamepad.js",
             "/js/engine/input/inputVirtualGamepad.js",
             "/js/engine/input/inputs.js",
+            "/js/engine/input/inputCommandSampler.js",
             "/js/engine/hud/abstractHud.js",
             "/js/engine/hud/hudDebug.js",
             "/js/engine/screenManager.js"

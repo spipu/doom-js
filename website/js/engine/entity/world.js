@@ -8,8 +8,6 @@ class World extends AbstractLoadedEntity {
         this._lightAmbient  = null;
         this._lights        = [];
         this._collision     = null;
-        this._jumpWasDown   = false;
-        this._actionWasDown = false;
     }
 
     // Flat forward ray from the eye: uses are 2D
@@ -34,30 +32,33 @@ class World extends AbstractLoadedEntity {
         }
     }
 
-    update(dt, inputs) {
-        const user   = this._user;
-        const action = inputs.readButtonAction();
+    /**
+     * @param {number}      dt      - milliseconds
+     * @param {UserCommand} command - the player's command for this turn
+     */
+    update(dt, command) {
+        const user     = this._user;
+        const previous = user.getLastCommand();
+        const action   = command.isPressed(UserCommand.ACTION);
 
         // 1. Save instance transforms (riding and blocking)
         this.getInstances().filter((i) => i.isCollidable())
             .forEach((inst) => inst.savePreviousTransform());
 
-        // 2. Player input
+        // 2. Player command: the move follows the yaw of the previous turn, the look comes after
         user.beginFrame(dt);
-        user.setWalkSlow(inputs.readButtonWalkSlow());
-        user.setCrouch(inputs.readButtonCrouch());
-        const jumpDown = inputs.readButtonJump();
-        if (jumpDown && !this._jumpWasDown) {
+        user.setWalkSlow(command.isPressed(UserCommand.WALK_SLOW));
+        user.setCrouch(command.isPressed(UserCommand.CROUCH));
+        if (command.isJustPressed(UserCommand.JUMP, previous)) {
             user.pressJump();
         }
-        if (!jumpDown && this._jumpWasDown) {
+        if (command.isJustReleased(UserCommand.JUMP, previous)) {
             user.releaseJump();
         }
-        this._jumpWasDown = jumpDown;
-        user.move(inputs.readJoy1Y());
-        user.strafe(inputs.readJoy1X());
-
-        user.lookMouse(inputs.readJoy2DeltaX(dt), inputs.readJoy2DeltaY(dt));
+        user.move(command.getMoveY());
+        user.strafe(command.getMoveX());
+        user.look(command.getLookYaw(), command.getLookPitch());
+        user.setLastCommand(command);
 
         // 3. Animate instances
         this.getInstances().forEach((inst) => inst.update(dt, user, action));
@@ -68,12 +69,11 @@ class World extends AbstractLoadedEntity {
         // Use failure: a fresh press refused by a condition or swallowed by a wall.
         // Consumed every frame so held presses stay silent.
         const useState = user.consumeUseState();
-        if (action && !this._actionWasDown
+        if (command.isJustPressed(UserCommand.ACTION, previous)
             && ((useState.seen && !useState.accepted)
                 || (!useState.seen && this._useProbeHitsWall(user)))) {
             user.notifyUseFailed();
         }
-        this._actionWasDown = action;
 
         // 5. Refresh dynamic collider triangles, and the box blockers that rode
         // a moving floor in step 3

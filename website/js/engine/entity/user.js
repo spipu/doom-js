@@ -26,7 +26,6 @@ class User {
         this._leanSpeed        = 5.0;
         this._maxEnergy        = maxEnergy;
         this._moveSpeed        = 0.003;
-        this._turnSpeed        = 0.1;
         // Fall thresholds in actor heights: nothing below safe, full energy at max
         this._fallDamage       = true;
         this._fallSafeFactor   = 2.5;
@@ -55,6 +54,8 @@ class User {
         this._inputZ         = 0;
         // Environment perturbations (wind, conveyors, ice) fed by game code
         this._externalForces = new ActorExternalForces();
+        // The previous turn's command: the reference of the button edges
+        this._lastCommand    = null;
 
         // Energy / death
         this._energy         = maxEnergy;
@@ -224,11 +225,6 @@ class User {
         return this;
     }
 
-    setTurnSpeed(v) {
-        this._turnSpeed = v;
-        return this;
-    }
-
     setArmor(v) {
         this._armor = Math.max(0, Math.min(v, this._maxArmor));
         return this;
@@ -363,6 +359,19 @@ class User {
     }
 
     // --- Input ---
+
+    /**
+     * @returns {UserCommand|null} the command of the previous turn, null before the first one
+     */
+    getLastCommand() {
+        return this._lastCommand;
+    }
+
+    setLastCommand(command) {
+        this._lastCommand = command;
+        return this;
+    }
+
     beginFrame(deltaTime) {
         this._deltaTime = deltaTime;
         this._walking   = false;
@@ -393,12 +402,13 @@ class User {
         this._walking = true;
     }
 
-    lookMouse(dx, dy) {
+    // Degrees, already converted by the device that sampled them.
+    look(yaw, pitch) {
         if (this.isDead()) {
             return;
         }
-        this.yaw   += dx * this._turnSpeed;
-        this.pitch  = Math.max(-89, Math.min(89, this.pitch - dy * this._turnSpeed));
+        this.yaw   += yaw;
+        this.pitch  = Math.max(-User.MAX_PITCH, Math.min(User.MAX_PITCH, this.pitch + pitch));
     }
 
     setWalkSlow(slow) {
@@ -853,3 +863,5 @@ class User {
         return this.z;
     }
 }
+
+User.MAX_PITCH = 89;

@@ -69,7 +69,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); steps 1 and 2 are done (the Multiplayer options section, nickname and game settings; the WAD identity); the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
+Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); steps 1 and 2 are done (the Multiplayer options section, nickname and game settings; the WAD identity); step 3 is under way — the engine consumes commands, the game's own buttons are next —; the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 

@@ -19,6 +19,7 @@ let world    = null;
 let screen   = null;
 let hudDebug = null;
 let inputs   = null;
+let sampler  = null;
 
 function init()
 {
@@ -31,7 +32,8 @@ function init()
     });
     // Walking, jumping and using are live here; the demo has no pause, no
     // weapon and nothing to shoot.
-    inputs = new Inputs().bindScreen(screen);
+    inputs  = new Inputs().bindScreen(screen);
+    sampler = new InputCommandSampler(inputs);
     for (const control of ['pause', 'weaponNext', 'fire']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
@@ -56,7 +58,8 @@ function init()
 function animate(timestamp)
 {
     engine.calculateDeltaTime(timestamp);
-    world.update(engine.getDeltaTime(), inputs);
+    const dt = engine.getDeltaTime();
+    world.update(dt, sampler.collect(dt).sample());
     engine.displayWorld(world);
     screen.update();
 

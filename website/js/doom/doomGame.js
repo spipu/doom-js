@@ -5,6 +5,7 @@ class DoomGame {
         this._screen            = null;
         this._hud               = null;
         this._inputs            = null;
+        this._commandSampler    = null;
         this._wakeLock          = null;
         this._wadFile           = null;
         this._wadMeta           = null;
@@ -678,7 +679,8 @@ class DoomGame {
 
         // Created once: it owns the keyboard singleton.
         if (this._inputs === null) {
-            this._inputs = new Inputs();
+            this._inputs         = new Inputs();
+            this._commandSampler = new InputCommandSampler(this._inputs);
         }
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
@@ -874,7 +876,7 @@ class DoomGame {
 
         this._engine.calculateDeltaTime(timestamp);
         const dt = this._engine.getDeltaTime();
-        this._world.update(dt, this._inputs);
+        this._world.update(dt, this._commandSampler.collect(dt).sample());
         this._world.getUser().updateEffects(dt);
         this._trackDeath(dt);
         // Vanilla marks the lines from the renderer, even with the map closed.
