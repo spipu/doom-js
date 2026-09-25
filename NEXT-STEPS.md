@@ -69,7 +69,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); step 1 is done (the Multiplayer options section, nickname and game settings); the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
+Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); steps 1 and 2 are done (the Multiplayer options section, nickname and game settings; the WAD identity); the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 
@@ -171,7 +171,7 @@ Three modes, delivered in this order, each one building on the previous:
 
 #### WAD identity
 
-* The main's QR code carries the identity of its WAD: a SHA-256 of the whole file, computed once at import and stored in the WAD metadata (computed on first use for WADs imported earlier).
+* The main's QR code carries the identity of its WAD: a SHA-256 of the whole file, computed once at import and stored in the WAD metadata (computed at the first opening of its menu for WADs imported earlier), its first 8 characters shown on the left of its WAD list line.
 * A sub whose selected WAD does not match gets an error modal, and the link is refused.
 * Level changes need no further check: the main sends the level code, and every sub builds it from the same file.
 
@@ -441,7 +441,7 @@ Each step ships on its own, keeps solo intact, updates the README and bumps the 
 
 0. **Device matrix on the test bench**: the network layer is written (`webapp/net`, `webapp/qr`) and exercised by `_examples/pairing-test.html` — several subs, loopback between tabs, chunked bursts — and by `_examples/pairing-game.html`, the van demo run through the synchronous cycle — a binary state every turn to every sub, an empty command back from each, the next turn only once every command is in — which measures the real turn rate with one to three subs, the perceived smoothness on a sub and the mobile backgrounding on real devices. PC (Firefox) and iPhone (Safari) already pair both ways, on a shared Wi-Fi and over 4G (direct IPv6), with real host addresses once the camera is open, and a PC webcam reads a code shown on a phone at 1280×720; the one-way state stream holds 60 states per second on the sub. Measured too: a sub on 4G behind a symmetric carrier NAT against a main without IPv6 behind a corporate firewall fails after the ICE timeout, as expected without TURN (see Risks). Still to run: Android (Chrome), a tablet, and two different browsers as subs of one main; ping, QR size, scan speed, ICE window and host addresses measured on each.
 1. **Nickname and options** (done): `text` setting type, text entry modal, virtual keyboard, grid navigation, Multiplayer options section (nickname, friendly fire, deathmatch settings) and its translations.
-2. **WAD identity**: SHA-256 at import, computed on first use for older WADs.
+2. **WAD identity** (done): SHA-256 at import, computed on first use for older WADs — the first opening of the WAD's menu —, and shown shortened in the WAD list.
 3. **Commands**: `UserCommand`, `InputCommandSampler`; `World` and `DoomGame` consume commands.
 4. **Simulation / presentation split**: `DoomSimulation`, `DoomPresentation`, `DoomPlayer`, `DoomPlayerRoster`, `DoomSinglePlayerRules`.
 5. **Several players in the engine and systems**: multi-user `World`, `Instance` trigger split with activator, per-user collision state, monsters / damage / traces / interactions / sounds over the roster, deterministic mace spot. Verified with a local second player driven by a scripted command.

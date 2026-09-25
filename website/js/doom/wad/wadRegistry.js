@@ -170,6 +170,39 @@ class WadRegistry {
     }
 
     /**
+     * Identity of a stored WAD: the SHA-256 of its whole file, which two
+     * devices compare to know they play the same WAD. Computed and stored the
+     * first time it is missing (WADs imported before it existed), and written
+     * on the given metadata too; null while Web Crypto is unavailable, retried
+     * on the next call.
+     *
+     * @param {object} meta - stored metadata, updated in place
+     * @returns {Promise<string|null>}
+     */
+    async ensureIdentity(meta) {
+        if (typeof meta.sha256 === 'string') {
+            return meta.sha256;
+        }
+        const stored = await this._storage.readWad(meta.id);
+        const sha256 = await AppHash.sha256Hex(stored.data);
+        if (sha256 === null) {
+            return null;
+        }
+        meta.sha256 = sha256;
+        await this._storage.saveMeta(meta);
+
+        return sha256;
+    }
+
+    /**
+     * @param {object} meta
+     * @returns {string|null} the first characters of the identity, enough to tell two WADs apart by eye
+     */
+    static shortIdentity(meta) {
+        return ((typeof meta.sha256 === 'string') ? meta.sha256.slice(0, WadRegistry.SHORT_IDENTITY_LENGTH) : null);
+    }
+
+    /**
      * Display title of a stored WAD: the file name without its extension.
      * meta.name itself stays untouched — the messages and the registry
      * lookups rely on the raw file name.
@@ -260,6 +293,10 @@ class WadRegistry {
             addedAt: Date.now(),
             source:  source
         };
+        const sha256 = await AppHash.sha256Hex(buffer);
+        if (sha256 !== null) {
+            meta.sha256 = sha256;
+        }
 
         await this._storage.saveWad(meta, buffer);
 
@@ -277,3 +314,5 @@ class WadRegistry {
         return ((parts.length > 0) ? parts[parts.length - 1] : 'unknown.wad');
     }
 }
+
+WadRegistry.SHORT_IDENTITY_LENGTH = 8;

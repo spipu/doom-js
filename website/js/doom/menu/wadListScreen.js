@@ -108,7 +108,8 @@ class WadListScreen extends AbstractMenuScreen {
             this._onSelectWad(meta);
         });
 
-        this._addListItemInfos(item, MenuDom.formatSize(meta.size) + ' — ' + MenuDom.formatDate(meta.addedAt));
+        const infos = [WadRegistry.shortIdentity(meta), MenuDom.formatSize(meta.size), MenuDom.formatDate(meta.addedAt)];
+        this._addListItemInfos(item, infos.filter((info) => (info !== null)).join(' — '));
 
         MenuDom.addDeleteButton(item, appTranslator.get('menu.wad.delete'), () => {
             this._onDeleteWad(meta);

@@ -1,5 +1,5 @@
 {
-    "version": "v1.869",
+    "version": "v1.871",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -45,6 +45,7 @@
             "/js/webapp/screenWakeLock.js",
             "/js/webapp/appDatabase.js",
             "/js/webapp/appTranslator.js",
+            "/js/webapp/appHash.js",
             "/js/doom/doomTranslations.js",
             "/js/doom/doomExternalLinks.js",
             "/js/doom/wad/wadError.js",

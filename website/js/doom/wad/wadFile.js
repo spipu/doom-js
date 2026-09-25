@@ -159,9 +159,6 @@ class WadFile {
      */
     async mapChecksum(mapName) {
         this._requireParsed();
-        if ((typeof crypto === 'undefined') || (crypto.subtle === undefined)) {
-            return null;
-        }
         const mapIndex = this._lumps.findIndex((lump) => (lump.name === mapName));
         if (mapIndex < 0) {
             return null;
@@ -179,9 +176,7 @@ class WadFile {
             bytes.set(new Uint8Array(this._buffer, lump.offset, lump.size), offset);
             offset += lump.size;
         }
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
-
-        return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        return AppHash.sha256Hex(bytes);
     }
 
     _mapSubLump(mapIndex, name) {

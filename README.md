@@ -36,7 +36,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 
 ## Features
 
-- **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Mouse, keyboard, gamepad and touch drive every menu the same way.
+- **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Each WAD carries a SHA-256 fingerprint of its file, computed at import (at the first opening of its menu for older ones) and shown shortened in the list, by which multiplayer devices will check they play the same WAD. Mouse, keyboard, gamepad and touch drive every menu the same way.
 - **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Report a bug* (opens the GitHub issues page), *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a pacifist skill 0 — the normal-skill world, but the monsters never attack — with the original per-skill rules.
 - **Save / load**: five slots per WAD; a save captures the full game state and loading rebuilds the level and restores it exactly (transient visuals excepted).
 - **Pause menu**: `ESC` freezes the game under a translucent overlay — resume, load, save, options, leave the level.
@@ -131,7 +131,7 @@ website/
 ├── assets/spipu/             Our own graphics: the generic splash masks, colourised at level load
 ├── _examples/                Spipu3D demos + their assets and bootstrap definitions
 └── js/
-    ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, wake lock
+    ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, content hash, wake lock
     │   ├── net/                 Peer-to-peer network layer — WebRTC and loopback links, compact signals, pairing codes and flows, messages, ping, star sessions
     │   └── qr/                  QR code writing, camera scanning, camera probe and the pairing view (code shown, code read)
     ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)

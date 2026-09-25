@@ -2,7 +2,7 @@
  * WAD storage on IndexedDB (spipudoom schema), built on the generic AppDatabase.
  *
  * Stores:
- *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}}
+ *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?} — sha256 = identity of the file, absent until computed
  *  - wadData: {id, data: ArrayBuffer}
  *  - settings: {key, value} — persisted game settings (read by DoomSettings)
  *  - saveMeta: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)
@@ -60,6 +60,22 @@ class WadStorage {
         // Asked right after the user chose to store tens of megabytes; not
         // awaited, a permission prompt must not hold the screen back.
         AppDatabase.requestPersistentStorage();
+    }
+
+    /**
+     * Rewrites the metadata of a stored WAD, its binary untouched. A WAD
+     * deleted meanwhile stays deleted: no orphan metadata is written back.
+     *
+     * @param {object} meta
+     * @returns {Promise<boolean>} false when the WAD no longer exists
+     */
+    async saveMeta(meta) {
+        if ((await this._database.get('wadMeta', meta.id)) === null) {
+            return false;
+        }
+        await this._database.put('wadMeta', meta);
+
+        return true;
     }
 
     /**

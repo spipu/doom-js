@@ -106,12 +106,17 @@ class MenuNavigator {
     }
 
     /**
-     * WAD selected → its menu (new game, options, about, quit).
+     * WAD selected → its menu (new game, options, about, quit). A WAD imported
+     * before the identities existed gets its own here, in the background:
+     * nothing on screen waits for it.
      * @param {object} meta
      */
     openWadMenu(meta) {
         this._playWadMusic(meta);
         this._switchTo(this._wadMenuScreen.setWad(meta));
+        this._registry.ensureIdentity(meta).catch((error) => {
+            console.warn('MenuNavigator - unable to compute the identity of [' + meta.id + ']: ' + error.message);
+        });
     }
 
     // Selecting a WAD loads its sound library in the background — no modal,
