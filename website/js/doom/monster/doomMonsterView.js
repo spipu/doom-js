@@ -107,7 +107,7 @@ class DoomMonsterView {
         // slide (knockback, drift) smooths over its own single tic — a shove
         // mid-chase must not rubber-band across the whole See state.
         const durTics = ((m.walkStepped) ? Math.max(1, m.ticsLeft) : 1);
-        m.blend = {fx: fromX, fy: fromY, fz: fromZ, t0: clockMs, dur: durTics * DoomMonsterSystem.MS_PER_TIC};
+        m.blend = {fx: fromX, fy: fromY, fz: fromZ, t0: clockMs, dur: durTics * WadConstants.MS_PER_TIC};
     }
 
     /**

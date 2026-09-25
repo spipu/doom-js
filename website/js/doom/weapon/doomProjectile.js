@@ -406,8 +406,8 @@ class DoomProjectileSystem {
             return;
         }
         this._untickedMs += dtMs;
-        while (this._untickedMs >= DoomProjectileSystem.MS_PER_TIC) {
-            this._untickedMs -= DoomProjectileSystem.MS_PER_TIC;
+        while (this._untickedMs >= WadConstants.MS_PER_TIC) {
+            this._untickedMs -= WadConstants.MS_PER_TIC;
             this._ticCount++;
             this._stepTic();
         }
@@ -855,7 +855,6 @@ class DoomProjectileSystem {
 }
 
 DoomProjectileSystem.VIEW_PREFERENCE = ['0', '5', '1'];
-DoomProjectileSystem.MS_PER_TIC = 1000 / 35;
 DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe lifetime
 // A_Tracer2 slope chase: map units per tic added to the vertical speed toward
 // the one that would land on the target.

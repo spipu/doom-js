@@ -70,8 +70,8 @@ class DoomPlayerWeapon {
     update(dtMs, fireHeld) {
         this._fireHeld = fireHeld;
         this._untickedMs += dtMs;
-        while (this._untickedMs >= DoomPlayerWeapon.MS_PER_TIC) {
-            this._untickedMs -= DoomPlayerWeapon.MS_PER_TIC;
+        while (this._untickedMs >= WadConstants.MS_PER_TIC) {
+            this._untickedMs -= WadConstants.MS_PER_TIC;
             this._ticks += 1;
             if (this._user.isDead()) {
                 // P_DropWeapon / A_Lower dead case: the weapon slides down at
@@ -436,4 +436,3 @@ class DoomPlayerWeapon {
 
 DoomPlayerWeapon.LOWERSPEED = 6;         // psprite raise/lower speed (units/tic)
 DoomPlayerWeapon.RAISESPEED = 6;
-DoomPlayerWeapon.MS_PER_TIC = 1000 / 35;

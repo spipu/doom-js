@@ -18,6 +18,7 @@ class WadConstants {
 
     // Doom game tic = 1/35 s (animation/timing unit).
     static SECONDS_PER_TIC = 1 / 35;
+    static MS_PER_TIC      = 1000 / 35;
 
     // Vanilla texture/flat animation speed (p_spec.c hardcoded sequences),
     // also the fallback for a malformed ANIMATED speed.

@@ -22,7 +22,16 @@ class DoomSimulation {
         this._skillTable         = null;
         this._world              = null;
         this._onPlayerTeleported = null;
-        this._resetLevelStats();
+        // Vanilla totalsecret / totalkills / totalitems + leveltime; the totals
+        // are pushed back by the world builder.
+        this._secretsFound       = 0;
+        this._secretsTotal       = 0;
+        this._killsCount         = 0;
+        this._killsTotal         = 0;
+        this._itemsFound         = 0;
+        this._itemsTotal         = 0;
+        this._levelTimeMs        = 0;
+        this._levelClockLast     = null;
 
         this._weaponSprites  = null;
         this._effects        = null;   // transient sprite effects (puffs, explosions)
@@ -329,11 +338,12 @@ class DoomSimulation {
         }
     }
 
-    // The engine world moves one body: the command of the player it belongs to.
+    // The engine world moves one body: the command of the player it belongs
+    // to, neutral when that player has none this turn.
     _worldBodyCommand(commands) {
         const owner = this._roster.getByUser(this._world.getUser());
 
-        return commands.get(owner.getId());
+        return (((owner !== null) ? commands.get(owner.getId()) : undefined) ?? new UserCommand());
     }
 
     _commandedPlayers(commands) {
@@ -380,8 +390,6 @@ class DoomSimulation {
 
     // --- Level statistics ---
 
-    // Vanilla totalsecret / totalkills / totalitems + leveltime; the totals
-    // are pushed back by the world builder.
     _resetLevelStats() {
         this._secretsFound   = 0;
         this._secretsTotal   = 0;

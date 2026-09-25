@@ -275,8 +275,8 @@ class DoomEffects {
             return;
         }
         this._untickedMs += dtMs;
-        while (this._untickedMs >= DoomEffects.MS_PER_TIC) {
-            this._untickedMs -= DoomEffects.MS_PER_TIC;
+        while (this._untickedMs >= WadConstants.MS_PER_TIC) {
+            this._untickedMs -= WadConstants.MS_PER_TIC;
             this._stepTic();
         }
     }
@@ -360,5 +360,3 @@ class DoomEffects {
         return effect.frames.length;
     }
 }
-
-DoomEffects.MS_PER_TIC = 1000 / 35;

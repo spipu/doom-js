@@ -574,8 +574,8 @@ class DoomMonsterSystem {
         // sampled per tic, a slow frame would miss the movement on most tics.
         this._pressure.refreshMotion();
         this._untickedMs += dt;
-        while (this._untickedMs >= DoomMonsterSystem.MS_PER_TIC) {
-            this._untickedMs -= DoomMonsterSystem.MS_PER_TIC;
+        while (this._untickedMs >= WadConstants.MS_PER_TIC) {
+            this._untickedMs -= WadConstants.MS_PER_TIC;
             this._stepTic();
         }
         for (const m of this._monsters) {
@@ -1954,8 +1954,6 @@ class DoomMonsterSystem {
 // Slowest fall (map units/tic) that still splashes under a LIVE body
 // (P_HitWater).
 DoomMonsterSystem.SPLASH_MIN_FALL = -6;
-
-DoomMonsterSystem.MS_PER_TIC = 1000 / 35;
 
 // Vanilla P_XYMovement stop threshold (0x1000/65536, map units/tic) — the
 // decay/step/float numbers live in WadConstants (shared with the locomotion)
