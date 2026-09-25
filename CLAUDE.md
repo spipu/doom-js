@@ -75,7 +75,7 @@ Enfin, suivre les instructions du paragraphe "Procédure commune".
 1. Analyse tous les fichiers js du répertoire `./website/js/webapp`.
 2. Analyse tous les fichiers js du répertoire `./website/js/engine` et de ses sous-répertoires.
 3. Analyse tous les fichiers js du répertoire `./website/js/doom`   et de ses sous-répertoires.
-4. Enfin analyse les 10 derniers commits.
+4. Enfin analyse les 10 derniers commits, et analyser le fichier `./NEXT-STEPS.md` pour en déduire les prochains chantiers potentiels.
 
 ### Procédure commune
 

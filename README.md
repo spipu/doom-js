@@ -233,13 +233,9 @@ function animate(timestamp) {
 
 After any file change, increment the `version` field of the `libBootstrap.json` of the modified library (engine, doom, or the demo's definition JSON). This drives both the PWA cache refresh and the classic-mode cache busting.
 
-## Todo - Next steps
+## Next steps
 
-* **Heretic inventory**: the artifact bar and everything it holds (flight, tome of power, morph ovum…) is the last large gap of an otherwise playable game.
-* **PWAD compatibility**: the converter understands vanilla specials only, so most community WADs load with dead lines and stock actors — this means DEHACKED and the BOOM generalized specials.
-* **Hexen**: the WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
-* **Vanilla polish pass**: the small fidelity gaps knowingly left aside — no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports.
-* **Rendering performance & quality options**: the renderer is now selectable and the three CPU modes draw the weapon in hand, but they still lag behind WebGL (no sky, no distance darkening), and there is no quality setting; a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone.
+The upcoming work is tracked in [./NEXT-STEPS.md](./NEXT-STEPS.md).
 
 ## License
 
