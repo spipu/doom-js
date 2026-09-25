@@ -16,18 +16,18 @@ class DoomMonsterDamage {
      * @param {DoomMonsterSystem} monsters
      * @param {DoomEffects}       effects
      * @param {DoomRandom}        rng
-     * @param {object}            rules   profile.monsterDamageRules()
-     * @param {DoomGame}          game    kill counter
+     * @param {object}            rules      profile.monsterDamageRules()
+     * @param {DoomSimulation}    simulation kill counter
      */
-    constructor(monsters, effects, rng, rules, game) {
-        this._monsters  = monsters;
-        this._effects   = effects;
-        this._rng       = rng;
-        this._rules     = rules;
-        this._game      = game;
-        this._collision = null;
-        this._user      = null;
-        this._terrain   = null;
+    constructor(monsters, effects, rng, rules, simulation) {
+        this._monsters   = monsters;
+        this._effects    = effects;
+        this._rng        = rng;
+        this._rules      = rules;
+        this._simulation = simulation;
+        this._collision  = null;
+        this._user       = null;
+        this._terrain    = null;
     }
 
     /**
@@ -318,8 +318,8 @@ class DoomMonsterDamage {
     // A_VileChase put a body back on its feet: vanilla Revive raises the level
     // total with it, so the ☠ ratio stays honest when it is killed again.
     reviveCounted(record) {
-        if ((record.def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._game !== null)) {
-            this._game.addKillTotal();
+        if ((record.def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._simulation !== null)) {
+            this._simulation.addKillTotal();
         }
     }
 
@@ -334,8 +334,8 @@ class DoomMonsterDamage {
         this._monsters.enterState(record, ((gibbed) ? 'xdeath0' : 'death0'));
         // Nightmare-respawned actors no longer feed the counter (user
         // decision: ☠ x never exceeds the level total).
-        if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._game !== null)) {
-            this._game.addKill();
+        if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._simulation !== null)) {
+            this._simulation.addKill();
         }
     }
 

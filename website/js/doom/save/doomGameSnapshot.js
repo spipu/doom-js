@@ -10,7 +10,7 @@
  * the fine psprite state (the active weapon replays its raise) and the
  * monsters' render smoothing.
  *
- * The context is assembled by DoomGame (_snapshotContext): explicit
+ * The context is assembled by DoomSimulation (_snapshotContext): explicit
  * dependencies, no reach into its private fields.
  */
 class DoomGameSnapshot {
@@ -56,7 +56,7 @@ class DoomGameSnapshot {
     }
 
     // Runs once the rebuilt level is wired, before the first frame. The player
-    // equipment is restored earlier by DoomGame, in place of the level loadout.
+    // equipment is restored earlier by DoomSimulation, in place of the level loadout.
     apply(context, snapshot) {
         // itemsFound and levelTimeMs postdate FORMAT_VERSION 2; the version is
         // compared strictly, so bumping it would discard every existing save.

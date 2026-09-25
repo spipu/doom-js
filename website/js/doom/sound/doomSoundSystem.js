@@ -218,7 +218,7 @@ class DoomSoundSystem {
     }
 
     /**
-     * The level's player becomes the listener — rebound by DoomGame._init on
+     * The level's player becomes the listener — rebound by DoomPresentation on
      * every level (the game is recreated, this system survives). Also lifts
      * the pause freeze a leftover exit modal may have armed.
      *

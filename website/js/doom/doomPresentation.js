@@ -1,16 +1,14 @@
 /**
  * What one device shows of the game, seen through one player: the screen, the
  * engine and the HUD built on it, the display settings, the weapon overlay,
- * the view effects (night vision, muzzle flash, telezoom) and the automap
- * lines that view reveals. It renders the simulation, never changes it.
+ * the view effects (night vision, muzzle flash, telezoom), the level's sound
+ * heard from that player, and the automap lines the view reveals — the one
+ * piece of simulation state it writes, as vanilla's renderer does.
  */
 class DoomPresentation {
-    /**
-     * @param {DoomGame} game - read by the HUD for the level statistics
-     */
-    constructor(game) {
-        this._game           = game;
+    constructor() {
         this._inputs         = null;
+        this._simulation     = null;
         this._world          = null;
         this._player         = null;
         this._automap        = null;
@@ -38,15 +36,15 @@ class DoomPresentation {
     }
 
     /**
-     * @param {World} world
+     * @param {DoomSimulation} simulation - its level is loaded
      * @param {DoomPlayer} player - the viewed one
-     * @param {DoomAutomap|null} automap - null when the WAD has no usable BSP
      * @param {{wadId: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
-    showLevel(world, player, automap, levelInfo) {
-        this._world         = world;
+    showLevel(simulation, player, levelInfo) {
+        this._simulation    = simulation;
+        this._world         = simulation.getWorld();
         this._player        = player;
-        this._automap       = automap;
+        this._automap       = simulation.getAutomap();
         this._levelInfo     = levelInfo;
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
@@ -58,6 +56,20 @@ class DoomPresentation {
     // Once the viewed player owns a weapon controller.
     showWeaponOverlay() {
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
+
+        return this;
+    }
+
+    // Once the level state is final (a loaded save included).
+    startLevelSound(musicLumps) {
+        // Also lifts the sound freeze left by an exit modal.
+        doomSound.bindLevel(this._player.getUser());
+        doomSound.playLevelMusic(musicLumps);
+        // Declared during the batch, wired now that the loader hands the instances out.
+        const moverSounds = this._simulation.getMoverSounds();
+        if (moverSounds !== null) {
+            moverSounds.wireAll();
+        }
 
         return this;
     }
@@ -100,7 +112,7 @@ class DoomPresentation {
         this._hud = new HudDoom(this._engine)
             .bindUser(this._player.getUser())
             .bindInputs(this._inputs)
-            .bindGame(this._game)
+            .bindSimulation(this._simulation)
             .setLevelInfo(this._levelInfo.wadId, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
             .addDescription('(c)2026 Spipu')
         ;
@@ -165,12 +177,22 @@ class DoomPresentation {
      * @param {boolean} menuOpen - a menu covers the screen (the death menu runs over live frames)
      */
     present(dt, menuOpen) {
+        this._updateSound(dt);
         // Before every push onto the engine, which a swap replaces.
         this._applyRendererSetting(menuOpen);
         this._applyDisplaySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay();
         this._draw();
+    }
+
+    // S_UpdateSounds, then the level's ambient emitters.
+    _updateSound(dt) {
+        doomSound.update();
+        const ambientSounds = this._simulation.getAmbientSounds();
+        if (ambientSounds !== null) {
+            ambientSounds.update(dt);
+        }
     }
 
     // Frozen frame (pause, tally): redrawn since a resize wipes the canvas, the settings stay live.

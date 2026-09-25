@@ -9,14 +9,14 @@ class DoomTeleportInteraction extends AbstractInteraction {
      * @param {string}            code        - unique interaction code, shared with the Instance
      * @param {object}            destination - {x, y, z, yaw} in world coordinates
      * @param {DoomMonsterSystem} monsters    - telefrag pool (a player teleport stomps)
-     * @param {DoomGame}          game        - effect spawner source (teleport fog)
+     * @param {DoomSimulation}    simulation  - teleport fog source, told of the arrival
      */
-    constructor(code, destination, monsters = null, game = null) {
+    constructor(code, destination, monsters = null, simulation = null) {
         super();
         this._code        = code;
         this._destination = destination;
         this._monsters    = monsters;
-        this._game        = game;
+        this._simulation  = simulation;
         this._cooldownMs  = 0;
     }
 
@@ -69,13 +69,13 @@ class DoomTeleportInteraction extends AbstractInteraction {
             }
         }
 
-        if (this._game !== null) {
-            const effects = this._game.getEffects();
+        if (this._simulation !== null) {
+            const effects = this._simulation.getEffects();
             if (effects !== null) {
                 effects.spawnTeleportFogs(fromX, fromY, fromZ, user.x, user.y, user.z,
                     WadGeometry.doomAngleYaw(user.yaw));
             }
-            this._game.startTeleZoom();
+            this._simulation.notifyPlayerTeleported(user);
         }
         user.freezeControls(WadConstants.TELEPORT_FREEZE_TICS * WadConstants.SECONDS_PER_TIC);
 

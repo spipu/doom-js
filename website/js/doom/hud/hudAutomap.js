@@ -16,7 +16,7 @@
 class HudAutomap extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._game        = null;
+        this._simulation  = null;
         this._automap     = null;
         this._colors      = null;
         this._keyColors   = {};
@@ -51,8 +51,8 @@ class HudAutomap extends AbstractHud {
         return this;
     }
 
-    bindGame(game) {
-        this._game = game;
+    bindSimulation(simulation) {
+        this._simulation = simulation;
         return this;
     }
 
@@ -63,7 +63,7 @@ class HudAutomap extends AbstractHud {
      * @param {DoomAutomap} automap
      */
     bindAutomap(automap) {
-        const profile = this._game.getGameProfile();
+        const profile = this._simulation.getGameProfile();
         this._automap   = automap;
         this._colors    = profile.automapColors();
         this._keyColors = profile.hudKeyColors();
@@ -235,7 +235,7 @@ class HudAutomap extends AbstractHud {
     }
 
     _collectLines() {
-        const allMap = ((this._game !== null) && this._game.hasMapPowerup(this._user));
+        const allMap = ((this._simulation !== null) && this._simulation.getItemRules().hasMapPowerup(this._user));
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role].length = 0;
         }

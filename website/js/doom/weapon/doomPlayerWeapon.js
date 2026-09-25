@@ -7,8 +7,14 @@
  * getViewSprites() hands the current frames to the engine's view-sprite pass.
  */
 class DoomPlayerWeapon {
-    constructor(game, user, spriteBank, rng) {
-        this._game        = game;
+    /**
+     * @param {DoomItemRules}        itemRules - weapon definitions and fallback order
+     * @param {DoomUser}             user
+     * @param {DoomWeaponSpriteBank} spriteBank
+     * @param {DoomRandom}           rng
+     */
+    constructor(itemRules, user, spriteBank, rng) {
+        this._itemRules   = itemRules;
         this._user        = user;
         this._sprites     = spriteBank;
         this._rng         = rng;
@@ -164,7 +170,7 @@ class DoomPlayerWeapon {
     // --- State machine (P_SetPsprite / P_MovePsprites) ---
 
     _def() {
-        return this._game.getWeapon(this._readyWeapon);
+        return this._itemRules.getWeapon(this._readyWeapon);
     }
 
     _stateOf(psp) {
@@ -406,12 +412,12 @@ class DoomPlayerWeapon {
     // ammo thresholds are game data (profile weaponFallbackOrder; the vanilla
     // Doom chain keeps its explicit > 2 shells / > 40 cells thresholds there).
     _pickAmmoWeapon() {
-        const order = this._game.getGameProfile().weaponFallbackOrder();
+        const order = this._itemRules.getGameProfile().weaponFallbackOrder();
         for (const entry of order) {
             if (!this._user.hasWeapon(entry.code)) {
                 continue;
             }
-            const def = this._game.getWeapon(entry.code);
+            const def = this._itemRules.getWeapon(entry.code);
             if (def === null) {
                 continue;
             }

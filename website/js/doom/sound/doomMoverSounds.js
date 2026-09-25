@@ -39,7 +39,7 @@ class DoomMoverSounds {
         return this;
     }
 
-    // Called by the game once the loader is ready (DoomGame._init).
+    // Called once the loader is ready (DoomPresentation.startLevelSound).
     wireAll() {
         for (const entry of this._pending) {
             const inst = loader.instances().getByCode(entry.code);

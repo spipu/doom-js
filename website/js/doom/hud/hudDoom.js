@@ -34,10 +34,10 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
-    bindGame(game) {
-        this._debug.bindGame(game);
-        this._gameBar.bindGame(game);
-        this._automap.bindGame(game);
+    bindSimulation(simulation) {
+        this._debug.bindSimulation(simulation);
+        this._gameBar.bindSimulation(simulation);
+        this._automap.bindSimulation(simulation);
         return this;
     }
 

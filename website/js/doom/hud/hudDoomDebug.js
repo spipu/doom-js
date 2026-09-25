@@ -7,11 +7,11 @@
 class HudDoomDebug extends HudDebug {
     constructor(engine) {
         super(engine);
-        this._wadId     = null;
-        this._levelCode = null;
-        this._skill     = null;
-        this._levelName = null;
-        this._game      = null;
+        this._wadId      = null;
+        this._levelCode  = null;
+        this._skill      = null;
+        this._levelName  = null;
+        this._simulation = null;
     }
 
     // The [LEVEL] line starts with the arguments of MenuNavigator.start()
@@ -24,8 +24,8 @@ class HudDoomDebug extends HudDebug {
         return this;
     }
 
-    bindGame(game) {
-        this._game = game;
+    bindSimulation(simulation) {
+        this._simulation = simulation;
         return this;
     }
 
@@ -44,9 +44,9 @@ class HudDoomDebug extends HudDebug {
             + ' / ' + (this._skill ?? '?')
             + ((this._levelName !== null) ? ' — ' + this._levelName : ''));
 
-        if (this._game) {
-            lines.push('[SECRETS] ' + this._game.getSecretsFound() + '/' + this._game.getSecretsTotal());
-            lines.push('[KILLS] ' + this._game.getKillsCount() + '/' + this._game.getKillsTotal());
+        if (this._simulation) {
+            lines.push('[SECRETS] ' + this._simulation.getSecretsFound() + '/' + this._simulation.getSecretsTotal());
+            lines.push('[KILLS] ' + this._simulation.getKillsCount() + '/' + this._simulation.getKillsTotal());
         }
 
         lines.push('[ARMOR] ' + Math.ceil(user.getArmor()) + '/' + user.getMaxArmor()

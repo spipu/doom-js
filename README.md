@@ -138,11 +138,13 @@ website/
     ├── lib/zxing-wasm/       Vendored zxing-wasm QR code reader and writer (MIT, Apache-2.0, BSD-3 — own LICENSE.md + README.md)
     ├── doom/                 The Spipu-Doom game
     │   ├── libBootstrap.json    Doom bootstrap definition (version + file lists)
-    │   ├── doomGame.js          Level lifecycle, game loop, catalogs, pickups
+    │   ├── doomGame.js          Level lifecycle, game loop, menus of the running game, tally
     │   ├── doomUser.js          Player equipment state
     │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
-    │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects
+    │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, stats, saves
+    │   ├── doomItemRules.js     Weapon, ammo and item catalogs of a game, and what pickups, loadout and cheat give
+    │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects, sound
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)

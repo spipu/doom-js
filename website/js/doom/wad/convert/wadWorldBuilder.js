@@ -11,11 +11,11 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelCode
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, game: DoomGame, profile: AbstractGameProfile}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, simulation: DoomSimulation, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; thingCatalog
-     *                  (DoomGame) maps THING types to world sprites/pickups; skill
+     *                  (DoomSimulation) maps THING types to world sprites/pickups; skill
      *                  (1..5, default 3) drives the single-player thing filtering;
-     *                  game receives the level stats (secrets) and pickups;
+     *                  simulation receives the level data, the stats and the pickups;
      *                  profile carries the per-game policy (Doom by default).
      */
     constructor(wadFile, levelCode, options = null) {
@@ -26,7 +26,7 @@ class WadWorldBuilder {
         this._onLevelExit    = options.onLevelExit ?? null;
         this._thingCatalog   = options.thingCatalog ?? null;
         this._skill          = options.skill ?? 3;
-        this._game           = options.game ?? null;
+        this._simulation     = options.simulation ?? null;
         this._profile        = options.profile ?? new DoomGameProfile();
         this._monsterCatalog = options.monsterCatalog ?? null;
         this._monsterSystem  = options.monsterSystem ?? null;
@@ -148,10 +148,10 @@ class WadWorldBuilder {
 
         // Gun triggers (G1/GR): no zone, the hitscan tests each shot against
         // their segments (P_ShootSpecialLine).
-        if (this._game !== null) {
+        if (this._simulation !== null) {
             const gunLines = new WadGunTriggerBuilder(
                 level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf).buildAll();
-            this._game.setGunTriggers(new DoomGunTriggers(gunLines));
+            this._simulation.setGunTriggers(new DoomGunTriggers(gunLines));
         }
 
         // Teleporters
@@ -161,7 +161,7 @@ class WadWorldBuilder {
             this._registerInstance(tp, bank);
             this._applyCrossingGuard(tp);
             loader.interactions().loadFromData(
-                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem, this._game));
+                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem, this._simulation));
         }
         await this._yield();
 
@@ -186,7 +186,7 @@ class WadWorldBuilder {
         if (damageZones.list.length > 0) {
             damageInteraction = new DoomSectorDamageInteraction(damageZones, this._onLevelExit);
             loader.interactions().loadFromData(damageInteraction);
-            this._game.setSectorDamage(damageInteraction);
+            this._simulation.setSectorDamage(damageInteraction);
         }
 
         // Wind, conveyors and ice (tables empty outside Heretic).
@@ -209,18 +209,18 @@ class WadWorldBuilder {
 
         const secretZones = this._sectorZones(analysis, bspSectorAt,
             (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
-        if (this._game !== null) {
-            this._game.setSecretsTotal(secretZones.list.length);
+        if (this._simulation !== null) {
+            this._simulation.setSecretsTotal(secretZones.list.length);
             if (secretZones.list.length > 0) {
-                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._game));
+                loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._simulation));
             }
-            this._game.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
+            this._simulation.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
         }
 
         const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
 
         // Reads the live flat: a "+change" floor turned to water splashes as water.
-        this._game.setTerrain(new DoomTerrain(sectorIdAt, surfaces, terrains.flats(), terrains.terrains())
+        this._simulation.setTerrain(new DoomTerrain(sectorIdAt, surfaces, terrains.flats(), terrains.terrains())
             .setLiquidTints(this._liquidTints(analysis, terrains, bank)));
 
         // Things
@@ -259,7 +259,7 @@ class WadWorldBuilder {
     // Accepted deviation: the 40-44/72 ceiling specials without a ceiling flag
     // keep the door voice.
     _registerMoverSounds(analysis, doors, lifts, risingFloors, stairs) {
-        if (this._game === null) {
+        if (this._simulation === null) {
             return;
         }
         const sounds = new DoomMoverSounds(this._profile.doorSoundStyle());
@@ -280,7 +280,7 @@ class WadWorldBuilder {
         registerAll(lifts, () => ({kind: 'plat', blaze: false, silent: false}));
         registerAll(risingFloors, () => ({kind: 'floor', blaze: false, silent: false}));
         registerAll(stairs, () => ({kind: 'floor', blaze: false, silent: false}));
-        this._game.setMoverSounds(sounds);
+        this._simulation.setMoverSounds(sounds);
     }
 
     // Ambient sound things (profile table, ednum → loop/random spec): no body,
@@ -288,7 +288,7 @@ class WadWorldBuilder {
     _registerAmbientSounds(level) {
         const table = this._profile.ambientSounds();
         const kinds = Object.keys(table);
-        if ((kinds.length === 0) || (this._game === null)) {
+        if ((kinds.length === 0) || (this._simulation === null)) {
             return;
         }
         const ambient = new DoomAmbientSounds();
@@ -307,7 +307,7 @@ class WadWorldBuilder {
             count++;
         }
         if (count > 0) {
-            this._game.setAmbientSounds(ambient);
+            this._simulation.setAmbientSounds(ambient);
         }
     }
 
@@ -396,13 +396,13 @@ class WadWorldBuilder {
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
-            if (isPickup && (this._game !== null)) {
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._game, countsItem));
+            if (isPickup && (this._simulation !== null)) {
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._simulation, countsItem));
             }
         }
-        if (this._game !== null) {
-            this._game.setKillsTotal(killsTotal);
-            this._game.setItemsTotal(itemsTotal);
+        if (this._simulation !== null) {
+            this._simulation.setKillsTotal(killsTotal);
+            this._simulation.setItemsTotal(itemsTotal);
         }
         this._registerMonsterDrops(things, spriteBank);
         this._registerCrushedCorpseView(spriteBank);
@@ -516,7 +516,7 @@ class WadWorldBuilder {
     // Drop templates, one interaction per item/amount pair, built inside the
     // batch: interactions cannot register at runtime, only instances spawn.
     _registerMonsterDrops(things, spriteBank) {
-        if ((this._monsterSystem === null) || (this._game === null)) {
+        if ((this._monsterSystem === null) || (this._simulation === null)) {
             return;
         }
         const types   = this._profile.dropItemTypes();
@@ -541,7 +541,7 @@ class WadWorldBuilder {
                     code:  code,
                     objId: this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT)
                 };
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._game));
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._simulation));
             }
         }
         this._monsterSystem.setDrops(catalog);
@@ -590,10 +590,10 @@ class WadWorldBuilder {
 
     // The reveal is a BSP walk: no valid tree, no map.
     _registerAutomap(level, heights) {
-        if ((this._game === null) || (level.bspTree === null)) {
+        if ((this._simulation === null) || (level.bspTree === null)) {
             return;
         }
-        this._game.setAutomap(new DoomAutomap(new WadAutomapBuilder(level).build(), heights));
+        this._simulation.setAutomap(new DoomAutomap(new WadAutomapBuilder(level).build(), heights));
     }
 
     // Level data of the monster AI and the sector-height service built from it.
@@ -704,7 +704,7 @@ class WadWorldBuilder {
     // resolved here: no texture can register outside the batch.
     _wireFloorChanges(analysis, animBank, damageInteraction) {
         const surfaces = new DoomSectorSurfaces(this._level.sectors);
-        this._game.setSectorSurfaces(surfaces);
+        this._simulation.setSectorSurfaces(surfaces);
 
         const sequences = new Map();
         for (const key of Object.keys(analysis.floorChange)) {

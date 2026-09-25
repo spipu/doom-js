@@ -1,7 +1,7 @@
 /**
  * The Doom player: the engine User plus the equipment state (weapons, ammo,
- * items, timed effects). The definitions live on DoomGame, which also pours in
- * the starting loadout after the engine loader has built the player.
+ * items, timed effects). The definitions live on DoomItemRules, which also pours
+ * in the starting loadout after the engine loader has built the player.
  */
 class DoomUser extends User {
     constructor(x, y, z, yaw, pitch, maxEnergy) {
@@ -13,12 +13,12 @@ class DoomUser extends User {
         this._ammoMax         = {};   // code -> max
         this._items           = new Set();
         this._effects         = {};   // code -> remaining time (ms)
-        this._damageFactor    = 1;    // skill-derived, set by DoomGame per level
-        this._exitSectorProbe = null; // (user) → bool, set by DoomGame per level
+        this._damageFactor    = 1;    // skill-derived, set by DoomSimulation per level
+        this._exitSectorProbe = null; // (user) → bool, set by DoomSimulation per level
         this._controlFreezeS  = 0;
         this._jumpAllowed     = true;
         this._crouchAllowed   = true;
-        this._landingSplash   = null; // (x, y, z) => void, set by DoomGame per level
+        this._landingSplash   = null; // (x, y, z) => void, set by DoomSimulation per level
     }
 
     setDamageFactor(factor) {
@@ -260,8 +260,8 @@ class DoomUser extends User {
     }
 
     // --- Inter-level persistence ---
-    // The player is rebuilt for each level: DoomGame exports the state before
-    // loader.reset() and imports it into the next one.
+    // The player is rebuilt for each level: DoomPlayer exports the state before
+    // loader.reset(), DoomSimulation imports it into the next one.
     exportState() {
         const weapons = {};
         for (const code of Object.keys(this._weapons)) {

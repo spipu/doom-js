@@ -13,29 +13,29 @@
 class HudGameBar extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._game      = null;
-        this._root      = null;
-        this._els       = {};
-        this._keyEls    = {};
-        this._armsEls   = {};
-        this._effectEls = {};
+        this._simulation = null;
+        this._root       = null;
+        this._els        = {};
+        this._keyEls     = {};
+        this._armsEls    = {};
+        this._effectEls  = {};
     }
 
     // Weapon slots and key set come from the game profile; empty layout when
     // no game is bound.
     _slotConfig() {
-        if (this._game === null) {
+        if (this._simulation === null) {
             return {count: 0, byWeapon: {}, alwaysOwnedSlot: 0, upgradeWeapon: null};
         }
-        return this._game.getGameProfile().hudWeaponSlots();
+        return this._simulation.getGameProfile().hudWeaponSlots();
     }
 
     _keyColors() {
-        return ((this._game !== null) ? this._game.getGameProfile().hudKeyColors() : {});
+        return ((this._simulation !== null) ? this._simulation.getGameProfile().hudKeyColors() : {});
     }
 
-    bindGame(game) {
-        this._game = game;
+    bindSimulation(simulation) {
+        this._simulation = simulation;
         return this;
     }
 
@@ -99,9 +99,9 @@ class HudGameBar extends AbstractHud {
         this._updateKeys(user);
         this._updateEffects(user);
 
-        if (this._game !== null) {
-            this._els.secretsValue.innerText = this._game.getSecretsFound() + '/' + this._game.getSecretsTotal();
-            this._els.killsValue.innerText   = this._game.getKillsCount() + '/' + this._game.getKillsTotal();
+        if (this._simulation !== null) {
+            this._els.secretsValue.innerText = this._simulation.getSecretsFound() + '/' + this._simulation.getSecretsTotal();
+            this._els.killsValue.innerText   = this._simulation.getKillsCount() + '/' + this._simulation.getKillsTotal();
         }
 
         this._updateFps();
@@ -119,7 +119,7 @@ class HudGameBar extends AbstractHud {
 
     _updateAmmo(user) {
         const code   = user.getActiveWeapon();
-        const weapon = ((this._game !== null) ? this._game.getWeapon(code) : null);
+        const weapon = ((this._simulation !== null) ? this._simulation.getItemRules().getWeapon(code) : null);
         const type   = ((weapon !== null) ? weapon.getAmmoType() : null);
         this._els.ammoValue.innerText = ((type === null) ? '—' : user.getAmmo(type) + '/' + user.getAmmoMax(type));
     }
@@ -153,7 +153,7 @@ class HudGameBar extends AbstractHud {
             }
         }
 
-        const weapon = ((this._game !== null) ? this._game.getWeapon(code) : null);
+        const weapon = ((this._simulation !== null) ? this._simulation.getItemRules().getWeapon(code) : null);
         this._els.weaponName.innerText = ((weapon !== null) ? this._weaponLabel(code, weapon) : '—');
     }
 

@@ -38,6 +38,20 @@ class DoomPlayerRoster {
     }
 
     /**
+     * @param {DoomUser} user
+     * @returns {DoomPlayer|null} the player whose current body it is
+     */
+    getByUser(user) {
+        for (const player of this._players.values()) {
+            if (player.getUser() === user) {
+                return player;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @returns {DoomPlayer[]} in joining order
      */
     getAll() {
