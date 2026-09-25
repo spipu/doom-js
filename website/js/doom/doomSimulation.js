@@ -169,7 +169,6 @@ class DoomSimulation {
         return this;
     }
 
-    // Wires the systems onto the loaded world and arms the player.
     startLevel(player) {
         const collision = this._world.getCollision();
         const user      = player.getUser();

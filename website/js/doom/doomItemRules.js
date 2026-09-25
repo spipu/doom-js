@@ -22,7 +22,6 @@ class DoomItemRules {
         return this._profile;
     }
 
-    // The skill's ammo multiplier, applied to every ammo pickup.
     setAmmoFactor(factor) {
         this._ammoFactor = factor;
 

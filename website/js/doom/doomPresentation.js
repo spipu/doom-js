@@ -53,7 +53,6 @@ class DoomPresentation {
         return this;
     }
 
-    // Once the viewed player owns a weapon controller.
     showWeaponOverlay() {
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
 
@@ -148,7 +147,6 @@ class DoomPresentation {
         this._hud.setViewState(viewState);
     }
 
-    // The HUD mode and the automap, on a fresh press: local to this view.
     readViewToggles() {
         const hudDown = this._inputs.readButtonToggleHud();
         if (hudDown && !this._hudWasDown) {
@@ -171,8 +169,6 @@ class DoomPresentation {
     }
 
     /**
-     * A live frame.
-     *
      * @param {number} dt
      * @param {boolean} menuOpen - a menu covers the screen (the death menu runs over live frames)
      */
@@ -186,7 +182,7 @@ class DoomPresentation {
         this._draw();
     }
 
-    // S_UpdateSounds, then the level's ambient emitters.
+    // S_UpdateSounds.
     _updateSound(dt) {
         doomSound.update();
         const ambientSounds = this._simulation.getAmbientSounds();
@@ -281,9 +277,7 @@ class DoomPresentation {
 
 // The 320x200 psprite canvas was authored for a 4:3 display.
 DoomPresentation.PSPRITE_ASPECT = 4 / 3;
-// Virtual display size, scaled to fit the real screen.
 DoomPresentation.VIRTUAL_WIDTH  = 1920;
 DoomPresentation.VIRTUAL_HEIGHT = 1080;
-// Depth range of the projection, in world units.
-DoomPresentation.Z_NEAR = 0.1;
-DoomPresentation.Z_FAR  = 100;
+DoomPresentation.Z_NEAR         = 0.1;
+DoomPresentation.Z_FAR          = 100;

@@ -547,6 +547,7 @@ class WadMapAnalyzer {
         const linedefs          = this._moverLinedefs();
         const liftIds           = new Set();
         const liftSectorSpecial = {};
+        const liftSpecials      = {};   // base special last
 
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
@@ -557,6 +558,7 @@ class WadMapAnalyzer {
                     if ((sectors[si].tag === ld.tag) && (allowDoorOverlap || !doorSectorIds.has(si))) {
                         liftIds.add(si);
                         liftSectorSpecial[si] = ld.special;
+                        (liftSpecials[si] = (liftSpecials[si] ?? [])).push(ld.special);
                     }
                 }
             }
@@ -629,6 +631,12 @@ class WadMapAnalyzer {
             });
             if (dead === undefined) {
                 break;
+            }
+            // Another special on the tag may still move it: retried as base first.
+            liftSpecials[dead] = liftSpecials[dead].filter((special) => (special !== liftSectorSpecial[dead]));
+            if (liftSpecials[dead].length > 0) {
+                liftSectorSpecial[dead] = liftSpecials[dead][liftSpecials[dead].length - 1];
+                continue;
             }
             liftIds.delete(dead);
             delete liftSectorSpecial[dead];
@@ -1301,6 +1309,10 @@ class WadMapAnalyzer {
                 reverse.push(reversed(code));
                 continue;
             }
+            if (isLower && code.startsWith('lift_')
+                && WadMapAnalyzer._isIdleLiftLower(analysis, special, WadMapAnalyzer._sectorOfCode(code, 'lift_'))) {
+                continue;
+            }
             if (isLower && code.startsWith('risingfloor_')) {
                 const ringOfThisDonut = (WadConstants.isDonutSpecial(special)
                     && WadMapAnalyzer.isDonutRing(analysis, WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')));
@@ -1313,6 +1325,18 @@ class WadMapAnalyzer {
         }
 
         return {start: start, reverse: reverse};
+    }
+
+    // No named cycle for a lower that would not move the lift: started, it would
+    // fall back on the default cycle, where vanilla moves nothing.
+    static _isIdleLiftLower(analysis, special, liftSi) {
+        const baseSpecial = analysis.liftSectorSpecial[liftSi];
+        const key         = WadConstants.floorLowerCycleKey(special);
+        if ((special === baseSpecial) || (key === null) || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(baseSpecial)) {
+            return false;
+        }
+
+        return (analysis.liftLowerVariants[liftSi]?.[key] === undefined);
     }
 
     // Forward speed (u/tic) of the special firing a reverse — raise floors,

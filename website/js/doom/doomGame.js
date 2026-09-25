@@ -35,7 +35,6 @@ class DoomGame {
         return this._roster.getLocal();
     }
 
-    // A teleport arrival zooms the view of the player it moved.
     _onPlayerTeleported(user) {
         if (user === this._localPlayer().getUser()) {
             this._presentation.startTeleZoom();
