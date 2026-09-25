@@ -67,7 +67,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); the game steps (1 onwards) are not started. This section is the reference for the technology choices, the implementation and the step plan.
+Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); step 1 is under way — the nickname, its text entry and the grid navigation of its keyboard are done, the multiplayer game settings are next — and the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 
@@ -134,10 +134,10 @@ Three modes, delivered in this order, each one building on the previous:
 
 * One shared text entry modal, used by both the options and the multiplayer launch; each caller only supplies its title or message and the initial value (the current nickname from the options, empty otherwise).
 * No browser `<input>`: a native field would pop the OS keyboard on mobile (viewport resize, fullscreen loss, broken letterbox scaling) and is unusable with a gamepad.
-* An in-game virtual keyboard grid: `A`–`Z`, `0`–`9`, `-`, a wide space key, backspace, enter and cancel.
+* An in-game virtual keyboard grid: `A`–`Z`, `0`–`9`, `-`, a wide space key, backspace, enter and cancel, the letters laid out like the physical keyboard of the interface language (AZERTY in French, QWERTY in English, Italian and Spanish).
   * Mouse and touch: tap a key.
   * Gamepad: 2D focus movement on the grid, `A` types, `B` erases — and cancels when the field is already empty, the usual virtual keyboard convention —, `Start` validates. This extends `MenuListNavigation` to grid navigation.
-* The physical keyboard is also accepted in the same modal through `keydown` on `event.key` (the typed character, layout independent): allowed characters are typed, `Backspace` erases, `Enter` validates, `Escape` cancels, everything else is ignored.
+* The physical keyboard is also accepted in the same modal through `keydown` on `event.key` (the typed character, layout independent): allowed characters are typed, the arrows move the focus on the grid, `Enter` presses the focused key, `Backspace` erases, `Escape` cancels, everything else is ignored. The focus opens on the validate key and typing never moves it, so typing then pressing `Enter` validates.
 * Space, backspace, enter and cancel keys show generic SVG icons drawn as CSS masks, like the existing language globe, so the rendering does not depend on system fonts; their accessible labels come from the translation catalogue. Only `A`–`Z`, `0`–`9` and `-` are shown as characters.
 
 #### Game rules

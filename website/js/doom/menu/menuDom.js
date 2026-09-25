@@ -17,7 +17,7 @@ class MenuDom {
     // One press in flight at a time, across every button and list entry: a
     // second activation during the feedback beat is dropped, never queued. A
     // control removed meanwhile (its screen re-rendered) drops its action.
-    static press(el, pressedClass, action) {
+    static press(el, pressedClass, action, feedbackMs = MenuDom.PRESS_FEEDBACK_MS) {
         if (MenuDom._pressing === true) {
             return;
         }
@@ -31,7 +31,7 @@ class MenuDom {
                 return;
             }
             action();
-        }, MenuDom.PRESS_FEEDBACK_MS);
+        }, feedbackMs);
     }
 
     static addElement(parent, tagName, className) {
@@ -118,7 +118,7 @@ class MenuDom {
     // The blur avoids a focused button: a focused one would swallow the next
     // Enter as a native re-click (e.g. reopening a freshly closed modal).
     // Propagation stops right away — a delete cross must not select its row.
-    static addButton(parent, className, label, onClick) {
+    static addButton(parent, className, label, onClick, feedbackMs = MenuDom.PRESS_FEEDBACK_MS) {
         const button = MenuDom.addElement(parent, 'button', className);
         button.type = 'button';
         button.textContent = label;
@@ -127,7 +127,7 @@ class MenuDom {
             event.currentTarget.blur();
             MenuDom.press(button, 'doom-menu-button-pressed', () => {
                 onClick(event);
-            });
+            }, feedbackMs);
         });
 
         return button;

@@ -3,10 +3,11 @@
  * of the spipudoom IndexedDB base. The settings UI is built from DEFINITIONS
  * and uses the generic get(); the game reads the dedicated getters.
  *
- * Types: 'bool', 'char' (one physical key code) and 'list' (the stored value is
- * one of `values: [{code, ...}]`). A list value carries exactly one of: `label`
- * (a proper name, never translated), `labelCode` (a translation code) or
- * `format` (the code rendered in the current locale, e.g. percentages).
+ * Types: 'bool', 'char' (one physical key code), 'list' (the stored value is
+ * one of `values: [{code, ...}]`) and 'text' (a free string restricted to its
+ * `charset`, `maxLength` long at most, uppercased). A list value carries exactly
+ * one of: `label` (a proper name, never translated), `labelCode` (a translation
+ * code) or `format` (the code rendered in the current locale, e.g. percentages).
  */
 class DoomSettings {
     /**
@@ -32,6 +33,10 @@ class DoomSettings {
         return DoomSettings.percentValues([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
     }
 
+    static get NICKNAME_CHARSET() {
+        return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -';
+    }
+
     static get DEFINITIONS() {
         return [
             {key: 'display.language',             nameCode: 'settings.display.language',           type: 'list', default: 'en', values: [{code: 'en', label: 'English'}, {code: 'fr', label: 'Français'}, {code: 'it', label: 'Italiano'}, {code: 'es', label: 'Español'}]},
@@ -46,6 +51,7 @@ class DoomSettings {
             {key: 'game.fall_damage',             nameCode: 'settings.game.fallDamage',            type: 'bool', default: false},
             {key: 'game.jump',                    nameCode: 'settings.game.jump',                  type: 'bool', default: true},
             {key: 'game.crouch',                  nameCode: 'settings.game.crouch',                type: 'bool', default: true},
+            {key: 'multiplayer.nickname',         nameCode: 'settings.multiplayer.nickname',       type: 'text', default: '', charset: DoomSettings.NICKNAME_CHARSET, maxLength: 16},
             // 100 % is the UZDoom default (snd_sfxvolume / snd_musicvolume).
             {key: 'sound.volume_music',           nameCode: 'settings.sound.volumeMusic',          type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
             {key: 'sound.volume_effects',         nameCode: 'settings.sound.volumeEffects',        type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
@@ -118,9 +124,47 @@ class DoomSettings {
             if ((value === undefined) || DoomSettings.isValidValue(def, value)) {
                 continue;
             }
-            console.warn('DoomSettings - [' + def.key + '] held an invalid value, reset to its default');
-            this.set(def.key, def.default);
+            console.warn('DoomSettings - [' + def.key + '] held an invalid value, repaired');
+            this.set(def.key, DoomSettings._repairedValue(def, value));
         }
+    }
+
+    // A text keeps what survives its sanitising; anything else falls back to the default.
+    static _repairedValue(def, value) {
+        if ((def.type === 'text') && (typeof value === 'string')) {
+            return DoomSettings.sanitizeText(def, value);
+        }
+
+        return def.default;
+    }
+
+    /**
+     * Characters a typed character stands for, once uppercased and stripped of
+     * its diacritics ('é' → 'E', 'ß' → 'SS'); '' when the charset refuses it.
+     *
+     * @param {object} def  - a 'text' definition
+     * @param {string} char
+     * @returns {string}
+     */
+    static normalizeTextChar(def, char) {
+        const plain = char.toUpperCase().normalize('NFD').replace(DoomSettings.DIACRITICS, '');
+
+        return (Array.from(plain).every((c) => def.charset.includes(c)) ? plain : '');
+    }
+
+    /**
+     * The value a 'text' setting stores: every character normalized, the
+     * refused ones dropped, inner runs of spaces collapsed, trimmed, cut to its
+     * maximum length.
+     *
+     * @param {object} def   - a 'text' definition
+     * @param {string} value
+     * @returns {string}
+     */
+    static sanitizeText(def, value) {
+        const kept = Array.from(value, (char) => DoomSettings.normalizeTextChar(def, char)).join('');
+
+        return kept.replace(/ +/g, ' ').trim().slice(0, def.maxLength).trim();
     }
 
     /**
@@ -139,6 +183,9 @@ class DoomSettings {
         }
         if (def.type === 'char') {
             return (typeof value === 'string');
+        }
+        if (def.type === 'text') {
+            return ((typeof value === 'string') && (DoomSettings.sanitizeText(def, value) === value));
         }
 
         return true;
@@ -362,6 +409,12 @@ class DoomSettings {
     getSoundVolumeEffects() {
         return this.getPercent('sound.volume_effects');
     }
+
+    getMultiplayerNickname() {
+        return this.get('multiplayer.nickname');
+    }
 }
+
+DoomSettings.DIACRITICS = /\p{M}/gu;
 
 const doomSettings = new DoomSettings();

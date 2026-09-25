@@ -49,13 +49,15 @@ class MenuListNavigation {
         this._bottomButton      = null;
         this._bottomFocused     = false;
         this._horizontal        = false;
+        this._grid              = null;
+        this._onStart           = null;
         this._keyDownListener   = this._onKeyDown.bind(this);
         this._mouseMoveListener = this._onMouseMove.bind(this);
         this._mouseArmed        = false;
         this._pad               = new InputGamepad();
         this._padTimer          = null;
         this._padSeen           = false;
-        this._padState          = {validate: false, back: false};
+        this._padState          = {validate: false, back: false, start: false};
         this._padHeldY          = {dir: 0, ms: 0};
         this._padHeldX          = {dir: 0, ms: 0};
     }
@@ -64,6 +66,23 @@ class MenuListNavigation {
     // selection, Up/Down go quiet.
     setHorizontal(flag) {
         this._horizontal = (flag === true);
+
+        return this;
+    }
+
+    // 2D list (an on-screen keyboard): one {row, column, span} slot per entry,
+    // in the order of the entries. Up/Down reach the nearest entry of the
+    // neighbour row, Left/Right walk the row; both clamp at the edges.
+    setGrid(slots) {
+        this._grid = slots;
+
+        return this;
+    }
+
+    // Gamepad Start (the pause button of the game), for a list whose
+    // validation is not its highlighted entry (a text entry).
+    setOnStart(callback) {
+        this._onStart = callback;
 
         return this;
     }
@@ -235,11 +254,15 @@ class MenuListNavigation {
         }
     }
 
+    moveSelection(delta) {
+        return this._moveFocus(() => this._moveSelectionStep(delta));
+    }
+
     // The cursor sound plays only when the highlight actually moved: a step
     // against a clamped end stays silent.
-    moveSelection(delta) {
+    _moveFocus(step) {
         const before = this._focusSignature();
-        this._moveSelectionStep(delta);
+        step();
         if (this._focusSignature() !== before) {
             doomSound.playUi('menu/cursor');
         }
@@ -252,6 +275,10 @@ class MenuListNavigation {
     }
 
     _moveSelectionStep(delta) {
+        if (this._grid !== null) {
+            this._gridStep(0, delta);
+            return this;
+        }
         if (this._sideIndex !== -1) {
             if (delta > 0) {
                 this._focusSideAt(-1);
@@ -331,6 +358,10 @@ class MenuListNavigation {
             this.moveSelection(dir);
             return;
         }
+        if (this._grid !== null) {
+            this._moveFocus(() => this._gridStep(dir, 0));
+            return;
+        }
         if (this._bottomFocused) {
             return;
         }
@@ -363,6 +394,49 @@ class MenuListNavigation {
     }
 
     // --- Internal ---
+
+    // Nothing selected yet: the first entry is the landing spot whatever the direction.
+    _gridStep(dx, dy) {
+        if (this._items[this._index] === undefined) {
+            this.selectIndex(0);
+            return;
+        }
+        const target = ((dy !== 0) ? this._gridVerticalTarget(dy) : this._gridHorizontalTarget(dx));
+        if (target !== -1) {
+            this.selectIndex(target);
+        }
+    }
+
+    _gridHorizontalTarget(dx) {
+        const current = this._grid[this._index];
+        const target  = this._index + dx;
+        const slot    = this._grid[target];
+
+        return (((slot !== undefined) && (slot.row === current.row)) ? target : -1);
+    }
+
+    // The entry of the neighbour row whose centre is the closest to the
+    // current one's, the leftmost winning a tie: a wide key is reached from
+    // any key above or below it, and leads back under its own middle.
+    _gridVerticalTarget(dy) {
+        const current = this._grid[this._index];
+        const centre  = MenuListNavigation._slotCentre(current);
+        let best      = -1;
+        let bestGap   = Infinity;
+        this._grid.forEach((slot, index) => {
+            const gap = Math.abs(MenuListNavigation._slotCentre(slot) - centre);
+            if ((slot.row === (current.row + dy)) && (gap < bestGap)) {
+                best    = index;
+                bestGap = gap;
+            }
+        });
+
+        return best;
+    }
+
+    static _slotCentre(slot) {
+        return slot.column + slot.span / 2;
+    }
 
     // Entering the row from the list lands on its rightmost button.
     _focusSideFromList() {
@@ -493,11 +567,13 @@ class MenuListNavigation {
         if (this._isBlocked()) {
             this._padState.validate = this._pad.readButtonValidate();
             this._padState.back     = this._pad.readButtonBack();
+            this._padState.start    = this._pad.readButtonPause();
             return;
         }
 
         const validate   = this._pad.readButtonValidate();
         const back       = this._pad.readButtonBack();
+        const start      = this._pad.readButtonPause();
         const directionY = this._readPadDirectionY();
         const directionX = this._readPadDirectionX();
 
@@ -506,7 +582,7 @@ class MenuListNavigation {
         // the edge detection, never an edge to act on.
         if (!this._padSeen) {
             this._padSeen      = true;
-            this._padState     = {validate: validate, back: back};
+            this._padState     = {validate: validate, back: back, start: start};
             this._padHeldY     = {dir: directionY, ms: 0};
             this._padHeldX     = {dir: directionX, ms: 0};
             return;
@@ -527,9 +603,13 @@ class MenuListNavigation {
         if (back && !this._padState.back) {
             this._goBack();
         }
+        if (start && !this._padState.start && (this._onStart !== null)) {
+            this._onStart();
+        }
 
         this._padState.validate = validate;
         this._padState.back     = back;
+        this._padState.start    = start;
     }
 
     _readPadDirectionY() {

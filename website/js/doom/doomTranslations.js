@@ -33,6 +33,13 @@ class DoomTranslations {
                 it: 'Annulla',
                 es: 'Cancelar'
             },
+            // Accessible name of the erase key of the on-screen keyboard.
+            'menu.keyboard.erase': {
+                fr: 'Effacer',
+                en: 'Erase',
+                it: 'Cancella',
+                es: 'Borrar'
+            },
             'menu.storageUnavailable': {
                 fr: 'Stockage navigateur indisponible — impossible de gérer les WADs.',
                 en: 'Browser storage unavailable — WADs cannot be managed.',
@@ -293,6 +300,12 @@ class DoomTranslations {
                 en: 'Game',
                 it: 'Gioco',
                 es: 'Juego'
+            },
+            'help.multiplayer': {
+                fr: 'Multijoueur',
+                en: 'Multiplayer',
+                it: 'Multigiocatore',
+                es: 'Multijugador'
             },
             'help.sound': {
                 fr: 'Son',
@@ -917,6 +930,12 @@ class DoomTranslations {
                 en: 'Allow crouching',
                 it: 'Consenti l\'accovacciamento',
                 es: 'Permitir agacharse'
+            },
+            'settings.multiplayer.nickname': {
+                fr: 'Surnom',
+                en: 'Nickname',
+                it: 'Soprannome',
+                es: 'Apodo'
             },
             'settings.sound.volumeMusic': {
                 fr: 'Volume de la musique',

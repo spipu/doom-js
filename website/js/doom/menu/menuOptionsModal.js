@@ -42,6 +42,15 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._restoreIndex   = null;
         this._layoutMap      = null;
         this._mode           = null;
+        this._inGame         = false;
+    }
+
+    // Over a running game: the multiplayer settings only apply to the next
+    // game, so they are not offered there.
+    setInGame(inGame) {
+        this._inGame = (inGame === true);
+
+        return this;
     }
 
     show() {
@@ -128,6 +137,9 @@ class MenuOptionsModal extends AbstractMenuListModal {
         const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
         this._nav.addItemIn(list, appTranslator.get('help.display'), () => this._pushPage('help.display', () => this._buildSettingsPage('display.')));
         this._nav.addItemIn(list, appTranslator.get('help.game'), () => this._pushPage('help.game', () => this._buildSettingsPage('game.')));
+        if (!this._inGame) {
+            this._nav.addItemIn(list, appTranslator.get('help.multiplayer'), () => this._pushPage('help.multiplayer', () => this._buildSettingsPage('multiplayer.')));
+        }
         this._nav.addItemIn(list, appTranslator.get('help.sound'), () => this._pushPage('help.sound', () => this._buildSettingsPage('sound.')));
         this._nav.addItemIn(list, appTranslator.get('help.controls'), () => this._pushPage('help.controls', () => this._buildControls()));
         this._nav.addItemIn(list, appTranslator.get('help.reset'), () => this._confirmReset());
@@ -190,15 +202,20 @@ class MenuOptionsModal extends AbstractMenuListModal {
 
     _addSettingItem(listEl, definition, inputs) {
         let valueEl = null;
-        const item = this._nav.addItemIn(listEl, appTranslator.get(definition.nameCode), () => {
+        const cycles = ((definition.type === 'bool') || (definition.type === 'list'));
+        const item   = this._nav.addItemIn(listEl, appTranslator.get(definition.nameCode), () => {
             if (definition.type === 'char') {
                 this._startKeyCapture(definition, inputs);
                 return;
             }
+            if (definition.type === 'text') {
+                this._openTextEntry(definition, valueEl);
+                return;
+            }
             this._stepSettingValue(definition, inputs, valueEl, 1);
-        }, ((definition.type === 'char') ? null : (dir) => {
+        }, (cycles ? (dir) => {
             this._stepSettingValue(definition, inputs, valueEl, dir);
-        }));
+        } : null));
         valueEl = MenuDom.addText(item, 'doom-menu-item-value', this._settingValueText(definition));
 
         return item;
@@ -220,6 +237,15 @@ class MenuOptionsModal extends AbstractMenuListModal {
             return;
         }
         valueEl.textContent = this._settingValueText(definition);
+    }
+
+    // Stacked above the options: the top-overlay rule mutes this modal meanwhile.
+    _openTextEntry(definition, valueEl) {
+        new MenuTextEntryModal(this._display).open(appTranslator.get(definition.nameCode), definition,
+            doomSettings.get(definition.key), (value) => {
+                doomSettings.set(definition.key, value);
+                valueEl.textContent = this._settingValueText(definition);
+            });
     }
 
     _settingValueText(definition) {

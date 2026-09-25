@@ -50,7 +50,7 @@ class MenuPauseModal extends AbstractGameMenuModal {
     }
 
     _openOptions() {
-        this._openStacked('options', new MenuOptionsModal(this._display)).show();
+        this._openStacked('options', new MenuOptionsModal(this._display).setInGame(true)).show();
     }
 
     // The save entry stays visible while dead, but only opens an information

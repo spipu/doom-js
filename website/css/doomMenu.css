@@ -546,3 +546,85 @@
 .doom-menu .doom-menu-status + .doom-menu-button {
     margin-top: 0.8em;
 }
+
+/* --- Text entry modal (on-screen keyboard) --- */
+
+.doom-menu-modal-text-entry {
+    width: 60%;
+}
+
+.doom-menu-text-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.6em;
+    margin-bottom: 1em;
+    padding: 0.35em 0.6em;
+    background: rgba(0, 0, 0, 0.5);
+    border: 0.06em solid rgba(192, 57, 43, 0.6);
+    border-radius: 0.25em;
+    color: #FFF;
+    font-size: 1.4em;
+    letter-spacing: 0.2em;
+    /* Inner spaces must keep their width: the value is what gets stored. */
+    white-space: pre;
+}
+
+/* End-of-text insertion point: a pure CSS blink, no timer to clean up. */
+.doom-menu-text-caret {
+    width: 0.08em;
+    height: 1.1em;
+    margin-left: 0.05em;
+    background: #E74C3C;
+    animation: doomMenuCaretBlink 1s step-end infinite;
+}
+
+@keyframes doomMenuCaretBlink {
+    50% {
+        opacity: 0;
+    }
+}
+
+.doom-menu-keyboard {
+    display: grid;
+    gap: 0.4em;
+}
+
+.doom-menu-button.doom-menu-key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.4em;
+    padding: 0;
+    font-size: 0.9em;
+    /* Single glyph: the button letter-spacing would trail it off-centre. */
+    letter-spacing: 0;
+    line-height: 1;
+}
+
+/* Icons drawn as masked SVG, like the language globe: they follow the key's
+   colour and states, and never depend on a system font. */
+.doom-menu-key-icon::before {
+    content: '';
+    width: 1.4em;
+    height: 1.4em;
+    background-color: currentColor;
+    -webkit-mask: var(--key-icon) center / contain no-repeat;
+    mask: var(--key-icon) center / contain no-repeat;
+}
+
+.doom-menu-key-space {
+    --key-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v5h18v-5"/></svg>');
+}
+
+.doom-menu-key-erase {
+    --key-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h12v14H9l-7-7z"/><path d="M13 9l5 6M18 9l-5 6"/></svg>');
+}
+
+.doom-menu-key-cancel {
+    --key-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>');
+}
+
+.doom-menu-key-validate {
+    --key-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>');
+}

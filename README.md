@@ -55,11 +55,11 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Level chaining & story texts**: exits follow the vanilla progression (secret exits included, `UMAPINFO` overrides honoured) through a tally modal — time, enemies, items, secrets — followed by the game's own chapter texts (from the WAD when it tells its own story, else the translated catalog).
 - **Sound effects**: the WAD's own sounds decoded on the fly — weapons, pickups, movers, teleports, player, monsters, Heretic ambients — spatialised per game and frozen with the pause. The menus use light synthesized clicks, WAD-independent, with distinct accents for navigation, validation and cancel. Two live volume settings.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
-- **Options & persistent settings**: Display, Game, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset.
+- **Options & persistent settings**: Display, Game, Multiplayer, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset. The Multiplayer page, offered from a WAD's menu only, holds the player's nickname, typed on an on-screen keyboard laid out like the interface language's (AZERTY in French, QWERTY otherwise) and walked with the mouse, touch, arrows or gamepad, or on the physical keyboard — never through the OS keyboard.
 - **Renderer choice**: the Display page picks one of the four rendering modes (see **The 3D engine** below), WebGL by default. A change applies to the running level without reloading it: the screen, the engine and the HUD are rebuilt on the next live frame, the level and the player carry on untouched.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity.
 - **Translation (en / fr / it / es)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
-- **Robustness**: a failed level build reports its cause and returns to the WAD list; a stored setting that no longer matches what its declaration allows is repaired to its default at startup; every menu screen shows the aggregated version, the webapp stats and the copyright.
+- **Robustness**: a failed level build reports its cause and returns to the WAD list; a stored setting that no longer matches what its declaration allows is repaired at startup (a text setting keeps what its sanitising accepts, any other falls back to its default); every menu screen shows the aggregated version, the webapp stats and the copyright.
 
 ## Controls
 
@@ -151,7 +151,7 @@ website/
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer
-    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, pause, death, save slots)
+    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, text entry, pause, death, save slots)
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
     └── engine/               Spipu3D — the game-agnostic 3D engine
