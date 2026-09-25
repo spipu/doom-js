@@ -18,11 +18,8 @@ class DoomGame {
         this._carriedState      = null;
         this._restoreSnapshot   = null;
         this._pauseWasDown      = true;
-        this._cheatWasDown      = false;
         this._hudWasDown        = false;
         this._mapWasDown        = false;
-        this._weaponNextWasDown = false;
-        this._weaponPrevWasDown = false;
         this._running           = false;
         this._transitioning     = false;
         this._paused            = false;
@@ -680,7 +677,7 @@ class DoomGame {
         // Created once: it owns the keyboard singleton.
         if (this._inputs === null) {
             this._inputs         = new Inputs();
-            this._commandSampler = new InputCommandSampler(this._inputs);
+            this._commandSampler = this._createCommandSampler(this._inputs);
         }
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
@@ -807,6 +804,31 @@ class DoomGame {
         this._hud.setViewState(viewState);
     }
 
+    // The game's own controls join the engine's in every command: the
+    // simulation never reads a device.
+    _createCommandSampler(inputs) {
+        return new InputCommandSampler(inputs)
+            .addButton(DoomGame.BUTTON_FIRE, () => inputs.readButtonFire())
+            .addButton(DoomGame.BUTTON_WEAPON_NEXT, () => inputs.readButtonWeaponNext())
+            .addButton(DoomGame.BUTTON_WEAPON_PREV, () => inputs.readButtonWeaponPrev())
+            .addButton(DoomGame.BUTTON_CHEAT_FULL_KIT, () => inputs.readButtonCheatFullKit())
+            .addImpulse(DoomGame.IMPULSE_WEAPON_WHEEL, () => inputs.readWeaponWheel());
+    }
+
+    // Next / previous on a fresh press, then one step per wheel notch.
+    _cycleWeapons(command, previous) {
+        if (command.isJustPressed(DoomGame.BUTTON_WEAPON_NEXT, previous)) {
+            this._playerWeapon.cycleWeapon(1);
+        }
+        if (command.isJustPressed(DoomGame.BUTTON_WEAPON_PREV, previous)) {
+            this._playerWeapon.cycleWeapon(-1);
+        }
+        const wheel = command.getImpulse(DoomGame.IMPULSE_WEAPON_WHEEL);
+        for (let n = 0; n < Math.abs(wheel); n++) {
+            this._playerWeapon.cycleWeapon(((wheel > 0) ? 1 : -1));
+        }
+    }
+
     _animate(timestamp) {
         if (!this._running) {
             return;
@@ -837,11 +859,15 @@ class DoomGame {
             return;
         }
 
-        const cheatDown = this._inputs.readButtonCheatFullKit();
-        if (cheatDown && !this._cheatWasDown) {
+        this._engine.calculateDeltaTime(timestamp);
+        const dt       = this._engine.getDeltaTime();
+        const user     = this._world.getUser();
+        const previous = user.getLastCommand();
+        const command  = this._commandSampler.collect(dt).sample();
+
+        if (command.isJustPressed(DoomGame.BUTTON_CHEAT_FULL_KIT, previous)) {
             this._applyCheatFullKit();
         }
-        this._cheatWasDown = cheatDown;
 
         const hudDown = this._inputs.readButtonToggleHud();
         if (hudDown && !this._hudWasDown) {
@@ -856,39 +882,21 @@ class DoomGame {
         this._mapWasDown = mapDown;
 
         if (this._playerWeapon !== null) {
-            const weaponNextDown = this._inputs.readButtonWeaponNext();
-            if (weaponNextDown && !this._weaponNextWasDown) {
-                this._playerWeapon.cycleWeapon(1);
-            }
-            this._weaponNextWasDown = weaponNextDown;
-
-            const weaponPrevDown = this._inputs.readButtonWeaponPrev();
-            if (weaponPrevDown && !this._weaponPrevWasDown) {
-                this._playerWeapon.cycleWeapon(-1);
-            }
-            this._weaponPrevWasDown = weaponPrevDown;
-
-            const wheel = this._inputs.readWeaponWheel();
-            for (let n = 0; n < Math.abs(wheel); n++) {
-                this._playerWeapon.cycleWeapon(((wheel > 0) ? 1 : -1));
-            }
+            this._cycleWeapons(command, previous);
         }
 
-        this._engine.calculateDeltaTime(timestamp);
-        const dt = this._engine.getDeltaTime();
-        this._world.update(dt, this._commandSampler.collect(dt).sample());
-        this._world.getUser().updateEffects(dt);
+        this._world.update(dt, command);
+        user.updateEffects(dt);
         this._trackDeath(dt);
         // Vanilla marks the lines from the renderer, even with the map closed.
         if (this._automap !== null) {
-            this._automap.reveal(this._world.getUser(), this._fov / 2);
+            this._automap.reveal(user, this._fov / 2);
         }
         if (this._playerWeapon !== null) {
-            const user = this._world.getUser();
             if (this._sectorLight !== null) {
                 this._playerWeapon.setLight(this._sectorLight.factorAt(user.x, user.z));
             }
-            this._playerWeapon.update(dt, this._inputs.readButtonFire());
+            this._playerWeapon.update(dt, command.isPressed(DoomGame.BUTTON_FIRE));
         }
         if (this._effects !== null) {
             this._effects.update(dt);
@@ -911,7 +919,7 @@ class DoomGame {
         this._applyRendererSetting();
         this._applySettings();
         this._updateTeleZoom(dt);
-        this._pushEffectDisplay(this._world.getUser());
+        this._pushEffectDisplay(user);
         this._engine.displayWorld(this._world);
         this._screen.update();
 
@@ -1312,3 +1320,9 @@ DoomGame.LEVEL_CLOCK_MAX_STEP_MS = 1000;
 // Delay between the player's death and the death menu: the camera falls and
 // the red tint settles first, and an exit fired right after the death wins.
 DoomGame.DEATH_MENU_DELAY_MS = 1000;
+// Buttons and impulse the game adds to the engine's in every UserCommand.
+DoomGame.BUTTON_FIRE           = 'fire';
+DoomGame.BUTTON_WEAPON_NEXT    = 'weaponNext';
+DoomGame.BUTTON_WEAPON_PREV    = 'weaponPrev';
+DoomGame.BUTTON_CHEAT_FULL_KIT = 'cheatFullKit';
+DoomGame.IMPULSE_WEAPON_WHEEL  = 'weaponWheel';
