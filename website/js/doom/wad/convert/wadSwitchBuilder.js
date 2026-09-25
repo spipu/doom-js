@@ -109,18 +109,34 @@ class WadSwitchBuilder {
     // Visible switch panel swapping SW1↔SW2. The static map drops its face, so
     // the instance collides in its place.
     _buildPanelGeometry(ld, switchWall) {
-        const SCALE = WadConstants.SCALE;
-        const {vertexes} = this._level;
-
         const ti = this._bank.ensureWallTex(switchWall.texName);
         if (ti < 0) {
             return null;
         }
-        // On a mover's own face a static quad would z-fight, then hang in the air.
+        const band      = this._switchBand(ld, switchWall, this._bank.getDims(ti).height);
+        const bandless  = (band.yTopDu <= band.yBotDu);
         const moverCode = this._moverCodeForSlot(ld, switchWall);
         if (moverCode !== null) {
-            return this._buildMoverZoneGeometry(ld, switchWall, ti, moverCode);
+            // On a mover's own face a static quad would z-fight, then hang in the air;
+            // only a lift resting above the near floor leaves a static band below it.
+            if ((switchWall.slot !== 'lower') || bandless) {
+                return this._buildMoverZoneGeometry(ld, switchWall, ti, moverCode);
+            }
+            return this._buildBandPanel(ld, switchWall, ti, band, moverCode);
         }
+        // Zero-height band: the graphic sits on a flush-parked mover's riser
+        // (MAP19's plat edge), so the swap is delegated to the mover's faces.
+        if (bandless) {
+            return this._buildMoverZoneGeometry(ld, switchWall, ti, this._anyMoverOn(ld));
+        }
+
+        return this._buildBandPanel(ld, switchWall, ti, band, null);
+    }
+
+    // moverCode: the mover whose face carries the rest of the graphic, swapped along.
+    _buildBandPanel(ld, switchWall, ti, band, moverCode) {
+        const SCALE = WadConstants.SCALE;
+        const {vertexes} = this._level;
         const {width: tw, height: th} = this._bank.getDims(ti);
 
         const [dx1, dy1] = vertexes[ld.v1];
@@ -128,14 +144,6 @@ class WadSwitchBuilder {
         const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
         const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
         const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
-
-        const band = this._switchBand(ld, switchWall, th);
-
-        // Zero-height band: the graphic sits on a flush-parked mover's riser
-        // (MAP19's plat edge), so the swap is delegated to the mover's faces.
-        if (band.yTopDu <= band.yBotDu) {
-            return this._buildMoverZoneGeometry(ld, switchWall, ti, this._anyMoverOn(ld));
-        }
 
         // A non-SW switch wall has no partner: the interaction then does not swap.
         const partnerName = this._bank.getSwitchPartner(switchWall.texName);
@@ -154,9 +162,12 @@ class WadSwitchBuilder {
         const localIndices = WadMeshBuilder.remapLocalTextures(mesh.faces, extras);
         const restIndex = localIndices.indexOf(ti) + 1;
         const swapIndex = ((partnerTi >= 0) ? localIndices.indexOf(partnerTi) + 1 : null);
+        const remoteSwap = ((moverCode !== null)
+            ? this._moverSwapSpec(ld, moverCode, ti, partnerTi)
+            : this._riserSwapSpec(ld, switchWall, ti, partnerTi));
 
         return {textures: localIndices, mesh: mesh, radius: this._meshRadius(mesh), collisionShape: 'faces',
-            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: this._riserSwapSpec(ld, switchWall, ti, partnerTi)};
+            restIndex: restIndex, swapIndex: swapIndex, remoteSwap: remoteSwap};
     }
 
     // The riser a floor mover raises along the line repeats the SW graphic and swaps
@@ -165,11 +176,8 @@ class WadSwitchBuilder {
         const near      = ((switchWall.side === 'right') ? ld.right : ld.left);
         const far       = ((switchWall.side === 'right') ? ld.left : ld.right);
         const moverCode = (this._builtFloorMoverOf(far) ?? this._builtFloorMoverOf(near));
-        if ((moverCode === null) || (partnerTi < 0)) {
-            return null;
-        }
 
-        return this._remoteSwapSpec(ld, moverCode, ti, partnerTi);
+        return this._moverSwapSpec(ld, moverCode, ti, partnerTi);
     }
 
     // Invisible USE zone of a switch line with no SWxxx graphic (an SR lift edge).
@@ -186,17 +194,19 @@ class WadSwitchBuilder {
 
         const partnerName = this._bank.getSwitchPartner(switchWall.texName);
         const partnerTi   = ((partnerName !== null) ? this._bank.ensureWallTex(partnerName) : -1);
-        if ((moverCode === null) || (partnerTi < 0)) {
-            return geom;
+        const remoteSwap  = this._moverSwapSpec(ld, moverCode, ti, partnerTi);
+        if (remoteSwap !== null) {
+            geom.remoteSwap = remoteSwap;
         }
-
-        geom.remoteSwap = this._remoteSwapSpec(ld, moverCode, ti, partnerTi);
 
         return geom;
     }
 
-    // DoomSwitchInteraction.setRemoteSwap spec.
-    _remoteSwapSpec(ld, moverCode, ti, partnerTi) {
+    // DoomSwitchInteraction.setRemoteSwap spec; null without a mover or a partner texture.
+    _moverSwapSpec(ld, moverCode, ti, partnerTi) {
+        if ((moverCode === null) || (partnerTi < 0)) {
+            return null;
+        }
         const {vertexes} = this._level;
         const [wx1, wz1] = WadGeometry.doomToWorld(...vertexes[ld.v1]);
         const [wx2, wz2] = WadGeometry.doomToWorld(...vertexes[ld.v2]);
