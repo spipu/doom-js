@@ -549,8 +549,12 @@
 
 /* --- Text entry modal (on-screen keyboard) --- */
 
+/* Wide and pinned near the top: the keys must stay a comfortable touch target
+   on a phone, where the 16:9 band is only a few centimetres high. */
 .doom-menu-modal-text-entry {
-    width: 60%;
+    width: 88%;
+    align-self: flex-start;
+    margin-top: 1.5em;
 }
 
 .doom-menu-text-field {
@@ -587,7 +591,7 @@
 
 .doom-menu-keyboard {
     display: grid;
-    gap: 0.4em;
+    gap: 0.6em;
 }
 
 .doom-menu-button.doom-menu-key {
@@ -596,7 +600,7 @@
     justify-content: center;
     height: 2.4em;
     padding: 0;
-    font-size: 0.9em;
+    font-size: 1.35em;
     /* Single glyph: the button letter-spacing would trail it off-centre. */
     letter-spacing: 0;
     line-height: 1;

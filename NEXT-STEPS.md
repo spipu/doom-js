@@ -67,7 +67,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); step 1 is under way — the nickname, its text entry and the grid navigation of its keyboard are done, the multiplayer game settings are next — and the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
+Status: fully designed; the generic network layer (`js/webapp/net/`, `js/webapp/qr/`) is written and runs on real devices through its test bench `_examples/pairing-test.html` and the screen-sharing demo `_examples/pairing-game.html` (step 0, device matrix partly run); step 1 is done (the Multiplayer options section, nickname and game settings); the later steps are not started. This section is the reference for the technology choices, the implementation and the step plan.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 
@@ -94,15 +94,19 @@ Three modes, delivered in this order, each one building on the previous:
 #### Screens and menus
 
 * **Multiplayer screen** (WAD main menu, above Options): Cooperative, Deathmatch, Join a game, and a shortcut to the Multiplayer options section.
-  * Cooperative and Deathmatch go through the existing episode and difficulty screens, as in single player, then open the lobby as main.
+  * Cooperative and Deathmatch go through the existing episode and difficulty screens, as in single player, then the game settings screen, then open the lobby as main.
   * **Join a game** is how a sub joins any of the three modes: the sub picks its WAD first (it is on that WAD's menu), then scans the main's code, shows its own answer code for the main to scan, then lands in the lobby as sub.
 * **Pause menu**:
-  * main of a single-player game: "Share screen" (first entry) and the cooperative entry, each opening the lobby with the game frozen meanwhile;
+  * main of a single-player game: "Share screen" (first entry) and the cooperative entry, each opening the lobby with the game frozen meanwhile — the cooperative entry through the game settings screen first;
   * main of a screen sharing game: the cooperative entry stays available — the viewers already linked become players, spawning at the level's starts, with no new QR code exchange — each viewer, already awaited, gets its player in the simulation on the turn following the switch, by the same rule as a sub entering the cycle (see Architecture);
   * main of a screen sharing or cooperative game: stop sharing or cooperative — every sub is disconnected and taken back to the WAD menu with an information modal, while the main carries on alone;
   * sub of a screen sharing or cooperative game: leave — its player is removed (cooperative), and the game goes on for the others;
   * deathmatch: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal;
   * every multiplayer game: an entry opening the lobby, for everyone.
+* **Game settings screen**, shown to the main only, just before the lobby, for every launch that has settings — cooperative and deathmatch from the Multiplayer screen, cooperative opened from the pause menu; never for screen sharing, which has none:
+  * it lists the settings of the launched mode only — friendly fire in cooperative; monsters, frag limit, time limit and items in deathmatch — built by the same settings page builder as the options, so no interface code is duplicated;
+  * it shows the stored values, and what is changed there is stored too, becoming the preset of the next game;
+  * the subs join with the main's settings, carried by the `hello` / `welcome` exchange.
 * **Lobby screen**, shown before every multiplayer game starts — a new game from the Multiplayer screen, or screen sharing or cooperative opened from the pause menu:
   * it lists the players — nickname, colour, ping — updated live;
   * the main has an "Add a player" action, which runs the QR code exchange and is greyed out once the profile's maximum is reached, a "Remove" action on each sub (an unresponsive device, a wrong pairing), and a "Start" action;
@@ -117,8 +121,8 @@ Three modes, delivered in this order, each one building on the previous:
 * A new **Multiplayer** section in the options, holding the nickname and every multiplayer game setting, all persistent:
   * **Nickname** (see below);
   * cooperative: **friendly fire**, on by default as in vanilla;
-  * deathmatch: **monsters** on or off, **frag limit** and **time limit** (both lists including "none"), and the **variant** — deathmatch 1.0 (weapons stay, nothing respawns) or 2.0 "altdeath" (items respawn after 30 seconds, weapons vanish once taken).
-* Reachable from the options and from the shortcut on the Multiplayer screen, but never during a game, whatever the mode: the in-game options hide the section, and a game opened from the pause menu uses the values set beforehand.
+  * deathmatch: **monsters** (on by default, as a plain `-deathmatch`), **frag limit** (none, 5, 10, 15, 20, 30, 50) and **time limit** (none, 5, 10, 15, 20, 30 minutes), both "none" by default, and the **items** rule, named by what it does rather than by its version: "Weapons stay" (deathmatch 1.0, the default: weapons stay, nothing respawns) or "Items respawn" (2.0 "altdeath": items respawn after 30 seconds, weapons vanish once taken).
+* Reachable from the options and from the shortcut on the Multiplayer screen, but never during a game, whatever the mode: the in-game options hide the section. The game settings screen shows the same stored values again before each launch (see Screens and menus).
 
 #### Nickname
 
@@ -151,7 +155,7 @@ Three modes, delivered in this order, each one building on the previous:
 * **Full kit cheat**: unchanged for the main in screen sharing (the viewers see the result); allowed in cooperative for every player on its own character, a sub's request being the `cheatFullKit` button of its command, applied by the main like any action; forbidden in deathmatch, where the rules ignore that button. A viewer's command being empty, screen sharing viewers never trigger it.
 * **Player slots**: the main holds slot 1; a joining sub takes the lowest free slot and keeps it for the whole session, whoever leaves in the meantime — a slot derived from the current order would change a player's colour and start each time someone above it left. The slot gives the colour (the profile's translations in slot order), the cooperative start, the column of the tally and the row of the frag table; every list shows players in slot order, the same on every device.
 * **Death of the main in screen sharing**: the main keeps its single-player death modal (restart, load, new game, quit); the viewers see its death screen without the menu, with a "The main is dead" message. A restart or a load takes them along as a level change (they rebuild the level, then follow the next state); a new game or quitting stops the sharing, the viewers going back to the WAD menu with an information modal.
-* **Friendly fire**: in cooperative, as set in the Multiplayer options; always on in deathmatch.
+* **Friendly fire**: in cooperative, as set in the Multiplayer options or the game settings screen; always on in deathmatch.
 * **Death in cooperative** follows vanilla (G_PlayerReborn, P_TouchSpecialThing): a dead player respawns alone, by pressing use, at its level start with the starting loadout, losing weapons, ammo and keys; the level never restarts, even if everyone is dead at once. In multiplayer, keys and weapons stay on the ground once picked up, so a respawned player can take them again. These item rules come from the profile. The single-player death modal is replaced, for the main as for the subs, by a "press use to respawn" prompt.
 * **Deathmatch** adds frags, deathmatch starts, the item rules of the chosen variant, and the monsters and limits from the options, on top of the cooperative machinery.
 * **End of a cooperative level**: the tally shows the stats per player, one column per player (nickname and colour as the column header; kills, items, secrets as rows). Only the main can continue, for the tally as for the episode finale texts; the subs see the same screens with no action, and follow when the main continues.
@@ -406,10 +410,9 @@ All of them are declared in the doom `libBootstrap.json` once the game consumes 
 
 ##### Menus and UI (`js/doom/menu/`)
 
-* `MenuTextEntryModal` and `MenuVirtualKeyboard`, with the grid mode of `MenuListNavigation`.
-* `MultiplayerScreen` (WAD menu entry), `MenuLobbyModal`, `MenuPairingModal` (shows the invite QR, scans the answer, and the reverse on a sub).
+* `MultiplayerScreen` (WAD menu entry), `MenuGameSettingsModal` (the game settings of the launched mode, over the settings page builder), `MenuLobbyModal`, `MenuPairingModal` (shows the invite QR, scans the answer, and the reverse on a sub).
 * New pause menu entries per mode and role; the respawn prompt replacing the death modal outside single-player; the deathmatch frag table in the tally modal.
-* The `text` setting type in `DoomSettings`, the Multiplayer options section and its shortcut, `CameraProbe`-driven greying.
+* The Multiplayer options shortcut of the Multiplayer screen, `CameraProbe`-driven greying.
 * `HudGameBar` fps readout with the ping, frag counter in place of kills and secrets in deathmatch, and the messages shown over the game on a sub or during a wait: "Waiting for {nickname}…", "Paused by the main", "The main is dead".
 
 ##### Testing
@@ -434,14 +437,14 @@ All of them are declared in the doom `libBootstrap.json` once the game consumes 
 Each step ships on its own, keeps solo intact, updates the README and bumps the relevant `libBootstrap.json` versions.
 
 0. **Device matrix on the test bench**: the network layer is written (`webapp/net`, `webapp/qr`) and exercised by `_examples/pairing-test.html` — several subs, loopback between tabs, chunked bursts — and by `_examples/pairing-game.html`, the van demo run through the synchronous cycle — a binary state every turn to every sub, an empty command back from each, the next turn only once every command is in — which measures the real turn rate with one to three subs, the perceived smoothness on a sub and the mobile backgrounding on real devices. PC (Firefox) and iPhone (Safari) already pair both ways, on a shared Wi-Fi and over 4G (direct IPv6), with real host addresses once the camera is open, and a PC webcam reads a code shown on a phone at 1280×720; the one-way state stream holds 60 states per second on the sub. Measured too: a sub on 4G behind a symmetric carrier NAT against a main without IPv6 behind a corporate firewall fails after the ICE timeout, as expected without TURN (see Risks). Still to run: Android (Chrome), a tablet, and two different browsers as subs of one main; ping, QR size, scan speed, ICE window and host addresses measured on each.
-1. **Nickname and options**: `text` setting type, text entry modal, virtual keyboard, grid navigation, Multiplayer options section (nickname, friendly fire, deathmatch settings) and its translations.
+1. **Nickname and options**: done.
 2. **WAD identity**: SHA-256 at import, computed on first use for older WADs.
 3. **Commands**: `UserCommand`, `InputCommandSampler`; `World` and `DoomGame` consume commands.
 4. **Simulation / presentation split**: `DoomSimulation`, `DoomPresentation`, `DoomPlayer`, `DoomPlayerRoster`, `DoomSinglePlayerRules`.
 5. **Several players in the engine and systems**: multi-user `World`, `Instance` trigger split with activator, per-user collision state, monsters / damage / traces / interactions / sounds over the roster, deterministic mace spot. Verified with a local second player driven by a scripted command.
 6. **Mode 1, screen sharing**: pairing and lobby modals, pause menu entries, invite / answer codes, version and WAD checks, state and command binary codecs with fail-fast decoding, per-turn states and events (joining included, with the syncing / awaited switch), waiting message, sub presentation, level change follow-up, pause, save and load, stop / leave / lost link, ping in the fps readout.
-7. **Mode 2, drop-in cooperative**: player bodies and colours, real commands upstream (screen sharing's are empty), cooperative rules (spawns, respawn prompt, weapon and keys stay, friendly fire), per-player HUD events, cooperative save and load, level change for every player.
-8. **Mode 3, new multiplayer game**: Multiplayer screen and Join a game, cooperative from the start (`MTF_NOT_SINGLE` things), deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
+7. **Mode 2, drop-in cooperative**: the game settings screen before the lobby, player bodies and colours, real commands upstream (screen sharing's are empty), cooperative rules (spawns, respawn prompt, weapon and keys stay, friendly fire), per-player HUD events, cooperative save and load, level change for every player.
+8. **Mode 3, new multiplayer game**: Multiplayer screen and Join a game, the game settings screen for both modes, cooperative from the start (`MTF_NOT_SINGLE` things), deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
 9. **Hardening**: iOS backgrounding, full device matrix.
 
 ### Visibility culling (PVS / portals) — last, after everything else

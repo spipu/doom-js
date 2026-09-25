@@ -33,6 +33,32 @@ class DoomSettings {
         return DoomSettings.percentValues([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
     }
 
+    /**
+     * @param {number[]} numbers
+     * @param {string}   format  - see formatListValue
+     * @returns {object[]} "none" first, then [{code, format}]
+     */
+    static limitValues(numbers, format) {
+        return [{code: DoomSettings.LIMIT_NONE, labelCode: 'value.none'}]
+            .concat(numbers.map((number) => ({code: String(number), format: format})));
+    }
+
+    static get FRAG_LIMIT_VALUES() {
+        return DoomSettings.limitValues([5, 10, 15, 20, 30, 50], 'number');
+    }
+
+    static get TIME_LIMIT_VALUES() {
+        return DoomSettings.limitValues([5, 10, 15, 20, 30], 'minutes');
+    }
+
+    // Deathmatch 1.0 and 2.0 ("altdeath"), named by what they do.
+    static get DEATHMATCH_ITEMS_VALUES() {
+        return [
+            {code: DoomSettings.DEATHMATCH_WEAPONS_STAY, labelCode: 'value.deathmatchItems.weaponsStay'},
+            {code: DoomSettings.DEATHMATCH_ITEMS_RESPAWN, labelCode: 'value.deathmatchItems.itemsRespawn'}
+        ];
+    }
+
     static get NICKNAME_CHARSET() {
         return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -';
     }
@@ -52,6 +78,13 @@ class DoomSettings {
             {key: 'game.jump',                    nameCode: 'settings.game.jump',                  type: 'bool', default: true},
             {key: 'game.crouch',                  nameCode: 'settings.game.crouch',                type: 'bool', default: true},
             {key: 'multiplayer.nickname',         nameCode: 'settings.multiplayer.nickname',       type: 'text', default: '', charset: DoomSettings.NICKNAME_CHARSET, maxLength: 16},
+            // The defaults of the original: friendly fire on, and a plain -deathmatch
+            // keeps its monsters, has no limit and leaves the weapons in place.
+            {key: 'multiplayer.friendly_fire',    nameCode: 'settings.multiplayer.friendlyFire',   type: 'bool', default: true},
+            {key: 'multiplayer.dm_monsters',      nameCode: 'settings.multiplayer.dmMonsters',     type: 'bool', default: true},
+            {key: 'multiplayer.frag_limit',       nameCode: 'settings.multiplayer.fragLimit',      type: 'list', default: DoomSettings.LIMIT_NONE, values: DoomSettings.FRAG_LIMIT_VALUES},
+            {key: 'multiplayer.time_limit',       nameCode: 'settings.multiplayer.timeLimit',      type: 'list', default: DoomSettings.LIMIT_NONE, values: DoomSettings.TIME_LIMIT_VALUES},
+            {key: 'multiplayer.dm_items',         nameCode: 'settings.multiplayer.dmItems',        type: 'list', default: DoomSettings.DEATHMATCH_WEAPONS_STAY, values: DoomSettings.DEATHMATCH_ITEMS_VALUES},
             // 100 % is the UZDoom default (snd_sfxvolume / snd_musicvolume).
             {key: 'sound.volume_music',           nameCode: 'settings.sound.volumeMusic',          type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
             {key: 'sound.volume_effects',         nameCode: 'settings.sound.volumeEffects',        type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
@@ -251,9 +284,17 @@ class DoomSettings {
      * @returns {string}
      */
     static formatListValue(entry) {
+        const locale = appTranslator.getLocale();
         if (entry.format === 'percent') {
-            return new Intl.NumberFormat(appTranslator.getLocale(), {style: 'percent', maximumFractionDigits: 1})
+            return new Intl.NumberFormat(locale, {style: 'percent', maximumFractionDigits: 1})
                 .format(parseFloat(entry.code) / 100);
+        }
+        if (entry.format === 'number') {
+            return new Intl.NumberFormat(locale).format(parseFloat(entry.code));
+        }
+        if (entry.format === 'minutes') {
+            return new Intl.NumberFormat(locale, {style: 'unit', unit: 'minute', unitDisplay: 'long'})
+                .format(parseFloat(entry.code));
         }
 
         return entry.code;
@@ -413,8 +454,40 @@ class DoomSettings {
     getMultiplayerNickname() {
         return this.get('multiplayer.nickname');
     }
+
+    getMultiplayerFriendlyFire() {
+        return (this.get('multiplayer.friendly_fire') === true);
+    }
+
+    getMultiplayerDeathmatchMonsters() {
+        return (this.get('multiplayer.dm_monsters') === true);
+    }
+
+    // null: no limit.
+    getMultiplayerFragLimit() {
+        return this._getLimit('multiplayer.frag_limit');
+    }
+
+    // Minutes, null: no limit.
+    getMultiplayerTimeLimit() {
+        return this._getLimit('multiplayer.time_limit');
+    }
+
+    // DoomSettings.DEATHMATCH_WEAPONS_STAY | DEATHMATCH_ITEMS_RESPAWN
+    getMultiplayerDeathmatchItems() {
+        return this.get('multiplayer.dm_items');
+    }
+
+    _getLimit(key) {
+        const value = this.get(key);
+
+        return ((value === DoomSettings.LIMIT_NONE) ? null : parseInt(value, 10));
+    }
 }
 
-DoomSettings.DIACRITICS = /\p{M}/gu;
+DoomSettings.DIACRITICS               = /\p{M}/gu;
+DoomSettings.LIMIT_NONE               = 'none';
+DoomSettings.DEATHMATCH_WEAPONS_STAY  = 'weapons_stay';
+DoomSettings.DEATHMATCH_ITEMS_RESPAWN = 'items_respawn';
 
 const doomSettings = new DoomSettings();

@@ -429,6 +429,25 @@ class DoomTranslations {
                 it: 'No',
                 es: 'No'
             },
+            // The absence of a limit ("limite" / "limit" / "limite" / "límite").
+            'value.none': {
+                fr: 'Aucune',
+                en: 'None',
+                it: 'Nessuno',
+                es: 'Ninguno'
+            },
+            'value.deathmatchItems.weaponsStay': {
+                fr: 'Armes permanentes',
+                en: 'Weapons stay',
+                it: 'Armi permanenti',
+                es: 'Armas permanentes'
+            },
+            'value.deathmatchItems.itemsRespawn': {
+                fr: 'Objets qui réapparaissent',
+                en: 'Items respawn',
+                it: 'Oggetti che ricompaiono',
+                es: 'Objetos que reaparecen'
+            },
             // Renderer values: 'WebGL' is a proper name and stays literal in
             // the definition, the three CPU rasterizers are named by what they
             // can draw.
@@ -936,6 +955,36 @@ class DoomTranslations {
                 en: 'Nickname',
                 it: 'Soprannome',
                 es: 'Apodo'
+            },
+            'settings.multiplayer.friendlyFire': {
+                fr: 'Tir allié en coopératif',
+                en: 'Friendly fire in cooperative',
+                it: 'Fuoco amico in cooperativa',
+                es: 'Fuego amigo en cooperativo'
+            },
+            'settings.multiplayer.dmMonsters': {
+                fr: 'Monstres en deathmatch',
+                en: 'Monsters in deathmatch',
+                it: 'Mostri nel deathmatch',
+                es: 'Monstruos en deathmatch'
+            },
+            'settings.multiplayer.fragLimit': {
+                fr: 'Limite de frags',
+                en: 'Frag limit',
+                it: 'Limite di frag',
+                es: 'Límite de frags'
+            },
+            'settings.multiplayer.timeLimit': {
+                fr: 'Limite de temps',
+                en: 'Time limit',
+                it: 'Limite di tempo',
+                es: 'Límite de tiempo'
+            },
+            'settings.multiplayer.dmItems': {
+                fr: 'Objets en deathmatch',
+                en: 'Deathmatch items',
+                it: 'Oggetti nel deathmatch',
+                es: 'Objetos en deathmatch'
             },
             'settings.sound.volumeMusic': {
                 fr: 'Volume de la musique',
