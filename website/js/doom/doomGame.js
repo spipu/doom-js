@@ -1,7 +1,8 @@
 class DoomGame {
     constructor() {
+        this._rules           = new DoomSinglePlayerRules();
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
-        this._simulation      = new DoomSimulation(this._roster);
+        this._simulation      = new DoomSimulation(this._roster, this._rules);
         this._presentation    = new DoomPresentation();
         this._inputs          = null;
         this._commandSampler  = null;
@@ -255,9 +256,10 @@ class DoomGame {
             .show(() => this._pauseTitle());
     }
 
-    // Null without WAD metadata (direct test shortcut): saves are keyed by WAD.
+    // Null without WAD metadata (direct test shortcut: saves are keyed by WAD)
+    // or when the mode forbids saving.
     _saveContext() {
-        if (this._wadMeta === null) {
+        if ((this._wadMeta === null) || !this._rules.allowsSaveAndLoad()) {
             return null;
         }
         return {
@@ -358,7 +360,7 @@ class DoomGame {
             return;
         }
         this._deathClockMs += dt;
-        if (this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) {
+        if ((this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) && this._rules.opensDeathMenu()) {
             this._openDeathMenu();
         }
     }

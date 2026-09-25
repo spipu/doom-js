@@ -19,18 +19,29 @@ class WadThingBuilder {
      * @param {object}             skillRule      the profile's skillRules()[skill] (null = legacy bits)
      */
     constructor(level, catalog, spriteBank, sectorFinder, skill = 3, monsterCatalog = null, skillRule = null) {
-        this._level          = level;
-        this._catalog        = catalog;
-        this._spriteBank     = spriteBank;
-        this._sectorFinder   = sectorFinder;
-        this._skill          = skill;
-        this._monsterCatalog = monsterCatalog;
-        this._skillRule      = skillRule;
-        this._skipped        = 0;
-        this._filtered       = 0;
-        this._monsterCount   = 0;
-        this._spots          = {};
-        this._paddedFrames   = {};   // anim key → padded frame view
+        this._level             = level;
+        this._catalog           = catalog;
+        this._spriteBank        = spriteBank;
+        this._sectorFinder      = sectorFinder;
+        this._skill             = skill;
+        this._monsterCatalog    = monsterCatalog;
+        this._skillRule         = skillRule;
+        this._multiplayerThings = false;
+        this._skipped           = 0;
+        this._filtered          = 0;
+        this._monsterCount      = 0;
+        this._spots             = {};
+        this._paddedFrames      = {};   // anim key → padded frame view
+    }
+
+    setMultiplayerThings(spawned) {
+        this._multiplayerThings = (spawned === true);
+
+        return this;
+    }
+
+    _excludedByMode(thing) {
+        return (!this._multiplayerThings && ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0));
     }
 
     /**
@@ -56,8 +67,7 @@ class WadThingBuilder {
         for (const thing of this._level.things) {
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
-                if (((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)
-                    || ((thing.flags & skillBit) === 0)) {
+                if (this._excludedByMode(thing) || ((thing.flags & skillBit) === 0)) {
                     this._filtered++;
                     continue;
                 }
@@ -103,7 +113,7 @@ class WadThingBuilder {
                 continue;
             }
 
-            if ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0) {
+            if (this._excludedByMode(thing)) {
                 this._filtered++;
                 continue;
             }

@@ -11,29 +11,31 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelCode
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, simulation: DoomSimulation, profile: AbstractGameProfile}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, multiplayerThings: boolean, simulation: DoomSimulation, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; thingCatalog
      *                  (DoomSimulation) maps THING types to world sprites/pickups; skill
-     *                  (1..5, default 3) drives the single-player thing filtering;
+     *                  (1..5, default 3) drives the thing filtering, with the
+     *                  multiplayer-only things (MTF_NOT_SINGLE) when multiplayerThings;
      *                  simulation receives the level data, the stats and the pickups;
      *                  profile carries the per-game policy (Doom by default).
      */
     constructor(wadFile, levelCode, options = null) {
         options = options ?? {};
 
-        this._wadFile        = wadFile;
-        this._levelCode      = levelCode;
-        this._onLevelExit    = options.onLevelExit ?? null;
-        this._thingCatalog   = options.thingCatalog ?? null;
-        this._skill          = options.skill ?? 3;
-        this._simulation     = options.simulation ?? null;
-        this._profile        = options.profile ?? new DoomGameProfile();
-        this._monsterCatalog = options.monsterCatalog ?? null;
-        this._monsterSystem  = options.monsterSystem ?? null;
-        this._level          = null;
-        this._sectorPolys    = null;   // walked on demand, see _sectorPolyCache
-        this._useLineCache   = null;   // world-space linedefs of the use traces, see _useLines
-        this._sectorHeights  = null;   // live sector heights (DoomSectorHeights), set with the level data
+        this._wadFile           = wadFile;
+        this._levelCode         = levelCode;
+        this._onLevelExit       = options.onLevelExit ?? null;
+        this._thingCatalog      = options.thingCatalog ?? null;
+        this._skill             = options.skill ?? 3;
+        this._multiplayerThings = (options.multiplayerThings === true);
+        this._simulation        = options.simulation ?? null;
+        this._profile           = options.profile ?? new DoomGameProfile();
+        this._monsterCatalog    = options.monsterCatalog ?? null;
+        this._monsterSystem     = options.monsterSystem ?? null;
+        this._level             = null;
+        this._sectorPolys       = null;   // walked on demand, see _sectorPolyCache
+        this._useLineCache      = null;   // world-space linedefs of the use traces, see _useLines
+        this._sectorHeights     = null;   // live sector heights (DoomSectorHeights), set with the level data
     }
 
     // Async only to yield to the browser between the heavy phases, so the
@@ -328,7 +330,7 @@ class WadWorldBuilder {
             this._monsterCatalog,
             // Out-of-range dev skill: null, the builder falls back to the flag bits.
             (this._profile.skillRules()[this._skill] ?? null)
-        );
+        ).setMultiplayerThings(this._multiplayerThings);
         const things = builder.buildAll();
 
         const billboardIds        = {};

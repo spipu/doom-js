@@ -144,6 +144,8 @@ website/
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
     │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, stats, saves
     │   ├── doomItemRules.js     Weapon, ammo and item catalogs of a game, and what pickups, loadout and cheat give
+    │   ├── doomGameRules.js     The mode-dependent questions (multiplayer things, death menu, saves, cheat)
+    │   ├── doomSinglePlayerRules.js  Their single-player answers
     │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects, sound
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)

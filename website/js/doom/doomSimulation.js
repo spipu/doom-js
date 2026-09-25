@@ -8,9 +8,11 @@
 class DoomSimulation {
     /**
      * @param {DoomPlayerRoster} roster
+     * @param {DoomGameRules}    rules
      */
-    constructor(roster) {
+    constructor(roster, rules) {
         this._roster             = roster;
+        this._rules              = rules;
         this._rng                = new DoomRandom();
         this._skill              = DoomSimulation.DEFAULT_SKILL;
         this._profile            = null;
@@ -110,6 +112,7 @@ class DoomSimulation {
             onLevelExit: onLevelExit,
             thingCatalog: this._thingCatalog,
             skill: this._skill,
+            multiplayerThings: this._rules.spawnsMultiplayerThings(),
             simulation: this,
             profile: this._profile,
             monsterCatalog: this._monsterCatalog,
@@ -341,7 +344,7 @@ class DoomSimulation {
         const user     = player.getUser();
         const weapon   = player.getWeapon();
         const previous = user.getLastCommand();
-        if (command.isJustPressed(DoomSimulation.BUTTON_CHEAT_FULL_KIT, previous)) {
+        if (this._rules.allowsCheatFullKit() && command.isJustPressed(DoomSimulation.BUTTON_CHEAT_FULL_KIT, previous)) {
             this._itemRules.applyCheatFullKit(user);
         }
         if (weapon !== null) {
