@@ -1,9 +1,10 @@
 /**
  * The game world of one level and the rules that move it: the level built from
  * the WAD, its monsters, projectiles, hitscans and effects, the random
- * sequence, the level statistics, the save snapshots, and the tic that
- * advances everything from one command per player. It never reads a device
- * and never draws: DoomGame feeds it, DoomPresentation shows it.
+ * sequence, the level statistics it counts, the save snapshots, and the tic
+ * that advances everything from one command per player. It runs on the main
+ * alone, never reads a device and never draws: DoomGame feeds it, and
+ * DoomPresentation shows what it builds and counts without knowing it.
  */
 class DoomSimulation {
     /**
@@ -16,22 +17,15 @@ class DoomSimulation {
         this._rng                = new DoomRandom();
         this._skill              = DoomSimulation.DEFAULT_SKILL;
         this._profile            = null;
+        this._itemCatalog        = null;
         this._itemRules          = null;
         this._thingCatalog       = null;
         this._monsterCatalog     = null;
         this._skillTable         = null;
         this._world              = null;
+        this._level              = null;   // DoomBuiltLevel handed back by the world builder
+        this._stats              = new DoomLevelStats();
         this._onPlayerTeleported = null;
-        // Vanilla totalsecret / totalkills / totalitems + leveltime; the totals
-        // come with the built level.
-        this._secretsFound       = 0;
-        this._secretsTotal       = 0;
-        this._killsCount         = 0;
-        this._killsTotal         = 0;
-        this._itemsFound         = 0;
-        this._itemsTotal         = 0;
-        this._levelTimeMs        = 0;
-        this._levelClockLast     = null;
 
         this._weaponSprites  = null;
         this._effects        = null;   // transient sprite effects (puffs, explosions)
@@ -46,20 +40,19 @@ class DoomSimulation {
         this._gunTriggers    = null;   // shot-activated lines
         this._sectorSurfaces = null;   // floor flats/specials rewritten by the "+change" floors
         this._terrain        = null;
-        this._moverSounds    = null;
-        this._ambientSounds  = null;
-        this._automap        = null;   // null when the WAD has no usable BSP
         this._playerStarts   = {};     // slot → {x, y, z, yaw}, the map's player starts
-
-        // Placeholder until the game detects the WAD's profile.
-        this.useProfile(new DefaultGameProfile());
     }
 
     // --- Profile and skill ---
 
-    useProfile(profile) {
+    /**
+     * @param {AbstractGameProfile} profile     - the WAD's, resolved by the game
+     * @param {DoomItemCatalog}     itemCatalog - built on that profile, shared with the presentation
+     */
+    useProfile(profile, itemCatalog) {
         this._profile        = profile;
-        this._itemRules      = new DoomItemRules(profile, this._roster);
+        this._itemCatalog    = itemCatalog;
+        this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster);
         this._thingCatalog   = profile.createThingCatalog();
         this._monsterCatalog = profile.createMonsterCatalog();
         this._skillTable     = profile.skillRules();
@@ -68,10 +61,7 @@ class DoomSimulation {
         return this;
     }
 
-    getGameProfile() {
-        return this._profile;
-    }
-
+    // Main-only: the pickup interactions the world builder wires apply them.
     getItemRules() {
         return this._itemRules;
     }
@@ -103,7 +93,7 @@ class DoomSimulation {
      * @param {function} onLevelExit - (secret) => void
      */
     async buildLevel(wadFile, levelCode, onLevelExit) {
-        this._resetLevelStats();
+        this._stats.reset();
 
         // Built before the builder, which feeds it. The skill rule must be
         // known at add() time (InstantReaction).
@@ -124,7 +114,7 @@ class DoomSimulation {
         }).build());
 
         this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
-        this._itemRules.resolveAvailableWeapons(this._weaponSprites);
+        this._itemCatalog.resolveAvailableWeapons(this._weaponSprites);
         this._effects = new DoomEffects(this._weaponSprites, this._rng, this._profile);
         // Skipped if the decal graphics are not decoded yet (first-level race).
         this._decals = ((doomImageAssets.isReady()) ? new DoomDecals(doomImageAssets, this._rng, this._profile) : null);
@@ -133,7 +123,7 @@ class DoomSimulation {
         if ((this._terrain !== null) && doomImageAssets.isReady()) {
             new DoomGenericSplash(doomImageAssets, this._effects, this._profile).apply(this._terrain);
         }
-        this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this);
+        this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this._stats);
         this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
         this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._profile, this._monsters, this._monsterDamage);
         this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
@@ -186,7 +176,7 @@ class DoomSimulation {
         const user = player.getUser();
         user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         if (user.getActiveWeapon() !== null) {
-            player.setWeapon(new DoomPlayerWeapon(this._itemRules, user, this._weaponSprites, this._rng)
+            player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), user, this._weaponSprites, this._rng)
                 .setAttackSystems(this._hitscan, this._projectiles)
                 .setNoiseCallback(() => this._monsters.noiseAlert(user)));
         }
@@ -230,7 +220,7 @@ class DoomSimulation {
             this._itemRules.setupLoadout(user);
         } else {
             user.importState(carried);
-            user.resetForNewLevel(this._itemRules);
+            user.resetForNewLevel(this._itemCatalog);
         }
         user.setDamageFactor(this._skillRule().damageFactor);
         user.setExitSectorProbe(((this._sectorDamage !== null)
@@ -255,30 +245,25 @@ class DoomSimulation {
     // --- Level data handed back by the world builder ---
 
     _adoptLevel(built) {
+        this._level          = built;
         this._gunTriggers    = built.getGunTriggers();
         this._sectorDamage   = built.getSectorDamage();
         this._sectorLight    = built.getSectorLight();
         this._sectorSurfaces = built.getSectorSurfaces();
         this._terrain        = built.getTerrain();
-        this._moverSounds    = built.getMoverSounds();
-        this._ambientSounds  = built.getAmbientSounds();
-        this._automap        = built.getAutomap();
         this._playerStarts   = built.getPlayerStarts();
-        this._secretsTotal   = built.getSecretsTotal();
-        this._killsTotal     = built.getKillsTotal();
-        this._itemsTotal     = built.getItemsTotal();
+        this._stats.setTotals(built.getSecretsTotal(), built.getKillsTotal(), built.getItemsTotal());
     }
 
-    getMoverSounds() {
-        return this._moverSounds;
+    /**
+     * @returns {DoomBuiltLevel} what the presentation shows of the level: a sub builds its own
+     */
+    getBuiltLevel() {
+        return this._level;
     }
 
-    getAmbientSounds() {
-        return this._ambientSounds;
-    }
-
-    getAutomap() {
-        return this._automap;
+    getLevelStats() {
+        return this._stats;
     }
 
     // Built after the world: build-time consumers (teleports) must read it at trigger time.
@@ -385,80 +370,6 @@ class DoomSimulation {
         weapon.update(dt, command.isPressed(DoomSimulation.BUTTON_FIRE));
     }
 
-    // --- Level statistics ---
-
-    _resetLevelStats() {
-        this._secretsFound   = 0;
-        this._secretsTotal   = 0;
-        this._killsCount     = 0;
-        this._killsTotal     = 0;
-        this._itemsFound     = 0;
-        this._itemsTotal     = 0;
-        this._levelTimeMs    = 0;
-        this._levelClockLast = null;
-    }
-
-    addSecretFound() {
-        this._secretsFound++;
-    }
-
-    getSecretsFound() {
-        return this._secretsFound;
-    }
-
-    getSecretsTotal() {
-        return this._secretsTotal;
-    }
-
-    addKill() {
-        this._killsCount++;
-    }
-
-    // A resurrected monster counts again in the total (A_VileChase / Revive).
-    addKillTotal() {
-        this._killsTotal++;
-    }
-
-    getKillsCount() {
-        return this._killsCount;
-    }
-
-    getKillsTotal() {
-        return this._killsTotal;
-    }
-
-    addItem() {
-        this._itemsFound++;
-    }
-
-    getItemsFound() {
-        return this._itemsFound;
-    }
-
-    getItemsTotal() {
-        return this._itemsTotal;
-    }
-
-    getLevelTimeMs() {
-        return this._levelTimeMs;
-    }
-
-    /**
-     * Real time, not the engine delta, which is clamped to 50 ms and would lag
-     * below 20 fps. Backgrounded-tab gaps are not counted.
-     *
-     * @param {number}  timestamp
-     * @param {boolean} counting - false on frozen frames (pause, tally)
-     */
-    tickLevelClock(timestamp, counting) {
-        const now  = ((typeof timestamp === 'number') ? timestamp : performance.now());
-        const step = ((this._levelClockLast !== null) ? (now - this._levelClockLast) : 0);
-        if (counting && (step > 0) && (step <= DoomSimulation.LEVEL_CLOCK_MAX_STEP_MS)) {
-            this._levelTimeMs += step;
-        }
-        this._levelClockLast = now;
-    }
-
     // --- Save / load ---
 
     captureSnapshot(player, wadId, levelCode) {
@@ -481,26 +392,14 @@ class DoomSimulation {
             projectiles:    this._projectiles,
             gunTriggers:    this._gunTriggers,
             sectorSurfaces: this._sectorSurfaces,
-            automap:        this._automap,
-            secretsFound:   this._secretsFound,
-            killsCount:     this._killsCount,
-            itemsFound:     this._itemsFound,
-            levelTimeMs:    this._levelTimeMs,
-            setCounters:    (secretsFound, killsCount, itemsFound, levelTimeMs) => {
-                this._secretsFound = secretsFound;
-                this._killsCount   = killsCount;
-                this._itemsFound   = itemsFound;
-                this._levelTimeMs  = levelTimeMs;
-            },
+            automap:        this._level.getAutomap(),
+            stats:          this._stats,
         };
     }
 }
 
 // Hurt Me Plenty: the vanilla default, and the fallback of an unknown skill.
 DoomSimulation.DEFAULT_SKILL = 3;
-// Longest gap between two frames the level clock still counts (ms): well above
-// the slowest playable frame, well below a tab switch.
-DoomSimulation.LEVEL_CLOCK_MAX_STEP_MS = 1000;
 // Buttons and impulse the game adds to the engine's in every UserCommand.
 DoomSimulation.BUTTON_FIRE           = 'fire';
 DoomSimulation.BUTTON_WEAPON_NEXT    = 'weaponNext';

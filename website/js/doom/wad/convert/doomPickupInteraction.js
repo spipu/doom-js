@@ -9,14 +9,16 @@ class DoomPickupInteraction extends AbstractInteraction {
     /**
      * @param {string}         code       - unique interaction code, shared with the Instance
      * @param {object}         effect     - pickup effect descriptor from the profile's thing types
-     * @param {DoomSimulation} simulation - its item rules apply the pickup, it counts the item
+     * @param {DoomItemRules}  itemRules  - applies the pickup
+     * @param {DoomLevelStats} stats      - counts the item
      * @param {boolean}        countsItem - counts towards the level's item score
      */
-    constructor(code, effect, simulation, countsItem = false) {
+    constructor(code, effect, itemRules, stats, countsItem = false) {
         super();
         this._code       = code;
         this._effect     = effect;
-        this._simulation = simulation;
+        this._itemRules  = itemRules;
+        this._stats      = stats;
         this._countsItem = (countsItem === true);
     }
 
@@ -33,11 +35,11 @@ class DoomPickupInteraction extends AbstractInteraction {
         // Vanilla MF_COUNTITEM things all carry ALWAYSPICKUP: a counted item is
         // taken whatever it gives, unless it has no effect wired yet.
         const alwaysPickup = (this._countsItem && ((this._effect ?? null) !== null));
-        if (!this._simulation.getItemRules().applyPickup(user, this._effect) && !alwaysPickup) {
+        if (!this._itemRules.applyPickup(user, this._effect) && !alwaysPickup) {
             return;
         }
         if (this._countsItem) {
-            this._simulation.addItem();
+            this._stats.addItem();
         }
         user.flashPickup();
         loader.instances().scheduleRemoval(instance);

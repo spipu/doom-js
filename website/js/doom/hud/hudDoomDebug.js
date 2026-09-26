@@ -11,7 +11,7 @@ class HudDoomDebug extends HudDebug {
         this._levelCode  = null;
         this._skill      = null;
         this._levelName  = null;
-        this._simulation = null;
+        this._stats      = null;
     }
 
     // The [LEVEL] line starts with the arguments of MenuNavigator.start()
@@ -24,8 +24,8 @@ class HudDoomDebug extends HudDebug {
         return this;
     }
 
-    bindSimulation(simulation) {
-        this._simulation = simulation;
+    bindLevelStats(stats) {
+        this._stats = stats;
         return this;
     }
 
@@ -44,10 +44,8 @@ class HudDoomDebug extends HudDebug {
             + ' / ' + (this._skill ?? '?')
             + ((this._levelName !== null) ? ' — ' + this._levelName : ''));
 
-        if (this._simulation) {
-            lines.push('[SECRETS] ' + this._simulation.getSecretsFound() + '/' + this._simulation.getSecretsTotal());
-            lines.push('[KILLS] ' + this._simulation.getKillsCount() + '/' + this._simulation.getKillsTotal());
-        }
+        lines.push('[SECRETS] ' + this._stats.getSecretsFound() + '/' + this._stats.getSecretsTotal());
+        lines.push('[KILLS] ' + this._stats.getKillsCount() + '/' + this._stats.getKillsTotal());
 
         lines.push('[ARMOR] ' + Math.ceil(user.getArmor()) + '/' + user.getMaxArmor()
             + ' (' + Math.round(user.getArmorAbsorb() * 100) + '%)');

@@ -16,7 +16,8 @@
 class HudAutomap extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._simulation  = null;
+        this._profile     = null;
+        this._itemCatalog = null;
         this._automap     = null;
         this._colors      = null;
         this._keyColors   = {};
@@ -51,8 +52,13 @@ class HudAutomap extends AbstractHud {
         return this;
     }
 
-    bindSimulation(simulation) {
-        this._simulation = simulation;
+    bindProfile(profile) {
+        this._profile = profile;
+        return this;
+    }
+
+    bindItemCatalog(itemCatalog) {
+        this._itemCatalog = itemCatalog;
         return this;
     }
 
@@ -63,10 +69,9 @@ class HudAutomap extends AbstractHud {
      * @param {DoomAutomap} automap
      */
     bindAutomap(automap) {
-        const profile = this._simulation.getGameProfile();
         this._automap   = automap;
-        this._colors    = profile.automapColors();
-        this._keyColors = profile.hudKeyColors();
+        this._colors    = this._profile.automapColors();
+        this._keyColors = this._profile.hudKeyColors();
         this._applyBackground();
         this._width = 0;   // force the layout on the next frame
 
@@ -235,7 +240,7 @@ class HudAutomap extends AbstractHud {
     }
 
     _collectLines() {
-        const allMap = ((this._simulation !== null) && this._simulation.getItemRules().hasMapPowerup(this._user));
+        const allMap = this._itemCatalog.hasMapPowerup(this._user);
         for (const role of HudAutomap.STROKE_ROLES) {
             this._buckets[role].length = 0;
         }

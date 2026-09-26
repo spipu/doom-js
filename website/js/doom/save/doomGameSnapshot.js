@@ -17,8 +17,7 @@ class DoomGameSnapshot {
     /**
      * @param {object} context - {wadId, levelCode, skill, user, rng, collision,
      *                            monsters, projectiles, gunTriggers, sectorSurfaces,
-     *                            automap, secretsFound, killsCount, itemsFound,
-     *                            levelTimeMs, setCounters}
+     *                            automap, stats}
      * @returns {object} JSON-safe snapshot
      */
     capture(context) {
@@ -39,10 +38,10 @@ class DoomGameSnapshot {
                 pitch: user.pitch,
             },
             stats: {
-                secretsFound: context.secretsFound,
-                killsCount:   context.killsCount,
-                itemsFound:   context.itemsFound,
-                levelTimeMs:  context.levelTimeMs,
+                secretsFound: context.stats.getSecretsFound(),
+                killsCount:   context.stats.getKillsCount(),
+                itemsFound:   context.stats.getItemsFound(),
+                levelTimeMs:  context.stats.getLevelTimeMs(),
             },
             rng:          context.rng.getIndex(),
             instances:    this._captureInstances(),
@@ -60,7 +59,7 @@ class DoomGameSnapshot {
     apply(context, snapshot) {
         // itemsFound and levelTimeMs postdate FORMAT_VERSION 2; the version is
         // compared strictly, so bumping it would discard every existing save.
-        context.setCounters(snapshot.stats.secretsFound, snapshot.stats.killsCount,
+        context.stats.restoreProgress(snapshot.stats.secretsFound, snapshot.stats.killsCount,
             (snapshot.stats.itemsFound ?? 0), (snapshot.stats.levelTimeMs ?? 0));
         // Surfaces first: the mover hooks replayed by the instance import read
         // their source sector's live flat, which must already be the saved one.

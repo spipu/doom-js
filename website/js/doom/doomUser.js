@@ -1,7 +1,7 @@
 /**
  * The Doom player: the engine User plus the equipment state (weapons, ammo,
- * items, timed effects). The definitions live on DoomItemRules, which also pours
- * in the starting loadout after the engine loader has built the player.
+ * items, timed effects). The definitions live in DoomItemCatalog; DoomItemRules
+ * pours in the starting loadout after the engine loader has built the player.
  */
 class DoomUser extends User {
     constructor(x, y, z, yaw, pitch, maxEnergy) {

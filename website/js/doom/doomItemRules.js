@@ -1,80 +1,25 @@
 /**
- * The item rules of one game profile: its weapon, ammo and item catalogs, the
- * weapons the WAD can draw, and what every pickup, the starting loadout and
- * the full-kit cheat do to a player's body.
+ * What the items do to the players, on the main alone: every pickup, the
+ * starting loadout and the full-kit cheat, applied from the game's item
+ * catalog with the ammo factor of the skill.
  */
 class DoomItemRules {
     /**
-     * @param {AbstractGameProfile} profile
-     * @param {DoomPlayerRoster}    roster - finds the weapon controller a pickup raises
+     * @param {AbstractGameProfile} profile     - starting loadout and cheat armour
+     * @param {DoomItemCatalog}     itemCatalog
+     * @param {DoomPlayerRoster}    roster      - finds the weapon controller a pickup raises
      */
-    constructor(profile, roster) {
-        this._profile          = profile;
-        this._roster           = roster;
-        this._ammoTypes        = profile.buildAmmoTypes();
-        this._weapons          = profile.buildWeapons();
-        this._items            = profile.buildItems();
-        this._availableWeapons = null;   // codes whose sprites exist in this WAD
-        this._ammoFactor       = 1;
-    }
-
-    getGameProfile() {
-        return this._profile;
+    constructor(profile, itemCatalog, roster) {
+        this._profile     = profile;
+        this._itemCatalog = itemCatalog;
+        this._roster      = roster;
+        this._ammoFactor  = 1;
     }
 
     setAmmoFactor(factor) {
         this._ammoFactor = factor;
 
         return this;
-    }
-
-    getWeapon(code) {
-        return (this._weapons[code] ?? null);
-    }
-
-    // True when the weapon's sprites exist in the current WAD; always true
-    // before the sprite bank is read.
-    isWeaponAvailable(code) {
-        return ((this._availableWeapons === null) || this._availableWeapons.has(code));
-    }
-
-    /**
-     * Keeps the weapons whose ready sprite the WAD holds (the super shotgun is
-     * absent from Doom 1 WADs) and decodes their sprites.
-     *
-     * @param {DoomWeaponSpriteBank} spriteBank
-     */
-    resolveAvailableWeapons(spriteBank) {
-        this._availableWeapons = new Set();
-        for (const code of Object.keys(this._weapons)) {
-            const def       = this._weapons[code];
-            const readyLump = def.getState(def.getEntry().ready).getLump();
-            if (spriteBank.has(readyLump)) {
-                this._availableWeapons.add(code);
-                spriteBank.decode(def.getSpriteLumps());
-            }
-        }
-
-        return this;
-    }
-
-    getAmmo(code) {
-        return (this._ammoTypes[code] ?? null);
-    }
-
-    getItem(code) {
-        return (this._items[code] ?? null);
-    }
-
-    // Doom's computer map and Heretic's map scroll both declare `effect: 'map'`.
-    hasMapPowerup(user) {
-        for (const code of Object.keys(this._items)) {
-            if ((this._items[code].getEffect() === 'map') && user.hasItem(code)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     // --- Pickups ---
@@ -97,7 +42,7 @@ class DoomItemRules {
             return 'misc/w_pkup';
         }
         if (effect.item !== undefined) {
-            const def = this.getItem(effect.item);
+            const def = this._itemCatalog.getItem(effect.item);
             if ((def !== null) && (def.getType() === 'key')) {
                 return 'misc/k_pkup';
             }
@@ -164,8 +109,8 @@ class DoomItemRules {
     }
 
     _pickupWeapon(user, code, dropped = false) {
-        const def = this.getWeapon(code);
-        if ((def === null) || !this.isWeaponAvailable(code)) {
+        const def = this._itemCatalog.getWeapon(code);
+        if ((def === null) || !this._itemCatalog.isWeaponAvailable(code)) {
             return false;
         }
         let gaveWeapon = false;
@@ -180,23 +125,24 @@ class DoomItemRules {
         const ammoType = def.getAmmoType();
         if (ammoType !== null) {
             // A weapon dropped by a monster gives half (vanilla wp_dropped).
-            const baseAmmo = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this.getAmmo(ammoType).getClip() * 2);
+            const baseAmmo = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this._itemCatalog.getAmmo(ammoType).getClip() * 2);
             gaveAmmo = this._grantAmmo(user, ammoType, baseAmmo * ((dropped) ? 0.5 : 1) * this._ammoFactor);
         }
         return (gaveWeapon || gaveAmmo);
     }
 
     _pickupAmmo(user, type, amount) {
-        if (this.getAmmo(type) === null) {
+        if (this._itemCatalog.getAmmo(type) === null) {
             return false;
         }
         return this._grantAmmo(user, type, amount * this._ammoFactor);
     }
 
     _pickupBackpack(user) {
-        for (const code of Object.keys(this._ammoTypes)) {
-            user.setAmmoMax(code, this._ammoTypes[code].getMaxPack());
-            this._grantAmmo(user, code, this._ammoTypes[code].getPackGive() * this._ammoFactor);
+        for (const code of this._itemCatalog.getAmmoCodes()) {
+            const ammo = this._itemCatalog.getAmmo(code);
+            user.setAmmoMax(code, ammo.getMaxPack());
+            this._grantAmmo(user, code, ammo.getPackGive() * this._ammoFactor);
         }
         return true;
     }
@@ -224,7 +170,7 @@ class DoomItemRules {
     }
 
     _pickupItem(user, code) {
-        const def = this.getItem(code);
+        const def = this._itemCatalog.getItem(code);
         if (def === null) {
             return false;
         }
@@ -253,7 +199,7 @@ class DoomItemRules {
     setupLoadout(user) {
         const loadout = this._profile.startingLoadout();
 
-        for (const code of Object.keys(this._weapons)) {
+        for (const code of this._itemCatalog.getWeaponCodes()) {
             user.declareWeapon(code);
         }
         for (const code of loadout.weapons) {
@@ -263,8 +209,8 @@ class DoomItemRules {
             user.setActiveWeapon(loadout.activeWeapon);
         }
 
-        for (const code of Object.keys(this._ammoTypes)) {
-            user.setAmmoMax(code, this._ammoTypes[code].getMaxNormal());
+        for (const code of this._itemCatalog.getAmmoCodes()) {
+            user.setAmmoMax(code, this._itemCatalog.getAmmo(code).getMaxNormal());
         }
         for (const code of Object.keys(loadout.ammo)) {
             user.giveAmmo(code, loadout.ammo[code]);
@@ -276,18 +222,18 @@ class DoomItemRules {
 
     // Debug cheat (the 'o' key).
     applyCheatFullKit(user) {
-        for (const code of Object.keys(this._weapons)) {
-            if (this.isWeaponAvailable(code)) {
+        for (const code of this._itemCatalog.getWeaponCodes()) {
+            if (this._itemCatalog.isWeaponAvailable(code)) {
                 user.giveWeapon(code);
             }
         }
 
-        for (const code of Object.keys(this._ammoTypes)) {
+        for (const code of this._itemCatalog.getAmmoCodes()) {
             user.giveAmmo(code, user.getAmmoMax(code));
         }
 
-        for (const code of Object.keys(this._items)) {
-            if (this._items[code].getType() === 'key') {
+        for (const code of this._itemCatalog.getItemCodes()) {
+            if (this._itemCatalog.getItem(code).getType() === 'key') {
                 user.giveItem(code);
             }
         }

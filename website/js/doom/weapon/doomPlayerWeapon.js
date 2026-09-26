@@ -8,18 +8,20 @@
  */
 class DoomPlayerWeapon {
     /**
-     * @param {DoomItemRules}        itemRules - weapon definitions and fallback order
+     * @param {DoomItemCatalog}      itemCatalog   - weapon definitions
+     * @param {Array<object>}        fallbackOrder - profile weaponFallbackOrder
      * @param {DoomUser}             user
      * @param {DoomWeaponSpriteBank} spriteBank
      * @param {DoomRandom}           rng
      */
-    constructor(itemRules, user, spriteBank, rng) {
-        this._itemRules   = itemRules;
-        this._user        = user;
-        this._sprites     = spriteBank;
-        this._rng         = rng;
-        this._hitscan     = null;
-        this._projectiles = null;
+    constructor(itemCatalog, fallbackOrder, user, spriteBank, rng) {
+        this._itemCatalog   = itemCatalog;
+        this._fallbackOrder = fallbackOrder;
+        this._user          = user;
+        this._sprites       = spriteBank;
+        this._rng           = rng;
+        this._hitscan       = null;
+        this._projectiles   = null;
 
         this._weaponPsp = { stateKey: null, tics: 0 };
         this._flashPsp  = { stateKey: null, tics: 0 };
@@ -170,7 +172,7 @@ class DoomPlayerWeapon {
     // --- State machine (P_SetPsprite / P_MovePsprites) ---
 
     _def() {
-        return this._itemRules.getWeapon(this._readyWeapon);
+        return this._itemCatalog.getWeapon(this._readyWeapon);
     }
 
     _stateOf(psp) {
@@ -412,12 +414,11 @@ class DoomPlayerWeapon {
     // ammo thresholds are game data (profile weaponFallbackOrder; the vanilla
     // Doom chain keeps its explicit > 2 shells / > 40 cells thresholds there).
     _pickAmmoWeapon() {
-        const order = this._itemRules.getGameProfile().weaponFallbackOrder();
-        for (const entry of order) {
+        for (const entry of this._fallbackOrder) {
             if (!this._user.hasWeapon(entry.code)) {
                 continue;
             }
-            const def = this._itemRules.getWeapon(entry.code);
+            const def = this._itemCatalog.getWeapon(entry.code);
             if (def === null) {
                 continue;
             }

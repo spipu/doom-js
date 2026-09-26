@@ -142,8 +142,9 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
-    │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, stats, saves
-    │   ├── doomItemRules.js     Weapon, ammo and item catalogs of a game, and what pickups, loadout and cheat give
+    │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, saves
+    │   ├── doomLevelStats.js    The level's statistics: secrets, kills and items found against their totals, level time
+    │   ├── doomItemRules.js     What pickups, the starting loadout and the cheat give to a player
     │   ├── doomGameRules.js     The mode-dependent questions (multiplayer things, death menu, saves, cheat)
     │   ├── doomSinglePlayerRules.js  Their single-player answers
     │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects, sound
@@ -154,7 +155,7 @@ website/
     │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables), music orchestration
-    │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing catalog)
+    │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing and item catalogs)
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths and the Icon of Sin
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer

@@ -3,12 +3,17 @@
  * engine and the HUD built on it, the display settings, the weapon overlay,
  * the view effects (night vision, muzzle flash, telezoom), the level's sound
  * heard from that player, and the automap lines the view reveals — the one
- * piece of simulation state it writes, as vanilla's renderer does.
+ * piece of level state it writes, as vanilla's renderer does. It never knows
+ * the simulation: what it shows is the level every device builds, the game's
+ * profile and item catalog, and the level statistics, whoever counts them.
  */
 class DoomPresentation {
     constructor() {
         this._inputs         = null;
-        this._simulation     = null;
+        this._profile        = null;
+        this._itemCatalog    = null;
+        this._level          = null;
+        this._stats          = null;
         this._world          = null;
         this._player         = null;
         this._automap        = null;
@@ -36,15 +41,29 @@ class DoomPresentation {
     }
 
     /**
-     * @param {DoomSimulation} simulation - its level is loaded
-     * @param {DoomPlayer} player - the viewed one
+     * @param {AbstractGameProfile} profile     - the WAD's
+     * @param {DoomItemCatalog}     itemCatalog - built on that profile
+     */
+    bindProfile(profile, itemCatalog) {
+        this._profile     = profile;
+        this._itemCatalog = itemCatalog;
+
+        return this;
+    }
+
+    /**
+     * @param {World}          world      - the loaded level
+     * @param {DoomBuiltLevel} builtLevel - what the world builder handed back for it
+     * @param {DoomLevelStats} stats
+     * @param {DoomPlayer}     player     - the viewed one
      * @param {{wadId: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
-    showLevel(simulation, player, levelInfo) {
-        this._simulation    = simulation.setViewer(player.getUser());
-        this._world         = simulation.getWorld();
+    showLevel(world, builtLevel, stats, player, levelInfo) {
+        this._world         = world;
+        this._level         = builtLevel;
+        this._stats         = stats;
         this._player        = player;
-        this._automap       = simulation.getAutomap();
+        this._automap       = builtLevel.getAutomap();
         this._levelInfo     = levelInfo;
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
@@ -65,7 +84,7 @@ class DoomPresentation {
         doomSound.bindLevel(this._player.getUser());
         doomSound.playLevelMusic(musicLumps);
         // Declared during the batch, wired now that the loader hands the instances out.
-        const moverSounds = this._simulation.getMoverSounds();
+        const moverSounds = this._level.getMoverSounds();
         if (moverSounds !== null) {
             moverSounds.wireAll();
         }
@@ -111,7 +130,9 @@ class DoomPresentation {
         this._hud = new HudDoom(this._engine)
             .bindUser(this._player.getUser())
             .bindInputs(this._inputs)
-            .bindSimulation(this._simulation)
+            .bindProfile(this._profile)
+            .bindItemCatalog(this._itemCatalog)
+            .bindLevelStats(this._stats)
             .setLevelInfo(this._levelInfo.wadId, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
             .addDescription('(c)2026 Spipu')
         ;
@@ -132,8 +153,10 @@ class DoomPresentation {
      * Rebuilds the display on a renderer change, on live frames only: the menus
      * and the screen are stacked by DOM order, so a screen rebuilt under an open
      * menu would cover it. It also costs one rebuild for several changes.
+     *
+     * @param {boolean} menuOpen - a menu still covers the screen
      */
-    _applyRendererSetting(menuOpen) {
+    applyRendererSetting(menuOpen) {
         const wanted = doomSettings.getDisplayRenderer();
         if ((wanted === this._rendererCode) || menuOpen) {
             return;
@@ -174,7 +197,7 @@ class DoomPresentation {
     present(dt, menuOpen) {
         this._updateSound(dt);
         // Before every push onto the engine, which a swap replaces.
-        this._applyRendererSetting(menuOpen);
+        this.applyRendererSetting(menuOpen);
         this._applyDisplaySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay();
@@ -184,7 +207,7 @@ class DoomPresentation {
     // S_UpdateSounds.
     _updateSound(dt) {
         doomSound.update();
-        const ambientSounds = this._simulation.getAmbientSounds();
+        const ambientSounds = this._level.getAmbientSounds();
         if (ambientSounds !== null) {
             ambientSounds.update(dt);
         }

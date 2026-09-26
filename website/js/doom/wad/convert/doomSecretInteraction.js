@@ -3,18 +3,18 @@
  * every secret sector to the level total, then P_PlayerInSpecialSector credits
  * the player the first time his feet rest on the sector floor and clears the
  * special. Here a found zone is dropped from the list (same one-shot dedup):
- * the first player to step on it finds it. The counters live on
- * DoomSimulation — level stats, reset by buildLevel.
+ * the first player to step on it finds it. The counters live in the level
+ * stats.
  */
 class DoomSecretInteraction extends AbstractInteraction {
     /**
      * @param {DoomSectorZones} zones - [{si}] behind the shared locator
-     * @param {DoomSimulation}  simulation
+     * @param {DoomLevelStats}  stats
      */
-    constructor(zones, simulation) {
+    constructor(zones, stats) {
         super();
-        this._zones      = zones;
-        this._simulation = simulation;
+        this._zones = zones;
+        this._stats = stats;
     }
 
     get code() {
@@ -52,7 +52,7 @@ class DoomSecretInteraction extends AbstractInteraction {
         const zone = this._zones.zoneUnderFeet(user.x, user.y, user.z);
         if (zone !== null) {
             this._zones.remove(zone);
-            this._simulation.addSecretFound();
+            this._stats.addSecretFound();
             // DSSECRET ships in no IWAD, only in some PWADs: elsewhere it plays
             // silence. The finder alone hears it (UZDoom).
             doomSound.playToPlayer('misc/secret', user);

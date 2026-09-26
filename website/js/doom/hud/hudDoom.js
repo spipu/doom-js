@@ -34,14 +34,25 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
-    bindSimulation(simulation) {
-        this._debug.bindSimulation(simulation);
-        this._gameBar.bindSimulation(simulation);
-        this._automap.bindSimulation(simulation);
+    bindProfile(profile) {
+        this._gameBar.bindProfile(profile);
+        this._automap.bindProfile(profile);
         return this;
     }
 
-    // Level automap, absent when the WAD carries no usable BSP.
+    bindItemCatalog(itemCatalog) {
+        this._gameBar.bindItemCatalog(itemCatalog);
+        this._automap.bindItemCatalog(itemCatalog);
+        return this;
+    }
+
+    bindLevelStats(stats) {
+        this._debug.bindLevelStats(stats);
+        this._gameBar.bindLevelStats(stats);
+        return this;
+    }
+
+    // Level automap, absent when the WAD carries no usable BSP. After bindProfile.
     bindAutomap(automap) {
         this._automap.bindAutomap(automap);
         return this;

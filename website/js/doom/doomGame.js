@@ -4,6 +4,8 @@ class DoomGame {
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
         this._simulation      = new DoomSimulation(this._roster, this._rules);
         this._presentation    = new DoomPresentation();
+        this._profile         = null;
+        this._itemCatalog     = null;
         this._inputs          = null;
         this._commandSampler  = null;
         this._wakeLock        = null;
@@ -81,9 +83,12 @@ class DoomGame {
 
     // spawnOverride = {position, yaw, pitch}, debug only (see _applySpawnOverride).
     async startFromWad(wadFile, levelCode, wadMeta = null, spawnOverride = null, skill = null) {
-        this._wadFile = wadFile;
-        this._simulation.useProfile(new GameProfileList().getForWad(wadFile));
-        this._mapInfo         = new WadMapInfo(wadFile, this._simulation.getGameProfile());
+        this._wadFile     = wadFile;
+        this._profile     = new GameProfileList().getForWad(wadFile);
+        this._itemCatalog = new DoomItemCatalog(this._profile);
+        this._simulation.useProfile(this._profile, this._itemCatalog);
+        this._presentation.bindProfile(this._profile, this._itemCatalog);
+        this._mapInfo         = new WadMapInfo(wadFile, this._profile);
         this._dehackedStrings = new WadDehackedStrings(wadFile);
         this._levelCode       = levelCode;
         this._levelName       = this._resolveLevelName();
@@ -142,7 +147,8 @@ class DoomGame {
             this._presentation.bindInputs(this._inputs);
         }
         this._applyGameSettings();
-        this._presentation.showLevel(this._simulation, player, {
+        this._simulation.setViewer(player.getUser());
+        this._presentation.showLevel(world, this._simulation.getBuiltLevel(), this._simulation.getLevelStats(), player, {
             wadId:     this._wadId(),
             levelCode: this._levelCode,
             skill:     this._simulation.getSkill(),
@@ -179,7 +185,7 @@ class DoomGame {
         if (!this._running) {
             return;
         }
-        this._simulation.tickLevelClock(timestamp, !this._paused && !this._transitioning);
+        this._simulation.getLevelStats().tickLevelClock(timestamp, !this._paused && !this._transitioning);
 
         // Read on paused frames too, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
@@ -306,6 +312,9 @@ class DoomGame {
         this._pauseWasDown = true;
         this._presentation.getEngine().resetDeltaClock();
         if (backToGame) {
+            // Before the grab: a renderer changed from the pause options
+            // replaces the canvas, and a lock asked on the old one fails.
+            this._presentation.applyRendererSetting(false);
             this._inputs.setVirtualPadVisible(true);
             if (this._inputs.getMode() === 'keyboardMouse') {
                 this._inputs.grabMouse();
@@ -497,11 +506,9 @@ class DoomGame {
     // Vanilla precedence: UMAPINFO, the DEHACKED HUSTR replacement (Freedoom),
     // then the game's transcribed table.
     _resolveLevelName() {
-        const profile = this._simulation.getGameProfile();
-
         return (this._mapInfo.levelNameFor(this._levelCode)
-            ?? this._dehackedStrings.levelName(this._levelCode, profile.levelNameStringPrefix())
-            ?? profile.levelNames()[this._levelCode]
+            ?? this._dehackedStrings.levelName(this._levelCode, this._profile.levelNameStringPrefix())
+            ?? this._profile.levelNames()[this._levelCode]
             ?? null);
     }
 
@@ -514,7 +521,7 @@ class DoomGame {
         }
         const text = ((finale.text !== undefined)
             ? finale.text
-            : (this._dehackedStrings.get(finale.code) ?? doomFinaleTexts.get(this._simulation.getGameProfile().getCode(), finale.code)));
+            : (this._dehackedStrings.get(finale.code) ?? doomFinaleTexts.get(this._profile.getCode(), finale.code)));
 
         return ((text !== null) ? DoomFinaleTexts.reflow(text) : null);
     }
@@ -528,7 +535,7 @@ class DoomGame {
                 : found + '/' + total + ' (' + DoomGame.formatPercent(found, total) + ')')
         });
 
-        const stats = this._simulation;
+        const stats = this._simulation.getLevelStats();
 
         return [
             {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(stats.getLevelTimeMs())},

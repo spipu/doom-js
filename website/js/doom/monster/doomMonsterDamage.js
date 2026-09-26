@@ -17,14 +17,14 @@ class DoomMonsterDamage {
      * @param {DoomEffects}       effects
      * @param {DoomRandom}        rng
      * @param {object}            rules      profile.monsterDamageRules()
-     * @param {DoomSimulation}    simulation kill counter
+     * @param {DoomLevelStats}    stats      kill counter
      */
-    constructor(monsters, effects, rng, rules, simulation) {
+    constructor(monsters, effects, rng, rules, stats) {
         this._monsters   = monsters;
         this._effects    = effects;
         this._rng        = rng;
         this._rules      = rules;
-        this._simulation = simulation;
+        this._stats      = stats;
         this._world        = null;
         this._collision    = null;
         this._terrain      = null;
@@ -347,8 +347,8 @@ class DoomMonsterDamage {
     // A_VileChase put a body back on its feet: vanilla Revive raises the level
     // total with it, so the ☠ ratio stays honest when it is killed again.
     reviveCounted(record) {
-        if ((record.def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._simulation !== null)) {
-            this._simulation.addKillTotal();
+        if ((record.def.getFlags().countsKill !== false) && (record.noKillCount !== true)) {
+            this._stats.addKillTotal();
         }
     }
 
@@ -363,8 +363,8 @@ class DoomMonsterDamage {
         this._monsters.enterState(record, ((gibbed) ? 'xdeath0' : 'death0'));
         // Nightmare-respawned actors no longer feed the counter (user
         // decision: ☠ x never exceeds the level total).
-        if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true) && (this._simulation !== null)) {
-            this._simulation.addKill();
+        if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true)) {
+            this._stats.addKill();
         }
     }
 

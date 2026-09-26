@@ -220,7 +220,7 @@ class WadWorldBuilder {
             (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
         this._built.setSecretsTotal(secretZones.list.length);
         if ((this._simulation !== null) && (secretZones.list.length > 0)) {
-            loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._simulation));
+            loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._simulation.getLevelStats()));
         }
         this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
 
@@ -405,7 +405,7 @@ class WadWorldBuilder {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
             if (isPickup && (this._simulation !== null)) {
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._simulation, countsItem));
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._simulation.getItemRules(), this._simulation.getLevelStats(), countsItem));
             }
         }
         this._built.setKillsTotal(killsTotal).setItemsTotal(itemsTotal);
@@ -548,7 +548,7 @@ class WadWorldBuilder {
                     code:  code,
                     objId: this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT)
                 };
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._simulation));
+                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._simulation.getItemRules(), this._simulation.getLevelStats()));
             }
         }
         this._monsterSystem.setDrops(catalog);

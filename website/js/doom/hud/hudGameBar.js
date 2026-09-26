@@ -13,29 +13,28 @@
 class HudGameBar extends AbstractHud {
     constructor(engine) {
         super(engine);
-        this._simulation = null;
-        this._root       = null;
-        this._els        = {};
-        this._keyEls     = {};
-        this._armsEls    = {};
-        this._effectEls  = {};
+        this._profile     = null;
+        this._itemCatalog = null;
+        this._stats       = null;
+        this._root        = null;
+        this._els         = {};
+        this._keyEls      = {};
+        this._armsEls     = {};
+        this._effectEls   = {};
     }
 
-    // Weapon slots and key set come from the game profile; empty layout when
-    // no game is bound.
-    _slotConfig() {
-        if (this._simulation === null) {
-            return {count: 0, byWeapon: {}, alwaysOwnedSlot: 0, upgradeWeapon: null};
-        }
-        return this._simulation.getGameProfile().hudWeaponSlots();
+    bindProfile(profile) {
+        this._profile = profile;
+        return this;
     }
 
-    _keyColors() {
-        return ((this._simulation !== null) ? this._simulation.getGameProfile().hudKeyColors() : {});
+    bindItemCatalog(itemCatalog) {
+        this._itemCatalog = itemCatalog;
+        return this;
     }
 
-    bindSimulation(simulation) {
-        this._simulation = simulation;
+    bindLevelStats(stats) {
+        this._stats = stats;
         return this;
     }
 
@@ -99,10 +98,8 @@ class HudGameBar extends AbstractHud {
         this._updateKeys(user);
         this._updateEffects(user);
 
-        if (this._simulation !== null) {
-            this._els.secretsValue.innerText = this._simulation.getSecretsFound() + '/' + this._simulation.getSecretsTotal();
-            this._els.killsValue.innerText   = this._simulation.getKillsCount() + '/' + this._simulation.getKillsTotal();
-        }
+        this._els.secretsValue.innerText = this._stats.getSecretsFound() + '/' + this._stats.getSecretsTotal();
+        this._els.killsValue.innerText   = this._stats.getKillsCount() + '/' + this._stats.getKillsTotal();
 
         this._updateFps();
     }
@@ -119,13 +116,13 @@ class HudGameBar extends AbstractHud {
 
     _updateAmmo(user) {
         const code   = user.getActiveWeapon();
-        const weapon = ((this._simulation !== null) ? this._simulation.getItemRules().getWeapon(code) : null);
+        const weapon = this._itemCatalog.getWeapon(code);
         const type   = ((weapon !== null) ? weapon.getAmmoType() : null);
         this._els.ammoValue.innerText = ((type === null) ? '—' : user.getAmmo(type) + '/' + user.getAmmoMax(type));
     }
 
     _updateArms(user) {
-        const slots        = this._slotConfig();
+        const slots        = this._profile.hudWeaponSlots();
         const slotByWeapon = slots.byWeapon;
         const code         = user.getActiveWeapon();
         const activeSlot   = (slotByWeapon[code] ?? null);
@@ -153,7 +150,7 @@ class HudGameBar extends AbstractHud {
             }
         }
 
-        const weapon = ((this._simulation !== null) ? this._simulation.getItemRules().getWeapon(code) : null);
+        const weapon = this._itemCatalog.getWeapon(code);
         this._els.weaponName.innerText = ((weapon !== null) ? this._weaponLabel(code, weapon) : '—');
     }
 
@@ -189,7 +186,7 @@ class HudGameBar extends AbstractHud {
     }
 
     _updateKeys(user) {
-        const keyColors = this._keyColors();
+        const keyColors = this._profile.hudKeyColors();
         const owned     = new Set(user.getItemCodes());
         for (const key of Object.keys(keyColors)) {
             const el  = this._keyEls[key];
@@ -278,7 +275,7 @@ class HudGameBar extends AbstractHud {
         const block = this._createEl('div', this._cornerStyle({ top: '1em', left: '1em' }));
 
         const keysRow = this._createEl('div', { display: 'flex', gap: '0.4em' });
-        for (const key of Object.keys(this._keyColors())) {
+        for (const key of Object.keys(this._profile.hudKeyColors())) {
             const pip = this._createEl('div', {
                 width: '1em', height: '1em', borderRadius: '50%',
                 border: '0.12em solid rgba(255, 255, 255, 0.5)', opacity: '0.25'
@@ -320,7 +317,7 @@ class HudGameBar extends AbstractHud {
         block.style.textAlign = 'right';
 
         const panel = this._createEl('div', { display: 'flex', gap: '0.3em', justifyContent: 'flex-end' });
-        for (let slot = 1; slot <= this._slotConfig().count; slot++) {
+        for (let slot = 1; slot <= this._profile.hudWeaponSlots().count; slot++) {
             const el = this._createEl('div', {
                 width: '1.3em', height: '1.3em', borderRadius: '0.2em',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
