@@ -18,7 +18,6 @@ class DoomProjectileSystem {
         this._monsters   = monsters;
         this._damage     = damageModule;
         this._collision  = null;
-        this._user       = null;
         this._terrain    = null;
         this._fast       = false;
         this._active     = [];
@@ -27,10 +26,15 @@ class DoomProjectileSystem {
         this._defs       = this._buildDefs(spriteBank, profile);
     }
 
-    setWorld(collision, user) {
-        this._collision = collision;
-        this._user      = user;
+    setWorld(world) {
+        this._collision = world.getCollision();
         return this;
+    }
+
+    // A missile hurts the players unless a player fired it and the rules
+    // spare the other players.
+    _hitsPlayers(p) {
+        return (!DoomActorRef.isPlayer(p.owner) || ((this._damage !== null) && this._damage.allowsFriendlyFire()));
     }
 
     /**
@@ -467,7 +471,7 @@ class DoomProjectileSystem {
             const flesh = ((this._monsters !== null)
                 ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
                     ((hit !== null) ? Math.min(hit.dist, step) : step),
-                    {exclude: p.owner, includePlayer: !DoomActorRef.isPlayer(p.owner), immuneTo: p.owner,
+                    {exclude: p.owner, includePlayers: this._hitsPlayers(p), immuneTo: p.owner,
                         thruGhost: p.def.thruGhost})
                 : null);
             if ((p.def.spawnMonster !== null) && this._tryHatch(p)) {
@@ -478,7 +482,7 @@ class DoomProjectileSystem {
             if (p.def.contactRadius > 0) {
                 const trodden = ((this._monsters !== null)
                     ? this._monsters.bodyAt(p.x, p.z, p.def.contactRadius,
-                        {exclude: p.owner, includePlayer: true, immuneTo: p.owner})
+                        {exclude: p.owner, includePlayers: true, immuneTo: p.owner})
                     : null);
                 if (trodden !== null) {
                     this._hitFlesh(p, trodden);
@@ -811,7 +815,7 @@ class DoomProjectileSystem {
         // The spray is the player's BFG alone: it fans from the shooter, and
         // no monster in either bestiary carries one.
         if ((p.def.spray !== null) && DoomActorRef.isPlayer(p.owner)) {
-            this._sprayFromShooter(p.def.spray, p.yaw);
+            this._sprayFromShooter(p.def.spray, p.yaw, p.owner);
         }
     }
 
@@ -821,21 +825,22 @@ class DoomProjectileSystem {
     // crossing the ray in 2D, above or below the eye plane — then a
     // line-of-sight check to its centre settles it (walls and slabs block).
     // The victim takes sum(damageCount × (1d8)) and flashes the spray effect.
-    _sprayFromShooter(spray, yawDeg) {
+    _sprayFromShooter(spray, yawDeg, shooter) {
         if ((this._monsters === null) || (this._damage === null)) {
             return;
         }
         const range = spray.distance * WadConstants.SCALE;
-        const ox = this._user.getCameraX();
-        const oy = this._user.getCameraY();
-        const oz = this._user.getCameraZ();
+        const ox = shooter.getCameraX();
+        const oy = shooter.getCameraY();
+        const oz = shooter.getCameraZ();
+        const aimOpts = {exclude: shooter, includePlayers: this._damage.allowsFriendlyFire()};
         for (let i = 0; i < spray.rays; i++) {
             const yawR = (yawDeg - spray.angle / 2 + (spray.angle / spray.rays) * i) * DEG_TO_RAD;
-            const aim  = this._monsters.aimRay(ox, oz, Math.sin(yawR), Math.cos(yawR), range);
+            const aim  = this._monsters.aimRay(ox, oz, Math.sin(yawR), Math.cos(yawR), range, aimOpts);
             if (aim === null) {
                 continue;
             }
-            const center   = aim.record.inst.getWorldCenter();
+            const center   = ((DoomActorRef.isPlayer(aim.ref)) ? [aim.ref.x, DoomActorRef.centerY(aim.ref), aim.ref.z] : aim.ref.inst.getWorldCenter());
             const dx       = center[0] - ox;
             const dy       = center[1] - oy;
             const dz       = center[2] - oz;
@@ -848,8 +853,8 @@ class DoomProjectileSystem {
                 damage += (this._rng.next() & 7) + 1;
             }
             this._effects.spawn(spray.effect, center[0], center[1], center[2]);
-            this._damage.damage(aim.record, damage,
-                {point: [center[0], center[1], center[2]], source: this._user, srcX: ox, srcZ: oz});
+            this._damage.damage(aim.ref, damage,
+                {point: [center[0], center[1], center[2]], source: shooter, srcX: ox, srcZ: oz});
         }
     }
 }

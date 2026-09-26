@@ -209,7 +209,7 @@ class DoomPlayerWeapon {
     _playActionSound(name) {
         const sound = this._def().getActionSound(name);
         if (sound !== null) {
-            doomSound.playAt(sound, null, {replaceKey: 'player:weapon'});
+            doomSound.playFromPlayer(sound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
         }
     }
 
@@ -366,7 +366,7 @@ class DoomPlayerWeapon {
         this._user.setActiveWeapon(this._readyWeapon);
         const upSound = this._def().getUpSound();
         if (upSound !== null) {
-            doomSound.playAt(upSound, null, {replaceKey: 'player:weapon'});
+            doomSound.playFromPlayer(upSound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
         }
         this._setState(this._weaponPsp, this._def().getEntry().up);
     }

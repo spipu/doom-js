@@ -2,7 +2,7 @@
  * Monster locomotion: the vanilla A_Chase movement layer —
  * P_NewChaseDir / P_TryWalk / P_Move over the engine collision, with the
  * all-or-nothing P_TryMove semantics: walls and the other bodies' boxes
- * (any slide deviation = blocked), the player's cylinder, climb ≤ 24 units,
+ * (any slide deviation = blocked), the players' boxes, climb ≤ 24 units,
  * ceiling fit, and the STRICT dropoff refusal (no MBF avoidance — a walker
  * simply refuses to overhang a >24u drop; floaters and +DROPOFF actors are
  * exempt). One move covers `speed` map units per A_Chase call, so the See
@@ -13,14 +13,14 @@
  */
 class DoomMonsterMove {
     /**
-     * @param {Collision}  collision
-     * @param {User}       user      blocks the walkers (and is the chase target)
-     * @param {DoomRandom} rng       shared vanilla P_Random table
-     * @param {object}     levelData DoomMonsterSystem level data (findSector)
+     * @param {Collision}         collision
+     * @param {DoomMonsterSystem} monsters  its players block the walkers
+     * @param {DoomRandom}        rng       shared vanilla P_Random table
+     * @param {object}            levelData DoomMonsterSystem level data (findSector)
      */
-    constructor(collision, user, rng, levelData) {
+    constructor(collision, monsters, rng, levelData) {
         this._collision = collision;
-        this._user      = user;
+        this._monsters  = monsters;
         this._rng       = rng;
         this._levelData = levelData;
         this._postMove  = null;
@@ -340,12 +340,12 @@ class DoomMonsterMove {
             return refused;
         }
 
-        // The player blocks like any body (PIT_CheckThing square overlap,
+        // The players block like any body (PIT_CheckThing square overlap,
         // with the engine's vertical-span gate).
-        const u = this._user;
-        if (WadGeometry.boxesOverlap2d(destX, destZ, r, u.x, u.z, u.getRadius())) {
-            const feet = ((isFloat) ? pos[1] : destFloor);
-            if ((u.y < feet + h) && (u.y + u.getCurrentHeight() > feet)) {
+        const feet = ((isFloat) ? pos[1] : destFloor);
+        for (const u of this._monsters.getPlayers()) {
+            if (WadGeometry.boxesOverlap2d(destX, destZ, r, u.x, u.z, u.getRadius())
+                && (u.y < feet + h) && (u.y + u.getCurrentHeight() > feet)) {
                 return refused;
             }
         }

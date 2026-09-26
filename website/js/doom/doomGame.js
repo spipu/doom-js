@@ -576,5 +576,4 @@ class DoomGame {
 // Delay between the player's death and the death menu: the camera falls and
 // the red tint settles first, and an exit fired right after the death wins.
 DoomGame.DEATH_MENU_DELAY_MS = 1000;
-// The main holds slot 1; a single-player game has it alone.
-DoomGame.LOCAL_PLAYER_ID = 1;
+DoomGame.LOCAL_PLAYER_ID = DoomPlayer.MAIN_ID;

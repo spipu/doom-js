@@ -34,6 +34,10 @@ class DoomSoundListener {
         return this;
     }
 
+    isUser(user) {
+        return (user === this._user);
+    }
+
     /**
      * @param {{type: string, min: number, max: number, curve: Uint8Array|null}} rolloff
      */

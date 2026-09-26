@@ -155,13 +155,11 @@ class DoomSimulation {
     startLevel(world) {
         this._world = world;
         const collision = world.getCollision();
-        // The monsters, the damage and the projectiles still follow a single user: the level's first.
-        const user = world.getUser();
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
-        this._monsters.setWorld(collision, user);
-        this._monsterDamage.setWorld(collision, user);
+        this._monsters.setWorld(world);
+        this._monsterDamage.setWorld(world).setFriendlyFire(this._rules.allowsFriendlyFire());
         this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
         this._effects.setWorld(collision);
         if (this._terrain !== null) {
@@ -171,7 +169,7 @@ class DoomSimulation {
             this._monsters.setTerrain(this._terrain);
             this._monsterDamage.setTerrain(this._terrain);
         }
-        this._projectiles.setWorld(collision, user);
+        this._projectiles.setWorld(world);
         this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
 
         return this;
@@ -195,7 +193,7 @@ class DoomSimulation {
         if (user.getActiveWeapon() !== null) {
             player.setWeapon(new DoomPlayerWeapon(this._itemRules, user, this._weaponSprites, this._rng)
                 .setAttackSystems(this._hitscan, this._projectiles)
-                .setNoiseCallback(() => this._monsters.noiseAlert()));
+                .setNoiseCallback(() => this._monsters.noiseAlert(user)));
         }
 
         return this;
@@ -224,6 +222,13 @@ class DoomSimulation {
 
     getWorld() {
         return this._world;
+    }
+
+    // The bodies are drawn as seen from this player's body.
+    setViewer(user) {
+        this._monsters.setViewer(user);
+
+        return this;
     }
 
     // --- Level data fed by the world builder ---

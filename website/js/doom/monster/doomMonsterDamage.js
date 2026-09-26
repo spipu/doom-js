@@ -25,9 +25,10 @@ class DoomMonsterDamage {
         this._rng        = rng;
         this._rules      = rules;
         this._simulation = simulation;
-        this._collision  = null;
-        this._user       = null;
-        this._terrain    = null;
+        this._world        = null;
+        this._collision    = null;
+        this._terrain      = null;
+        this._friendlyFire = false;
     }
 
     /**
@@ -39,10 +40,23 @@ class DoomMonsterDamage {
         return this;
     }
 
-    setWorld(collision, user) {
-        this._collision = collision;
-        this._user      = user;
+    /**
+     * @param {World} world - the loaded level, whose users are the players
+     */
+    setWorld(world) {
+        this._world     = world;
+        this._collision = world.getCollision();
         return this;
+    }
+
+    // The mode rule every channel asks before a player's attack reaches another player.
+    setFriendlyFire(allowed) {
+        this._friendlyFire = (allowed === true);
+        return this;
+    }
+
+    allowsFriendlyFire() {
+        return this._friendlyFire;
     }
 
     // A_DropItem chance roll (x/256) on the shared vanilla random table;
@@ -144,10 +158,27 @@ class DoomMonsterDamage {
         this._thrust(user, amount, opts);
     }
 
+    // A player's blast always reaches its author (vanilla), the other players
+    // only when the rules allow friendly fire.
+    _blastSpares(user, source) {
+        return ((source !== user) && DoomActorRef.isPlayer(source) && !this._friendlyFire);
+    }
+
+    _blastPlayer(user, x, y, z, damage, distance, source, kickback) {
+        const SCALE = WadConstants.SCALE;
+        const pdx   = Math.abs(user.x - x) / SCALE;
+        const pdz   = Math.abs(user.z - z) / SCALE;
+        const pDist = Math.max(0, Math.max(pdx, pdz) - (user.getRadius() / SCALE));
+        if ((pDist < distance) && (damage - pDist > 0)
+            && this._blastReaches(x, y, z, user.getCameraX(), user.getCameraY(), user.getCameraZ())) {
+            this.damage(user, damage - pDist, {srcX: x, srcZ: z, source: source, kickback: kickback});
+        }
+    }
+
     /**
      * Explosion at a world point (rocket, barrel, phoenix…): every live body
      * in range takes the vanilla Chebyshev falloff behind a line-of-sight
-     * check, plus the blast thrust. The player goes through the same path as
+     * check, plus the blast thrust. The players go through the same path as
      * the monsters — A_Explode never spared the shooter either.
      *
      * @param {number} x, y, z    world explosion point
@@ -163,12 +194,10 @@ class DoomMonsterDamage {
         const kickback = (opts.kickback ?? this._rules.defKickback);
         const source   = (opts.source ?? null);
 
-        const pdx   = Math.abs(this._user.x - x) / SCALE;
-        const pdz   = Math.abs(this._user.z - z) / SCALE;
-        const pDist = Math.max(0, Math.max(pdx, pdz) - (this._user.getRadius() / SCALE));
-        if ((pDist < distance) && (damage - pDist > 0)
-            && this._blastReaches(x, y, z, this._user.getCameraX(), this._user.getCameraY(), this._user.getCameraZ())) {
-            this.damage(this._user, damage - pDist, {srcX: x, srcZ: z, source: source, kickback: kickback});
+        for (const user of this._world.getUsers()) {
+            if (!this._blastSpares(user, source)) {
+                this._blastPlayer(user, x, y, z, damage, distance, source, kickback);
+            }
         }
 
         for (const m of this._monsters.getMonsters()) {

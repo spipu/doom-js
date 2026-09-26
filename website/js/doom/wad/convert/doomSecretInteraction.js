@@ -53,8 +53,9 @@ class DoomSecretInteraction extends AbstractInteraction {
         if (zone !== null) {
             this._zones.remove(zone);
             this._simulation.addSecretFound();
-            // DSSECRET ships in no IWAD, only in some PWADs: elsewhere it plays silence.
-            doomSound.playAt('misc/secret', null);
+            // DSSECRET ships in no IWAD, only in some PWADs: elsewhere it plays
+            // silence. The finder alone hears it (UZDoom).
+            doomSound.playToPlayer('misc/secret', user);
         }
     }
 }

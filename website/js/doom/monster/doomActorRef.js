@@ -105,6 +105,11 @@ class DoomActorRef {
         return (DoomActorRef.isMonster(ref) && (ref.def.getFlags().ghost === true));
     }
 
+    // MF_NOBLOOD (barrels, pods): a shot sparks on them instead. Players bleed.
+    static isBloodless(ref) {
+        return (DoomActorRef.isMonster(ref) && (ref.def.getFlags().noBlood === true));
+    }
+
     // Species of a body, the key of the vanilla infighting rule
     // (P_ProjectileImmune): the player belongs to none, so nothing ever spares
     // them. A monster inherits its def's code, so the two spectres of a pair

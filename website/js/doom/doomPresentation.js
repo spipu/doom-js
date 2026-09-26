@@ -41,7 +41,7 @@ class DoomPresentation {
      * @param {{wadId: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
     showLevel(simulation, player, levelInfo) {
-        this._simulation    = simulation;
+        this._simulation    = simulation.setViewer(player.getUser());
         this._world         = simulation.getWorld();
         this._player        = player;
         this._automap       = simulation.getAutomap();

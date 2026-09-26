@@ -8,7 +8,7 @@
 class DoomMonsterView {
     constructor() {
         this._levelData = null;
-        this._user      = null;
+        this._viewer    = null;   // the user the bodies are seen from
     }
 
     setLevelData(levelData) {
@@ -16,8 +16,8 @@ class DoomMonsterView {
         return this;
     }
 
-    setUser(user) {
-        this._user = user;
+    setViewer(user) {
+        this._viewer = user;
         return this;
     }
 
@@ -143,8 +143,11 @@ class DoomMonsterView {
     // so atan2(dz, dx) IS the Doom angle. (angleToViewer − facing + 22.5°) / 45
     // is the thing→viewer form of the vanilla viewer→thing +202.5° formula.
     _rotationOctant(m) {
+        if (this._viewer === null) {
+            return 0;
+        }
         const pos = m.inst.getTransform().position;
-        const angleToViewer = Math.atan2(this._user.z - pos[2], this._user.x - pos[0]) * 180 / Math.PI;
+        const angleToViewer = Math.atan2(this._viewer.z - pos[2], this._viewer.x - pos[0]) * 180 / Math.PI;
 
         return Math.floor(WadGeometry.normalizeAngle(angleToViewer - m.facing + 22.5) / 45);
     }

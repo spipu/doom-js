@@ -19,6 +19,16 @@ class DoomUser extends User {
         this._jumpAllowed     = true;
         this._crouchAllowed   = true;
         this._landingSplash   = null; // (x, y, z) => void, set by DoomSimulation per level
+        this._playerId        = null; // the DoomPlayer this body belongs to
+    }
+
+    setPlayerId(id) {
+        this._playerId = id;
+        return this;
+    }
+
+    getPlayerId() {
+        return this._playerId;
     }
 
     setDamageFactor(factor) {
@@ -196,11 +206,11 @@ class DoomUser extends User {
             return;
         }
         if (!this.isDead()) {
-            doomSound.playAt('*pain100', null, {replaceKey: 'player:voice'});
+            doomSound.playFromPlayer('*pain100', this, DoomSoundSystem.CHANNEL_VOICE);
             return;
         }
         const scream = ((this.getLastOverkill() > DoomUser.XDEATH_OVERKILL) ? '*xdeath' : '*death');
-        doomSound.playAt(scream, null, {replaceKey: 'player:voice'});
+        doomSound.playFromPlayer(scream, this, DoomSoundSystem.CHANNEL_VOICE);
     }
 
     // --- Player feedback hooks (engine no-ops overridden) ---
@@ -218,7 +228,7 @@ class DoomUser extends User {
     // A corpse never grunts (vanilla), but still splashes.
     _onLanded(fallDist) {
         if (!this.isDead() && (fallDist >= (WadConstants.LAND_GRUNT_FALL_UNITS * WadConstants.SCALE))) {
-            doomSound.playAt('*land', null, {replaceKey: 'player:voice'});
+            doomSound.playFromPlayer('*land', this, DoomSoundSystem.CHANNEL_VOICE);
         }
         if (((this._landingSplash ?? null) !== null)
             && (fallDist >= (WadConstants.SPLASH_FALL_UNITS * WadConstants.SCALE))) {
@@ -229,13 +239,13 @@ class DoomUser extends User {
     _onJumped() {
         // No IWAD ships a jump sound (dsjump, plrjmp): silent on vanilla data.
         if (!this.isDead()) {
-            doomSound.playAt('*jump', null, {replaceKey: 'player:voice'});
+            doomSound.playFromPlayer('*jump', this, DoomSoundSystem.CHANNEL_VOICE);
         }
     }
 
     notifyUseFailed() {
         if (!this.isDead()) {
-            doomSound.playAt('*usefail', null, {replaceKey: 'player:voice'});
+            doomSound.playFromPlayer('*usefail', this, DoomSoundSystem.CHANNEL_VOICE);
         }
     }
 

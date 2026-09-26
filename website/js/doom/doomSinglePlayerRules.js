@@ -14,4 +14,8 @@ class DoomSinglePlayerRules extends DoomGameRules {
     allowsCheatFullKit() {
         return true;
     }
+
+    allowsFriendlyFire() {
+        return false;
+    }
 }

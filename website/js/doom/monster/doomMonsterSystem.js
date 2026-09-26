@@ -1,7 +1,7 @@
 /**
  * Runtime monster driver at 35 Hz: state machine (entry actions dispatched
  * by name), velocity integration (knockback, gravity), senses (A_Look wake-up
- * on sight or on the sector sound target fed by the player's fire), save
+ * on sight or on the sector sound target fed by the players' fire), save
  * state, and the runtime spawns. Drawing is delegated to DoomMonsterView.
  *
  * Records are added DURING the loading batch (the world builder) with their
@@ -12,7 +12,7 @@
 class DoomMonsterSystem {
     constructor() {
         this._monsters      = [];
-        this._user          = null;
+        this._world         = null;
         this._collision     = null;
         this._damage        = null;
         this._attack        = null;
@@ -30,8 +30,7 @@ class DoomMonsterSystem {
         this._nightmareFast = false;
         this._untickedMs    = 0;
         this._ticCount      = 0;
-        this._userSi        = null;
-        this._userSiTic     = -1;
+        this._playerSectors = new Map();   // user → {si, tic}: its sector, resolved once per tic
         this._respawnQueue  = [];
         // Serial of the bodies born mid-level, so two spat souls never share
         // a code (the save resolves targets and owners by code).
@@ -80,6 +79,10 @@ class DoomMonsterSystem {
             velZ:            0,
             velY:            0,
             target:          null,
+            // P_LookForPlayers' round-robin cursor. Vanilla seeds it with
+            // P_Random at spawn; it starts at 0 so solo keeps its random
+            // sequence (never saved: a reload restarts the rotation).
+            lastlook:        0,
             threshold:       0,
             reactiontime:    ((instant) ? 0 : DoomMonsterSystem.REACTION_TIME),
             movedir:         DoomMonsterMove.DI_NODIR,
@@ -118,13 +121,27 @@ class DoomMonsterSystem {
         return this;
     }
 
-    setWorld(collision, user) {
-        this._collision = collision;
-        this._user      = user;
-        this._trace.setUser(user);
-        this._view.setUser(user);
+    /**
+     * @param {World} world - the loaded level, whose users are the players
+     */
+    setWorld(world) {
+        this._world     = world;
+        this._collision = world.getCollision();
         this._wireModules();
         return this;
+    }
+
+    // The bodies are drawn as seen from this user: presentation only.
+    setViewer(user) {
+        this._view.setViewer(user);
+        return this;
+    }
+
+    /**
+     * @returns {User[]} the players' bodies in the level
+     */
+    getPlayers() {
+        return ((this._world !== null) ? this._world.getUsers() : DoomMonsterSystem.NO_PLAYERS);
     }
 
     // The senses and locomotion need BOTH the level data and the world; the
@@ -138,8 +155,8 @@ class DoomMonsterSystem {
             this._sight = new DoomMonsterSight(this._collision, this._levelData, this._levelData.heights);
         }
         this._pressure.setHeights(this._levelData.heights).setCollision(this._collision);
-        if ((this._move === null) && (this._rng !== null) && (this._user !== null)) {
-            this._move = new DoomMonsterMove(this._collision, this._user, this._rng, this._levelData);
+        if ((this._move === null) && (this._rng !== null) && (this._world !== null)) {
+            this._move = new DoomMonsterMove(this._collision, this, this._rng, this._levelData);
             this._move.setPostMove((m, fromX, fromZ, toX, toZ) => {
                 m.walkStepped = true;
                 this._resolveRide(m);
@@ -193,14 +210,14 @@ class DoomMonsterSystem {
         return this;
     }
 
-    // P_NoiseAlert entry point: the player's weapon fire (P_FireWeapon) floods
-    // the sector graph from his sector — every reached sector remembers him
-    // as its sound target, consumed by A_Look.
-    noiseAlert() {
-        if ((this._sight === null) || (this._user === null)) {
+    // P_NoiseAlert entry point: a player's weapon fire (P_FireWeapon) floods
+    // the sector graph from the shooter's sector — every reached sector
+    // remembers that player as its sound target, consumed by A_Look.
+    noiseAlert(user) {
+        if (this._sight === null) {
             return;
         }
-        this._sight.noiseAlert(this._user, this._sectorIndexAt(this._user.x, this._user.z));
+        this._sight.noiseAlert(user, this._sectorIndexAt(user.x, user.z));
     }
 
     // Catalog key of one dropItems entry — shared with the world builder,
@@ -439,10 +456,11 @@ class DoomMonsterSystem {
     }
 
     /**
-     * How a save names an actor: nothing, the player, or another body's
+     * How a save names an actor: nothing, a player, or another body's
      * instance code (infighting). Public and static — the projectile system
      * writes the owner and the seek target of every shot in flight with it,
-     * and reads them back through actorByCode.
+     * and reads them back through actorByCode. The main player keeps the bare
+     * code of the single-player saves; any other is suffixed with its id.
      *
      * @param {object|null} actor player, monster record, or null
      * @returns {string|null}
@@ -451,8 +469,14 @@ class DoomMonsterSystem {
         if (actor === null) {
             return null;
         }
+        if (!DoomActorRef.isPlayer(actor)) {
+            return actor.code;
+        }
+        const id = actor.getPlayerId();
 
-        return ((DoomActorRef.isPlayer(actor)) ? DoomMonsterSystem.PLAYER_TARGET_CODE : actor.code);
+        return (((id === null) || (id === DoomPlayer.MAIN_ID))
+            ? DoomMonsterSystem.PLAYER_TARGET_CODE
+            : (DoomMonsterSystem.PLAYER_TARGET_CODE + DoomMonsterSystem.PLAYER_ID_SEPARATOR + id));
     }
 
     /**
@@ -469,11 +493,21 @@ class DoomMonsterSystem {
         if ((code === null) || (code === undefined)) {
             return null;
         }
-        if (code === DoomMonsterSystem.PLAYER_TARGET_CODE) {
-            return this._user;
+        if (code.startsWith(DoomMonsterSystem.PLAYER_TARGET_CODE)) {
+            return this._playerByCode(code);
         }
 
         return (byCode.get(code) ?? null);
+    }
+
+    // A player absent from the level (a cooperative save reloaded alone)
+    // leaves the monster without a target.
+    _playerByCode(code) {
+        const suffix = code.slice(DoomMonsterSystem.PLAYER_TARGET_CODE.length + DoomMonsterSystem.PLAYER_ID_SEPARATOR.length);
+        const id     = ((suffix === '') ? DoomPlayer.MAIN_ID : Number(suffix));
+        const found  = this.getPlayers().find((user) => ((user.getPlayerId() ?? DoomPlayer.MAIN_ID) === id));
+
+        return (found ?? null);
     }
 
     _exportRecord(m) {
@@ -559,7 +593,7 @@ class DoomMonsterSystem {
     }
 
     update(dt) {
-        if (this._user === null) {
+        if (this._world === null) {
             return;
         }
         this._clockMs += dt;
@@ -692,7 +726,7 @@ class DoomMonsterSystem {
         }
         const centreY = pos[1] + h / 2;
         const body = this.traceRay(pos[0], centreY, pos[2], dx / step, dy / step, dz / step, step + r,
-            {exclude: m, includePlayer: true, immuneTo: m});
+            {exclude: m, includePlayers: true, immuneTo: m});
         if (body !== null) {
             this.slam(m, body.ref);
             return;
@@ -737,14 +771,14 @@ class DoomMonsterSystem {
             return false;
         }
         const spot = this._spotOccupancy(m.spawn.position[0], m.spawn.position[2], m.inst.getCollisionRadius(), m);
-        if ((spot.blockers.length > 0) || spot.playerBlocks) {
+        if (DoomMonsterSystem._isOccupied(spot)) {
             return false;
         }
         this._respawnQueue.push(m);
         return true;
     }
 
-    // P_CheckPosition against the live bodies and the player (the world
+    // P_CheckPosition against the live bodies and the players (the world
     // geometry validated these spots at map load) — shared by the nightmare
     // respawn (any occupancy refuses) and the monster teleport (which may stomp).
     _spotOccupancy(x, z, r, exclude) {
@@ -758,11 +792,24 @@ class DoomMonsterSystem {
                 blockers.push(other);
             }
         }
-        const u = this._user;
         return {
-            blockers:     blockers,
-            playerBlocks: WadGeometry.boxesOverlap2d(x, z, r, u.x, u.z, u.getRadius())
+            blockers: blockers,
+            players:  this.getPlayers().filter((u) => WadGeometry.boxesOverlap2d(x, z, r, u.x, u.z, u.getRadius()))
         };
+    }
+
+    static _isOccupied(spot) {
+        return ((spot.blockers.length > 0) || (spot.players.length > 0));
+    }
+
+    // PIT_StompThing: every occupant of the spot takes the telefrag.
+    _stomp(spot) {
+        for (const other of spot.blockers) {
+            this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
+        }
+        for (const user of spot.players) {
+            user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
+        }
     }
 
     // Fresh actor at the original THINGS spot: same def/frames/facing/ambush,
@@ -861,7 +908,7 @@ class DoomMonsterSystem {
         const radius = template.def.getRadius() * WadConstants.SCALE;
         if (opts.free !== true) {
             const spot = this._spotOccupancy(x, z, radius, (opts.exclude ?? null));
-            if ((spot.blockers.length > 0) || spot.playerBlocks) {
+            if (DoomMonsterSystem._isOccupied(spot)) {
                 return null;
             }
         }
@@ -900,13 +947,7 @@ class DoomMonsterSystem {
         if (template === null) {
             return;
         }
-        const spot = this._spotOccupancy(x, z, template.def.getRadius() * WadConstants.SCALE, exclude);
-        for (const other of spot.blockers) {
-            this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
-        }
-        if (spot.playerBlocks) {
-            this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
-        }
+        this._stomp(this._spotOccupancy(x, z, template.def.getRadius() * WadConstants.SCALE, exclude));
     }
 
     /**
@@ -1237,31 +1278,52 @@ class DoomMonsterSystem {
         const heard = ((this._sight !== null) ? this._sight.getSoundTarget(m.si) : null);
         if ((heard !== null) && !heard.isDead()) {
             if ((m.flags & WadConstants.MTF_AMBUSH) !== 0) {
-                if (this._checkSightToPlayer(m)) {
-                    this._wake(m);
+                if (this.checkSightTo(m, heard)) {
+                    this._wake(m, heard);
                     return;
                 }
             } else {
-                this._wake(m);
+                this._wake(m, heard);
                 return;
             }
         }
-        if (this._lookForPlayer(m)) {
-            this._wake(m);
+        const seen = this._lookForPlayer(m);
+        if (seen !== null) {
+            this._wake(m, seen);
         }
     }
 
-    // P_LookForPlayers / P_IsVisible: front 180° cone around the facing, with
-    // the vanilla point-blank exception (seen even behind when closer than
-    // MELEERANGE + radius), then the expensive sight check last. The chase
-    // re-scan passes allaround (vanilla A_Chase looks in every direction).
+    // P_LookForPlayers: the players in turn from the monster's lastlook, at
+    // most LOOK_PLAYERS_PER_CALL of them per call (dead ones counted, as
+    // vanilla); the first one seen becomes the target. Null when none is.
     _lookForPlayer(m, allaround = false) {
-        if ((this._user === null) || this._user.isDead()) {
+        const players = this.getPlayers();
+        const count   = Math.min(players.length, DoomMonsterSystem.LOOK_PLAYERS_PER_CALL);
+        for (let n = 0; n < count; n++) {
+            const index = (m.lastlook + n) % players.length;
+            if (this._seesPlayer(m, players[index], allaround)) {
+                m.lastlook = index;
+                return players[index];
+            }
+        }
+        if (players.length > 0) {
+            m.lastlook = (m.lastlook + count) % players.length;
+        }
+
+        return null;
+    }
+
+    // P_IsVisible: front 180° cone around the facing, with the vanilla
+    // point-blank exception (seen even behind when closer than MELEERANGE +
+    // radius), then the expensive sight check last. The chase re-scan passes
+    // allaround (vanilla A_Chase looks in every direction).
+    _seesPlayer(m, user, allaround) {
+        if (user.isDead()) {
             return false;
         }
         const pos = m.inst.getTransform().position;
-        const dx  = this._user.x - pos[0];
-        const dz  = this._user.z - pos[2];
+        const dx  = user.x - pos[0];
+        const dz  = user.z - pos[2];
         if (!allaround) {
             let diff = WadGeometry.normalizeAngle(Math.atan2(dz, dx) * 180 / Math.PI - m.facing);
             if (diff > 180) {
@@ -1274,23 +1336,23 @@ class DoomMonsterSystem {
                 }
             }
         }
-        if (!this._checkSightToPlayer(m)) {
+        if (!this.checkSightTo(m, user)) {
             return false;
         }
 
-        return this._spotsShadow(m, dx, dz);
+        return this._spotsShadow(user, dx, dz);
     }
 
     // The blur sphere half of P_LookForPlayers: a shadowed player is never
     // spotted while creeping at a distance, otherwise only on a draw of
     // SHADOW_SPOT_CHANCE or more.
-    _spotsShadow(m, dx, dz) {
-        if (!DoomActorRef.isShadow(this._user)) {
+    _spotsShadow(user, dx, dz) {
+        if (!DoomActorRef.isShadow(user)) {
             return true;
         }
         const sneakSpeed = WadConstants.SHADOW_SNEAK_SPEED * WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
         if ((Math.hypot(dx, dz) > (WadConstants.SHADOW_SNEAK_RANGE * WadConstants.SCALE))
-            && (this._user.getRealVelocityXZ() < sneakSpeed)) {
+            && (user.getRealVelocityXZ() < sneakSpeed)) {
             return false;
         }
 
@@ -1342,12 +1404,11 @@ class DoomMonsterSystem {
         }
         // Lost or dead target: rescan all around, else drop back to idle
         if ((m.target === null) || DoomActorRef.isDead(m.target)) {
-            m.target = null;
-            if (!this._lookForPlayer(m, true)) {
+            m.target = this._lookForPlayer(m, true);
+            if (m.target === null) {
                 this.enterState(m, 'spawn0');
                 return;
             }
-            m.target = this._user;
         }
         // "Do not attack twice in a row": a monster that just fired steps away
         // first — unless it is fast, which is half of what makes nightmare
@@ -1439,7 +1500,7 @@ class DoomMonsterSystem {
             }
             const radius = corpse.def.getRadius() * WadConstants.SCALE;
             const spot   = this._spotOccupancy(cpos[0], cpos[2], radius, corpse);
-            if ((spot.blockers.length > 0) || spot.playerBlocks) {
+            if (DoomMonsterSystem._isOccupied(spot)) {
                 continue;
             }
             this._raise(corpse);
@@ -1498,13 +1559,9 @@ class DoomMonsterSystem {
         }
         const pos  = m.inst.getTransform().position;
         const eyeY = pos[1] + m.def.getHeight() * 0.75 * WadConstants.SCALE;
-        const toSi = ((DoomActorRef.isPlayer(ref)) ? this._userSector() : ref.si);
+        const toSi = ((DoomActorRef.isPlayer(ref)) ? this._playerSector(ref) : ref.si);
 
         return this._sight.checkSight(pos[0], eyeY, pos[2], m.si, ref, toSi);
-    }
-
-    _checkSightToPlayer(m) {
-        return this.checkSightTo(m, this._user);
     }
 
     // Whether a body rests on its floor (vanilla mo->z == floorz) — the
@@ -1520,21 +1577,26 @@ class DoomMonsterSystem {
         return ((floor !== -Infinity) && ((feet - floor) <= WadConstants.ON_FLOOR_TOLERANCE));
     }
 
-    _wake(m) {
-        m.target = this._user;
+    _wake(m, target) {
+        m.target = target;
         this.playMonsterSound(m, 'see');
         if (m.def.getState('see0') !== null) {
             this.enterState(m, 'see0');
         }
     }
 
-    // Player sector, resolved at most once per tic (REJECT needs both ends).
-    _userSector() {
-        if (this._userSiTic !== this._ticCount) {
-            this._userSi    = this._sectorIndexAt(this._user.x, this._user.z);
-            this._userSiTic = this._ticCount;
+    // A player's sector, resolved at most once per tic (REJECT needs both ends).
+    _playerSector(user) {
+        let cached = this._playerSectors.get(user);
+        if (cached === undefined) {
+            cached = {si: null, tic: -1};
+            this._playerSectors.set(user, cached);
         }
-        return this._userSi;
+        if (cached.tic !== this._ticCount) {
+            cached.si  = this._sectorIndexAt(user.x, user.z);
+            cached.tic = this._ticCount;
+        }
+        return cached.si;
     }
 
     // Transient bodies of a state line: one effect (`effect`) or several
@@ -1815,7 +1877,7 @@ class DoomMonsterSystem {
             }
             if (line.kind === 'zone') {
                 const zone = this._zoneInstance(line.zoneCode);
-                if ((zone !== null) && zone.fireZoneTrigger() && line.once) {
+                if ((zone !== null) && zone.fireZoneTrigger(m) && line.once) {
                     line.used = true;
                 }
                 continue;
@@ -1854,16 +1916,11 @@ class DoomMonsterSystem {
     // player-only).
     _monsterTeleport(m, landing) {
         const spot = this._spotOccupancy(landing.x, landing.z, m.inst.getCollisionRadius(), m);
-        if ((spot.blockers.length > 0) || spot.playerBlocks) {
+        if (DoomMonsterSystem._isOccupied(spot)) {
             if (this._levelData.monstersTelefrag !== true) {
                 return false;
             }
-            for (const other of spot.blockers) {
-                this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
-            }
-            if (spot.playerBlocks) {
-                this._user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
-            }
+            this._stomp(spot);
         }
         // ONFLOORZ: the landing sector may be a mover — the floor is resolved
         // live from the sector ceiling, landing.y is only the build fallback.
@@ -1935,10 +1992,10 @@ class DoomMonsterSystem {
     /**
      * Closest live body along a horizontal bearing (see DoomMonsterTrace.aim).
      *
-     * @returns {{record, dist}|null}
+     * @returns {{ref, dist}|null}
      */
-    aimRay(ox, oz, dx, dz, maxDist) {
-        return this._trace.aim(ox, oz, dx, dz, maxDist);
+    aimRay(ox, oz, dx, dz, maxDist, opts = {}) {
+        return this._trace.aim(ox, oz, dx, dz, maxDist, opts);
     }
 
     /**
@@ -1979,6 +2036,12 @@ DoomMonsterSystem.SPAWN_BLOCKED_SINK = 2;
 DoomMonsterSystem.SPAWN_PRESTEP = 4;
 // How a save names the player as somebody's target (no instance code carries it).
 DoomMonsterSystem.PLAYER_TARGET_CODE = '@player';
+// Between the player code and the id of any player but the main one.
+DoomMonsterSystem.PLAYER_ID_SEPARATOR = ':';
+// Players P_LookForPlayers examines per call before giving up until the next.
+DoomMonsterSystem.LOOK_PLAYERS_PER_CALL = 2;
+// Shared empty list while no world is wired.
+DoomMonsterSystem.NO_PLAYERS = Object.freeze([]);
 // Chase verbs: plain A_Chase, its sound-flavoured wrappers (the sound comes
 // from the profile's action table) and the serpent's accelerated chase.
 DoomMonsterSystem.CHASE_ACTIONS = new Set(['A_Chase', 'A_VileChase', 'A_MinotaurChase', 'A_BabyMetal', 'A_Metal', 'A_Hoof', 'A_Sor1Chase']);

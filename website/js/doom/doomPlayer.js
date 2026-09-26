@@ -34,7 +34,7 @@ class DoomPlayer {
      * @param {DoomUser} user
      */
     enterLevel(user) {
-        this._user   = user;
+        this._user   = user.setPlayerId(this._id);
         this._weapon = null;
 
         return this;
@@ -109,3 +109,6 @@ class DoomPlayer {
         return this._carriedState;
     }
 }
+
+// The main's own player: slot 1, and the whole roster of a single-player game.
+DoomPlayer.MAIN_ID = 1;

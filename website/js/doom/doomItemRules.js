@@ -84,7 +84,7 @@ class DoomItemRules {
     applyPickup(user, effect) {
         const consumed = this._applyPickupEffect(user, effect);
         if (consumed) {
-            doomSound.playAt(this._pickupSoundFor(effect), null, {});
+            doomSound.playFromPlayer(this._pickupSoundFor(effect), user, null);
         }
 
         return consumed;

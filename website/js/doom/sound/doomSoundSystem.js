@@ -299,6 +299,29 @@ class DoomSoundSystem {
         return handle;
     }
 
+    /**
+     * A sound a player makes: centred on the device of the player who makes
+     * it, from that player's body for everyone else, on that player's own
+     * channel (a new sound on it replaces the previous one).
+     *
+     * @param {string}      name    logical name
+     * @param {DoomUser}    user    the player making it
+     * @param {string|null} channel CHANNEL_* of the player, null = replaces nothing
+     * @returns {object|null} the channel handle, null when refused or unknown
+     */
+    playFromPlayer(name, user, channel) {
+        const origin = ((this._listener.isUser(user)) ? null : [user.x, user.getCameraY(), user.z]);
+        const key    = ((channel !== null) ? ('player:' + (user.getPlayerId() ?? '') + ':' + channel) : null);
+
+        return this.playAt(name, origin, {replaceKey: key});
+    }
+
+    // A sound for one player's ears only, centred (a secret found): nobody
+    // else hears it.
+    playToPlayer(name, user) {
+        return ((this._listener.isUser(user)) ? this.playAt(name, null) : null);
+    }
+
     // Per-frame refresh of the playing world channels against the moving
     // listener (S_UpdateSounds) — called by the game loop; the origin arrays
     // are live references, a moving emitter updates them in place.
@@ -435,5 +458,10 @@ class DoomSoundSystem {
         return {resolved: resolved, sample: this._samples.get(id)};
     }
 }
+
+// Channels of a player's sounds: a new voice cuts the previous voice, a new
+// weapon sound the previous weapon sound (vanilla CHAN_VOICE / CHAN_WEAPON).
+DoomSoundSystem.CHANNEL_VOICE  = 'voice';
+DoomSoundSystem.CHANNEL_WEAPON = 'weapon';
 
 const doomSound = new DoomSoundSystem();

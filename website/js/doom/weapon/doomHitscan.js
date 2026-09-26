@@ -56,14 +56,14 @@ class DoomHitscan {
     }
 
     // Melee outcome sound (the fist punches only on a hit, the chainsaw roars
-    // either way with two different lumps) — the player's own, position-less.
-    _playMeleeSound(def, melee, hit) {
+    // either way with two different lumps) — a sound of the shooting player.
+    _playMeleeSound(def, user, melee, hit) {
         if (!melee) {
             return;
         }
         const sound = ((hit) ? def.getMeleeHitSound() : def.getMeleeMissSound());
         if (sound !== null) {
-            doomSound.playAt(sound, null, {replaceKey: 'player:weapon'});
+            doomSound.playFromPlayer(sound, user, DoomSoundSystem.CHANNEL_WEAPON);
         }
     }
 
@@ -140,7 +140,7 @@ class DoomHitscan {
             dir[0], dir[1], dir[2], range, {floors: true, ceilings: true, dynamic: true});
         const flesh = ((this._monsters !== null)
             ? this._monsters.traceRay(origin[0], origin[1], origin[2], dir[0], dir[1], dir[2],
-                ((hit !== null) ? Math.min(hit.dist, range) : range), {exclude: shooter, includePlayer: true})
+                ((hit !== null) ? Math.min(hit.dist, range) : range), {exclude: shooter, includePlayers: true})
             : null);
 
         if (flesh !== null) {
@@ -152,7 +152,7 @@ class DoomHitscan {
             this._damage.damage(flesh.ref, damage, {point: point, source: shooter});
             // Vanilla only draws the puff on a bloodless victim; everything
             // else bleeds (P_LineAttack).
-            if (DoomActorRef.isMonster(flesh.ref) && (flesh.ref.def.getFlags().noBlood === true)) {
+            if (DoomActorRef.isBloodless(flesh.ref)) {
                 this._effects.spawnPuff(spec.puff, point[0], point[1], point[2], false);
             }
             return;
@@ -181,9 +181,12 @@ class DoomHitscan {
             dx, dy, dz, range, { floors: true, ceilings: true, dynamic: true }
         );
         // A live body crossing the ray before the wall soaks the shot
-        // (PTR_ShootTraverse stops on the first thing).
+        // (PTR_ShootTraverse stops on the first thing); another player only
+        // when the rules let players hurt one another.
         const flesh = ((this._monsters !== null)
-            ? this._monsters.traceRay(user.getCameraX(), user.getCameraY(), user.getCameraZ(), dx, dy, dz, ((hit !== null) ? Math.min(hit.dist, range) : range))
+            ? this._monsters.traceRay(user.getCameraX(), user.getCameraY(), user.getCameraZ(), dx, dy, dz,
+                ((hit !== null) ? Math.min(hit.dist, range) : range),
+                {exclude: user, includePlayers: ((this._damage !== null) && this._damage.allowsFriendlyFire())})
             : null);
         // Impact specials (24/46/47) fire on the 2D trace, hit or not — a shot
         // into the sky above a low shootable wall still crosses its line; a
@@ -195,12 +198,12 @@ class DoomHitscan {
             this._gunTriggers.onTrace(user.getCameraX(), user.getCameraZ(), endX, endZ);
         }
         if (flesh !== null) {
-            this._playMeleeSound(def, melee, true);
+            this._playMeleeSound(def, user, melee, true);
             this._playImpactSound(def, flesh.point);
             this._hitFlesh(def, user, flesh, [dx, dy, dz], melee);
             return;
         }
-        this._playMeleeSound(def, melee, false);
+        this._playMeleeSound(def, user, melee, false);
         if (hit === null) {
             return;
         }
@@ -241,7 +244,7 @@ class DoomHitscan {
             srcZ:     user.getCameraZ(),
             kickback: def.getKickback()
         });
-        if (def.isPuffOnMonsters() || (flesh.ref.def.getFlags().noBlood === true)) {
+        if (def.isPuffOnMonsters() || DoomActorRef.isBloodless(flesh.ref)) {
             this._effects.spawnPuff(def.getPuffType(), point[0], point[1], point[2], melee);
         }
     }

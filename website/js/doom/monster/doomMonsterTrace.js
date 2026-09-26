@@ -15,12 +15,6 @@ class DoomMonsterTrace {
      */
     constructor(system) {
         this._system = system;
-        this._user   = null;
-    }
-
-    setUser(user) {
-        this._user = user;
-        return this;
     }
 
     /**
@@ -30,7 +24,7 @@ class DoomMonsterTrace {
      * never sees these bodies.
      *
      * @param {object} opts {exclude: a body the ray goes through (its own
-     *                       shooter), includePlayer: the player is a target too
+     *                       shooter), includePlayers: the players are targets too
      *                       (a monster's shot), immuneTo: skip whoever that body
      *                       cannot hurt (same species), thruGhost: pass through
      *                       Heretic's phantoms}
@@ -62,9 +56,12 @@ class DoomMonsterTrace {
             consider(m, pos[0], pos[2], m.inst.getCollisionRadius(),
                 pos[1], pos[1] + m.def.getHeight() * WadConstants.SCALE);
         }
-        if ((opts.includePlayer === true) && (this._user !== null) && !this._user.isDead()) {
-            consider(this._user, this._user.x, this._user.z, this._user.getRadius(),
-                this._user.y, this._user.y + this._user.getCurrentHeight());
+        if (opts.includePlayers === true) {
+            for (const user of this._system.getPlayers()) {
+                if (!user.isDead()) {
+                    consider(user, user.x, user.z, user.getRadius(), user.y, user.y + user.getCurrentHeight());
+                }
+            }
         }
 
         return best;
@@ -76,18 +73,32 @@ class DoomMonsterTrace {
      * slope search of P_AimLineAttack, which finds a target above or below the
      * eye plane. The caller settles visibility with its own LOS check.
      *
-     * @returns {{record, dist}|null}
+     * @param {object} opts {exclude?: the shooter, includePlayers?: the players are aimed at too}
+     * @returns {{ref, dist}|null}
      */
-    aim(ox, oz, dx, dz, maxDist) {
+    aim(ox, oz, dx, dz, maxDist, opts = {}) {
+        const exclude = (opts.exclude ?? null);
         let best = null;
-        for (const m of this._system.getMonsters()) {
-            if (m.dead) {
-                continue;
+        const consider = (ref, cx, cz, radius) => {
+            if (ref === exclude) {
+                return;
             }
-            const pos = m.inst.getTransform().position;
-            const t   = DoomMonsterTrace._circle(ox, oz, dx, dz, pos[0], pos[2], m.inst.getCollisionRadius());
+            const t = DoomMonsterTrace._circle(ox, oz, dx, dz, cx, cz, radius);
             if ((t !== null) && (t <= maxDist) && ((best === null) || (t < best.dist))) {
-                best = {record: m, dist: t};
+                best = {ref: ref, dist: t};
+            }
+        };
+        for (const m of this._system.getMonsters()) {
+            if (!m.dead) {
+                const pos = m.inst.getTransform().position;
+                consider(m, pos[0], pos[2], m.inst.getCollisionRadius());
+            }
+        }
+        if (opts.includePlayers === true) {
+            for (const user of this._system.getPlayers()) {
+                if (!user.isDead()) {
+                    consider(user, user.x, user.z, user.getRadius());
+                }
             }
         }
 
@@ -98,7 +109,7 @@ class DoomMonsterTrace {
      * The first live body standing on a spot: how a mine that never moves (the
      * maulotaur's floor fire) knows it has been trodden on.
      *
-     * @param {object} opts {exclude?, immuneTo?, includePlayer?}
+     * @param {object} opts {exclude?, immuneTo?, includePlayers?}
      * @returns {{ref, point}|null}
      */
     bodyAt(x, z, radius, opts = {}) {
@@ -114,10 +125,13 @@ class DoomMonsterTrace {
                 return {ref: m, point: m.inst.getWorldCenter()};
             }
         }
-        const u = this._user;
-        if ((opts.includePlayer === true) && (u !== null) && !u.isDead()
-            && (u !== exclude) && WadGeometry.boxesOverlap2d(x, z, radius, u.x, u.z, u.getRadius())) {
-            return {ref: u, point: [u.x, u.y + u.getCurrentHeight() / 2, u.z]};
+        if (opts.includePlayers !== true) {
+            return null;
+        }
+        for (const u of this._system.getPlayers()) {
+            if (!u.isDead() && (u !== exclude) && WadGeometry.boxesOverlap2d(x, z, radius, u.x, u.z, u.getRadius())) {
+                return {ref: u, point: [u.x, u.y + u.getCurrentHeight() / 2, u.z]};
+            }
         }
 
         return null;
