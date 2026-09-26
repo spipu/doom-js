@@ -99,6 +99,12 @@ class DefaultGameProfile extends AbstractGameProfile {
         return DefaultGameProfile.BOSS_CUBE_SPAWNS;
     }
 
+    // linuxdoom p_mobj.c P_SpawnMapThing: types 1 to 4 fill playerstarts[type - 1];
+    // Heretic keeps them.
+    playerStartTypes() {
+        return [1, 2, 3, 4];
+    }
+
     // mapinfo/doom2.txt (and tnt/plutonia): only the Icon of Sin's arena lets
     // a teleporting monster stomp — the cubes land on occupied spots.
     monsterTelefragMaps() {

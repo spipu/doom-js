@@ -799,6 +799,11 @@ class DoomMonsterSystem {
         };
     }
 
+    // A living monster or player overlaps this square (G_CheckSpot's P_CheckPosition).
+    isSpotOccupied(x, z, r) {
+        return DoomMonsterSystem._isOccupied(this._spotOccupancy(x, z, r, null));
+    }
+
     static _isOccupied(spot) {
         return ((spot.blockers.length > 0) || (spot.players.length > 0));
     }

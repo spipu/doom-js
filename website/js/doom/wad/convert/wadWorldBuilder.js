@@ -34,6 +34,7 @@ class WadWorldBuilder {
         this._monsterSystem     = options.monsterSystem ?? null;
         this._level             = null;
         this._sectorPolys       = null;   // walked on demand, see _sectorPolyCache
+        this._playerStarts      = {};     // slot → spawn pose, set by _registerThings
         this._useLineCache      = null;   // world-space linedefs of the use traces, see _useLines
         this._sectorHeights     = null;   // live sector heights (DoomSectorHeights), set with the level data
     }
@@ -330,7 +331,9 @@ class WadWorldBuilder {
             this._monsterCatalog,
             // Out-of-range dev skill: null, the builder falls back to the flag bits.
             (this._profile.skillRules()[this._skill] ?? null)
-        ).setMultiplayerThings(this._multiplayerThings);
+        ).setMultiplayerThings(this._multiplayerThings)
+            .setPlayerStartTypes(this._profile.playerStartTypes())
+            .setSpawnerSeed(this._thingsSeed());
         const things = builder.buildAll();
 
         const billboardIds        = {};
@@ -420,6 +423,11 @@ class WadWorldBuilder {
 
                 return {x: pos[0], y: pos[1], z: pos[2], angle: s.angle};
             });
+        }
+
+        this._playerStarts = this._spawnPoses(builder.getPlayerStarts());
+        if (this._simulation !== null) {
+            this._simulation.setPlayerStarts(this._playerStarts);
         }
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
@@ -1046,7 +1054,7 @@ class WadWorldBuilder {
     }
 
     _buildDefinition(level, bank) {
-        const spawn = this._computeSpawn(level);
+        const spawn = (this._playerStarts[DoomPlayer.MAIN_ID] ?? {...WadConstants.FALLBACK_SPAWN});
         const defaults = WadConstants.USER_DEFAULTS;
 
         // The sky's top-row colour doubles as the background: it shows above the
@@ -1108,22 +1116,29 @@ class WadWorldBuilder {
         return [Math.round(r / w), Math.round(g / w), Math.round(b / w)];
     }
 
-    // Player 1 start (thing type 1), just above its sector floor.
-    _computeSpawn(level) {
-        const player1 = level.things.find((t) => t.type === 1);
-        if (player1 === undefined) {
-            return {...WadConstants.FALLBACK_SPAWN};
+    // Not vanilla's random draw: every device builds the level from this seed.
+    _thingsSeed() {
+        const things = this._wadFile.getMapLumps(this._levelCode).THINGS;
+
+        return AppHash.fnv1a32(new Uint8Array(things.buffer, things.byteOffset, things.byteLength));
+    }
+
+    // Each start just above its sector floor, in world space.
+    _spawnPoses(starts) {
+        const poses = {};
+        for (const slot of Object.keys(starts)) {
+            const start   = starts[slot];
+            const sect    = this._findSector(start.x, start.y);
+            const floorFh = ((sect !== null) ? sect.fh : 0);
+            poses[slot] = {
+                x:   start.x * WadConstants.SCALE,
+                y:   floorFh * WadConstants.SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
+                z:   start.y * WadConstants.SCALE,
+                yaw: WadGeometry.doomAngleYaw(start.angle)
+            };
         }
 
-        const sect    = this._findSector(player1.x, player1.y);
-        const floorFh = ((sect !== null) ? sect.fh : 0);
-
-        return {
-            x:   player1.x * WadConstants.SCALE,
-            y:   floorFh * WadConstants.SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
-            z:   player1.y * WadConstants.SCALE,
-            yaw: WadGeometry.doomAngleYaw(player1.angle)
-        };
+        return poses;
     }
 
     // Teleport landings by sector tag: {x, y, topY, z, yaw} in world space.

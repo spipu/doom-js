@@ -97,7 +97,9 @@ class DoomGame {
         }
 
         // Before loader.reset() destroys the world the equipment is read from.
-        this._localPlayer().packForNextLevel();
+        for (const player of this._roster.getAll()) {
+            player.packForNextLevel();
+        }
 
         this._teardownLevel();
         loader.beginBatch();
@@ -118,8 +120,13 @@ class DoomGame {
 
         const player   = this._localPlayer();
         const snapshot = this._restoreSnapshot;
-        this._simulation.startLevel(world)
-            .addPlayer(player, ((snapshot !== null) ? snapshot.player.state : null));
+        this._simulation.startLevel(world);
+        // The main first: it takes the body the world definition built. A save
+        // holds the main's player alone.
+        for (const entering of this._roster.getAll()) {
+            const restored = ((snapshot !== null) && (entering.getId() === DoomPlayer.MAIN_ID));
+            this._simulation.addPlayer(entering, ((restored) ? snapshot.player.state : null));
+        }
         this._deathClockMs = 0;
         this._applySpawnOverride();
 
@@ -134,7 +141,7 @@ class DoomGame {
             this._commandSampler = this._createCommandSampler(this._inputs);
             this._presentation.bindInputs(this._inputs);
         }
-        this._applyGameSettings(player);
+        this._applyGameSettings();
         this._presentation.showLevel(this._simulation, player, {
             wadId:     this._wadId(),
             levelCode: this._levelCode,
@@ -188,10 +195,9 @@ class DoomGame {
         }
         this._pauseWasDown = pauseDown;
 
-        const player = this._localPlayer();
         // Frozen frame (pause, tally): the modal owns the inputs.
         if (this._paused || this._transitioning) {
-            this._applyGameSettings(player);
+            this._applyGameSettings();
             this._presentation.presentFrozen();
             requestAnimationFrame(this._animateCallback);
             return;
@@ -209,7 +215,7 @@ class DoomGame {
         // the world half can still push the player.
         this._presentation.revealAutomap();
         this._simulation.tickWorld(dt, commands);
-        this._applyGameSettings(player);
+        this._applyGameSettings();
         this._presentation.present(dt, this._isGameMenuOpen());
 
         requestAnimationFrame(this._animateCallback);
@@ -223,13 +229,17 @@ class DoomGame {
         return new Map([[this._localPlayer().getId(), this._commandSampler.collect(dt).sample()]]);
     }
 
-    // Read every frame so a change from the pause options applies live.
-    _applyGameSettings(player) {
-        player.applyMovementSettings({
+    // Read every frame so a change from the pause options applies live; the
+    // main's game rules hold for every player.
+    _applyGameSettings() {
+        const settings = {
             fallDamage: doomSettings.getGameFallDamage(),
             jump:       doomSettings.getGameJump(),
             crouch:     doomSettings.getGameCrouch()
-        });
+        };
+        for (const player of this._roster.getAll()) {
+            player.applyMovementSettings(settings);
+        }
     }
 
     // A gamepad pause can leave the pointer lock engaged. Inputs are null
@@ -400,7 +410,9 @@ class DoomGame {
     _restartLevel() {
         this._transitioning = true;
         this._closeDeathMenu();
-        this._localPlayer().requestRestart();
+        for (const player of this._roster.getAll()) {
+            player.requestRestart();
+        }
 
         const display = new MenuDisplay('screen').init(true);
         this._startNextLevel(display, new MenuModal(display), this._levelCode);

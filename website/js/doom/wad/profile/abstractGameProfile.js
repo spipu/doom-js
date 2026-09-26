@@ -191,6 +191,16 @@ class AbstractGameProfile {
     }
 
     /**
+     * Editor numbers of the cooperative player starts, in slot order.
+     *
+     * @returns {int[]} index 0 = slot 1
+     */
+    playerStartTypes() {
+        this._generateException('playerStartTypes must be implemented');
+        return [];
+    }
+
+    /**
      * Per-game numbers of the shootable-body damage pipeline (gib threshold,
      * default kickback, blood behaviour) — UZDoom gameinfo + P_SpawnBlood.
      *

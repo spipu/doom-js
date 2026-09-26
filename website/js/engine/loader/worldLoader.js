@@ -12,8 +12,9 @@ class WorldLoader {
     }
 
     reset() {
-        this._loaded = true;
-        this._world  = null;
+        this._loaded  = true;
+        this._world   = null;
+        this._userDef = null;
     }
 
     isLoaded() {
@@ -43,6 +44,7 @@ class WorldLoader {
     }
 
     _populateWorld(world, data) {
+        this._userDef = data.user;
         world
             .setUser(this._createUser(data.user))
             .setBackground(data.background || [0, 0, 0])
@@ -62,6 +64,22 @@ class WorldLoader {
 
             this._populateWorld(entity, data);
         });
+    }
+
+    /**
+     * Another body built from the loaded world's user definition, for the
+     * caller to add to the world.
+     *
+     * @param {number[]} position - [x, y, z]
+     * @param {number}   yaw      - degrees
+     * @returns {User}
+     */
+    createUser(position, yaw) {
+        if (this._userDef === null) {
+            throw new Error('World is not yet loaded');
+        }
+
+        return this._createUser({...this._userDef, position: position, yaw: yaw});
     }
 
     _createUser(userDef) {

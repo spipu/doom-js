@@ -49,6 +49,7 @@ class DoomSimulation {
         this._moverSounds    = null;
         this._ambientSounds  = null;
         this._automap        = null;   // null when the WAD has no usable BSP
+        this._playerStarts   = {};     // slot → {x, y, z, yaw}, the map's player starts
 
         // Placeholder until the game detects the WAD's profile.
         this.useProfile(new DefaultGameProfile());
@@ -184,7 +185,7 @@ class DoomSimulation {
      * @param {object|null} restoredState - the player state of a save being loaded
      */
     addPlayer(player, restoredState) {
-        player.enterLevel(this._world.getUser());
+        player.enterLevel(this._bodyFor(player));
         this._equip(player, restoredState);
         player.markLevelEntry();
 
@@ -197,6 +198,32 @@ class DoomSimulation {
         }
 
         return this;
+    }
+
+    // The main takes the body the world definition built on the player 1 start;
+    // any other player gets a new one on a free start.
+    _bodyFor(player) {
+        if (player.getId() === DoomPlayer.MAIN_ID) {
+            return this._world.getUser();
+        }
+        const start = this._freeStart(player.getId());
+        const user  = loader.world().createUser([start.x, start.y, start.z], start.yaw);
+        this._world.addUser(user);
+
+        return user;
+    }
+
+    // G_CheckSpot / G_DoReborn: its own start when free, else another free
+    // start, else its own anyway, else the player 1 start of a map placing
+    // fewer starts. The slot is the player id until the lobby hands them out.
+    _freeStart(slot) {
+        const radius = this._world.getUser().getRadius();
+        const own    = (this._playerStarts[slot] ?? null);
+        const others = Object.keys(this._playerStarts).map(Number).sort((a, b) => (a - b))
+            .filter((other) => (other !== slot)).map((other) => this._playerStarts[other]);
+        const free   = [own, ...others].find((start) => ((start !== null) && !this._monsters.isSpotOccupied(start.x, start.z, radius)));
+
+        return (free ?? own ?? this._playerStarts[DoomPlayer.MAIN_ID] ?? WadConstants.FALLBACK_SPAWN);
     }
 
     _equip(player, restoredState) {
@@ -291,6 +318,12 @@ class DoomSimulation {
 
     getAutomap() {
         return this._automap;
+    }
+
+    setPlayerStarts(playerStarts) {
+        this._playerStarts = playerStarts;
+
+        return this;
     }
 
     // Built after the world: build-time consumers (teleports) must read it at trigger time.

@@ -1,9 +1,9 @@
 /**
  * Builds the world things (decorations + pickups + monsters) from the level
  * THINGS lump. Each mapped thing becomes a camera-facing Billboard sprite;
- * player / deathmatch starts and teleport landings are left out (not mapped
- * in the catalogs). Monsters resolve through the monster catalog and carry
- * their rotation sets + facing; skill 0 filters them all out.
+ * the player starts are collected apart, deathmatch starts and teleport
+ * landings are left out (not mapped in the catalogs). Monsters resolve
+ * through the monster catalog and carry their rotation sets + facing.
  *
  * Returns a flat list of placed things; WadWorldBuilder deduplicates the shared
  * Billboard Object3d per sprite and creates one Instance per occurrence.
@@ -27,15 +27,31 @@ class WadThingBuilder {
         this._monsterCatalog    = monsterCatalog;
         this._skillRule         = skillRule;
         this._multiplayerThings = false;
+        this._spawnerSeed       = 0;
         this._skipped           = 0;
         this._filtered          = 0;
         this._monsterCount      = 0;
         this._spots             = {};
+        this._playerStartTypes  = [];
+        this._playerStarts      = {};
         this._paddedFrames      = {};   // anim key → padded frame view
     }
 
     setMultiplayerThings(spawned) {
         this._multiplayerThings = (spawned === true);
+
+        return this;
+    }
+
+    // Seed of the spot each spawner group keeps: the same on every device building the level.
+    setSpawnerSeed(seed) {
+        this._spawnerSeed = seed;
+
+        return this;
+    }
+
+    setPlayerStartTypes(types) {
+        this._playerStartTypes = types;
 
         return this;
     }
@@ -57,6 +73,7 @@ class WadThingBuilder {
         this._filtered     = 0;
         this._monsterCount = 0;
         this._spots        = {};
+        this._playerStarts = {};
 
         // P_SpawnMapThing skill bit; without a profile rule: 0-2 → 0x01,
         // 3 → 0x02, 4-5 → 0x04.
@@ -65,6 +82,12 @@ class WadThingBuilder {
             : ((this._skill <= 2) ? 0x01 : ((this._skill === 3) ? 0x02 : 0x04)));
 
         for (const thing of this._level.things) {
+            // Vanilla takes the starts before any filter; a later one of a slot wins.
+            const slot = this._playerStartTypes.indexOf(thing.type) + 1;
+            if (slot > 0) {
+                this._playerStarts[slot] = {x: thing.x, y: thing.y, angle: thing.angle};
+                continue;
+            }
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
                 if (this._excludedByMode(thing) || ((thing.flags & skillBit) === 0)) {
@@ -99,7 +122,7 @@ class WadThingBuilder {
             }
 
             // Heretic collects its mace spots before the skill and multiplayer
-            // filters (P_SpawnMapThing); one random spot per group spawns.
+            // filters (P_SpawnMapThing); one spot per group spawns.
             if (desc.spawnerGroup !== null) {
                 const sect = this._sectorFinder(thing.x, thing.y);
                 if (sect === null) {
@@ -137,7 +160,7 @@ class WadThingBuilder {
 
         for (const group of Object.keys(spawners)) {
             const candidates = spawners[group];
-            const pick       = candidates[Math.floor(Math.random() * candidates.length)];
+            const pick       = candidates[this._spawnerSeed % candidates.length];
             const entry      = this._buildEntry(pick.thing, pick.desc, pick.sect);
             if (entry !== null) {
                 entries.push(entry);
@@ -273,6 +296,13 @@ class WadThingBuilder {
      */
     getSpots() {
         return this._spots;
+    }
+
+    /**
+     * @returns {object} slot → {x, y, angle} in Doom units, for the slots the map places
+     */
+    getPlayerStarts() {
+        return this._playerStarts;
     }
 
     // Number of mapped things dropped because no sector was found (call after buildAll).
