@@ -4,21 +4,21 @@
  * bobs the weapon from the player's speed, drives the raise/lower on a
  * retargetable pending weapon, consumes ammo and dispatches the fire actions
  * to the injected attack systems (hitscan / projectiles). No rendering here:
- * getViewSprites() hands the current frames to the engine's view-sprite pass.
+ * every tic it writes the player's DoomWeaponView, which the presentation draws.
  */
 class DoomPlayerWeapon {
     /**
      * @param {DoomItemCatalog}      itemCatalog   - weapon definitions
      * @param {Array<object>}        fallbackOrder - profile weaponFallbackOrder
+     * @param {DoomWeaponView}       view          - the player's, written every tic
      * @param {DoomUser}             user
-     * @param {DoomWeaponSpriteBank} spriteBank
      * @param {DoomRandom}           rng
      */
-    constructor(itemCatalog, fallbackOrder, user, spriteBank, rng) {
+    constructor(itemCatalog, fallbackOrder, view, user, rng) {
         this._itemCatalog   = itemCatalog;
         this._fallbackOrder = fallbackOrder;
+        this._view          = view;
         this._user          = user;
-        this._sprites       = spriteBank;
         this._rng           = rng;
         this._hitscan       = null;
         this._projectiles   = null;
@@ -32,7 +32,6 @@ class DoomPlayerWeapon {
         this._refire        = 0;
         this._attackDown    = false;
         this._fireHeld      = false;
-        this._light         = 1;
         this._extraLight    = 0;
         this._noiseCallback = null;
 
@@ -41,6 +40,7 @@ class DoomPlayerWeapon {
         this._weaponDown = false;
 
         this._bringUpWeapon();
+        this._publishView();
     }
 
     setAttackSystems(hitscan, projectiles) {
@@ -54,17 +54,6 @@ class DoomPlayerWeapon {
     setNoiseCallback(callback) {
         this._noiseCallback = callback;
         return this;
-    }
-
-    // Sector-light factor (0..1) applied to the non-fullbright weapon sprite.
-    setLight(light) {
-        this._light = light;
-    }
-
-    // Muzzle-flash extralight level (0, 1 or 2 — A_Light0/1/2), held while the
-    // flash psprite runs.
-    getExtraLight() {
-        return this._extraLight;
     }
 
     // --- Frame update ---
@@ -89,6 +78,21 @@ class DoomPlayerWeapon {
             this._tickPsprite(this._flashPsp);
             this._motion.ease();
         }
+        this._publishView();
+    }
+
+    // The muzzle-flash extralight (0, 1 or 2 — A_Light0/1/2) is held while the
+    // flash psprite runs.
+    _publishView() {
+        const weaponLump = ((this._weaponPsp.stateKey !== null) ? this._stateOf(this._weaponPsp).getLump() : null);
+        const flashLump  = ((this._flashPsp.stateKey !== null) ? this._stateOf(this._flashPsp).getLump() : null);
+        this._view
+            .setWeapon(this._readyWeapon)
+            .setWeaponFrame(weaponLump, ((weaponLump !== null) && this._stateOf(this._weaponPsp).isBright()))
+            .setFlashFrame(flashLump)
+            .setOffset(this._motion.getOffsetX(), this._motion.getOffsetY())
+            .setLowered(this._weaponDown)
+            .setExtraLight(this._extraLight);
     }
 
     _tickPsprite(psp) {
@@ -124,49 +128,6 @@ class DoomPlayerWeapon {
 
     _targetWeapon() {
         return ((this._pendingWeapon !== null) ? this._pendingWeapon : this._readyWeapon);
-    }
-
-    // --- View sprites for the renderer ---
-
-    getViewSprites() {
-        if (this._weaponDown) {
-            return [];
-        }
-        const out    = [];
-        const weapon = this._viewSpriteOf(this._weaponPsp, this._stateBright(this._weaponPsp));
-        if (weapon !== null) {
-            out.push(weapon);
-        }
-        const flash = this._viewSpriteOf(this._flashPsp, true);
-        if (flash !== null) {
-            out.push(flash);
-        }
-        return out;
-    }
-
-    // Descriptor for the engine's generic overlay primitive: the motion places
-    // the sprite in 0..1 screen space; fullbright frames ignore sector shading.
-    _viewSpriteOf(psp, bright) {
-        if (psp.stateKey === null) {
-            return null;
-        }
-        const spr = this._sprites.get(this._stateOf(psp).getLump());
-        if (spr === null) {
-            return null;
-        }
-        const rect = this._motion.screenRect(spr, this._def().getYAdjust());
-        return {
-            texId: spr.texId,
-            x:     rect.x,
-            y:     rect.y,
-            w:     rect.w,
-            h:     rect.h,
-            light: ((bright) ? 1 : this._light),
-        };
-    }
-
-    _stateBright(psp) {
-        return this._stateOf(psp).isBright();
     }
 
     // --- State machine (P_SetPsprite / P_MovePsprites) ---
@@ -306,17 +267,13 @@ class DoomPlayerWeapon {
     }
 
     _aMelee() {
-        if (this._hitscan !== null) {
-            this._hitscan.fireMelee(this._def(), this._user);
-        }
+        this._hitscan.fireMelee(this._def(), this._user);
     }
 
     _aFireHitscan(accurate) {
         this._useAmmo();
         this._showFlash(this._def().getEntry().flash);
-        if (this._hitscan !== null) {
-            this._hitscan.fire(this._def(), this._user, accurate);
-        }
+        this._hitscan.fire(this._def(), this._user, accurate);
     }
 
     // Hitscan with an explicit flash frame (A_FireCGun: the chaingun's flash
@@ -328,9 +285,7 @@ class DoomPlayerWeapon {
         }
         this._useAmmo();
         this._showFlash(flashKey);
-        if (this._hitscan !== null) {
-            this._hitscan.fire(this._def(), this._user, this._accurateNow());
-        }
+        this._hitscan.fire(this._def(), this._user, this._accurateNow());
     }
 
     _aFireProjectilesRandFlash() {
@@ -346,9 +301,6 @@ class DoomPlayerWeapon {
             return;
         }
         this._useAmmo();
-        if (this._projectiles === null) {
-            return;
-        }
         for (const shot of this._def().getProjectiles()) {
             if ((shot.altKind !== undefined) && (this._rng.next() < shot.altChance)) {
                 // Rare alternative shot (A_FireMacePL1: 28/256 throws the
@@ -379,9 +331,7 @@ class DoomPlayerWeapon {
         }
         // P_FireWeapon wakes the neighbourhood (P_NoiseAlert) on every
         // initiated attack — fist and chainsaw included, vanilla.
-        if (this._noiseCallback !== null) {
-            this._noiseCallback();
-        }
+        this._noiseCallback();
         // Recenter for the shot: the weapon stays steady through sustained fire
         // instead of freezing mid-bob.
         this._motion.recenter();
@@ -431,7 +381,7 @@ class DoomPlayerWeapon {
                 return entry.code;
             }
         }
-        return order[order.length - 1].code;
+        return this._fallbackOrder[this._fallbackOrder.length - 1].code;
     }
 }
 

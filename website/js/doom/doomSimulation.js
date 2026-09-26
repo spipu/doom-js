@@ -25,7 +25,6 @@ class DoomSimulation {
         this._stats              = new DoomLevelStats();
         this._onPlayerTeleported = null;
 
-        this._weaponSprites  = null;
         this._effects        = null;   // transient sprite effects (puffs, explosions)
         this._hitscan        = null;
         this._projectiles    = null;
@@ -33,7 +32,6 @@ class DoomSimulation {
         this._monsters       = null;
         this._monsterDamage  = null;
         this._monsterAttack  = null;
-        this._sectorLight    = null;
         this._sectorDamage   = null;
         this._gunTriggers    = null;   // shot-activated lines
         this._sectorSurfaces = null;   // floor flats/specials rewritten by the "+change" floors
@@ -84,7 +82,6 @@ class DoomSimulation {
         this._stats.reset();
         this._adoptLevelServices(built);
         this._adoptMonsters(built, onLevelExit);
-        this._weaponSprites = built.getWeaponSprites();
         this._effects       = built.getEffects().setRandom(this._rng);
         this._decals        = built.getDecals();
         if (this._decals !== null) {
@@ -194,7 +191,7 @@ class DoomSimulation {
         const user = player.getUser();
         user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         if (user.getActiveWeapon() !== null) {
-            player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), user, this._weaponSprites, this._rng)
+            player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), player.getWeaponView(), user, this._rng)
                 .setAttackSystems(this._hitscan, this._projectiles)
                 .setNoiseCallback(() => this._monsters.noiseAlert(user)));
         }
@@ -266,7 +263,6 @@ class DoomSimulation {
         this._level          = built;
         this._gunTriggers    = built.getGunTriggers();
         this._sectorDamage   = built.getSectorDamage();
-        this._sectorLight    = built.getSectorLight();
         this._sectorSurfaces = built.getSectorSurfaces();
         this._terrain        = built.getTerrain();
         this._playerStarts   = built.getPlayerStarts();
@@ -372,10 +368,6 @@ class DoomSimulation {
         const weapon = player.getWeapon();
         if (weapon === null) {
             return;
-        }
-        const user = player.getUser();
-        if (this._sectorLight !== null) {
-            weapon.setLight(this._sectorLight.factorAt(user.x, user.z));
         }
         weapon.update(dt, command.isPressed(DoomSimulation.BUTTON_FIRE));
     }

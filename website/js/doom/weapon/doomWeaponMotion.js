@@ -5,8 +5,8 @@
  * drives the raise/lower directly. Vanilla snaps the bob straight onto sx/sy,
  * but its magnitude decays with the player's momentum (friction) so it drifts
  * back gently; our velocity is instantaneous, so we ease the offset instead.
- * Placement follows Doom's R_DrawPSprite in a 320x200 base (left = sx -
- * leftOffset, top = sy - topOffset), normalised to 0..1 screen space.
+ * The offset is simulation state: the raise reaching the top readies the
+ * weapon (vanilla psp->sy). Drawing it is DoomWeaponOverlay's.
  */
 class DoomWeaponMotion {
     constructor() {
@@ -68,18 +68,13 @@ class DoomWeaponMotion {
         this._sy += (this._ty - this._sy) * k;
     }
 
-    // Normalised 0..1 screen rect for a sprite {width, height, leftOffset,
-    // topOffset}. yAdjust = per-weapon vertical offset (gzdoom Weapon.YAdjust,
-    // 320x200 pixels, positive = down — Heretic draws its weapons lower).
-    screenRect(spr, yAdjust = 0) {
-        const left = this._sx - spr.leftOffset;
-        const top  = (this._sy + yAdjust) - spr.topOffset;
-        return {
-            x: left / DoomWeaponMotion.BASE_W,
-            y: top / DoomWeaponMotion.BASE_H,
-            w: spr.width / DoomWeaponMotion.BASE_W,
-            h: spr.height / DoomWeaponMotion.BASE_H,
-        };
+    // Shown offset, in the 320x200 reference screen.
+    getOffsetX() {
+        return this._sx;
+    }
+
+    getOffsetY() {
+        return this._sy;
     }
 }
 
@@ -87,6 +82,4 @@ DoomWeaponMotion.WEAPONTOP    = 32;
 DoomWeaponMotion.WEAPONBOTTOM = 128;
 DoomWeaponMotion.MAXBOB       = 16;
 DoomWeaponMotion.FINEANGLES   = 8192;
-DoomWeaponMotion.BASE_W       = 320;   // psprite reference screen (Doom SCREENWIDTH / height)
-DoomWeaponMotion.BASE_H       = 200;
 DoomWeaponMotion.EASE         = 0.28;  // per-tic easing of the shown offset toward its target

@@ -21,6 +21,7 @@ class DoomPresentation {
         this._screen         = null;
         this._engine         = null;
         this._hud            = null;
+        this._weaponOverlay  = null;
         this._rendererCode   = null;   // renderer the current engine was built on
         this._depthShadingOn = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn = null;
@@ -64,16 +65,11 @@ class DoomPresentation {
         this._stats         = stats;
         this._player        = player;
         this._automap       = builtLevel.getAutomap();
+        this._weaponOverlay = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
         this._levelInfo     = levelInfo;
         this._fov           = WadConstants.PLAYER_FOV;
         this._fovUntickedMs = 0;
         this._buildDisplay();
-
-        return this;
-    }
-
-    _showWeaponOverlay() {
-        this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
 
         return this;
     }
@@ -143,10 +139,7 @@ class DoomPresentation {
         this._screen.bindHud(this._hud);
 
         this._engine.initFromWorld(this._world);
-
-        if (this._player.getWeapon() !== null) {
-            this._showWeaponOverlay();
-        }
+        this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
     }
 
     /**
@@ -247,9 +240,7 @@ class DoomPresentation {
     _pushEffectDisplay() {
         this._engine.setLightOverride(((this._player.getUser().isEffectVisible('light'))
             ? WadConstants.NIGHT_VISION_LIGHT : null));
-        const weapon     = this._player.getWeapon();
-        const extraLight = ((weapon !== null) ? weapon.getExtraLight() : 0);
-        this._engine.setLightBoost(extraLight * WadConstants.WEAPON_FLASH_LIGHT_STEP);
+        this._engine.setLightBoost(this._player.getWeaponView().getExtraLight() * WadConstants.WEAPON_FLASH_LIGHT_STEP);
     }
 
     // Borrowed from ZDoom (cvar telezoom): a teleport arrival widens the FOV,
@@ -285,13 +276,20 @@ class DoomPresentation {
         this._engine.setFov(this._fov / 2);
     }
 
+    // The weapon is lit by the sector the viewed player stands in.
+    _weaponSprites() {
+        const user = this._player.getUser();
+
+        return this._weaponOverlay.sprites(this._player.getWeaponView(), this._level.getSectorLight().factorAt(user.x, user.z));
+    }
+
     // The 4:3 psprite layer is squeezed around the centre on a wider screen
     // (like GZDoom) rather than stretched, so asymmetric weapons stay in place.
     _drawWeaponOverlay(renderer, engine) {
         const squeeze = DoomPresentation.PSPRITE_ASPECT / this._screen.getAspectRatio();
         const alpha   = ((this._player.getUser().isEffectVisible('invisibility'))
             ? WadConstants.INVISIBILITY_WEAPON_ALPHA : 1);
-        for (const sprite of this._player.getWeapon().getViewSprites()) {
+        for (const sprite of this._weaponSprites()) {
             renderer.drawScreenSprite(engine, sprite.texId, 0.5 + (sprite.x - 0.5) * squeeze, sprite.y, sprite.w * squeeze, sprite.h, sprite.light, alpha);
         }
     }

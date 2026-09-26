@@ -1,8 +1,9 @@
 /**
  * One player of the game, across its levels: the body the level builds for it
- * (a DoomUser, new on every level), its weapon controller, and the equipment
- * that outlives a level — the state it entered the level with (a restart
- * replays it) and the state it carries into the next one.
+ * (a DoomUser, new on every level), its weapon controller and the drawable
+ * state of that weapon, and the equipment that outlives a level — the state it
+ * entered the level with (a restart replays it) and the state it carries into
+ * the next one.
  */
 class DoomPlayer {
     /**
@@ -12,6 +13,7 @@ class DoomPlayer {
         this._id           = id;
         this._user         = null;
         this._weapon       = null;
+        this._weaponView   = new DoomWeaponView();
         this._entryState   = null;
         this._carriedState = null;
         this._restartState = null;
@@ -36,6 +38,7 @@ class DoomPlayer {
     enterLevel(user) {
         this._user   = user.setPlayerId(this._id);
         this._weapon = null;
+        this._weaponView.clear();
 
         return this;
     }
@@ -51,6 +54,13 @@ class DoomPlayer {
         this._weapon = weapon;
 
         return this;
+    }
+
+    /**
+     * @returns {DoomWeaponView} what the presentation draws of the weapon, whoever writes it
+     */
+    getWeaponView() {
+        return this._weaponView;
     }
 
     /**

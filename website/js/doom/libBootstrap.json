@@ -1,5 +1,5 @@
 {
-    "version": "v1.917",
+    "version": "v1.918",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -149,6 +149,8 @@
             "/js/doom/weapon/doomWeaponDef.js",
             "/js/doom/weapon/doomWeaponSpriteBank.js",
             "/js/doom/weapon/doomWeaponMotion.js",
+            "/js/doom/weapon/doomWeaponView.js",
+            "/js/doom/weapon/doomWeaponOverlay.js",
             "/js/doom/weapon/doomPlayerWeapon.js",
             "/js/doom/weapon/doomEffects.js",
             "/js/doom/weapon/doomHitscan.js",
