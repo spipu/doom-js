@@ -10,11 +10,13 @@ class DoomSecretInteraction extends AbstractInteraction {
     /**
      * @param {DoomSectorZones} zones - [{si}] behind the shared locator
      * @param {DoomLevelStats}  stats
+     * @param {DoomTurnEvents}  events
      */
-    constructor(zones, stats) {
+    constructor(zones, stats, events) {
         super();
-        this._zones = zones;
-        this._stats = stats;
+        this._zones  = zones;
+        this._stats  = stats;
+        this._events = events;
     }
 
     get code() {
@@ -55,7 +57,7 @@ class DoomSecretInteraction extends AbstractInteraction {
             this._stats.addSecretFound();
             // DSSECRET ships in no IWAD, only in some PWADs: elsewhere it plays
             // silence. The finder alone hears it (UZDoom).
-            doomSound.playToPlayer('misc/secret', user);
+            this._events.soundToPlayer('misc/secret', user);
         }
     }
 }

@@ -21,13 +21,13 @@
  */
 class DoomGenericSplash {
     /**
-     * @param {DoomImageAssets}     assets  decoded masks, kept across levels
-     * @param {DoomEffects}         effects where the baked templates are registered
-     * @param {AbstractGameProfile} profile owner of the splash table
+     * @param {DoomImageAssets}     assets    decoded masks, kept across levels
+     * @param {DoomEffectTemplates} templates where the baked templates are registered
+     * @param {AbstractGameProfile} profile   owner of the splash table
      */
-    constructor(assets, effects, profile) {
+    constructor(assets, templates, profile) {
         this._assets         = assets;
-        this._effects        = effects;
+        this._templates      = templates;
         this._splash         = profile.genericSplash();
         this._maskCache      = null;
         this._luminanceScale = null;
@@ -61,7 +61,7 @@ class DoomGenericSplash {
             for (const part of this._splash.parts) {
                 const name = code + ':' + part.part;
                 const bank = this._bank(part, masks, tints[flat]);
-                this._effects.addTemplate(bank, this._template(part, name));
+                this._templates.addTemplate(bank, this._template(part, name));
                 spec[part.part] = name;
             }
             terrain.addFlatTerrain(flat, code, spec);

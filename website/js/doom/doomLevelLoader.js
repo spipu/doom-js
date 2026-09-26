@@ -22,12 +22,13 @@ class DoomLevelLoader {
     /**
      * @param {WadFile}  wadFile
      * @param {string}   levelCode
-     * @param {object}   options - {skill: int, multiplayerThings: boolean, onLevelExit: function(secret)}
+     * @param {object}   options - {skill: int, multiplayerThings: boolean, onLevelExit: function(secret), turnEvents: DoomTurnEvents}
      * @returns {Promise<DoomBuiltLevel>}
      */
     async load(wadFile, levelCode, options) {
         const built = await new WadWorldBuilder(wadFile, levelCode, {
             onLevelExit:       options.onLevelExit,
+            turnEvents:        options.turnEvents,
             thingCatalog:      this._thingCatalog,
             monsterCatalog:    this._monsterCatalog,
             skill:             options.skill,
@@ -37,19 +38,19 @@ class DoomLevelLoader {
 
         const weaponSprites = new DoomWeaponSpriteBank(wadFile);
         this._itemCatalog.resolveAvailableWeapons(weaponSprites);
-        const effects = new DoomEffects(weaponSprites, this._profile);
+        const effectTemplates = new DoomEffectTemplates(weaponSprites, this._profile);
         // Skipped if the decal graphics are not decoded yet (first-level race).
-        const decals = ((doomImageAssets.isReady()) ? new DoomDecals(doomImageAssets, this._profile) : null);
+        const decalTemplates = ((doomImageAssets.isReady()) ? new DoomDecalTemplates(doomImageAssets, this._profile) : null);
         // Not vanilla: a game with no splash of its own gets a generic one,
         // tinted with the colour of each liquid flat.
         if ((built.getTerrain() !== null) && doomImageAssets.isReady()) {
-            new DoomGenericSplash(doomImageAssets, effects, this._profile).apply(built.getTerrain());
+            new DoomGenericSplash(doomImageAssets, effectTemplates, this._profile).apply(built.getTerrain());
         }
 
         return built
             .setWeaponSprites(weaponSprites)
-            .setEffects(effects)
-            .setDecals(decals)
+            .setEffectTemplates(effectTemplates)
+            .setDecalTemplates(decalTemplates)
             .setProjectileDefs(DoomProjectileDefs.build(weaponSprites, this._profile));
     }
 }

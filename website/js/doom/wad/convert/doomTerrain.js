@@ -17,12 +17,14 @@ class DoomTerrain {
      * @param {DoomSectorSurfaces}  surfaces      live floor flat of each sector
      * @param {object}              flats         flat name → terrain code
      * @param {object}              terrains      terrain code → splash definition
+     * @param {DoomTurnEvents}      events        where the splash sounds go
      */
-    constructor(sectorIndexAt, surfaces, flats, terrains) {
+    constructor(sectorIndexAt, surfaces, flats, terrains, events) {
         this._sectorIndexAt = sectorIndexAt;
         this._surfaces      = surfaces;
         this._flats         = flats;
         this._terrains      = terrains;
+        this._events        = events;
         this._effects       = null;
         this._tints         = {};
         // A stream of its own (vanilla's pr_chunk), NOT the game's table: of
@@ -33,10 +35,10 @@ class DoomTerrain {
     }
 
     /**
-     * The spawner of the splashes. Pushed by the game rather than taken at
-     * construction: the effects are built after the world they belong to.
+     * The spawner of the splashes. Pushed by the simulation rather than taken
+     * at construction: it owns the spawner and adopts the level after the build.
      *
-     * @param {DoomEffects} effects
+     * @param {DoomEffectSpawner} effects
      */
     setEffects(effects) {
         this._effects = effects;
@@ -146,18 +148,17 @@ class DoomTerrain {
         // rather than swallow the caller's own effect.
         let spawned = false;
         if (base !== null) {
-            spawned = ((this._effects.spawn(base, x, y, z, {mirror: this._mirror()}) !== null) || spawned);
+            spawned = (this._effects.spawn(base, x, y, z, {mirror: this._mirror()}) || spawned);
         }
         if (chunk !== null) {
             // Locals pin the random draw order, like _chunkVelocity.
             const velocity = this._chunkVelocity(terrain.chunkVel);
             const mirror   = this._mirror();
             const roll     = this._roll(terrain.chunkSpin ?? null);
-            const spawn    = this._effects.spawn(chunk, x, y, z, {velocity: velocity, mirror: mirror, roll: roll});
-            spawned = ((spawn !== null) || spawned);
+            spawned = (this._effects.spawn(chunk, x, y, z, {velocity: velocity, mirror: mirror, roll: roll}) || spawned);
         }
         if (sound !== null) {
-            doomSound.playAt(sound, [x, y, z]);
+            this._events.soundAt(sound, [x, y, z]);
             spawned = true;
         }
 

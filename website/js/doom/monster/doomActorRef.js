@@ -82,14 +82,15 @@ class DoomActorRef {
      * @returns {number[]} [x, y, z] world
      */
     static pointAt(ref, angleDeg, units) {
+        return DoomActorRef.pointFrom(DoomActorRef.x(ref), DoomActorRef.feetY(ref), DoomActorRef.z(ref), angleDeg, units);
+    }
+
+    // The same point from a bare position: what the presentation knows of a body.
+    static pointFrom(x, feetY, z, angleDeg, units) {
         const reach = units * WadConstants.SCALE;
         const angle = angleDeg * DEG_TO_RAD;
 
-        return [
-            DoomActorRef.x(ref) + Math.cos(angle) * reach,
-            DoomActorRef.feetY(ref),
-            DoomActorRef.z(ref) + Math.sin(angle) * reach
-        ];
+        return [x + Math.cos(angle) * reach, feetY, z + Math.sin(angle) * reach];
     }
 
     // MF_SHADOW: a body nobody can quite make out — the player under a blur

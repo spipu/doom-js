@@ -145,6 +145,8 @@ website/
     │   ├── doomLevelLoader.js   The level build every device runs: the converted world and the visual banks it shows
     │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, saves
     │   ├── doomLevelStats.js    The level's statistics: secrets, kills and items found against their totals, level time
+    │   ├── doomTurnEvents.js    Every one-shot event of a turn (sounds, effects, decals, teleports), emitted by the simulation
+    │   ├── doomTurnEventPlayer.js  How a device plays those events
     │   ├── doomItemRules.js     What pickups, the starting loadout and the cheat give to a player
     │   ├── doomGameRules.js     The mode-dependent questions (multiplayer things, death menu, saves, cheat)
     │   ├── doomSinglePlayerRules.js  Their single-player answers

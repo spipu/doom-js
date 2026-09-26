@@ -11,11 +11,12 @@
  * yaw spreads.
  */
 class DoomHitscan {
-    constructor(collision, effects, rng, decals, gunTriggers = null, monsters = null, damageModule = null) {
+    constructor(collision, effects, rng, decals, events, gunTriggers = null, monsters = null, damageModule = null) {
         this._collision   = collision;
         this._effects     = effects;
         this._rng         = rng;
         this._decals      = decals;
+        this._events      = events;
         this._gunTriggers = gunTriggers;
         this._monsters    = monsters;
         this._damage      = damageModule;
@@ -63,7 +64,7 @@ class DoomHitscan {
         }
         const sound = ((hit) ? def.getMeleeHitSound() : def.getMeleeMissSound());
         if (sound !== null) {
-            doomSound.playFromPlayer(sound, user, DoomSoundSystem.CHANNEL_WEAPON);
+            this._events.soundFromPlayer(sound, user, DoomSoundSystem.CHANNEL_WEAPON);
         }
     }
 
@@ -71,7 +72,7 @@ class DoomHitscan {
     // carry none.
     _playImpactSound(def, point) {
         if (def.getImpactSound() !== null) {
-            doomSound.playAt(def.getImpactSound(), [point[0], point[1], point[2]]);
+            this._events.soundAt(def.getImpactSound(), [point[0], point[1], point[2]]);
         }
     }
 

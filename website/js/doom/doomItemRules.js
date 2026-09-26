@@ -8,11 +8,13 @@ class DoomItemRules {
      * @param {AbstractGameProfile} profile     - starting loadout and cheat armour
      * @param {DoomItemCatalog}     itemCatalog
      * @param {DoomPlayerRoster}    roster      - finds the weapon controller a pickup raises
+     * @param {DoomTurnEvents}      events
      */
-    constructor(profile, itemCatalog, roster) {
+    constructor(profile, itemCatalog, roster, events) {
         this._profile     = profile;
         this._itemCatalog = itemCatalog;
         this._roster      = roster;
+        this._events      = events;
         this._ammoFactor  = 1;
     }
 
@@ -29,7 +31,7 @@ class DoomItemRules {
     applyPickup(user, effect) {
         const consumed = this._applyPickupEffect(user, effect);
         if (consumed) {
-            doomSound.playFromPlayer(this._pickupSoundFor(effect), user, null);
+            this._events.soundFromPlayer(this._pickupSoundFor(effect), user, null);
         }
 
         return consumed;

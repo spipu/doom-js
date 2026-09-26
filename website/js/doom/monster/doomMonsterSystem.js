@@ -47,6 +47,7 @@ class DoomMonsterSystem {
         this._exitCallback   = null;
         this._glide          = new DoomBodyGlide();
         this._bodyViews      = null;
+        this._events         = null;
     }
 
     /**
@@ -261,9 +262,15 @@ class DoomMonsterSystem {
         return this;
     }
 
-    // Transient effect spawner (DoomEffects), consumed by the teleport fog.
+    // Effect spawner (DoomEffectSpawner), consumed by the teleport fog.
     setEffects(effects) {
         this._effects = effects;
+        return this;
+    }
+
+    // Where the bodies' sounds go (DoomTurnEvents).
+    setTurnEvents(events) {
+        this._events = events;
         return this;
     }
 
@@ -827,8 +834,8 @@ class DoomMonsterSystem {
         this._resolveRide(fresh);
         // P_NightmareRespawn rings the teleport at both ends: the corpse and
         // the spot.
-        doomSound.playAt('misc/teleport', [...m.inst.getTransform().position], {});
-        doomSound.playAt('misc/teleport', [...fresh.inst.getTransform().position], {});
+        this._events.soundAt('misc/teleport', [...m.inst.getTransform().position]);
+        this._events.soundAt('misc/teleport', [...fresh.inst.getTransform().position]);
     }
 
     // Fresh runtime body sharing an existing record's def/frames/spawn — the
@@ -1112,7 +1119,7 @@ class DoomMonsterSystem {
             return;
         }
         const boss = ((table.boss === true) && ((key === 'see') || (key === 'death')));
-        doomSound.playAt(name, m.inst.getWorldCenter(), {
+        this._events.soundFromBody(name, m.inst, {
             attenuation: ((boss) ? WadConstants.SOUND_ATTN.none : WadConstants.SOUND_ATTN.norm),
             replaceKey:  ('monster:' + m.inst.getId() + ':' + channel)
         });
@@ -1162,12 +1169,12 @@ class DoomMonsterSystem {
             return;
         }
         if (key === 'xdeath0') {
-            doomSound.playAt('misc/gibbed', m.inst.getWorldCenter(),
+            this._events.soundFromBody('misc/gibbed', m.inst,
                 {replaceKey: ('monster:' + m.inst.getId() + ':voice')});
             return;
         }
         if (key === 'raise0') {
-            doomSound.playAt('vile/raise', m.inst.getWorldCenter());
+            this._events.soundFromBody('vile/raise', m.inst);
         }
     }
 
@@ -1179,7 +1186,7 @@ class DoomMonsterSystem {
         // D'Sparil's rise) — profile data, played from the body channel.
         const table = this._sounds[m.def.getCode()];
         if ((table !== undefined) && ((table.actions?.[action] ?? null) !== null)) {
-            doomSound.playAt(table.actions[action], m.inst.getWorldCenter(),
+            this._events.soundFromBody(table.actions[action], m.inst,
                 {replaceKey: ('monster:' + m.inst.getId() + ':body')});
         }
         // The attack layer owns every aiming and hurting verb.

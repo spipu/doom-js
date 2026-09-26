@@ -24,6 +24,9 @@ class DoomPresentation {
         this._weaponOverlay      = null;
         this._bodyRenderer       = null;
         this._projectileRenderer = null;
+        this._effects            = null;
+        this._decals             = null;   // null while the decal graphics are not decoded
+        this._turnEventPlayer    = null;
         this._rendererCode       = null;   // renderer the current engine was built on
         this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn     = null;
@@ -70,6 +73,9 @@ class DoomPresentation {
         this._weaponOverlay      = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
         this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getMonsterLevelData(), builtLevel.getCrushedCorpseView());
         this._projectileRenderer = new DoomProjectileRenderer(builtLevel.getProjectileViews());
+        this._effects            = new DoomEffects(builtLevel.getEffectTemplates()).setWorld(world.getCollision());
+        this._decals             = ((builtLevel.getDecalTemplates() !== null) ? new DoomDecals(builtLevel.getDecalTemplates()) : null);
+        this._turnEventPlayer    = new DoomTurnEventPlayer(this._effects, this._decals, player.getUser(), () => this.startTeleZoom());
         this._levelInfo          = levelInfo;
         this._fov                = WadConstants.PLAYER_FOV;
         this._fovUntickedMs      = 0;
@@ -193,12 +199,26 @@ class DoomPresentation {
      */
     present(dt, menuOpen) {
         this._updateSound(dt);
+        this._updateEffects(dt);
         // Before every push onto the engine, which a swap replaces.
         this.applyRendererSetting(menuOpen);
         this._applyDisplaySettings();
         this._updateTeleZoom(dt);
         this._pushEffectDisplay();
         this._draw();
+    }
+
+    // Played as the simulation emits them; the turn's events are all in when
+    // the effects advance.
+    playTurnEvent(event) {
+        this._turnEventPlayer.play(event);
+    }
+
+    _updateEffects(dt) {
+        this._effects.update(dt);
+        if (this._decals !== null) {
+            this._decals.update(dt);
+        }
     }
 
     // S_UpdateSounds.

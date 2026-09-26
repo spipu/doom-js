@@ -15,10 +15,12 @@ class DoomGunTriggers {
     }
 
     /**
-     * @param {object[]} lines [{x1, z1, x2, z2, once, used, targets, cycleVariant, stageRules}]
+     * @param {object[]}       lines  [{x1, z1, x2, z2, once, used, targets, cycleVariant, stageRules}]
+     * @param {DoomTurnEvents} events
      */
-    constructor(lines) {
-        this._lines = lines;
+    constructor(lines, events) {
+        this._lines  = lines;
+        this._events = events;
     }
 
     // Shot trace in world coords: from the muzzle to the impact point (or the
@@ -62,7 +64,7 @@ class DoomGunTriggers {
     _fire(line) {
         // Vanilla routes every fired impact line through P_ChangeSwitchTexture,
         // which rings the button from the line's position unconditionally.
-        doomSound.playAt('switches/normbutn',
+        this._events.soundAt('switches/normbutn',
             [(line.x1 + line.x2) / 2, line.y, (line.z1 + line.z2) / 2]);
         DoomTriggerTargets.fire(line.targets, null, line.cycleVariant, line.stageRules ?? null);
     }

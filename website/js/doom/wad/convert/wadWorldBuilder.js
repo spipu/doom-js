@@ -12,8 +12,10 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelCode
-     * @param {object}  options - {onLevelExit: function, thingCatalog: DoomThingCatalog, monsterCatalog: DoomMonsterCatalog, skill: number, multiplayerThings: boolean, profile: AbstractGameProfile}
-     *                  onLevelExit is wired on the exit switches; thingCatalog
+     * @param {object}  options - {onLevelExit: function, turnEvents: DoomTurnEvents, thingCatalog: DoomThingCatalog, monsterCatalog: DoomMonsterCatalog, skill: number, multiplayerThings: boolean, profile: AbstractGameProfile}
+     *                  onLevelExit is wired on the exit switches; turnEvents
+     *                  takes the sounds of the switches, the shot lines and the
+     *                  terrain; thingCatalog
      *                  maps THING types to world sprites/pickups and monsterCatalog
      *                  to monster definitions; skill (1..5, default 3) drives the
      *                  thing filtering, with the multiplayer-only things
@@ -27,6 +29,7 @@ class WadWorldBuilder {
         this._wadFile           = wadFile;
         this._levelCode         = levelCode;
         this._onLevelExit       = options.onLevelExit ?? null;
+        this._turnEvents        = options.turnEvents;
         this._thingCatalog      = options.thingCatalog ?? null;
         this._skill             = options.skill ?? 3;
         this._multiplayerThings = (options.multiplayerThings === true);
@@ -130,6 +133,7 @@ class WadWorldBuilder {
             const spec = sw.interactionSpec;
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
             interaction.setStageRules(spec.stageRules);
+            interaction.setTurnEvents(this._turnEvents);
             if (spec.remoteSwap) {
                 interaction.setRemoteSwap(spec.remoteSwap);
             }
@@ -159,7 +163,7 @@ class WadWorldBuilder {
         // their segments (P_ShootSpecialLine).
         const gunLines = new WadGunTriggerBuilder(
             level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf).buildAll();
-        this._built.setGunTriggers(new DoomGunTriggers(gunLines));
+        this._built.setGunTriggers(new DoomGunTriggers(gunLines, this._turnEvents));
 
         // Teleporters
         const landings = this._buildTeleportLandings(level);
@@ -224,7 +228,7 @@ class WadWorldBuilder {
         const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
 
         // Reads the live flat: a "+change" floor turned to water splashes as water.
-        this._built.setTerrain(new DoomTerrain(sectorIdAt, surfaces, terrains.flats(), terrains.terrains())
+        this._built.setTerrain(new DoomTerrain(sectorIdAt, surfaces, terrains.flats(), terrains.terrains(), this._turnEvents)
             .setLiquidTints(this._liquidTints(analysis, terrains, bank)));
 
         // Things

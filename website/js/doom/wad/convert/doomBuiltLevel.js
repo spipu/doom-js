@@ -37,8 +37,8 @@ class DoomBuiltLevel {
         this._pushZones         = null;        // null when no sector pushes
         this._secretZones       = null;        // null when the level has no secret
         this._weaponSprites     = null;
-        this._effects           = null;
-        this._decals            = null;        // null while the decal graphics are not decoded
+        this._effectTemplates   = null;
+        this._decalTemplates    = null;        // null while the decal graphics are not decoded
         this._projectileDefs    = {};          // kind → flight (DoomProjectileDefs)
         this._bodyViews         = new Set();   // DoomBodyView of every body in the level
         this._projectileViews   = new Set();   // DoomProjectileView of every shot in flight
@@ -285,24 +285,24 @@ class DoomBuiltLevel {
         return this._weaponSprites;
     }
 
-    setEffects(effects) {
-        this._effects = effects;
+    setEffectTemplates(effectTemplates) {
+        this._effectTemplates = effectTemplates;
 
         return this;
     }
 
-    getEffects() {
-        return this._effects;
+    getEffectTemplates() {
+        return this._effectTemplates;
     }
 
-    setDecals(decals) {
-        this._decals = decals;
+    setDecalTemplates(decalTemplates) {
+        this._decalTemplates = decalTemplates;
 
         return this;
     }
 
-    getDecals() {
-        return this._decals;
+    getDecalTemplates() {
+        return this._decalTemplates;
     }
 
     setProjectileDefs(projectileDefs) {

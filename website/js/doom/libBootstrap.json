@@ -1,5 +1,5 @@
 {
-    "version": "v1.921",
+    "version": "v1.923",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -154,6 +154,8 @@
             "/js/doom/weapon/doomWeaponView.js",
             "/js/doom/weapon/doomWeaponOverlay.js",
             "/js/doom/weapon/doomPlayerWeapon.js",
+            "/js/doom/weapon/doomEffectTemplates.js",
+            "/js/doom/weapon/doomEffectSpawner.js",
             "/js/doom/weapon/doomEffects.js",
             "/js/doom/weapon/doomHitscan.js",
             "/js/doom/weapon/doomGunTriggers.js",
@@ -162,6 +164,8 @@
             "/js/doom/weapon/doomProjectile.js",
             "/js/doom/weapon/doomProjectileDefs.js",
             "/js/doom/weapon/doomSectorLight.js",
+            "/js/doom/weapon/doomDecalTemplates.js",
+            "/js/doom/weapon/doomDecalSpawner.js",
             "/js/doom/weapon/doomDecals.js",
             "/js/doom/weapon/doomGenericSplash.js",
             "/js/doom/doomSettings.js",
@@ -197,6 +201,8 @@
             "/js/doom/doomGameRules.js",
             "/js/doom/doomSinglePlayerRules.js",
             "/js/doom/doomLevelStats.js",
+            "/js/doom/doomTurnEvents.js",
+            "/js/doom/doomTurnEventPlayer.js",
             "/js/doom/doomLevelLoader.js",
             "/js/doom/doomSimulation.js",
             "/js/doom/doomPresentation.js",

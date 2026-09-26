@@ -14,14 +14,16 @@ class DoomProjectileSystem {
     /**
      * @param {object}                  defs         - kind → flight definition (DoomProjectileDefs.build)
      * @param {Set<DoomProjectileView>} views        - where the shots in flight are drawn from
-     * @param {DoomEffects}             effects
+     * @param {DoomTurnEvents}          events
+     * @param {DoomEffectSpawner}       effects
      * @param {DoomRandom}              rng
-     * @param {DoomDecals|null}         decals
+     * @param {DoomDecalSpawner|null}   decals
      * @param {DoomMonsterSystem}       monsters
      * @param {DoomMonsterDamage}       damageModule
      */
-    constructor(defs, views, effects, rng, decals, monsters, damageModule) {
+    constructor(defs, views, events, effects, rng, decals, monsters, damageModule) {
         this._views      = views;
+        this._events     = events;
         this._effects    = effects;
         this._rng        = rng;
         this._decals     = decals;
@@ -256,7 +258,7 @@ class DoomProjectileSystem {
         this._views.add(p.view);
         this._active.push(p);
         if (p.def.seeSound !== null) {
-            doomSound.playAt(p.def.seeSound, [p.x, p.y, p.z]);
+            this._events.soundAt(p.def.seeSound, [p.x, p.y, p.z]);
         }
 
         return p;
@@ -492,7 +494,7 @@ class DoomProjectileSystem {
             this._effects.spawn(spec.fog, spot.x, spot.y, spot.z);
         }
         if (p.def.hatchSound !== null) {
-            doomSound.playAt(p.def.hatchSound, [spot.x, spot.y, spot.z]);
+            this._events.soundAt(p.def.hatchSound, [spot.x, spot.y, spot.z]);
         }
         // Null on every level but the Icon of Sin's.
         const brain = this._monsters.getBossBrain();
@@ -633,7 +635,7 @@ class DoomProjectileSystem {
         p.z = hit.point[2];
         p.vy = -p.vy * bounce.damping;
         if (p.def.bounceSound !== null) {
-            doomSound.playAt(p.def.bounceSound, [p.x, p.y, p.z]);
+            this._events.soundAt(p.def.bounceSound, [p.x, p.y, p.z]);
         }
 
         // A_MaceBallImpact2's side balls: horizontal speed = the ball's damped
@@ -699,7 +701,7 @@ class DoomProjectileSystem {
      */
     _detonate(p, ex, ey, ez, splashed = false) {
         if (p.def.deathSound !== null) {
-            doomSound.playAt(p.def.deathSound, [ex, ey, ez]);
+            this._events.soundAt(p.def.deathSound, [ex, ey, ez]);
         }
         this._effects.spawn(p.def.explosion, ex, ey, ez);
         // A_Explode's damage doubles as its reach; D'Sparil's bolt rolls it

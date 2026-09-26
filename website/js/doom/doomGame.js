@@ -2,7 +2,8 @@ class DoomGame {
     constructor() {
         this._rules           = new DoomSinglePlayerRules();
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
-        this._simulation      = new DoomSimulation(this._roster, this._rules);
+        this._turnEvents      = new DoomTurnEvents();
+        this._simulation      = new DoomSimulation(this._roster, this._rules, this._turnEvents);
         this._presentation    = new DoomPresentation();
         this._profile         = null;
         this._itemCatalog     = null;
@@ -32,7 +33,7 @@ class DoomGame {
         this._deathClockMs    = 0;
         this._animateCallback = this._animate.bind(this);
 
-        this._simulation.setOnPlayerTeleported((user) => this._onPlayerTeleported(user));
+        this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
     }
 
     /**
@@ -40,12 +41,6 @@ class DoomGame {
      */
     _localPlayer() {
         return this._roster.getLocal();
-    }
-
-    _onPlayerTeleported(user) {
-        if (user === this._localPlayer().getUser()) {
-            this._presentation.startTeleZoom();
-        }
     }
 
     _wadId() {
@@ -121,7 +116,8 @@ class DoomGame {
             .load(wadFile, levelCode, {
                 skill:             this._skill,
                 multiplayerThings: this._rules.spawnsMultiplayerThings(),
-                onLevelExit:       onLevelExit
+                onLevelExit:       onLevelExit,
+                turnEvents:        this._turnEvents
             });
         this._simulation.adoptLevel(this._builtLevel, onLevelExit);
 

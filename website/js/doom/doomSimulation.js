@@ -10,25 +10,26 @@ class DoomSimulation {
     /**
      * @param {DoomPlayerRoster} roster
      * @param {DoomGameRules}    rules
+     * @param {DoomTurnEvents}   events - where every one-shot event of a turn goes
      */
-    constructor(roster, rules) {
-        this._roster             = roster;
-        this._rules              = rules;
-        this._rng                = new DoomRandom();
-        this._skill              = DoomSimulation.DEFAULT_SKILL;
-        this._profile            = null;
-        this._itemCatalog        = null;
-        this._itemRules          = null;
-        this._skillTable         = null;
-        this._world              = null;
-        this._level              = null;   // the DoomBuiltLevel it adopted
-        this._stats              = new DoomLevelStats();
-        this._onPlayerTeleported = null;
+    constructor(roster, rules, events) {
+        this._roster      = roster;
+        this._rules       = rules;
+        this._events      = events;
+        this._rng         = new DoomRandom();
+        this._skill       = DoomSimulation.DEFAULT_SKILL;
+        this._profile     = null;
+        this._itemCatalog = null;
+        this._itemRules   = null;
+        this._skillTable  = null;
+        this._world       = null;
+        this._level       = null;   // the DoomBuiltLevel it adopted
+        this._stats       = new DoomLevelStats();
 
-        this._effects        = null;   // transient sprite effects (puffs, explosions)
+        this._effects        = null;   // spawner of the sprite effects (puffs, explosions)
         this._hitscan        = null;
         this._projectiles    = null;
-        this._decals         = null;
+        this._decals         = null;   // spawner of the impact decals, null without decal graphics
         this._monsters       = null;
         this._monsterDamage  = null;
         this._monsterAttack  = null;
@@ -48,7 +49,7 @@ class DoomSimulation {
     useProfile(profile, itemCatalog) {
         this._profile        = profile;
         this._itemCatalog    = itemCatalog;
-        this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster);
+        this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster, this._events);
         this._skillTable     = profile.skillRules();
         this._itemRules.setAmmoFactor(this._skillRule().ammoFactor);
 
@@ -82,14 +83,11 @@ class DoomSimulation {
         this._stats.reset();
         this._adoptLevelServices(built);
         this._adoptMonsters(built, onLevelExit);
-        this._effects       = built.getEffects().setRandom(this._rng);
-        this._decals        = built.getDecals();
-        if (this._decals !== null) {
-            this._decals.setRandom(this._rng);
-        }
+        this._effects       = new DoomEffectSpawner(built.getEffectTemplates(), this._rng, this._events);
+        this._decals        = ((built.getDecalTemplates() !== null) ? new DoomDecalSpawner(built.getDecalTemplates(), this._rng, this._events) : null);
         this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this._stats);
-        this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
-        this._projectiles = new DoomProjectileSystem(built.getProjectileDefs(), built.getProjectileViews(), this._effects, this._rng, this._decals, this._monsters, this._monsterDamage);
+        this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects).setTurnEvents(this._events);
+        this._projectiles = new DoomProjectileSystem(built.getProjectileDefs(), built.getProjectileViews(), this._events, this._effects, this._rng, this._decals, this._monsters, this._monsterDamage);
         this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
         this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
         this._monsters.setAttack(this._monsterAttack);
@@ -127,7 +125,7 @@ class DoomSimulation {
             loader.interactions().loadFromData(new DoomSectorPushInteraction(built.getPushZones(), this._monsters));
         }
         if (built.getSecretZones() !== null) {
-            loader.interactions().loadFromData(new DoomSecretInteraction(built.getSecretZones(), this._stats));
+            loader.interactions().loadFromData(new DoomSecretInteraction(built.getSecretZones(), this._stats, this._events));
         }
         for (const pickup of built.getPickups()) {
             loader.interactions().loadFromData(new DoomPickupInteraction(pickup.code, pickup.effect, this._itemRules, this._stats, pickup.countsItem));
@@ -160,8 +158,7 @@ class DoomSimulation {
         this._rng.reset();
         this._monsters.setWorld(world);
         this._monsterDamage.setWorld(world).setFriendlyFire(this._rules.allowsFriendlyFire());
-        this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
-        this._effects.setWorld(collision);
+        this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._events, this._gunTriggers, this._monsters, this._monsterDamage);
         if (this._terrain !== null) {
             this._terrain.setEffects(this._effects);
             this._hitscan.setTerrain(this._terrain);
@@ -191,7 +188,7 @@ class DoomSimulation {
         const user = player.getUser();
         user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         if (user.getActiveWeapon() !== null) {
-            player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), player.getWeaponView(), user, this._rng)
+            player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), player.getWeaponView(), user, this._rng, this._events)
                 .setAttackSystems(this._hitscan, this._projectiles)
                 .setNoiseCallback(() => this._monsters.noiseAlert(user)));
         }
@@ -241,6 +238,7 @@ class DoomSimulation {
         user.setExitSectorProbe(((this._sectorDamage !== null)
             ? ((body) => this._sectorDamage.isExitSectorAt(body.x, body.z))
             : null));
+        user.setTurnEvents(this._events);
         user.setLandingSplash(((this._terrain !== null)
             ? ((x, y, z) => this._terrain.splashAt(x, y, z))
             : null));
@@ -270,18 +268,8 @@ class DoomSimulation {
         return this._effects;
     }
 
-    // --- Teleports ---
-
-    setOnPlayerTeleported(callback) {
-        this._onPlayerTeleported = callback;
-
-        return this;
-    }
-
-    notifyPlayerTeleported(user) {
-        if (this._onPlayerTeleported !== null) {
-            this._onPlayerTeleported(user);
-        }
+    getTurnEvents() {
+        return this._events;
     }
 
     // --- Tic ---
@@ -313,17 +301,11 @@ class DoomSimulation {
         for (const player of this._commandedPlayers(commands)) {
             this._updateWeapon(player, dt, commands.get(player.getId()));
         }
-        if (this._effects !== null) {
-            this._effects.update(dt);
-        }
         if (this._projectiles !== null) {
             this._projectiles.update(dt);
         }
         if (this._monsters !== null) {
             this._monsters.update(dt);
-        }
-        if (this._decals !== null) {
-            this._decals.update(dt);
         }
     }
 

@@ -58,7 +58,7 @@ class DoomTeleportInteraction extends AbstractInteraction {
 
         this._simulation.getEffects().spawnTeleportFogs(fromX, fromY, fromZ, user.x, user.y, user.z,
             WadGeometry.doomAngleYaw(user.yaw));
-        this._simulation.notifyPlayerTeleported(user);
+        this._simulation.getTurnEvents().playerTeleported(user);
         user.freezeControls(WadConstants.TELEPORT_FREEZE_TICS * WadConstants.SECONDS_PER_TIC);
 
         this._cooldowns.set(user, WadConstants.TELEPORT_COOLDOWN_MS);

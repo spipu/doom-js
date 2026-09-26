@@ -14,7 +14,7 @@
 class DoomMonsterDamage {
     /**
      * @param {DoomMonsterSystem} monsters
-     * @param {DoomEffects}       effects
+     * @param {DoomEffectSpawner} effects
      * @param {DoomRandom}        rng
      * @param {object}            rules      profile.monsterDamageRules()
      * @param {DoomLevelStats}    stats      kill counter

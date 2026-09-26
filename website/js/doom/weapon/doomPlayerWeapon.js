@@ -13,13 +13,15 @@ class DoomPlayerWeapon {
      * @param {DoomWeaponView}       view          - the player's, written every tic
      * @param {DoomUser}             user
      * @param {DoomRandom}           rng
+     * @param {DoomTurnEvents}       events
      */
-    constructor(itemCatalog, fallbackOrder, view, user, rng) {
+    constructor(itemCatalog, fallbackOrder, view, user, rng, events) {
         this._itemCatalog   = itemCatalog;
         this._fallbackOrder = fallbackOrder;
         this._view          = view;
         this._user          = user;
         this._rng           = rng;
+        this._events        = events;
         this._hitscan       = null;
         this._projectiles   = null;
 
@@ -172,7 +174,7 @@ class DoomPlayerWeapon {
     _playActionSound(name) {
         const sound = this._def().getActionSound(name);
         if (sound !== null) {
-            doomSound.playFromPlayer(sound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
+            this._events.soundFromPlayer(sound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
         }
     }
 
@@ -320,7 +322,7 @@ class DoomPlayerWeapon {
         this._user.setActiveWeapon(this._readyWeapon);
         const upSound = this._def().getUpSound();
         if (upSound !== null) {
-            doomSound.playFromPlayer(upSound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
+            this._events.soundFromPlayer(upSound, this._user, DoomSoundSystem.CHANNEL_WEAPON);
         }
         this._setState(this._weaponPsp, this._def().getEntry().up);
     }

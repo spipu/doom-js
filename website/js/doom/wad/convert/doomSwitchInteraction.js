@@ -32,6 +32,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._remoteSwap     = null;
         this._remoteFaces    = null;
         this._remoteObject   = null;
+        this._events         = null;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -40,6 +41,12 @@ class DoomSwitchInteraction extends SwitchInteraction {
         } else {
             this.setModeOnce();
         }
+    }
+
+    // Where the button's ring goes (DoomTurnEvents).
+    setTurnEvents(events) {
+        this._events = events;
+        return this;
     }
 
     // Exit switch (11/51): the callback receives the secret flag so the game
@@ -92,7 +99,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         }
         // The button rings from the switch's own position; an exit switch has
         // its dedicated lump (p_switch.c / p_spec.c).
-        doomSound.playAt(((this._exitCallback !== null) ? 'switches/exitbutn' : 'switches/normbutn'),
+        this._events.soundAt(((this._exitCallback !== null) ? 'switches/exitbutn' : 'switches/normbutn'),
             ((instance !== null) ? instance.getWorldCenter() : null));
         this._swapFaces(instance, this._swapIndex);
         this._applyRemoteSwap(true);
