@@ -194,13 +194,11 @@ class DoomMoverPressure {
         }
     }
 
-    // Re-apply a saved flat state on a restored record (the view swap is
-    // ours, the record loader knows nothing about it).
+    // Re-apply a saved flat state on a restored record (the flag is ours,
+    // the record loader knows nothing about it).
     restoreFlat(m, wasFlat) {
         m.crushedFlat = ((wasFlat === true) && (this._crushedView !== null));
-        if (m.crushedFlat) {
-            m.inst.setObject(this._crushedView);
-        }
+        m.view.setCrushed(m.crushedFlat);
     }
 
     // The MF_DROPPED branch. The flag stops the despawn from being queued again
@@ -255,7 +253,7 @@ class DoomMoverPressure {
             return;
         }
         m.crushedFlat = true;
-        m.inst.setObject(this._crushedView);
+        m.view.setCrushed(true);
         if (this._collision !== null) {
             this._collision.removeBoxFor(m.inst);
         }

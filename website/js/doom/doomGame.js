@@ -160,7 +160,6 @@ class DoomGame {
             this._presentation.bindInputs(this._inputs);
         }
         this._applyGameSettings();
-        this._simulation.setViewer(player.getUser());
         this._presentation.showLevel(world, this._builtLevel, this._simulation.getLevelStats(), player, {
             wadId:     this._wadId(),
             levelCode: this._levelCode,

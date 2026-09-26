@@ -9,26 +9,28 @@
  */
 class DoomPresentation {
     constructor() {
-        this._inputs         = null;
-        this._profile        = null;
-        this._itemCatalog    = null;
-        this._level          = null;
-        this._stats          = null;
-        this._world          = null;
-        this._player         = null;
-        this._automap        = null;
-        this._levelInfo      = null;
-        this._screen         = null;
-        this._engine         = null;
-        this._hud            = null;
-        this._weaponOverlay  = null;
-        this._rendererCode   = null;   // renderer the current engine was built on
-        this._depthShadingOn = null;   // last states pushed to the engine (null = never)
-        this._texSmoothingOn = null;
-        this._fov            = WadConstants.PLAYER_FOV;
-        this._fovUntickedMs  = 0;
-        this._hudWasDown     = false;
-        this._mapWasDown     = false;
+        this._inputs             = null;
+        this._profile            = null;
+        this._itemCatalog        = null;
+        this._level              = null;
+        this._stats              = null;
+        this._world              = null;
+        this._player             = null;
+        this._automap            = null;
+        this._levelInfo          = null;
+        this._screen             = null;
+        this._engine             = null;
+        this._hud                = null;
+        this._weaponOverlay      = null;
+        this._bodyRenderer       = null;
+        this._projectileRenderer = null;
+        this._rendererCode       = null;   // renderer the current engine was built on
+        this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
+        this._texSmoothingOn     = null;
+        this._fov                = WadConstants.PLAYER_FOV;
+        this._fovUntickedMs      = 0;
+        this._hudWasDown         = false;
+        this._mapWasDown         = false;
     }
 
     bindInputs(inputs) {
@@ -60,15 +62,17 @@ class DoomPresentation {
      * @param {{wadId: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
     showLevel(world, builtLevel, stats, player, levelInfo) {
-        this._world         = world;
-        this._level         = builtLevel;
-        this._stats         = stats;
-        this._player        = player;
-        this._automap       = builtLevel.getAutomap();
-        this._weaponOverlay = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
-        this._levelInfo     = levelInfo;
-        this._fov           = WadConstants.PLAYER_FOV;
-        this._fovUntickedMs = 0;
+        this._world              = world;
+        this._level              = builtLevel;
+        this._stats              = stats;
+        this._player             = player;
+        this._automap            = builtLevel.getAutomap();
+        this._weaponOverlay      = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
+        this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getMonsterLevelData(), builtLevel.getCrushedCorpseView());
+        this._projectileRenderer = new DoomProjectileRenderer(builtLevel.getProjectileViews());
+        this._levelInfo          = levelInfo;
+        this._fov                = WadConstants.PLAYER_FOV;
+        this._fovUntickedMs      = 0;
         this._buildDisplay();
 
         return this;
@@ -213,6 +217,8 @@ class DoomPresentation {
     }
 
     _draw() {
+        this._bodyRenderer.draw(this._player.getUser());
+        this._projectileRenderer.draw();
         this._engine.displayWorld(this._world, this._player.getUser());
         this._screen.update();
     }

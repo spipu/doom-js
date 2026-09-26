@@ -546,8 +546,9 @@ class WadWorldBuilder {
         this._built.setDropTemplates(templates);
     }
 
-    // Views baked fullbright: a body moves, so the monster system lights it
-    // from its current sector.
+    // Views baked fullbright: a body moves, so the presentation lights it from
+    // its current sector. Its view is filed here, so a device that only
+    // displays the level knows every placed body.
     _registerMonsterThing(thing, i, analysis, builtFloorCodes, billboardIds) {
         const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.isCeiling(), billboardIds);
 
@@ -572,10 +573,13 @@ class WadWorldBuilder {
             inst.setRideOn(loader.instances().getByCode(ride.floorCode));
         }
         const spawnPos = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
+        const view     = new DoomBodyView(inst, frames).showState(spawnState, thing.facing, thing.si);
+        this._built.getBodyViews().add(view);
 
         return {
             code:   code,
             inst:   inst,
+            view:   view,
             def:    thing.def,
             facing: thing.facing,
             flags:  thing.flags,

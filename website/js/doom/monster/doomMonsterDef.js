@@ -163,7 +163,7 @@ class DoomMonsterDef {
     }
 
     // Catalog key of one monster view — the contract between the builders
-    // (which prebuild the billboards under it) and the runtime (DoomMonsterView).
+    // (which prebuild the billboards under it) and the drawn views (DoomBodyView).
     static viewKey(sprite, frame) {
         return (sprite + frame);
     }

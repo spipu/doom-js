@@ -89,20 +89,20 @@ class DoomSimulation {
         }
         this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this._stats);
         this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
-        this._projectiles = new DoomProjectileSystem(built.getProjectileDefs(), this._effects, this._rng, this._decals, this._monsters, this._monsterDamage);
+        this._projectiles = new DoomProjectileSystem(built.getProjectileDefs(), built.getProjectileViews(), this._effects, this._rng, this._decals, this._monsters, this._monsterDamage);
         this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
         this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
         this._monsters.setAttack(this._monsterAttack);
     }
 
-    // The skill rule precedes the adds (InstantReaction), and the adds precede
-    // the level data, which lights the bodies already added.
+    // The skill rule (InstantReaction) and the body views precede the adds.
     _adoptMonsters(built, onLevelExit) {
         this._monsters = new DoomMonsterSystem();
         this._monsters.setSkillRule(this._skillRule());
         this._monsters.setRandom(this._rng);
         this._monsters.setNightmareFast(this._profile.nightmareFast());
         this._monsters.setMonsterSounds(this._profile.monsterSounds());
+        this._monsters.setBodyViews(built.getBodyViews());
         for (const placement of built.getMonsterPlacements()) {
             this._monsters.add(placement);
         }
@@ -248,13 +248,6 @@ class DoomSimulation {
 
     getWorld() {
         return this._world;
-    }
-
-    // The bodies are drawn as seen from this player's body.
-    setViewer(user) {
-        this._monsters.setViewer(user);
-
-        return this;
     }
 
     // --- Level services handed back by the world builder ---

@@ -12,14 +12,16 @@
  */
 class DoomProjectileSystem {
     /**
-     * @param {object}              defs         - kind → flight definition (DoomProjectileDefs.build)
-     * @param {DoomEffects}         effects
-     * @param {DoomRandom}          rng
-     * @param {DoomDecals|null}     decals
-     * @param {DoomMonsterSystem}   monsters
-     * @param {DoomMonsterDamage}   damageModule
+     * @param {object}                  defs         - kind → flight definition (DoomProjectileDefs.build)
+     * @param {Set<DoomProjectileView>} views        - where the shots in flight are drawn from
+     * @param {DoomEffects}             effects
+     * @param {DoomRandom}              rng
+     * @param {DoomDecals|null}         decals
+     * @param {DoomMonsterSystem}       monsters
+     * @param {DoomMonsterDamage}       damageModule
      */
-    constructor(defs, effects, rng, decals, monsters, damageModule) {
+    constructor(defs, views, effects, rng, decals, monsters, damageModule) {
+        this._views      = views;
         this._effects    = effects;
         this._rng        = rng;
         this._decals     = decals;
@@ -234,11 +236,11 @@ class DoomProjectileSystem {
             // Launch heading (degrees): A_BFGSpray fans around the BALL's
             // angle, frozen at fire time — not the shooter's current yaw.
             yaw: Math.atan2(vx, vz) / DEG_TO_RAD,
-            tics: 0, shown: 0, traveled: 0, dropped: false, bounces: 0, growTics: 0,
+            tics: 0, traveled: 0, dropped: false, bounces: 0, growTics: 0,
             // Aimed-at-a-spot shots only (spawnAtSpot): where it goes, and how
             // many tics it takes to get there.
             spot: null, arrivalTics: 0,
-            instId: null,
+            instId: null, view: null,
         };
         p.instId = loader.instances().spawnFromData(null, {
             object:         def.frames[0].objId,
@@ -250,6 +252,8 @@ class DoomProjectileSystem {
             collisionShape: 'none',
             keyframes:      [],
         });
+        p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames).setCenter(p.x, p.y, p.z);
+        this._views.add(p.view);
         this._active.push(p);
         if (p.def.seeSound !== null) {
             doomSound.playAt(p.def.seeSound, [p.x, p.y, p.z]);
@@ -422,25 +426,30 @@ class DoomProjectileSystem {
             }
 
             p.tics += 1;
-            this._syncView(p, inst);
+            this._publishView(p);
             kept.push(p);
         }
+        this._dropViewsOfEnded(kept);
         this._active = kept;
     }
 
-    // The instance follows the shot: current animation frame (swapped only when
-    // it changes) and world position, the billboard anchored by its own height.
-    _syncView(p, inst) {
+    _publishView(p) {
         const frame = ((p.def.frames.length > 1)
             ? Math.floor(p.tics / p.def.flightTics) % p.def.frames.length : 0);
-        if (frame !== p.shown) {
-            inst.setObject(p.def.frames[frame].objId);
-            p.shown = frame;
+        p.view.setFrame(frame).setCenter(p.x, p.y, p.z);
+    }
+
+    // The kept shots are the active ones in the same order, minus those that
+    // ended this tic (shots launched during the tic included).
+    _dropViewsOfEnded(kept) {
+        let next = 0;
+        for (const p of this._active) {
+            if (kept[next] === p) {
+                next++;
+                continue;
+            }
+            this._views.delete(p.view);
         }
-        const pos = inst.getTransform().position;
-        pos[0] = p.x;
-        pos[1] = p.y - p.def.frames[frame].height / 2;
-        pos[2] = p.z;
     }
 
     /**

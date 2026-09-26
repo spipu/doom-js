@@ -2,7 +2,8 @@
  * Runtime monster driver at 35 Hz: state machine (entry actions dispatched
  * by name), velocity integration (knockback, gravity), senses (A_Look wake-up
  * on sight or on the sector sound target fed by the players' fire), save
- * state, and the runtime spawns. Drawing is delegated to DoomMonsterView.
+ * state, and the runtime spawns. What a body looks like goes into its
+ * DoomBodyView, drawn by the presentation.
  *
  * Records are added DURING the loading batch (the world builder) with their
  * engine instance: the entity exists as soon as loadFromData registers it —
@@ -44,12 +45,13 @@ class DoomMonsterSystem {
         this._trace          = new DoomMonsterTrace(this);
         this._bossBrain      = null;
         this._exitCallback   = null;
-        this._view           = new DoomMonsterView();
+        this._glide          = new DoomBodyGlide();
+        this._bodyViews      = null;
     }
 
     /**
-     * @param {object} record {code, inst (engine Instance), def,
-     *                         facing (Doom degrees), flags,
+     * @param {object} record {code, inst (engine Instance), view (DoomBodyView),
+     *                         def, facing (Doom degrees), flags,
      *                         frames: {letter → [objId ×1|×8]},
      *                         si (build sector index),
      *                         spawn: {position, facing, flags, si}}
@@ -59,9 +61,10 @@ class DoomMonsterSystem {
         // except in nightmare, where it stays 0 — the InstantReaction skill.
         const instant = ((this._skillRule !== null) && (this._skillRule.instantReaction === true));
         record.inst.setCollisionHeight(record.def.getHeight() * WadConstants.SCALE);
-        this._monsters.push({
+        const m = {
             code:            record.code,
             inst:            record.inst,
+            view:            record.view,
             def:             record.def,
             // Every body comes through here, so a spawn angle past 360 (a soul
             // spat at facing + 270) is folded once for all.
@@ -101,9 +104,6 @@ class DoomMonsterSystem {
             // flies until it slams into something.
             charging:        false,
             invulnerable:    false,
-            renderLight:     null,   // last factor pushed to the instance (null = never)
-            litSi:           null,   // sector and bright flag the light was resolved for
-            litBright:       false,
             inFloat:         false,
             respawnClock:    0,
             noKillCount:     false,
@@ -116,10 +116,22 @@ class DoomMonsterSystem {
             walkStepped:     false,
             env:             new ActorExternalForces(),
             stateKey:        'spawn0',
-            ticsLeft:        record.def.getState('spawn0').getTics(),
-            shownObj:        null
-        });
+            ticsLeft:        record.def.getState('spawn0').getTics()
+        };
+        this._monsters.push(m);
+        this._bodyViews.add(m.view);
+        this._publishView(m);
         return this;
+    }
+
+    // Where every body's view is filed: the level every device builds.
+    setBodyViews(views) {
+        this._bodyViews = views;
+        return this;
+    }
+
+    _publishView(m) {
+        m.view.showState(m.def.getState(m.stateKey), m.facing, m.si);
     }
 
     /**
@@ -129,12 +141,6 @@ class DoomMonsterSystem {
         this._world     = world;
         this._collision = world.getCollision();
         this._wireModules();
-        return this;
-    }
-
-    // The bodies are drawn as seen from this user: presentation only.
-    setViewer(user) {
-        this._view.setViewer(user);
         return this;
     }
 
@@ -200,14 +206,8 @@ class DoomMonsterSystem {
     // re-resolves its current sector through it).
     setLevelData(levelData) {
         this._levelData = levelData;
-        this._view.setLevelData(levelData);
         this._pressure.setMovers(levelData.moverCodes);
         this._wireModules();
-        // First lighting of the bodies already added: their views are baked
-        // fullbright, so none may reach a draw unlit.
-        for (const m of this._monsters) {
-            this._view.applyLight(m);
-        }
         return this;
     }
 
@@ -408,6 +408,9 @@ class DoomMonsterSystem {
             }
         }
 
+        for (const drop of this._droppedRecords) {
+            this._bodyViews.delete(drop.view);
+        }
         this._droppedRecords = [];
         for (const drop of data.drops) {
             const ride = ((drop.rideOnCode !== null) ? loader.instances().getByCode(drop.rideOnCode) : null);
@@ -587,8 +590,7 @@ class DoomMonsterSystem {
             }
         }
         this._resolveRide(m);
-        this._view.refresh(m);
-        this._view.applyLight(m);
+        this._publishView(m);
 
         return m;
     }
@@ -615,23 +617,20 @@ class DoomMonsterSystem {
         }
         for (const m of this._monsters) {
             m.env.beginFrame();
-            this._view.applyBlend(m, this._clockMs);
-            this._view.applyLight(m);
+            this._glide.applyBlend(m, this._clockMs);
         }
-        this._refreshDropLight();
+        this._purgeGoneDrops();
     }
 
-    // A drop never moves sector, so the light is only recomputed while its
-    // sector runs a light effect. Picked-up drops leave a despawned instance
-    // behind: purge their records here.
-    _refreshDropLight() {
+    // Picked-up drops leave a despawned instance behind: purge their records
+    // and views here.
+    _purgeGoneDrops() {
         for (let i = this._droppedRecords.length - 1; i >= 0; i--) {
             const drop = this._droppedRecords[i];
             if (this._isDropGone(drop)) {
                 this._droppedRecords.splice(i, 1);
-                continue;
+                this._bodyViews.delete(drop.view);
             }
-            this._view.pushLight(drop, false);
         }
     }
 
@@ -692,8 +691,8 @@ class DoomMonsterSystem {
                 }
             }
 
-            this._view.armBlend(m, beforeX, beforeY, beforeZ, this._clockMs);
-            this._view.refresh(m);
+            this._glide.armBlend(m, beforeX, beforeY, beforeZ, this._clockMs);
+            this._publishView(m);
             kept.push(m);
         }
         this._monsters = kept;
@@ -1016,6 +1015,7 @@ class DoomMonsterSystem {
             code:      spec.code,
             spawnKind: (spec.spawnKind ?? null),
             inst:      inst,
+            view:      new DoomBodyView(inst, spec.frames),
             def:       spec.def,
             facing:    spec.facing,
             flags:     spec.flags,
@@ -1028,7 +1028,6 @@ class DoomMonsterSystem {
         if (this._collision !== null) {
             this._collision.addInstance(inst);
         }
-        this._view.applyLight(fresh);
 
         return fresh;
     }
@@ -1147,7 +1146,7 @@ class DoomMonsterSystem {
             }
             next = state.getNext();
         }
-        this._view.refresh(m);
+        this._publishView(m);
     }
 
     // Screams tied to the entry of a state group (P_KillMobj, the pain roll,
@@ -1272,6 +1271,7 @@ class DoomMonsterSystem {
 
     _despawn(m) {
         loader.instances().scheduleRemoval(m.inst);
+        this._bodyViews.delete(m.view);
         if (this._collision !== null) {
             this._collision.removeBoxFor(m.inst);
         }
@@ -1670,15 +1670,13 @@ class DoomMonsterSystem {
             inst.setRideOn(rideInstance);
         }
         const drop = {
-            key:         key,
-            inst:        inst,
-            si:          si,
-            crushed:     false,
-            renderLight: null,
-            litSi:       null,
-            litBright:   false
+            key:     key,
+            inst:    inst,
+            view:    new DoomBodyView(inst, null).setSector(si),
+            si:      si,
+            crushed: false
         };
-        this._view.pushLight(drop, false);
+        this._bodyViews.add(drop.view);
         this._droppedRecords.push(drop);
     }
 
@@ -1950,7 +1948,7 @@ class DoomMonsterSystem {
             m.si = si;
         }
         this._resolveRide(m);
-        this._view.refresh(m);
+        this._publishView(m);
         // A def with its own teleport voice REPLACES the generic ring
         // (P_DSparilTeleport plays sorzap alone).
         const ownVoice = ((this._sounds[m.def.getCode()]?.teleport ?? null) !== null);
