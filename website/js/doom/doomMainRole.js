@@ -4,7 +4,8 @@
  * and asks its role to move the world one turn each frame; this role owns the
  * simulation and everything only the simulating device does: the players
  * entering the level, the save restore and capture, the spawn override, the
- * level clock. A device that only displays the game gets a role of its own.
+ * level clock — and, while it shares its screen, the turn cycle of the subs
+ * (DoomNetHost). A device that only follows the game holds a DoomSubRole.
  */
 class DoomMainRole {
     /**
@@ -14,7 +15,83 @@ class DoomMainRole {
      */
     constructor(roster, rules, events) {
         this._roster     = roster;
+        this._rules      = rules;
+        this._events     = events;
         this._simulation = new DoomSimulation(roster, rules, events);
+        this._builtLevel = null;
+        this._level      = null;   // {levelCode, skill, multiplayerThings} of the level shown
+        this._host       = null;
+        this._recorder   = null;   // DoomNetEvents listening to the turn events while hosting
+    }
+
+    spawnsMultiplayerThings() {
+        return this._rules.spawnsMultiplayerThings();
+    }
+
+    pauseFreezes() {
+        return true;
+    }
+
+    showsDeathMenu() {
+        return true;
+    }
+
+    savesGame() {
+        return true;
+    }
+
+    sharesScreen() {
+        return true;
+    }
+
+    quitCode() {
+        return 'game.pause.quit';
+    }
+
+    // --- Hosting ---
+
+    /**
+     * The subs of the session follow this device's game from now on.
+     *
+     * @param {DoomNetMainSession} session
+     * @param {function(string[])} onWaiting - the nicknames waited for, none once the wait is over
+     */
+    startHosting(session, onWaiting) {
+        this._host = new DoomNetHost(session).setOnWaiting(onWaiting);
+        this._hostLevel();
+        session.setCycle(this._host);
+    }
+
+    stopHosting() {
+        this._detachRecorder();
+        this._host = null;
+    }
+
+    // Nothing to leave: the main's session is stopped by the game.
+    leave() {
+    }
+
+    // The level is shown: the subs build it too.
+    levelStarted(level) {
+        this._level = level;
+        if (this._host !== null) {
+            this._hostLevel();
+        }
+    }
+
+    _hostLevel() {
+        this._detachRecorder();
+        this._recorder = new DoomNetEvents(this._builtLevel.getEntityIds(), this._roster);
+        this._events.addListener(this._recorder.getListener());
+        const capture = new DoomNetStateCapture(this._roster, this._builtLevel, this._simulation.getLevelStats(), this._recorder);
+        this._host.levelStarted(this._level, capture, this._recorder);
+    }
+
+    _detachRecorder() {
+        if (this._recorder !== null) {
+            this._events.removeListener(this._recorder.getListener());
+            this._recorder = null;
+        }
     }
 
     // --- Level lifecycle ---
@@ -27,6 +104,7 @@ class DoomMainRole {
 
     // Inside the loader batch the caller opened, after the common build.
     adoptLevel(builtLevel, onLevelExit) {
+        this._builtLevel = builtLevel;
         this._simulation.adoptLevel(builtLevel, onLevelExit);
     }
 
@@ -69,18 +147,28 @@ class DoomMainRole {
 
     // --- Turn ---
 
+    // No turn before every awaited sub's command for it is in.
+    isTurnReady(now) {
+        return ((this._host === null) || this._host.isTurnReady(now));
+    }
+
     /**
-     * One turn: the local player's command, then the two halves of the tic.
+     * One turn: the local player's command, then the two halves of the tic,
+     * then the state to the subs.
      *
      * @param {number}      dt
      * @param {UserCommand} command        - the local player's
      * @param {function}    onPlayersMoved - between the halves, where vanilla's renderer marks the lines
+     * @param {number}      now
      */
-    advance(dt, command, onPlayersMoved) {
+    advance(dt, command, onPlayersMoved, now) {
         const commands = new Map([[this._roster.getLocal().getId(), command]]);
         this._simulation.tickPlayers(dt, commands);
         onPlayersMoved();
         this._simulation.tickWorld(dt, commands);
+        if (this._host !== null) {
+            this._host.sendState(dt, now);
+        }
     }
 
     // The given Y is the floor-search ceiling, like the initial snap in

@@ -188,6 +188,36 @@ class MenuNavigator {
         });
     }
 
+    /**
+     * A sub joins the main's game on the level the main sent (levelLoad).
+     *
+     * @param {object}            meta
+     * @param {DoomNetSubSession} session
+     * @param {object}            level   - {levelCode, skill, multiplayerThings}
+     */
+    async joinSharedGame(meta, session, level) {
+        const modal = new MenuModal(this._display)
+            .showLoading(appTranslator.get('menu.level.loading', {level: level.levelCode, wad: meta.name}));
+        try {
+            const wadFile = await this._registry.getWadFile(meta.id);
+            doomSound.loadForWad(wadFile, meta.id);
+            await new DoomGame(session).joinSharedGame(wadFile, meta, level);
+            modal.close();
+            this._closeMenus();
+        } catch (error) {
+            session.leave();
+            this._showBuildError(error, modal, meta);
+        }
+    }
+
+    // Back from a session that ended on the main's side or with the link.
+    startAtWadMenuAfterSession(meta, reason) {
+        return this._boot(() => {
+            this.openWadMenu(meta);
+            MenuNetMessages.showEnd(this._display, reason);
+        });
+    }
+
     // --- Internal ---
 
     _switchTo(screen) {

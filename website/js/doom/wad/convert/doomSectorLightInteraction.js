@@ -64,19 +64,31 @@ class DoomSectorLightInteraction extends AbstractInteraction {
             return;
         }
         this._clockS -= tics * WadConstants.SECONDS_PER_TIC;
-
-        // The factor registry lives per Object3d: push each group to every
-        // object carrying light-grouped faces. The object set is stable for the
-        // whole level (pickup removal despawns instances, never objects).
-        if (this._targets === null) {
-            this._targets = loader.objects().getAll()
-                .filter((obj) => obj.faceList.some((fc) => fc.lightGroup !== null));
-        }
-
         for (const st of this._states) {
             for (let t = 0; t < tics; t++) {
                 this._stepTic(st);
             }
+        }
+        this._pushFactors();
+    }
+
+    // The levels a replica received, in build order (getLevels).
+    setLevels(levels) {
+        this._states.forEach((st, i) => {
+            st.light = levels[i];
+        });
+        this._pushFactors();
+    }
+
+    // The factor registry lives per Object3d: push each group to every object
+    // carrying light-grouped faces. The object set is stable for the whole
+    // level (pickup removal despawns instances, never objects).
+    _pushFactors() {
+        if (this._targets === null) {
+            this._targets = loader.objects().getAll()
+                .filter((obj) => obj.faceList.some((fc) => fc.lightGroup !== null));
+        }
+        for (const st of this._states) {
             const factor = DoomSectorLightInteraction._factorOf(st);
             for (const obj of this._targets) {
                 obj.setGroupLightFactor(st.si, factor);

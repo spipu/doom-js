@@ -69,6 +69,11 @@ class User {
         // Falling below this y kills the player (null = disabled)
         this._voidKillY      = null;
 
+        // Camera imposed from outside (setViewOverride)
+        this._viewOverridden = false;
+        this._overrideEyeY   = 0;
+        this._overrideLean   = 0;
+
         // Smooth step: the eye keeps its height when the body snaps onto a step,
         // then catches up in a gravity-driven rise
         this._stepViewOffset = 0;   // metres, <= 0
@@ -267,7 +272,30 @@ class User {
     }
 
     getStrafeLean() {
-        return this._strafeLean + this._deathRoll;
+        return ((this._viewOverridden) ? this._overrideLean : (this._strafeLean + this._deathRoll));
+    }
+
+    /**
+     * A body driven from outside (a replica of another device): the camera
+     * height and roll are imposed, nothing is simulated.
+     *
+     * @param {number} cameraY - world height of the eye
+     * @param {number} lean    - camera roll
+     */
+    setViewOverride(cameraY, lean) {
+        this._viewOverridden = true;
+        this._overrideEyeY   = cameraY;
+        this._overrideLean   = lean;
+        return this;
+    }
+
+    // The vitals of a body driven from outside, taken as they are.
+    setVitals(energy, dead, energyFlash, pickupFlash) {
+        this._energy      = energy;
+        this._dead        = dead;
+        this._energyFlash = energyFlash;
+        this._pickupFlash = pickupFlash;
+        return this;
     }
 
     getRealVelocityXZ() {
@@ -853,6 +881,9 @@ class User {
     }
 
     getCameraY() {
+        if (this._viewOverridden) {
+            return this._overrideEyeY;
+        }
         const baseH = ((this._dead) ? this._height : this.getCurrentHeight());
         const eyeH  = baseH * this._eyeRatio * this._deathEyeRatio;
         const bob   = ((!this._dead && this._onGround && this._walking && (this._realVelocityXZ > 0.01))

@@ -298,6 +298,7 @@
     letter-spacing: 0.1em;
     text-align: center;
     margin-bottom: 1.4em;
+    white-space: pre-line;
 }
 
 .doom-menu-modal-loading {
@@ -697,4 +698,23 @@
     color: rgba(255, 255, 255, 0.85);
     font-size: 0.8em;
     text-align: center;
+}
+
+/* --- Message over the running game (a turn waiting for a player) --- */
+
+.doom-game-notice {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    padding: 0.4em 0.9em;
+    background: rgba(20, 8, 6, 0.85);
+    border: 0.06em solid rgba(192, 57, 43, 0.5);
+    border-radius: 0.3em;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: sans-serif;
+    font-size: 1.2em;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    z-index: 5;
 }

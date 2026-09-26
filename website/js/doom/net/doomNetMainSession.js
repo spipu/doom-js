@@ -18,9 +18,11 @@ class DoomNetMainSession {
         this._started   = false;
         this._pairing   = null;
         this._onChange  = null;
+        this._cycle     = null;
         this._host      = new NetHostSession(appBootstrap.getVersion(), links.linkFactory())
             .setOnPeerOpen((peer) => this._admit(peer))
             .setOnPeerControl((peer, message) => this._receive(peer, message))
+            .setOnPeerBinary((peer, buffer) => this._cycleCall('binary', peer, buffer))
             .setOnPeerLost((peer) => this._drop(peer));
         this._pingTimer = setInterval(() => this._samplePings(), NetConfig.PING_PERIOD_MS);
     }
@@ -31,6 +33,31 @@ class DoomNetMainSession {
 
     isStarted() {
         return this._started;
+    }
+
+    /**
+     * The turn cycle of the running game, told about every sub in the lobby:
+     * {admitted(peer), gone(peer), control(peer, message), binary(peer, buffer)}.
+     * Null detaches it.
+     */
+    setCycle(cycle) {
+        this._cycle = cycle;
+        if (cycle !== null) {
+            for (const peer of this._host.getPeers()) {
+                if (this._lobby.getPlayer(peer.getId()) !== null) {
+                    cycle.admitted(peer);
+                }
+            }
+        }
+
+        return this;
+    }
+
+    // The nickname a sub joined with, the waiting message's.
+    nicknameOf(peer) {
+        const player = this._lobby.getPlayer(peer.getId());
+
+        return ((player !== null) ? player.nickname : '');
     }
 
     // Called whenever the lobby changes, pings included.
@@ -75,11 +102,13 @@ class DoomNetMainSession {
         peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: DoomNetProtocol.END_REMOVED});
         this._lobby.remove(playerId);
         this._changed();
+        this._cycleCall('gone', peer);
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
     stop() {
         clearInterval(this._pingTimer);
+        this._cycle = null;
         this.cancelPairing();
         this._host.broadcastControl({type: DoomNetProtocol.SESSION_END, reason: DoomNetProtocol.END_STOPPED});
         this._onChange = null;
@@ -92,18 +121,28 @@ class DoomNetMainSession {
             peer.sendControl({type: DoomNetProtocol.START});
         }
         this._changed();
+        this._cycleCall('admitted', peer);
     }
 
     _receive(peer, message) {
         if (message.type === DoomNetProtocol.SESSION_END) {
             this._host.remove(peer);
             this._drop(peer);
+            return;
         }
+        this._cycleCall('control', peer, message);
     }
 
     _drop(peer) {
         this._lobby.remove(peer.getId());
         this._changed();
+        this._cycleCall('gone', peer);
+    }
+
+    _cycleCall(event, peer, payload = null) {
+        if (this._cycle !== null) {
+            this._cycle[event](peer, payload);
+        }
     }
 
     _samplePings() {

@@ -1,9 +1,15 @@
 class DoomGame {
-    constructor() {
+    /**
+     * @param {DoomNetSubSession|null} subSession - the session of a sub following
+     *                                               the main's game, null for a game of its own
+     */
+    constructor(subSession = null) {
         this._rules           = new DoomSinglePlayerRules();
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
         this._turnEvents      = new DoomTurnEvents();
-        this._role            = new DoomMainRole(this._roster, this._rules, this._turnEvents);
+        this._role            = ((subSession !== null)
+            ? new DoomSubRole(this._roster, subSession)
+            : new DoomMainRole(this._roster, this._rules, this._turnEvents));
         this._presentation    = new DoomPresentation();
         this._profile         = null;
         this._itemCatalog     = null;
@@ -37,6 +43,25 @@ class DoomGame {
         this._animateCallback = this._animate.bind(this);
 
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
+        if (subSession !== null) {
+            this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
+                (nicknames) => this._showWaiting(nicknames), (reason) => this._onSessionEnd(reason));
+            this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER);
+        }
+    }
+
+    /**
+     * A sub joins the main's game on the level the main sent. The decoded
+     * images come first: the effect and decal templates are only built with them.
+     *
+     * @param {WadFile}     wadFile
+     * @param {object|null} wadMeta - null keeps the game's, on a level change
+     * @param {object}      level   - {levelCode, skill, multiplayerThings}
+     */
+    async joinSharedGame(wadFile, wadMeta, level) {
+        await doomImageAssets.whenReady();
+        this._role.prepareLevel(level);
+        await this.startFromWad(wadFile, level.levelCode, wadMeta, null, level.skill);
     }
 
     /**
@@ -97,7 +122,7 @@ class DoomGame {
         this._builtLevel = await new DoomLevelLoader(this._profile, this._thingCatalog, this._monsterCatalog, this._itemCatalog)
             .load(wadFile, levelCode, {
                 skill:             this._skill,
-                multiplayerThings: this._rules.spawnsMultiplayerThings(),
+                multiplayerThings: this._role.spawnsMultiplayerThings(),
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });
@@ -149,6 +174,7 @@ class DoomGame {
         this._pauseWasDown = true;
 
         this._presentation.startLevelSound(this._mapInfo.musicLumpsFor(this._levelCode));
+        this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, multiplayerThings: this._role.spawnsMultiplayerThings()});
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
@@ -185,8 +211,8 @@ class DoomGame {
         }
         this._pauseWasDown = pauseDown;
 
-        // Frozen frame (pause, tally): the modal owns the inputs.
-        if (this._paused || this._transitioning) {
+        // Frozen frame (pause, tally, a turn waiting for a player): the modal owns the inputs.
+        if ((this._paused && this._role.pauseFreezes()) || this._transitioning || !this._role.isTurnReady(timestamp)) {
             this._applyGameSettings();
             this._presentation.presentFrozen();
             requestAnimationFrame(this._animateCallback);
@@ -204,7 +230,7 @@ class DoomGame {
         this._role.advance(dt, command, () => {
             this._trackDeath(dt);
             this._presentation.revealAutomap();
-        });
+        }, timestamp);
         this._applyGameSettings();
         this._presentation.present(dt, this._isGameMenuOpen());
 
@@ -250,13 +276,14 @@ class DoomGame {
             })
             .setSaveContext(this._saveContext())
             .setShareContext(this._shareContext())
+            .setQuitCode(this._role.quitCode())
             .show(() => this._pauseTitle());
     }
 
     // Null without WAD metadata (the subs check the WAD identity) or when the
     // mode offers no sharing.
     _shareContext() {
-        if ((this._wadMeta === null) || !this._rules.allowsScreenSharing()) {
+        if ((this._wadMeta === null) || !this._rules.allowsScreenSharing() || !this._role.sharesScreen()) {
             return null;
         }
         return {
@@ -283,15 +310,41 @@ class DoomGame {
         if (this._netSession === null) {
             return;
         }
+        this._role.stopHosting();
         this._netSession.stop();
         this._netSession = null;
+        this._showWaiting([]);
         this._presentation.setForcedRenderer(null);
+    }
+
+    // "Waiting for …" over the frozen game, none clears it.
+    _showWaiting(nicknames) {
+        this._presentation.setNotice(((nicknames.length > 0) ? appTranslator.get('multiplayer.waiting', {nickname: nicknames.join(', ')}) : null));
+    }
+
+    // The main started another level: the sub builds it and joins again.
+    async _followLevel(level) {
+        this._transitioning = true;
+        this._closeGameMenu();
+        const display = new MenuDisplay('screen').init(true);
+        const modal   = new MenuModal(display).showLoading(appTranslator.get('game.level.loading', {level: level.levelCode}));
+        await this.joinSharedGame(this._wadFile, null, level);
+        modal.close();
+        display.destroy();
+        this._transitioning = false;
+    }
+
+    // The main stopped, removed this sub, or the link is lost.
+    _onSessionEnd(reason) {
+        this._closeGameMenu();
+        this._teardownLevel();
+        new MenuNavigator().startAtWadMenuAfterSession(this._wadMeta, reason);
     }
 
     // Null without WAD metadata (direct test shortcut: saves are keyed by WAD)
     // or when the mode forbids saving.
     _saveContext() {
-        if ((this._wadMeta === null) || !this._rules.allowsSaveAndLoad()) {
+        if ((this._wadMeta === null) || !this._rules.allowsSaveAndLoad() || !this._role.savesGame()) {
             return null;
         }
         return {
@@ -326,6 +379,7 @@ class DoomGame {
         if (backToGame) {
             if ((this._netSession !== null) && !this._netSession.isStarted()) {
                 this._netSession.start();
+                this._role.startHosting(this._netSession, (nicknames) => this._showWaiting(nicknames));
             }
             // Before the grab: a renderer changed from the pause options
             // replaces the canvas, and a lock asked on the old one fails.
@@ -399,7 +453,7 @@ class DoomGame {
             return;
         }
         this._deathClockMs += dt;
-        if ((this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) && this._rules.opensDeathMenu()) {
+        if ((this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) && this._rules.opensDeathMenu() && this._role.showsDeathMenu()) {
             this._openDeathMenu();
         }
     }
@@ -451,6 +505,7 @@ class DoomGame {
     // The game ends: so does the screen sharing.
     _leaveLevelTo(openMenu) {
         this._stopSharing();
+        this._role.leave();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
             openMenu(navigator, this._wadMeta);

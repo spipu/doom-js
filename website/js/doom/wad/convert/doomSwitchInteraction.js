@@ -91,6 +91,16 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._applyRemoteSwap(true);
     }
 
+    // The switch as a replica shows it: on or off with its texture, nothing fired.
+    showReplicatedState(on) {
+        if (on === this._state) {
+            return;
+        }
+        this._state = on;
+        this._swapFaces(loader.instances().getByCode(this.code), ((on) ? this._swapIndex : this._restIndex));
+        this._applyRemoteSwap(on);
+    }
+
     // P_UseSpecialLine swaps the texture (and spends a S1) only when the action
     // took: pressed on a moving target, the switch stays untouched.
     _triggerOn(instance) {

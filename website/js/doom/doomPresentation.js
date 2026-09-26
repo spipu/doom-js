@@ -29,6 +29,8 @@ class DoomPresentation {
         this._turnEventPlayer    = null;
         this._rendererCode       = null;   // renderer the current engine was built on
         this._forcedRenderer     = null;   // renderer imposed over the setting, null = the setting's
+        this._noticeText         = null;   // message over the game (a wait), null = none
+        this._noticeEl           = null;
         this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn     = null;
         this._fov                = WadConstants.PLAYER_FOV;
@@ -149,6 +151,9 @@ class DoomPresentation {
 
         this._screen.bindHud(this._hud);
 
+        this._noticeEl = null;
+        this.setNotice(this._noticeText);
+
         this._engine.initFromWorld(this._world);
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
     }
@@ -182,6 +187,26 @@ class DoomPresentation {
      */
     setForcedRenderer(code) {
         this._forcedRenderer = code;
+
+        return this;
+    }
+
+    /**
+     * A message shown over the game until replaced (a turn waiting for a
+     * player), kept across a renderer swap.
+     *
+     * @param {string|null} text - null hides it
+     */
+    setNotice(text) {
+        this._noticeText = text;
+        if (this._screen === null) {
+            return this;
+        }
+        if (this._noticeEl === null) {
+            this._noticeEl = MenuDom.addElement(this._screen.getDisplay(), 'div', 'doom-game-notice');
+        }
+        this._noticeEl.textContent   = (text ?? '');
+        this._noticeEl.style.display = ((text !== null) ? '' : 'none');
 
         return this;
     }

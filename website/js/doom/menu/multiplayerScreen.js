@@ -52,11 +52,20 @@ class MultiplayerScreen extends AbstractMenuScreen {
         new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session));
     }
 
+    // The lobby until the main's game sends its level, which this device then builds.
     _showLobby(session) {
         const lobby = new MenuLobbyModal(this._display);
         session.setOnEnd((reason) => {
             lobby.close();
             MenuNetMessages.showEnd(this._display, reason);
+        });
+        session.setCycle({
+            levelLoad: (level) => {
+                lobby.setOnClose(null).close();
+                this._navigator.joinSharedGame(this._wadMeta, session, level);
+            },
+            state:     () => {},
+            waiting:   () => {}
         });
         lobby.openSub(session, {leave: () => session.leave()});
     }

@@ -9,6 +9,7 @@
 class DoomNetEntityIds {
     constructor() {
         this._byCode      = null;
+        this._codes       = [];       // id → code of the built instances
         this._pickupCodes = [];
         this._nextId      = 0;
     }
@@ -19,6 +20,7 @@ class DoomNetEntityIds {
      */
     index() {
         this._byCode      = new Map();
+        this._codes       = [];
         this._pickupCodes = [];
         loader.instances().getAll().forEach((instance) => {
             const code = instance.getCode();
@@ -28,9 +30,10 @@ class DoomNetEntityIds {
             if (code.startsWith(DoomGameSnapshot.PICKUP_PREFIX)) {
                 this._pickupCodes.push(code);
             }
-            this._byCode.set(code, this._byCode.size);
+            this._byCode.set(code, this._codes.length);
+            this._codes.push(code);
         });
-        this._nextId = this._byCode.size;
+        this._nextId = this._codes.length;
 
         return this;
     }
@@ -62,6 +65,18 @@ class DoomNetEntityIds {
         }
 
         return view.getNetId();
+    }
+
+    /**
+     * @returns {Instance|null} the built instance of an id, null for one born in play or gone
+     */
+    instanceOf(id) {
+        const code = (this._codes[id] ?? null);
+        if ((code === null) || (loader.instances().idByCode(code) === null)) {
+            return null;
+        }
+
+        return loader.instances().getByCode(code);
     }
 
     isBornInPlay(view) {

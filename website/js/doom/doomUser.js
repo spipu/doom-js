@@ -275,6 +275,44 @@ class DoomUser extends User {
         }
     }
 
+    /**
+     * The state of a player simulated on another device, taken as it is: the
+     * body nobody simulates here shows where the camera, the HUD and the
+     * screen tint of that player are.
+     *
+     * @param {object} state - a player of a DoomNetStateCapture StateSnapshot
+     */
+    applyReplicatedState(state) {
+        this.x     = state.x;
+        this.y     = state.y;
+        this.z     = state.z;
+        this.yaw   = state.yaw;
+        this.pitch = state.pitch;
+        this.setViewOverride(state.cameraY, state.lean)
+            .setVitals(state.energy, state.dead, state.energyFlash, state.pickupFlash)
+            .setMaxArmor(state.maxArmor)
+            .setArmor(state.armor)
+            .setArmorAbsorb(state.armorAbsorb);
+        this._weapons = {};
+        for (const code of state.weapons) {
+            this.giveWeapon(code);
+        }
+        this._activeWeapon = state.activeWeapon;
+        this._ammo         = {};
+        this._ammoMax      = {};
+        for (const ammo of state.ammo) {
+            this._ammo[ammo.type]    = ammo.count;
+            this._ammoMax[ammo.type] = ammo.max;
+        }
+        this._items   = new Set(state.items);
+        this._effects = {};
+        for (const effect of state.effects) {
+            this._effects[effect.code] = effect.ms;
+        }
+
+        return this;
+    }
+
     // --- Inter-level persistence ---
     // The player is rebuilt for each level: DoomPlayer exports the state before
     // loader.reset(), DoomSimulation imports it into the next one.

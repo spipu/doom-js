@@ -168,6 +168,29 @@ class Instance extends AbstractLoadedEntity {
 
     _computeWorldCenter() {
         this._delta = this._interpolate();
+        this._refreshWorldCenter();
+    }
+
+    /**
+     * A pose imposed from outside the animation (a replica of another device):
+     * the position and the animation deltas as given, the animation itself
+     * left still. The motion change is noted as an advance would.
+     *
+     * @param {number[]} position
+     * @param {number[]} deltaTranslate
+     * @param {number[]} deltaRotate
+     */
+    setPose(position, deltaTranslate, deltaRotate) {
+        const dy = ((position[1] + deltaTranslate[1]) - (this._position[1] + this._delta.translate[1]));
+        this._position = [position[0], position[1], position[2]];
+        this._delta    = {translate: [deltaTranslate[0], deltaTranslate[1], deltaTranslate[2]], rotate: [deltaRotate[0], deltaRotate[1], deltaRotate[2]]};
+        this._refreshWorldCenter();
+        this._noteMotionDir(((Math.abs(dy) <= Instance.MOTION_EPSILON) ? 0 : Math.sign(dy)));
+
+        return this;
+    }
+
+    _refreshWorldCenter() {
         const lc = this._object.getCenter();
         const m  = Matrix.composeInstanceTransform(this.getTransform());
         const p  = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);

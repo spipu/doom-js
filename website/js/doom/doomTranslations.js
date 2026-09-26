@@ -1112,11 +1112,17 @@ class DoomTranslations {
                 it: 'Interrompi la condivisione',
                 es: 'Dejar de compartir'
             },
+            'multiplayer.pause.leave': {
+                fr: 'Quitter le partage d\'écran',
+                en: 'Leave the screen sharing',
+                it: 'Esci dalla condivisione dello schermo',
+                es: 'Salir de la pantalla compartida'
+            },
             'multiplayer.pause.stopConfirm': {
-                fr: 'Arrêter le partage ? Tous les joueurs seront déconnectés.',
-                en: 'Stop sharing? Every player will be disconnected.',
-                it: 'Interrompere la condivisione? Tutti i giocatori saranno disconnessi.',
-                es: '¿Dejar de compartir? Todos los jugadores serán desconectados.'
+                fr: 'Arrêter le partage ?\nTous les joueurs seront déconnectés.',
+                en: 'Stop sharing?\nEvery player will be disconnected.',
+                it: 'Interrompere la condivisione?\nTutti i giocatori saranno disconnessi.',
+                es: '¿Dejar de compartir?\nTodos los jugadores serán desconectados.'
             },
             'multiplayer.unavailable.webgl': {
                 fr: 'Le multijoueur nécessite WebGL, indisponible sur cet appareil',
@@ -1171,6 +1177,12 @@ class DoomTranslations {
                 en: 'The identity of this WAD could not be computed on this device',
                 it: 'Impossibile calcolare l\'identità di questo WAD su questo dispositivo',
                 es: 'No se pudo calcular la identidad de este WAD en este dispositivo'
+            },
+            'multiplayer.waiting': {
+                fr: 'En attente de {nickname}…',
+                en: 'Waiting for {nickname}…',
+                it: 'In attesa di {nickname}…',
+                es: 'Esperando a {nickname}…'
             },
             'multiplayer.end.stopped': {
                 fr: 'L\'hôte a arrêté la partie',

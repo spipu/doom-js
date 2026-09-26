@@ -13,10 +13,20 @@ class DoomImageAssets {
     constructor() {
         this._imageData = {};
         this._ready     = false;
+        this._waiters   = [];
     }
 
     isReady() {
         return this._ready;
+    }
+
+    // Settles once every image is decoded, at once when they already are.
+    whenReady() {
+        if (this._ready) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => this._waiters.push(resolve));
     }
 
     get(key) {
@@ -37,10 +47,7 @@ class DoomImageAssets {
             }
         }
         if (files.length === 0) {
-            this._ready = true;
-            if (callback !== null) {
-                callback();
-            }
+            this._markReady(callback);
             return;
         }
 
@@ -56,14 +63,22 @@ class DoomImageAssets {
                 this._imageData[file.key] = ctx.getImageData(0, 0, img.width, img.height);
                 pending -= 1;
                 if (pending === 0) {
-                    this._ready = true;
-                    if (callback !== null) {
-                        callback();
-                    }
+                    this._markReady(callback);
                 }
             };
             img.src = appBootstrap.buildUrl(file.url);
         }
+    }
+
+    _markReady(callback) {
+        this._ready = true;
+        if (callback !== null) {
+            callback();
+        }
+        for (const resolve of this._waiters) {
+            resolve();
+        }
+        this._waiters = [];
     }
 }
 

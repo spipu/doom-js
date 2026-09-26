@@ -1,5 +1,5 @@
 {
-    "version": "v1.937",
+    "version": "v1.947",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -216,6 +216,8 @@
             "/js/doom/net/doomNetStateCapture.js",
             "/js/doom/net/doomNetStateCodec.js",
             "/js/doom/net/doomNetCommandCodec.js",
+            "/js/doom/net/doomNetHost.js",
+            "/js/doom/net/doomReplicaApplier.js",
             "/js/doom/menu/menuDisplay.js",
             "/js/doom/menu/menuDom.js",
             "/js/doom/menu/menuModal.js",
@@ -251,6 +253,7 @@
             "/js/doom/doomLevelLoader.js",
             "/js/doom/doomSimulation.js",
             "/js/doom/doomMainRole.js",
+            "/js/doom/doomSubRole.js",
             "/js/doom/doomPresentation.js",
             "/js/doom/doomGame.js",
             "/js/doom/main.js"

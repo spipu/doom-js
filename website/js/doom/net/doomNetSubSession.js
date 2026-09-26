@@ -19,8 +19,10 @@ class DoomNetSubSession {
         this._pairing   = null;
         this._onChange  = null;
         this._onEnd     = null;
+        this._cycle     = null;
         this._guest     = new NetGuestSession(appBootstrap.getVersion(), links.linkFactory())
             .setOnControl((message) => this._receive(message))
+            .setOnBinary((buffer) => this._cycleCall('state', buffer))
             .setOnLost(() => this._end(DoomNetProtocol.END_LOST));
     }
 
@@ -36,6 +38,41 @@ class DoomNetSubSession {
         this._onChange = callback;
 
         return this;
+    }
+
+    /**
+     * Who follows the main's game: {levelLoad(message), state(buffer),
+     * waiting(nicknames)} — the lobby screen until the game runs, then the
+     * game's role.
+     */
+    setCycle(cycle) {
+        this._cycle = cycle;
+
+        return this;
+    }
+
+    sendControl(message) {
+        this._guest.sendControl(message);
+    }
+
+    sendBinary(buffer) {
+        this._guest.sendBinary(buffer);
+    }
+
+    // Suspended while this device builds a level: it may not answer a ping for seconds.
+    setLivenessSuspended(suspended) {
+        this._guest.getHost().setLivenessSuspended(suspended);
+    }
+
+    // An invalid message from the main ends the session like a lost link.
+    reportInvalid(error) {
+        this._guest.getHost().reportInvalid(error);
+    }
+
+    getHostNickname() {
+        const main = this._lobby.getPlayer(DoomNetLobby.MAIN_ID);
+
+        return ((main !== null) ? main.nickname : '');
     }
 
     /**
@@ -92,6 +129,14 @@ class DoomNetSubSession {
         if (message.type === DoomNetProtocol.SESSION_END) {
             this._guest.close();
             this._end(message.reason);
+            return;
+        }
+        if (message.type === DoomNetProtocol.LEVEL_LOAD) {
+            this._cycleCall('levelLoad', message);
+            return;
+        }
+        if (message.type === DoomNetProtocol.WAITING) {
+            this._cycleCall('waiting', message.nicknames);
         }
     }
 
@@ -102,6 +147,12 @@ class DoomNetSubSession {
         this._ended = true;
         if (this._onEnd !== null) {
             this._onEnd(reason);
+        }
+    }
+
+    _cycleCall(event, payload) {
+        if (this._cycle !== null) {
+            this._cycle[event](payload);
         }
     }
 

@@ -2,7 +2,7 @@
  * Pause modal, shown by the game over its own frozen frame. Title
  * "{wad} — Episode {n}", navigable entries (resume / load / save / share
  * screen — or the lobby and stop sharing during a session — / options /
- * leave the level) and no bottom button: Backspace and the gamepad back
+ * leave, labelled by the game) and no bottom button: Backspace and the gamepad back
  * button resume, the Escape toggle stays driven by the game loop — and closes
  * everything, the stacked options or save-slots modal included.
  */
@@ -15,10 +15,18 @@ class MenuPauseModal extends AbstractGameMenuModal {
 
         this._onResume     = null;
         this._shareContext = null;
+        this._quitCode     = 'game.pause.quit';
     }
 
     setOnResume(callback) {
         this._onResume = callback;
+
+        return this;
+    }
+
+    // The translation code of the leave entry: a sub leaves the screen sharing, not the level.
+    setQuitCode(code) {
+        this._quitCode = code;
 
         return this;
     }
@@ -51,7 +59,7 @@ class MenuPauseModal extends AbstractGameMenuModal {
         }
         this._addShareEntries(listEl);
         this._nav.addItemIn(listEl, appTranslator.get('menu.game.options'), () => this._openOptions());
-        this._nav.addItemIn(listEl, appTranslator.get('game.pause.quit'), () => this._quit());
+        this._nav.addItemIn(listEl, appTranslator.get(this._quitCode), () => this._quit());
     }
 
     _onBack() {
