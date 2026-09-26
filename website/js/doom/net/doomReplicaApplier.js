@@ -2,9 +2,10 @@
  * Writes a decoded turn state into the level a sub built, on its own, without
  * any previous state: it creates the bodies and shots it lacks, removes those
  * absent, updates the others — the viewed player's body, camera, HUD and
- * weapon, the movers, the pickups, the switches, the light levels and the
- * level statistics — then plays the turn's events, their ids turned back into
- * references. The sub simulates nothing: its world is only ever posed.
+ * weapon, the movers, the pickups, the switches, the rewritten floors, the
+ * light levels and the level statistics — then plays the turn's events, their
+ * ids turned back into references. The sub simulates nothing: its world is
+ * only ever posed.
  */
 class DoomReplicaApplier {
     /**
@@ -48,6 +49,9 @@ class DoomReplicaApplier {
         this._applyPickups(snapshot.pickups);
         this._applyMovers(snapshot.movers);
         this._applySwitches(snapshot.switches);
+        if (this._level.getSectorSurfaces() !== null) {
+            this._level.getSectorSurfaces().showReplicatedFlats(snapshot.surfaces);
+        }
         if (this._level.getLightEffects() !== null) {
             this._level.getLightEffects().setLevels(snapshot.lights);
         }

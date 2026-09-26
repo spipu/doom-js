@@ -705,6 +705,32 @@ class WadWorldBuilder {
         return {floorCode: null, liftY: 0};
     }
 
+    /**
+     * Repaints a "+change" floor's faces with a flat's sequence — the faces
+     * showing one of the flats it can take (ownIds) — without touching the
+     * surface record: the change when it fires, a replica from the main's state.
+     */
+    static _floorPainter(inst, ownIds, sequences) {
+        return (flat) => {
+            const newSeq = sequences.get(flat) ?? {ids: [], duration: 0};
+            if ((ownIds.size === 0) || (newSeq.ids.length === 0)) {
+                return;
+            }
+            const newAnim = ((newSeq.ids.length > 1)
+                ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
+                : null);
+            inst.getObject().faceList.forEach((fc) => {
+                const animated = ((fc.animTextures !== null) && (fc.animTextures !== undefined)
+                    && fc.animTextures.ids.some((id) => ownIds.has(id)));
+                if (animated || ownIds.has(fc.textureId)) {
+                    fc.textureId    = newSeq.ids[0];
+                    fc.animTextures = newAnim;
+                }
+            });
+            inst.getObject().invalidateFaceGroups();
+        };
+    }
+
     // "+change" floors read the source sector's live surface when they fire
     // (vanilla line->frontsector, so chains propagate). Every reachable flat is
     // resolved here: no texture can register outside the batch.
@@ -728,24 +754,12 @@ class WadWorldBuilder {
                 sequences.get(flat).ids.forEach((id) => ownIds.add(id));
             }
             const inst  = loader.instances().getByCode(code);
+            const paint = WadWorldBuilder._floorPainter(inst, ownIds, sequences);
+            surfaces.setPainter(si, paint);
             const applyChange = () => {
                 const flat    = surfaces.flatOf(change.sourceSi);
                 const special = WadMapAnalyzer.changeSpecial(change.special, surfaces.specialOf(change.sourceSi));
-                const newSeq  = sequences.get(flat) ?? {ids: [], duration: 0};
-                if ((ownIds.size > 0) && (newSeq.ids.length > 0)) {
-                    const newAnim = ((newSeq.ids.length > 1)
-                        ? {ids: newSeq.ids, duration: newSeq.duration, durationMs: Math.round(newSeq.duration * 1000)}
-                        : null);
-                    inst.getObject().faceList.forEach((fc) => {
-                        const animated = ((fc.animTextures !== null) && (fc.animTextures !== undefined)
-                            && fc.animTextures.ids.some((id) => ownIds.has(id)));
-                        if (animated || ownIds.has(fc.textureId)) {
-                            fc.textureId    = newSeq.ids[0];
-                            fc.animTextures = newAnim;
-                        }
-                    });
-                    inst.getObject().invalidateFaceGroups();
-                }
+                paint(flat);
                 surfaces.set(si, flat, ((special !== null) ? special : surfaces.specialOf(si)));
                 if ((special !== null) && (damageInteraction !== null)) {
                     damageInteraction.setSectorSpecial(si, special);
