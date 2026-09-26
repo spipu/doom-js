@@ -145,6 +145,7 @@ website/
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
     │   ├── doomLevelLoader.js   The level build every device runs: the converted world and the visual banks it shows
     │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, saves
+    │   ├── doomMainRole.js      The role of the device that simulates: the simulation and what only that device does
     │   ├── doomLevelStats.js    The level's statistics: secrets, kills and items found against their totals, level time
     │   ├── doomTurnEvents.js    Every one-shot event of a turn (sounds, effects, decals, teleports), emitted by the simulation
     │   ├── doomTurnEventPlayer.js  How a device plays those events

@@ -3,7 +3,7 @@ class DoomGame {
         this._rules           = new DoomSinglePlayerRules();
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
         this._turnEvents      = new DoomTurnEvents();
-        this._simulation      = new DoomSimulation(this._roster, this._rules, this._turnEvents);
+        this._role            = new DoomMainRole(this._roster, this._rules, this._turnEvents);
         this._presentation    = new DoomPresentation();
         this._profile         = null;
         this._itemCatalog     = null;
@@ -50,27 +50,6 @@ class DoomGame {
         return ((this._wadMeta !== null) ? this._wadMeta.id : null);
     }
 
-    // Debug helper. The given Y is the floor-search ceiling, like the initial
-    // snap in World.finalizeInit: the player drops onto the floor below it.
-    _applySpawnOverride() {
-        if (this._spawnOverride === null) {
-            return;
-        }
-        const user     = this._localPlayer().getUser();
-        const position = this._spawnOverride.position;
-        user.x     = position[0];
-        user.y     = position[1];
-        user.z     = position[2];
-        user.yaw   = this._spawnOverride.yaw;
-        user.pitch = this._spawnOverride.pitch;
-        user.syncPositionTracking();
-
-        const floorY = this._simulation.getWorld().getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
-        if (floorY !== -Infinity) {
-            user.y = floorY;
-        }
-    }
-
     // --- Save / load ---
 
     // Restored by the next startFromWad, on top of the rebuilt level.
@@ -80,10 +59,10 @@ class DoomGame {
     }
 
     captureSnapshot() {
-        return this._simulation.captureSnapshot(this._localPlayer(), this._wadId(), this._levelCode);
+        return this._role.captureSnapshot(this._wadId(), this._levelCode);
     }
 
-    // spawnOverride = {position, yaw, pitch}, debug only (see _applySpawnOverride).
+    // spawnOverride = {position, yaw, pitch}, debug only (see DoomMainRole.enterLevel).
     async startFromWad(wadFile, levelCode, wadMeta = null, spawnOverride = null, skill = null) {
         this._wadFile        = wadFile;
         this._profile        = new GameProfileList().getForWad(wadFile);
@@ -94,7 +73,7 @@ class DoomGame {
         if (skill !== null) {
             this._skill = skill;
         }
-        this._simulation.useProfile(this._profile, this._itemCatalog).setSkill(this._skill);
+        this._role.useProfile(this._profile, this._itemCatalog, this._skill);
         this._presentation.bindProfile(this._profile, this._itemCatalog);
         this._mapInfo         = new WadMapInfo(wadFile, this._profile);
         this._dehackedStrings = new WadDehackedStrings(wadFile);
@@ -122,7 +101,7 @@ class DoomGame {
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });
-        this._simulation.adoptLevel(this._builtLevel, onLevelExit);
+        this._role.adoptLevel(this._builtLevel, onLevelExit);
 
         loader.setCallback(() => {
             this._init();
@@ -138,15 +117,8 @@ class DoomGame {
 
         const player   = this._localPlayer();
         const snapshot = this._restoreSnapshot;
-        this._simulation.startLevel(world);
-        // The main first: it takes the body the world definition built. A save
-        // holds the main's player alone.
-        for (const entering of this._roster.getAll()) {
-            const restored = ((snapshot !== null) && (entering.getId() === DoomPlayer.MAIN_ID));
-            this._simulation.addPlayer(entering, ((restored) ? snapshot.player.state : null));
-        }
+        this._role.enterLevel(world, snapshot, this._spawnOverride);
         this._deathClockMs = 0;
-        this._applySpawnOverride();
 
         if (this._wakeLock === null) {
             this._wakeLock = new ScreenWakeLock();
@@ -160,7 +132,7 @@ class DoomGame {
             this._presentation.bindInputs(this._inputs);
         }
         this._applyGameSettings();
-        this._presentation.showLevel(world, this._builtLevel, this._simulation.getLevelStats(), player, {
+        this._presentation.showLevel(world, this._builtLevel, this._role.getLevelStats(), player, {
             wadId:     this._wadId(),
             levelCode: this._levelCode,
             skill:     this._skill,
@@ -168,7 +140,7 @@ class DoomGame {
         });
 
         if (snapshot !== null) {
-            this._simulation.applySnapshot(player, snapshot);
+            this._role.restoreSnapshot(snapshot);
             this._restoreSnapshot = null;
             this._presentation.getEngine().resetDeltaClock();
         }
@@ -197,7 +169,7 @@ class DoomGame {
         if (!this._running) {
             return;
         }
-        this._simulation.getLevelStats().tickLevelClock(timestamp, !this._paused && !this._transitioning);
+        this._role.tickLevelClock(timestamp, !this._paused && !this._transitioning);
 
         // Read on paused frames too, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
@@ -223,28 +195,20 @@ class DoomGame {
 
         const engine = this._presentation.getEngine();
         engine.calculateDeltaTime(timestamp);
-        const dt       = engine.getDeltaTime();
-        const commands = this._collectCommands(dt);
+        const dt      = engine.getDeltaTime();
+        const command = this._commandSampler.collect(dt).sample();
 
         this._presentation.readViewToggles();
-        this._simulation.tickPlayers(dt, commands);
-        this._trackDeath(dt);
-        // Between the two halves, where vanilla's renderer marks the lines:
-        // the world half can still push the player.
-        this._presentation.revealAutomap();
-        this._simulation.tickWorld(dt, commands);
+        // The automap is marked between the two halves: the world half can
+        // still push the player.
+        this._role.advance(dt, command, () => {
+            this._trackDeath(dt);
+            this._presentation.revealAutomap();
+        });
         this._applyGameSettings();
         this._presentation.present(dt, this._isGameMenuOpen());
 
         requestAnimationFrame(this._animateCallback);
-    }
-
-    /**
-     * @param {number} dt
-     * @returns {Map<int, UserCommand>} this turn's command of each player, by player id
-     */
-    _collectCommands(dt) {
-        return new Map([[this._localPlayer().getId(), this._commandSampler.collect(dt).sample()]]);
     }
 
     // Read every frame so a change from the pause options applies live; the
@@ -589,7 +553,7 @@ class DoomGame {
                 : found + '/' + total + ' (' + DoomGame.formatPercent(found, total) + ')')
         });
 
-        const stats = this._simulation.getLevelStats();
+        const stats = this._role.getLevelStats();
 
         return [
             {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(stats.getLevelTimeMs())},

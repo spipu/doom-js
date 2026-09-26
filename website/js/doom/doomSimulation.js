@@ -3,7 +3,7 @@
  * the WAD, its monsters, projectiles, hitscans and effects, the random
  * sequence, the level statistics it counts, the save snapshots, and the tic
  * that advances everything from one command per player. It runs on the main
- * alone, never reads a device and never draws: DoomGame feeds it, and
+ * alone, never reads a device and never draws: DoomMainRole feeds it, and
  * DoomPresentation shows what it builds and counts without knowing it.
  */
 class DoomSimulation {
