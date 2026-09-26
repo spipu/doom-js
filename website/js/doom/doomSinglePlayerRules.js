@@ -15,6 +15,10 @@ class DoomSinglePlayerRules extends DoomGameRules {
         return true;
     }
 
+    allowsScreenSharing() {
+        return true;
+    }
+
     allowsFriendlyFire() {
         return false;
     }

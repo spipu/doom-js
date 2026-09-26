@@ -20,6 +20,11 @@ class DoomGameRules {
         throw new Error('DoomGameRules: allowsCheatFullKit not implemented');
     }
 
+    // Whether the main's pause menu offers to share its screen.
+    allowsScreenSharing() {
+        throw new Error('DoomGameRules: allowsScreenSharing not implemented');
+    }
+
     // Whether a player's attack hurts the other players (its own blast always hurts itself).
     allowsFriendlyFire() {
         throw new Error('DoomGameRules: allowsFriendlyFire not implemented');

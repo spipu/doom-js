@@ -1,6 +1,6 @@
 /**
  * Menu of one selected WAD, between the WAD list and the episode screen: new
- * game, load, options, about, bug report. The bottom button reads "Quit {wad}"
+ * game, load, multiplayer, options, about, bug report. The bottom button reads "Quit {wad}"
  * and returns to the WAD list, like the back inputs.
  */
 class WadMenuScreen extends AbstractMenuScreen {
@@ -31,6 +31,9 @@ class WadMenuScreen extends AbstractMenuScreen {
         });
         this._addListItem(listEl, appTranslator.get('menu.game.load'), () => {
             this._openLoadGame();
+        });
+        this._addListItem(listEl, appTranslator.get('help.multiplayer'), () => {
+            this._navigator.openMultiplayer(this._wadMeta);
         });
         this._addListItem(listEl, appTranslator.get('menu.game.options'), () => {
             this._openOptions();

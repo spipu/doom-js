@@ -55,6 +55,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 - **Level chaining & story texts**: exits follow the vanilla progression (secret exits included, `UMAPINFO` overrides honoured) through a tally modal — time, enemies, items, secrets — followed by the game's own chapter texts (from the WAD when it tells its own story, else the translated catalog).
 - **Sound effects**: the WAD's own sounds decoded on the fly — weapons, pickups, movers, teleports, player, monsters, Heretic ambients — spatialised per game and frozen with the pause. The menus use light synthesized clicks, WAD-independent, with distinct accents for navigation, validation and cancel. Two live volume settings.
 - **Music**: the WAD's own songs (MUS or MIDI lumps) synthesized in real time on an OPL3 FM emulator fed with the WAD's own GENMIDI instrument bank — the original Sound Blaster sound, no external asset. Title music on the WAD menu, each level's own song in game (with the vanilla reuse rules), the intermission theme over the tally and story screens.
+- **Screen sharing (in progress)**: the pause menu shares the running game — a lobby of up to four players, others joining from their WAD's Multiplayer screen by scanning QR codes both ways, with no server or account; the host can add, remove and stop, and a joined device follows the session until the host stops it or the link drops. The shared view itself comes in a later step.
 - **Options & persistent settings**: Display, Game, Multiplayer, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset. The Multiplayer page, offered from a WAD's menu only, holds the cooperative and deathmatch game settings and the player's nickname, typed on an on-screen keyboard laid out like the interface language's (AZERTY in French, QWERTY otherwise) and walked with the mouse, touch, arrows or gamepad, or on the physical keyboard — never through the OS keyboard.
 - **Renderer choice**: the Display page picks one of the four rendering modes (see **The 3D engine** below), WebGL by default. A change applies to the running level without reloading it: the screen, the engine and the HUD are rebuilt on the next live frame, the level and the player carry on untouched.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity. The devices never reach the simulation directly: a command sampler turns them into one plain-data command per turn — movement axes, look angles in degrees, named buttons (the game's fire, weapon switch and full-kit cheat included), the weapon wheel steps — which the world and the game consume.
@@ -148,7 +149,7 @@ website/
     │   ├── doomTurnEvents.js    Every one-shot event of a turn (sounds, effects, decals, teleports), emitted by the simulation
     │   ├── doomTurnEventPlayer.js  How a device plays those events
     │   ├── doomItemRules.js     What pickups, the starting loadout and the cheat give to a player
-    │   ├── doomGameRules.js     The mode-dependent questions (multiplayer things, death menu, saves, cheat)
+    │   ├── doomGameRules.js     The mode-dependent questions (multiplayer things, death menu, saves, cheat, screen sharing)
     │   ├── doomSinglePlayerRules.js  Their single-player answers
     │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects, sound
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
@@ -162,7 +163,8 @@ website/
     │   ├── monster/             Monster system: defs, 35 Hz driver, locomotion, senses, attacks, damage, boss deaths, the Icon of Sin, and the drawable body views with their renderer
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer
-    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, options, text entry, pause, death, save slots)
+    │   ├── menu/                DOM menu screens and modals (WAD list, episodes, multiplayer, options, text entry, pause, death, save slots, pairing, lobby)
+    │   ├── net/                 Multiplayer sessions of the game: pairing payload, lobby, main and sub sessions, device availability
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals, and the drawable weapon and projectile views with their renderers
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
     └── engine/               Spipu3D — the game-agnostic 3D engine

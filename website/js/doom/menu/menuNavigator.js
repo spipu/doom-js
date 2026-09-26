@@ -8,11 +8,12 @@ class MenuNavigator {
         this._storage  = new WadStorage();
         this._registry = new WadRegistry(this._storage);
 
-        this._wadListScreen    = new WadListScreen(this, this._display, this._registry);
-        this._wadMenuScreen    = new WadMenuScreen(this, this._display);
-        this._episodeScreen    = new EpisodeScreen(this, this._display, this._registry);
-        this._difficultyScreen = new DifficultyScreen(this, this._display);
-        this._fallbackScreen   = new FallbackScreen(this, this._display);
+        this._wadListScreen     = new WadListScreen(this, this._display, this._registry);
+        this._wadMenuScreen     = new WadMenuScreen(this, this._display);
+        this._episodeScreen     = new EpisodeScreen(this, this._display, this._registry);
+        this._difficultyScreen  = new DifficultyScreen(this, this._display);
+        this._multiplayerScreen = new MultiplayerScreen(this, this._display);
+        this._fallbackScreen    = new FallbackScreen(this, this._display);
 
         this._currentScreen      = null;
         this._selectedDifficulty = MenuNavigator.DEFAULT_SKILL;
@@ -124,6 +125,25 @@ class MenuNavigator {
     // starts then (the request waits for the load).
     _playWadMusic(meta) {
         doomSound.loadFromRegistry(this._registry, meta).playMenuMusic();
+    }
+
+    openMultiplayer(meta) {
+        this._switchTo(this._multiplayerScreen.setWad(meta));
+    }
+
+    /**
+     * The WAD's SHA-256 a session checks both sides against, computed now if
+     * the background pass of the WAD menu has not done it yet.
+     *
+     * @returns {Promise<string|null>} null when this browser cannot hash (no crypto.subtle)
+     */
+    async ensureWadIdentity(meta) {
+        try {
+            return await this._registry.ensureIdentity(meta);
+        } catch (error) {
+            console.warn('MenuNavigator - unable to compute the identity of [' + meta.id + ']: ' + error.message);
+            return null;
+        }
     }
 
     /**

@@ -985,6 +985,211 @@ class DoomTranslations {
                 it: 'Oggetti nel deathmatch',
                 es: 'Objetos en deathmatch'
             },
+            // --- Multiplayer ---
+            'multiplayer.join': {
+                fr: 'Rejoindre une partie',
+                en: 'Join a game',
+                it: 'Unisciti a una partita',
+                es: 'Unirse a una partida'
+            },
+            'multiplayer.options': {
+                fr: 'Options multijoueur',
+                en: 'Multiplayer options',
+                it: 'Opzioni multigiocatore',
+                es: 'Opciones multijugador'
+            },
+            'multiplayer.nickname.prompt': {
+                fr: 'Veuillez saisir votre surnom',
+                en: 'Please enter your nickname',
+                it: 'Inserisci il tuo soprannome',
+                es: 'Introduce tu apodo'
+            },
+            'multiplayer.pairing.showToMain': {
+                fr: 'Montrez ce code à l\'hôte',
+                en: 'Show this code to the host',
+                it: 'Mostra questo codice all\'host',
+                es: 'Muestra este código al anfitrión'
+            },
+            'multiplayer.pairing.readMain': {
+                fr: 'Scannez le code de l\'hôte',
+                en: 'Scan the host\'s code',
+                it: 'Inquadra il codice dell\'host',
+                es: 'Escanea el código del anfitrión'
+            },
+            'multiplayer.pairing.showToSub': {
+                fr: 'Scannez ce code depuis l\'autre appareil',
+                en: 'Scan this code from the other device',
+                it: 'Inquadra questo codice dall\'altro dispositivo',
+                es: 'Escanea este código desde el otro dispositivo'
+            },
+            'multiplayer.pairing.readSub': {
+                fr: 'Scannez la réponse de l\'autre appareil',
+                en: 'Scan the other device\'s answer',
+                it: 'Inquadra la risposta dell\'altro dispositivo',
+                es: 'Escanea la respuesta del otro dispositivo'
+            },
+            'multiplayer.lobby.title': {
+                fr: 'Salon — {count}/{capacity} joueurs',
+                en: 'Lobby — {count}/{capacity} players',
+                it: 'Sala — {count}/{capacity} giocatori',
+                es: 'Sala — {count}/{capacity} jugadores'
+            },
+            'multiplayer.lobby.player': {
+                fr: '{slot}. {nickname}',
+                en: '{slot}. {nickname}',
+                it: '{slot}. {nickname}',
+                es: '{slot}. {nickname}'
+            },
+            'multiplayer.lobby.main': {
+                fr: 'Hôte',
+                en: 'Host',
+                it: 'Host',
+                es: 'Anfitrión'
+            },
+            'multiplayer.lobby.ping': {
+                fr: '{ping} ms',
+                en: '{ping} ms',
+                it: '{ping} ms',
+                es: '{ping} ms'
+            },
+            'multiplayer.lobby.pingPending': {
+                fr: 'Connexion…',
+                en: 'Connecting…',
+                it: 'Connessione…',
+                es: 'Conectando…'
+            },
+            'multiplayer.lobby.add': {
+                fr: 'Ajouter un joueur',
+                en: 'Add a player',
+                it: 'Aggiungi un giocatore',
+                es: 'Añadir un jugador'
+            },
+            'multiplayer.lobby.start': {
+                fr: 'Démarrer',
+                en: 'Start',
+                it: 'Avvia',
+                es: 'Empezar'
+            },
+            'multiplayer.lobby.leave': {
+                fr: 'Quitter',
+                en: 'Leave',
+                it: 'Esci',
+                es: 'Salir'
+            },
+            'multiplayer.lobby.remove': {
+                fr: 'Retirer',
+                en: 'Remove',
+                it: 'Rimuovi',
+                es: 'Quitar'
+            },
+            'multiplayer.lobby.removeConfirm': {
+                fr: 'Retirer {nickname} de la partie ?',
+                en: 'Remove {nickname} from the game?',
+                it: 'Rimuovere {nickname} dalla partita?',
+                es: '¿Quitar a {nickname} de la partida?'
+            },
+            'multiplayer.lobby.inProgress': {
+                fr: 'Partie en cours chez l\'hôte',
+                en: 'Game in progress on the host',
+                it: 'Partita in corso sull\'host',
+                es: 'Partida en curso en el anfitrión'
+            },
+            'multiplayer.pause.share': {
+                fr: 'Partager l\'écran',
+                en: 'Share screen',
+                it: 'Condividi lo schermo',
+                es: 'Compartir pantalla'
+            },
+            'multiplayer.pause.lobby': {
+                fr: 'Salon',
+                en: 'Lobby',
+                it: 'Sala',
+                es: 'Sala'
+            },
+            'multiplayer.pause.stop': {
+                fr: 'Arrêter le partage',
+                en: 'Stop sharing',
+                it: 'Interrompi la condivisione',
+                es: 'Dejar de compartir'
+            },
+            'multiplayer.pause.stopConfirm': {
+                fr: 'Arrêter le partage ? Tous les joueurs seront déconnectés.',
+                en: 'Stop sharing? Every player will be disconnected.',
+                it: 'Interrompere la condivisione? Tutti i giocatori saranno disconnessi.',
+                es: '¿Dejar de compartir? Todos los jugadores serán desconectados.'
+            },
+            'multiplayer.unavailable.webgl': {
+                fr: 'Le multijoueur nécessite WebGL, indisponible sur cet appareil',
+                en: 'Multiplayer needs WebGL, unavailable on this device',
+                it: 'Il multigiocatore richiede WebGL, non disponibile su questo dispositivo',
+                es: 'El multijugador necesita WebGL, no disponible en este dispositivo'
+            },
+            'multiplayer.unavailable.camera': {
+                fr: 'Le multijoueur nécessite une caméra pour appairer les appareils',
+                en: 'Multiplayer needs a camera to pair the devices',
+                it: 'Il multigiocatore richiede una fotocamera per associare i dispositivi',
+                es: 'El multijugador necesita una cámara para emparejar los dispositivos'
+            },
+            'multiplayer.error.version': {
+                fr: 'L\'autre appareil utilise une autre version du jeu : rechargez les deux',
+                en: 'The other device runs another version of the game: reload both',
+                it: 'L\'altro dispositivo usa un\'altra versione del gioco: ricaricali entrambi',
+                es: 'El otro dispositivo usa otra versión del juego: recarga ambos'
+            },
+            'multiplayer.error.wad': {
+                fr: 'L\'hôte joue avec un autre fichier WAD',
+                en: 'The host plays another WAD file',
+                it: 'L\'host usa un altro file WAD',
+                es: 'El anfitrión juega con otro archivo WAD'
+            },
+            'multiplayer.error.invite': {
+                fr: 'Ce code a déjà servi : ajoutez à nouveau le joueur',
+                en: 'This code was already used: add the player again',
+                it: 'Questo codice è già stato usato: aggiungi di nuovo il giocatore',
+                es: 'Este código ya se usó: añade de nuevo al jugador'
+            },
+            'multiplayer.error.linkLost': {
+                fr: 'La connexion n\'a pas pu être établie',
+                en: 'The connection could not be established',
+                it: 'Impossibile stabilire la connessione',
+                es: 'No se pudo establecer la conexión'
+            },
+            'multiplayer.error.pairing': {
+                fr: 'L\'appairage a échoué',
+                en: 'The pairing failed',
+                it: 'Associazione non riuscita',
+                es: 'El emparejamiento ha fallado'
+            },
+            'multiplayer.error.camera': {
+                fr: 'La caméra n\'a pas pu être ouverte',
+                en: 'The camera could not be opened',
+                it: 'Impossibile aprire la fotocamera',
+                es: 'No se pudo abrir la cámara'
+            },
+            'multiplayer.error.identity': {
+                fr: 'L\'identité de ce WAD n\'a pas pu être calculée sur cet appareil',
+                en: 'The identity of this WAD could not be computed on this device',
+                it: 'Impossibile calcolare l\'identità di questo WAD su questo dispositivo',
+                es: 'No se pudo calcular la identidad de este WAD en este dispositivo'
+            },
+            'multiplayer.end.stopped': {
+                fr: 'L\'hôte a arrêté la partie',
+                en: 'The host stopped the game',
+                it: 'L\'host ha interrotto la partita',
+                es: 'El anfitrión ha detenido la partida'
+            },
+            'multiplayer.end.removed': {
+                fr: 'L\'hôte vous a retiré de la partie',
+                en: 'The host removed you from the game',
+                it: 'L\'host ti ha rimosso dalla partita',
+                es: 'El anfitrión te ha quitado de la partida'
+            },
+            'multiplayer.end.lost': {
+                fr: 'La connexion avec l\'hôte a été perdue',
+                en: 'The connection to the host was lost',
+                it: 'La connessione con l\'host è stata persa',
+                es: 'Se perdió la conexión con el anfitrión'
+            },
             'settings.sound.volumeMusic': {
                 fr: 'Volume de la musique',
                 en: 'Music volume',

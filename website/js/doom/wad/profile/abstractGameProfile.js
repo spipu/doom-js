@@ -200,6 +200,11 @@ class AbstractGameProfile {
         return [];
     }
 
+    // One player per cooperative start (vanilla MAXPLAYERS matches the start count).
+    maxPlayers() {
+        return this.playerStartTypes().length;
+    }
+
     /**
      * Per-game numbers of the shootable-body damage pipeline (gib threshold,
      * default kickback, blood behaviour) — UZDoom gameinfo + P_SpawnBlood.

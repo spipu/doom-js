@@ -28,6 +28,7 @@ class DoomPresentation {
         this._decals             = null;   // null while the decal graphics are not decoded
         this._turnEventPlayer    = null;
         this._rendererCode       = null;   // renderer the current engine was built on
+        this._forcedRenderer     = null;   // renderer imposed over the setting, null = the setting's
         this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn     = null;
         this._fov                = WadConstants.PLAYER_FOV;
@@ -123,7 +124,7 @@ class DoomPresentation {
 
         // The wanted code, not the effective one: the list falls back to 'full'
         // when a renderer is unavailable, which would trigger a rebuild every frame.
-        this._rendererCode = doomSettings.getDisplayRenderer();
+        this._rendererCode = this._wantedRenderer();
         this._engine = new Engine3d(this._screen, new Object3dRendererList().getRenderer(this._rendererCode));
         // Not reset: a telezoom in progress must survive a renderer swap.
         this._applyFov();
@@ -160,7 +161,7 @@ class DoomPresentation {
      * @param {boolean} menuOpen - a menu still covers the screen
      */
     applyRendererSetting(menuOpen) {
-        const wanted = doomSettings.getDisplayRenderer();
+        const wanted = this._wantedRenderer();
         if ((wanted === this._rendererCode) || menuOpen) {
             return;
         }
@@ -170,6 +171,23 @@ class DoomPresentation {
         this._screen.destroyContainer();
         this._buildDisplay();
         this._hud.setViewState(viewState);
+    }
+
+    /**
+     * A renderer imposed whatever the setting says (a multiplayer session
+     * renders with WebGL); the stored setting is left untouched and applies
+     * again once released. Applied on the next live frame.
+     *
+     * @param {string|null} code - null releases it
+     */
+    setForcedRenderer(code) {
+        this._forcedRenderer = code;
+
+        return this;
+    }
+
+    _wantedRenderer() {
+        return (this._forcedRenderer ?? doomSettings.getDisplayRenderer());
     }
 
     readViewToggles() {

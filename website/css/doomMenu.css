@@ -632,3 +632,69 @@
 .doom-menu-key-validate {
     --key-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>');
 }
+
+/* --- Pairing (multiplayer): the code shown and the camera reading the other side's --- */
+
+.doom-menu-modal-pairing {
+    width: 88%;
+}
+
+.doom-menu-pairing-stage {
+    display: flex;
+    gap: 1em;
+    margin-bottom: 1em;
+}
+
+.doom-menu-pairing-tile {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* Square, capped by the height of the 1080 screen (36em) less the modal chrome. */
+.doom-menu-pairing-frame {
+    display: block;
+    width: 100%;
+    max-width: 18em;
+    margin: 0 auto;
+    aspect-ratio: 1;
+    visibility: hidden;
+    cursor: zoom-in;
+}
+
+.doom-menu-pairing-frame.zoomed {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    aspect-ratio: auto;
+    z-index: 10;
+    cursor: zoom-out;
+}
+
+.doom-menu-pairing-qr {
+    background: #FFF;
+}
+
+.doom-menu-pairing-qr svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.doom-menu-pairing-camera {
+    object-fit: cover;
+    background: #000;
+}
+
+.doom-menu-pairing-camera.zoomed {
+    object-fit: contain;
+}
+
+.doom-menu-pairing-caption {
+    min-height: 1.4em;
+    margin-top: 0.4em;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8em;
+    text-align: center;
+}

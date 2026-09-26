@@ -31,6 +31,9 @@ class DoomGame {
         this._deathDisplay    = null;
         this._deathModal      = null;
         this._deathClockMs    = 0;
+        this._netLinks        = new DoomNetLinks();
+        this._netAvailability = new DoomNetAvailability(this._netLinks);
+        this._netSession      = null;   // DoomNetMainSession while the screen is shared
         this._animateCallback = this._animate.bind(this);
 
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
@@ -281,7 +284,43 @@ class DoomGame {
                 this._quitToMenu();
             })
             .setSaveContext(this._saveContext())
+            .setShareContext(this._shareContext())
             .show(() => this._pauseTitle());
+    }
+
+    // Null without WAD metadata (the subs check the WAD identity) or when the
+    // mode offers no sharing.
+    _shareContext() {
+        if ((this._wadMeta === null) || !this._rules.allowsScreenSharing()) {
+            return null;
+        }
+        return {
+            getSession:        () => this._netSession,
+            openSession:       (nickname) => this._openNetSession(nickname),
+            stop:              () => this._stopSharing(),
+            unavailableReason: () => this._netAvailability.unavailableReason()
+        };
+    }
+
+    // The identity is computed by the WAD menu in the background: a WAD whose
+    // hash this browser could not compute cannot be shared.
+    _openNetSession(nickname) {
+        if (typeof this._wadMeta.sha256 !== 'string') {
+            return null;
+        }
+        this._netSession = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers());
+        this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER);
+
+        return this._netSession;
+    }
+
+    _stopSharing() {
+        if (this._netSession === null) {
+            return;
+        }
+        this._netSession.stop();
+        this._netSession = null;
+        this._presentation.setForcedRenderer(null);
     }
 
     // Null without WAD metadata (direct test shortcut: saves are keyed by WAD)
@@ -320,6 +359,9 @@ class DoomGame {
         this._pauseWasDown = true;
         this._presentation.getEngine().resetDeltaClock();
         if (backToGame) {
+            if ((this._netSession !== null) && !this._netSession.isStarted()) {
+                this._netSession.start();
+            }
             // Before the grab: a renderer changed from the pause options
             // replaces the canvas, and a lock asked on the old one fails.
             this._presentation.applyRendererSetting(false);
@@ -360,6 +402,7 @@ class DoomGame {
         }
 
         this._closeGameMenu();
+        this._stopSharing();
         this._teardownLevel();
         new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
     }
@@ -440,7 +483,9 @@ class DoomGame {
         this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill));
     }
 
+    // The game ends: so does the screen sharing.
     _leaveLevelTo(openMenu) {
+        this._stopSharing();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
             openMenu(navigator, this._wadMeta);
@@ -604,3 +649,5 @@ class DoomGame {
 // the red tint settles first, and an exit fired right after the death wins.
 DoomGame.DEATH_MENU_DELAY_MS = 1000;
 DoomGame.LOCAL_PLAYER_ID = DoomPlayer.MAIN_ID;
+// Every multiplayer session renders with it, whatever the display setting.
+DoomGame.SESSION_RENDERER = 'webgl';

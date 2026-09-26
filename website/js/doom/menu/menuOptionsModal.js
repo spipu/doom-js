@@ -43,6 +43,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._layoutMap      = null;
         this._mode           = null;
         this._inGame         = false;
+        this._rendererLocked = false;
     }
 
     // Over a running game: the multiplayer settings only apply to the next
@@ -53,8 +54,21 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return this;
     }
 
+    // A multiplayer session renders with WebGL whatever the setting: the
+    // renderer is not offered meanwhile.
+    setRendererLocked(locked) {
+        this._rendererLocked = (locked === true);
+
+        return this;
+    }
+
     show() {
         return this._open('options', 'menu.game.options', () => this._buildRoot());
+    }
+
+    // The multiplayer section alone, from the shortcut of the Multiplayer screen.
+    showMultiplayer() {
+        return this._open('standalone', 'help.multiplayer', () => this._buildSettingsPage('multiplayer.'));
     }
 
     showAbout() {
@@ -183,6 +197,9 @@ class MenuOptionsModal extends AbstractMenuListModal {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
         for (const definition of doomSettings.getDefinitions(prefix)) {
+            if (this._rendererLocked && (definition.key === MenuOptionsModal.RENDERER_KEY)) {
+                continue;
+            }
             this._addSettingItem(list, definition, inputs);
         }
         this._nav.selectFirst();
@@ -371,3 +388,5 @@ class MenuOptionsModal extends AbstractMenuListModal {
         MenuDom.addLink(this._bodyEl, 'doom-menu-modal-link', url, url);
     }
 }
+
+MenuOptionsModal.RENDERER_KEY = 'display.renderer';
