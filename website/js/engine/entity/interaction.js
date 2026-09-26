@@ -15,8 +15,8 @@ class Interaction extends AbstractLoadedEntity {
         return this._interaction;
     }
 
-    triggered(instance) {
-        this._interaction.triggered(instance);
+    triggered(instance, activator = null) {
+        this._interaction.triggered(instance, activator);
     }
 
     update(dt) {

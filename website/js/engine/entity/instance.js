@@ -56,17 +56,18 @@ class Instance extends AbstractLoadedEntity {
         this._collisionShape    = 'none';
         this._collisionRadius   = null;
 
-        // Damage dealt to the player on contact
+        // Damage dealt to the users on contact
         this._damage            = null;
-        this._wasInDamageRange  = false;
+        this._wasInDamageRange  = new Map();   // user → inside the range on the previous check
 
-        // Pressure on the player (state driven by the Collision pressure passes)
+        // Pressure on the users (state driven by the Collision pressure passes)
         this._blockedBehavior   = 'stall';   // 'stall' | 'reverse' | 'crush'
         this._blockedSlowFactor = 1;         // animation speed factor while pressing
-        this._blockedPressing   = false;     // pressing the player (lasts while the overlap does)
+        this._blockedPressing   = false;     // pressing a user (lasts while the overlap does)
         this._crushDamage       = null;      // {delta, windowS} | null
         this._crushActive       = false;     // pressing AND moving this frame (arms the damage tick)
         this._crushClockS       = 0;
+        this._crushVictims      = [];        // users pinched by it this turn
 
         // Moving floor this instance stands on (its Y follows that floor)
         this._rideOn            = null;
@@ -309,20 +310,32 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
-    checkDamage(user, dt) {
-        this._crushDamageTick(user, dt);
-        if (!this._damage || user.isDead()) {
+    /**
+     * @param {User[]} users
+     * @param {number} dt - milliseconds
+     */
+    checkDamage(users, dt) {
+        this._crushDamageTick(dt);
+        if (!this._damage) {
             return;
         }
+        for (const user of users) {
+            if (!user.isDead()) {
+                this._contactDamage(user, dt);
+            }
+        }
+    }
+
+    _contactDamage(user, dt) {
         const dx = user.getCenterX() - this._worldCenter[0];
         const dy = user.getCenterY() - this._worldCenter[1];
         const dz = user.getCenterZ() - this._worldCenter[2];
         const inRange = (Math.sqrt(dx*dx + dy*dy + dz*dz) <= this._damage.radius);
         if (this._damage.type === 'direct') {
-            if (inRange && !this._wasInDamageRange) {
+            if (inRange && !(this._wasInDamageRange.get(user) ?? false)) {
                 user.takeDamage(this._damage.delta);
             }
-            this._wasInDamageRange = inRange;
+            this._wasInDamageRange.set(user, inRange);
         } else {
             if (inRange) {
                 user.takeDamage(this._damage.delta * dt / 1000);
@@ -330,16 +343,23 @@ class Instance extends AbstractLoadedEntity {
         }
     }
 
-    // One hit per windowS while pressing AND moving (PIT_ChangeSector); the
-    // clock is primed on the pressing edge so the first hit is immediate.
-    _crushDamageTick(user, dt) {
-        if ((this._crushDamage === null) || (this._crushActive !== true) || user.isDead()) {
+    // One hit per windowS while pressing AND moving (PIT_ChangeSector), dealt
+    // to every living victim; the clock is primed on the pressing edge so the
+    // first hit is immediate, and stands still while no victim lives.
+    _crushDamageTick(dt) {
+        if ((this._crushDamage === null) || (this._crushActive !== true)) {
+            return;
+        }
+        const victims = this._crushVictims.filter((user) => !user.isDead());
+        if (victims.length === 0) {
             return;
         }
         this._crushClockS += dt / 1000;
         if (this._crushClockS >= this._crushDamage.windowS) {
             this._crushClockS %= this._crushDamage.windowS;
-            user.takeDamage(this._crushDamage.delta);
+            for (const user of victims) {
+                user.takeDamage(this._crushDamage.delta);
+            }
         }
     }
 
@@ -361,14 +381,20 @@ class Instance extends AbstractLoadedEntity {
             this._crushClockS = ((this._crushDamage !== null) ? this._crushDamage.windowS : 0);
         }
         if (pressing === false) {
-            this._crushClockS = 0;
-            this._crushActive = false;
+            this._crushClockS  = 0;
+            this._crushActive  = false;
+            this._crushVictims = [];
         }
         this._blockedPressing = pressing;
     }
 
     setCrushActive(active) {
         this._crushActive = active;
+    }
+
+    // The users a pressing crusher pinches this turn: its damage tick hits them.
+    setCrushVictims(users) {
+        this._crushVictims = users;
     }
 
     // Y then follows the floor's animation delta. The base is taken at the
@@ -385,7 +411,9 @@ class Instance extends AbstractLoadedEntity {
         this._rideOn = null;
     }
 
-    _syncRide() {
+    // First step of an instance's turn, before its triggers: a body riding a
+    // moving floor is tested where that floor carried it.
+    followRide() {
         if (this._rideOn === null) {
             return;
         }
@@ -439,22 +467,35 @@ class Instance extends AbstractLoadedEntity {
         return this;
     }
 
-    // dt in ms; action = use-button state
-    update(dt, user, action) {
-        this._syncRide();
+    // Something left to do: keyframes or an interaction, and not a spent
+    // one-shot — a done cycle stays live when a variant can follow it (start() accepts one).
+    _isLive() {
         if ((this._animKeyframes.length === 0) && (this._interaction === null)) {
-            return;
+            return false;
         }
-        // A done cycle still listens when a variant can follow it (start() accepts one).
-        if (this._animDone && (this._animVariants === null)) {
-            return;
-        }
+        return !(this._animDone && (this._animVariants === null));
+    }
 
-        if (this._checkTrigger(user, action)) {
-            return;
+    /**
+     * Second step of an instance's turn, once per user: the first user whose
+     * presence or use starts the animation wins, the others find it playing.
+     *
+     * @param {User}    user
+     * @param {boolean} action - this user's use button
+     */
+    checkTriggers(user, action) {
+        if (this._isLive()) {
+            this._checkTrigger(user, action);
         }
+    }
 
-        if (!this._animPlaying) {
+    /**
+     * Last step of an instance's turn: its animation runs once, whoever triggered it.
+     *
+     * @param {number} dt - milliseconds
+     */
+    advance(dt) {
+        if (!this._isLive() || !this._animPlaying) {
             return;
         }
 
@@ -558,9 +599,9 @@ class Instance extends AbstractLoadedEntity {
         };
     }
 
-    // Fires the zone for a non-player actor, consuming it like the player path.
+    // Fires the zone for a non-user actor, consuming it like the user path.
     // Returns true when it fired (never on a spent or busy zone).
-    fireZoneTrigger() {
+    fireZoneTrigger(activator = null) {
         if ((this._trigger === 'none') || this._animDone || this._animPlaying) {
             return false;
         }
@@ -568,21 +609,19 @@ class Instance extends AbstractLoadedEntity {
         if (!this._animPlaying) {
             return false;
         }
-        this._notifyTriggered();
+        this._notifyTriggered(activator);
         return true;
     }
 
     // A zone with no keyframes stops right away, so its once-only flag spends it
-    _notifyTriggered() {
+    _notifyTriggered(activator) {
         if (this._interaction === null) {
-            return false;
+            return;
         }
-        loader.interactions().getByCode(this._interaction).triggered(this);
+        loader.interactions().getByCode(this._interaction).triggered(this, activator);
         if (this._animKeyframes.length === 0) {
             this.stop();
-            return true;
         }
-        return false;
     }
 
     // A cylinder measures its vertical window from the live base to the user's
@@ -606,7 +645,7 @@ class Instance extends AbstractLoadedEntity {
 
     _checkTrigger(user, action) {
         if ((this._trigger === 'none') || this._animPlaying) {
-            return false;
+            return;
         }
 
         const inRange = ((this._interactionRadius !== null) && this._inInteractionRange(user));
@@ -632,11 +671,9 @@ class Instance extends AbstractLoadedEntity {
                 break;
         }
 
-        if (this._animPlaying && this._notifyTriggered()) {
-            return true;
+        if (this._animPlaying) {
+            this._notifyTriggered(user);
         }
-
-        return false;
     }
 
     // variant: a keyframeVariants name, null = the default cycle. Returns whether

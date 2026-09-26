@@ -1,9 +1,10 @@
 class Collision {
     constructor() {
         this._static      = [];                            // [{floors, ceilings, walls, grids}] — grids index the three lists
-        this._dynamic     = [];                            // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, platformDeltaApplied}]
+        this._dynamic     = [];                            // [{instance, localTris, bRadius, centerLocal, floors, ceilings, walls, centerWorld, platformDeltas}]
         this._boxes       = [];                            // [{instance, cx, cz, half, yBottom, yTop}] — axis-aligned square blockers
-        this._prevUserPos = null;                          // player position at the end of the previous pressure pass
+        this._users       = [];                            // user bodies, square blockers of one another
+        this._prevUserPos = new Map();                     // user → position at the end of the previous pressure pass
         this._tfDelta     = {dx: 0, dy: 0, dz: 0, dRy: 0}; // scratch of _transformDelta
         // One candidate buffer per family: the pinch test gathers floors then
         // ceilings and must not overwrite the set it is still scanning.
@@ -50,7 +51,7 @@ class Collision {
             centerLocal:           obj.getCenter(),
             floors: [], ceilings: [], walls: [],
             centerWorld:           [0, 0, 0],
-            platformDeltaApplied: null,
+            platformDeltas:        new Map(),   // user → the move this platform gave that user this turn
         };
         this._dynamic.push(dc);
         this._updateDynamicCollider(dc);
@@ -69,6 +70,20 @@ class Collision {
             if (box.instance.getRideOn() !== null) {
                 this._refreshBox(box);
             }
+        }
+    }
+
+    // A user body blocks the other users like a square blocker (vanilla players
+    // are solid to one another); moving bodies of the game layer keep their own rules.
+    addUser(user) {
+        this._users.push(user);
+    }
+
+    removeUser(user) {
+        this._users = this._users.filter((other) => (other !== user));
+        this._prevUserPos.delete(user);
+        for (const dc of this._dynamic) {
+            dc.platformDeltas.delete(user);
         }
     }
 
@@ -196,7 +211,8 @@ class Collision {
     }
 
     // ignoreBoxOf: a moving box body resolves against everything BUT its own
-    // blocker (which sits at its own centre and would pin it in place).
+    // blocker (which sits at its own centre and would pin it in place); a
+    // registered user passed there is also blocked by the other users.
     resolveWall(cx, cz, vx, vz, r, feetY, h, stepHeight = 0, ignoreBoxOf = null) {
         const tris  = this._wallScratch;
         let count   = this._gatherWalls(cx, cz, vx, vz, r, tris, true);
@@ -217,8 +233,10 @@ class Collision {
     // Push the cylinder out of each overlapping box along the axis of least
     // penetration, which keeps the tangential motion (sliding along faces).
     _resolveBoxes(x, z, r, feetY, h, ignoreBoxOf = null) {
-        if (this._boxes.length === 0) {
-            return { x, z };
+        const users = this._blockingUsers(ignoreBoxOf);
+        const body  = { x, z };
+        if ((this._boxes.length === 0) && (users.length === 0)) {
+            return body;
         }
         const headY = feetY + h;
         for (let pass = 0; pass < 3; pass++) {
@@ -227,34 +245,51 @@ class Collision {
                 if (box.instance === ignoreBoxOf) {
                     continue;
                 }
-                if ((feetY >= box.yTop) || (headY <= box.yBottom)) {
-                    continue;
-                }
-                const reach    = box.half + r;
-                const overlapX = reach - Math.abs(x - box.cx);
-                const overlapZ = reach - Math.abs(z - box.cz);
-                if ((overlapX <= 0) || (overlapZ <= 0)) {
-                    continue;
-                }
-                moved = true;
-                if (overlapX < overlapZ) {
-                    x += ((x >= box.cx) ? overlapX : -overlapX);
-                    continue;
-                }
-                z += ((z >= box.cz) ? overlapZ : -overlapZ);
+                moved = (Collision._pushOutOfBox(body, r, feetY, headY, box.cx, box.cz, box.half, box.yBottom, box.yTop) || moved);
+            }
+            for (const user of users) {
+                moved = (Collision._pushOutOfBox(body, r, feetY, headY, user.x, user.z, user.getRadius(), user.y, user.y + user.getCurrentHeight()) || moved);
             }
             if (!moved) {
                 break;
             }
         }
-        return { x, z };
+        return body;
+    }
+
+    // The living users that block this one; none for any other body.
+    _blockingUsers(ignoreBoxOf) {
+        if ((this._users.length < 2) || !this._users.includes(ignoreBoxOf)) {
+            return Collision.NO_USERS;
+        }
+        return this._users.filter((user) => ((user !== ignoreBoxOf) && !user.isDead()));
+    }
+
+    // Moves the body out of the box along the axis of least penetration;
+    // returns whether it moved.
+    static _pushOutOfBox(body, r, feetY, headY, cx, cz, half, yBottom, yTop) {
+        if ((feetY >= yTop) || (headY <= yBottom)) {
+            return false;
+        }
+        const reach    = half + r;
+        const overlapX = reach - Math.abs(body.x - cx);
+        const overlapZ = reach - Math.abs(body.z - cz);
+        if ((overlapX <= 0) || (overlapZ <= 0)) {
+            return false;
+        }
+        if (overlapX < overlapZ) {
+            body.x += ((body.x >= cx) ? overlapX : -overlapX);
+            return true;
+        }
+        body.z += ((body.z >= cz) ? overlapZ : -overlapZ);
+        return true;
     }
 
     // --- Platform riding & object blocking ---
 
     applyPlatformRiding(user) {
         for (const dc of this._dynamic) {
-            dc.platformDeltaApplied = null;
+            dc.platformDeltas.delete(user);
             if (!dc.instance.isCollidable()) {
                 continue;
             }
@@ -306,13 +341,13 @@ class Collision {
             user.yaw += dRy;
             user.syncPositionTracking();
 
-            dc.platformDeltaApplied = {x: user.x - origX, y: user.y - origY, z: user.z - origZ, yaw: dRy};
+            dc.platformDeltas.set(user, {x: user.x - origX, y: user.y - origY, z: user.z - origZ, yaw: dRy});
         }
     }
 
-    // World.update step 5b, before riding and the player's move: rolling the
-    // mover back first keeps its advanced (overlapping) pose out of his resolution.
-    resolveMoverPressure(user) {
+    // World.update step 5b, before riding and the users' moves: rolling the
+    // mover back first keeps its advanced (overlapping) pose out of their resolution.
+    resolveMoverPressure(users) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {
                 continue;
@@ -320,49 +355,52 @@ class Collision {
             if (dc.instance.getBlockedBehavior() === 'crush') {
                 continue;
             }
-            this._resolveSolidPressure(user, dc, dc.instance.getPreviousTransform());
+            this._resolveSolidPressure(users, dc, dc.instance.getPreviousTransform());
         }
-        this._prevUserPos = {x: user.x, y: user.y, z: user.z};
+        for (const user of users) {
+            this._prevUserPos.set(user, {x: user.x, y: user.y, z: user.z});
+        }
     }
 
-    // World.update step 8: crush pressure (the pinch needs the player's final
-    // position) and the riding leftovers of solid movers.
-    resolveObjectPlayerBlockage(user) {
+    // World.update step 8: crush pressure (the pinch needs the users' final
+    // positions) and the riding leftovers of solid movers.
+    resolveObjectUserBlockage(users) {
         for (const dc of this._dynamic) {
             if (!dc.instance.isCollidable()) {
                 continue;
             }
             const prev = dc.instance.getPreviousTransform();
             if (dc.instance.getBlockedBehavior() === 'crush') {
-                this._resolveCrushPressure(user, dc, prev);
+                this._resolveCrushPressure(users, dc, prev);
                 continue;
             }
-            if (!this._instanceCylinderIntersects(user, dc)) {
+            const blocked = users.some((user) => (this._instanceCylinderIntersects(user, dc)
+                && !(prev && this._instanceCylinderIntersectsAtTransform(user, dc, prev))));
+            if (!blocked) {
                 continue;
             }
             if (prev) {
-                if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
-                    continue;
-                }
                 dc.instance.rollbackTransform(prev);
                 this._updateDynamicCollider(dc);
             }
-            if (dc.platformDeltaApplied) {
-                user.x   -= dc.platformDeltaApplied.x;
-                user.y   -= dc.platformDeltaApplied.y;
-                user.z   -= dc.platformDeltaApplied.z;
-                user.yaw += dc.platformDeltaApplied.yaw;
-                dc.platformDeltaApplied = null;
+            // The platform went back: so do the users it carried this turn.
+            for (const [user, delta] of dc.platformDeltas) {
+                user.x   -= delta.x;
+                user.y   -= delta.y;
+                user.z   -= delta.z;
+                user.yaw += delta.yaw;
             }
+            dc.platformDeltas.clear();
         }
     }
 
     // No rollback, and a pinch test (PIT_ChangeSector) rather than the cylinder
-    // one. Engaged by the mover's own move, kept while the pinch lasts so a
-    // player under a stopped crusher can still leave; damage only while it moves.
-    _resolveCrushPressure(user, dc, prev) {
-        const inst = dc.instance;
-        if (!this._userPinchedBy(user, dc)) {
+    // one. Engaged by the mover's own move, kept while a pinch lasts so a user
+    // under a stopped crusher can still leave; damage only while it moves.
+    _resolveCrushPressure(users, dc, prev) {
+        const inst    = dc.instance;
+        const pinched = users.filter((user) => this._userPinchedBy(user, dc));
+        if (pinched.length === 0) {
             inst.setBlockedPressing(false);
             return;
         }
@@ -372,53 +410,36 @@ class Collision {
         }
         inst.setBlockedPressing(true);
         inst.setCrushActive(moved);
+        inst.setCrushVictims(pinched);
         // Vanilla clips the squeezed body into the mover, never ejecting it
         // above the map: only the static ceiling bounds the head.
-        const staticCeil = this._getStaticCeiling(user.x, user.z, user.getRadius(), user.y);
-        if (staticCeil !== Infinity) {
-            user.y = Math.min(user.y, staticCeil - user.getCurrentHeight());
+        for (const user of pinched) {
+            const staticCeil = this._getStaticCeiling(user.x, user.z, user.getRadius(), user.y);
+            if (staticCeil !== Infinity) {
+                user.y = Math.min(user.y, staticCeil - user.getCurrentHeight());
+            }
         }
     }
 
-    // Rolled back when its own move causes the overlap. An overlap that already
-    // existed is left alone unless the player was trapped there last frame too:
-    // the mover then stalls rather than walking through him.
-    _resolveSolidPressure(user, dc, prev) {
+    // The mover rolls back once when its own move pressed any user; it is
+    // released only when no user keeps it pressing.
+    _resolveSolidPressure(users, dc, prev) {
         const inst = dc.instance;
-        if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
-            inst.setBlockedPressing(false);
-            return;
+        let pushed = false;
+        let kept   = false;
+        for (const user of users) {
+            const verdict = this._solidPressureOn(user, dc, prev);
+            if (verdict === Collision.PRESS_PUSH) {
+                pushed = true;
+                break;
+            }
+            kept = (kept || (verdict === Collision.PRESS_KEEP));
         }
-        if (this._standsOnInstance(user, dc)) {
-            // A rider squeezed between this rising floor and a ceiling is a
-            // pressure (T_PlatRaise) the cylinder test cannot see.
-            if (!this._userPinchedBy(user, dc)) {
+        if (!pushed) {
+            if (!kept) {
                 inst.setBlockedPressing(false);
-                return;
             }
-            if ((prev === null) || (this._moverFrameDeltaY(dc, prev) <= 1e-8)) {
-                return;   // not rising this frame (wait/descent): nothing to undo
-            }
-        } else {
-            if (!this._instanceCylinderIntersects(user, dc)) {
-                inst.setBlockedPressing(false);
-                return;
-            }
-            if (prev === null) {
-                return;
-            }
-            if (this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
-                // Only a mover coming down: an opening door must keep opening
-                // to free a wedged player.
-                if (this._moverFrameDeltaY(dc, prev) >= -1e-8) {
-                    return;
-                }
-                if ((this._prevUserPos === null)
-                    || !this._cylinderIntersectsAtTransform(this._prevUserPos.x, this._prevUserPos.y,
-                            this._prevUserPos.z, user.getRadius(), user.getCurrentHeight(), dc, prev)) {
-                    return;
-                }
-            }
+            return;
         }
         inst.rollbackTransform(prev);
         this._updateDynamicCollider(dc);
@@ -426,6 +447,45 @@ class Collision {
         if (inst.getBlockedBehavior() === 'reverse') {
             inst.reverseBlocked();
         }
+    }
+
+    // Whether the mover's own move pressed this user (PUSH: roll it back), left
+    // the pressure as it was (KEEP) or is clear of the user (CLEAR). An overlap
+    // that already existed only pushes if the user was trapped there last turn
+    // too: the mover then stalls rather than walking through the body.
+    _solidPressureOn(user, dc, prev) {
+        if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
+            return Collision.PRESS_CLEAR;
+        }
+        if (this._standsOnInstance(user, dc)) {
+            // A rider squeezed between this rising floor and a ceiling is a
+            // pressure (T_PlatRaise) the cylinder test cannot see.
+            if (!this._userPinchedBy(user, dc)) {
+                return Collision.PRESS_CLEAR;
+            }
+            // Not rising this turn (wait/descent): nothing to undo.
+            return (((prev === null) || (this._moverFrameDeltaY(dc, prev) <= 1e-8)) ? Collision.PRESS_KEEP : Collision.PRESS_PUSH);
+        }
+        if (!this._instanceCylinderIntersects(user, dc)) {
+            return Collision.PRESS_CLEAR;
+        }
+        if (prev === null) {
+            return Collision.PRESS_KEEP;
+        }
+        if (!this._instanceCylinderIntersectsAtTransform(user, dc, prev)) {
+            return Collision.PRESS_PUSH;
+        }
+        // Only a mover coming down: an opening door must keep opening to free
+        // a wedged user.
+        if (this._moverFrameDeltaY(dc, prev) >= -1e-8) {
+            return Collision.PRESS_KEEP;
+        }
+        const last = (this._prevUserPos.get(user) ?? null);
+        if ((last === null)
+            || !this._cylinderIntersectsAtTransform(last.x, last.y, last.z, user.getRadius(), user.getCurrentHeight(), dc, prev)) {
+            return Collision.PRESS_KEEP;
+        }
+        return Collision.PRESS_PUSH;
     }
 
     // Local vertical gap at the player's position vs his height (the vanilla
@@ -984,3 +1044,9 @@ Collision.RAY_AABB_EPSILON = 1e-6;
 Collision.KIND_FLOOR    = 'floor';
 Collision.KIND_CEILING  = 'ceiling';
 Collision.KIND_WALL     = 'wall';
+// Pressure verdicts of a solid mover on one user (see _solidPressureOn).
+Collision.PRESS_CLEAR = 'clear';
+Collision.PRESS_KEEP  = 'keep';
+Collision.PRESS_PUSH  = 'push';
+// Shared empty blocker list: most resolutions have no other user to test.
+Collision.NO_USERS = Object.freeze([]);

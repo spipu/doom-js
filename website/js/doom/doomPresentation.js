@@ -197,7 +197,7 @@ class DoomPresentation {
     }
 
     _draw() {
-        this._engine.displayWorld(this._world);
+        this._engine.displayWorld(this._world, this._player.getUser());
         this._screen.update();
     }
 

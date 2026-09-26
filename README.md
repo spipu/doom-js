@@ -85,7 +85,7 @@ The gamepad is only visible to the page after a button has been pressed on it (b
 
 ## The Spipu3D engine
 
-`js/engine/` is a standalone 3D engine with no external dependency: it renders textured, lit 3D objects entirely in the browser through the HTML5 `<canvas>` API, and carries a full FPS physics engine (collision detection, gravity, jumping, crouching, animated objects). It never depends on `js/doom/`: it exposes parameterisable primitives (depth shading, per-instance light and render offset, external forces, screen sprites…) that the game layer feeds with its own constants.
+`js/engine/` is a standalone 3D engine with no external dependency: it renders textured, lit 3D objects entirely in the browser through the HTML5 `<canvas>` API, and carries a full FPS physics engine (collision detection, gravity, jumping, crouching, animated objects) for one or several users sharing a world, each moved by its own command and blocking the others. It never depends on `js/doom/`: it exposes parameterisable primitives (depth shading, per-instance light and render offset, external forces, screen sprites…) that the game layer feeds with its own constants.
 
 Four rendering modes are available, selectable in the game from the **Display** options page and via the **Renderer** selector on `_examples/objects.html`:
 
@@ -236,8 +236,8 @@ function init() {
 function animate(timestamp) {
     engine.calculateDeltaTime(timestamp);
     const dt = engine.getDeltaTime();
-    world.update(dt, sampler.collect(dt).sample());
-    engine.displayWorld(world);
+    world.update(dt, new Map([[world.getUser(), sampler.collect(dt).sample()]]));  // one command per user
+    engine.displayWorld(world, world.getUser());  // the camera looks through one user
     screen.update(); // updates HUD overlay
     requestAnimationFrame(animate);
 }

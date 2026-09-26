@@ -597,7 +597,7 @@ class User {
         const vx = inputVx * dtMs + this._externalForces.getVelX() * dtS;
         const vz = inputVz * dtMs + this._externalForces.getVelZ() * dtS;
         if ((Math.abs(vx) > 1e-10) || (Math.abs(vz) > 1e-10)) {
-            const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight);
+            const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, this.y, this.getCurrentHeight(), this._stepHeight, this);
             const blocked = ((Math.abs(res.x - this.x) < 1e-8) && (Math.abs(res.z - this.z) < 1e-8));
             if (!blocked) {
                 const destFloor = collision.getFloor(res.x, res.z, this._radius, this.y + this._stepHeight);
@@ -794,7 +794,7 @@ class User {
         // No ceiling guard: it would refuse legal steps in low corridors, and a
         // too-low destination is already refused upstream.
         const testY = this.y + this._stepHeight;
-        const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight());
+        const res = collision.resolveWall(this.x, this.z, vx, vz, this._radius, testY, this.getCurrentHeight(), 0, this);
         if ((Math.abs(res.x - this.x) < 1e-8) && (Math.abs(res.z - this.z) < 1e-8)) {
             return false;
         }

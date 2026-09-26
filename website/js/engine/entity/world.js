@@ -2,7 +2,7 @@ class World extends AbstractLoadedEntity {
     constructor(id, url, callback) {
         super(id, url, callback);
 
-        this._user          = null;
+        this._users         = [];
         this._background    = [0, 0, 0];
         this._sky           = null;
         this._lightAmbient  = null;
@@ -25,27 +25,79 @@ class World extends AbstractLoadedEntity {
         this._collision = new Collision();
         this._collision.addMap(loader.objects().getByCode('map'));
         loader.instances().getAll().forEach((inst) => this._collision.addInstance(inst));
-        // Capped at the spawn Y so an overhead face (arch top) is not taken for the floor
-        const floorY = this._collision.getFloor(this._user.x, this._user.z, this._user.getRadius(), this._user.y);
+        for (const user of this._users) {
+            this._collision.addUser(user);
+            this._snapToFloor(user);
+        }
+    }
+
+    // Capped at the user's Y so an overhead face (arch top) is not taken for the floor
+    _snapToFloor(user) {
+        const floorY = this._collision.getFloor(user.x, user.z, user.getRadius(), user.y);
         if (floorY !== -Infinity) {
-            this._user.y = floorY;
+            user.y = floorY;
         }
     }
 
     /**
-     * @param {number}      dt      - milliseconds
-     * @param {UserCommand} command - the player's command for this turn
+     * @param {number}                 dt       - milliseconds
+     * @param {Map<User, UserCommand>} commands - this turn's command of each user;
+     *                                            a user without one stands still
      */
-    update(dt, command) {
-        const user     = this._user;
-        const previous = user.getLastCommand();
-        const action   = command.isPressed(UserCommand.ACTION);
+    update(dt, commands) {
+        const users = this._users;
+        const turn  = users.map((user) => ({
+            user:     user,
+            command:  (commands.get(user) ?? World.NEUTRAL_COMMAND),
+            previous: user.getLastCommand(),
+        }));
 
         // 1. Save instance transforms (riding and blocking)
         this.getInstances().filter((i) => i.isCollidable())
             .forEach((inst) => inst.savePreviousTransform());
 
-        // 2. Player command: the move follows the yaw of the previous turn, the look comes after
+        // 2. User commands
+        turn.forEach((entry) => this._applyCommand(entry.user, entry.command, entry.previous, dt));
+
+        // 3. Animate instances: ride, then each user's triggers, then the animation
+        this.getInstances().forEach((inst) => {
+            inst.followRide();
+            turn.forEach((entry) => inst.checkTriggers(entry.user, entry.command.isPressed(UserCommand.ACTION)));
+            inst.advance(dt);
+        });
+
+        // 4. Update interactions
+        loader.interactions().updateAll(dt);
+
+        turn.forEach((entry) => this._reportUseFailure(entry.user, entry.command, entry.previous));
+
+        // 5. Refresh dynamic collider triangles, and the box blockers that rode
+        // a moving floor in step 3
+        this._collision.updateDynamicColliders();
+        this._collision.syncRidingBoxes();
+
+        // 5b. Mover pressure, before riding and the users' moves, so they are
+        // never clipped against the mover's advanced pose
+        this._collision.resolveMoverPressure(users);
+
+        // 6-7. Platform riding, then physics + collision
+        users.forEach((user) => {
+            this._collision.applyPlatformRiding(user);
+            user.updateMove(this._collision);
+        });
+
+        // 8. Object-user blocking (rollback)
+        this._collision.resolveObjectUserBlockage(users);
+
+        // 9. Damage
+        this.getInstances().forEach((inst) => inst.checkDamage(users, dt));
+
+        // 10. Despawn, after the loops so the list is never mutated mid-iteration
+        loader.instances().flushRemovals();
+    }
+
+    // The move follows the yaw of the previous turn, the look comes after.
+    _applyCommand(user, command, previous, dt) {
         user.beginFrame(dt);
         user.setWalkSlow(command.isPressed(UserCommand.WALK_SLOW));
         user.setCrouch(command.isPressed(UserCommand.CROUCH));
@@ -59,50 +111,45 @@ class World extends AbstractLoadedEntity {
         user.strafe(command.getMoveX());
         user.look(command.getLookYaw(), command.getLookPitch());
         user.setLastCommand(command);
+    }
 
-        // 3. Animate instances
-        this.getInstances().forEach((inst) => inst.update(dt, user, action));
-
-        // 4. Update interactions
-        loader.interactions().updateAll(dt);
-
-        // Use failure: a fresh press refused by a condition or swallowed by a wall.
-        // Consumed every frame so held presses stay silent.
+    // A fresh press refused by a condition or swallowed by a wall. Consumed
+    // every turn so held presses stay silent.
+    _reportUseFailure(user, command, previous) {
         const useState = user.consumeUseState();
         if (command.isJustPressed(UserCommand.ACTION, previous)
             && ((useState.seen && !useState.accepted)
                 || (!useState.seen && this._useProbeHitsWall(user)))) {
             user.notifyUseFailed();
         }
-
-        // 5. Refresh dynamic collider triangles, and the box blockers that rode
-        // a moving floor in step 3
-        this._collision.updateDynamicColliders();
-        this._collision.syncRidingBoxes();
-
-        // 5b. Mover pressure, before riding and the player's move, so he is never
-        // clipped against the mover's advanced pose
-        this._collision.resolveMoverPressure(user);
-
-        // 6. Platform riding
-        this._collision.applyPlatformRiding(user);
-
-        // 7. Player physics + collision
-        user.updateMove(this._collision);
-
-        // 8. Object-player blocking (rollback)
-        this._collision.resolveObjectPlayerBlockage(user);
-
-        // 9. Damage
-        this.getInstances().forEach((inst) => inst.checkDamage(user, dt));
-
-        // 10. Despawn, after the loops so the list is never mutated mid-iteration
-        loader.instances().flushRemovals();
     }
 
+    // The body the world definition describes: the first user.
     setUser(user) {
-        this._user = user;
+        this._users = [user];
         return this;
+    }
+
+    /**
+     * A user joining the loaded world, snapped to the floor under its position.
+     *
+     * @param {User} user
+     */
+    addUser(user) {
+        this._users.push(user);
+        this._collision.addUser(user);
+        this._snapToFloor(user);
+        return this;
+    }
+
+    removeUser(user) {
+        this._users = this._users.filter((other) => (other !== user));
+        this._collision.removeUser(user);
+        return this;
+    }
+
+    getUsers() {
+        return this._users;
     }
 
     setBackground(background) {
@@ -125,8 +172,9 @@ class World extends AbstractLoadedEntity {
         return this;
     }
 
+    // The first user: the body the world definition built.
     getUser() {
-        return this._user;
+        return (this._users[0] ?? null);
     }
 
     getBackground() {
@@ -157,3 +205,6 @@ class World extends AbstractLoadedEntity {
         return this._collision;
     }
 }
+
+// What a user without a command this turn does: nothing.
+World.NEUTRAL_COMMAND = new UserCommand();

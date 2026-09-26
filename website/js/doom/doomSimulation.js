@@ -155,7 +155,7 @@ class DoomSimulation {
     startLevel(world) {
         this._world = world;
         const collision = world.getCollision();
-        // The single body the engine world moves, until it holds one per player.
+        // The monsters, the damage and the projectiles still follow a single user: the level's first.
         const user = world.getUser();
 
         // Vanilla M_ClearRandom.
@@ -320,7 +320,7 @@ class DoomSimulation {
         for (const player of players) {
             this._applyPlayerCommand(player, commands.get(player.getId()));
         }
-        this._world.update(dt, this._worldBodyCommand(commands));
+        this._world.update(dt, new Map(players.map((player) => [player.getUser(), commands.get(player.getId())])));
         for (const player of players) {
             player.getUser().updateEffects(dt);
         }
@@ -348,14 +348,6 @@ class DoomSimulation {
         if (this._decals !== null) {
             this._decals.update(dt);
         }
-    }
-
-    // The engine world moves one body: the command of the player it belongs
-    // to, neutral when that player has none this turn.
-    _worldBodyCommand(commands) {
-        const owner = this._roster.getByUser(this._world.getUser());
-
-        return (((owner !== null) ? commands.get(owner.getId()) : undefined) ?? new UserCommand());
     }
 
     _commandedPlayers(commands) {

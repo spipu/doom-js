@@ -308,8 +308,12 @@ class Engine3d {
         return this._renderer.code;
     }
 
-    displayWorld(world) {
-        this.setCamera(world.getUser());
+    /**
+     * @param {World} world
+     * @param {User}  viewUser - the user the camera looks through
+     */
+    displayWorld(world, viewUser) {
+        this.setCamera(viewUser);
         this.lightsCalculatePosition();
         this.drawInit();
         this.drawObject(world.getMap());

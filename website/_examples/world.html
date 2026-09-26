@@ -59,8 +59,8 @@ function animate(timestamp)
 {
     engine.calculateDeltaTime(timestamp);
     const dt = engine.getDeltaTime();
-    world.update(dt, sampler.collect(dt).sample());
-    engine.displayWorld(world);
+    world.update(dt, new Map([[world.getUser(), sampler.collect(dt).sample()]]));
+    engine.displayWorld(world, world.getUser());
     screen.update();
 
     requestAnimationFrame(animate);
