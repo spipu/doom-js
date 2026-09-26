@@ -12,35 +12,38 @@ class WadLineCrossing {
      */
     constructor(segment) {
         this._segment = WadLineCrossing._widened(segment);
-        this._lastX   = null;
-        this._lastZ   = null;
+        this._last    = new Map();   // actor → [x, z] of its previous sample
     }
 
     // True when the actor moved across the line since the previous call.
-    crossedBy(user) {
-        return (this.crossingSideBy(user) !== null);
+    crossedBy(actor) {
+        return (this.crossingSideBy(actor) !== null);
     }
 
     // Side of the line the actor CAME FROM when it crossed since the previous
     // call: null when no crossing, else 0 (front) / 1 (back). Vanilla hands
     // the origin side to the specials (P_TryMove passes oldside).
-    crossingSideBy(user) {
-        const fromX = this._lastX;
-        const fromZ = this._lastZ;
-        this._lastX = user.getCenterX();
-        this._lastZ = user.getCenterZ();
-        if (fromX === null) {
+    crossingSideBy(actor) {
+        const toX  = actor.getCenterX();
+        const toZ  = actor.getCenterZ();
+        const last = (this._last.get(actor) ?? null);
+        if (last === null) {
+            this._last.set(actor, [toX, toZ]);
             return null;
         }
+        const fromX = last[0];
+        const fromZ = last[1];
+        last[0] = toX;
+        last[1] = toZ;
         // Sampling only happens while the player is inside the zone circle, so
         // two consecutive samples may sit far apart (zone left and re-entered,
         // teleport arrival, restored save): the straight segment between them
         // would cross lines the player never walked through.
-        if (Math.hypot(this._lastX - fromX, this._lastZ - fromZ) > WadConstants.WALK_CROSS_MAX_STEP) {
+        if (Math.hypot(toX - fromX, toZ - fromZ) > WadConstants.WALK_CROSS_MAX_STEP) {
             return null;
         }
         if (!WadGeometry.segmentsCross(
-            fromX, fromZ, this._lastX, this._lastZ,
+            fromX, fromZ, toX, toZ,
             this._segment[0], this._segment[1], this._segment[2], this._segment[3])) {
             return null;
         }

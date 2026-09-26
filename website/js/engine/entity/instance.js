@@ -48,6 +48,7 @@ class Instance extends AbstractLoadedEntity {
         this._autoStart              = false;   // true = start() once at load (timer-armed elements)
         this._interaction            = null;
         this._triggerConditions      = [];
+        this._removalScheduled       = false;   // true = leaving the world at the end of the turn
         this._renderOffset           = null;
         this._renderLight            = 1;
         this._renderRoll             = 0;
@@ -484,9 +485,14 @@ class Instance extends AbstractLoadedEntity {
      * @param {boolean} action - this user's use button
      */
     checkTriggers(user, action) {
-        if (this._isLive()) {
+        if (!this._removalScheduled && this._isLive()) {
             this._checkTrigger(user, action);
         }
+    }
+
+    // An instance on its way out triggers for no user any more, whoever reaches it later in the turn.
+    markForRemoval() {
+        this._removalScheduled = true;
     }
 
     /**

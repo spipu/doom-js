@@ -9,9 +9,10 @@ class InstanceLoader extends AbstractLoader {
     }
 
     // Applied by flushRemovals() after the frame loops. The slot becomes a hole,
-    // which forEach/every/map skip.
+    // which forEach/every/map skip; until then the instance triggers no more.
     scheduleRemoval(instance) {
         this._pendingRemoval.push(instance.getId());
+        instance.markForRemoval();
         return this;
     }
 

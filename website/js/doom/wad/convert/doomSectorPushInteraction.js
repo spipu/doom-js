@@ -1,6 +1,6 @@
 /**
  * Per-level sector pushes (Heretic wind 40-51, conveyor floors 20-39 + the
- * scrolling lava 4) and low-friction ground (ice, 15). Every frame the
+ * scrolling lava 4) and low-friction ground (ice, 15). Every frame each
  * player's zone feeds the generic ActorExternalForces channel consumed by
  * User.updateMove — forces are frame-scoped, so leaving the zone simply
  * stops feeding them.
@@ -9,7 +9,7 @@
  *  - wind: per-tic thrust, applies on the ground AND in the air (XZ test only);
  *  - carry: terminal speed, feet on the sector floor only;
  *  - friction: ground slipperiness, feet on the sector floor only.
- * The same zones feed the player AND every monster record, corpses included
+ * The same zones feed the players AND every monster record, corpses included
  * (BOOM/MBF style), each through its own ActorExternalForces channel.
  */
 class DoomSectorPushInteraction extends AbstractInteraction {
@@ -32,12 +32,21 @@ class DoomSectorPushInteraction extends AbstractInteraction {
     }
 
     update(dt) {
-        // A dead player keeps being pushed (GZDoom: the carry/wind live at
-        // mobj level and the corpse keeps its player link — it drifts on the
-        // river; vanilla Heretic would freeze it with the player think).
-        const user = loader.world().get().getUser();
-        const forces = user.getExternalForces();
         const toMetresPerS = WadConstants.SCALE / WadConstants.SECONDS_PER_TIC;
+        for (const user of loader.world().get().getUsers()) {
+            this._feedUser(user, toMetresPerS);
+        }
+
+        if (this._monsters !== null) {
+            this._feedMonsters(toMetresPerS);
+        }
+    }
+
+    // A dead player keeps being pushed (GZDoom: the carry/wind live at mobj
+    // level and the corpse keeps its player link — it drifts on the river;
+    // vanilla Heretic would freeze it with the player think).
+    _feedUser(user, toMetresPerS) {
+        const forces = user.getExternalForces();
         this._zones.eachZoneAt(user.x, user.z, (zone) => {
             const height = user.y - this._zones.floorYOf(zone);
             // Feet up to stepHeight above the floor still get carried: straddling
@@ -46,10 +55,6 @@ class DoomSectorPushInteraction extends AbstractInteraction {
                 && (height >= -WadConstants.ON_FLOOR_TOLERANCE) && (height <= user.getStepHeight()));
             this._applyForces(zone, forces, height, carried, toMetresPerS);
         });
-
-        if (this._monsters !== null) {
-            this._feedMonsters(toMetresPerS);
-        }
     }
 
     // Monsters get the player's straddle band too (boxes prop bodies on lips).

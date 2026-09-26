@@ -2,8 +2,9 @@
  * Per-level secret counting (sector special 9). Vanilla: P_SpawnSpecials adds
  * every secret sector to the level total, then P_PlayerInSpecialSector credits
  * the player the first time his feet rest on the sector floor and clears the
- * special. Here a found zone is dropped from the list (same one-shot dedup)
- * and the counters live on DoomSimulation — level stats, reset by buildLevel.
+ * special. Here a found zone is dropped from the list (same one-shot dedup):
+ * the first player to step on it finds it. The counters live on
+ * DoomSimulation — level stats, reset by buildLevel.
  */
 class DoomSecretInteraction extends AbstractInteraction {
     /**
@@ -38,13 +39,16 @@ class DoomSecretInteraction extends AbstractInteraction {
         if (this._zones.list.length === 0) {
             return;
         }
-        const user = loader.world().get().getUser();
-        if (user.isDead()) {
-            return;
+        for (const user of loader.world().get().getUsers()) {
+            if (!user.isDead()) {
+                this._creditSecretUnder(user);
+            }
         }
+    }
 
-        // Feet on the sector floor, like the damage sectors (vanilla checks
-        // mo->z == floorheight before crediting the secret)
+    // Feet on the sector floor, like the damage sectors (vanilla checks
+    // mo->z == floorheight before crediting the secret)
+    _creditSecretUnder(user) {
         const zone = this._zones.zoneUnderFeet(user.x, user.y, user.z);
         if (zone !== null) {
             this._zones.remove(zone);

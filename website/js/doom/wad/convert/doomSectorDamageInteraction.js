@@ -1,11 +1,11 @@
 /**
  * Per-level sector damage (vanilla P_PlayerInSpecialSector): once per damage
- * window (32 tics for the Doom specials, 16 for the Heretic lavas), a player
+ * window (32 tics for the Doom specials, 16 for the Heretic lavas), every player
  * standing ON the floor of a damage sector takes the special's damage. The
  * radiation suit cancels the damage up to the special's leak chance out of
  * 256 per window (0 = full protection, 5 = Doom super-damage, 256 = never
  * protects — Heretic lava, the E1M8 finale). The exit special also ends the
- * level through the normal exit once the player is down to the exit health,
+ * level through the normal exit once any player is down to the exit health,
  * tested every frame like the vanilla per-tic check. Damage goes through
  * takeDamage, so armour absorption and invulnerability apply.
  */
@@ -37,10 +37,14 @@ class DoomSectorDamageInteraction extends AbstractInteraction {
 
     update(dt) {
         const wrapped = this._advanceClocks(dt);
-        const user = loader.world().get().getUser();
-        if (user.isDead() || !this._needsZone(wrapped, user)) {
-            return;
+        for (const user of loader.world().get().getUsers()) {
+            if (!user.isDead() && this._needsZone(wrapped, user)) {
+                this._applySectorEffects(user, wrapped);
+            }
         }
+    }
+
+    _applySectorEffects(user, wrapped) {
         const zone = this._zoneUnderUser(user);
         if (zone === null) {
             return;

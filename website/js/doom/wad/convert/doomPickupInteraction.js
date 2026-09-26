@@ -1,6 +1,6 @@
 /**
- * Proximity pickup interaction. When the player enters the pickup
- * Instance's radius, the effect descriptor is applied to the DoomUser through
+ * Proximity pickup interaction. When a player enters the pickup
+ * Instance's radius, the effect descriptor is applied to that DoomUser through
  * DoomItemRules.applyPickup; if anything is consumed the Instance is despawned.
  * Effects that would do nothing (full health/armor, owned weapon/key) leave the
  * sprite in place, faithful to Doom.
@@ -24,8 +24,8 @@ class DoomPickupInteraction extends AbstractInteraction {
         return this._code;
     }
 
-    triggered(instance) {
-        const user = loader.world().get().getUser();
+    // The engine hands the user whose body entered the radius.
+    triggered(instance, user) {
         // Vanilla MF_COUNTITEM things all carry ALWAYSPICKUP: a counted item is
         // taken whatever it gives, unless it has no effect wired yet.
         const alwaysPickup = (this._countsItem && ((this._effect ?? null) !== null));
