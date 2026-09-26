@@ -23,7 +23,7 @@ class DoomSimulation {
         this._world              = null;
         this._onPlayerTeleported = null;
         // Vanilla totalsecret / totalkills / totalitems + leveltime; the totals
-        // are pushed back by the world builder.
+        // come with the built level.
         this._secretsFound       = 0;
         this._secretsTotal       = 0;
         this._killsCount         = 0;
@@ -104,12 +104,6 @@ class DoomSimulation {
      */
     async buildLevel(wadFile, levelCode, onLevelExit) {
         this._resetLevelStats();
-        // Builder-fed, and not always set: never inherit the previous level's.
-        this._automap       = null;
-        this._moverSounds   = null;
-        this._ambientSounds = null;
-        this._sectorDamage  = null;
-        this._terrain       = null;
 
         // Built before the builder, which feeds it. The skill rule must be
         // known at add() time (InstantReaction).
@@ -118,7 +112,7 @@ class DoomSimulation {
         this._monsters.setRandom(this._rng);
         this._monsters.setNightmareFast(this._profile.nightmareFast());
         this._monsters.setMonsterSounds(this._profile.monsterSounds());
-        await new WadWorldBuilder(wadFile, levelCode, {
+        this._adoptLevel(await new WadWorldBuilder(wadFile, levelCode, {
             onLevelExit: onLevelExit,
             thingCatalog: this._thingCatalog,
             skill: this._skill,
@@ -127,7 +121,7 @@ class DoomSimulation {
             profile: this._profile,
             monsterCatalog: this._monsterCatalog,
             monsterSystem: this._monsters
-        }).build();
+        }).build());
 
         this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
         this._itemRules.resolveAvailableWeapons(this._weaponSprites);
@@ -258,72 +252,33 @@ class DoomSimulation {
         return this;
     }
 
-    // --- Level data fed by the world builder ---
+    // --- Level data handed back by the world builder ---
 
-    setSectorLight(sectorLight) {
-        this._sectorLight = sectorLight;
-
-        return this;
-    }
-
-    setSectorDamage(sectorDamage) {
-        this._sectorDamage = sectorDamage;
-
-        return this;
-    }
-
-    setMoverSounds(moverSounds) {
-        this._moverSounds = moverSounds;
-
-        return this;
+    _adoptLevel(built) {
+        this._gunTriggers    = built.getGunTriggers();
+        this._sectorDamage   = built.getSectorDamage();
+        this._sectorLight    = built.getSectorLight();
+        this._sectorSurfaces = built.getSectorSurfaces();
+        this._terrain        = built.getTerrain();
+        this._moverSounds    = built.getMoverSounds();
+        this._ambientSounds  = built.getAmbientSounds();
+        this._automap        = built.getAutomap();
+        this._playerStarts   = built.getPlayerStarts();
+        this._secretsTotal   = built.getSecretsTotal();
+        this._killsTotal     = built.getKillsTotal();
+        this._itemsTotal     = built.getItemsTotal();
     }
 
     getMoverSounds() {
         return this._moverSounds;
     }
 
-    setAmbientSounds(ambientSounds) {
-        this._ambientSounds = ambientSounds;
-
-        return this;
-    }
-
     getAmbientSounds() {
         return this._ambientSounds;
     }
 
-    setGunTriggers(gunTriggers) {
-        this._gunTriggers = gunTriggers;
-
-        return this;
-    }
-
-    setSectorSurfaces(sectorSurfaces) {
-        this._sectorSurfaces = sectorSurfaces;
-
-        return this;
-    }
-
-    setTerrain(terrain) {
-        this._terrain = terrain;
-
-        return this;
-    }
-
-    setAutomap(automap) {
-        this._automap = automap;
-
-        return this;
-    }
-
     getAutomap() {
         return this._automap;
-    }
-
-    setPlayerStarts(playerStarts) {
-        this._playerStarts = playerStarts;
-
-        return this;
     }
 
     // Built after the world: build-time consumers (teleports) must read it at trigger time.
@@ -443,12 +398,6 @@ class DoomSimulation {
         this._levelClockLast = null;
     }
 
-    setSecretsTotal(total) {
-        this._secretsTotal = total;
-
-        return this;
-    }
-
     addSecretFound() {
         this._secretsFound++;
     }
@@ -459,12 +408,6 @@ class DoomSimulation {
 
     getSecretsTotal() {
         return this._secretsTotal;
-    }
-
-    setKillsTotal(total) {
-        this._killsTotal = total;
-
-        return this;
     }
 
     addKill() {
@@ -482,13 +425,6 @@ class DoomSimulation {
 
     getKillsTotal() {
         return this._killsTotal;
-    }
-
-    // The vanilla MF_COUNTITEM bonuses and power-ups.
-    setItemsTotal(total) {
-        this._itemsTotal = total;
-
-        return this;
     }
 
     addItem() {
