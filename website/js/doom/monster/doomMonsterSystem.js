@@ -58,6 +58,7 @@ class DoomMonsterSystem {
         // Vanilla P_SpawnMobj: reactiontime comes from the actor info (8)
         // except in nightmare, where it stays 0 — the InstantReaction skill.
         const instant = ((this._skillRule !== null) && (this._skillRule.instantReaction === true));
+        record.inst.setCollisionHeight(record.def.getHeight() * WadConstants.SCALE);
         this._monsters.push({
             code:            record.code,
             inst:            record.inst,
@@ -1251,7 +1252,7 @@ class DoomMonsterSystem {
                 // Blast from the body's CENTRE, not its floor-glued feet — the
                 // sight rays of P_CheckSight run between body centres, and a
                 // ray leaving the exact floor plane self-blocks on it.
-                const at = m.inst.getWorldCenter();
+                const at = DoomActorRef.center(m);
                 // P_RadiusAttack(self, self.target): the blast is credited to
                 // whoever set the barrel off, not to the barrel — which is what
                 // makes a barrel chain turn a room against the player, and what

@@ -726,7 +726,7 @@ class DoomProjectileSystem {
             if (aim === null) {
                 continue;
             }
-            const center   = ((DoomActorRef.isPlayer(aim.ref)) ? [aim.ref.x, DoomActorRef.centerY(aim.ref), aim.ref.z] : aim.ref.inst.getWorldCenter());
+            const center   = DoomActorRef.center(aim.ref);
             const dx       = center[0] - ox;
             const dy       = center[1] - oy;
             const dz       = center[2] - oz;

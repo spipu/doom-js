@@ -100,7 +100,7 @@ class DoomMonsterDamage {
         }
         const def = victim.def;
         if ((opts.noBlood !== true) && (def.getFlags().noBlood !== true)) {
-            const at = (opts.point ?? victim.inst.getWorldCenter());
+            const at = (opts.point ?? DoomActorRef.center(victim));
             this._spawnBlood(at[0], at[1], at[2], amount);
         }
         this._thrust(victim, amount, opts);
@@ -211,7 +211,7 @@ class DoomMonsterDamage {
             if ((mDist >= distance) || (damage - mDist <= 0)) {
                 continue;
             }
-            const c = m.inst.getWorldCenter();
+            const c = DoomActorRef.center(m);
             if (!this._blastReaches(x, y, z, c[0], c[1], c[2])) {
                 continue;
             }

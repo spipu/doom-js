@@ -122,7 +122,7 @@ class DoomMonsterTrace {
             }
             const pos = m.inst.getTransform().position;
             if (WadGeometry.boxesOverlap2d(x, z, radius, pos[0], pos[2], m.inst.getCollisionRadius())) {
-                return {ref: m, point: m.inst.getWorldCenter()};
+                return {ref: m, point: DoomActorRef.center(m)};
             }
         }
         if (opts.includePlayers !== true) {
@@ -130,7 +130,7 @@ class DoomMonsterTrace {
         }
         for (const u of this._system.getPlayers()) {
             if (!u.isDead() && (u !== exclude) && WadGeometry.boxesOverlap2d(x, z, radius, u.x, u.z, u.getRadius())) {
-                return {ref: u, point: [u.x, u.y + u.getCurrentHeight() / 2, u.z]};
+                return {ref: u, point: DoomActorRef.center(u)};
             }
         }
 

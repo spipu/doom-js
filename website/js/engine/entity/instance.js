@@ -56,6 +56,7 @@ class Instance extends AbstractLoadedEntity {
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
         this._collisionRadius   = null;
+        this._collisionHeight   = null;   // box standing on the origin; null = the object's own height
 
         // Damage dealt to the users on contact
         this._damage            = null;
@@ -201,6 +202,16 @@ class Instance extends AbstractLoadedEntity {
 
     getCollisionRadius() {
         return this._collisionRadius;
+    }
+
+    // A body whose drawn object changes shape (animated billboard) keeps a fixed box.
+    setCollisionHeight(height) {
+        this._collisionHeight = height;
+        return this;
+    }
+
+    getCollisionHeight() {
+        return this._collisionHeight;
     }
 
     getDamage() {

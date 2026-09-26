@@ -111,13 +111,19 @@ class Collision {
     }
 
     _refreshBox(box) {
-        const inst = box.instance;
-        const pos  = inst.getPosition();
-        const cyW  = inst.getWorldCenter()[1];
-        const h    = inst.getObject().getHeight();
-        box.cx      = pos[0];
-        box.cz      = pos[2];
-        box.half    = inst.getCollisionRadius();
+        const inst   = box.instance;
+        const pos    = inst.getPosition();
+        const height = inst.getCollisionHeight();
+        box.cx   = pos[0];
+        box.cz   = pos[2];
+        box.half = inst.getCollisionRadius();
+        if (height !== null) {
+            box.yBottom = pos[1];
+            box.yTop    = pos[1] + height;
+            return;
+        }
+        const cyW = inst.getWorldCenter()[1];
+        const h   = inst.getObject().getHeight();
         box.yBottom = cyW - h / 2;
         box.yTop    = cyW + h / 2;
     }

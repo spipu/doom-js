@@ -44,6 +44,12 @@ class DoomActorRef {
         return (DoomActorRef.feetY(ref) + DoomActorRef.height(ref) / 2);
     }
 
+    // Where a body is hit and aimed at: never the drawn billboard's centre,
+    // which moves with the frame and the angle it is seen from.
+    static center(ref) {
+        return [DoomActorRef.x(ref), DoomActorRef.centerY(ref), DoomActorRef.z(ref)];
+    }
+
     static topY(ref) {
         return (DoomActorRef.feetY(ref) + DoomActorRef.height(ref));
     }
