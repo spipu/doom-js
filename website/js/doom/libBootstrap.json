@@ -1,5 +1,5 @@
 {
-    "version": "v1.933",
+    "version": "v1.935",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -203,6 +203,7 @@
             "/js/doom/hud/hudGameBar.js",
             "/js/doom/hud/hudAutomap.js",
             "/js/doom/hud/hudDoom.js",
+            "/js/doom/doomTurnEvents.js",
             "/js/doom/net/doomNetProtocol.js",
             "/js/doom/net/doomNetInvite.js",
             "/js/doom/net/doomNetLobby.js",
@@ -210,6 +211,11 @@
             "/js/doom/net/doomNetAvailability.js",
             "/js/doom/net/doomNetMainSession.js",
             "/js/doom/net/doomNetSubSession.js",
+            "/js/doom/net/doomNetEntityIds.js",
+            "/js/doom/net/doomNetEvents.js",
+            "/js/doom/net/doomNetStateCapture.js",
+            "/js/doom/net/doomNetStateCodec.js",
+            "/js/doom/net/doomNetCommandCodec.js",
             "/js/doom/menu/menuDisplay.js",
             "/js/doom/menu/menuDom.js",
             "/js/doom/menu/menuModal.js",
@@ -241,7 +247,6 @@
             "/js/doom/doomGameRules.js",
             "/js/doom/doomSinglePlayerRules.js",
             "/js/doom/doomLevelStats.js",
-            "/js/doom/doomTurnEvents.js",
             "/js/doom/doomTurnEventPlayer.js",
             "/js/doom/doomLevelLoader.js",
             "/js/doom/doomSimulation.js",

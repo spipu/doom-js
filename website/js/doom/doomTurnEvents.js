@@ -34,9 +34,13 @@ class DoomTurnEvents {
         this._emit({type: DoomTurnEvents.SOUND_AT, name: name, point: point, options: options});
     }
 
-    // Heard from a body's instance, and following it while it plays.
-    soundFromBody(name, inst, options = {}) {
-        this._emit({type: DoomTurnEvents.SOUND_FROM_BODY, name: name, inst: inst, options: options});
+    /**
+     * Heard from a body, and following it while it plays.
+     *
+     * @param {DoomBodyView} body
+     */
+    soundFromBody(name, body, options = {}) {
+        this._emit({type: DoomTurnEvents.SOUND_FROM_BODY, name: name, body: body, options: options});
     }
 
     /**

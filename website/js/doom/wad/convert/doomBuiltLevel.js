@@ -16,6 +16,7 @@ class DoomBuiltLevel {
         this._gunTriggers       = null;
         this._sectorDamage      = null;        // null when no sector hurts
         this._sectorLight       = null;
+        this._lightEffects      = null;        // null when no sector light moves
         this._sectorSurfaces    = null;
         this._terrain           = null;
         this._moverSounds       = null;
@@ -42,6 +43,7 @@ class DoomBuiltLevel {
         this._projectileDefs    = {};          // kind → flight (DoomProjectileDefs)
         this._bodyViews         = new Set();   // DoomBodyView of every body in the level
         this._projectileViews   = new Set();   // DoomProjectileView of every shot in flight
+        this._entityIds         = new DoomNetEntityIds();
     }
 
     setGunTriggers(gunTriggers) {
@@ -72,6 +74,16 @@ class DoomBuiltLevel {
 
     getSectorLight() {
         return this._sectorLight;
+    }
+
+    setLightEffects(lightEffects) {
+        this._lightEffects = lightEffects;
+
+        return this;
+    }
+
+    getLightEffects() {
+        return this._lightEffects;
     }
 
     setSectorSurfaces(sectorSurfaces) {
@@ -321,5 +333,9 @@ class DoomBuiltLevel {
 
     getProjectileViews() {
         return this._projectileViews;
+    }
+
+    getEntityIds() {
+        return this._entityIds;
     }
 }

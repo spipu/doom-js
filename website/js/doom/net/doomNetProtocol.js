@@ -1,7 +1,8 @@
 /**
- * The control messages of a multiplayer session and their vocabulary: what the
- * main and a sub say to each other outside the turn stream (JSON, through
- * NetPeer.sendControl).
+ * The messages of a multiplayer session and their vocabulary: the control
+ * messages the main and a sub say to each other outside the turn stream
+ * (JSON, through NetPeer.sendControl), and the type byte of the binary turn
+ * messages.
  */
 class DoomNetProtocol {
 }
@@ -19,6 +20,10 @@ DoomNetProtocol.END_LEFT    = 'left';      // the sub left
 DoomNetProtocol.END_LOST    = 'lost';      // the link went silent or failed
 
 DoomNetProtocol.MODE_SCREEN_SHARING = 1;
+
+// First byte of a binary message (0xFF is the network layer's chunk).
+DoomNetProtocol.MESSAGE_STATE   = 1;   // main → subs, every turn
+DoomNetProtocol.MESSAGE_COMMAND = 2;   // sub → main, every turn
 
 // A side that ends a session closes the link itself if the other side has not
 // done it by then: its closing message must get through first.

@@ -383,3 +383,7 @@ DoomSimulation.BUTTON_WEAPON_NEXT    = 'weaponNext';
 DoomSimulation.BUTTON_WEAPON_PREV    = 'weaponPrev';
 DoomSimulation.BUTTON_CHEAT_FULL_KIT = 'cheatFullKit';
 DoomSimulation.IMPULSE_WEAPON_WHEEL  = 'weaponWheel';
+// Every button and impulse of a command, in the order its binary message carries them.
+DoomSimulation.COMMAND_BUTTONS  = [UserCommand.JUMP, UserCommand.CROUCH, UserCommand.WALK_SLOW, UserCommand.ACTION,
+    DoomSimulation.BUTTON_FIRE, DoomSimulation.BUTTON_WEAPON_NEXT, DoomSimulation.BUTTON_WEAPON_PREV, DoomSimulation.BUTTON_CHEAT_FULL_KIT];
+DoomSimulation.COMMAND_IMPULSES = [DoomSimulation.IMPULSE_WEAPON_WHEEL];

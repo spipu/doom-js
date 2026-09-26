@@ -134,6 +134,7 @@ class DoomGame {
         const world = loader.world().get();
         // Runtime spawns (puffs, projectiles) must never re-enter _init.
         loader.clearCallback();
+        this._builtLevel.getEntityIds().index();
 
         const player   = this._localPlayer();
         const snapshot = this._restoreSnapshot;

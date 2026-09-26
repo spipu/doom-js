@@ -8,10 +8,13 @@ class DoomProjectileView {
     /**
      * @param {Instance}                            inst
      * @param {Array<{objId: int, height: number}>} frames - the flight animation (DoomProjectileDefs)
+     * @param {string}                              kind   - the projectile kind of the profile
      */
-    constructor(inst, frames) {
+    constructor(inst, frames, kind) {
         this._inst   = inst;
         this._frames = frames;
+        this._kind   = kind;
+        this._netId  = null;
         this._frame  = 0;
         this._x      = 0;
         this._y      = 0;
@@ -24,6 +27,20 @@ class DoomProjectileView {
 
     getFrames() {
         return this._frames;
+    }
+
+    getKind() {
+        return this._kind;
+    }
+
+    setNetId(netId) {
+        this._netId = netId;
+
+        return this;
+    }
+
+    getNetId() {
+        return this._netId;
     }
 
     setFrame(frame) {

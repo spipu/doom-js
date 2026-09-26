@@ -223,7 +223,7 @@ class WadWorldBuilder {
         if (secretZones.list.length > 0) {
             this._built.setSecretZones(secretZones);
         }
-        this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
+        this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors)).setLightEffects(lightInteraction);
 
         const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
 
@@ -577,7 +577,7 @@ class WadWorldBuilder {
             inst.setRideOn(loader.instances().getByCode(ride.floorCode));
         }
         const spawnPos = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
-        const view     = new DoomBodyView(inst, frames).showState(spawnState, thing.facing, thing.si);
+        const view     = new DoomBodyView(inst, frames, thing.def.getCode()).showState(spawnState, thing.facing, thing.si);
         this._built.getBodyViews().add(view);
 
         return {

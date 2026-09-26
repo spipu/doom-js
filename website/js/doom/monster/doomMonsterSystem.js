@@ -1022,7 +1022,7 @@ class DoomMonsterSystem {
             code:      spec.code,
             spawnKind: (spec.spawnKind ?? null),
             inst:      inst,
-            view:      new DoomBodyView(inst, spec.frames),
+            view:      new DoomBodyView(inst, spec.frames, spec.def.getCode()),
             def:       spec.def,
             facing:    spec.facing,
             flags:     spec.flags,
@@ -1119,7 +1119,7 @@ class DoomMonsterSystem {
             return;
         }
         const boss = ((table.boss === true) && ((key === 'see') || (key === 'death')));
-        this._events.soundFromBody(name, m.inst, {
+        this._events.soundFromBody(name, m.view, {
             attenuation: ((boss) ? WadConstants.SOUND_ATTN.none : WadConstants.SOUND_ATTN.norm),
             replaceKey:  ('monster:' + m.inst.getId() + ':' + channel)
         });
@@ -1169,12 +1169,12 @@ class DoomMonsterSystem {
             return;
         }
         if (key === 'xdeath0') {
-            this._events.soundFromBody('misc/gibbed', m.inst,
+            this._events.soundFromBody('misc/gibbed', m.view,
                 {replaceKey: ('monster:' + m.inst.getId() + ':voice')});
             return;
         }
         if (key === 'raise0') {
-            this._events.soundFromBody('vile/raise', m.inst);
+            this._events.soundFromBody('vile/raise', m.view);
         }
     }
 
@@ -1186,7 +1186,7 @@ class DoomMonsterSystem {
         // D'Sparil's rise) — profile data, played from the body channel.
         const table = this._sounds[m.def.getCode()];
         if ((table !== undefined) && ((table.actions?.[action] ?? null) !== null)) {
-            this._events.soundFromBody(table.actions[action], m.inst,
+            this._events.soundFromBody(table.actions[action], m.view,
                 {replaceKey: ('monster:' + m.inst.getId() + ':body')});
         }
         // The attack layer owns every aiming and hurting verb.
@@ -1679,7 +1679,7 @@ class DoomMonsterSystem {
         const drop = {
             key:     key,
             inst:    inst,
-            view:    new DoomBodyView(inst, null).setSector(si),
+            view:    new DoomBodyView(inst, null, key).setSector(si),
             si:      si,
             crushed: false
         };

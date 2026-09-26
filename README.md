@@ -164,7 +164,7 @@ website/
     │   ├── automap/             Level map: line model, state, and the vanilla BSP reveal
     │   ├── hud/                 Game HUD + debug overlay + automap layer
     │   ├── menu/                DOM menu screens and modals (WAD list, episodes, multiplayer, options, text entry, pause, death, save slots, pairing, lobby)
-    │   ├── net/                 Multiplayer sessions of the game: pairing payload, lobby, main and sub sessions, device availability
+    │   ├── net/                 Multiplayer of the game: pairing payload, lobby, main and sub sessions, device availability, and the replicated turn state and commands with their binary codecs
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals, and the drawable weapon and projectile views with their renderers
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
     └── engine/               Spipu3D — the game-agnostic 3D engine

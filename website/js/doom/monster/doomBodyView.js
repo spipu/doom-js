@@ -9,10 +9,13 @@ class DoomBodyView {
     /**
      * @param {Instance}    inst
      * @param {object|null} frames - view key → [objId ×1|×8]; null for a drop, whose sprite never changes
+     * @param {string}      kind   - the monster def code, or the drop key (DoomMonsterSystem.dropKey)
      */
-    constructor(inst, frames) {
+    constructor(inst, frames, kind) {
         this._inst         = inst;
         this._frames       = frames;
+        this._kind         = kind;
+        this._netId        = null;       // network id of a body born in play, null for a built one
         this._frameKey     = null;       // null while no state was shown
         this._bright       = false;
         this._facing       = 0;          // Doom degrees
@@ -28,6 +31,24 @@ class DoomBodyView {
 
     getFrames() {
         return this._frames;
+    }
+
+    getKind() {
+        return this._kind;
+    }
+
+    isDrop() {
+        return (this._frames === null);
+    }
+
+    setNetId(netId) {
+        this._netId = netId;
+
+        return this;
+    }
+
+    getNetId() {
+        return this._netId;
     }
 
     // The frame, facing and sector of a body entering or holding a state.

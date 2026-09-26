@@ -49,6 +49,11 @@ class DoomSectorLightInteraction extends AbstractInteraction {
         return (WadConstants.sectorLightLevel(st.light) / WadConstants.sectorLightLevel(st.maxLight));
     }
 
+    // The live light level of every light sector, in build order.
+    getLevels() {
+        return this._states.map((st) => st.light);
+    }
+
     triggered(instance) {
     }
 

@@ -26,7 +26,7 @@ class DoomTurnEventPlayer {
                 doomSound.playAt(event.name, event.point, event.options);
                 break;
             case DoomTurnEvents.SOUND_FROM_BODY:
-                doomSound.playAt(event.name, event.inst.getWorldCenter(), event.options);
+                doomSound.playAt(event.name, event.body.getInstance().getWorldCenter(), event.options);
                 break;
             case DoomTurnEvents.SOUND_FROM_PLAYER:
                 doomSound.playFromPlayer(event.name, event.user, event.channel);

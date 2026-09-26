@@ -254,7 +254,7 @@ class DoomProjectileSystem {
             collisionShape: 'none',
             keyframes:      [],
         });
-        p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames).setCenter(p.x, p.y, p.z);
+        p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames, def.kind).setCenter(p.x, p.y, p.z);
         this._views.add(p.view);
         this._active.push(p);
         if (p.def.seeSound !== null) {
