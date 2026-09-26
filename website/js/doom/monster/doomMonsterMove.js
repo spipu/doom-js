@@ -340,11 +340,12 @@ class DoomMonsterMove {
             return refused;
         }
 
-        // The players block like any body (PIT_CheckThing square overlap,
-        // with the engine's vertical-span gate).
+        // The living players block like any body (PIT_CheckThing square
+        // overlap, with the engine's vertical-span gate); a dead one is no
+        // longer solid.
         const feet = ((isFloat) ? pos[1] : destFloor);
         for (const u of this._monsters.getPlayers()) {
-            if (WadGeometry.boxesOverlap2d(destX, destZ, r, u.x, u.z, u.getRadius())
+            if (!u.isDead() && WadGeometry.boxesOverlap2d(destX, destZ, r, u.x, u.z, u.getRadius())
                 && (u.y < feet + h) && (u.y + u.getCurrentHeight() > feet)) {
                 return refused;
             }

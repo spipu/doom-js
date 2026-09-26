@@ -24,8 +24,12 @@ class DoomPickupInteraction extends AbstractInteraction {
         return this._code;
     }
 
-    // The engine hands the user whose body entered the radius.
+    // The engine hands the user whose body entered the radius; a dead one
+    // touches nothing (P_TouchSpecialThing).
     triggered(instance, user) {
+        if (user.isDead()) {
+            return;
+        }
         // Vanilla MF_COUNTITEM things all carry ALWAYSPICKUP: a counted item is
         // taken whatever it gives, unless it has no effect wired yet.
         const alwaysPickup = (this._countsItem && ((this._effect ?? null) !== null));

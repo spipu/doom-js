@@ -778,9 +778,10 @@ class DoomMonsterSystem {
         return true;
     }
 
-    // P_CheckPosition against the live bodies and the players (the world
-    // geometry validated these spots at map load) — shared by the nightmare
-    // respawn (any occupancy refuses) and the monster teleport (which may stomp).
+    // P_CheckPosition against the live bodies and the living players (the
+    // world geometry validated these spots at map load) — shared by the
+    // nightmare respawn (any occupancy refuses) and the monster teleport (which
+    // may stomp). A dead player is neither solid nor shootable (P_KillMobj).
     _spotOccupancy(x, z, r, exclude) {
         const blockers = [];
         for (const other of this._monsters) {
@@ -794,7 +795,7 @@ class DoomMonsterSystem {
         }
         return {
             blockers: blockers,
-            players:  this.getPlayers().filter((u) => WadGeometry.boxesOverlap2d(x, z, r, u.x, u.z, u.getRadius()))
+            players:  this.getPlayers().filter((u) => (!u.isDead() && WadGeometry.boxesOverlap2d(x, z, r, u.x, u.z, u.getRadius())))
         };
     }
 
