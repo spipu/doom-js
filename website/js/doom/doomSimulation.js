@@ -147,17 +147,61 @@ class DoomSimulation {
     }
 
     /**
-     * Gives the player the body the loaded world built, with its equipment:
-     * the restored one, else the carried one, else the starting loadout.
+     * Wires the level's systems on the loaded world; the players join it next,
+     * through addPlayer.
      *
-     * @param {World}       world
+     * @param {World} world
+     */
+    startLevel(world) {
+        this._world = world;
+        const collision = world.getCollision();
+        // The single body the engine world moves, until it holds one per player.
+        const user = world.getUser();
+
+        // Vanilla M_ClearRandom.
+        this._rng.reset();
+        this._monsters.setWorld(collision, user);
+        this._monsterDamage.setWorld(collision, user);
+        this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
+        this._effects.setWorld(collision);
+        if (this._terrain !== null) {
+            this._terrain.setEffects(this._effects);
+            this._hitscan.setTerrain(this._terrain);
+            this._projectiles.setTerrain(this._terrain);
+            this._monsters.setTerrain(this._terrain);
+            this._monsterDamage.setTerrain(this._terrain);
+        }
+        this._projectiles.setWorld(collision, user);
+        this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
+
+        return this;
+    }
+
+    /**
+     * Gives the player its body in the started level, with its equipment —
+     * the restored one, else the carried one, else the starting loadout — and
+     * the weapon controller that fires it.
+     *
      * @param {DoomPlayer}  player
      * @param {object|null} restoredState - the player state of a save being loaded
      */
-    enterLevel(world, player, restoredState) {
-        this._world = world;
-        player.enterLevel(world.getUser());
+    addPlayer(player, restoredState) {
+        player.enterLevel(this._world.getUser());
+        this._equip(player, restoredState);
+        player.markLevelEntry();
 
+        const user = player.getUser();
+        user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
+        if (user.getActiveWeapon() !== null) {
+            player.setWeapon(new DoomPlayerWeapon(this._itemRules, user, this._weaponSprites, this._rng)
+                .setAttackSystems(this._hitscan, this._projectiles)
+                .setNoiseCallback(() => this._monsters.noiseAlert()));
+        }
+
+        return this;
+    }
+
+    _equip(player, restoredState) {
         const user    = player.getUser();
         const carried = player.getCarriedState();
         if (restoredState !== null) {
@@ -176,38 +220,6 @@ class DoomSimulation {
         user.setLandingSplash(((this._terrain !== null)
             ? ((x, y, z) => this._terrain.splashAt(x, y, z))
             : null));
-        player.markLevelEntry();
-
-        return this;
-    }
-
-    startLevel(player) {
-        const collision = this._world.getCollision();
-        const user      = player.getUser();
-
-        // Vanilla M_ClearRandom.
-        this._rng.reset();
-        this._monsters.setWorld(collision, user);
-        this._monsterDamage.setWorld(collision, user);
-        this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._gunTriggers, this._monsters, this._monsterDamage);
-        this._effects.setWorld(collision);
-        if (this._terrain !== null) {
-            this._terrain.setEffects(this._effects);
-            this._hitscan.setTerrain(this._terrain);
-            this._projectiles.setTerrain(this._terrain);
-            this._monsters.setTerrain(this._terrain);
-            this._monsterDamage.setTerrain(this._terrain);
-        }
-        this._projectiles.setWorld(collision, user);
-        this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
-        if (user.getActiveWeapon() !== null) {
-            player.setWeapon(new DoomPlayerWeapon(this._itemRules, user, this._weaponSprites, this._rng)
-                .setAttackSystems(this._hitscan, this._projectiles)
-                .setNoiseCallback(() => this._monsters.noiseAlert()));
-        }
-        user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
-
-        return this;
     }
 
     getWorld() {

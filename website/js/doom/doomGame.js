@@ -118,7 +118,8 @@ class DoomGame {
 
         const player   = this._localPlayer();
         const snapshot = this._restoreSnapshot;
-        this._simulation.enterLevel(world, player, ((snapshot !== null) ? snapshot.player.state : null));
+        this._simulation.startLevel(world)
+            .addPlayer(player, ((snapshot !== null) ? snapshot.player.state : null));
         this._deathClockMs = 0;
         this._applySpawnOverride();
 
@@ -140,11 +141,6 @@ class DoomGame {
             skill:     this._simulation.getSkill(),
             levelName: this._levelName
         });
-
-        this._simulation.startLevel(player);
-        if (player.getWeapon() !== null) {
-            this._presentation.showWeaponOverlay();
-        }
 
         if (snapshot !== null) {
             this._simulation.applySnapshot(player, snapshot);
@@ -204,7 +200,7 @@ class DoomGame {
         const engine = this._presentation.getEngine();
         engine.calculateDeltaTime(timestamp);
         const dt       = engine.getDeltaTime();
-        const commands = new Map([[player.getId(), this._commandSampler.collect(dt).sample()]]);
+        const commands = this._collectCommands(dt);
 
         this._presentation.readViewToggles();
         this._simulation.tickPlayers(dt, commands);
@@ -217,6 +213,14 @@ class DoomGame {
         this._presentation.present(dt, this._isGameMenuOpen());
 
         requestAnimationFrame(this._animateCallback);
+    }
+
+    /**
+     * @param {number} dt
+     * @returns {Map<int, UserCommand>} this turn's command of each player, by player id
+     */
+    _collectCommands(dt) {
+        return new Map([[this._localPlayer().getId(), this._commandSampler.collect(dt).sample()]]);
     }
 
     // Read every frame so a change from the pause options applies live.

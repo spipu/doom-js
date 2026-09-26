@@ -53,7 +53,7 @@ class DoomPresentation {
         return this;
     }
 
-    showWeaponOverlay() {
+    _showWeaponOverlay() {
         this._engine.setOverlayCallback((renderer, engine) => this._drawWeaponOverlay(renderer, engine));
 
         return this;
@@ -123,9 +123,8 @@ class DoomPresentation {
 
         this._engine.initFromWorld(this._world);
 
-        // Only on a renderer swap: at level init the controller is built afterwards.
         if (this._player.getWeapon() !== null) {
-            this.showWeaponOverlay();
+            this._showWeaponOverlay();
         }
     }
 
