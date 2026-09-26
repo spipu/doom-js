@@ -18,7 +18,7 @@ class DoomSectorPushInteraction extends AbstractInteraction {
      *                                     friction: {friction}|null}] behind the shared locator
      * @param {DoomMonsterSystem} monsters
      */
-    constructor(zones, monsters = null) {
+    constructor(zones, monsters) {
         super();
         this._zones    = zones;
         this._monsters = monsters;
@@ -37,9 +37,7 @@ class DoomSectorPushInteraction extends AbstractInteraction {
             this._feedUser(user, toMetresPerS);
         }
 
-        if (this._monsters !== null) {
-            this._feedMonsters(toMetresPerS);
-        }
+        this._feedMonsters(toMetresPerS);
     }
 
     // A dead player keeps being pushed (GZDoom: the carry/wind live at mobj

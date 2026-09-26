@@ -12,14 +12,14 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelCode
-     * @param {object}  options - {onLevelExit: function, thingCatalog: object, skill: number, multiplayerThings: boolean, simulation: DoomSimulation, profile: AbstractGameProfile}
+     * @param {object}  options - {onLevelExit: function, thingCatalog: DoomThingCatalog, monsterCatalog: DoomMonsterCatalog, skill: number, multiplayerThings: boolean, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; thingCatalog
-     *                  (DoomSimulation) maps THING types to world sprites/pickups; skill
-     *                  (1..5, default 3) drives the thing filtering, with the
-     *                  multiplayer-only things (MTF_NOT_SINGLE) when multiplayerThings;
-     *                  simulation feeds the pickup, secret and teleport interactions
-     *                  (null on a device that only displays the level);
-     *                  profile carries the per-game policy (Doom by default).
+     *                  maps THING types to world sprites/pickups and monsterCatalog
+     *                  to monster definitions; skill (1..5, default 3) drives the
+     *                  thing filtering, with the multiplayer-only things
+     *                  (MTF_NOT_SINGLE) when multiplayerThings; profile carries
+     *                  the per-game policy (Doom by default). What only the
+     *                  simulating device wires comes back in plain data.
      */
     constructor(wadFile, levelCode, options = null) {
         options = options ?? {};
@@ -30,10 +30,8 @@ class WadWorldBuilder {
         this._thingCatalog      = options.thingCatalog ?? null;
         this._skill             = options.skill ?? 3;
         this._multiplayerThings = (options.multiplayerThings === true);
-        this._simulation        = options.simulation ?? null;
         this._profile           = options.profile ?? new DoomGameProfile();
         this._monsterCatalog    = options.monsterCatalog ?? null;
-        this._monsterSystem     = options.monsterSystem ?? null;
         this._level             = null;
         this._sectorPolys       = null;   // walked on demand, see _sectorPolyCache
         this._built             = null;   // DoomBuiltLevel handed back by build()
@@ -169,9 +167,8 @@ class WadWorldBuilder {
         for (const tp of teleporters) {
             this._registerInstance(tp, bank);
             this._applyCrossingGuard(tp);
-            loader.interactions().loadFromData(
-                new DoomTeleportInteraction(tp.interactionSpec.code, tp.interactionSpec.destination, this._monsterSystem, this._simulation));
         }
+        this._built.setTeleports(teleporters.map((tp) => ({code: tp.interactionSpec.code, destination: tp.interactionSpec.destination})));
         await this._yield();
 
         const bspTree     = level.bspTree;
@@ -207,7 +204,7 @@ class WadWorldBuilder {
                 zone.friction = (WadConstants.SECTOR_FRICTION_BY_SPECIAL[special] ?? null);
             });
         if (pushZones.list.length > 0) {
-            loader.interactions().loadFromData(new DoomSectorPushInteraction(pushZones, this._monsterSystem));
+            this._built.setPushZones(pushZones);
         }
 
         let lightInteraction = null;
@@ -219,8 +216,8 @@ class WadWorldBuilder {
         const secretZones = this._sectorZones(analysis, bspSectorAt,
             (si, special) => (special === WadConstants.SECTOR_SECRET_SPECIAL), null);
         this._built.setSecretsTotal(secretZones.list.length);
-        if ((this._simulation !== null) && (secretZones.list.length > 0)) {
-            loader.interactions().loadFromData(new DoomSecretInteraction(secretZones, this._simulation.getLevelStats()));
+        if (secretZones.list.length > 0) {
+            this._built.setSecretZones(secretZones);
         }
         this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors));
 
@@ -237,12 +234,10 @@ class WadWorldBuilder {
         await this._yield();
 
         const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction);
-        if (this._monsterSystem !== null) {
-            this._monsterSystem.setLevelData(levelData).setExitCallback(this._onLevelExit);
-        }
+        this._built.setMonsterLevelData(levelData);
         this._registerAutomap(level, levelData.heights);
-        const bossRules = this._wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes);
-        this._wireBossBrain();
+        this._built.setBossRules(this._bossRules(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes));
+        this._built.setBossBrain(this._bossBrain());
 
         loader.world().loadFromData(this._buildDefinition(level, bank));
 
@@ -251,7 +246,7 @@ class WadWorldBuilder {
             + lifts.length + ' lifts, ' + risingFloors.length + ' rising, '
             + stairs.length + ' stairs, '
             + switches.length + ' switches, ' + walkTriggers.length + ' walk-triggers, '
-            + teleporters.length + ' teleporters, ' + bossRules + ' boss rules, '
+            + teleporters.length + ' teleporters, ' + this._built.getBossRules().length + ' boss rules, '
             + things.count + ' things (' + things.skipped + ' skipped, '
             + things.filtered + ' filtered, ' + things.monsters + ' monsters, skill ' + this._skill + '), '
             + patches + ' compat patches');
@@ -318,7 +313,7 @@ class WadWorldBuilder {
     }
 
     // One shared billboard per sprite variant, one instance per thing; pickups
-    // get a proximity trigger and a DoomPickupInteraction.
+    // get a proximity trigger, their interaction is the simulation's.
     _registerThings(level, palette, analysis, builtFloorCodes) {
         if (this._thingCatalog === null) {
             return {count: 0, skipped: 0, filtered: 0, monsters: 0};
@@ -341,6 +336,8 @@ class WadWorldBuilder {
 
         const billboardIds        = {};
         const monsterBillboardIds = {};
+        const pickups             = [];
+        const placements          = [];
         let   killsTotal          = 0;
         let   itemsTotal          = 0;
         // vanilla total_items counts the map things alone, never the drops (P_SpawnMobj).
@@ -348,7 +345,7 @@ class WadWorldBuilder {
         for (let i = 0; i < things.length; i++) {
             const thing = things[i];
             if (thing.kind === 'monster') {
-                this._registerMonsterThing(thing, i, analysis, builtFloorCodes, monsterBillboardIds);
+                placements.push(this._registerMonsterThing(thing, i, analysis, builtFloorCodes, monsterBillboardIds));
                 if (thing.def.getFlags().countsKill !== false) {
                     killsTotal++;
                 }
@@ -404,11 +401,11 @@ class WadWorldBuilder {
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
-            if (isPickup && (this._simulation !== null)) {
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, thing.effect, this._simulation.getItemRules(), this._simulation.getLevelStats(), countsItem));
+            if (isPickup) {
+                pickups.push({code: code, effect: thing.effect, countsItem: countsItem});
             }
         }
-        this._built.setKillsTotal(killsTotal).setItemsTotal(itemsTotal);
+        this._built.setKillsTotal(killsTotal).setItemsTotal(itemsTotal).setPickups(pickups).setMonsterPlacements(placements);
         this._registerMonsterDrops(things, spriteBank);
         this._registerCrushedCorpseView(spriteBank);
         this._registerRuntimeSpawnables(spriteBank, monsterBillboardIds);
@@ -469,7 +466,7 @@ class WadWorldBuilder {
     // Monsters spawned mid-fight (lost souls, D'Sparil), built inside the batch:
     // nothing can load at runtime. A type missing from the IWAD is skipped.
     _registerRuntimeSpawnables(spriteBank, billboardIds) {
-        if ((this._monsterSystem === null) || (this._monsterCatalog === null)) {
+        if (this._monsterCatalog === null) {
             return;
         }
         const catalog = {};
@@ -486,21 +483,17 @@ class WadWorldBuilder {
                 };
             }
         }
-        this._monsterSystem.setSpawnables(catalog);
+        this._built.setMonsterSpawnables(catalog);
     }
 
     // Crushed-corpse billboard (vanilla S_GIBS), built inside the batch; none
     // for a profile or WAD without the sprite.
     _registerCrushedCorpseView(spriteBank) {
-        if (this._monsterSystem === null) {
-            return;
-        }
         const lump = this._profile.crushedCorpseSprite();
         if ((lump === null) || !spriteBank.has(lump)) {
-            this._monsterSystem.setCrushedCorpseView(null);
             return;
         }
-        this._monsterSystem.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump), WadConstants.MONSTER_TINT));
+        this._built.setCrushedCorpseView(this._groundSpriteBillboard(spriteBank.get(lump), WadConstants.MONSTER_TINT));
     }
 
     // Floor-anchored billboard of the runtime templates, baked fullbright: the
@@ -520,14 +513,13 @@ class WadWorldBuilder {
         });
     }
 
-    // Drop templates, one interaction per item/amount pair, built inside the
-    // batch: interactions cannot register at runtime, only instances spawn.
+    // Drop templates, one per item/amount pair, built inside the batch: nothing
+    // registers at runtime, only instances spawn. Their pickup interaction is
+    // the simulation's.
     _registerMonsterDrops(things, spriteBank) {
-        if ((this._monsterSystem === null) || (this._simulation === null)) {
-            return;
-        }
-        const types   = this._profile.dropItemTypes();
-        const catalog = {};
+        const types     = this._profile.dropItemTypes();
+        const catalog   = {};
+        const templates = [];
         for (const thing of things) {
             if (thing.kind !== 'monster') {
                 continue;
@@ -542,16 +534,16 @@ class WadWorldBuilder {
                 if (spr === null) {
                     continue;
                 }
-                const effect = ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (drop.amount ?? 0)});
-                const code   = 'drop_' + drop.item + '_' + (drop.amount ?? 'x');
                 catalog[key] = {
-                    code:  code,
-                    objId: this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT)
+                    key:    key,
+                    code:   'drop_' + drop.item + '_' + (drop.amount ?? 'x'),
+                    objId:  this._groundSpriteBillboard(spr, WadConstants.PICKUP_TINT),
+                    effect: ((type.effect !== undefined) ? type.effect : {ammo: type.ammoType, amount: (drop.amount ?? 0)})
                 };
-                loader.interactions().loadFromData(new DoomPickupInteraction(code, effect, this._simulation.getItemRules(), this._simulation.getLevelStats()));
+                templates.push(catalog[key]);
             }
         }
-        this._monsterSystem.setDrops(catalog);
+        this._built.setDropTemplates(templates);
     }
 
     // Views baked fullbright: a body moves, so the monster system lights it
@@ -579,20 +571,19 @@ class WadWorldBuilder {
         if (ride.floorCode !== null) {
             inst.setRideOn(loader.instances().getByCode(ride.floorCode));
         }
-        if (this._monsterSystem !== null) {
-            const spawnPos = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
-            this._monsterSystem.add({
-                code:   code,
-                inst:   inst,
-                def:    thing.def,
-                facing: thing.facing,
-                flags:  thing.flags,
-                frames: frames,
-                si:     thing.si,
-                // P_NightmareRespawn returns to the original spot and flags.
-                spawn:  {position: spawnPos, facing: thing.facing, flags: thing.flags, si: thing.si}
-            });
-        }
+        const spawnPos = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
+
+        return {
+            code:   code,
+            inst:   inst,
+            def:    thing.def,
+            facing: thing.facing,
+            flags:  thing.flags,
+            frames: frames,
+            si:     thing.si,
+            // P_NightmareRespawn returns to the original spot and flags.
+            spawn:  {position: spawnPos, facing: thing.facing, flags: thing.flags, si: thing.si}
+        };
     }
 
     // The reveal is a BSP walk: no valid tree, no map.
@@ -930,19 +921,19 @@ class WadWorldBuilder {
     }
 
     // Icon of Sin target rotation and cube spawns, on levels with its target spots.
-    _wireBossBrain() {
+    _bossBrain() {
         const targets = ((this._spots ?? {}).bossTarget ?? []);
-        if ((this._monsterSystem === null) || (targets.length === 0)) {
-            return;
+        if (targets.length === 0) {
+            return null;
         }
         const skillRule = (this._profile.skillRules()[this._skill] ?? null);
-        this._monsterSystem.setBossBrain(new DoomBossBrain(
-            targets, this._profile.bossCubeSpawns(), (skillRule?.easyBossBrain === true)));
+
+        return new DoomBossBrain(targets, this._profile.bossCubeSpawns(), (skillRule?.easyBossBrain === true));
     }
 
-    _wireBossDeath(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
-        if ((this._monsterSystem === null) || (this._monsterCatalog === null) || (bossActions.length === 0)) {
-            return 0;
+    _bossRules(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes) {
+        if ((this._monsterCatalog === null) || (bossActions.length === 0)) {
+            return [];
         }
         const defs = this._monsterCatalog.getAllDefs();
         const rules = [];
@@ -965,10 +956,7 @@ class WadWorldBuilder {
                 }
             }
         }
-        if (rules.length > 0) {
-            this._monsterSystem.setBossDeath(new DoomBossDeath(this._monsterSystem, rules, this._onLevelExit));
-        }
-        return rules.length;
+        return rules;
     }
 
     // Walk zones and teleports fire on a real crossing (P_CrossSpecialLine): the

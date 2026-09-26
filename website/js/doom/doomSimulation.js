@@ -19,11 +19,9 @@ class DoomSimulation {
         this._profile            = null;
         this._itemCatalog        = null;
         this._itemRules          = null;
-        this._thingCatalog       = null;
-        this._monsterCatalog     = null;
         this._skillTable         = null;
         this._world              = null;
-        this._level              = null;   // DoomBuiltLevel handed back by the world builder
+        this._level              = null;   // the DoomBuiltLevel it adopted
         this._stats              = new DoomLevelStats();
         this._onPlayerTeleported = null;
 
@@ -53,17 +51,10 @@ class DoomSimulation {
         this._profile        = profile;
         this._itemCatalog    = itemCatalog;
         this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster);
-        this._thingCatalog   = profile.createThingCatalog();
-        this._monsterCatalog = profile.createMonsterCatalog();
         this._skillTable     = profile.skillRules();
         this._itemRules.setAmmoFactor(this._skillRule().ammoFactor);
 
         return this;
-    }
-
-    // Main-only: the pickup interactions the world builder wires apply them.
-    getItemRules() {
-        return this._itemRules;
     }
 
     setSkill(skill) {
@@ -73,62 +64,89 @@ class DoomSimulation {
         return this;
     }
 
-    getSkill() {
-        return this._skill;
-    }
-
     // Out-of-range skills (dev starter) fall back to the HMP rules.
     _skillRule() {
         return (this._skillTable[this._skill] ?? this._skillTable[DoomSimulation.DEFAULT_SKILL]);
     }
 
-    // --- Level building ---
+    // --- Level adoption ---
 
     /**
-     * Builds the level inside the loader batch the caller opened: every object
-     * registered after endBatch would re-fire the loader.
+     * Wires the simulation onto the level every device builds, inside the
+     * loader batch the caller opened: its monster system from the placements,
+     * the damage, projectile and attack systems, and the interactions only the
+     * simulating device registers (nothing registers after endBatch).
      *
-     * @param {WadFile}  wadFile
-     * @param {string}   levelCode
-     * @param {function} onLevelExit - (secret) => void
+     * @param {DoomBuiltLevel} built
+     * @param {function}       onLevelExit - (secret) => void
      */
-    async buildLevel(wadFile, levelCode, onLevelExit) {
+    adoptLevel(built, onLevelExit) {
         this._stats.reset();
+        this._adoptLevelServices(built);
+        this._adoptMonsters(built, onLevelExit);
+        this._weaponSprites = built.getWeaponSprites();
+        this._effects       = built.getEffects().setRandom(this._rng);
+        this._decals        = built.getDecals();
+        if (this._decals !== null) {
+            this._decals.setRandom(this._rng);
+        }
+        this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this._stats);
+        this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
+        this._projectiles = new DoomProjectileSystem(built.getProjectileDefs(), this._effects, this._rng, this._decals, this._monsters, this._monsterDamage);
+        this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
+        this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
+        this._monsters.setAttack(this._monsterAttack);
+    }
 
-        // Built before the builder, which feeds it. The skill rule must be
-        // known at add() time (InstantReaction).
+    // The skill rule precedes the adds (InstantReaction), and the adds precede
+    // the level data, which lights the bodies already added.
+    _adoptMonsters(built, onLevelExit) {
         this._monsters = new DoomMonsterSystem();
         this._monsters.setSkillRule(this._skillRule());
         this._monsters.setRandom(this._rng);
         this._monsters.setNightmareFast(this._profile.nightmareFast());
         this._monsters.setMonsterSounds(this._profile.monsterSounds());
-        this._adoptLevel(await new WadWorldBuilder(wadFile, levelCode, {
-            onLevelExit: onLevelExit,
-            thingCatalog: this._thingCatalog,
-            skill: this._skill,
-            multiplayerThings: this._rules.spawnsMultiplayerThings(),
-            simulation: this,
-            profile: this._profile,
-            monsterCatalog: this._monsterCatalog,
-            monsterSystem: this._monsters
-        }).build());
-
-        this._weaponSprites = new DoomWeaponSpriteBank(wadFile);
-        this._itemCatalog.resolveAvailableWeapons(this._weaponSprites);
-        this._effects = new DoomEffects(this._weaponSprites, this._rng, this._profile);
-        // Skipped if the decal graphics are not decoded yet (first-level race).
-        this._decals = ((doomImageAssets.isReady()) ? new DoomDecals(doomImageAssets, this._rng, this._profile) : null);
-        // Not vanilla: a game with no splash of its own gets a generic one,
-        // tinted with the colour of each liquid flat.
-        if ((this._terrain !== null) && doomImageAssets.isReady()) {
-            new DoomGenericSplash(doomImageAssets, this._effects, this._profile).apply(this._terrain);
+        for (const placement of built.getMonsterPlacements()) {
+            this._monsters.add(placement);
         }
-        this._monsterDamage = new DoomMonsterDamage(this._monsters, this._effects, this._rng, this._profile.monsterDamageRules(), this._stats);
-        this._monsters.setDamageModule(this._monsterDamage).setEffects(this._effects);
-        this._projectiles = new DoomProjectileSystem(this._weaponSprites, this._effects, this._rng, this._decals, this._profile, this._monsters, this._monsterDamage);
-        this._projectiles.setFastMonsters(this._skillRule().fastMonsters);
-        this._monsterAttack = new DoomMonsterAttack(this._monsters, this._monsterDamage, this._rng);
-        this._monsters.setAttack(this._monsterAttack);
+        this._registerInteractions(built);
+        this._monsters.setDrops(this._registerDrops(built.getDropTemplates()));
+        this._monsters.setCrushedCorpseView(built.getCrushedCorpseView());
+        this._monsters.setSpawnables(built.getMonsterSpawnables());
+        this._monsters.setLevelData(built.getMonsterLevelData()).setExitCallback(onLevelExit);
+        if (built.getBossRules().length > 0) {
+            this._monsters.setBossDeath(new DoomBossDeath(this._monsters, built.getBossRules(), onLevelExit));
+        }
+        if (built.getBossBrain() !== null) {
+            this._monsters.setBossBrain(built.getBossBrain());
+        }
+    }
+
+    _registerInteractions(built) {
+        for (const teleport of built.getTeleports()) {
+            loader.interactions().loadFromData(new DoomTeleportInteraction(teleport.code, teleport.destination, this._monsters, this));
+        }
+        if (built.getPushZones() !== null) {
+            loader.interactions().loadFromData(new DoomSectorPushInteraction(built.getPushZones(), this._monsters));
+        }
+        if (built.getSecretZones() !== null) {
+            loader.interactions().loadFromData(new DoomSecretInteraction(built.getSecretZones(), this._stats));
+        }
+        for (const pickup of built.getPickups()) {
+            loader.interactions().loadFromData(new DoomPickupInteraction(pickup.code, pickup.effect, this._itemRules, this._stats, pickup.countsItem));
+        }
+    }
+
+    // One pickup interaction per drop template; the catalog the monster system
+    // spawns them from is keyed by DoomMonsterSystem.dropKey.
+    _registerDrops(templates) {
+        const catalog = {};
+        for (const template of templates) {
+            loader.interactions().loadFromData(new DoomPickupInteraction(template.code, template.effect, this._itemRules, this._stats));
+            catalog[template.key] = template;
+        }
+
+        return catalog;
     }
 
     /**
@@ -242,9 +260,9 @@ class DoomSimulation {
         return this;
     }
 
-    // --- Level data handed back by the world builder ---
+    // --- Level services handed back by the world builder ---
 
-    _adoptLevel(built) {
+    _adoptLevelServices(built) {
         this._level          = built;
         this._gunTriggers    = built.getGunTriggers();
         this._sectorDamage   = built.getSectorDamage();
@@ -255,18 +273,10 @@ class DoomSimulation {
         this._stats.setTotals(built.getSecretsTotal(), built.getKillsTotal(), built.getItemsTotal());
     }
 
-    /**
-     * @returns {DoomBuiltLevel} what the presentation shows of the level: a sub builds its own
-     */
-    getBuiltLevel() {
-        return this._level;
-    }
-
     getLevelStats() {
         return this._stats;
     }
 
-    // Built after the world: build-time consumers (teleports) must read it at trigger time.
     getEffects() {
         return this._effects;
     }

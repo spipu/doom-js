@@ -11,7 +11,7 @@ class DoomTeleportInteraction extends AbstractInteraction {
      * @param {DoomMonsterSystem} monsters    - telefrag pool (a player teleport stomps)
      * @param {DoomSimulation}    simulation  - teleport fog source, told of the arrival
      */
-    constructor(code, destination, monsters = null, simulation = null) {
+    constructor(code, destination, monsters, simulation) {
         super();
         this._code        = code;
         this._destination = destination;
@@ -56,24 +56,16 @@ class DoomTeleportInteraction extends AbstractInteraction {
         this._stompMonsters(user);
         this._stompPlayers(user, world);
 
-        if (this._simulation !== null) {
-            const effects = this._simulation.getEffects();
-            if (effects !== null) {
-                effects.spawnTeleportFogs(fromX, fromY, fromZ, user.x, user.y, user.z,
-                    WadGeometry.doomAngleYaw(user.yaw));
-            }
-            this._simulation.notifyPlayerTeleported(user);
-        }
+        this._simulation.getEffects().spawnTeleportFogs(fromX, fromY, fromZ, user.x, user.y, user.z,
+            WadGeometry.doomAngleYaw(user.yaw));
+        this._simulation.notifyPlayerTeleported(user);
         user.freezeControls(WadConstants.TELEPORT_FREEZE_TICS * WadConstants.SECONDS_PER_TIC);
 
         this._cooldowns.set(user, WadConstants.TELEPORT_COOLDOWN_MS);
     }
 
     _stompMonsters(user) {
-        const damage = ((this._monsters !== null) ? this._monsters.getDamageModule() : null);
-        if (damage === null) {
-            return;
-        }
+        const damage = this._monsters.getDamageModule();
         for (const m of this._monsters.getMonsters()) {
             if (m.dead) {
                 continue;

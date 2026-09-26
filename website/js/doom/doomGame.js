@@ -6,6 +6,10 @@ class DoomGame {
         this._presentation    = new DoomPresentation();
         this._profile         = null;
         this._itemCatalog     = null;
+        this._thingCatalog    = null;
+        this._monsterCatalog  = null;
+        this._builtLevel      = null;
+        this._skill           = DoomSimulation.DEFAULT_SKILL;
         this._inputs          = null;
         this._commandSampler  = null;
         this._wakeLock        = null;
@@ -83,10 +87,16 @@ class DoomGame {
 
     // spawnOverride = {position, yaw, pitch}, debug only (see _applySpawnOverride).
     async startFromWad(wadFile, levelCode, wadMeta = null, spawnOverride = null, skill = null) {
-        this._wadFile     = wadFile;
-        this._profile     = new GameProfileList().getForWad(wadFile);
-        this._itemCatalog = new DoomItemCatalog(this._profile);
-        this._simulation.useProfile(this._profile, this._itemCatalog);
+        this._wadFile        = wadFile;
+        this._profile        = new GameProfileList().getForWad(wadFile);
+        this._itemCatalog    = new DoomItemCatalog(this._profile);
+        this._thingCatalog   = this._profile.createThingCatalog();
+        this._monsterCatalog = this._profile.createMonsterCatalog();
+        // Null on a level transition: the skill carries over.
+        if (skill !== null) {
+            this._skill = skill;
+        }
+        this._simulation.useProfile(this._profile, this._itemCatalog).setSkill(this._skill);
         this._presentation.bindProfile(this._profile, this._itemCatalog);
         this._mapInfo         = new WadMapInfo(wadFile, this._profile);
         this._dehackedStrings = new WadDehackedStrings(wadFile);
@@ -96,10 +106,6 @@ class DoomGame {
         if (wadMeta !== null) {
             this._wadMeta = wadMeta;
         }
-        // Null on a level transition: the skill carries over.
-        if (skill !== null) {
-            this._simulation.setSkill(skill);
-        }
 
         // Before loader.reset() destroys the world the equipment is read from.
         for (const player of this._roster.getAll()) {
@@ -108,9 +114,16 @@ class DoomGame {
 
         this._teardownLevel();
         loader.beginBatch();
-        await this._simulation.buildLevel(wadFile, levelCode, (secret) => {
+        const onLevelExit = (secret) => {
             this._onLevelExit(secret);
-        });
+        };
+        this._builtLevel = await new DoomLevelLoader(this._profile, this._thingCatalog, this._monsterCatalog, this._itemCatalog)
+            .load(wadFile, levelCode, {
+                skill:             this._skill,
+                multiplayerThings: this._rules.spawnsMultiplayerThings(),
+                onLevelExit:       onLevelExit
+            });
+        this._simulation.adoptLevel(this._builtLevel, onLevelExit);
 
         loader.setCallback(() => {
             this._init();
@@ -148,10 +161,10 @@ class DoomGame {
         }
         this._applyGameSettings();
         this._simulation.setViewer(player.getUser());
-        this._presentation.showLevel(world, this._simulation.getBuiltLevel(), this._simulation.getLevelStats(), player, {
+        this._presentation.showLevel(world, this._builtLevel, this._simulation.getLevelStats(), player, {
             wadId:     this._wadId(),
             levelCode: this._levelCode,
-            skill:     this._simulation.getSkill(),
+            skill:     this._skill,
             levelName: this._levelName
         });
 
@@ -289,7 +302,7 @@ class DoomGame {
                 wadId:         this._wadMeta.id,
                 slot:          slot,
                 levelCode:     this._levelCode,
-                skill:         this._simulation.getSkill(),
+                skill:         this._skill,
                 savedAt:       Date.now(),
                 formatVersion: DoomSaveStore.FORMAT_VERSION,
             }),
@@ -397,7 +410,7 @@ class DoomGame {
             .setOnNewGame(() => {
                 this._closeDeathMenu();
                 this._teardownLevel();
-                this._leaveLevelTo((navigator, meta) => navigator.startAtEpisodes(meta, this._simulation.getSkill()));
+                this._leaveLevelTo((navigator, meta) => navigator.startAtEpisodes(meta, this._skill));
             })
             .setOnQuit(() => {
                 this._closeDeathMenu();
@@ -429,7 +442,7 @@ class DoomGame {
 
     // Carries the skill over so a new game preselects it.
     _backToMenu() {
-        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._simulation.getSkill()));
+        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill));
     }
 
     _leaveLevelTo(openMenu) {

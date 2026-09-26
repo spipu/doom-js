@@ -9,12 +9,19 @@
  * frames come straight from the game sources.
  */
 class DoomEffects {
-    constructor(spriteBank, rng, profile) {
-        this._rng        = rng;
+    constructor(spriteBank, profile) {
+        this._rng        = null;
         this._active     = [];
         this._untickedMs = 0;
         this._collision  = null;
         this._templates  = this._buildTemplates(spriteBank, profile);
+    }
+
+    // The game's random sequence, handed by the simulation that spawns the effects.
+    setRandom(rng) {
+        this._rng = rng;
+
+        return this;
     }
 
     /**

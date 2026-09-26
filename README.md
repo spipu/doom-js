@@ -142,6 +142,7 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
+    │   ├── doomLevelLoader.js   The level build every device runs: the converted world and the visual banks it shows
     │   ├── doomSimulation.js    The level's world and the tic that moves it from one command per player: monsters, projectiles, saves
     │   ├── doomLevelStats.js    The level's statistics: secrets, kills and items found against their totals, level time
     │   ├── doomItemRules.js     What pickups, the starting loadout and the cheat give to a player

@@ -22,11 +22,18 @@ class DoomDecals {
     // The decal set (graphics, scales, shades) is per-game data: it comes from
     // the game profile's decalTemplates(), a shade of 'bfg' resolving to its
     // bfgDecalShade() (freedoom art uses a bluish 80 80 ff, id Doom 80 ff 80).
-    constructor(decalTextures, rng, profile) {
-        this._rng       = rng;
+    constructor(decalTextures, profile) {
+        this._rng       = null;
         this._permanent = [];   // instIds, FIFO capped at MAX
         this._fading    = [];   // {instId, steps, elapsed, shown} — BFG lightning
         this._templates = this._buildTemplates(decalTextures, profile);
+    }
+
+    // The game's random sequence, handed by the simulation that spawns the decals.
+    setRandom(rng) {
+        this._rng = rng;
+
+        return this;
     }
 
     // --- Template building (in the load batch) ---

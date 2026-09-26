@@ -11,7 +11,15 @@
  * on detonation. All the data comes from the game profile's projectileDefs().
  */
 class DoomProjectileSystem {
-    constructor(spriteBank, effects, rng, decals, profile, monsters = null, damageModule = null) {
+    /**
+     * @param {object}              defs         - kind → flight definition (DoomProjectileDefs.build)
+     * @param {DoomEffects}         effects
+     * @param {DoomRandom}          rng
+     * @param {DoomDecals|null}     decals
+     * @param {DoomMonsterSystem}   monsters
+     * @param {DoomMonsterDamage}   damageModule
+     */
+    constructor(defs, effects, rng, decals, monsters, damageModule) {
         this._effects    = effects;
         this._rng        = rng;
         this._decals     = decals;
@@ -23,7 +31,7 @@ class DoomProjectileSystem {
         this._active     = [];
         this._untickedMs = 0;
         this._ticCount   = 0;
-        this._defs       = this._buildDefs(spriteBank, profile);
+        this._defs       = defs;
     }
 
     setWorld(world) {
@@ -34,7 +42,7 @@ class DoomProjectileSystem {
     // A missile hurts the players unless a player fired it and the rules
     // spare the other players.
     _hitsPlayers(p) {
-        return (!DoomActorRef.isPlayer(p.owner) || ((this._damage !== null) && this._damage.allowsFriendlyFire()));
+        return (!DoomActorRef.isPlayer(p.owner) || this._damage.allowsFriendlyFire());
     }
 
     /**
@@ -56,116 +64,6 @@ class DoomProjectileSystem {
     // World units per tic.
     _speedOf(def) {
         return (((this._fast) && (def.fastSpeed !== null)) ? def.fastSpeed : def.speed);
-    }
-
-    _buildDefs(bank, profile) {
-        const defs = {};
-        for (const spec of profile.projectileDefs()) {
-            defs[spec.kind] = this._buildDef(bank, spec);
-        }
-        return defs;
-    }
-
-    // In-flight billboard(s) + kinematics for one projectile kind; null if the
-    // WAD lacks the sprites. speed/gravity are in map units per tic (squared
-    // for gravity), converted to world units.
-    _buildDef(bank, spec) {
-        const scale  = WadConstants.SCALE;
-        const frames = [];
-        for (const letter of spec.letters) {
-            const spr = this._pickSprite(bank, spec.sprite, letter);
-            if (spr === null) {
-                return null;
-            }
-            const geo = WadGeometry.spriteBillboardData(spr);
-            frames.push({
-                objId:  loader.objects().loadBillboardFromData(null, {
-                    textures:      [spr.texId],
-                    halfWidth:     geo.halfWidth,
-                    height:        geo.height,
-                    anchorOffsetX: geo.anchorOffsetX,
-                    anchorOffsetY: 0,
-                    light:         255,
-                    alpha:         spec.alpha,
-                    additive:      spec.additive,
-                }),
-                height: geo.height,
-            });
-        }
-        return {
-            kind:             spec.kind,
-            frames,
-            speed:            spec.speed * scale,
-            // FastSpeed (actor.zs): the nightmare skill swaps it in on spawn.
-            fastSpeed:        ((spec.fastSpeed !== undefined) ? spec.fastSpeed * scale : null),
-            flightTics:       spec.flightTics,
-            explosion:        spec.explosion,
-            splashDamage:     spec.splashDamage,
-            impactDamage:     spec.impactDamage ?? 0,
-            kickback:         spec.kickback ?? null,
-            spray:            spec.spray ?? null,
-            decalType:        spec.decalType ?? null,
-            gravity:          (spec.gravity ?? 0) * scale,
-            gravityDelayTics: spec.gravityDelayTics ?? 0,
-            dropSpeed:        (spec.dropSpeed ?? 0) * scale,
-            lob:              (spec.lob === true),
-            trailEffect:      spec.trailEffect ?? null,
-            trailEveryTics:   spec.trailEveryTics ?? 0,
-            // Floor bounce (Heretic mace family): {damping, minVz (u/tic,
-            // pre-damping energy floor), maxBounces, spawnKind (balls spat
-            // sideways at each bounce)} — null = explode on any impact.
-            bounce:           spec.bounce ?? null,
-            // Sound events (logical names): SeeSound at spawn, DeathSound at
-            // detonation, macebounce at each floor bounce.
-            seeSound:         spec.seeSound ?? null,
-            deathSound:       spec.deathSound ?? null,
-            bounceSound:      spec.bounceSound ?? null,
-            // Muzzle height in map units above the FEET (A_FireMacePL1 spawns
-            // the lobbed ball at Pos + 28); null = the eye (camera) height.
-            spawnHeight:      ((spec.spawnHeight !== undefined) ? spec.spawnHeight * scale : null),
-            // Homing (A_SeekerMissile / A_Tracer2): {threshold, turnMax} in
-            // degrees, everyTics = the state cadence the vanilla action runs
-            // at. null = it flies straight.
-            seek:             (spec.seek ?? null),
-            // Ripping shot (Heretic Whirlwind): it passes THROUGH bodies and
-            // grinds whoever it overlaps every damageEvery tics instead of
-            // detonating on the first one. Needs lifeTics to ever end.
-            ripper:           (spec.ripper ?? null),
-            // Forced lifetime in tics (0 = only an impact ends the flight).
-            lifeTics:         (spec.lifeTics ?? 0),
-            // Rise per tic while a shot is still growing (A_LichFireGrow).
-            growRise:         (spec.growRise ?? 0) * scale,
-            // Floor-hugging shot (Heretic MinotaurFX2, +FLOORHUGGER): it never
-            // rises, never dives, and its trail is left ON the floor.
-            floorHugger:      (spec.floorHugger === true),
-            // A_GenWizard: a shot that hatches a body instead of exploding —
-            // {kind, afterTics, retryTics}. It keeps flying while the spot is
-            // taken, which is exactly what vanilla's spawner does.
-            spawnMonster:     (spec.spawnMonster ?? null),
-            // What a shot aimed at a spot does on arrival: {fog, telefrag}.
-            // The Icon of Sin's cube (SpawnShot, +NOCLIP) is the one that has
-            // it — WHAT it hatches is not def data, the level's DoomBossBrain
-            // draws it per cube.
-            hatchAtSpot:      (spec.hatchAtSpot ?? null),
-            hatchSound:       spec.hatchSound ?? null,
-            // A standing shot (MinotaurFX3): it never travels, so no segment
-            // ever crosses a body — it goes off on whoever OVERLAPS it, within
-            // this radius in map units.
-            contactRadius:    (spec.contactRadius ?? 0) * scale,
-            // Projectiles sown along the flight instead of a mere effect (the
-            // floor fire the maulotaur's crawling flame leaves behind), at
-            // trailEveryTics, scattered by trailScatter map units.
-            trailKind:        (spec.trailKind ?? null),
-            trailScatter:     (spec.trailScatter ?? 0) * scale,
-            // +THRUGHOST: the shot passes through Heretic's phantoms.
-            thruGhost:        (spec.thruGhost === true),
-        };
-    }
-
-    // A single billboard cannot rotate 8 ways, and the rocket ships no MISLA0:
-    // take rotation 0 when present, else the rear view 5, else rotation 1.
-    _pickSprite(bank, base, letter) {
-        return bank.getFrameView(base, letter, DoomProjectileSystem.VIEW_PREFERENCE);
     }
 
     // angleOffsetDeg = fixed fan angle (Heretic crossbow side bolts),
@@ -384,7 +282,7 @@ class DoomProjectileSystem {
 
     // Restored AFTER the monsters, so every body a shot points at exists.
     importState(data) {
-        if ((data === null) || (data === undefined) || (this._monsters === null)) {
+        if ((data === null) || (data === undefined)) {
             return;
         }
         for (const rec of data) {
@@ -468,22 +366,18 @@ class DoomProjectileSystem {
             // surface: direct hit roll, then the ball explodes on the flesh.
             // The shooter is transparent to its own missile, and so is anyone
             // it cannot hurt (PIT_CheckThing / CanAttackHurt).
-            const flesh = ((this._monsters !== null)
-                ? this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
-                    ((hit !== null) ? Math.min(hit.dist, step) : step),
-                    {exclude: p.owner, includePlayers: this._hitsPlayers(p), immuneTo: p.owner,
-                        thruGhost: p.def.thruGhost})
-                : null);
+            const flesh = this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
+                ((hit !== null) ? Math.min(hit.dist, step) : step),
+                {exclude: p.owner, includePlayers: this._hitsPlayers(p), immuneTo: p.owner,
+                    thruGhost: p.def.thruGhost});
             if ((p.def.spawnMonster !== null) && this._tryHatch(p)) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
             }
             // A standing fire goes off on whoever walks into it.
             if (p.def.contactRadius > 0) {
-                const trodden = ((this._monsters !== null)
-                    ? this._monsters.bodyAt(p.x, p.z, p.def.contactRadius,
-                        {exclude: p.owner, includePlayers: true, immuneTo: p.owner})
-                    : null);
+                const trodden = this._monsters.bodyAt(p.x, p.z, p.def.contactRadius,
+                    {exclude: p.owner, includePlayers: true, immuneTo: p.owner});
                 if (trodden !== null) {
                     this._hitFlesh(p, trodden);
                     loader.instances().scheduleRemoval(inst);
@@ -558,8 +452,7 @@ class DoomProjectileSystem {
      */
     _tryHatch(p) {
         const spec = p.def.spawnMonster;
-        if ((this._monsters === null) || (p.tics < spec.afterTics)
-            || (((p.tics - spec.afterTics) % spec.retryTics) !== 0)) {
+        if ((p.tics < spec.afterTics) || (((p.tics - spec.afterTics) % spec.retryTics) !== 0)) {
             return false;
         }
         // Vanilla drops the body by half its height so it lands on its feet.
@@ -592,9 +485,8 @@ class DoomProjectileSystem {
         if (p.def.hatchSound !== null) {
             doomSound.playAt(p.def.hatchSound, [spot.x, spot.y, spot.z]);
         }
-        // The brain is read live, not held: the world builder installs it on
-        // the monster system AFTER this system is built.
-        const brain = ((this._monsters !== null) ? this._monsters.getBossBrain() : null);
+        // Null on every level but the Icon of Sin's.
+        const brain = this._monsters.getBossBrain();
         if (brain === null) {
             return;
         }
@@ -700,9 +592,6 @@ class DoomProjectileSystem {
     // DoSpecialDamage): a small wound every damageEvery tics, the victim spun
     // and lifted by the funnel in between.
     _grind(p, flesh) {
-        if (this._damage === null) {
-            return;
-        }
         const ripper = p.def.ripper;
         this._damage.spin(flesh.ref, ripper.shove, ripper.lift);
         if ((p.tics % ripper.damageEvery) !== 0) {
@@ -779,7 +668,7 @@ class DoomProjectileSystem {
     // ((rng & 7) + 1) × Damage lands first, then the ball detonates on the
     // flesh — the victim takes the splash on top, like vanilla.
     _hitFlesh(p, flesh) {
-        if ((this._damage !== null) && (p.def.impactDamage > 0)) {
+        if (p.def.impactDamage > 0) {
             const roll = ((this._rng.next() & 7) + 1) * p.def.impactDamage;
             this._damage.damage(flesh.ref, roll, {
                 point:    flesh.point,
@@ -809,7 +698,7 @@ class DoomProjectileSystem {
         const blast = ((typeof p.def.splashDamage === 'number')
             ? p.def.splashDamage
             : this._rng.damageRoll(p.def.splashDamage));
-        if ((blast > 0) && (this._damage !== null)) {
+        if (blast > 0) {
             this._damage.radiusAttack(ex, ey, ez, blast, blast, {kickback: p.def.kickback, source: p.owner, noSplash: splashed});
         }
         // The spray is the player's BFG alone: it fans from the shooter, and
@@ -826,9 +715,6 @@ class DoomProjectileSystem {
     // line-of-sight check to its centre settles it (walls and slabs block).
     // The victim takes sum(damageCount × (1d8)) and flashes the spray effect.
     _sprayFromShooter(spray, yawDeg, shooter) {
-        if ((this._monsters === null) || (this._damage === null)) {
-            return;
-        }
         const range = spray.distance * WadConstants.SCALE;
         const ox = shooter.getCameraX();
         const oy = shooter.getCameraY();
@@ -859,7 +745,6 @@ class DoomProjectileSystem {
     }
 }
 
-DoomProjectileSystem.VIEW_PREFERENCE = ['0', '5', '1'];
 DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe lifetime
 // A_Tracer2 slope chase: map units per tic added to the vertical speed toward
 // the one that would land on the target.
