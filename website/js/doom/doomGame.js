@@ -37,7 +37,7 @@ class DoomGame {
         this._deathDisplay    = null;
         this._deathModal      = null;
         this._deathClockMs    = 0;
-        this._levelExit       = null;   // {display, modal, nextLevel, finaleText, buttonCode} of the tally shown
+        this._levelExit       = null;   // {display, modal, outcome, nextLevel, finaleText, buttonCode} of the tally shown
         this._netLinks        = new DoomNetLinks();
         this._netAvailability = new DoomNetAvailability(this._netLinks);
         this._netSession      = null;   // DoomNetMainSession while the screen is shared
@@ -427,10 +427,13 @@ class DoomGame {
             return;
         }
 
+        // In place, like a level change: a shared screen carries on, the subs follow.
+        this._transitioning = true;
         this._closeGameMenu();
-        this._stopSharing();
-        this._teardownLevel();
-        new MenuNavigator().startFromSave(this._wadMeta, saveMeta);
+        this.setRestoreSnapshot(snapshot);
+        const loadingDisplay = new MenuDisplay('screen').init(true);
+        await this._loadLevel(loadingDisplay, new MenuModal(loadingDisplay), snapshot.levelCode,
+            DoomGameSnapshot.spawnOverrideOf(snapshot), snapshot.skill);
     }
 
     // The death menu does not freeze the game: its frames run live under it.
@@ -540,29 +543,28 @@ class DoomGame {
         if (this._transitioning) {
             return;
         }
-        this._role.announcePhase({
-            type:   DoomNetProtocol.INTERMISSION,
-            secret: (secret === true),
-            stats:  this._role.getLevelStats().exportCounts()
-        });
-        this._showLevelExit(secret === true, true);
+        const outcome = {secret: (secret === true), stats: this._role.getLevelStats().exportCounts()};
+        this._role.announcePhase(Object.assign({type: DoomNetProtocol.INTERMISSION}, outcome));
+        this._showLevelExit(outcome, true);
     }
 
-    // On a sub: the main's tally, then its story text.
+    // On a sub: the main's tally, then its story text. A sub joining during
+    // the story text opens the tally first, which the text replaces.
     _onMainPhase(message) {
-        if (message.type === DoomNetProtocol.INTERMISSION) {
+        if (this._levelExit === null) {
             this._role.getLevelStats().importCounts(message.stats);
-            this._showLevelExit(message.secret, false);
-            return;
+            this._showLevelExit(message, false);
         }
-        this._showFinale(false);
+        if (message.type === DoomNetProtocol.FINALE) {
+            this._showFinale(false);
+        }
     }
 
     /**
-     * @param {boolean} secret
-     * @param {boolean} acting - the main presses on; a sub only watches
+     * @param {{secret: boolean, stats: object}} outcome     - how the level ended, its counts as the tally shows them
+     * @param {boolean}                          withButtons - the main presses on; a sub only watches
      */
-    _showLevelExit(secret, acting) {
+    _showLevelExit(outcome, withButtons) {
         if (this._transitioning) {
             return;
         }
@@ -573,7 +575,7 @@ class DoomGame {
         doomSound.setPaused(true).playIntermissionMusic();
 
         // Null at the end of the game.
-        const nextLevel = this._mapInfo.nextLevelCode(this._levelCode, secret);
+        const nextLevel = this._mapInfo.nextLevelCode(this._levelCode, outcome.secret);
 
         // A pointer-locked canvas would swallow the clicks on the tally button.
         this._inputs.releaseMouse().setVirtualPadVisible(false);
@@ -581,12 +583,19 @@ class DoomGame {
         const display = new MenuDisplay('screen').init(true);
         const modal   = new MenuModal(display);
         // Vanilla order: the story text comes after the tally.
-        const finaleText = this._finaleText(secret);
+        const finaleText = this._finaleText(outcome.secret);
         const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
         const tallyCode  = ((finaleText !== null) ? 'game.finale.continue' : buttonCode);
-        this._levelExit = {display: display, modal: modal, nextLevel: nextLevel, finaleText: finaleText, buttonCode: buttonCode};
+        this._levelExit = {
+            display:    display,
+            modal:      modal,
+            outcome:    outcome,
+            nextLevel:  nextLevel,
+            finaleText: finaleText,
+            buttonCode: buttonCode
+        };
 
-        modal.tally(this._tallyTitle(nextLevel), this._tallyLines(), ((acting) ? appTranslator.get(tallyCode) : null), () => {
+        modal.tally(this._tallyTitle(nextLevel), this._tallyLines(), ((withButtons) ? appTranslator.get(tallyCode) : null), () => {
             if (finaleText === null) {
                 this._startNextLevel(display, modal, nextLevel);
                 return;
@@ -596,16 +605,16 @@ class DoomGame {
     }
 
     // gameinfo finalemusic (D_VICTOR / D_READ_M / MUS_CPTD).
-    _showFinale(acting) {
+    _showFinale(withButtons) {
         const exit = this._levelExit;
         if ((exit === null) || (exit.finaleText === null)) {
             return;
         }
-        if (acting) {
-            this._role.announcePhase({type: DoomNetProtocol.FINALE});
+        if (withButtons) {
+            this._role.announcePhase(Object.assign({type: DoomNetProtocol.FINALE}, exit.outcome));
         }
         doomSound.playFinaleMusic();
-        exit.modal.finale(exit.finaleText, ((acting) ? appTranslator.get(exit.buttonCode) : null), () => {
+        exit.modal.finale(exit.finaleText, ((withButtons) ? appTranslator.get(exit.buttonCode) : null), () => {
             this._startNextLevel(exit.display, exit.modal, exit.nextLevel);
         });
     }
@@ -700,9 +709,15 @@ class DoomGame {
             return;
         }
 
-        modal.showLoading(appTranslator.get('game.level.loading', {level: nextLevel}));
+        await this._loadLevel(display, modal, nextLevel);
+    }
+
+    // The next level, the same one again or a save's, in this game: a failed
+    // build leaves for the menu.
+    async _loadLevel(display, modal, levelCode, spawnOverride = null, skill = null) {
+        modal.showLoading(appTranslator.get('game.level.loading', {level: levelCode}));
         try {
-            await this.startFromWad(this._wadFile, nextLevel);
+            await this.startFromWad(this._wadFile, levelCode, null, spawnOverride, skill);
             modal.close();
             display.destroy();
             this._transitioning = false;

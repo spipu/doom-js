@@ -144,6 +144,22 @@ class DoomGameSnapshot {
         return states;
     }
 
+    /**
+     * Where the rebuilt level first puts the player (see SPAWN_Y_MARGIN).
+     *
+     * @param {object} snapshot
+     * @returns {{position: number[], yaw: number, pitch: number}} a spawn override
+     */
+    static spawnOverrideOf(snapshot) {
+        const player = snapshot.player;
+
+        return {
+            position: [player.x, player.y + DoomGameSnapshot.SPAWN_Y_MARGIN, player.z],
+            yaw:      player.yaw,
+            pitch:    player.pitch
+        };
+    }
+
     _applyInteractions(states) {
         loader.interactions().getAll().forEach((entity) => {
             const state = states[entity.getCode()];

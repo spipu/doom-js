@@ -178,7 +178,7 @@ class MenuNavigator {
     /**
      * Load a saved game slot: rebuild its level deterministically, then let
      * the game restore the snapshot on top (DoomGameSnapshot). Reached from
-     * the WAD menu and from the pause menu (whose level is torn down first).
+     * the WAD menu; a running game loads in place (DoomGame._loadFromSave).
      * @param {object} meta     WAD metadata
      * @param {object} saveMeta save slot metadata {wadId, slot, levelCode, …}
      */
@@ -234,8 +234,7 @@ class MenuNavigator {
         await this._launchGame(meta, levelCode, spawnOverride, modal, false);
     }
 
-    // Saved-game counterpart of _launchGame. The spawn override only places the
-    // player safely: the exact saved Y is re-applied after the movers.
+    // Saved-game counterpart of _launchGame.
     async _launchFromSave(meta, saveMeta) {
         const modal = new MenuModal(this._display)
             .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: meta.name}));
@@ -252,11 +251,7 @@ class MenuNavigator {
             const wadFile = await this._registry.getWadFile(meta.id);
             doomSound.loadForWad(wadFile, meta.id);
             const game = new DoomGame().setRestoreSnapshot(snapshot);
-            await game.startFromWad(wadFile, snapshot.levelCode, meta, {
-                position: [snapshot.player.x, snapshot.player.y + DoomGameSnapshot.SPAWN_Y_MARGIN, snapshot.player.z],
-                yaw:      snapshot.player.yaw,
-                pitch:    snapshot.player.pitch
-            }, snapshot.skill);
+            await game.startFromWad(wadFile, snapshot.levelCode, meta, DoomGameSnapshot.spawnOverrideOf(snapshot), snapshot.skill);
             modal.close();
             this._closeMenus();
         } catch (error) {

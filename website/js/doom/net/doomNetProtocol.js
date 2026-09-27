@@ -21,7 +21,7 @@ DoomNetProtocol.WAITING      = 'waiting';
 DoomNetProtocol.PAUSE        = 'pause';
 // Main → every sub in the cycle: the level is over (secret, stats) — the tally.
 DoomNetProtocol.INTERMISSION = 'intermission';
-// Main → every sub in the cycle: the tally gives way to the chapter's story text.
+// Main → every sub in the cycle: the tally gives way to the chapter's story text (secret, stats again).
 DoomNetProtocol.FINALE       = 'finale';
 // Either side: the session ends for the receiver, with one of the END_* reasons.
 DoomNetProtocol.SESSION_END  = 'sessionEnd';
