@@ -37,6 +37,7 @@ class DoomGame {
         this._deathDisplay    = null;
         this._deathModal      = null;
         this._deathClockMs    = 0;
+        this._levelExit       = null;   // {display, modal, nextLevel, finaleText, buttonCode} of the tally shown
         this._netLinks        = new DoomNetLinks();
         this._netAvailability = new DoomNetAvailability(this._netLinks);
         this._netSession      = null;   // DoomNetMainSession while the screen is shared
@@ -45,7 +46,8 @@ class DoomGame {
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
         if (subSession !== null) {
             this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
-                (notice) => this._presentation.setNotice(notice), (reason) => this._onSessionEnd(reason));
+                (notice) => this._presentation.setNotice(notice), (message) => this._onMainPhase(message),
+                (reason) => this._onSessionEnd(reason));
             this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
                 .setPingSource(() => subSession.getHostPing());
         }
@@ -310,12 +312,12 @@ class DoomGame {
         return session;
     }
 
-    _stopSharing() {
+    _stopSharing(endReason = DoomNetProtocol.END_STOPPED) {
         if (this._netSession === null) {
             return;
         }
         this._role.stopHosting();
-        this._netSession.stop();
+        this._netSession.stop(endReason);
         this._netSession = null;
         this._showWaiting([]);
         this._presentation.setForcedRenderer(null).setPingSource(null);
@@ -443,6 +445,9 @@ class DoomGame {
         if (this._deathModal !== null) {
             this._closeDeathMenu();
         }
+        if (this._levelExit !== null) {
+            this._closeLevelExit();
+        }
     }
 
     // --- Death menu ---
@@ -503,13 +508,13 @@ class DoomGame {
     }
 
     // Carries the skill over so a new game preselects it.
-    _backToMenu() {
-        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill));
+    _backToMenu(endReason = DoomNetProtocol.END_STOPPED) {
+        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill), endReason);
     }
 
-    // The game ends: so does the screen sharing.
-    _leaveLevelTo(openMenu) {
-        this._stopSharing();
+    // The game ends: so does the screen sharing, the subs told why.
+    _leaveLevelTo(openMenu, endReason = DoomNetProtocol.END_STOPPED) {
+        this._stopSharing(endReason);
         this._role.leave();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
@@ -529,45 +534,86 @@ class DoomGame {
     }
 
     // Called by an exit line: the tally, the optional story text, then the
-    // next level (or back to the menu after the last one).
+    // next level (or back to the menu after the last one). The subs show the
+    // same screens, without their buttons.
     _onLevelExit(secret = false) {
+        if (this._transitioning) {
+            return;
+        }
+        this._role.announcePhase({
+            type:   DoomNetProtocol.INTERMISSION,
+            secret: (secret === true),
+            stats:  this._role.getLevelStats().exportCounts()
+        });
+        this._showLevelExit(secret === true, true);
+    }
+
+    // On a sub: the main's tally, then its story text.
+    _onMainPhase(message) {
+        if (message.type === DoomNetProtocol.INTERMISSION) {
+            this._role.getLevelStats().importCounts(message.stats);
+            this._showLevelExit(message.secret, false);
+            return;
+        }
+        this._showFinale(false);
+    }
+
+    /**
+     * @param {boolean} secret
+     * @param {boolean} acting - the main presses on; a sub only watches
+     */
+    _showLevelExit(secret, acting) {
         if (this._transitioning) {
             return;
         }
         this._transitioning = true;
         // A corpse pushed over an exit line: the exit wins over the death menu.
-        if (this._deathModal !== null) {
-            this._closeDeathMenu();
-        }
+        this._closeGameMenu();
         // The next level's bindLevel lifts the freeze.
         doomSound.setPaused(true).playIntermissionMusic();
 
         // Null at the end of the game.
-        const nextLevel = this._mapInfo.nextLevelCode(this._levelCode, secret === true);
+        const nextLevel = this._mapInfo.nextLevelCode(this._levelCode, secret);
 
         // A pointer-locked canvas would swallow the clicks on the tally button.
         this._inputs.releaseMouse().setVirtualPadVisible(false);
 
         const display = new MenuDisplay('screen').init(true);
-        const modal = new MenuModal(display);
-        const title = this._tallyTitle(nextLevel);
-        const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
-
+        const modal   = new MenuModal(display);
         // Vanilla order: the story text comes after the tally.
-        const finaleText = this._finaleText(secret === true);
+        const finaleText = this._finaleText(secret);
+        const buttonCode = ((nextLevel === null) ? 'game.tally.menu' : 'game.tally.next');
         const tallyCode  = ((finaleText !== null) ? 'game.finale.continue' : buttonCode);
+        this._levelExit = {display: display, modal: modal, nextLevel: nextLevel, finaleText: finaleText, buttonCode: buttonCode};
 
-        modal.tally(title, this._tallyLines(), appTranslator.get(tallyCode), () => {
+        modal.tally(this._tallyTitle(nextLevel), this._tallyLines(), ((acting) ? appTranslator.get(tallyCode) : null), () => {
             if (finaleText === null) {
                 this._startNextLevel(display, modal, nextLevel);
                 return;
             }
-            // gameinfo finalemusic (D_VICTOR / D_READ_M / MUS_CPTD).
-            doomSound.playFinaleMusic();
-            modal.finale(finaleText, appTranslator.get(buttonCode), () => {
-                this._startNextLevel(display, modal, nextLevel);
-            });
+            this._showFinale(true);
         });
+    }
+
+    // gameinfo finalemusic (D_VICTOR / D_READ_M / MUS_CPTD).
+    _showFinale(acting) {
+        const exit = this._levelExit;
+        if ((exit === null) || (exit.finaleText === null)) {
+            return;
+        }
+        if (acting) {
+            this._role.announcePhase({type: DoomNetProtocol.FINALE});
+        }
+        doomSound.playFinaleMusic();
+        exit.modal.finale(exit.finaleText, ((acting) ? appTranslator.get(exit.buttonCode) : null), () => {
+            this._startNextLevel(exit.display, exit.modal, exit.nextLevel);
+        });
+    }
+
+    _closeLevelExit() {
+        this._levelExit.modal.close();
+        this._levelExit.display.destroy();
+        this._levelExit = null;
     }
 
     _tallyTitle(nextLevel) {
@@ -644,12 +690,13 @@ class DoomGame {
     }
 
     async _startNextLevel(display, modal, nextLevel) {
+        this._levelExit = null;
         if (nextLevel === null) {
             this._teardownLevel();
             modal.close();
             display.destroy();
             this._transitioning = false;
-            this._backToMenu();
+            this._backToMenu(DoomNetProtocol.END_GAME_OVER);
             return;
         }
 

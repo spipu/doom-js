@@ -1208,6 +1208,12 @@ class DoomTranslations {
                 it: 'L\'host ha interrotto la partita',
                 es: 'El anfitrión ha detenido la partida'
             },
+            'multiplayer.end.gameOver': {
+                fr: 'La partie de l\'hôte est terminée',
+                en: 'The host\'s game is over',
+                it: 'La partita dell\'host è finita',
+                es: 'La partida del anfitrión ha terminado'
+            },
             'multiplayer.end.removed': {
                 fr: 'L\'hôte vous a retiré de la partie',
                 en: 'The host removed you from the game',

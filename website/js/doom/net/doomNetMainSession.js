@@ -106,11 +106,14 @@ class DoomNetMainSession {
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
-    stop() {
+    /**
+     * @param {string} reason - the DoomNetProtocol.END_* told to every sub
+     */
+    stop(reason = DoomNetProtocol.END_STOPPED) {
         clearInterval(this._pingTimer);
         this._cycle = null;
         this.cancelPairing();
-        this._host.broadcastControl({type: DoomNetProtocol.SESSION_END, reason: DoomNetProtocol.END_STOPPED});
+        this._host.broadcastControl({type: DoomNetProtocol.SESSION_END, reason: reason});
         this._onChange = null;
         setTimeout(() => this._host.close(), DoomNetProtocol.END_GRACE_MS);
     }

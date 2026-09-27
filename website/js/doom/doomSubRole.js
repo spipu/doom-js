@@ -25,22 +25,26 @@ class DoomSubRole {
         this._waitingFor        = [];      // nicknames the game waits for
         this._mainPaused        = false;
         this._mainDead          = false;
+        this._levelOver         = false;   // the main's tally or story text is shown
         this._notice            = null;
         this._playEvent         = null;
         this._onLevelLoad       = null;
         this._onNotice          = null;
+        this._onPhase           = null;
     }
 
     /**
      * @param {function(object)}      playEvent   - DoomPresentation.playTurnEvent
      * @param {function(object)}      onLevelLoad - the main started a level: {levelCode, skill, multiplayerThings}
      * @param {function(string|null)} onNotice    - the message to show over the game, null for none
+     * @param {function(object)}      onPhase     - the main's tally or story text: its control message
      * @param {function(string)}      onEnd       - the session ended, with its DoomNetProtocol.END_* reason
      */
-    follow(playEvent, onLevelLoad, onNotice, onEnd) {
+    follow(playEvent, onLevelLoad, onNotice, onPhase, onEnd) {
         this._playEvent   = playEvent;
         this._onLevelLoad = onLevelLoad;
         this._onNotice    = onNotice;
+        this._onPhase     = onPhase;
         this._session.setCycle(this).setOnEnd(onEnd);
 
         return this;
@@ -50,6 +54,7 @@ class DoomSubRole {
     prepareLevel(level) {
         this._multiplayerThings = level.multiplayerThings;
         this._applier           = null;
+        this._levelOver         = false;
         this._session.setLivenessSuspended(true);
     }
 
@@ -127,7 +132,7 @@ class DoomSubRole {
      */
     advance(dt, command, onPlayersMoved, now) {
         onPlayersMoved();
-        if ((this._lastStateAt === null) || this._mainPaused || (this._waitingFor.length > 0)
+        if ((this._lastStateAt === null) || this._mainPaused || this._levelOver || (this._waitingFor.length > 0)
             || ((now - this._lastStateAt) <= DoomNetHost.WAITING_NOTICE_MS)) {
             return;
         }
@@ -150,14 +155,18 @@ class DoomSubRole {
         this._refreshNotice();
     }
 
-    // The main paused: no state comes until it resumes, and the next one clears it.
+    // No state comes during a phase: a pause ends with the next state, the
+    // level's end with the next level.
     phase(message) {
-        if (message.type !== DoomNetProtocol.PAUSE) {
+        this._waitingFor = [];
+        if (message.type === DoomNetProtocol.PAUSE) {
+            this._mainPaused = true;
+            this._refreshNotice();
             return;
         }
-        this._mainPaused = true;
-        this._waitingFor = [];
+        this._levelOver = true;
         this._refreshNotice();
+        this._onPhase(message);
     }
 
     // Decoded in full before anything is applied; the command leaves at once.

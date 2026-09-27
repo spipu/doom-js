@@ -111,11 +111,12 @@ class MenuModal {
      * End-of-level tally: the level's closing sentence as a title, one line per
      * score (label on the left, value on the right) and a single full-width
      * button. Not dismissable by clicking outside — the player has to press it.
+     * Without a label (a sub following the main's), it only shows.
      *
-     * @param {string}   title
-     * @param {object[]} lines  - [{label, value}], value already formatted
-     * @param {string}   label  - button label
-     * @param {function} action
+     * @param {string}        title
+     * @param {object[]}      lines  - [{label, value}], value already formatted
+     * @param {string|null}   label  - button label, null for no button
+     * @param {function|null} action
      */
     tally(title, lines, label, action) {
         const {modal} = this._createShell(title, 'doom-menu-modal', 'doom-menu-modal-message');
@@ -127,12 +128,7 @@ class MenuModal {
             MenuDom.addText(row, 'doom-menu-tally-value', line.value);
         }
 
-        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        const button = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-block', label, () => {
-            this.close();
-            action();
-        });
-        this._attachButtonsNav([button], button, 0);
+        this._addActionButton(modal, label, action);
 
         return this;
     }
@@ -140,21 +136,17 @@ class MenuModal {
     /**
      * Story text of the end of a chapter (or of the game), shown after the
      * tally. The text IS the message of the shell — no title, the tally just
-     * announced the end of the level. Like the tally, it waits for its button.
+     * announced the end of the level. Like the tally, it waits for its button,
+     * or only shows without a label.
      *
-     * @param {string}   text
-     * @param {string}   label  - button label
-     * @param {function} action
+     * @param {string}        text
+     * @param {string|null}   label  - button label, null for no button
+     * @param {function|null} action
      */
     finale(text, label, action) {
         const {modal} = this._createShell(text, 'doom-menu-modal doom-menu-modal-finale', 'doom-menu-finale');
 
-        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        const button = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-block', label, () => {
-            this.close();
-            action();
-        });
-        this._attachButtonsNav([button], button, 0);
+        this._addActionButton(modal, label, action);
 
         return this;
     }
@@ -172,6 +164,19 @@ class MenuModal {
     }
 
     // --- Internal ---
+
+    // The single full-width button of the tally and the finale; none without a label.
+    _addActionButton(modal, label, action) {
+        if (label === null) {
+            return;
+        }
+        const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
+        const button = MenuDom.addButton(actions, 'doom-menu-button doom-menu-button-block', label, () => {
+            this.close();
+            action();
+        });
+        this._attachButtonsNav([button], button, 0);
+    }
 
     // Overlays stack in the display container: only the top-most one may
     // react to inputs (a nested confirmation suspends the modal beneath it).

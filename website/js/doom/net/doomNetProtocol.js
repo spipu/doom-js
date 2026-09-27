@@ -8,24 +8,29 @@ class DoomNetProtocol {
 }
 
 // Main → every sub: the lobby as it stands (DoomNetLobby.toData).
-DoomNetProtocol.LOBBY       = 'lobby';
+DoomNetProtocol.LOBBY        = 'lobby';
 // Main → every sub: the game runs.
-DoomNetProtocol.START       = 'start';
+DoomNetProtocol.START        = 'start';
 // Main → a sub: the level to build (levelCode, skill, multiplayerThings), and the sub is syncing.
-DoomNetProtocol.LEVEL_LOAD  = 'levelLoad';
+DoomNetProtocol.LEVEL_LOAD   = 'levelLoad';
 // Sub → main: the level is built, the sub joins the turn cycle with the next state.
-DoomNetProtocol.LEVEL_READY = 'levelReady';
+DoomNetProtocol.LEVEL_READY  = 'levelReady';
 // Main → the subs it is not waiting for: the nicknames it waits for (none clears it).
-DoomNetProtocol.WAITING     = 'waiting';
+DoomNetProtocol.WAITING      = 'waiting';
 // Main → every sub in the cycle: the main paused its game, no turn runs until the next state.
-DoomNetProtocol.PAUSE       = 'pause';
+DoomNetProtocol.PAUSE        = 'pause';
+// Main → every sub in the cycle: the level is over (secret, stats) — the tally.
+DoomNetProtocol.INTERMISSION = 'intermission';
+// Main → every sub in the cycle: the tally gives way to the chapter's story text.
+DoomNetProtocol.FINALE       = 'finale';
 // Either side: the session ends for the receiver, with one of the END_* reasons.
-DoomNetProtocol.SESSION_END = 'sessionEnd';
+DoomNetProtocol.SESSION_END  = 'sessionEnd';
 
-DoomNetProtocol.END_STOPPED = 'stopped';   // the main stopped the session
-DoomNetProtocol.END_REMOVED = 'removed';   // the main removed that sub
-DoomNetProtocol.END_LEFT    = 'left';      // the sub left
-DoomNetProtocol.END_LOST    = 'lost';      // the link went silent or failed
+DoomNetProtocol.END_STOPPED   = 'stopped';  // the main stopped the session
+DoomNetProtocol.END_REMOVED   = 'removed';  // the main removed that sub
+DoomNetProtocol.END_LEFT      = 'left';     // the sub left
+DoomNetProtocol.END_LOST      = 'lost';     // the link went silent or failed
+DoomNetProtocol.END_GAME_OVER = 'gameOver'; // the main finished its game
 
 DoomNetProtocol.MODE_SCREEN_SHARING = 1;
 

@@ -41,6 +41,25 @@ class DoomLevelStats {
         return this;
     }
 
+    // The counts a sub shows, as the turn state and the intermission carry them.
+    exportCounts() {
+        return {
+            secrets:      this._secretsFound,
+            secretsTotal: this._secretsTotal,
+            kills:        this._killsCount,
+            killsTotal:   this._killsTotal,
+            items:        this._itemsFound,
+            itemsTotal:   this._itemsTotal,
+            timeMs:       this._levelTimeMs
+        };
+    }
+
+    importCounts(counts) {
+        this.setTotals(counts.secretsTotal, counts.killsTotal, counts.itemsTotal);
+
+        return this.restoreProgress(counts.secrets, counts.kills, counts.items, counts.timeMs);
+    }
+
     addSecretFound() {
         this._secretsFound++;
     }

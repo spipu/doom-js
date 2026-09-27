@@ -55,9 +55,7 @@ class DoomReplicaApplier {
         if (this._level.getLightEffects() !== null) {
             this._level.getLightEffects().setLevels(snapshot.lights);
         }
-        const stats = snapshot.stats;
-        this._stats.setTotals(stats.secretsTotal, stats.killsTotal, stats.itemsTotal);
-        this._stats.restoreProgress(stats.secrets, stats.kills, stats.items, stats.timeMs);
+        this._stats.importCounts(snapshot.stats);
         // Nothing runs World.update here: the removals are flushed by hand.
         loader.instances().flushRemovals();
         for (const event of snapshot.events) {

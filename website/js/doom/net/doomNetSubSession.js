@@ -146,7 +146,7 @@ class DoomNetSubSession {
             this._cycleCall('waiting', message.nicknames);
             return;
         }
-        if (message.type === DoomNetProtocol.PAUSE) {
+        if (DoomNetSubSession.PHASES.includes(message.type)) {
             this._cycleCall('phase', message);
         }
     }
@@ -173,3 +173,6 @@ class DoomNetSubSession {
         }
     }
 }
+
+// The phases without turns the main announces.
+DoomNetSubSession.PHASES = [DoomNetProtocol.PAUSE, DoomNetProtocol.INTERMISSION, DoomNetProtocol.FINALE];

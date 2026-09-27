@@ -42,7 +42,7 @@ class DoomNetStateCapture {
             switches:    this._switches(),
             surfaces:    this._surfaces(),
             lights:      ((this._level.getLightEffects() !== null) ? this._level.getLightEffects().getLevels() : []),
-            stats:       this._levelStats(),
+            stats:       this._stats.exportCounts(),
             events:      this._events.drain()
         };
     }
@@ -151,18 +151,6 @@ class DoomNetStateCapture {
         const surfaces = this._level.getSectorSurfaces();
 
         return ((surfaces !== null) ? surfaces.exportState().map((entry) => ({si: entry.si, flat: entry.flat})) : []);
-    }
-
-    _levelStats() {
-        return {
-            secrets:      this._stats.getSecretsFound(),
-            secretsTotal: this._stats.getSecretsTotal(),
-            kills:        this._stats.getKillsCount(),
-            killsTotal:   this._stats.getKillsTotal(),
-            items:        this._stats.getItemsFound(),
-            itemsTotal:   this._stats.getItemsTotal(),
-            timeMs:       this._stats.getLevelTimeMs()
-        };
     }
 
     /**
