@@ -2,7 +2,8 @@
  * The role of a device that follows another's game (a sub). It simulates
  * nothing: on each turn state the main sends, it applies it at once
  * (DoomReplicaApplier) and answers with its command for the next turn before
- * the next frame draws — empty in screen sharing, an acknowledgement. It holds
+ * the next frame draws — sampled from what its devices collected since the
+ * previous one, which the main ignores in screen sharing. It holds
  * one local player carrying the main's id: the body the state poses and the
  * presentation views. It follows the main's level changes and tells the game
  * when the session ends.
@@ -17,7 +18,8 @@ class DoomSubRole {
         this._session           = session;
         this._stats             = new DoomLevelStats();
         this._codec             = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
-        this._command           = new UserCommand();
+        this._sampler           = null;    // the local player's, handed over on each frame
+        this._neutralCommand    = new UserCommand();
         this._builtLevel        = null;
         this._applier           = null;
         this._multiplayerThings = false;
@@ -131,10 +133,12 @@ class DoomSubRole {
     }
 
     /**
-     * Nothing moves here but the automap reveal; a state overdue for longer
+     * Nothing moves here but the automap reveal: the sampler keeps collecting
+     * until the next state asks for the command. A state overdue for longer
      * than WAITING_NOTICE_MS with no word from the main names the main.
      */
-    advance(dt, command, onPlayersMoved, now) {
+    advance(dt, sampler, onPlayersMoved, now) {
+        this._sampler = sampler;
         onPlayersMoved();
         if ((this._lastStateAt === null) || this._mainPaused || this._levelOver || (this._waitingFor.length > 0)
             || ((now - this._lastStateAt) <= DoomNetHost.WAITING_NOTICE_MS)) {
@@ -187,7 +191,8 @@ class DoomSubRole {
             return;
         }
         this._applier.apply(snapshot);
-        this._session.sendBinary(this._codec.encode(snapshot.turn + 1, this._command));
+        const command = ((this._sampler !== null) ? this._sampler.sample() : this._neutralCommand);
+        this._session.sendBinary(this._codec.encode(snapshot.turn + 1, command));
         this._lastStateAt = performance.now();
         this._waitingFor  = [];
         this._mainPaused  = false;

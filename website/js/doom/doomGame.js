@@ -41,6 +41,9 @@ class DoomGame {
         this._netLinks        = new DoomNetLinks();
         this._netAvailability = new DoomNetAvailability(this._netLinks);
         this._netSession      = null;   // DoomNetMainSession while the screen is shared
+        this._joining         = false;  // a sub is building the level the main sent
+        this._pendingLevel    = null;   // the level the main sent meanwhile, built next
+        this._endReason       = null;   // DoomNetProtocol.END_* once the followed session ended
         this._animateCallback = this._animate.bind(this);
 
         this._presentation.setPadControls(this._role.padControls());
@@ -63,9 +66,24 @@ class DoomGame {
      * @param {object}      level   - {levelCode, skill, multiplayerThings}
      */
     async joinSharedGame(wadFile, wadMeta, level) {
-        await doomImageAssets.whenReady();
-        this._role.prepareLevel(level);
-        await this.startFromWad(wadFile, level.levelCode, wadMeta, null, level.skill);
+        this._joining = true;
+        try {
+            await doomImageAssets.whenReady();
+            this._role.prepareLevel(level);
+            await this.startFromWad(wadFile, level.levelCode, wadMeta, null, level.skill);
+        } finally {
+            this._joining = false;
+        }
+        // What the session told meanwhile, handled once the build is over.
+        if (this._endReason !== null) {
+            this._leaveEndedSession();
+            return;
+        }
+        if (this._pendingLevel !== null) {
+            const pending = this._pendingLevel;
+            this._pendingLevel = null;
+            await this._followLevel(pending);
+        }
     }
 
     /**
@@ -130,6 +148,10 @@ class DoomGame {
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });
+        // The followed session ended during the build: the level never starts.
+        if (this._endReason !== null) {
+            return;
+        }
         this._role.adoptLevel(this._builtLevel, onLevelExit);
 
         loader.setCallback(() => {
@@ -225,13 +247,14 @@ class DoomGame {
 
         const engine = this._presentation.getEngine();
         engine.calculateDeltaTime(timestamp);
-        const dt      = engine.getDeltaTime();
-        const command = this._commandSampler.collect(dt).sample();
+        const dt = engine.getDeltaTime();
+        // Collected every frame; the role samples the command when its turn needs it.
+        this._commandSampler.collect(dt);
 
         this._presentation.readViewToggles();
         // The automap is marked between the two halves: the world half can
         // still push the player.
-        this._role.advance(dt, command, () => {
+        this._role.advance(dt, this._commandSampler, () => {
             this._trackDeath(dt);
             this._presentation.revealAutomap();
         }, timestamp);
@@ -329,8 +352,14 @@ class DoomGame {
         this._presentation.setNotice(((nicknames.length > 0) ? appTranslator.get('multiplayer.waiting', {nickname: nicknames.join(', ')}) : null));
     }
 
-    // The main started another level: the sub builds it and joins again.
+    // The main started another level: the sub builds it and joins again. A
+    // level sent while one is being built waits for that build; the last
+    // one sent wins.
     async _followLevel(level) {
+        if (this._joining) {
+            this._pendingLevel = level;
+            return;
+        }
         this._transitioning = true;
         this._closeGameMenu();
         const display = new MenuDisplay('screen').init(true);
@@ -341,11 +370,20 @@ class DoomGame {
         this._transitioning = false;
     }
 
-    // The main stopped, removed this sub, or the link is lost.
+    // The main stopped, removed this sub, or the link is lost. During a level
+    // build, the build's end handles it: a teardown now would leave the build
+    // starting a game over the menu.
     _onSessionEnd(reason) {
+        this._endReason = reason;
+        if (!this._joining) {
+            this._leaveEndedSession();
+        }
+    }
+
+    _leaveEndedSession() {
         this._closeGameMenu();
         this._teardownLevel();
-        new MenuNavigator().startAtWadMenuAfterSession(this._wadMeta, reason);
+        new MenuNavigator().startAtWadMenuAfterSession(this._wadMeta, this._endReason);
     }
 
     // Null without WAD metadata (direct test shortcut: saves are keyed by WAD)

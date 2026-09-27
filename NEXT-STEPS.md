@@ -128,7 +128,7 @@ Vocabulary: the **main** is the player whose browser hosts the game; the **subs*
 #### Protocol additions
 
 * **Control messages**: `hello` / `welcome` (player id, slot, mode, options); `levelLoad` also carries the mode and the options; `intermission` also carries the per-player stats and the frag table; `playerRemoved` (to the other subs); `sessionEnd` gains the reasons "invalid message" and "match over".
-* **Command**: a sub's command now carries its real actions (axes, look angles, buttons, impulses) instead of the empty acknowledgement of screen sharing; the codec already handles them.
+* **Command**: a sub already sends its real actions (axes, look angles, buttons, impulses), sampled when the state arrives; the main has to feed them to that sub's player instead of ignoring them.
 * **State**: the other players' body state and frags; the HUD block of every player is already there, each sub reading the one of the player it views.
 
 #### Risks still open

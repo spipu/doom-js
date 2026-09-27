@@ -171,16 +171,16 @@ class DoomMainRole {
     }
 
     /**
-     * One turn: the local player's command, then the two halves of the tic,
-     * then the state to the subs.
+     * One turn: the local player's command sampled now, then the two halves
+     * of the tic, then the state to the subs.
      *
-     * @param {number}      dt
-     * @param {UserCommand} command        - the local player's
-     * @param {function}    onPlayersMoved - between the halves, where vanilla's renderer marks the lines
-     * @param {number}      now
+     * @param {number}              dt
+     * @param {InputCommandSampler} sampler        - the local player's, collected up to this frame
+     * @param {function}            onPlayersMoved - between the halves, where vanilla's renderer marks the lines
+     * @param {number}              now
      */
-    advance(dt, command, onPlayersMoved, now) {
-        const commands = new Map([[this._roster.getLocal().getId(), command]]);
+    advance(dt, sampler, onPlayersMoved, now) {
+        const commands = new Map([[this._roster.getLocal().getId(), sampler.sample()]]);
         this._simulation.tickPlayers(dt, commands);
         onPlayersMoved();
         this._simulation.tickWorld(dt, commands);
