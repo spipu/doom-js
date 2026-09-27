@@ -45,8 +45,9 @@ class DoomGame {
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
         if (subSession !== null) {
             this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
-                (nicknames) => this._showWaiting(nicknames), (reason) => this._onSessionEnd(reason));
-            this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER);
+                (notice) => this._presentation.setNotice(notice), (reason) => this._onSessionEnd(reason));
+            this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
+                .setPingSource(() => subSession.getHostPing());
         }
     }
 
@@ -264,6 +265,7 @@ class DoomGame {
 
     _enterPause() {
         this._paused = true;
+        this._role.announcePhase({type: DoomNetProtocol.PAUSE});
         doomSound.playUi('menu/activate').setPaused(true);
         this._inputs.releaseMouse().setVirtualPadVisible(false);
 
@@ -300,10 +302,12 @@ class DoomGame {
         if (typeof this._wadMeta.sha256 !== 'string') {
             return null;
         }
-        this._netSession = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers());
-        this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER);
+        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers());
+        this._netSession = session;
+        this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
+            .setPingSource(() => session.getLobby().getWorstPing());
 
-        return this._netSession;
+        return session;
     }
 
     _stopSharing() {
@@ -314,7 +318,7 @@ class DoomGame {
         this._netSession.stop();
         this._netSession = null;
         this._showWaiting([]);
-        this._presentation.setForcedRenderer(null);
+        this._presentation.setForcedRenderer(null).setPingSource(null);
     }
 
     // "Waiting for …" over the frozen game, none clears it.
@@ -381,6 +385,7 @@ class DoomGame {
                 this._netSession.start();
                 this._role.startHosting(this._netSession, (nicknames) => this._showWaiting(nicknames));
             }
+            this._role.turnsResumed(performance.now());
             // Before the grab: a renderer changed from the pause options
             // replaces the canvas, and a lock asked on the old one fails.
             this._presentation.applyRendererSetting(false);

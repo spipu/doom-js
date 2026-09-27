@@ -52,6 +52,11 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
+    bindPingSource(source) {
+        this._gameBar.bindPingSource(source);
+        return this;
+    }
+
     // Level automap, absent when the WAD carries no usable BSP. After bindProfile.
     bindAutomap(automap) {
         this._automap.bindAutomap(automap);

@@ -30,6 +30,7 @@ class DoomPresentation {
         this._rendererCode       = null;   // renderer the current engine was built on
         this._forcedRenderer     = null;   // renderer imposed over the setting, null = the setting's
         this._noticeText         = null;   // message over the game (a wait), null = none
+        this._pingSource         = null;   // () => round trip in ms or null, during a session
         this._noticeEl           = null;
         this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn     = null;
@@ -142,6 +143,7 @@ class DoomPresentation {
             .bindProfile(this._profile)
             .bindItemCatalog(this._itemCatalog)
             .bindLevelStats(this._stats)
+            .bindPingSource(this._pingSource)
             .setLevelInfo(this._levelInfo.wadId, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
             .addDescription('(c)2026 Spipu')
         ;
@@ -187,6 +189,20 @@ class DoomPresentation {
      */
     setForcedRenderer(code) {
         this._forcedRenderer = code;
+
+        return this;
+    }
+
+    /**
+     * The round trip shown beside the fps readout, kept across levels and renderer swaps.
+     *
+     * @param {function(): (number|null)|null} source - null outside a session
+     */
+    setPingSource(source) {
+        this._pingSource = source;
+        if (this._hud !== null) {
+            this._hud.bindPingSource(source);
+        }
 
         return this;
     }

@@ -67,6 +67,19 @@ class DoomMainRole {
         this._host = null;
     }
 
+    // A phase without turns opens (a pause): the subs show it.
+    announcePhase(message) {
+        if (this._host !== null) {
+            this._host.announcePhase(message);
+        }
+    }
+
+    turnsResumed(now) {
+        if (this._host !== null) {
+            this._host.turnsResumed(now);
+        }
+    }
+
     // Nothing to leave: the main's session is stopped by the game.
     leave() {
     }

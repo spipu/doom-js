@@ -42,8 +42,8 @@ class DoomNetSubSession {
 
     /**
      * Who follows the main's game: {levelLoad(message), state(buffer),
-     * waiting(nicknames)} — the lobby screen until the game runs, then the
-     * game's role.
+     * waiting(nicknames), phase(message)} — the lobby screen until the game
+     * runs, then the game's role.
      */
     setCycle(cycle) {
         this._cycle = cycle;
@@ -67,6 +67,13 @@ class DoomNetSubSession {
     // An invalid message from the main ends the session like a lost link.
     reportInvalid(error) {
         this._guest.getHost().reportInvalid(error);
+    }
+
+    /**
+     * @returns {number|null} the round trip to the main in ms, null before the first pong
+     */
+    getHostPing() {
+        return this._guest.getHost().getPing();
     }
 
     getHostNickname() {
@@ -137,6 +144,10 @@ class DoomNetSubSession {
         }
         if (message.type === DoomNetProtocol.WAITING) {
             this._cycleCall('waiting', message.nicknames);
+            return;
+        }
+        if (message.type === DoomNetProtocol.PAUSE) {
+            this._cycleCall('phase', message);
         }
     }
 

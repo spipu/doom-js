@@ -65,7 +65,8 @@ class MultiplayerScreen extends AbstractMenuScreen {
                 this._navigator.joinSharedGame(this._wadMeta, session, level);
             },
             state:     () => {},
-            waiting:   () => {}
+            waiting:   () => {},
+            phase:     () => {}
         });
         lobby.openSub(session, {leave: () => session.leave()});
     }

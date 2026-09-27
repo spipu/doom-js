@@ -22,22 +22,25 @@ class DoomSubRole {
         this._applier           = null;
         this._multiplayerThings = false;
         this._lastStateAt       = null;
-        this._waitNotified      = false;
+        this._waitingFor        = [];      // nicknames the game waits for
+        this._mainPaused        = false;
+        this._mainDead          = false;
+        this._notice            = null;
         this._playEvent         = null;
         this._onLevelLoad       = null;
-        this._onWaiting         = null;
+        this._onNotice          = null;
     }
 
     /**
-     * @param {function(object)}   playEvent   - DoomPresentation.playTurnEvent
-     * @param {function(object)}   onLevelLoad - the main started a level: {levelCode, skill, multiplayerThings}
-     * @param {function(string[])} onWaiting   - the nicknames waited for, none once the wait is over
-     * @param {function(string)}   onEnd       - the session ended, with its DoomNetProtocol.END_* reason
+     * @param {function(object)}      playEvent   - DoomPresentation.playTurnEvent
+     * @param {function(object)}      onLevelLoad - the main started a level: {levelCode, skill, multiplayerThings}
+     * @param {function(string|null)} onNotice    - the message to show over the game, null for none
+     * @param {function(string)}      onEnd       - the session ended, with its DoomNetProtocol.END_* reason
      */
-    follow(playEvent, onLevelLoad, onWaiting, onEnd) {
+    follow(playEvent, onLevelLoad, onNotice, onEnd) {
         this._playEvent   = playEvent;
         this._onLevelLoad = onLevelLoad;
-        this._onWaiting   = onWaiting;
+        this._onNotice    = onNotice;
         this._session.setCycle(this).setOnEnd(onEnd);
 
         return this;
@@ -93,7 +96,7 @@ class DoomSubRole {
     }
 
     // The level is shown: the sub joins the turn cycle with the next state,
-    // which also clears a wait still shown from the previous level.
+    // which also clears a message still shown from the previous level.
     levelStarted() {
         this._lastStateAt = null;
         this._session.setLivenessSuspended(false);
@@ -111,17 +114,25 @@ class DoomSubRole {
         return true;
     }
 
+    // Only the simulating device announces phases.
+    announcePhase() {
+    }
+
+    turnsResumed() {
+    }
+
     /**
      * Nothing moves here but the automap reveal; a state overdue for longer
      * than WAITING_NOTICE_MS with no word from the main names the main.
      */
     advance(dt, command, onPlayersMoved, now) {
         onPlayersMoved();
-        if ((this._lastStateAt === null) || this._waitNotified || ((now - this._lastStateAt) <= DoomNetHost.WAITING_NOTICE_MS)) {
+        if ((this._lastStateAt === null) || this._mainPaused || (this._waitingFor.length > 0)
+            || ((now - this._lastStateAt) <= DoomNetHost.WAITING_NOTICE_MS)) {
             return;
         }
-        this._waitNotified = true;
-        this._onWaiting([this._session.getHostNickname()]);
+        this._waitingFor = [this._session.getHostNickname()];
+        this._refreshNotice();
     }
 
     leave() {
@@ -135,8 +146,18 @@ class DoomSubRole {
     }
 
     waiting(nicknames) {
-        this._waitNotified = true;
-        this._onWaiting(nicknames);
+        this._waitingFor = nicknames;
+        this._refreshNotice();
+    }
+
+    // The main paused: no state comes until it resumes, and the next one clears it.
+    phase(message) {
+        if (message.type !== DoomNetProtocol.PAUSE) {
+            return;
+        }
+        this._mainPaused = true;
+        this._waitingFor = [];
+        this._refreshNotice();
     }
 
     // Decoded in full before anything is applied; the command leaves at once.
@@ -155,9 +176,33 @@ class DoomSubRole {
         this._applier.apply(snapshot);
         this._session.sendBinary(this._codec.encode(snapshot.turn + 1, this._command));
         this._lastStateAt = performance.now();
-        if (this._waitNotified) {
-            this._waitNotified = false;
-            this._onWaiting([]);
+        this._waitingFor  = [];
+        this._mainPaused  = false;
+        this._mainDead    = this._roster.getLocal().getUser().isDead();
+        this._refreshNotice();
+    }
+
+    // One message at a time: a wait first, then the main's pause, then its death.
+    _refreshNotice() {
+        const notice = this._noticeText();
+        if (notice === this._notice) {
+            return;
         }
+        this._notice = notice;
+        this._onNotice(notice);
+    }
+
+    _noticeText() {
+        if (this._waitingFor.length > 0) {
+            return appTranslator.get('multiplayer.waiting', {nickname: this._waitingFor.join(', ')});
+        }
+        if (this._mainPaused) {
+            return appTranslator.get('multiplayer.pausedByMain');
+        }
+        if (this._mainDead) {
+            return appTranslator.get('multiplayer.mainDead');
+        }
+
+        return null;
     }
 }

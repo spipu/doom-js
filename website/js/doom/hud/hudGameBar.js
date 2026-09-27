@@ -5,7 +5,7 @@
  *   - bottom-right: ammo of the active weapon ('—' if none)
  *   - top-left    : key pips (lit when owned), secret and kill counts
  *   - top-right   : weapon slots + active weapon name
- *   - bottom-centre: optional fps readout
+ *   - bottom-centre: optional fps readout, with the ping during a session
  *
  * Sizes are in cqh on a size container, so the whole bar follows the letterbox
  * height.
@@ -16,6 +16,7 @@ class HudGameBar extends AbstractHud {
         this._profile     = null;
         this._itemCatalog = null;
         this._stats       = null;
+        this._pingSource  = null;
         this._root        = null;
         this._els         = {};
         this._keyEls      = {};
@@ -35,6 +36,12 @@ class HudGameBar extends AbstractHud {
 
     bindLevelStats(stats) {
         this._stats = stats;
+        return this;
+    }
+
+    // Null outside a session: the readout then shows the fps alone.
+    bindPingSource(source) {
+        this._pingSource = source;
         return this;
     }
 
@@ -109,9 +116,14 @@ class HudGameBar extends AbstractHud {
     _updateFps() {
         const visible = doomSettings.getDisplayShowFps();
         this._els.fpsBlock.style.display = ((visible) ? 'block' : 'none');
-        if (visible) {
-            this._els.fpsValue.innerText = appTranslator.get('hud.fps', {value: this._engine.getFps()});
+        if (!visible) {
+            return;
         }
+        const fps  = this._engine.getFps();
+        const ping = ((this._pingSource !== null) ? this._pingSource() : null);
+        this._els.fpsValue.innerText = ((ping !== null)
+            ? appTranslator.get('hud.fpsPing', {value: fps, ping: Math.round(ping)})
+            : appTranslator.get('hud.fps', {value: fps}));
     }
 
     _updateAmmo(user) {

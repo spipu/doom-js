@@ -21,6 +21,7 @@ class DoomNetHost {
         this._codec     = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
         this._waitSince = null;
         this._waiting   = [];          // nicknames last announced as waited for
+        this._phase     = null;        // control message of the phase without turns under way
         this._onWaiting = null;
     }
 
@@ -44,8 +45,33 @@ class DoomNetHost {
         this._level    = level;
         this._capture  = capture;
         this._recorder = recorder;
+        this._phase    = null;
         for (const sub of this._subs.values()) {
             this._sync(sub);
+        }
+    }
+
+    /**
+     * No turn runs until turnsResumed (a pause): every sub in the cycle is told,
+     * and a sub joining meanwhile is told as soon as its level is built.
+     *
+     * @param {object} message - the control message of the phase
+     */
+    announcePhase(message) {
+        this._phase = message;
+        for (const sub of this._subs.values()) {
+            if (sub.phase !== DoomNetHost.SYNCING) {
+                sub.peer.sendControl(message);
+            }
+        }
+    }
+
+    // The time spent in a phase counts neither toward the command timeout nor the waiting notice.
+    turnsResumed(now) {
+        this._phase     = null;
+        this._waitSince = null;
+        for (const sub of this._subs.values()) {
+            sub.sentAt = now;
         }
     }
 
@@ -68,6 +94,9 @@ class DoomNetHost {
         if ((sub !== undefined) && (message.type === DoomNetProtocol.LEVEL_READY) && (sub.phase === DoomNetHost.SYNCING)) {
             sub.phase = DoomNetHost.JOINING;
             peer.setLivenessSuspended(false);
+            if (this._phase !== null) {
+                peer.sendControl(this._phase);
+            }
         }
     }
 

@@ -696,6 +696,12 @@ class DoomTranslations {
                 it: '{value} fps',
                 es: '{value} fps'
             },
+            'hud.fpsPing': {
+                fr: '{value} fps - ping {ping} ms',
+                en: '{value} fps - ping {ping} ms',
+                it: '{value} fps - ping {ping} ms',
+                es: '{value} fps - ping {ping} ms'
+            },
 
             // Running power-up effects: one label per effect, whatever the game's item name.
             'effect.berserk': {
@@ -1183,6 +1189,18 @@ class DoomTranslations {
                 en: 'Waiting for {nickname}…',
                 it: 'In attesa di {nickname}…',
                 es: 'Esperando a {nickname}…'
+            },
+            'multiplayer.pausedByMain': {
+                fr: 'Partie en pause par l\'hôte',
+                en: 'Game paused by the host',
+                it: 'Partita in pausa dall\'host',
+                es: 'Partida en pausa por el anfitrión'
+            },
+            'multiplayer.mainDead': {
+                fr: 'L\'hôte est mort',
+                en: 'The host is dead',
+                it: 'L\'host è morto',
+                es: 'El anfitrión ha muerto'
             },
             'multiplayer.end.stopped': {
                 fr: 'L\'hôte a arrêté la partie',

@@ -49,6 +49,15 @@ class DoomNetLobby {
         return this._players;
     }
 
+    /**
+     * @returns {number|null} the highest round trip among the players measured, null when none is
+     */
+    getWorstPing() {
+        const pings = this._players.map((player) => player.ping).filter((ping) => (ping !== null));
+
+        return ((pings.length > 0) ? Math.max(...pings) : null);
+    }
+
     getCapacity() {
         return this._capacity;
     }

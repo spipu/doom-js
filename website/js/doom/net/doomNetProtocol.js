@@ -17,6 +17,8 @@ DoomNetProtocol.LEVEL_LOAD  = 'levelLoad';
 DoomNetProtocol.LEVEL_READY = 'levelReady';
 // Main → the subs it is not waiting for: the nicknames it waits for (none clears it).
 DoomNetProtocol.WAITING     = 'waiting';
+// Main → every sub in the cycle: the main paused its game, no turn runs until the next state.
+DoomNetProtocol.PAUSE       = 'pause';
 // Either side: the session ends for the receiver, with one of the END_* reasons.
 DoomNetProtocol.SESSION_END = 'sessionEnd';
 
