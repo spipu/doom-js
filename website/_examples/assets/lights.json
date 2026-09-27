@@ -1,5 +1,5 @@
 {
-    "version": "v1.0",
+    "version": "v1.1",
     "files": {
         "assets": [
             "./assets/objects/ground.obj.json",

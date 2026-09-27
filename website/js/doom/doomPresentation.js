@@ -31,6 +31,7 @@ class DoomPresentation {
         this._forcedRenderer     = null;   // renderer imposed over the setting, null = the setting's
         this._noticeText         = null;   // message over the game (a wait), null = none
         this._pingSource         = null;   // () => round trip in ms or null, during a session
+        this._padControls        = {};     // pad control → allowed, the role's, over the settings'
         this._noticeEl           = null;
         this._depthShadingOn     = null;   // last states pushed to the engine (null = never)
         this._texSmoothingOn     = null;
@@ -124,6 +125,7 @@ class DoomPresentation {
         this._inputs.bindScreen(this._screen);
         doomSettings.applyToInputs(this._inputs);
         this._inputs.setVirtualPadControlAllowed('map', this._automap !== null);
+        this.applyPadControls();
 
         // The wanted code, not the effective one: the list falls back to 'full'
         // when a renderer is unavailable, which would trigger a rebuild every frame.
@@ -189,6 +191,26 @@ class DoomPresentation {
      */
     setForcedRenderer(code) {
         this._forcedRenderer = code;
+
+        return this;
+    }
+
+    /**
+     * The pad targets the device's role plays with, applied over the settings.
+     *
+     * @param {object} controls - pad control → allowed (Inputs.setVirtualPadControlAllowed)
+     */
+    setPadControls(controls) {
+        this._padControls = controls;
+
+        return this;
+    }
+
+    // Again after the settings are pushed to the inputs: they give jump and crouch back.
+    applyPadControls() {
+        for (const control in this._padControls) {
+            this._inputs.setVirtualPadControlAllowed(control, this._padControls[control]);
+        }
 
         return this;
     }

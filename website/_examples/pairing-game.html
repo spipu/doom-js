@@ -119,7 +119,7 @@ function createInputs()
 {
     inputs  = new Inputs().bindScreen(scene.getScreen()).setMouseLockAllowed(false);
     sampler = new InputCommandSampler(inputs);
-    for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire']) {
+    for (const control of ['jump', 'crouch', 'action', 'pause', 'weaponNext', 'fire', 'aim']) {
         inputs.setVirtualPadControlAllowed(control, false);
     }
 }

@@ -3,13 +3,15 @@
  * QR code, the other side's code read with the camera, each with its caption shown only
  * while its step lasts, and the camera released once the pairing is over. With a code
  * channel, codes are published and read through it instead, and the camera stays closed.
- * Captions come translated from the caller.
+ * Captions come translated from the caller. A frame shown carries QrPairingView.SHOWN_CLASS,
+ * which the caller styles.
  */
 class QrPairingView {
     /** @type {QrScanner}                   */ _scanner;
     /** @type {object}                      */ _elements;
     /** @type {object}                      */ _captions;
     /** @type {object|null}                 */ _codeChannel;
+    /** @type {boolean}                     */ _sequential;
     /** @type {function|null}               */ _onCameraOpen;
     /** @type {function|null}               */ _onCameraClose;
     /** @type {function|null}               */ _onCodeShown;
@@ -27,6 +29,7 @@ class QrPairingView {
         this._elements      = elements;
         this._captions      = captions;
         this._codeChannel   = codeChannel;
+        this._sequential    = false;
         this._onCameraOpen  = null;
         this._onCameraClose = null;
         this._onCodeShown   = null;
@@ -43,13 +46,22 @@ class QrPairingView {
         return this;
     }
 
+    /**
+     * One frame at a time, for a side that reads the other's code before it shows its own:
+     * showing the code hides the camera, whose stream stays open.
+     */
+    setSequential(sequential) {
+        this._sequential = sequential;
+        return this;
+    }
+
     async prepare() {
         if ((this._codeChannel !== null) || this._scanner.isOpen()) {
             return;
         }
         const start    = performance.now();
         const settings = await this._scanner.open(this._elements.camera);
-        this._elements.camera.style.visibility = 'visible';
+        this._show(this._elements.camera);
         this._onCameraOpen?.(settings, performance.now() - start);
     }
 
@@ -57,8 +69,11 @@ class QrPairingView {
         const start = performance.now();
         const qr    = await QrEncoder.encode(bytes);
         this._elements.qr.replaceChildren(qr.svg);
-        this._elements.qr.style.visibility   = 'visible';
+        this._show(this._elements.qr);
         this._elements.qrCaption.textContent = this._captions.show;
+        if (this._sequential) {
+            this._hide(this._elements.camera);
+        }
         this._codeChannel?.publish(bytes);
         this._onCodeShown?.(bytes, qr.modules, performance.now() - start, link);
     }
@@ -87,9 +102,8 @@ class QrPairingView {
     }
 
     hideCode() {
-        this._elements.qr.style.visibility   = 'hidden';
+        this._hide(this._elements.qr);
         this._elements.qrCaption.textContent = '';
-        this._unzoom(this._elements.qr);
     }
 
     /**
@@ -99,8 +113,7 @@ class QrPairingView {
         this.hideCode();
         const stopped = this._scanner.close();
         this._elements.cameraCaption.textContent = '';
-        this._elements.camera.style.visibility   = 'hidden';
-        this._unzoom(this._elements.camera);
+        this._hide(this._elements.camera);
         if (this._codeChannel === null) {
             this._onCameraClose?.(stopped);
         }
@@ -138,9 +151,19 @@ class QrPairingView {
         return this;
     }
 
+    _show(element) {
+        element.classList.add(QrPairingView.SHOWN_CLASS);
+    }
+
+    _hide(element) {
+        this._unzoom(element);
+        element.classList.remove(QrPairingView.SHOWN_CLASS);
+    }
+
     _unzoom(element) {
         element.classList.remove(QrPairingView.ZOOMED_CLASS);
     }
 }
 
 QrPairingView.ZOOMED_CLASS = 'zoomed';
+QrPairingView.SHOWN_CLASS  = 'shown';

@@ -48,6 +48,11 @@ class DoomMainRole {
         return 'game.pause.quit';
     }
 
+    // The pad targets this device plays with (jump and crouch follow the settings).
+    padControls() {
+        return DoomMainRole.PAD_CONTROLS;
+    }
+
     // --- Hosting ---
 
     /**
@@ -202,3 +207,6 @@ class DoomMainRole {
         }
     }
 }
+
+// Given back on every level: the pad outlives a game, and a followed one withdrew them.
+DoomMainRole.PAD_CONTROLS = {action: true, fire: true, weaponNext: true, move: true, aim: true};

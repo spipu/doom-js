@@ -158,7 +158,7 @@ class Inputs {
      * refuses the move itself.
      *
      * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
-     *                          'weaponNext' | 'map' | 'fire'
+     *                          'weaponNext' | 'map' | 'fire' | 'move' | 'aim'
      * @param {boolean} allowed
      */
     setVirtualPadControlAllowed(control, allowed) {

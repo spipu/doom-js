@@ -9,9 +9,10 @@ button:disabled { opacity: 0.4; }
 #stage.sub      { flex-direction: row-reverse; }
 .tile           { flex: 1 1 0; min-width: 0; }
 .frame          { width: 100%; aspect-ratio: 1; visibility: hidden; cursor: zoom-in; display: block; }
+.frame.shown    { visibility: visible; }
 .frame.zoomed   { position: fixed; inset: 0; width: 100vw; height: 100vh; aspect-ratio: auto; z-index: 10; cursor: zoom-out; }
 .caption        { text-align: center; color: #FFD27A; margin-top: 6px; min-height: 1.4em; }
-#qr             { background: #FFF; }
+#qr             { background: #000; }
 #qr svg         { width: 100%; height: 100%; display: block; }
 #camera         { object-fit: cover; background: #000; }
 #camera.zoomed  { object-fit: contain; }

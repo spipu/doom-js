@@ -81,7 +81,8 @@ class InputVirtualGamepad {
             map:        false
         };
         // Fire is the aim stick's upper band, not a button: withdrawn on its own.
-        this._fireAllowed = true;
+        this._fireAllowed  = true;
+        this._stickAllowed = {move: true, aim: true};
         this._aimBandEl   = null;
 
         // touch identifier -> control owned by that finger
@@ -151,12 +152,15 @@ class InputVirtualGamepad {
      * answering touches and stops being drawn. Survives the overlay rebuild.
      *
      * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
-     *                          'weaponNext' | 'map' | 'fire'
+     *                          'weaponNext' | 'map' | 'fire' | 'move' | 'aim'
      * @param {boolean} allowed
      */
     allowControl(control, allowed) {
         if (control === 'fire') {
             return this._allowFire(allowed);
+        }
+        if (this._stickAllowed[control] !== undefined) {
+            return this._allowStick(control, allowed);
         }
         if (this._buttonAllowed[control] === undefined) {
             return this;
@@ -312,12 +316,14 @@ class InputVirtualGamepad {
             hint.style.border = '0.4cqh dashed ' + this._color.hintRing;
             overlay.appendChild(hint);
             this._hintEls[kind] = hint;
+            this._setHintVisible(kind, true);
         }
     }
 
+    // A withdrawn stick shows no outline either.
     _setHintVisible(kind, visible) {
         if (this._hintEls !== null) {
-            this._hintEls[kind].style.display = ((visible) ? 'block' : 'none');
+            this._hintEls[kind].style.display = ((visible && this._stickAllowed[kind]) ? 'block' : 'none');
         }
     }
 
@@ -520,7 +526,7 @@ class InputVirtualGamepad {
 
         // One finger per zone: a second touch inside a zone already owned is
         // ignored rather than stealing the active stick.
-        if (this._inArea(InputVirtualGamepad.AIM_AREA, nx, ny) && !this._hasKind('aim')) {
+        if (this._stickAllowed.aim && this._inArea(InputVirtualGamepad.AIM_AREA, nx, ny) && !this._hasKind('aim')) {
             // The band decides the mode ONCE, here: the gesture keeps it until
             // the finger is lifted, wherever it slides.
             const fire  = (this._fireAllowed
@@ -533,7 +539,7 @@ class InputVirtualGamepad {
             return;
         }
 
-        if (this._inArea(InputVirtualGamepad.MOVE_AREA, nx, ny) && !this._hasKind('move')) {
+        if (this._stickAllowed.move && this._inArea(InputVirtualGamepad.MOVE_AREA, nx, ny) && !this._hasKind('move')) {
             const owned = { kind: 'move', ox: px, oy: py, fire: false };
             this._touches.set(touch.identifier, owned);
             this._placeStick(this._moveStick, px, py, rect);
@@ -600,10 +606,28 @@ class InputVirtualGamepad {
         return this;
     }
 
+    // The band marks a mode of the aim stick: it goes with the stick too.
     _applyFireAllowed() {
         if (this._aimBandEl !== null) {
-            this._aimBandEl.style.visibility = ((this._fireAllowed) ? 'visible' : 'hidden');
+            this._aimBandEl.style.visibility = ((this._fireAllowed && this._stickAllowed.aim) ? 'visible' : 'hidden');
         }
+    }
+
+    // A finger holding a withdrawn stick lets go of it at once.
+    _allowStick(kind, allowed) {
+        this._stickAllowed[kind] = (allowed === true);
+        if (!this._stickAllowed[kind]) {
+            for (const [identifier, owned] of this._touches) {
+                if (owned.kind === kind) {
+                    this._touches.delete(identifier);
+                    this._releaseControl(owned);
+                }
+            }
+        }
+        this._setHintVisible(kind, !this._hasKind(kind));
+        this._applyFireAllowed();
+
+        return this;
     }
 
     // Deflection from the finger's OWN origin (both sticks are relative), the

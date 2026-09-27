@@ -86,6 +86,10 @@ class DoomSubRole {
         return 'multiplayer.pause.leave';
     }
 
+    padControls() {
+        return DoomSubRole.PAD_CONTROLS;
+    }
+
     useProfile() {
         return this;
     }
@@ -215,3 +219,6 @@ class DoomSubRole {
         return null;
     }
 }
+
+// A viewer's command is empty: its pad keeps the menu and the map only.
+DoomSubRole.PAD_CONTROLS = {jump: false, crouch: false, action: false, fire: false, weaponNext: false, move: false, aim: false};

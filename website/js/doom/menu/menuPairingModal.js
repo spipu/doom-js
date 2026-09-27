@@ -19,11 +19,11 @@ class MenuPairingModal extends MenuModal {
         return this._open(appTranslator.get('multiplayer.lobby.add'), {
             show: appTranslator.get('multiplayer.pairing.showToSub'),
             read: appTranslator.get('multiplayer.pairing.readSub')
-        }, session, (view) => session.addPlayer(view), () => {});
+        }, false, session, (view) => session.addPlayer(view), () => {});
     }
 
     /**
-     * A sub answers the main: its code read, the answer shown.
+     * A sub answers the main: its code read, then the answer shown, one at a time.
      *
      * @param {DoomNetSubSession} session
      * @param {function}          onPaired - once the link to the main is open
@@ -32,19 +32,21 @@ class MenuPairingModal extends MenuModal {
         return this._open(appTranslator.get('multiplayer.join'), {
             show: appTranslator.get('multiplayer.pairing.showToMain'),
             read: appTranslator.get('multiplayer.pairing.readMain')
-        }, session, (view) => session.join(view), onPaired);
+        }, true, session, (view) => session.join(view), onPaired);
     }
 
     /**
      * @param {string}                       title
-     * @param {{show: string, read: string}} captions - under the code shown, under the camera while it reads
-     * @param {object}                       session  - its cancelPairing() and getCodeChannel()
-     * @param {function(object): Promise}    pair     - runs the session's flow through the view
+     * @param {{show: string, read: string}} captions   - under the code shown, under the camera while it reads
+     * @param {boolean}                      sequential - reads first, then shows: one frame at a time
+     * @param {object}                       session    - its cancelPairing() and getCodeChannel()
+     * @param {function(object): Promise}    pair       - runs the session's flow through the view
      * @param {function}                     onPaired
      */
-    _open(title, captions, session, pair, onPaired) {
+    _open(title, captions, sequential, session, pair, onPaired) {
         const {modal}  = this._createShell(title, 'doom-menu-modal doom-menu-modal-wide doom-menu-modal-pairing', 'doom-menu-subtitle');
-        const stage    = MenuDom.addElement(modal, 'div', 'doom-menu-pairing-stage');
+        const stage    = MenuDom.addElement(modal, 'div', 'doom-menu-pairing-stage'
+            + ((sequential) ? ' doom-menu-pairing-stage-sequential' : ''));
         const elements = {
             qr:            MenuPairingModal._tile(stage, 'div', 'doom-menu-pairing-qr'),
             camera:        MenuPairingModal._tile(stage, 'video', 'doom-menu-pairing-camera'),
@@ -60,7 +62,9 @@ class MenuPairingModal extends MenuModal {
         const button  = MenuDom.addButton(actions, 'doom-menu-button', appTranslator.get('menu.cancel'), () => session.cancelPairing());
         this._attachButtonsNav([button], button, 0);
 
-        this._view = new QrPairingView(new QrScanner(), elements, captions, session.getCodeChannel()).enableZoom();
+        this._view = new QrPairingView(new QrScanner(), elements, captions, session.getCodeChannel())
+            .setSequential(sequential)
+            .enableZoom();
         this._run(pair, onPaired);
 
         return this;

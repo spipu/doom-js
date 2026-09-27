@@ -43,6 +43,7 @@ class DoomGame {
         this._netSession      = null;   // DoomNetMainSession while the screen is shared
         this._animateCallback = this._animate.bind(this);
 
+        this._presentation.setPadControls(this._role.padControls());
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
         if (subSession !== null) {
             this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
@@ -391,6 +392,7 @@ class DoomGame {
             // Before the grab: a renderer changed from the pause options
             // replaces the canvas, and a lock asked on the old one fails.
             this._presentation.applyRendererSetting(false);
+            this._presentation.applyPadControls();
             this._inputs.setVirtualPadVisible(true);
             if (this._inputs.getMode() === 'keyboardMouse') {
                 this._inputs.grabMouse();

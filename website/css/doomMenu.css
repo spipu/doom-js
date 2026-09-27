@@ -662,6 +662,15 @@
     cursor: zoom-in;
 }
 
+.doom-menu-pairing-frame.shown {
+    visibility: visible;
+}
+
+/* A sub reads, then shows: the idle frame's tile steps aside, the other one is centred. */
+.doom-menu-pairing-stage-sequential .doom-menu-pairing-tile:not(:has(> .shown)) {
+    display: none;
+}
+
 .doom-menu-pairing-frame.zoomed {
     position: fixed;
     inset: 0;
@@ -673,8 +682,9 @@
     cursor: zoom-out;
 }
 
+/* The code draws its own white square, quiet zone included: around it, fullscreen stays dark. */
 .doom-menu-pairing-qr {
-    background: #FFF;
+    background: #000;
 }
 
 .doom-menu-pairing-qr svg {
