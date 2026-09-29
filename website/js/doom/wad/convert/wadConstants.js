@@ -252,9 +252,8 @@ class WadConstants {
 
     // Derived membership sets — never edit these, edit DOOR_BY_SPECIAL
     // (computed by _recomputeDerivedSets, refreshed on profile extensions).
-    static DOOR_SPECIALS               = null;
-    static DOOR_CLOSE_SPECIALS         = null;
-    static DOOR_CEILING_RAISE_SPECIALS = null;
+    static DOOR_SPECIALS       = null;
+    static DOOR_CLOSE_SPECIALS = null;
 
     // Close-wait-open: tics held closed before reopening (close30ThenOpen).
     static DOOR_CLOSE_REOPEN_WAIT_TICS = 30 * 35;
@@ -925,6 +924,16 @@ class WadConstants {
         return (WadConstants.FLOOR_UP_BY_SPECIAL[special]?.donutRingOnly === true);
     }
 
+    static isFloorMoverSpecial(special) {
+        return ((WadConstants.FLOOR_DOWN_BY_SPECIAL[special] !== undefined)
+            || (WadConstants.FLOOR_UP_BY_SPECIAL[special] !== undefined)
+            || (WadConstants.STAIR_BY_SPECIAL[special] !== undefined));
+    }
+
+    static isCeilingMoverSpecial(special) {
+        return (WadConstants.DOOR_BY_SPECIAL[special] !== undefined);
+    }
+
     // --- Sector damage (P_PlayerInSpecialSector) ---
 
     // Damage applied to a player standing on the floor of a sector carrying
@@ -1175,7 +1184,6 @@ class WadConstants {
     static _recomputeDerivedSets() {
         WadConstants.DOOR_SPECIALS               = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind !== 'close'));
         WadConstants.DOOR_CLOSE_SPECIALS         = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'close'));
-        WadConstants.DOOR_CEILING_RAISE_SPECIALS = WadConstants._specialsWhere(WadConstants.DOOR_BY_SPECIAL, (d) => (d.kind === 'ceilingRaise'));
         WadConstants.FLOOR_MOVE_DOWN_SPECIALS    = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, () => true);
         WadConstants.FLOOR_DOWN_ONEWAY_SPECIALS  = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (d) => (d.anim === 'one-way'));
         WadConstants.FLOOR_PERPETUAL_SPECIALS    = WadConstants._specialsWhere(WadConstants.FLOOR_DOWN_BY_SPECIAL, (f) => (f.anim === 'perpetual'));

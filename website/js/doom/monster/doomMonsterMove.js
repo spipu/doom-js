@@ -422,8 +422,8 @@ class DoomMonsterMove {
             this._usableDoorSet = new Set();
             for (const si of Object.keys(this._levelData.moverCodes)) {
                 const entry = this._levelData.moverCodes[si];
-                if ((entry.kind === 'door') && (entry.monsterUse === true)) {
-                    this._usableDoorSet.add(loader.instances().getByCode(entry.code));
+                if ((entry.door !== null) && (entry.monsterUse === true)) {
+                    this._usableDoorSet.add(loader.instances().getByCode(entry.door));
                 }
             }
         }

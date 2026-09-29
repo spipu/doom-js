@@ -28,14 +28,14 @@ class WadMapAnalyzer {
     analyze() {
         const donuts = this._identifyDonuts();
         const doors = this._identifyDoors();
-        const lifts = this._identifyLifts(doors.doorSectorIds, donuts.holeTargetFh);
+        const lifts = this._identifyLifts(donuts.holeTargetFh);
         const liftLowerVariants = this._identifyLiftLowers(lifts);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
         const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.liftIds, lifts.instantRaise, lifts.liftOriginalFh);
         const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.liftIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.liftIds, rising.risingFloorIds);
-        const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps);
+        const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps, lifts.liftOriginalFh);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches(lifts.liftOriginalFh);
         const floorMovers = this._identifyFloorMovers(lifts, rising, stairs);
@@ -493,15 +493,17 @@ class WadMapAnalyzer {
     // floor_h = max(own fh, min adjacent fh), ceil_h = min adjacent non-sky ch -
     // DOOR_TRACK_OFFSET, computed after the lift floor patch. The max lifts
     // buried doors (fh=-128) to the walkable level; floor_h is written back into
-    // sectors[si].fh so walls, flat, panel and track all share it.
-    _computeDoorHeights(doorSectorIds, doorProps) {
+    // sectors[si].fh so walls, flat, panel and track all share it — except on a
+    // lift, whose panel hangs from the floor's rest height above the patched one.
+    _computeDoorHeights(doorSectorIds, doorProps, liftOriginalFh) {
         const {linedefs, sidedefs, sectors} = this._level;
         const doorHeights = {};
 
         for (const si of doorSectorIds) {
+            const restFh = (liftOriginalFh[si] ?? sectors[si].fh);
             // A closing door rests open: its travel is simply fh → ch.
             if (doorProps[si].close === true) {
-                doorHeights[si] = {floorH: sectors[si].fh, ceilH: sectors[si].ch};
+                doorHeights[si] = {floorH: restFh, ceilH: sectors[si].ch};
                 continue;
             }
             const neighbours = [];
@@ -524,11 +526,11 @@ class WadMapAnalyzer {
             if (neighbours.length === 0) {
                 continue;
             }
-            const floorH = Math.max(sectors[si].fh, Math.min(...neighbours.map((s) => s.fh)));
+            const floorH = Math.max(restFh, Math.min(...neighbours.map((s) => s.fh)));
             // Ceiling raise (40): P_FindHighestCeilingSurrounding, sky included, no
-            // track offset (p_ceilng.c raiseToHighest); its floor half is a lift.
+            // track offset (p_ceilng.c raiseToHighest).
             if (doorProps[si].ceilingRaise === true) {
-                doorHeights[si] = {floorH: sectors[si].fh, ceilH: Math.max(...neighbours.map((s) => s.ch))};
+                doorHeights[si] = {floorH: restFh, ceilH: Math.max(...neighbours.map((s) => s.ch))};
                 continue;
             }
             const nonSky = neighbours.filter((s) => !WadConstants.isSkyFlat(s.ct));
@@ -538,7 +540,9 @@ class WadMapAnalyzer {
             // Deliberate deviation: a sector resting open above that target keeps
             // its ceiling instead of vanilla's instant snap down to it.
             doorHeights[si] = {floorH: floorH, ceilH: Math.max(openH, sectors[si].ch)};
-            sectors[si].fh = floorH;
+            if (liftOriginalFh[si] === undefined) {
+                sectors[si].fh = floorH;
+            }
         }
 
         return doorHeights;
@@ -546,20 +550,19 @@ class WadMapAnalyzer {
 
     // --- Lifts / moving floors ---
 
-    _identifyLifts(doorSectorIds, donutHoleTargetFh = {}) {
-        const {sidedefs, sectors} = this._level;
+    _identifyLifts(donutHoleTargetFh = {}) {
+        const {sectors} = this._level;
         const linedefs          = this._moverLinedefs();
         const liftIds           = new Set();
         const liftSectorSpecial = {};
         const liftSpecials      = {};   // base special last
 
+        // A door sector lowers its floor as well: EV_DoPlat / EV_DoFloor take
+        // every sector of the tag, door or not (MAP15's lift-or-door s68).
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
-                // Ceiling raisers (40) move a door's floor too: vanilla fires both
-                // halves on the same tag.
-                const allowDoorOverlap = WadConstants.DOOR_CEILING_RAISE_SPECIALS.has(ld.special);
                 for (let si = 0; si < sectors.length; si++) {
-                    if ((sectors[si].tag === ld.tag) && (allowDoorOverlap || !doorSectorIds.has(si))) {
+                    if (sectors[si].tag === ld.tag) {
                         liftIds.add(si);
                         liftSectorSpecial[si] = ld.special;
                         (liftSpecials[si] = (liftSpecials[si] ?? [])).push(ld.special);
@@ -1268,16 +1271,28 @@ class WadMapAnalyzer {
                 : sectors[si].tag)};
     }
 
-    // Every mover family for resolveTaggedTargets; built = {lifts, rising,
-    // doors, stairs} code sets. Stair steps resolve by the base step's tag.
+    // The mover families a special drives, for resolveTaggedTargets; built =
+    // {lifts, rising, doors, stairs} code sets. A floor special never moves a
+    // ceiling nor a ceiling special a floor (EV_DoFloor / EV_DoDoor run their
+    // own thinker), 40 does both; a special in neither table (stop lines)
+    // keeps every family. Stair steps resolve by the base step's tag.
     static moverFamilies(analysis, sectors, built, special) {
-        return [
-            {ids: analysis.liftIds, prefix: 'lift_',        built: built.lifts},
+        const floorFamilies = [
+            {ids: analysis.liftIds, prefix: 'lift_', built: built.lifts},
             WadMapAnalyzer.risingFloorFamily(analysis, sectors, built.rising, special),
-            {ids: analysis.doorSectorIds,      prefix: 'door_',        built: built.doors},
             {ids: analysis.stairIds, prefix: 'stair_', built: built.stairs,
                 tagOf: (si) => analysis.stairStepTag[si]}
         ];
+        const doorFamily = {ids: analysis.doorSectorIds, prefix: 'door_', built: built.doors};
+        const isFloor    = WadConstants.isFloorMoverSpecial(special);
+        const isCeiling  = WadConstants.isCeilingMoverSpecial(special);
+        if (isFloor && !isCeiling) {
+            return floorFamilies;
+        }
+        if (isCeiling && !isFloor) {
+            return [doorFamily];
+        }
+        return [...floorFamilies, doorFamily];
     }
 
     // Sector id baked into a target instance code ('risingfloor_175' → 175).

@@ -1,7 +1,7 @@
 /**
  * Live floor and ceiling heights of a sector, in map units: the static
  * (post-patch) values corrected by the current offset of the sector's mover
- * instance — a door's ceiling is its panel bottom (closed rest = its floor),
+ * instances — a door's ceiling is its panel bottom (closed rest = its floor),
  * while a lift, rising floor or stair top rests at its original height and
  * carries the instance's Y delta. Read by the sound flood, the mover pressure
  * and the automap.
@@ -20,21 +20,21 @@ class DoomSectorHeights {
 
     floorOf(si) {
         const rest  = ((this._restFh[si] !== undefined) ? this._restFh[si] : this._sectors[si].fh);
-        const mover = this._mover(si);
-        if ((mover === null) || (mover.kind === 'door')) {
+        const floor = this._movers(si).floor;
+        if (floor === null) {
             return rest;
         }
 
-        return (rest + this._deltaOf(mover));
+        return (rest + this._deltaOf(floor));
     }
 
     ceilingOf(si) {
-        const mover = this._mover(si);
-        if ((mover === null) || (mover.kind !== 'door')) {
+        const door = this._movers(si).door;
+        if (door === null) {
             return this._sectors[si].ch;
         }
 
-        return (this._doorFloorH[si] + this._deltaOf(mover));
+        return (this._doorFloorH[si] + this._deltaOf(door));
     }
 
     /**
@@ -50,20 +50,23 @@ class DoomSectorHeights {
 
     // --- Internal ---
 
-    _deltaOf(mover) {
-        return (mover.inst.getVerticalShift() / WadConstants.SCALE);
+    _deltaOf(inst) {
+        return (inst.getVerticalShift() / WadConstants.SCALE);
     }
 
     // Lazy resolution: the builder only lists codes it actually built, so
     // getByCode never throws here.
-    _mover(si) {
+    _movers(si) {
         if (this._moverCache[si] === undefined) {
-            const entry = this._moverCodes[si];
+            const entry  = this._moverCodes[si];
+            const instOf = (code) => ((code !== null) ? loader.instances().getByCode(code) : null);
             this._moverCache[si] = ((entry !== undefined)
-                ? {kind: entry.kind, inst: loader.instances().getByCode(entry.code)}
-                : null);
+                ? {floor: instOf(entry.floor), door: instOf(entry.door)}
+                : DoomSectorHeights.NO_MOVER);
         }
 
         return this._moverCache[si];
     }
 }
+
+DoomSectorHeights.NO_MOVER = {floor: null, door: null};

@@ -74,11 +74,13 @@ class WadStaticMapBuilder {
                     continue;
                 }
                 if (rIsDoor) {
-                    // Door track (DOORTRAK)
+                    // Door track (DOORTRAK), from the static floor — a lift's low
+                    // position, below the panel's rest floor — to the open ceiling.
                     if (doorHeights[rSd.sector] === undefined) {
                         continue;
                     }
-                    const {floorH, ceilH} = doorHeights[rSd.sector];
+                    const floorH  = rSec.fh;
+                    const ceilH   = doorHeights[rSd.sector].ceilH;
                     const texName = rSd.middle;
                     if (WadTextureBank.isBlank(texName)) {
                         continue;
@@ -357,7 +359,7 @@ class WadStaticMapBuilder {
             const sec = sectors[si];
 
             if (doorSectorIds.has(si)) {
-                // A ceiling raiser (40) is also a lift, whose top flat covers the floor.
+                // A door on a lift: the lift's top flat covers the floor.
                 if (!liftIds.has(si)) {
                     this._buildDoorSectorFlat(mesh, si, sec);
                 }

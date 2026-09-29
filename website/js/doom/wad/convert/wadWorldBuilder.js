@@ -604,22 +604,22 @@ class WadWorldBuilder {
 
     // Level data of the monster AI and the sector-height service built from it.
     // Only built mover codes are listed, so getByCode never throws downstream;
-    // monsterLines are the lines a monster fires by crossing (P_CrossSpecialLine).
+    // a sector may carry a floor mover and a door at once (moverCodes[si] =
+    // {floor, door, monsterUse}). monsterLines are the lines a monster fires by
+    // crossing (P_CrossSpecialLine).
     _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction) {
         const doorFloorH = {};
         const moverCodes = {};
+        const moverOf    = (si) => (moverCodes[si] ??= {floor: null, door: null, monsterUse: false});
         for (const code of builtFloorCodes) {
-            moverCodes[code.split('_')[1]] = {kind: 'floor', code: code};
+            moverOf(code.split('_')[1]).floor = code;
         }
         for (const si of analysis.doorSectorIds) {
             if ((analysis.doorHeights[si] !== undefined) && builtDoorCodes.has('door_' + si)) {
-                const props = analysis.doorProps[si];
-                doorFloorH[si] = analysis.doorHeights[si].floorH;
-                moverCodes[si] = {
-                    kind:       'door',
-                    code:       'door_' + si,
-                    monsterUse: (props.monsterUse === true)
-                };
+                const mover = moverOf(si);
+                doorFloorH[si]   = analysis.doorHeights[si].floorH;
+                mover.door       = 'door_' + si;
+                mover.monsterUse = (analysis.doorProps[si].monsterUse === true);
             }
         }
         const monsterLines       = [];

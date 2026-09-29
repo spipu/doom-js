@@ -67,21 +67,33 @@ class DoomMoverPressure {
         return this;
     }
 
-    // One watch per mover of the level: the instance resolves lazily, the
-    // per-frame motion fields are filled by refreshMotion.
+    // One watch per mover of the level (a sector may hold a floor mover and a
+    // door): the instance resolves lazily, the per-frame motion fields are
+    // filled by refreshMotion.
     setMovers(moverCodes) {
-        this._movers = Object.keys(moverCodes).map((key) => ({
-            si:      Number(key),
-            kind:    moverCodes[key].kind,
-            code:    moverCodes[key].code,
+        this._movers = [];
+        for (const key of Object.keys(moverCodes)) {
+            for (const kind of ['floor', 'door']) {
+                if (moverCodes[key][kind] !== null) {
+                    this._movers.push(DoomMoverPressure._watch(Number(key), kind, moverCodes[key][kind]));
+                }
+            }
+        }
+        return this;
+    }
+
+    static _watch(si, kind, code) {
+        return {
+            si:       si,
+            kind:     kind,
+            code:     code,
             inst:     null,
             lastDy:   null,
             closing:  false,
             reacted:  false,
             pressing: false,
             stalled:  false
-        }));
-        return this;
+        };
     }
 
     // Per-frame motion of every mover: dy delta since the previous frame, and
