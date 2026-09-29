@@ -16,6 +16,7 @@ class DoomNetHost {
         this._subs      = new Map();   // peer id → {peer, phase, command, sentAt}
         this._turn      = 0;           // the next turn to simulate, counted over the session
         this._level     = null;        // {levelCode, skill, multiplayerThings}
+        this._levelSeq  = 0;           // counts the levels started, echoed by a sub's levelReady
         this._capture   = null;
         this._recorder  = null;
         this._codec     = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
@@ -43,6 +44,7 @@ class DoomNetHost {
      */
     levelStarted(level, capture, recorder) {
         this._level    = level;
+        this._levelSeq++;
         this._capture  = capture;
         this._recorder = recorder;
         this._phase    = null;
@@ -89,9 +91,12 @@ class DoomNetHost {
         this._subs.delete(peer.getId());
     }
 
+    // A levelReady for an earlier level (two levels sent while the sub built
+    // the first) is not the answer to the current one: the sub is still building.
     control(peer, message) {
         const sub = this._subs.get(peer.getId());
-        if ((sub !== undefined) && (message.type === DoomNetProtocol.LEVEL_READY) && (sub.phase === DoomNetHost.SYNCING)) {
+        if ((sub !== undefined) && (message.type === DoomNetProtocol.LEVEL_READY) && (sub.phase === DoomNetHost.SYNCING)
+            && (message.seq === this._levelSeq)) {
             sub.phase = DoomNetHost.JOINING;
             peer.setLivenessSuspended(false);
             if (this._phase !== null) {
@@ -177,7 +182,7 @@ class DoomNetHost {
         sub.phase   = DoomNetHost.SYNCING;
         sub.command = null;
         sub.peer.setLivenessSuspended(true);
-        sub.peer.sendControl(Object.assign({type: DoomNetProtocol.LEVEL_LOAD}, this._level));
+        sub.peer.sendControl(Object.assign({type: DoomNetProtocol.LEVEL_LOAD, seq: this._levelSeq}, this._level));
     }
 
     // The main shows it, the subs not waited for show it too.

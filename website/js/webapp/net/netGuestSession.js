@@ -57,12 +57,17 @@ class NetGuestSession extends NetSession {
         return this._host;
     }
 
+    // Dropped once the link is gone, like NetLink.send: the lost event told the caller.
     sendControl(message) {
-        this._host.sendControl(message);
+        if (this._host !== null) {
+            this._host.sendControl(message);
+        }
     }
 
     sendBinary(buffer) {
-        this._host.sendBinary(buffer);
+        if (this._host !== null) {
+            this._host.sendBinary(buffer);
+        }
     }
 
     /**

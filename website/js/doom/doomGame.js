@@ -201,6 +201,9 @@ class DoomGame {
 
         this._presentation.startLevelSound(this._mapInfo.musicLumpsFor(this._levelCode));
         this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, multiplayerThings: this._role.spawnsMultiplayerThings()});
+        // A session opened from the pause and never started: the level just
+        // shown is the one its subs build (a save loaded there, a restart).
+        this._startPendingSession();
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
@@ -354,7 +357,7 @@ class DoomGame {
 
     // The main started another level: the sub builds it and joins again. A
     // level sent while one is being built waits for that build; the last
-    // one sent wins.
+    // one sent wins. A failed build leaves the session for the menu.
     async _followLevel(level) {
         if (this._joining) {
             this._pendingLevel = level;
@@ -364,10 +367,29 @@ class DoomGame {
         this._closeGameMenu();
         const display = new MenuDisplay('screen').init(true);
         const modal   = new MenuModal(display).showLoading(appTranslator.get('game.level.loading', {level: level.levelCode}));
-        await this.joinSharedGame(this._wadFile, null, level);
-        modal.close();
-        display.destroy();
-        this._transitioning = false;
+        try {
+            await this.joinSharedGame(this._wadFile, null, level);
+            modal.close();
+            display.destroy();
+            this._transitioning = false;
+        } catch (error) {
+            console.error(error);
+            modal.close();
+            display.destroy();
+            this._transitioning = false;
+            this._leaveFailedBuild(error);
+        }
+    }
+
+    // The session may have ended during the failed build: that end wins.
+    _leaveFailedBuild(error) {
+        this._pendingLevel = null;
+        if (this._endReason !== null) {
+            this._leaveEndedSession();
+            return;
+        }
+        this._teardownLevel();
+        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenuAfterBuildError(meta, error));
     }
 
     // The main stopped, removed this sub, or the link is lost. During a level
@@ -422,10 +444,7 @@ class DoomGame {
         this._pauseWasDown = true;
         this._presentation.getEngine().resetDeltaClock();
         if (backToGame) {
-            if ((this._netSession !== null) && !this._netSession.isStarted()) {
-                this._netSession.start();
-                this._role.startHosting(this._netSession, (nicknames) => this._showWaiting(nicknames));
-            }
+            this._startPendingSession();
             this._role.turnsResumed(performance.now());
             // Before the grab: a renderer changed from the pause options
             // replaces the canvas, and a lock asked on the old one fails.
@@ -436,6 +455,16 @@ class DoomGame {
                 this._inputs.grabMouse();
             }
         }
+    }
+
+    // A session opened from the pause starts with the game: on Start, or with
+    // the next level shown (a save loaded from the pause, a restart).
+    _startPendingSession() {
+        if ((this._netSession === null) || this._netSession.isStarted()) {
+            return;
+        }
+        this._netSession.start();
+        this._role.startHosting(this._netSession, (nicknames) => this._showWaiting(nicknames));
     }
 
     // "{wad} — Episode {n}"; a MAPxx game is episode 1.

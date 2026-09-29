@@ -200,6 +200,11 @@ class MenuNavigator {
             .showLoading(appTranslator.get('menu.level.loading', {level: level.levelCode, wad: meta.name}));
         try {
             const wadFile = await this._registry.getWadFile(meta.id);
+            // Ended while the WAD was read: the lobby already said why.
+            if (session.isEnded()) {
+                modal.close();
+                return;
+            }
             doomSound.loadForWad(wadFile, meta.id);
             await new DoomGame(session).joinSharedGame(wadFile, meta, level);
             modal.close();
@@ -215,6 +220,15 @@ class MenuNavigator {
         return this._boot(() => {
             this.openWadMenu(meta);
             MenuNetMessages.showEnd(this._display, reason);
+        });
+    }
+
+    // Back from a followed game whose level could not be built.
+    startAtWadMenuAfterBuildError(meta, error) {
+        return this._boot(() => {
+            this.openWadMenu(meta);
+            const {message, detail} = MenuNavigator._describeError(error);
+            new MenuModal(this._display).showError(message, detail, () => {});
         });
     }
 
@@ -280,10 +294,7 @@ class MenuNavigator {
         console.error(error);
         loader.reset();
 
-        const message = ((error && error.message) ? error.message : String(error));
-        const detail = ((error && error.stack)
-            ? error.stack.split('\n').slice(0, 4).join('\n')
-            : null);
+        const {message, detail} = MenuNavigator._describeError(error);
 
         // Reuse the loading modal instance (showError() closes its own overlay
         // first) instead of closing it and spawning a second one.
@@ -294,6 +305,16 @@ class MenuNavigator {
             }
             this.showWadList();
         });
+    }
+
+    /**
+     * @returns {{message: string, detail: string|null}} what an error modal shows of a build failure
+     */
+    static _describeError(error) {
+        return {
+            message: ((error && error.message) ? error.message : String(error)),
+            detail:  ((error && error.stack) ? error.stack.split('\n').slice(0, MenuNavigator.ERROR_STACK_LINES).join('\n') : null)
+        };
     }
 
     /**
@@ -364,3 +385,5 @@ class MenuNavigator {
 
 // Hurt me plenty — the skill preselected before any player choice.
 MenuNavigator.DEFAULT_SKILL = 3;
+// Lines of a build failure's stack shown in its error modal.
+MenuNavigator.ERROR_STACK_LINES = 4;

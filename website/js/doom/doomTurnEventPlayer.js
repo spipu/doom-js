@@ -38,7 +38,9 @@ class DoomTurnEventPlayer {
                 this._effects.spawn(event);
                 break;
             case DoomTurnEvents.DECAL:
-                this._decals.place(event);
+                if (this._decals !== null) {
+                    this._decals.place(event);
+                }
                 break;
             case DoomTurnEvents.PLAYER_TELEPORTED:
                 if (event.user === this._viewer) {

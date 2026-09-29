@@ -11,9 +11,9 @@ class DoomNetProtocol {
 DoomNetProtocol.LOBBY        = 'lobby';
 // Main → every sub: the game runs.
 DoomNetProtocol.START        = 'start';
-// Main → a sub: the level to build (levelCode, skill, multiplayerThings), and the sub is syncing.
+// Main → a sub: the level to build (seq, levelCode, skill, multiplayerThings), and the sub is syncing.
 DoomNetProtocol.LEVEL_LOAD   = 'levelLoad';
-// Sub → main: the level is built, the sub joins the turn cycle with the next state.
+// Sub → main: the level of that seq is built, the sub joins the turn cycle with the next state.
 DoomNetProtocol.LEVEL_READY  = 'levelReady';
 // Main → the subs it is not waiting for: the nicknames it waits for (none clears it).
 DoomNetProtocol.WAITING      = 'waiting';

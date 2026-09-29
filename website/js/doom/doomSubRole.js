@@ -23,6 +23,7 @@ class DoomSubRole {
         this._builtLevel        = null;
         this._applier           = null;
         this._multiplayerThings = false;
+        this._levelSeq          = null;    // the main's sequence number of the level being built
         this._lastStateAt       = null;
         this._waitingFor        = [];      // nicknames the game waits for
         this._mainPaused        = false;
@@ -52,9 +53,10 @@ class DoomSubRole {
         return this;
     }
 
-    // The main's thing filter for the level it sent.
+    // The main's thing filter for the level it sent, and which level it is.
     prepareLevel(level) {
         this._multiplayerThings = level.multiplayerThings;
+        this._levelSeq          = level.seq;
         this._applier           = null;
         this._levelOver         = false;
         this._session.setLivenessSuspended(true);
@@ -111,7 +113,7 @@ class DoomSubRole {
     levelStarted() {
         this._lastStateAt = null;
         this._session.setLivenessSuspended(false);
-        this._session.sendControl({type: DoomNetProtocol.LEVEL_READY});
+        this._session.sendControl({type: DoomNetProtocol.LEVEL_READY, seq: this._levelSeq});
     }
 
     getLevelStats() {

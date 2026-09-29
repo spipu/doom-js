@@ -118,8 +118,16 @@ class DoomNetMainSession {
         setTimeout(() => this._host.close(), DoomNetProtocol.END_GRACE_MS);
     }
 
+    // The answer payload comes from the scanned code: a malformed one loses the peer as an invalid message would.
     _admit(peer) {
-        this._lobby.addPlayer(peer.getId(), DoomNetInvite.decodeAnswer(peer.getPayload()));
+        let nickname = null;
+        try {
+            nickname = DoomNetInvite.decodeAnswer(peer.getPayload());
+        } catch (error) {
+            peer.reportInvalid(error);
+            return;
+        }
+        this._lobby.addPlayer(peer.getId(), nickname);
         if (this._started) {
             peer.sendControl({type: DoomNetProtocol.START});
         }

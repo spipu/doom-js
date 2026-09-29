@@ -59,21 +59,34 @@ class DoomNetSubSession {
         this._guest.sendBinary(buffer);
     }
 
+    // Left, or ended by the main or a lost link: nothing goes through any more.
+    isEnded() {
+        return this._ended;
+    }
+
     // Suspended while this device builds a level: it may not answer a ping for seconds.
     setLivenessSuspended(suspended) {
-        this._guest.getHost().setLivenessSuspended(suspended);
+        const host = this._guest.getHost();
+        if (host !== null) {
+            host.setLivenessSuspended(suspended);
+        }
     }
 
     // An invalid message from the main ends the session like a lost link.
     reportInvalid(error) {
-        this._guest.getHost().reportInvalid(error);
+        const host = this._guest.getHost();
+        if (host !== null) {
+            host.reportInvalid(error);
+        }
     }
 
     /**
-     * @returns {number|null} the round trip to the main in ms, null before the first pong
+     * @returns {number|null} the round trip to the main in ms, null before the first pong or once the link is gone
      */
     getHostPing() {
-        return this._guest.getHost().getPing();
+        const host = this._guest.getHost();
+
+        return ((host !== null) ? host.getPing() : null);
     }
 
     getHostNickname() {
