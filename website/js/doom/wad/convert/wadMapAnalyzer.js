@@ -320,10 +320,10 @@ class WadMapAnalyzer {
 
     // --- Doors ---
 
-    // A linedef with a door special controls the sector referenced by its tag
-    // (remote door) or by its left sidedef sector (local door, tag == 0).
+    // A linedef with a door special controls the sectors _doorSectorsOf names:
+    // the one behind a manual line, those of a remote line's tag.
     _identifyDoors() {
-        const {sidedefs, sectors} = this._level;
+        const {sectors}     = this._level;
         const linedefs      = this._moverLinedefs();
         const doorSectorIds = new Set();
         const doorProps     = {};   // si → door props (shape in registerDoor)
@@ -380,23 +380,18 @@ class WadMapAnalyzer {
             if (!WadConstants.DOOR_SPECIALS.has(ld.special)) {
                 continue;
             }
-            const door = WadConstants.DOOR_BY_SPECIAL[ld.special];
-            if (ld.tag !== 0) {
-                // A remote door must not self-activate; a tagged manual door
-                // keeps its press trigger.
-                const forced = ((door.trigger === 'action') ? null : 'none');
-                for (let si = 0; si < sectors.length; si++) {
-                    if ((sectors[si].tag === ld.tag) && !closesFirst(si)) {
-                        registerDoor(si, door, forced);
-                    }
-                }
-            } else if (ld.left >= 0) {
-                const si = sidedefs[ld.left].sector;
+            const door   = WadConstants.DOOR_BY_SPECIAL[ld.special];
+            const manual = (door.trigger === 'action');
+            for (const si of this._doorSectorsOf(ld)) {
                 if (closesFirst(si)) {
-                    manualReopeners.set(si, door);
+                    // A manual opener of a closing door is a cycle its press plays.
+                    if (manual) {
+                        manualReopeners.set(si, door);
+                    }
                     continue;
                 }
-                registerDoor(si, door, null);
+                // A remote door must not self-activate.
+                registerDoor(si, door, ((manual) ? null : 'none'));
             }
         }
 
@@ -430,17 +425,7 @@ class WadMapAnalyzer {
             if (door === undefined) {
                 continue;
             }
-            const targets = [];
-            if (ld.tag !== 0) {
-                for (let si = 0; si < sectors.length; si++) {
-                    if (sectors[si].tag === ld.tag) {
-                        targets.push(si);
-                    }
-                }
-            } else if (ld.left >= 0) {
-                targets.push(sidedefs[ld.left].sector);
-            }
-            for (const si of targets) {
+            for (const si of this._doorSectorsOf(ld)) {
                 if (doorProps[si] === undefined) {
                     continue;
                 }
@@ -477,6 +462,24 @@ class WadMapAnalyzer {
         }
 
         return {doorSectorIds: doorSectorIds, doorProps: doorProps};
+    }
+
+    // The sectors a door line acts on: a manual special (EV_VerticalDoor) opens
+    // the sector behind the line whatever tag the line carries, a remote one
+    // every sector of its tag.
+    _doorSectorsOf(ld) {
+        const {sidedefs, sectors} = this._level;
+        if (WadConstants.DOOR_BY_SPECIAL[ld.special].trigger === 'action') {
+            return ((ld.left >= 0) ? [sidedefs[ld.left].sector] : []);
+        }
+        const targets = [];
+        for (let si = 0; si < sectors.length; si++) {
+            if ((ld.tag !== 0) && (sectors[si].tag === ld.tag)) {
+                targets.push(si);
+            }
+        }
+
+        return targets;
     }
 
     // Net effect of the vanilla P_UseSpecialLine whitelist for a monster: the
