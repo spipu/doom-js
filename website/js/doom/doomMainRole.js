@@ -5,7 +5,7 @@
  * simulation and everything only the simulating device does: the players
  * entering the level, the save restore and capture, the spawn override, the
  * level clock — and, while it shares its screen, the turn cycle of the subs
- * (DoomNetHost). A device that only follows the game holds a DoomSubRole.
+ * (DoomNetTurnCycle). A device that only follows the game holds a DoomSubRole.
  */
 class DoomMainRole {
     /**
@@ -20,7 +20,7 @@ class DoomMainRole {
         this._simulation = new DoomSimulation(roster, rules, events);
         this._builtLevel = null;
         this._level      = null;   // {levelCode, skill, multiplayerThings} of the level shown
-        this._host       = null;
+        this._cycle       = null;
         this._recorder   = null;   // DoomNetEvents listening to the turn events while hosting
     }
 
@@ -62,26 +62,26 @@ class DoomMainRole {
      * @param {function(string[])} onWaiting - the nicknames waited for, none once the wait is over
      */
     startHosting(session, onWaiting) {
-        this._host = new DoomNetHost(session).setOnWaiting(onWaiting);
+        this._cycle = new DoomNetTurnCycle(session).setOnWaiting(onWaiting);
         this._hostLevel();
-        session.setCycle(this._host);
+        session.setCycle(this._cycle);
     }
 
     stopHosting() {
         this._detachRecorder();
-        this._host = null;
+        this._cycle = null;
     }
 
     // A phase without turns opens (a pause): the subs show it.
     announcePhase(message) {
-        if (this._host !== null) {
-            this._host.announcePhase(message);
+        if (this._cycle !== null) {
+            this._cycle.announcePhase(message);
         }
     }
 
     turnsResumed(now) {
-        if (this._host !== null) {
-            this._host.turnsResumed(now);
+        if (this._cycle !== null) {
+            this._cycle.turnsResumed(now);
         }
     }
 
@@ -92,7 +92,7 @@ class DoomMainRole {
     // The level is shown: the subs build it too.
     levelStarted(level) {
         this._level = level;
-        if (this._host !== null) {
+        if (this._cycle !== null) {
             this._hostLevel();
         }
     }
@@ -102,7 +102,7 @@ class DoomMainRole {
         this._recorder = new DoomNetEvents(this._builtLevel.getEntityIds(), this._roster);
         this._events.addListener(this._recorder.getListener());
         const capture = new DoomNetStateCapture(this._roster, this._builtLevel, this._simulation.getLevelStats(), this._recorder);
-        this._host.levelStarted(this._level, capture, this._recorder);
+        this._cycle.levelStarted(this._level, capture, this._recorder);
     }
 
     _detachRecorder() {
@@ -167,7 +167,7 @@ class DoomMainRole {
 
     // No turn before every awaited sub's command for it is in.
     isTurnReady(now) {
-        return ((this._host === null) || this._host.isTurnReady(now));
+        return ((this._cycle === null) || this._cycle.isTurnReady(now));
     }
 
     /**
@@ -184,8 +184,8 @@ class DoomMainRole {
         this._simulation.tickPlayers(dt, commands);
         onPlayersMoved();
         this._simulation.tickWorld(dt, commands);
-        if (this._host !== null) {
-            this._host.sendState(dt, now);
+        if (this._cycle !== null) {
+            this._cycle.sendState(dt, now);
         }
     }
 

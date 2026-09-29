@@ -54,11 +54,16 @@ class DoomSubRole {
     }
 
     // The main's thing filter for the level it sent, and which level it is.
+    // What the previous level said of the main (its pause, its death) is over.
     prepareLevel(level) {
         this._multiplayerThings = level.multiplayerThings;
         this._levelSeq          = level.seq;
         this._applier           = null;
         this._levelOver         = false;
+        this._mainPaused        = false;
+        this._mainDead          = false;
+        this._waitingFor        = [];
+        this._refreshNotice();
         this._session.setLivenessSuspended(true);
     }
 
@@ -143,7 +148,7 @@ class DoomSubRole {
         this._sampler = sampler;
         onPlayersMoved();
         if ((this._lastStateAt === null) || this._mainPaused || this._levelOver || (this._waitingFor.length > 0)
-            || ((now - this._lastStateAt) <= DoomNetHost.WAITING_NOTICE_MS)) {
+            || ((now - this._lastStateAt) <= DoomNetTurnCycle.WAITING_NOTICE_MS)) {
             return;
         }
         this._waitingFor = [this._session.getHostNickname()];
@@ -227,5 +232,5 @@ class DoomSubRole {
     }
 }
 
-// A viewer's command is empty: its pad keeps the menu and the map only.
+// A viewer's command is ignored by the main: its pad keeps the menu and the map only.
 DoomSubRole.PAD_CONTROLS = {jump: false, crouch: false, action: false, fire: false, weaponNext: false, move: false, aim: false};

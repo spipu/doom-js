@@ -7,7 +7,7 @@
  * goes to every sub in the cycle. An awaited sub silent for COMMAND_TIMEOUT_MS
  * is removed; a longer wait than WAITING_NOTICE_MS names who it is waiting for.
  */
-class DoomNetHost {
+class DoomNetTurnCycle {
     /**
      * @param {DoomNetMainSession} session
      */
@@ -62,7 +62,7 @@ class DoomNetHost {
     announcePhase(message) {
         this._phase = message;
         for (const sub of this._subs.values()) {
-            if (sub.phase !== DoomNetHost.SYNCING) {
+            if (sub.phase !== DoomNetTurnCycle.SYNCING) {
                 sub.peer.sendControl(message);
             }
         }
@@ -80,7 +80,7 @@ class DoomNetHost {
     // --- Session cycle ---
 
     admitted(peer) {
-        const sub = {peer: peer, phase: DoomNetHost.SYNCING, command: null, sentAt: 0};
+        const sub = {peer: peer, phase: DoomNetTurnCycle.SYNCING, command: null, sentAt: 0};
         this._subs.set(peer.getId(), sub);
         if (this._level !== null) {
             this._sync(sub);
@@ -95,9 +95,9 @@ class DoomNetHost {
     // the first) is not the answer to the current one: the sub is still building.
     control(peer, message) {
         const sub = this._subs.get(peer.getId());
-        if ((sub !== undefined) && (message.type === DoomNetProtocol.LEVEL_READY) && (sub.phase === DoomNetHost.SYNCING)
+        if ((sub !== undefined) && (message.type === DoomNetProtocol.LEVEL_READY) && (sub.phase === DoomNetTurnCycle.SYNCING)
             && (message.seq === this._levelSeq)) {
-            sub.phase = DoomNetHost.JOINING;
+            sub.phase = DoomNetTurnCycle.JOINING;
             peer.setLivenessSuspended(false);
             if (this._phase !== null) {
                 peer.sendControl(this._phase);
@@ -109,7 +109,7 @@ class DoomNetHost {
     // change, still in flight — is dropped without fuss.
     binary(peer, buffer) {
         const sub = this._subs.get(peer.getId());
-        if ((sub === undefined) || (sub.phase !== DoomNetHost.AWAITED)) {
+        if ((sub === undefined) || (sub.phase !== DoomNetTurnCycle.AWAITED)) {
             return;
         }
         let decoded = null;
@@ -133,11 +133,11 @@ class DoomNetHost {
     isTurnReady(now) {
         const missing = [];
         for (const sub of this._subs.values()) {
-            if ((sub.phase !== DoomNetHost.AWAITED) || (sub.command !== null)) {
+            if ((sub.phase !== DoomNetTurnCycle.AWAITED) || (sub.command !== null)) {
                 continue;
             }
-            if ((now - sub.sentAt) > DoomNetHost.COMMAND_TIMEOUT_MS) {
-                this._session.remove(sub.peer.getId());
+            if ((now - sub.sentAt) > DoomNetTurnCycle.COMMAND_TIMEOUT_MS) {
+                this._session.remove(sub.peer.getId(), DoomNetProtocol.END_TIMEOUT);
                 continue;
             }
             missing.push(this._session.nicknameOf(sub.peer));
@@ -148,7 +148,7 @@ class DoomNetHost {
             return true;
         }
         this._waitSince = (this._waitSince ?? now);
-        if ((now - this._waitSince) > DoomNetHost.WAITING_NOTICE_MS) {
+        if ((now - this._waitSince) > DoomNetTurnCycle.WAITING_NOTICE_MS) {
             this._announce(missing);
         }
 
@@ -162,7 +162,7 @@ class DoomNetHost {
      * @param {number} elapsedMs - the time step of the turn
      */
     sendState(elapsedMs, now) {
-        const receivers = Array.from(this._subs.values()).filter((sub) => (sub.phase !== DoomNetHost.SYNCING));
+        const receivers = Array.from(this._subs.values()).filter((sub) => (sub.phase !== DoomNetTurnCycle.SYNCING));
         if (receivers.length === 0) {
             this._recorder.drain();
             this._turn++;
@@ -172,14 +172,14 @@ class DoomNetHost {
         this._turn++;
         for (const sub of receivers) {
             sub.peer.sendBinary(buffer);
-            sub.phase   = DoomNetHost.AWAITED;
+            sub.phase   = DoomNetTurnCycle.AWAITED;
             sub.command = null;
             sub.sentAt  = now;
         }
     }
 
     _sync(sub) {
-        sub.phase   = DoomNetHost.SYNCING;
+        sub.phase   = DoomNetTurnCycle.SYNCING;
         sub.command = null;
         sub.peer.setLivenessSuspended(true);
         sub.peer.sendControl(Object.assign({type: DoomNetProtocol.LEVEL_LOAD, seq: this._levelSeq}, this._level));
@@ -195,16 +195,16 @@ class DoomNetHost {
             this._onWaiting(nicknames);
         }
         for (const sub of this._subs.values()) {
-            if ((sub.phase === DoomNetHost.AWAITED) && (sub.command !== null)) {
+            if ((sub.phase === DoomNetTurnCycle.AWAITED) && (sub.command !== null)) {
                 sub.peer.sendControl({type: DoomNetProtocol.WAITING, nicknames: nicknames});
             }
         }
     }
 }
 
-DoomNetHost.SYNCING = 'syncing';   // building the level, nobody waits for it
-DoomNetHost.JOINING = 'joining';   // level built, joins with the next state sent
-DoomNetHost.AWAITED = 'awaited';   // its command gates every turn
+DoomNetTurnCycle.SYNCING = 'syncing';   // building the level, nobody waits for it
+DoomNetTurnCycle.JOINING = 'joining';   // level built, joins with the next state sent
+DoomNetTurnCycle.AWAITED = 'awaited';   // its command gates every turn
 
-DoomNetHost.COMMAND_TIMEOUT_MS = 5000;
-DoomNetHost.WAITING_NOTICE_MS  = 500;
+DoomNetTurnCycle.COMMAND_TIMEOUT_MS = 5000;
+DoomNetTurnCycle.WAITING_NOTICE_MS  = 500;

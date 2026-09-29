@@ -170,6 +170,7 @@ class NetPeer {
         }
         this._ended = true;
         this._pingMeter.stop();
+        this._codec.discardPartials();
         this._rejectOpened(new NetError(NetError.LINK_LOST, 'Link of peer ' + this._id + ' ended: ' + reason));
         this.getLink().close();
     }

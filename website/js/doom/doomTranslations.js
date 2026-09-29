@@ -1226,6 +1226,12 @@ class DoomTranslations {
                 it: 'La connessione con l\'host è stata persa',
                 es: 'Se perdió la conexión con el anfitrión'
             },
+            'multiplayer.end.timeout': {
+                fr: 'La connexion avec l\'hôte est trop lente : vous avez été déconnecté',
+                en: 'The connection to the host is too slow: you have been disconnected',
+                it: 'La connessione con l\'host è troppo lenta: sei stato disconnesso',
+                es: 'La conexión con el anfitrión es demasiado lenta: has sido desconectado'
+            },
             'settings.sound.volumeMusic': {
                 fr: 'Volume de la musique',
                 en: 'Music volume',

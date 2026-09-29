@@ -1,5 +1,5 @@
 {
-    "version": "v1.975",
+    "version": "v1.980",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -216,7 +216,7 @@
             "/js/doom/net/doomNetStateCapture.js",
             "/js/doom/net/doomNetStateCodec.js",
             "/js/doom/net/doomNetCommandCodec.js",
-            "/js/doom/net/doomNetHost.js",
+            "/js/doom/net/doomNetTurnCycle.js",
             "/js/doom/net/doomReplicaApplier.js",
             "/js/doom/menu/menuDisplay.js",
             "/js/doom/menu/menuDom.js",

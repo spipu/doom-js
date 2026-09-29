@@ -28,6 +28,7 @@ DoomNetProtocol.SESSION_END  = 'sessionEnd';
 
 DoomNetProtocol.END_STOPPED   = 'stopped';  // the main stopped the session
 DoomNetProtocol.END_REMOVED   = 'removed';  // the main removed that sub
+DoomNetProtocol.END_TIMEOUT   = 'timeout';  // that sub's command never came: too slow a link
 DoomNetProtocol.END_LEFT      = 'left';     // the sub left
 DoomNetProtocol.END_LOST      = 'lost';     // the link went silent or failed
 DoomNetProtocol.END_GAME_OVER = 'gameOver'; // the main finished its game

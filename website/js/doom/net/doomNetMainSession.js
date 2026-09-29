@@ -94,12 +94,16 @@ class DoomNetMainSession {
         this._host.broadcastControl({type: DoomNetProtocol.START});
     }
 
-    remove(playerId) {
+    /**
+     * @param {int}    playerId
+     * @param {string} reason - the DoomNetProtocol.END_* told to that sub
+     */
+    remove(playerId, reason = DoomNetProtocol.END_REMOVED) {
         const peer = this._host.getPeers().find((candidate) => (candidate.getId() === playerId));
         if (peer === undefined) {
             return;
         }
-        peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: DoomNetProtocol.END_REMOVED});
+        peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
         this._lobby.remove(playerId);
         this._changed();
         this._cycleCall('gone', peer);

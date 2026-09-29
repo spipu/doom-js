@@ -6,9 +6,11 @@
  * Between two commands, the look deltas add up (converted from
  * pixel-equivalents to degrees here, with the device's own sensitivity), the
  * impulses add up, and a button counts as pressed if it was down on any
- * collected frame — a tap shorter than a turn is never lost, and the next
- * command shows it released. The movement axes are read when the command is
- * produced. A game declares its own buttons and impulses beside the engine's.
+ * collected frame or when the command is produced — a tap shorter than a
+ * turn is never lost, a button held through several commands of one frame
+ * is never shown released, and the next command shows a real release. The
+ * movement axes are read when the command is produced. A game declares its
+ * own buttons and impulses beside the engine's.
  */
 class InputCommandSampler {
     // Degrees per pixel-equivalent: a mouse moved by 10 px turns by 1°, a
@@ -70,6 +72,14 @@ class InputCommandSampler {
     collect(dt) {
         this._lookYaw   += this._inputs.readJoy2DeltaX(dt) * this._turnSpeed;
         this._lookPitch -= this._inputs.readJoy2DeltaY(dt) * this._turnSpeed;
+        this._collectButtons();
+
+        return this;
+    }
+
+    // Several commands may be asked between two collected frames (a sub
+    // answering every state): the buttons are read again for each one.
+    _collectButtons() {
         for (const [name, reader] of this._buttonReaders) {
             if (reader()) {
                 this._pressed.add(name);
@@ -78,14 +88,13 @@ class InputCommandSampler {
         for (const [name, reader] of this._impulseReaders) {
             this._impulses.set(name, (this._impulses.get(name) ?? 0) + reader());
         }
-
-        return this;
     }
 
     /**
      * @returns {UserCommand} what was collected since the previous command, which starts afresh
      */
     sample() {
+        this._collectButtons();
         const command = new UserCommand()
             .setMove(this._inputs.readJoy1X(), this._inputs.readJoy1Y())
             .setLook(this._lookYaw, this._lookPitch);

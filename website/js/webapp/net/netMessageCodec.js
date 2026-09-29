@@ -145,6 +145,11 @@ class NetMessageCodec {
         this._deliverBinary(whole.buffer);
     }
 
+    // The link is over: a message still being reassembled will never complete.
+    discardPartials() {
+        this._partials.clear();
+    }
+
     _deliverBinary(buffer) {
         this._onBinary?.(buffer);
     }

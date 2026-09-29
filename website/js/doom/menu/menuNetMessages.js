@@ -35,6 +35,7 @@ MenuNetMessages.UNAVAILABLE = {
 MenuNetMessages.ENDS = {
     [DoomNetProtocol.END_STOPPED]:   'multiplayer.end.stopped',
     [DoomNetProtocol.END_REMOVED]:   'multiplayer.end.removed',
+    [DoomNetProtocol.END_TIMEOUT]:   'multiplayer.end.timeout',
     [DoomNetProtocol.END_LOST]:      'multiplayer.end.lost',
     [DoomNetProtocol.END_GAME_OVER]: 'multiplayer.end.gameOver'
 };
