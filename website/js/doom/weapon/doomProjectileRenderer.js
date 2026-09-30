@@ -21,10 +21,12 @@ class DoomProjectileRenderer {
                 inst.setObject(flight.objId);
                 this._shown.set(view, frame);
             }
-            const pos = inst.getTransform().position;
-            pos[0] = view.getX();
-            pos[1] = view.getY() - flight.height / 2;
-            pos[2] = view.getZ();
+            // Through setPose: its world centre, the one the frustum test reads,
+            // follows the shot on a device that runs no simulation.
+            inst.setPose([view.getX(), view.getY() - flight.height / 2, view.getZ()],
+                DoomProjectileRenderer.NO_DELTA, DoomProjectileRenderer.NO_DELTA);
         }
     }
 }
+
+DoomProjectileRenderer.NO_DELTA = [0, 0, 0];
