@@ -43,6 +43,15 @@ class DoomMonsterSight {
         return ((si === null) ? null : this._soundTarget[si]);
     }
 
+    // The sectors that heard a body gone from the level fall silent.
+    forgetSoundTarget(actor) {
+        for (let si = 0; si < this._numSectors; si++) {
+            if (this._soundTarget[si] === actor) {
+                this._soundTarget[si] = null;
+            }
+        }
+    }
+
     /**
      * P_CheckSight between an eye point and a body — the player or another
      * monster. The REJECT early-out needs both sector indexes (either may be

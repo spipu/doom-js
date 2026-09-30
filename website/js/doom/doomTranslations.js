@@ -1130,6 +1130,42 @@ class DoomTranslations {
                 it: 'Interrompere la condivisione?\nTutti i giocatori saranno disconnessi.',
                 es: '¿Dejar de compartir?\nTodos los jugadores serán desconectados.'
             },
+            'multiplayer.pause.cooperative': {
+                fr: 'Coopératif',
+                en: 'Cooperative',
+                it: 'Cooperativa',
+                es: 'Cooperativo'
+            },
+            'multiplayer.pause.stopCoop': {
+                fr: 'Arrêter le coopératif',
+                en: 'Stop cooperative',
+                it: 'Interrompi la cooperativa',
+                es: 'Detener el cooperativo'
+            },
+            'multiplayer.pause.stopCoopConfirm': {
+                fr: 'Arrêter le coopératif ?\nTous les joueurs seront déconnectés.',
+                en: 'Stop cooperative?\nEvery player will be disconnected.',
+                it: 'Interrompere la cooperativa?\nTutti i giocatori saranno disconnessi.',
+                es: '¿Detener el cooperativo?\nTodos los jugadores serán desconectados.'
+            },
+            'multiplayer.pause.leaveGame': {
+                fr: 'Quitter la partie',
+                en: 'Leave the game',
+                it: 'Esci dalla partita',
+                es: 'Salir de la partida'
+            },
+            'multiplayer.settings.title': {
+                fr: 'Réglages de la partie',
+                en: 'Game settings',
+                it: 'Impostazioni della partita',
+                es: 'Ajustes de la partida'
+            },
+            'multiplayer.settings.continue': {
+                fr: 'Continuer',
+                en: 'Continue',
+                it: 'Continua',
+                es: 'Continuar'
+            },
             'multiplayer.unavailable.webgl': {
                 fr: 'Le multijoueur nécessite WebGL, indisponible sur cet appareil',
                 en: 'Multiplayer needs WebGL, unavailable on this device',

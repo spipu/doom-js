@@ -4,8 +4,10 @@
  * and asks its role to move the world one turn each frame; this role owns the
  * simulation and everything only the simulating device does: the players
  * entering the level, the save restore and capture, the spawn override, the
- * level clock — and, while it shares its screen, the turn cycle of the subs
- * (DoomNetTurnCycle). A device that only follows the game holds a DoomSubRole.
+ * level clock — and, while it hosts a session, the turn cycle of the subs
+ * (DoomNetTurnCycle) and, in cooperative, their players: each one enters the
+ * level with its first command and leaves it with its sub. A device that only
+ * follows the game holds a DoomSubRole.
  */
 class DoomMainRole {
     /**
@@ -20,7 +22,7 @@ class DoomMainRole {
         this._simulation = new DoomSimulation(roster, rules, events);
         this._builtLevel = null;
         this._level      = null;   // {levelCode, skill, multiplayerThings} of the level shown
-        this._cycle       = null;
+        this._cycle      = null;
         this._recorder   = null;   // DoomNetEvents listening to the turn events while hosting
     }
 
@@ -40,7 +42,7 @@ class DoomMainRole {
         return true;
     }
 
-    sharesScreen() {
+    hostsSessions() {
         return true;
     }
 
@@ -62,14 +64,24 @@ class DoomMainRole {
      * @param {function(string[])} onWaiting - the nicknames waited for, none once the wait is over
      */
     startHosting(session, onWaiting) {
-        this._cycle = new DoomNetTurnCycle(session).setOnWaiting(onWaiting);
+        this._cycle = new DoomNetTurnCycle(session).setOnWaiting(onWaiting).setOnPlayerGone((id) => this._removePlayer(id));
         this._hostLevel();
         session.setCycle(this._cycle);
     }
 
+    // The subs' players leave with their session.
     stopHosting() {
         this._detachRecorder();
         this._cycle = null;
+        for (const player of this._roster.getAll()) {
+            if (player !== this._roster.getLocal()) {
+                this._removePlayer(player.getId());
+            }
+        }
+    }
+
+    // A paused main freezes the whole game: nothing to hold back.
+    setLocalPaused() {
     }
 
     // A phase without turns opens (a pause): the subs show it.
@@ -114,6 +126,13 @@ class DoomMainRole {
 
     // --- Level lifecycle ---
 
+    useRules(rules) {
+        this._rules = rules;
+        this._simulation.useRules(rules);
+
+        return this;
+    }
+
     useProfile(profile, itemCatalog, skill) {
         this._simulation.useProfile(profile, itemCatalog).setSkill(skill);
 
@@ -127,9 +146,9 @@ class DoomMainRole {
     }
 
     /**
-     * The level's systems on the loaded world, then every player, the main
-     * first: it takes the body the world definition built. A save holds the
-     * main's player alone.
+     * The level's systems on the loaded world, then the main's player: it
+     * takes the body the world definition built, with the save's state when
+     * one is restored. The subs' players enter as their devices get ready.
      *
      * @param {World}       world
      * @param {object|null} snapshot      - the save being restored
@@ -137,10 +156,7 @@ class DoomMainRole {
      */
     enterLevel(world, snapshot, spawnOverride) {
         this._simulation.startLevel(world);
-        for (const entering of this._roster.getAll()) {
-            const restored = ((snapshot !== null) && (entering.getId() === DoomPlayer.MAIN_ID));
-            this._simulation.addPlayer(entering, ((restored) ? snapshot.player.state : null));
-        }
+        this._simulation.addPlayer(this._roster.getLocal(), ((snapshot !== null) ? snapshot.player.state : null));
         if (spawnOverride !== null) {
             this._applySpawnOverride(spawnOverride);
         }
@@ -181,12 +197,42 @@ class DoomMainRole {
      */
     advance(dt, sampler, onPlayersMoved, now) {
         const commands = new Map([[this._roster.getLocal().getId(), sampler.sample()]]);
+        if ((this._cycle !== null) && this._rules.admitsSubPlayers()) {
+            this._addSubCommands(commands);
+        }
         this._simulation.tickPlayers(dt, commands);
         onPlayersMoved();
         this._simulation.tickWorld(dt, commands);
         if (this._cycle !== null) {
             this._cycle.sendState(dt, now);
         }
+    }
+
+    // A sub's player enters the level with its first command: on its slot's
+    // start, with what it carried in, or the starting loadout on a drop-in.
+    _addSubCommands(commands) {
+        for (const [id, command] of this._cycle.commands()) {
+            let player = this._roster.getById(id);
+            if (player === null) {
+                player = new DoomPlayer(id);
+                this._roster.add(player);
+            }
+            if (!player.isInLevel()) {
+                this._simulation.addPlayer(player, null);
+            }
+            commands.set(id, command);
+        }
+    }
+
+    _removePlayer(id) {
+        const player = this._roster.getById(id);
+        if ((player === null) || (player === this._roster.getLocal())) {
+            return;
+        }
+        if (player.isInLevel()) {
+            this._simulation.removePlayer(player);
+        }
+        this._roster.remove(id);
     }
 
     // The given Y is the floor-search ceiling, like the initial snap in

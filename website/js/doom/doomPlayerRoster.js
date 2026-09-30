@@ -23,6 +23,24 @@ class DoomPlayerRoster {
     }
 
     /**
+     * The local player gives way to another one (a sub's view switching from
+     * the main's player to its own).
+     *
+     * @param {DoomPlayer} player
+     */
+    replaceLocal(player) {
+        this._players.delete(this._localId);
+
+        return this.setLocal(player);
+    }
+
+    remove(id) {
+        this._players.delete(id);
+
+        return this;
+    }
+
+    /**
      * @returns {DoomPlayer}
      */
     getLocal() {
@@ -56,5 +74,12 @@ class DoomPlayerRoster {
      */
     getAll() {
         return Array.from(this._players.values());
+    }
+
+    /**
+     * @returns {DoomPlayer[]} those whose body is in the running level, in joining order
+     */
+    getInLevel() {
+        return this.getAll().filter((player) => player.isInLevel());
     }
 }

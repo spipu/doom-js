@@ -3,10 +3,11 @@
  * nothing: on each turn state the main sends, it applies it at once
  * (DoomReplicaApplier) and answers with its command for the next turn before
  * the next frame draws — sampled from what its devices collected since the
- * previous one, which the main ignores in screen sharing. It holds
- * one local player carrying the main's id: the body the state poses and the
- * presentation views. It follows the main's level changes and tells the game
- * when the session ends.
+ * previous one, which the main ignores in screen sharing and gives to this
+ * sub's player in cooperative. It holds one local player — the main's in
+ * screen sharing, its own in cooperative —: the body the state poses and the
+ * presentation views. It follows the main's level changes and mode changes,
+ * and tells the game when the session ends.
  */
 class DoomSubRole {
     /**
@@ -30,24 +31,28 @@ class DoomSubRole {
         this._mainDead          = false;
         this._levelOver         = false;   // the main's tally or story text is shown
         this._notice            = null;
+        this._localPaused       = false;
         this._playEvent         = null;
         this._onLevelLoad       = null;
         this._onNotice          = null;
         this._onPhase           = null;
+        this._onModeChange      = null;
     }
 
     /**
-     * @param {function(object)}      playEvent   - DoomPresentation.playTurnEvent
-     * @param {function(object)}      onLevelLoad - the main started a level: {levelCode, skill, multiplayerThings}
-     * @param {function(string|null)} onNotice    - the message to show over the game, null for none
-     * @param {function(object)}      onPhase     - the main's tally or story text: its control message
-     * @param {function(string)}      onEnd       - the session ended, with its DoomNetProtocol.END_* reason
+     * @param {function(object)}      playEvent    - DoomPresentation.playTurnEvent
+     * @param {function(object)}      onLevelLoad  - the main started a level: {levelCode, skill, multiplayerThings, mode, options}
+     * @param {function(string|null)} onNotice     - the message to show over the game, null for none
+     * @param {function(object)}      onPhase      - the main's tally or story text: its control message
+     * @param {function(string)}      onEnd        - the session ended, with its DoomNetProtocol.END_* reason
+     * @param {function}              onModeChange - the main switched the session to another mode
      */
-    follow(playEvent, onLevelLoad, onNotice, onPhase, onEnd) {
-        this._playEvent   = playEvent;
-        this._onLevelLoad = onLevelLoad;
-        this._onNotice    = onNotice;
-        this._onPhase     = onPhase;
+    follow(playEvent, onLevelLoad, onNotice, onPhase, onEnd, onModeChange) {
+        this._playEvent    = playEvent;
+        this._onLevelLoad  = onLevelLoad;
+        this._onNotice     = onNotice;
+        this._onPhase      = onPhase;
+        this._onModeChange = onModeChange;
         this._session.setCycle(this).setOnEnd(onEnd);
 
         return this;
@@ -87,19 +92,34 @@ class DoomSubRole {
         return false;
     }
 
-    sharesScreen() {
+    hostsSessions() {
         return false;
     }
 
     quitCode() {
-        return 'multiplayer.pause.leave';
+        return ((this._playsOwnPlayer()) ? 'multiplayer.pause.leaveGame' : 'multiplayer.pause.leave');
     }
 
+    // A cooperative sub plays with the main's pad; a viewer keeps the menu and the map.
     padControls() {
-        return DoomSubRole.PAD_CONTROLS;
+        return ((this._playsOwnPlayer()) ? DoomMainRole.PAD_CONTROLS : DoomSubRole.PAD_CONTROLS);
+    }
+
+    _playsOwnPlayer() {
+        return (this._session.getMode() === DoomNetProtocol.MODE_COOPERATIVE);
+    }
+
+    // Its pause freezes nobody: its player stands still, commanded neutral.
+    setLocalPaused(paused) {
+        this._localPaused = paused;
     }
 
     useProfile() {
+        return this;
+    }
+
+    // The main's rules hold for the game: a sub simulates nothing.
+    useRules() {
         return this;
     }
 
@@ -165,6 +185,13 @@ class DoomSubRole {
         this._onLevelLoad(message);
     }
 
+    // The viewed player and the pad follow the new mode, and so does the notice:
+    // a player does not watch the main's death.
+    modeChanged() {
+        this._onModeChange();
+        this._refreshNotice();
+    }
+
     waiting(nicknames) {
         this._waitingFor = nicknames;
         this._refreshNotice();
@@ -198,13 +225,21 @@ class DoomSubRole {
             return;
         }
         this._applier.apply(snapshot);
-        const command = ((this._sampler !== null) ? this._sampler.sample() : this._neutralCommand);
+        // Sampled even when paused: what the menu took must not reach the game on resuming.
+        const sampled = ((this._sampler !== null) ? this._sampler.sample() : null);
+        const command = (((sampled === null) || this._localPaused) ? this._neutralCommand : sampled);
         this._session.sendBinary(this._codec.encode(snapshot.turn + 1, command));
         this._lastStateAt = performance.now();
         this._waitingFor  = [];
         this._mainPaused  = false;
-        this._mainDead    = this._roster.getLocal().getUser().isDead();
+        this._mainDead    = this._isMainDead(snapshot);
         this._refreshNotice();
+    }
+
+    _isMainDead(snapshot) {
+        const main = snapshot.players.find((player) => (player.id === DoomPlayer.MAIN_ID));
+
+        return ((main !== undefined) && main.dead);
     }
 
     // One message at a time: a wait first, then the main's pause, then its death.
@@ -224,7 +259,7 @@ class DoomSubRole {
         if (this._mainPaused) {
             return appTranslator.get('multiplayer.pausedByMain');
         }
-        if (this._mainDead) {
+        if (this._mainDead && !this._playsOwnPlayer()) {
             return appTranslator.get('multiplayer.mainDead');
         }
 

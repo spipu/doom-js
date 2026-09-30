@@ -1,7 +1,9 @@
 /**
- * The session of the main: it invites the subs, keeps the lobby — each sub's
- * slot, nickname and ping — and sends it to every sub whenever it changes and
- * with every ping sample, removes a sub, and stops the whole session. A sub
+ * The session of the main: it invites the subs, admits each one on its hello
+ * and welcomes it with its player id, its slot and how the session plays (the
+ * mode and its options), keeps the lobby — each sub's slot, nickname and
+ * ping — and sends it to every sub whenever it changes and with every ping
+ * sample, changes the mode, removes a sub, and stops the whole session. A sub
  * that leaves or whose link is lost simply drops out of the lobby.
  */
 class DoomNetMainSession {
@@ -10,15 +12,20 @@ class DoomNetMainSession {
      * @param {string}       wadSha256 - identity of the WAD every sub must hold
      * @param {string}       nickname  - the main's
      * @param {int}          capacity  - players, main included
+     * @param {int}          mode      - DoomNetProtocol.MODE_*
+     * @param {object}       options   - the mode's game settings, as the subs get them
      */
-    constructor(links, wadSha256, nickname, capacity) {
+    constructor(links, wadSha256, nickname, capacity, mode, options) {
         this._links     = links;
         this._wadSha256 = wadSha256;
         this._lobby     = new DoomNetLobby(capacity).addMain(nickname);
+        this._mode      = mode;
+        this._options   = options;
         this._started   = false;
         this._pairing   = null;
         this._onChange  = null;
         this._cycle     = null;
+        this._pending   = new Map();   // peer id → nickname of a sub paired but not yet heard
         this._host      = new NetHostSession(appBootstrap.getVersion(), links.linkFactory())
             .setOnPeerOpen((peer) => this._admit(peer))
             .setOnPeerControl((peer, message) => this._receive(peer, message))
@@ -33,6 +40,41 @@ class DoomNetMainSession {
 
     isStarted() {
         return this._started;
+    }
+
+    getMode() {
+        return this._mode;
+    }
+
+    getOptions() {
+        return this._options;
+    }
+
+    /**
+     * Every sub is welcomed again under the new mode; the next invites carry it.
+     *
+     * @param {int}    mode    - DoomNetProtocol.MODE_*
+     * @param {object} options
+     */
+    setMode(mode, options) {
+        this._mode    = mode;
+        this._options = options;
+        for (const peer of this._host.getPeers()) {
+            if (this._lobby.getPlayer(peer.getId()) !== null) {
+                this._welcome(peer);
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * @returns {int|null} the player id of a sub in the lobby — its slot —, null for any other peer
+     */
+    playerIdOf(peer) {
+        const player = this._lobby.getPlayer(peer.getId());
+
+        return ((player !== null) ? player.slot : null);
     }
 
     /**
@@ -76,7 +118,7 @@ class DoomNetMainSession {
     addPlayer(view) {
         this._pairing = new NetHostPairing(this._host, view);
 
-        return this._pairing.addPeer(DoomNetInvite.encodeInvite(this._wadSha256, DoomNetProtocol.MODE_SCREEN_SHARING));
+        return this._pairing.addPeer(DoomNetInvite.encodeInvite(this._wadSha256, this._mode));
     }
 
     cancelPairing() {
@@ -95,18 +137,18 @@ class DoomNetMainSession {
     }
 
     /**
-     * @param {int}    playerId
+     * @param {int}    peerId - the sub's id in the lobby
      * @param {string} reason - the DoomNetProtocol.END_* told to that sub
      */
-    remove(playerId, reason = DoomNetProtocol.END_REMOVED) {
-        const peer = this._host.getPeers().find((candidate) => (candidate.getId() === playerId));
+    remove(peerId, reason = DoomNetProtocol.END_REMOVED) {
+        const peer = this._host.getPeers().find((candidate) => (candidate.getId() === peerId));
         if (peer === undefined) {
             return;
         }
         peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
-        this._lobby.remove(playerId);
-        this._changed();
         this._cycleCall('gone', peer);
+        this._lobby.remove(peerId);
+        this._changed();
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
@@ -122,7 +164,8 @@ class DoomNetMainSession {
         setTimeout(() => this._host.close(), DoomNetProtocol.END_GRACE_MS);
     }
 
-    // The answer payload comes from the scanned code: a malformed one loses the peer as an invalid message would.
+    // The answer payload comes from the scanned code: a malformed one loses the
+    // peer as an invalid message would. The sub enters the lobby on its hello.
     _admit(peer) {
         let nickname = null;
         try {
@@ -131,12 +174,29 @@ class DoomNetMainSession {
             peer.reportInvalid(error);
             return;
         }
+        this._pending.set(peer.getId(), nickname);
+    }
+
+    // The welcome precedes anything else the sub gets from the session: the
+    // lobby, the start, the level to build.
+    _join(peer) {
+        const nickname = this._pending.get(peer.getId());
+        if (nickname === undefined) {
+            return;
+        }
+        this._pending.delete(peer.getId());
         this._lobby.addPlayer(peer.getId(), nickname);
+        this._welcome(peer);
         if (this._started) {
             peer.sendControl({type: DoomNetProtocol.START});
         }
         this._changed();
         this._cycleCall('admitted', peer);
+    }
+
+    _welcome(peer) {
+        const playerId = this.playerIdOf(peer);
+        peer.sendControl({type: DoomNetProtocol.WELCOME, playerId: playerId, slot: playerId, mode: this._mode, options: this._options});
     }
 
     _receive(peer, message) {
@@ -145,13 +205,22 @@ class DoomNetMainSession {
             this._drop(peer);
             return;
         }
+        if (message.type === DoomNetProtocol.HELLO) {
+            this._join(peer);
+            return;
+        }
         this._cycleCall('control', peer, message);
     }
 
+    // The turn cycle hears of the departure before the lobby forgets the sub's slot.
     _drop(peer) {
+        this._pending.delete(peer.getId());
+        if (this._lobby.getPlayer(peer.getId()) === null) {
+            return;
+        }
+        this._cycleCall('gone', peer);
         this._lobby.remove(peer.getId());
         this._changed();
-        this._cycleCall('gone', peer);
     }
 
     _cycleCall(event, peer, payload = null) {

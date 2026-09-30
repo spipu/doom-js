@@ -71,6 +71,18 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return this._open('standalone', 'help.multiplayer', () => this._buildSettingsPage('multiplayer.'));
     }
 
+    /**
+     * The settings of the game about to open, shown to the main just before
+     * its lobby: what is changed here is stored, the preset of the next game.
+     * Back gives up the opening.
+     *
+     * @param {string[]} keys       - the settings of the launched mode
+     * @param {function} onContinue - once the settings are chosen, after this modal closed
+     */
+    showGameSettings(keys, onContinue) {
+        return this._open('options', 'multiplayer.settings.title', () => this._buildGameSettings(keys, onContinue));
+    }
+
     showAbout() {
         return this._open('standalone', 'help.about', () => this._buildAbout());
     }
@@ -194,15 +206,29 @@ class MenuOptionsModal extends AbstractMenuListModal {
     }
 
     _buildSettingsPage(prefix) {
+        const definitions = doomSettings.getDefinitions(prefix)
+            .filter((definition) => (!this._rendererLocked || (definition.key !== MenuOptionsModal.RENDERER_KEY)));
+        this._buildSettingsList(definitions);
+    }
+
+    // The launched mode's settings, then the entry that opens the game on them.
+    _buildGameSettings(keys, onContinue) {
+        const list = this._buildSettingsList(keys.map((key) => doomSettings.getDefinition(key)));
+        this._nav.addItemIn(list, appTranslator.get('multiplayer.settings.continue'), () => {
+            this.close();
+            onContinue();
+        });
+    }
+
+    _buildSettingsList(definitions) {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        for (const definition of doomSettings.getDefinitions(prefix)) {
-            if (this._rendererLocked && (definition.key === MenuOptionsModal.RENDERER_KEY)) {
-                continue;
-            }
+        for (const definition of definitions) {
             this._addSettingItem(list, definition, inputs);
         }
         this._nav.selectFirst();
+
+        return list;
     }
 
     _deviceLabel(inputs) {

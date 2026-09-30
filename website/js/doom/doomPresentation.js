@@ -89,6 +89,18 @@ class DoomPresentation {
         return this;
     }
 
+    /**
+     * Another player of the same body is viewed from now on (a sub switched
+     * from the main's player to its own): its weapon and state are drawn.
+     *
+     * @param {DoomPlayer} player
+     */
+    setViewedPlayer(player) {
+        this._player = player;
+
+        return this;
+    }
+
     // Once the level state is final (a loaded save included).
     startLevelSound(musicLumps) {
         // Also lifts the sound freeze left by an exit modal.
@@ -202,6 +214,18 @@ class DoomPresentation {
      */
     setPadControls(controls) {
         this._padControls = controls;
+
+        return this;
+    }
+
+    // The role plays with other targets during the level (a sub switched to
+    // cooperative): the settings first, they give jump and crouch back.
+    changePadControls(controls) {
+        this._padControls = controls;
+        if (this._inputs !== null) {
+            doomSettings.applyToInputs(this._inputs);
+            this.applyPadControls();
+        }
 
         return this;
     }

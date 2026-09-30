@@ -329,6 +329,23 @@ class DoomMonsterSystem {
         return this._monsters;
     }
 
+    /**
+     * A body left the level (a player gone): no monster targets it any more,
+     * nor hears it from a sector.
+     *
+     * @param {object} actor
+     */
+    forgetActor(actor) {
+        for (const m of this._monsters) {
+            if (m.target === actor) {
+                m.target = null;
+            }
+        }
+        if (this._sight !== null) {
+            this._sight.forgetSoundTarget(actor);
+        }
+    }
+
     // Plain-data snapshot of every record (live and corpses) plus the dropped
     // pickups still on the ground, restorable by importState after a
     // deterministic level rebuild. The environmental channel and the render

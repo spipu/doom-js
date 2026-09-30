@@ -7,11 +7,16 @@
 class DoomNetProtocol {
 }
 
+// Sub → main, once its link is open: it joins the session and waits for its welcome.
+DoomNetProtocol.HELLO        = 'hello';
+// Main → a sub: who it is in the session (playerId, slot) and how the session plays (mode, options);
+// sent again to every sub when the mode changes.
+DoomNetProtocol.WELCOME      = 'welcome';
 // Main → every sub: the lobby as it stands (DoomNetLobby.toData).
 DoomNetProtocol.LOBBY        = 'lobby';
 // Main → every sub: the game runs.
 DoomNetProtocol.START        = 'start';
-// Main → a sub: the level to build (seq, levelCode, skill, multiplayerThings), and the sub is syncing.
+// Main → a sub: the level to build (seq, levelCode, skill, multiplayerThings, mode, options), and the sub is syncing.
 DoomNetProtocol.LEVEL_LOAD   = 'levelLoad';
 // Sub → main: the level of that seq is built, the sub joins the turn cycle with the next state.
 DoomNetProtocol.LEVEL_READY  = 'levelReady';
@@ -34,6 +39,7 @@ DoomNetProtocol.END_LOST      = 'lost';     // the link went silent or failed
 DoomNetProtocol.END_GAME_OVER = 'gameOver'; // the main finished its game
 
 DoomNetProtocol.MODE_SCREEN_SHARING = 1;
+DoomNetProtocol.MODE_COOPERATIVE    = 2;
 
 // First byte of a binary message (0xFF is the network layer's chunk).
 DoomNetProtocol.MESSAGE_STATE   = 1;   // main → subs, every turn

@@ -33,7 +33,7 @@ class DoomNetStateCapture {
         return {
             turn:        turn,
             elapsedMs:   elapsedMs,
-            players:     this._roster.getAll().map((player) => this._player(player)),
+            players:     this._roster.getInLevel().map((player) => this._player(player)),
             bodies:      bodies.map((view) => this._body(view)),
             bornBodies:  bodies.filter((view) => this._ids.isBornInPlay(view)).map((view) => this._bornBody(view)),
             projectiles: Array.from(this._level.getProjectileViews()).map((view) => this._projectile(view)),

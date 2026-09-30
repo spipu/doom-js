@@ -1,7 +1,9 @@
 /**
  * The session of a sub: it answers the main's invite — refused for another
- * WAD —, mirrors the main's lobby, knows when the game runs, and ends on
- * leaving, on the main's word (stopped, removed) or on a lost link.
+ * WAD —, says hello once linked and keeps what the main's welcome tells (its
+ * player id, the mode and its options), mirrors the main's lobby, knows when
+ * the game runs, and ends on leaving, on the main's word (stopped, removed)
+ * or on a lost link.
  */
 class DoomNetSubSession {
     /**
@@ -16,6 +18,9 @@ class DoomNetSubSession {
         this._lobby     = new DoomNetLobby(0);
         this._started   = false;
         this._ended     = false;
+        this._playerId  = null;
+        this._mode      = DoomNetProtocol.MODE_SCREEN_SHARING;
+        this._options   = {};
         this._pairing   = null;
         this._onChange  = null;
         this._onEnd     = null;
@@ -34,6 +39,21 @@ class DoomNetSubSession {
         return this._started;
     }
 
+    getMode() {
+        return this._mode;
+    }
+
+    getOptions() {
+        return this._options;
+    }
+
+    /**
+     * @returns {int} the player this device views: its own in cooperative, the main's in screen sharing
+     */
+    getViewedPlayerId() {
+        return (((this._mode === DoomNetProtocol.MODE_COOPERATIVE) && (this._playerId !== null)) ? this._playerId : DoomPlayer.MAIN_ID);
+    }
+
     setOnChange(callback) {
         this._onChange = callback;
 
@@ -42,8 +62,8 @@ class DoomNetSubSession {
 
     /**
      * Who follows the main's game: {levelLoad(message), state(buffer),
-     * waiting(nicknames), phase(message)} — the lobby screen until the game
-     * runs, then the game's role.
+     * waiting(nicknames), phase(message), modeChanged()} — the lobby screen
+     * until the game runs, then the game's role.
      */
     setCycle(cycle) {
         this._cycle = cycle;
@@ -113,7 +133,11 @@ class DoomNetSubSession {
     join(view) {
         this._pairing = new NetGuestPairing(this._guest, view);
 
-        return this._pairing.join((invite) => DoomNetInvite.answerFor(invite, this._wadSha256, this._nickname));
+        return this._pairing.join((invite) => DoomNetInvite.answerFor(invite, this._wadSha256, this._nickname))
+            .then((result) => {
+                this._guest.sendControl({type: DoomNetProtocol.HELLO});
+                return result;
+            });
     }
 
     cancelPairing() {
@@ -136,6 +160,11 @@ class DoomNetSubSession {
     }
 
     _receive(message) {
+        if (message.type === DoomNetProtocol.WELCOME) {
+            this._playerId = message.playerId;
+            this._setMode(message.mode, message.options);
+            return;
+        }
         if (message.type === DoomNetProtocol.LOBBY) {
             this._lobby.load(message.lobby);
             this._changed();
@@ -152,6 +181,7 @@ class DoomNetSubSession {
             return;
         }
         if (message.type === DoomNetProtocol.LEVEL_LOAD) {
+            this._setMode(message.mode, message.options);
             this._cycleCall('levelLoad', message);
             return;
         }
@@ -161,6 +191,15 @@ class DoomNetSubSession {
         }
         if (DoomNetSubSession.PHASES.includes(message.type)) {
             this._cycleCall('phase', message);
+        }
+    }
+
+    _setMode(mode, options) {
+        const changed = (mode !== this._mode);
+        this._mode    = mode;
+        this._options = options;
+        if (changed) {
+            this._cycleCall('modeChanged', null);
         }
     }
 

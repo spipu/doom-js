@@ -56,6 +56,21 @@ class DoomSimulation {
         return this;
     }
 
+    /**
+     * The mode changes during the game (cooperative opened or stopped): the
+     * running level keeps the things it was built with.
+     *
+     * @param {DoomGameRules} rules
+     */
+    useRules(rules) {
+        this._rules = rules;
+        if (this._monsterDamage !== null) {
+            this._monsterDamage.setFriendlyFire(rules.allowsFriendlyFire());
+        }
+
+        return this;
+    }
+
     setSkill(skill) {
         this._skill = skill;
         this._itemRules.setAmmoFactor(this._skillRule().ammoFactor);
@@ -196,6 +211,22 @@ class DoomSimulation {
         return this;
     }
 
+    /**
+     * Takes the player's body out of the running level (a sub gone): nothing
+     * aims at it or hunts it any more.
+     *
+     * @param {DoomPlayer} player
+     */
+    removePlayer(player) {
+        const user = player.getUser();
+        this._world.removeUser(user);
+        this._monsters.forgetActor(user);
+        this._projectiles.forgetActor(user);
+        player.leaveLevel();
+
+        return this;
+    }
+
     // The main takes the body the world definition built on the player 1 start;
     // any other player gets a new one on a free start.
     _bodyFor(player) {
@@ -310,7 +341,7 @@ class DoomSimulation {
     }
 
     _commandedPlayers(commands) {
-        return this._roster.getAll().filter((player) => commands.has(player.getId()));
+        return this._roster.getInLevel().filter((player) => commands.has(player.getId()));
     }
 
     _applyPlayerCommand(player, command) {

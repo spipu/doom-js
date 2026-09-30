@@ -264,6 +264,15 @@ class DoomProjectileSystem {
         return p;
     }
 
+    // A homing shot locked on a body gone from the level flies straight on.
+    forgetActor(actor) {
+        for (const p of this._active) {
+            if (p.seekTarget === actor) {
+                p.seekTarget = null;
+            }
+        }
+    }
+
     // The shots still in the air, as plain data. Bodies are named by their
     // save code so an owner or a homing lock can be found again on the
     // rebuilt level (DoomMonsterSystem.actorByCode).

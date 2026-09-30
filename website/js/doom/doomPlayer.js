@@ -17,6 +17,7 @@ class DoomPlayer {
         this._entryState   = null;
         this._carriedState = null;
         this._restartState = null;
+        this._inLevel      = false;
     }
 
     getId() {
@@ -36,9 +37,25 @@ class DoomPlayer {
      * @param {DoomUser} user
      */
     enterLevel(user) {
-        this._user   = user.setPlayerId(this._id);
-        this._weapon = null;
+        this._user    = user.setPlayerId(this._id);
+        this._weapon  = null;
+        this._inLevel = true;
         this._weaponView.clear();
+
+        return this;
+    }
+
+    /**
+     * @returns {boolean} whether its body is in the running level — a sub's
+     *                    player waits outside it until its device is ready
+     */
+    isInLevel() {
+        return this._inLevel;
+    }
+
+    // Its body was taken out of the running level.
+    leaveLevel() {
+        this._inLevel = false;
 
         return this;
     }
@@ -98,14 +115,18 @@ class DoomPlayer {
      * Fixes what the player takes into the level about to be built: the entry
      * state of a restart, else its current equipment — nothing when dead
      * (G_DoLoadLevel PST_DEAD → PST_REBORN). Before the first level, nothing.
+     * The body leaves the level about to be torn down.
      */
     packForNextLevel() {
+        const inLevel = this._inLevel;
+        this._inLevel = false;
         if (this._restartState !== null) {
             this._carriedState = this._restartState;
             this._restartState = null;
             return this;
         }
-        if (this._user !== null) {
+        // A player that never entered the level keeps what it carried into it.
+        if ((this._user !== null) && inLevel) {
             this._carriedState = ((this.isDead()) ? null : this._user.exportState());
         }
 

@@ -19,6 +19,14 @@ class DoomSinglePlayerRules extends DoomGameRules {
         return true;
     }
 
+    allowsCooperative() {
+        return true;
+    }
+
+    admitsSubPlayers() {
+        return false;
+    }
+
     allowsFriendlyFire() {
         return false;
     }

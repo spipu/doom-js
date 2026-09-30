@@ -25,6 +25,16 @@ class DoomGameRules {
         throw new Error('DoomGameRules: allowsScreenSharing not implemented');
     }
 
+    // Whether the main's pause menu offers to open the game to cooperative players.
+    allowsCooperative() {
+        throw new Error('DoomGameRules: allowsCooperative not implemented');
+    }
+
+    // Whether the subs of the session play their own player, or only watch the main's.
+    admitsSubPlayers() {
+        throw new Error('DoomGameRules: admitsSubPlayers not implemented');
+    }
+
     // Whether a player's attack hurts the other players (its own blast always hurts itself).
     allowsFriendlyFire() {
         throw new Error('DoomGameRules: allowsFriendlyFire not implemented');

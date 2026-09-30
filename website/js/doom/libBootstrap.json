@@ -1,5 +1,5 @@
 {
-    "version": "v1.997",
+    "version": "v1.1002",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -248,6 +248,7 @@
             "/js/doom/doomItemRules.js",
             "/js/doom/doomGameRules.js",
             "/js/doom/doomSinglePlayerRules.js",
+            "/js/doom/doomCoopRules.js",
             "/js/doom/doomLevelStats.js",
             "/js/doom/doomTurnEventPlayer.js",
             "/js/doom/doomLevelLoader.js",

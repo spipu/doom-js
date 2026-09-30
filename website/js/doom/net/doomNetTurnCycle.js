@@ -13,7 +13,7 @@ class DoomNetTurnCycle {
      */
     constructor(session) {
         this._session   = session;
-        this._subs      = new Map();   // peer id → {peer, phase, command, sentAt}
+        this._subs      = new Map();   // peer id → {peer, playerId, phase, command, sentAt}
         this._turn      = 0;           // the next turn to simulate, counted over the session
         this._level     = null;        // {levelCode, skill, multiplayerThings}
         this._levelSeq  = 0;           // counts the levels started, echoed by a sub's levelReady
@@ -24,6 +24,7 @@ class DoomNetTurnCycle {
         this._waiting   = [];          // nicknames last announced as waited for
         this._phase     = null;        // control message of the phase without turns under way
         this._onWaiting = null;
+        this._onGone    = null;
     }
 
     /**
@@ -31,6 +32,15 @@ class DoomNetTurnCycle {
      */
     setOnWaiting(callback) {
         this._onWaiting = callback;
+
+        return this;
+    }
+
+    /**
+     * @param {function(int)} callback - the player id of a sub that left the session
+     */
+    setOnPlayerGone(callback) {
+        this._onGone = callback;
 
         return this;
     }
@@ -80,7 +90,7 @@ class DoomNetTurnCycle {
     // --- Session cycle ---
 
     admitted(peer) {
-        const sub = {peer: peer, phase: DoomNetTurnCycle.SYNCING, command: null, sentAt: 0};
+        const sub = {peer: peer, playerId: this._session.playerIdOf(peer), phase: DoomNetTurnCycle.SYNCING, command: null, sentAt: 0};
         this._subs.set(peer.getId(), sub);
         if (this._level !== null) {
             this._sync(sub);
@@ -88,7 +98,11 @@ class DoomNetTurnCycle {
     }
 
     gone(peer) {
+        const sub = this._subs.get(peer.getId());
         this._subs.delete(peer.getId());
+        if ((sub !== undefined) && (this._onGone !== null)) {
+            this._onGone(sub.playerId);
+        }
     }
 
     // A levelReady for an earlier level (two levels sent while the sub built
@@ -156,6 +170,20 @@ class DoomNetTurnCycle {
     }
 
     /**
+     * @returns {Map<int, UserCommand>} each awaited sub's command for the turn, by player id — all in once the turn is ready
+     */
+    commands() {
+        const commands = new Map();
+        for (const sub of this._subs.values()) {
+            if ((sub.phase === DoomNetTurnCycle.AWAITED) && (sub.command !== null)) {
+                commands.set(sub.playerId, sub.command);
+            }
+        }
+
+        return commands;
+    }
+
+    /**
      * After the turn is simulated: the state goes to every sub in the cycle,
      * a joining one included, which is awaited from the next turn on.
      *
@@ -182,7 +210,8 @@ class DoomNetTurnCycle {
         sub.phase   = DoomNetTurnCycle.SYNCING;
         sub.command = null;
         sub.peer.setLivenessSuspended(true);
-        sub.peer.sendControl(Object.assign({type: DoomNetProtocol.LEVEL_LOAD, seq: this._levelSeq}, this._level));
+        sub.peer.sendControl(Object.assign({type: DoomNetProtocol.LEVEL_LOAD, seq: this._levelSeq}, this._level,
+            {mode: this._session.getMode(), options: this._session.getOptions()}));
     }
 
     // The main shows it, the subs not waited for show it too.

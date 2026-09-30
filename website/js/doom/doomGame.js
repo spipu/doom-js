@@ -5,7 +5,8 @@ class DoomGame {
      */
     constructor(subSession = null) {
         this._rules           = new DoomSinglePlayerRules();
-        this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomGame.LOCAL_PLAYER_ID));
+        this._subSession      = subSession;
+        this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(((subSession !== null) ? subSession.getViewedPlayerId() : DoomGame.LOCAL_PLAYER_ID)));
         this._turnEvents      = new DoomTurnEvents();
         this._role            = ((subSession !== null)
             ? new DoomSubRole(this._roster, subSession)
@@ -40,7 +41,7 @@ class DoomGame {
         this._levelExit       = null;   // {display, modal, outcome, nextLevel, finaleText, buttonCode} of the tally shown
         this._netLinks        = new DoomNetLinks();
         this._netAvailability = new DoomNetAvailability(this._netLinks);
-        this._netSession      = null;   // DoomNetMainSession while the screen is shared
+        this._netSession      = null;   // DoomNetMainSession while the game hosts a session
         this._joining         = false;  // a sub is building the level the main sent
         this._pendingLevel    = null;   // the level the main sent meanwhile, built next
         this._endReason       = null;   // DoomNetProtocol.END_* once the followed session ended
@@ -51,7 +52,7 @@ class DoomGame {
         if (subSession !== null) {
             this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
                 (notice) => this._presentation.setNotice(notice), (message) => this._onMainPhase(message),
-                (reason) => this._onSessionEnd(reason));
+                (reason) => this._onSessionEnd(reason), () => this._onSessionModeChange());
             this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
                 .setPingSource(() => subSession.getHostPing());
         }
@@ -95,6 +96,16 @@ class DoomGame {
 
     _wadId() {
         return ((this._wadMeta !== null) ? this._wadMeta.id : null);
+    }
+
+    /**
+     * The mode changes during the game: cooperative opened, or back to single player.
+     *
+     * @param {DoomGameRules} rules
+     */
+    _setRules(rules) {
+        this._rules = rules;
+        this._role.useRules(rules);
     }
 
     // --- Save / load ---
@@ -275,7 +286,7 @@ class DoomGame {
             jump:       doomSettings.getGameJump(),
             crouch:     doomSettings.getGameCrouch()
         };
-        for (const player of this._roster.getAll()) {
+        for (const player of this._roster.getInLevel()) {
             player.applyMovementSettings(settings);
         }
     }
@@ -294,6 +305,7 @@ class DoomGame {
 
     _enterPause() {
         this._paused = true;
+        this._role.setLocalPaused(true);
         this._role.announcePhase({type: DoomNetProtocol.PAUSE});
         doomSound.playUi('menu/activate').setPaused(true);
         this._inputs.releaseMouse().setVirtualPadVisible(false);
@@ -306,32 +318,36 @@ class DoomGame {
                 this._quitToMenu();
             })
             .setSaveContext(this._saveContext())
-            .setShareContext(this._shareContext())
+            .setSessionContext(this._sessionContext())
             .setQuitCode(this._role.quitCode())
             .show(() => this._pauseTitle());
     }
 
-    // Null without WAD metadata (the subs check the WAD identity) or when the
-    // mode offers no sharing.
-    _shareContext() {
-        if ((this._wadMeta === null) || !this._rules.allowsScreenSharing() || !this._role.sharesScreen()) {
+    // Null without WAD metadata (the subs check the WAD identity) or on a
+    // device that only follows the game.
+    _sessionContext() {
+        if ((this._wadMeta === null) || !this._role.hostsSessions()) {
             return null;
         }
         return {
-            getSession:        () => this._netSession,
-            openSession:       (nickname) => this._openNetSession(nickname),
-            stop:              () => this._stopSharing(),
-            unavailableReason: () => this._netAvailability.unavailableReason()
+            getSession:          () => this._netSession,
+            offersScreenSharing: () => this._rules.allowsScreenSharing(),
+            offersCooperative:   () => this._rules.allowsCooperative(),
+            openScreenSharing:   (nickname) => this._openNetSession(nickname, DoomNetProtocol.MODE_SCREEN_SHARING, {}),
+            openCooperative:     (nickname) => this._openCooperative(nickname),
+            switchToCooperative: () => this._switchToCooperative(),
+            stop:                () => this._stopSession(),
+            unavailableReason:   () => this._netAvailability.unavailableReason()
         };
     }
 
     // The identity is computed by the WAD menu in the background: a WAD whose
     // hash this browser could not compute cannot be shared.
-    _openNetSession(nickname) {
+    _openNetSession(nickname, mode, options) {
         if (typeof this._wadMeta.sha256 !== 'string') {
             return null;
         }
-        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers());
+        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers(), mode, options);
         this._netSession = session;
         this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
             .setPingSource(() => session.getLobby().getWorstPing());
@@ -339,13 +355,33 @@ class DoomGame {
         return session;
     }
 
-    _stopSharing(endReason = DoomNetProtocol.END_STOPPED) {
+    // The game settings as the settings screen left them.
+    _openCooperative(nickname) {
+        const rules   = new DoomCoopRules(DoomCoopRules.optionsFromSettings());
+        const session = this._openNetSession(nickname, DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
+        if (session !== null) {
+            this._setRules(rules);
+        }
+
+        return session;
+    }
+
+    // The viewers already linked become players: their commands give them one from the next turn.
+    _switchToCooperative() {
+        const rules = new DoomCoopRules(DoomCoopRules.optionsFromSettings());
+        this._setRules(rules);
+        this._netSession.setMode(DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
+    }
+
+    // The main carries on alone, under the single-player rules again.
+    _stopSession(endReason = DoomNetProtocol.END_STOPPED) {
         if (this._netSession === null) {
             return;
         }
         this._role.stopHosting();
         this._netSession.stop(endReason);
         this._netSession = null;
+        this._setRules(new DoomSinglePlayerRules());
         this._showWaiting([]);
         this._presentation.setForcedRenderer(null).setPingSource(null);
     }
@@ -402,6 +438,22 @@ class DoomGame {
         }
     }
 
+    // A viewer becomes a player: it views its own player from now on, on the
+    // same body, and plays with the full pad.
+    _onSessionModeChange() {
+        const viewedId = this._subSession.getViewedPlayerId();
+        const current  = this._localPlayer();
+        if (current.getId() !== viewedId) {
+            const player = new DoomPlayer(viewedId);
+            if (current.getUser() !== null) {
+                player.enterLevel(current.getUser());
+            }
+            this._roster.replaceLocal(player);
+            this._presentation.setViewedPlayer(player);
+        }
+        this._presentation.changePadControls(this._role.padControls());
+    }
+
     _leaveEndedSession() {
         this._closeGameMenu();
         this._teardownLevel();
@@ -435,6 +487,7 @@ class DoomGame {
     // activation): the player re-clicks the canvas.
     _leavePause(backToGame = true) {
         doomSound.playUi('menu/clear').setPaused(false);
+        this._role.setLocalPaused(false);
         this._pauseModal.close();
         this._pauseDisplay.destroy();
         this._pauseModal   = null;
@@ -586,7 +639,7 @@ class DoomGame {
 
     // The game ends: so does the screen sharing, the subs told why.
     _leaveLevelTo(openMenu, endReason = DoomNetProtocol.END_STOPPED) {
-        this._stopSharing(endReason);
+        this._stopSession(endReason);
         this._role.leave();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
