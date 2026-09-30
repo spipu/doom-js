@@ -382,8 +382,8 @@
     white-space: nowrap;
 }
 
-/* Cooperative tally: one column per player under the common time line;
-   the grid columns are set by the code, one per player. */
+/* Cooperative tally: one column per player, set by the code, under the
+   common time line. */
 .doom-menu-tally-table {
     display: grid;
     overflow-x: auto;

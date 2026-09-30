@@ -62,8 +62,8 @@ class DoomNetSubSession {
 
     /**
      * Who follows the main's game: {levelLoad(message), state(buffer),
-     * waiting(nicknames), phase(message), modeChanged(), playerRemoved(message)} — the lobby screen
-     * until the game runs, then the game's role.
+     * waiting(nicknames), phase(message), modeChanged(), playerRemoved(message)}
+     * — the lobby screen until the game runs, then the game's role.
      */
     setCycle(cycle) {
         this._cycle = cycle;

@@ -99,7 +99,7 @@ class DoomReplicaApplier {
                 continue;
             }
             seen.add(state.id);
-            view.getInstance().setPose([state.x, state.y, state.z], DoomReplicaApplier.NO_DELTA, DoomReplicaApplier.NO_DELTA);
+            view.getInstance().setPose([state.x, state.y, state.z], DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
             const keys = ((view.getFrames() !== null) ? DoomNetStateCapture.frameKeys(view.getFrames()) : null);
             view.setFrame((((keys !== null) && (state.frame !== null)) ? keys[state.frame] : null), state.bright)
                 .setFacing(state.facing)
@@ -200,16 +200,7 @@ class DoomReplicaApplier {
     }
 
     _spawn(objId, x, y, z) {
-        return loader.instances().get(loader.instances().spawnFromData(null, {
-            object:         objId,
-            position:       [x, y, z],
-            rotation:       [0, 0, 0],
-            trigger:        'none',
-            loop:           false,
-            onlyOnce:       false,
-            collisionShape: 'none',
-            keyframes:      []
-        }));
+        return loader.instances().get(DoomInertInstance.spawn(objId, [x, y, z]));
     }
 
     // --- Level state ---
@@ -239,7 +230,7 @@ class DoomReplicaApplier {
         for (const [id, position] of this._restPoses) {
             const instance = this._ids.instanceOf(id);
             if (!seen.has(id) && (instance !== null)) {
-                instance.setPose(position, DoomReplicaApplier.NO_DELTA, DoomReplicaApplier.NO_DELTA);
+                instance.setPose(position, DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
             }
         }
     }
@@ -305,4 +296,3 @@ class DoomReplicaApplier {
     }
 }
 
-DoomReplicaApplier.NO_DELTA = [0, 0, 0];

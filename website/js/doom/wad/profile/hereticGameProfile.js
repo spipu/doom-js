@@ -293,26 +293,8 @@ class HereticGameProfile extends DefaultGameProfile {
         return ['dsparil', 'disciple'];
     }
 
-    // zscript hereticplayer.zs. Left out: the skull of the gibbed death
-    // (A_SkullPop) and the fire death (Burn), mechanics the game lacks for the player.
-    playerBodyDef() {
-        if (HereticGameProfile._playerBody === null) {
-            HereticGameProfile._playerBody = new DoomMonsterDef({
-                code: 'player', name: 'Corvus', sprite: 'PLAY',
-                health: 100, radius: 16, height: 56, speed: 1, painChance: 255,
-                states: {
-                    spawn:   [['A', -1]],
-                    see:     [['ABCD', 4, null, 'see']],
-                    missile: [['F', 6, null, null, true], ['E', 12, null, 'spawn']],
-                    melee:   [['F', 6, null, null, true], ['E', 12, null, 'spawn']],
-                    pain:    [['G', 4], ['G', 4, 'A_Pain', 'spawn']],
-                    death:   [['H', 6], ['I', 6, 'A_PlayerScream'], ['JK', 6], ['L', 6, 'A_NoBlocking'], ['MNO', 6], ['P', -1]],
-                    xdeath:  [['Q', 5, 'A_PlayerScream'], ['R', 5, 'A_NoBlocking'], ['STUVWX', 5], ['Y', -1]]
-                }
-            });
-        }
-
-        return HereticGameProfile._playerBody;
+    playerBodyData() {
+        return HereticGameProfile.PLAYER_BODY;
     }
 
     // zscript hereticplayer.zs Player.ColorRange and Colorset 0-3: green, yellow, red, blue.
@@ -1721,14 +1703,29 @@ end
 	playuntildone	world/amb11
 end
 `;
-// Player.ColorRange 225-240, then Player.Colorset 0-3 as [first, last, marker] of hereticplayer.zs.
+// Player.ColorRange 225-240, then Player.Colorset 0-3 of hereticplayer.zs: first index and marker
+// of each (its last follows from the range's length).
 HereticGameProfile.PLAYER_COLORS = {
     range: [225, 240],
     slots: [
-        {from: 225, to: 240, marker: 238},
-        {from: 114, to: 129, marker: 127},
-        {from: 145, to: 160, marker: 158},
-        {from: 190, to: 205, marker: 203}
+        {from: 225, marker: 238},
+        {from: 114, marker: 127},
+        {from: 145, marker: 158},
+        {from: 190, marker: 203}
     ]
 };
-HereticGameProfile._playerBody = null;
+// zscript hereticplayer.zs. Left out: the skull of the gibbed death (A_SkullPop)
+// and the fire death (Burn), mechanics the game lacks for the player.
+HereticGameProfile.PLAYER_BODY = {
+    code: 'player', name: 'Corvus', sprite: 'PLAY',
+    health: 100, radius: 16, height: 56, speed: 1, painChance: 255,
+    states: {
+        spawn:   [['A', -1]],
+        see:     [['ABCD', 4, null, 'see']],
+        missile: [['F', 6, null, null, true], ['E', 12, null, 'spawn']],
+        melee:   [['F', 6, null, null, true], ['E', 12, null, 'spawn']],
+        pain:    [['G', 4], ['G', 4, 'A_Pain', 'spawn']],
+        death:   [['H', 6], ['I', 6, 'A_PlayerScream'], ['JK', 6], ['L', 6, 'A_NoBlocking'], ['MNO', 6], ['P', -1]],
+        xdeath:  [['Q', 5, 'A_PlayerScream'], ['R', 5, 'A_NoBlocking'], ['STUVWX', 5], ['Y', -1]]
+    }
+};

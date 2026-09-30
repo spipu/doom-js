@@ -460,7 +460,7 @@ class WadWorldBuilder {
                         anchorOffsetX: geo.anchorOffsetX,
                         anchorOffsetY: ((ceiling) ? (sink + hangHeight) : Math.max(0, sink)) * scale,
                         anchorTop:     ceiling,
-                        light:         255,
+                        light:         WadWorldBuilder.FULLBRIGHT,
                         alpha:         alpha,
                         tint:          WadConstants.MONSTER_TINT
                     });
@@ -532,7 +532,7 @@ class WadWorldBuilder {
             textures:  [spr.loaderId],
             halfWidth: 0,
             height:    0,
-            light:     255
+            light:     WadWorldBuilder.FULLBRIGHT
         });
     }
 
@@ -562,7 +562,7 @@ class WadWorldBuilder {
             anchorOffsetX: geo.anchorOffsetX,
             anchorOffsetY: Math.max(0, spr.topOffset - spr.height) * WadConstants.SCALE,
             anchorTop:     false,
-            light:         255,
+            light:         WadWorldBuilder.FULLBRIGHT,
             tint:          tint
         });
     }
@@ -1345,3 +1345,6 @@ class WadWorldBuilder {
         });
     }
 }
+
+// Sprite billboards baked fullbright: the presentation lights each instance from its sector.
+WadWorldBuilder.FULLBRIGHT = 255;

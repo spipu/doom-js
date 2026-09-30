@@ -363,9 +363,8 @@ class DoomGame {
         return session;
     }
 
-    // The game settings as the settings screen left them.
     _openCooperative(nickname) {
-        const rules   = new DoomCoopRules(DoomCoopRules.optionsFromSettings());
+        const rules   = DoomCoopRules.fromSettings();
         const session = this._openNetSession(nickname, DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
         if (session !== null) {
             this._setRules(rules);
@@ -376,12 +375,11 @@ class DoomGame {
 
     // The viewers already linked become players: their commands give them one from the next turn.
     _switchToCooperative() {
-        const rules = new DoomCoopRules(DoomCoopRules.optionsFromSettings());
+        const rules = DoomCoopRules.fromSettings();
         this._setRules(rules);
         this._netSession.setMode(DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
     }
 
-    // The main carries on alone, under the single-player rules again.
     _stopSession(endReason = DoomNetProtocol.END_STOPPED) {
         if (this._netSession === null) {
             return;
@@ -537,7 +535,7 @@ class DoomGame {
      * @param {function} onCancel - (navigator, wadMeta, skill, noIdentity), the menu to go back to
      */
     openCooperativeOnStart(nickname, onCancel) {
-        this._setRules(new DoomCoopRules(DoomCoopRules.optionsFromSettings()));
+        this._setRules(DoomCoopRules.fromSettings());
         this._launch = {nickname: nickname, onCancel: onCancel};
 
         return this;
@@ -552,9 +550,8 @@ class DoomGame {
         this._freeze();
         this._launchDisplay = new MenuDisplay('screen').init(true);
         this._launchLobby   = new MenuLobbyModal(this._launchDisplay).openMain(session, {
-            addPlayer: () => new MenuPairingModal(this._launchDisplay).openForMain(session),
-            start:     () => this._startLaunchedGame(),
-            back:      () => this._backFromLaunchLobby()
+            start: () => this._startLaunchedGame(),
+            back:  () => this._backFromLaunchLobby()
         });
     }
 
@@ -777,8 +774,8 @@ class DoomGame {
     }
 
     /**
-     * @param {{secret: boolean, stats: object, players: object[]|null}} outcome - how the level ended, its counts as the tally shows them
-     * @param {boolean}                          withButtons - the main presses on; a sub only watches
+     * @param {{secret: boolean, stats: object, players: object[]|null}} outcome     - how the level ended, its counts as the tally shows them
+     * @param {boolean}                                                   withButtons - the main presses on; a sub only watches
      */
     _showLevelExit(outcome, withButtons) {
         if (this._transitioning) {

@@ -15,10 +15,10 @@ class DoomCoopRules extends DoomGameRules {
     }
 
     /**
-     * @returns {{friendlyFire: boolean}} the game settings as stored now, the preset of a new game
+     * @returns {DoomCoopRules} the rules on the game settings as stored now, the preset of a new game
      */
-    static optionsFromSettings() {
-        return {friendlyFire: doomSettings.getMultiplayerFriendlyFire()};
+    static fromSettings() {
+        return new DoomCoopRules({friendlyFire: doomSettings.getMultiplayerFriendlyFire()});
     }
 
     getOptions() {

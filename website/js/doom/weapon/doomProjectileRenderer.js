@@ -24,9 +24,7 @@ class DoomProjectileRenderer {
             // Through setPose: its world centre, the one the frustum test reads,
             // follows the shot on a device that runs no simulation.
             inst.setPose([view.getX(), view.getY() - flight.height / 2, view.getZ()],
-                DoomProjectileRenderer.NO_DELTA, DoomProjectileRenderer.NO_DELTA);
+                DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
         }
     }
 }
-
-DoomProjectileRenderer.NO_DELTA = [0, 0, 0];

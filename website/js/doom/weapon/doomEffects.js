@@ -41,16 +41,7 @@ class DoomEffects {
         const tpl        = this._templates.get(event.name);
         const facing     = ((event.mirror && (tpl.mirrored !== null)) ? tpl.mirrored : tpl);
         const startFrame = event.startFrame;
-        const instId = loader.instances().spawnFromData(null, {
-            object:         facing.frames[startFrame].objId,
-            position:       [event.x, event.y + tpl.spawnHeight + event.jitterY, event.z],
-            rotation:       [0, 0, 0],
-            trigger:        'none',
-            loop:           false,
-            onlyOnce:       false,
-            collisionShape: 'none',
-            keyframes:      [],
-        });
+        const instId     = DoomInertInstance.spawn(facing.frames[startFrame].objId, [event.x, event.y + tpl.spawnHeight + event.jitterY, event.z]);
         // A template with gravity ballistically drops its drift (blood: up at
         // rise, then falling); without it the drift stays constant (puffs).
         // The timeline is carried by the effect, not read off the template:

@@ -202,21 +202,34 @@ class AbstractGameProfile {
 
     /**
      * The visible body of a player seen by the others, as a monster definition
-     * (sprite and states) whose actions never run.
+     * (sprite and states) whose actions never run. Built on first use: the
+     * monster classes load after the profiles.
      *
      * @returns {DoomMonsterDef}
      */
     playerBodyDef() {
-        this._generateException('playerBodyDef must be implemented');
+        const data = this.playerBodyData();
+        if (!AbstractGameProfile._playerBodies.has(data)) {
+            AbstractGameProfile._playerBodies.set(data, new DoomMonsterDef(data));
+        }
+
+        return AbstractGameProfile._playerBodies.get(data);
+    }
+
+    /**
+     * @returns {object} the DoomMonsterDef data of the player's body
+     */
+    playerBodyData() {
+        this._generateException('playerBodyData must be implemented');
         return null;
     }
 
     /**
      * The player colour translations (zscript Player.ColorRange / Colorset): the
-     * palette range a player sprite is drawn in, and per slot the range it is
-     * moved to plus the index standing for the colour (map arrow, lobby).
+     * palette range a player sprite is drawn in, and per slot the first index
+     * it is moved to plus the index standing for the colour (map arrow, lobby).
      *
-     * @returns {{range: int[], slots: {from: int, to: int, marker: int}[]}} slots index 0 = slot 1
+     * @returns {{range: int[], slots: {from: int, marker: int}[]}} slots index 0 = slot 1
      */
     playerColors() {
         this._generateException('playerColors must be implemented');
@@ -798,3 +811,5 @@ class AbstractGameProfile {
         throw new Error('GameProfile - ' + msg);
     }
 }
+
+AbstractGameProfile._playerBodies = new Map();   // body data → its DoomMonsterDef

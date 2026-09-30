@@ -378,6 +378,11 @@ class DoomUser extends User {
         return this._effects;
     }
 
+    // The body's height now against its standing one: 1 standing, less crouched.
+    getCrouchScale() {
+        return this.getCurrentHeight() / this.getHeight();
+    }
+
     // Empty-handed, as a body is born (a respawn, before the starting loadout;
     // G_PlayerReborn): no weapon, ammo, item, effect or armour.
     clearEquipment() {

@@ -217,7 +217,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._buildSettingsList(definitions);
     }
 
-    // The launched mode's settings, then the entry that opens the game on them.
     _buildSettingsList(definitions) {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
@@ -225,8 +224,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
             this._addSettingItem(list, definition, inputs);
         }
         this._nav.selectFirst();
-
-        return list;
     }
 
     _deviceLabel(inputs) {

@@ -25,7 +25,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
 
     /**
      * @param {DoomNetMainSession} session
-     * @param {{addPlayer: function, start: function, back: (function|undefined)}} actions - without back, Back closes the lobby
+     * @param {{start: function, back: function|null}} actions - without back, Back closes the lobby
      */
     openMain(session, actions) {
         this._isMain = true;
@@ -66,7 +66,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
     }
 
     _onBack() {
-        if (this._isMain && ((this._actions.back ?? null) !== null)) {
+        if (this._isMain && (this._actions.back !== null)) {
             this._actions.back();
             return;
         }
@@ -137,7 +137,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
             doomSound.playUi('menu/invalid');
             return;
         }
-        this._actions.addPlayer();
+        new MenuPairingModal(this._display).openForMain(this._session);
     }
 
     // The main removes a sub by picking its line; nothing else reacts.

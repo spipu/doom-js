@@ -143,7 +143,7 @@ class DoomPlayerBody {
     _enterState(key) {
         let next  = key;
         let guard = 0;
-        while ((next !== null) && (guard < DoomPlayerBody.STATE_CHAIN_GUARD)) {
+        while ((next !== null) && (guard < DoomMonsterSystem.STATE_CHAIN_GUARD)) {
             guard++;
             const state = this._def.getState(next);
             this._stateKey = next;
@@ -169,9 +169,9 @@ class DoomPlayerBody {
 
     _pose() {
         const user = this._player.getUser();
-        this._view.getInstance().setPose([user.x, user.y, user.z], DoomPlayerBody.NO_DELTA, DoomPlayerBody.NO_DELTA);
+        this._view.getInstance().setPose([user.x, user.y, user.z], DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
         this._view.showState(this._def.getState(this._stateKey), WadGeometry.doomAngleYaw(user.yaw), this._sectorAt(user))
-            .setRenderScale(user.getCurrentHeight() / user.getHeight());
+            .setRenderScale(user.getCrouchScale());
     }
 
     _sectorAt(user) {
@@ -183,29 +183,18 @@ class DoomPlayerBody {
     static _spawn(frames, user) {
         const objId = frames[Object.keys(frames)[0]][0];
 
-        return loader.instances().get(loader.instances().spawnFromData(null, {
-            object:         objId,
-            position:       [user.x, user.y, user.z],
-            rotation:       [0, 0, 0],
-            trigger:        'none',
-            loop:           false,
-            onlyOnce:       false,
-            collisionShape: 'none',
-            keyframes:      []
-        }));
+        return loader.instances().get(DoomInertInstance.spawn(objId, [user.x, user.y, user.z]));
     }
 }
 
 DoomPlayerBody.KIND_PREFIX   = 'player';
 DoomPlayerBody.CORPSE_PREFIX = 'corpse';
-// The state groups of the profile's player body (zscript PlayerPawn).
-DoomPlayerBody.SPAWN   = 'spawn';
-DoomPlayerBody.SEE     = 'see';
-DoomPlayerBody.MISSILE = 'missile';
-DoomPlayerBody.MELEE   = 'melee';
-DoomPlayerBody.PAIN    = 'pain';
-DoomPlayerBody.DEATH   = 'death';
-DoomPlayerBody.XDEATH  = 'xdeath';
-DoomPlayerBody.FIRST_STATE       = '0';
-DoomPlayerBody.STATE_CHAIN_GUARD = 16;
-DoomPlayerBody.NO_DELTA = [0, 0, 0];
+// The state groups of the profile's player body (zscript PlayerPawn), entered at their first state.
+DoomPlayerBody.SPAWN       = 'spawn';
+DoomPlayerBody.SEE         = 'see';
+DoomPlayerBody.MISSILE     = 'missile';
+DoomPlayerBody.MELEE       = 'melee';
+DoomPlayerBody.PAIN        = 'pain';
+DoomPlayerBody.DEATH       = 'death';
+DoomPlayerBody.XDEATH      = 'xdeath';
+DoomPlayerBody.FIRST_STATE = '0';

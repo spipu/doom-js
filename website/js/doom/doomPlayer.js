@@ -53,7 +53,6 @@ class DoomPlayer {
         return this._inLevel;
     }
 
-    // Its body was taken out of the running level.
     leaveLevel() {
         this._inLevel = false;
 

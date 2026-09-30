@@ -120,9 +120,7 @@ class DoomSimulation {
         this._bodies.delete(player.getId());
         this._corpses.push(corpse);
         if (this._corpses.length > DoomSimulation.CORPSE_QUEUE) {
-            const oldest = this._corpses.shift();
-            loader.instances().scheduleRemoval(oldest.getInstance());
-            views.delete(oldest);
+            this._dropView(this._corpses.shift());
         }
     }
 
@@ -131,9 +129,13 @@ class DoomSimulation {
         if (body === null) {
             return;
         }
-        loader.instances().scheduleRemoval(body.getView().getInstance());
-        this._level.getBodyViews().delete(body.getView());
+        this._dropView(body.getView());
         this._bodies.delete(player.getId());
+    }
+
+    _dropView(view) {
+        loader.instances().scheduleRemoval(view.getInstance());
+        this._level.getBodyViews().delete(view);
     }
 
     setSkill(skill) {
@@ -464,9 +466,8 @@ class DoomSimulation {
         }
     }
 
-    // G_PlayerReborn + G_CheckSpot: on a free start of its slot, with the
-    // starting loadout and nothing it carried, in a teleport fog. The press
-    // that brought it back uses nothing (usedown set on reborn).
+    // G_PlayerReborn + G_CheckSpot, in a teleport fog; the press that brought
+    // it back uses nothing (usedown set on reborn).
     _respawn(player, command) {
         const user  = player.getUser();
         const start = this._freeStart(player.getId());

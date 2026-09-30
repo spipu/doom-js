@@ -86,7 +86,7 @@ class MenuPauseModal extends AbstractGameMenuModal {
         return ((this._sessionContext !== null) && (this._sessionContext.getSession() !== null));
     }
 
-    // Only where the pause had session entries: the main with the WAD metadata.
+    // Only on the main with the WAD metadata, which a session context stands for.
     _addMultiplayerEntry(listEl) {
         if (this._sessionContext === null) {
             return;

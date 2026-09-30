@@ -79,9 +79,12 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
     // The game settings of the mode first, then the session opens on them.
     _openGameSettings(openSession) {
         MenuNetGate.enter(this._display, this._sessionContext.unavailableReason, (nickname) => {
-            this._openStacked('settings', new MenuOptionsModal(this._display))
-                .showGameSettings(DoomCoopRules.SETTING_KEYS, () => this._openWith(openSession, nickname));
+            this._openCoopSettings(() => this._openWith(openSession, nickname));
         });
+    }
+
+    _openCoopSettings(onContinue) {
+        this._openStacked('settings', new MenuOptionsModal(this._display)).showGameSettings(DoomCoopRules.SETTING_KEYS, onContinue);
     }
 
     _open(openSession) {
@@ -98,17 +101,16 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
 
     // The viewers become players on the settings chosen: no new pairing.
     _switchToCooperative() {
-        this._openStacked('settings', new MenuOptionsModal(this._display)).showGameSettings(DoomCoopRules.SETTING_KEYS, () => {
+        this._openCoopSettings(() => {
             this._sessionContext.switchToCooperative();
             this._openLobby();
         });
     }
 
     _openLobby() {
-        const session = this._sessionContext.getSession();
-        this._openStacked('lobby', new MenuLobbyModal(this._display)).openMain(session, {
-            addPlayer: () => new MenuPairingModal(this._display).openForMain(session),
-            start:     () => this._resume()
+        this._openStacked('lobby', new MenuLobbyModal(this._display)).openMain(this._sessionContext.getSession(), {
+            start: () => this._resume(),
+            back:  null
         });
     }
 

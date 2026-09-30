@@ -145,6 +145,7 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
     │   ├── doomPlayerBody.js    A player's visible body in cooperative, as the others see it
+    │   ├── doomInertInstance.js An instance born in play that nothing touches (body replica, shot, effect, decal)
     │   ├── doomSessionNotice.js The message a session shows over the game (waiting, host paused, respawn prompt, player left)
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
     │   ├── doomLevelLoader.js   The level build every device runs: the converted world and the visual banks it shows

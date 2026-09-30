@@ -165,10 +165,7 @@ class DoomNetMainSession {
             return;
         }
         peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
-        this._cycleCall('gone', peer);
-        this._announceRemoval(peer);
-        this._lobby.remove(peerId);
-        this._changed();
+        this._drop(peer);
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
@@ -215,8 +212,7 @@ class DoomNetMainSession {
     }
 
     _welcome(peer) {
-        const playerId = this.playerIdOf(peer);
-        peer.sendControl({type: DoomNetProtocol.WELCOME, playerId: playerId, slot: playerId, mode: this._mode, options: this._options});
+        peer.sendControl({type: DoomNetProtocol.WELCOME, playerId: this.playerIdOf(peer), mode: this._mode, options: this._options});
     }
 
     _receive(peer, message) {

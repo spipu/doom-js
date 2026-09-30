@@ -102,7 +102,9 @@ class DoomProjectileSystem {
             vy = (2 + Math.max(-5, Math.min(5, Math.tan(pitchR)))) * WadConstants.SCALE;
         }
 
-        let originY = user.getCameraY();
+        // P_SpawnPlayerMissile: 32 units above the feet, below the eye, flying
+        // along the free aim; a crouch lowers it with the body.
+        let originY = user.y + WadConstants.MISSILE_SPAWN_HEIGHT * WadConstants.SCALE * user.getCrouchScale();
         if (def.spawnHeight !== null) {
             // Feet-anchored muzzle, nudged by the initial vertical velocity
             // like vanilla (A_FireMacePL1's ball.AddZ(ball.Vel.Z)).
@@ -244,16 +246,7 @@ class DoomProjectileSystem {
             spot: null, arrivalTics: 0,
             instId: null, view: null,
         };
-        p.instId = loader.instances().spawnFromData(null, {
-            object:         def.frames[0].objId,
-            position:       [p.x, p.y - def.frames[0].height / 2, p.z],
-            rotation:       [0, 0, 0],
-            trigger:        'none',
-            loop:           false,
-            onlyOnce:       false,
-            collisionShape: 'none',
-            keyframes:      [],
-        });
+        p.instId = DoomInertInstance.spawn(def.frames[0].objId, [p.x, p.y - def.frames[0].height / 2, p.z]);
         p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames, def.kind).setCenter(p.x, p.y, p.z);
         this._views.add(p.view);
         this._active.push(p);

@@ -25,16 +25,7 @@ class DoomDecals {
     place(event) {
         const variant = this._templates.variantsOf(event.key)[event.variant];
         const objId   = ((event.fade) ? variant.steps[0] : variant);
-        const instId  = loader.instances().spawnFromData(null, {
-            object:         objId,
-            position:       event.position,
-            rotation:       event.rotation,
-            trigger:        'none',
-            loop:           false,
-            onlyOnce:       false,
-            collisionShape: 'none',
-            keyframes:      [],
-        });
+        const instId  = DoomInertInstance.spawn(objId, event.position, event.rotation);
         if (event.owner !== null) {
             loader.instances().get(instId).setRideOn(event.owner);
         }

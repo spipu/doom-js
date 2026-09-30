@@ -1,8 +1,9 @@
 /**
  * The one message a session shows over the game, by priority: the players
  * the game waits for, then the host's pause, then the local player's respawn
- * prompt, then a player who just left (for DEPARTURE_MS), then the host's death. Each device keeps its own: the main
- * shows who it waits for and who left, a sub everything the main tells it.
+ * prompt, then a player who just left (for DEPARTURE_MS), then the host's
+ * death. Each device keeps its own: the main shows who it waits for and who
+ * left, a sub everything the main tells it.
  */
 class DoomSessionNotice {
     constructor() {
@@ -83,7 +84,7 @@ class DoomSessionNotice {
         }
     }
 
-    // What was said of the previous level is over.
+    // A new level, or no session any more: nothing left to say.
     clear() {
         this._waiting    = [];
         this._mainPaused = false;

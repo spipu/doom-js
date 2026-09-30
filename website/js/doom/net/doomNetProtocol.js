@@ -9,7 +9,7 @@ class DoomNetProtocol {
 
 // Sub → main, once its link is open: it joins the session and waits for its welcome.
 DoomNetProtocol.HELLO          = 'hello';
-// Main → a sub: who it is in the session (playerId, slot) and how the session plays (mode, options);
+// Main → a sub: who it is in the session (playerId, its slot) and how the session plays (mode, options);
 // sent again to every sub when the mode changes.
 DoomNetProtocol.WELCOME        = 'welcome';
 // Main → the other subs of a cooperative game: a player left (playerId, nickname).

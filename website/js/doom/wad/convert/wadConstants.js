@@ -730,8 +730,9 @@ class WadConstants {
     // with no melee state fires from further out (an extra -128).
     static MISSILE_RANGE_BIAS    = 64;
     static MISSILE_NO_MELEE_BIAS = 128;
-    // P_SpawnMissile: a missile leaves 32 units above the shooter's feet and
-    // flies along the feet→feet vector (monsters have no free aim).
+    // P_SpawnMissile / P_SpawnPlayerMissile: a missile leaves 32 units above
+    // the shooter's feet; a monster's flies along the feet→feet vector (no free
+    // aim), a player's along its aim.
     static MISSILE_SPAWN_HEIGHT = 32;
     // A monster's hitscan leaves its body centre plus AttackOffset
     // (actorinlines.h: 8 for a non-player), and reaches MISSILERANGE.

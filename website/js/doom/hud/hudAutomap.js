@@ -65,12 +65,6 @@ class HudAutomap extends AbstractHud {
     }
 
     /**
-     * Level automap. Its palette is per-game profile data, resolved once here:
-     * the profile hands back a fresh table on every call.
-     *
-     * @param {DoomAutomap} automap
-     */
-    /**
      * In cooperative every player shows as an arrow in its slot's colour, its
      * own included (AM_drawPlayers in a netgame); alone, the green arrow.
      *
@@ -83,6 +77,12 @@ class HudAutomap extends AbstractHud {
         return this;
     }
 
+    /**
+     * Level automap. Its palette is per-game profile data, resolved once here:
+     * the profile hands back a fresh table on every call.
+     *
+     * @param {DoomAutomap} automap
+     */
     bindAutomap(automap) {
         this._automap   = automap;
         this._colors    = this._profile.automapColors();
@@ -318,13 +318,17 @@ class HudAutomap extends AbstractHud {
                 this._drawArrow(position[0] / WadConstants.SCALE, position[2] / WadConstants.SCALE, view.getFacing() * DEG_TO_RAD, this._slotColor(id));
             }
         }
-        const color = ((together) ? this._slotColor(ownId) : AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1));
+        const color = ((together) ? this._slotColor(ownId) : HudAutomap._aloneColor());
         this._drawArrow(this._user.getCameraX() / WadConstants.SCALE, this._user.getCameraZ() / WadConstants.SCALE,
             WadGeometry.doomAngleYaw(this._user.yaw) * DEG_TO_RAD, color);
     }
 
     _slotColor(playerId) {
-        return (this._slotColors[playerId - 1] ?? AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1));
+        return (this._slotColors[playerId - 1] ?? HudAutomap._aloneColor());
+    }
+
+    static _aloneColor() {
+        return AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1);
     }
 
     // The marker size does NOT follow the fitted scale: a wide level would
