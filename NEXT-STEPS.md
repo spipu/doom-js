@@ -70,7 +70,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: steps 0 to 7 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones); mode 2, **drop-in cooperative** opened from the pause menu, works in loopback (respawn, corpses, weapons and keys staying, scores per player and tally in columns, cooperative saves). What exists is documented in the project's knowledge base, not here. This section only specifies what steps 8 and 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds, rules asked by the code and never the mode tested) stays in force.
+Status: steps 0 to 7 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones); mode 2, **drop-in cooperative** opened from the pause menu, works in loopback (respawn, corpses, weapons and keys staying, scores per player and tally in columns, cooperative saves). Step 8 has started: a new cooperative game from the Multiplayer screen works in loopback. What exists is documented in the project's knowledge base, not here. This section only specifies what steps 8 and 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds, rules asked by the code and never the mode tested) stays in force.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 
@@ -78,12 +78,12 @@ Vocabulary: the **main** is the player whose browser hosts the game; the **subs*
 
 #### Mode still to build
 
-* **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu gains **Cooperative** and **Deathmatch**, started fresh from the chosen level.
+* **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu, which already starts a new **Cooperative** game, gains **Deathmatch**, started fresh from the chosen level.
 
 #### Screens and menus
 
-* **Multiplayer screen**: Cooperative and Deathmatch join Join a game and the options shortcut. They go through the existing episode and difficulty screens, as in single player, then the game settings screen, then open the lobby as main. Join a game stays the way a sub joins any mode.
-* **Game settings screen**: deathmatch lists monsters, frag limit, time limit and items (already stored in the Multiplayer options), built by the same settings page builder; cooperative from the Multiplayer screen lists friendly fire, as from the pause.
+* **Multiplayer screen**: Deathmatch joins Join a game, Cooperative and the options shortcut, through the same flow as Cooperative: the episode and difficulty screens, the game settings screen, then the lobby as main over the frozen first level.
+* **Game settings screen**: deathmatch lists monsters, frag limit, time limit and items (already stored in the Multiplayer options), built by the same settings page builder.
 * **Pause menu in deathmatch**: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal.
 * **Frags in the deathmatch HUD**: the top-left block of `HudGameBar` shows the player's frag count in place of the kills and secrets counters, which keep their place in single player and cooperative; there are no keys in deathmatch either.
 * **Frag table** in the deathmatch intermission.
@@ -92,7 +92,6 @@ Vocabulary: the **main** is the player whose browser hosts the game; the **subs*
 
 * **Profile additions**: each game profile still needs its deathmatch start editor number (11) and the altdeath respawn delay of its multiplayer item rules. Hexen, once profiled, gets 8 players (starts 1 to 4 then 9100 to 9103).
 * **Mode rules**: `DoomDeathmatchRules` beside `DoomSinglePlayerRules` and `DoomCoopRules`, answering the questions of the mode — spawn point, death and respawn, whether a picked item stays, item respawn delay, friendly fire always on, no save or load, no full kit cheat (its button ignored), end of level, whether the main holds a level start for the subs' `levelReady`.
-* **Cooperative from the start**: a cooperative game started from the Multiplayer screen builds its first level with the multiplayer-only things (`MTF_NOT_SINGLE`).
 * **Spawns**: a deathmatch spawn picks a free deathmatch start at random on the main, as `G_DeathMatchSpawnPlayer` does.
 * **Level start in deathmatch**: where the seconds before the subs arrive are free frags, the main holds its own start, showing the waiting message, until every sub awaited before the change has sent `levelReady` or has been dropped.
 * **Automap**: in deathmatch the other players never show.
@@ -118,7 +117,7 @@ Vocabulary: the **main** is the player whose browser hosts the game; the **subs*
 
 Same working rules as steps 6 and 7: one commit per lot, each one reviewed (`/doom-review`), solo bit-identical on the benches, README and `libBootstrap.json` versions updated, the loopback test switch removed before every commit.
 
-8. **Mode 3, new multiplayer game**: Cooperative and Deathmatch on the Multiplayer screen, the game settings screen for both modes, cooperative from the start (`MTF_NOT_SINGLE` things), deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
+8. **Mode 3, new multiplayer game**, in lots (user decision, 2026-09-30): lot 1, the cooperative from the Multiplayer screen, is done; the deathmatch remains, split when planned. Deathmatch on the Multiplayer screen, its game settings screen, deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
 9. **Hardening**: iOS backgrounding, full device matrix.
 
 ### Visibility culling (PVS / portals) — last, after everything else

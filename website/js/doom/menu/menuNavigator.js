@@ -17,6 +17,7 @@ class MenuNavigator {
 
         this._currentScreen      = null;
         this._selectedDifficulty = MenuNavigator.DEFAULT_SKILL;
+        this._launch             = null;   // {nickname, episode} of the cooperative game being launched, null for single player
     }
 
     /**
@@ -113,6 +114,7 @@ class MenuNavigator {
      * @param {object} meta
      */
     openWadMenu(meta) {
+        this._launch = null;
         this._playWadMusic(meta);
         this._switchTo(this._wadMenuScreen.setWad(meta));
         this._registry.ensureIdentity(meta).catch((error) => {
@@ -128,7 +130,48 @@ class MenuNavigator {
     }
 
     openMultiplayer(meta) {
+        this._launch = null;
         this._switchTo(this._multiplayerScreen.setWad(meta));
+    }
+
+    /**
+     * Cooperative chosen on the Multiplayer screen, its checks passed: the
+     * episode, the difficulty and the game settings, then the first level
+     * built under the cooperative rules with the lobby over it.
+     *
+     * @param {object} meta
+     * @param {string} nickname
+     */
+    openCooperativeEpisodes(meta, nickname) {
+        this._launch = {nickname: nickname, episode: null};
+        this.openEpisodes(meta);
+    }
+
+    /**
+     * The main cancelled the launch from its lobby: back to the difficulty of
+     * the same episode, the launch still cooperative.
+     *
+     * @param {object}      meta
+     * @param {object}      launch - {nickname, episode}
+     * @param {number|null} skill
+     */
+    startCooperativeAtDifficulty(meta, launch, skill) {
+        this._selectedDifficulty = (skill ?? MenuNavigator.DEFAULT_SKILL);
+        this._launch             = launch;
+
+        return this._boot(() => {
+            this._playWadMusic(meta);
+            this.openDifficulty(meta, launch.episode);
+        });
+    }
+
+    // Back from the episodes: to where the launch came from.
+    leaveEpisodes(meta) {
+        if (this._launch !== null) {
+            this.openMultiplayer(meta);
+            return;
+        }
+        this.openWadMenu(meta);
     }
 
     /**
@@ -161,6 +204,9 @@ class MenuNavigator {
      * @param {object} episode {episode, firstLevel, name} entry of getEpisodes
      */
     openDifficulty(meta, episode) {
+        if (this._launch !== null) {
+            this._launch.episode = episode;
+        }
         this._switchTo(this._difficultyScreen.setWad(meta, episode));
     }
 
@@ -172,7 +218,13 @@ class MenuNavigator {
      */
     startNewGame(meta, levelCode, skill) {
         this._selectedDifficulty = skill;
-        this._launchFromWad(meta, levelCode);
+        if (this._launch === null) {
+            this._launchFromWad(meta, levelCode);
+            return;
+        }
+        // Over the difficulty screen: its Back gives up and stays there.
+        new MenuOptionsModal(this._display)
+            .showGameSettings(DoomCoopRules.SETTING_KEYS, () => this._launchFromWad(meta, levelCode));
     }
 
     /**
@@ -281,6 +333,11 @@ class MenuNavigator {
             doomSound.loadForWad(wadFile, meta.id);
             const startCode = ((fallbackToFirst) ? this._resolveLevel(wadFile, levelCode) : levelCode);
             const game = new DoomGame();
+            if (this._launch !== null) {
+                const launch = this._launch;
+                game.openCooperativeOnStart(launch.nickname,
+                    (navigator, wadMeta, skill) => navigator.startCooperativeAtDifficulty(wadMeta, launch, skill));
+            }
             await game.startFromWad(wadFile, startCode, meta, spawnOverride, this._selectedDifficulty);
             modal.close();
             this._closeMenus();

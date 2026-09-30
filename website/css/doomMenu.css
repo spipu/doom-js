@@ -505,6 +505,10 @@
     justify-content: flex-end;
 }
 
+.doom-menu-modal-options .doom-menu-modal-actions-pair {
+    justify-content: center;
+}
+
 /* Page body: fills the modal and scrolls. A page built as a list keeps its own
    internal scroll, so the body never overflows and shows no second bar. */
 .doom-menu-modal-options-body {

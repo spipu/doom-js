@@ -30,8 +30,7 @@ class AbstractMenuListModal extends MenuModal {
     }
 
     close() {
-        // _createShell() closes a not-yet-opened modal before building the
-        // shell: the owner's onClose only makes sense after a real display.
+        // The owner's onClose only makes sense after a real display.
         const wasOpen = (this._overlay !== null);
 
         this._teardown();
@@ -45,16 +44,23 @@ class AbstractMenuListModal extends MenuModal {
     }
 
     // Wide list shell: subtitle-styled title, scrollable body, bottom actions
-    // row whose button is the navigation's bottom target.
-    _openShell(title, buttonLabel) {
+    // row joined to the navigation. With a confirmation ({label, action}) the
+    // row centres [back] [confirmation], styled like a confirm modal's.
+    _openShell(title, buttonLabel, confirmation = null) {
         const {modal, messageEl} = this._createShell(title,
             'doom-menu-modal doom-menu-modal-wide doom-menu-modal-options', 'doom-menu-subtitle');
         const bodyEl  = MenuDom.addElement(modal, 'div', 'doom-menu-modal-options-body');
         const actions = MenuDom.addElement(modal, 'div', 'doom-menu-modal-actions');
-        const button  = MenuDom.addButton(actions, 'doom-menu-button', buttonLabel, () => {
-            this._onBack();
-        });
-        this._nav.setBottomButton(button);
+        const button  = MenuDom.addButton(actions, ((confirmation !== null) ? 'doom-menu-button doom-menu-button-secondary' : 'doom-menu-button'),
+            buttonLabel, () => {
+                this._onBack();
+            });
+        if (confirmation === null) {
+            this._nav.setBottomButton(button);
+        } else {
+            actions.classList.add('doom-menu-modal-actions-pair');
+            this._nav.setBottomButtons([button, MenuDom.addButton(actions, 'doom-menu-button', confirmation.label, confirmation.action)]);
+        }
         this._nav.attach();
 
         return {titleEl: messageEl, bodyEl: bodyEl, button: button};

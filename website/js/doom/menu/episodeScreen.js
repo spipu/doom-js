@@ -38,7 +38,7 @@ class EpisodeScreen extends AbstractMenuScreen {
     }
 
     _onBack() {
-        this._navigator.openWadMenu(this._wadMeta);
+        this._navigator.leaveEpisodes(this._wadMeta);
     }
 
     // --- Internal ---

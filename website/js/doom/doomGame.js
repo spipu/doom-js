@@ -37,6 +37,9 @@ class DoomGame {
         this._pauseModal      = null;
         this._deathDisplay    = null;
         this._deathModal      = null;
+        this._launch          = null;   // {nickname, onCancel} of a cooperative game started from the Multiplayer screen
+        this._launchDisplay   = null;
+        this._launchLobby     = null;   // its lobby, over the frozen first level until Start
         this._deathClockMs    = 0;
         this._levelExit       = null;   // {display, modal, outcome, nextLevel, finaleText, buttonCode} of the tally shown
         this._netLinks        = new DoomNetLinks();
@@ -219,6 +222,9 @@ class DoomGame {
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
+        if (this._launch !== null) {
+            this._showLaunchLobby();
+        }
     }
 
     // The game's own controls join the engine's in every command: the
@@ -243,8 +249,8 @@ class DoomGame {
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning && (this._deathModal === null)) {
             if (this._paused) {
-                // A stacked modal handles Escape itself as one step back.
-                if (this._pauseModal.isAtRoot()) {
+                // A stacked modal, or the launch lobby, handles Escape itself as one step back.
+                if ((this._pauseModal !== null) && this._pauseModal.isAtRoot()) {
                     this._leavePause();
                 }
             } else {
@@ -306,11 +312,9 @@ class DoomGame {
     // --- Pause menu ---
 
     _enterPause() {
-        this._paused = true;
-        this._role.setLocalPaused(true);
+        this._freeze();
         this._role.announcePhase({type: DoomNetProtocol.PAUSE});
-        doomSound.playUi('menu/activate').setPaused(true);
-        this._inputs.releaseMouse().setVirtualPadVisible(false);
+        doomSound.playUi('menu/activate');
 
         this._pauseDisplay = new MenuDisplay('screen').init(true);
         this._pauseModal   = new MenuPauseModal(this._pauseDisplay)
@@ -482,31 +486,108 @@ class DoomGame {
         };
     }
 
-    // The browser refuses the mouse grab on an Escape resume (no user
-    // activation): the player re-clicks the canvas.
     _leavePause(backToGame = true) {
-        doomSound.playUi('menu/clear').setPaused(false);
-        this._role.setLocalPaused(false);
+        doomSound.playUi('menu/clear');
         this._pauseModal.close();
         this._pauseDisplay.destroy();
         this._pauseModal   = null;
         this._pauseDisplay = null;
+        this._unfreeze(backToGame);
+    }
 
+    // The level stops under a menu of the game: clock, turns, sound, inputs.
+    _freeze() {
+        this._paused = true;
+        this._role.setLocalPaused(true);
+        doomSound.setPaused(true);
+        this._inputs.releaseMouse().setVirtualPadVisible(false);
+    }
+
+    // The browser refuses the mouse grab on an Escape resume (no user
+    // activation): the player re-clicks the canvas.
+    _unfreeze(backToGame) {
+        doomSound.setPaused(false);
+        this._role.setLocalPaused(false);
         this._paused       = false;
         this._pauseWasDown = true;
         this._presentation.getEngine().resetDeltaClock();
-        if (backToGame) {
-            this._startPendingSession();
-            this._role.turnsResumed(performance.now());
-            // Before the grab: a renderer changed from the pause options
-            // replaces the canvas, and a lock asked on the old one fails.
-            this._presentation.applyRendererSetting(false);
-            this._presentation.applyPadControls();
-            this._inputs.setVirtualPadVisible(true);
-            if (this._inputs.getMode() === 'keyboardMouse') {
-                this._inputs.grabMouse();
-            }
+        if (!backToGame) {
+            return;
         }
+        this._startPendingSession();
+        this._role.turnsResumed(performance.now());
+        // Before the grab: a renderer changed from the pause options
+        // replaces the canvas, and a lock asked on the old one fails.
+        this._presentation.applyRendererSetting(false);
+        this._presentation.applyPadControls();
+        this._inputs.setVirtualPadVisible(true);
+        if (this._inputs.getMode() === 'keyboardMouse') {
+            this._inputs.grabMouse();
+        }
+    }
+
+    // --- Cooperative launch (Multiplayer screen) ---
+
+    /**
+     * The game starts as a cooperative one: its first level is built under the
+     * cooperative rules, multiplayer things included, then shows frozen under
+     * the lobby until Start. Back there cancels the launch.
+     *
+     * @param {string}   nickname
+     * @param {function} onCancel - (navigator, wadMeta, skill), the menu to go back to
+     */
+    openCooperativeOnStart(nickname, onCancel) {
+        this._setRules(new DoomCoopRules(DoomCoopRules.optionsFromSettings()));
+        this._launch = {nickname: nickname, onCancel: onCancel};
+
+        return this;
+    }
+
+    _showLaunchLobby() {
+        const session = this._openNetSession(this._launch.nickname, DoomNetProtocol.MODE_COOPERATIVE, this._rules.getOptions());
+        if (session === null) {
+            this._cancelLaunch();
+            return;
+        }
+        this._freeze();
+        this._launchDisplay = new MenuDisplay('screen').init(true);
+        this._launchLobby   = new MenuLobbyModal(this._launchDisplay).openMain(session, {
+            addPlayer: () => new MenuPairingModal(this._launchDisplay).openForMain(session),
+            start:     () => this._startLaunchedGame(),
+            back:      () => this._backFromLaunchLobby()
+        });
+    }
+
+    _startLaunchedGame() {
+        this._closeLaunchLobby();
+        this._unfreeze(true);
+    }
+
+    // Players already there are disconnected: they are asked for first.
+    _backFromLaunchLobby() {
+        if (this._netSession.getLobby().getPlayers().length <= 1) {
+            this._cancelLaunch();
+            return;
+        }
+        new MenuModal(this._launchDisplay).confirm(appTranslator.get('multiplayer.pause.stopCoopConfirm'), () => this._cancelLaunch());
+    }
+
+    _cancelLaunch() {
+        const launch = this._launch;
+        this._closeLaunchLobby();
+        doomSound.setPaused(false);
+        this._teardownLevel();
+        this._leaveLevelTo((navigator, meta) => launch.onCancel(navigator, meta, this._skill));
+    }
+
+    _closeLaunchLobby() {
+        if (this._launchLobby !== null) {
+            this._launchLobby.setOnClose(null).close();
+            this._launchDisplay.destroy();
+        }
+        this._launchLobby   = null;
+        this._launchDisplay = null;
+        this._launch        = null;
     }
 
     // A session opened from the pause starts with the game: on Start, or with
@@ -559,7 +640,7 @@ class DoomGame {
 
     // The death menu does not freeze the game: its frames run live under it.
     _isGameMenuOpen() {
-        return ((this._pauseDisplay !== null) || (this._deathDisplay !== null));
+        return ((this._pauseDisplay !== null) || (this._deathDisplay !== null) || (this._launchDisplay !== null));
     }
 
     _closeGameMenu() {

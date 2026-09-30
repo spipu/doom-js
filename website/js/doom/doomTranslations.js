@@ -1136,7 +1136,7 @@ class DoomTranslations {
                 it: 'Interrompere la condivisione?\nTutti i giocatori saranno disconnessi.',
                 es: '¿Dejar de compartir?\nTodos los jugadores serán desconectados.'
             },
-            'multiplayer.pause.cooperative': {
+            'multiplayer.cooperative': {
                 fr: 'Coopératif',
                 en: 'Cooperative',
                 it: 'Cooperativa',

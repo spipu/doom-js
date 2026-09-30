@@ -1,8 +1,9 @@
 /**
- * Multiplayer screen of a WAD, above its options: join a game, and a shortcut
- * to the multiplayer options. Joining asks for the nickname if there is none,
+ * Multiplayer screen of a WAD, above its options: join a game, start a new
+ * cooperative game, and a shortcut to the multiplayer options. Both ask for
+ * the nickname if there is none and check the WAD's identity first. Joining
  * pairs with the main — its code read, the answer shown — and lands in the
- * lobby until the session ends.
+ * lobby until the session ends; cooperative goes on to the episodes.
  */
 class MultiplayerScreen extends AbstractMenuScreen {
     /**
@@ -25,29 +26,37 @@ class MultiplayerScreen extends AbstractMenuScreen {
 
     _build() {
         const {panel, listEl} = this._buildWadPanel(this._wadMeta, appTranslator.get('help.multiplayer'));
-        const join = this._addListItem(listEl, appTranslator.get('multiplayer.join'), () => this._join());
+        const join = this._addListItem(listEl, appTranslator.get('multiplayer.join'),
+            () => this._afterChecks((nickname, wadSha256) => this._pair(nickname, wadSha256)));
+        const coop = this._addListItem(listEl, appTranslator.get('multiplayer.cooperative'),
+            () => this._afterChecks((nickname) => this._navigator.openCooperativeEpisodes(this._wadMeta, nickname)));
         this._addListItem(listEl, appTranslator.get('multiplayer.options'), () => {
             this._openModal(new MenuOptionsModal(this._display)).showMultiplayer();
         });
         this._addBackButton(panel);
         this._nav.selectFirst();
-        MenuNetGate.greyWhenUnavailable(join, () => this._availability.unavailableReason());
+        for (const item of [join, coop]) {
+            MenuNetGate.greyWhenUnavailable(item, () => this._availability.unavailableReason());
+        }
     }
 
     _onBack() {
         this._navigator.openWadMenu(this._wadMeta);
     }
 
-    _join() {
-        MenuNetGate.enter(this._display, () => this._availability.unavailableReason(), (nickname) => this._pair(nickname));
+    // Availability and nickname, then the WAD's identity, before any session flow.
+    _afterChecks(onReady) {
+        MenuNetGate.enter(this._display, () => this._availability.unavailableReason(), async (nickname) => {
+            const wadSha256 = await this._navigator.ensureWadIdentity(this._wadMeta);
+            if (wadSha256 === null) {
+                MenuNetMessages.showNoIdentity(this._display);
+                return;
+            }
+            onReady(nickname, wadSha256);
+        });
     }
 
-    async _pair(nickname) {
-        const wadSha256 = await this._navigator.ensureWadIdentity(this._wadMeta);
-        if (wadSha256 === null) {
-            MenuNetMessages.showNoIdentity(this._display);
-            return;
-        }
+    _pair(nickname, wadSha256) {
         const session = new DoomNetSubSession(this._links, wadSha256, nickname);
         new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session));
     }

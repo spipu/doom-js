@@ -53,7 +53,7 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
                 () => this._confirmStop('multiplayer.pause.stopCoopConfirm'));
             return;
         }
-        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.cooperative'), () => this._switchToCooperative());
+        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.cooperative'), () => this._switchToCooperative());
         this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.stop'), () => this._confirmStop('multiplayer.pause.stopConfirm'));
     }
 
@@ -65,7 +65,7 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
             MenuNetGate.greyWhenUnavailable(share, unavailableReason);
         }
         if (this._sessionContext.offersCooperative()) {
-            const coop = this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.cooperative'),
+            const coop = this._nav.addItemIn(listEl, appTranslator.get('multiplayer.cooperative'),
                 () => this._openGameSettings((nickname) => this._sessionContext.openCooperative(nickname)));
             MenuNetGate.greyWhenUnavailable(coop, unavailableReason);
         }

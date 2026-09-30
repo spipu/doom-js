@@ -46,8 +46,8 @@ class MenuListNavigation {
         this._index             = -1;
         this._sideButtons       = [];
         this._sideIndex         = -1;
-        this._bottomButton      = null;
-        this._bottomFocused     = false;
+        this._bottomButtons     = [];
+        this._bottomIndex       = -1;
         this._horizontal        = false;
         this._grid              = null;
         this._onStart           = null;
@@ -150,11 +150,16 @@ class MenuListNavigation {
         return this;
     }
 
-    // Down past the last entry lands on it, Up climbs back into the list. It
-    // also becomes the target of every back input (see _goBack).
     setBottomButton(el) {
-        this._bottomButton = el;
-        this._bottomFocused = false;
+        return this.setBottomButtons([el]);
+    }
+
+    // The bottom row: Down past the last entry lands on its rightmost button,
+    // Left/Right walk it, Up climbs back into the list. Its first button is
+    // the target of every back input (see _goBack).
+    setBottomButtons(buttons) {
+        this._bottomButtons = buttons;
+        this._bottomIndex   = -1;
 
         return this;
     }
@@ -200,7 +205,7 @@ class MenuListNavigation {
     // Initial selection only: a highlight deliberately put on a side or bottom
     // button wins over the convenience of landing on the first entry.
     selectFirst() {
-        if ((this._items.length > 0) && (this._sideIndex === -1) && !this._bottomFocused) {
+        if ((this._items.length > 0) && (this._sideIndex === -1) && (this._bottomIndex === -1)) {
             this.selectIndex(0);
         }
 
@@ -211,9 +216,20 @@ class MenuListNavigation {
         return this._index;
     }
 
+    // A rebuilt list takes its selection back without pulling the focus off
+    // a side or bottom button.
+    restoreIndex(index) {
+        if ((this._sideIndex === -1) && (this._bottomIndex === -1)) {
+            return this.selectIndex(index);
+        }
+        this._index = index;
+
+        return this;
+    }
+
     selectIndex(index) {
         this._focusSideAt(-1);
-        this._focusBottom(false);
+        this._focusBottomAt(-1);
         if (this._index === index) {
             return this;
         }
@@ -271,7 +287,7 @@ class MenuListNavigation {
     }
 
     _focusSignature() {
-        return (this._index + '|' + this._sideIndex + '|' + this._bottomFocused);
+        return (this._index + '|' + this._sideIndex + '|' + this._bottomIndex);
     }
 
     _moveSelectionStep(delta) {
@@ -285,9 +301,9 @@ class MenuListNavigation {
             }
             return this;
         }
-        if (this._bottomFocused) {
+        if (this._bottomIndex !== -1) {
             if (delta < 0) {
-                this._focusBottom(false);
+                this._focusBottomAt(-1);
             }
             return this;
         }
@@ -297,7 +313,7 @@ class MenuListNavigation {
                 this._focusSideFromList();
             }
             if (delta > 0) {
-                this._focusBottom(true);
+                this._focusBottomFromList();
             }
             return this;
         }
@@ -309,7 +325,7 @@ class MenuListNavigation {
             return this;
         }
         if ((delta > 0) && (this._index === count - 1)) {
-            this._focusBottom(true);
+            this._focusBottomFromList();
             return this;
         }
 
@@ -321,8 +337,8 @@ class MenuListNavigation {
             this._sideButtons[this._sideIndex].click();
             return this;
         }
-        if (this._bottomFocused && (this._bottomButton !== null)) {
-            this._bottomButton.click();
+        if (this._bottomButtons[this._bottomIndex] !== undefined) {
+            this._bottomButtons[this._bottomIndex].click();
             return this;
         }
         const entry = this._items[this._index];
@@ -347,8 +363,8 @@ class MenuListNavigation {
         MenuDom.press(entry.el, 'doom-menu-item-pressed', entry.action);
     }
 
-    // Left/Right walks the side row, moves a horizontal list, or cycles the
-    // selected entry's value.
+    // Left/Right walks the side or bottom row, moves a horizontal list, or
+    // cycles the selected entry's value.
     _stepSideways(dir) {
         if (this._sideIndex !== -1) {
             this._focusSideAt(Math.max(0, Math.min(this._sideButtons.length - 1, this._sideIndex + dir)));
@@ -362,7 +378,8 @@ class MenuListNavigation {
             this._moveFocus(() => this._gridStep(dir, 0));
             return;
         }
-        if (this._bottomFocused) {
+        if (this._bottomIndex !== -1) {
+            this._moveFocus(() => this._focusBottomAt(Math.max(0, Math.min(this._bottomButtons.length - 1, this._bottomIndex + dir))));
             return;
         }
         const entry = this._items[this._index];
@@ -375,18 +392,18 @@ class MenuListNavigation {
     // Validate (Enter / gamepad button 0) on a page without any list entry
     // (the About popup): the back action is the only thing to validate.
     _validate() {
-        if ((this._items.length === 0) && (this._sideIndex === -1) && !this._bottomFocused) {
+        if ((this._items.length === 0) && (this._sideIndex === -1) && (this._bottomIndex === -1)) {
             this._goBack();
             return;
         }
         this.activateSelection();
     }
 
-    // Every back input plays the bottom button when there is one, so it gets
-    // the same press feedback and action as a click.
+    // Every back input plays the first bottom button when there is one, so it
+    // gets the same press feedback and action as a click.
     _goBack() {
-        if (this._bottomButton !== null) {
-            this._bottomButton.click();
+        if (this._bottomButtons.length > 0) {
+            this._bottomButtons[0].click();
             return;
         }
         doomSound.playUi('menu/backup');
@@ -464,15 +481,27 @@ class MenuListNavigation {
         }
     }
 
-    _focusBottom(focused) {
-        if ((this._bottomButton === null) || (focused === this._bottomFocused)) {
+    _focusBottomFromList() {
+        this._focusBottomAt(this._bottomButtons.length - 1);
+    }
+
+    // -1 leaves the row, like _focusSideAt.
+    _focusBottomAt(index) {
+        if (index === this._bottomIndex) {
             return;
         }
-        this._bottomFocused = focused;
-        this._bottomButton.classList.toggle('doom-menu-button-focus', focused);
+        const previous = this._bottomButtons[this._bottomIndex];
+        if (previous !== undefined) {
+            previous.classList.remove('doom-menu-button-focus');
+        }
+        this._bottomIndex = index;
+        const current = this._bottomButtons[index];
+        if (current !== undefined) {
+            current.classList.add('doom-menu-button-focus');
+        }
         const entry = this._items[this._index];
         if (entry !== undefined) {
-            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), !focused);
+            entry.el.classList.toggle(MenuListNavigation._selectionClass(entry), (this._bottomIndex === -1));
         }
     }
 

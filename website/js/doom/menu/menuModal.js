@@ -159,6 +159,14 @@ class MenuModal {
     }
 
     close() {
+        this._removeShell();
+
+        return this;
+    }
+
+    // --- Internal ---
+
+    _removeShell() {
         if (this._nav !== null) {
             this._nav.detach().clear();
         }
@@ -166,11 +174,7 @@ class MenuModal {
             this._overlay.remove();
             this._overlay = null;
         }
-
-        return this;
     }
-
-    // --- Internal ---
 
     _addTallyTable(body, table) {
         const grid = MenuDom.addElement(body, 'div', 'doom-menu-tally-table');
@@ -233,8 +237,10 @@ class MenuModal {
         this._nav.attach().selectIndex(selectedIndex);
     }
 
+    // A re-render replaces the shell without closing the modal: its stacked
+    // children and its owner's close hook are left alone.
     _createShell(message, modalClass, messageClass) {
-        this.close();
+        this._removeShell();
 
         this._overlay = MenuDom.addElement(this._display.getContainer(), 'div', 'doom-menu-overlay');
         const modal = MenuDom.addElement(this._overlay, 'div', modalClass);

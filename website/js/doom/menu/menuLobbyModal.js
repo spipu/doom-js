@@ -1,8 +1,9 @@
 /**
  * The lobby of a session: its players in slot order with their ping and, in
- * cooperative, the colour of their slot, updated live. The main adds a player (greyed out once the lobby is full), removes a
- * sub by picking its line, and starts; a sub only sees the list — and that the
- * game runs on the main — and can leave.
+ * cooperative, the colour of their slot, updated live. The main adds a player
+ * (greyed out once the lobby is full), removes a sub by picking its line, and
+ * starts from the bottom row, beside its back button; a sub only sees the
+ * list — and that the game runs on the main — and can leave.
  */
 class MenuLobbyModal extends AbstractMenuListModal {
     /**
@@ -24,12 +25,13 @@ class MenuLobbyModal extends AbstractMenuListModal {
 
     /**
      * @param {DoomNetMainSession} session
-     * @param {{addPlayer: function, start: function}} actions
+     * @param {{addPlayer: function, start: function, back: (function|undefined)}} actions - without back, Back closes the lobby
      */
     openMain(session, actions) {
         this._isMain = true;
 
-        return this._open(session, actions, appTranslator.get('menu.back'));
+        return this._open(session, actions, appTranslator.get('menu.back'),
+            {label: appTranslator.get('multiplayer.lobby.start'), action: () => this._actions.start()});
     }
 
     /**
@@ -39,13 +41,13 @@ class MenuLobbyModal extends AbstractMenuListModal {
     openSub(session, actions) {
         this._isMain = false;
 
-        return this._open(session, actions, appTranslator.get('multiplayer.lobby.leave'));
+        return this._open(session, actions, appTranslator.get('multiplayer.lobby.leave'), null);
     }
 
-    _open(session, actions, buttonLabel) {
+    _open(session, actions, buttonLabel, confirmation) {
         this._session = session;
         this._actions = actions;
-        const {titleEl, bodyEl} = this._openShell('', buttonLabel);
+        const {titleEl, bodyEl} = this._openShell('', buttonLabel, confirmation);
         this._titleEl  = titleEl;
         this._listEl   = MenuDom.addElement(bodyEl, 'div', 'doom-menu-list');
         this._statusEl = MenuDom.addElement(bodyEl, 'div', 'doom-menu-status');
@@ -64,6 +66,10 @@ class MenuLobbyModal extends AbstractMenuListModal {
     }
 
     _onBack() {
+        if (this._isMain && ((this._actions.back ?? null) !== null)) {
+            this._actions.back();
+            return;
+        }
         if (!this._isMain) {
             this._actions.leave();
         }
@@ -104,7 +110,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
         }
         this._statusEl.textContent = (((!this._isMain) && this._session.isStarted()) ? appTranslator.get('multiplayer.lobby.inProgress') : '');
         if (selected !== null) {
-            this._nav.selectIndex(Math.max(0, this._itemKeys.indexOf(selected)));
+            this._nav.restoreIndex(Math.max(0, this._itemKeys.indexOf(selected)));
         }
     }
 
@@ -123,8 +129,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
         if (lobby.isFull()) {
             add.classList.add('doom-menu-item-disabled');
         }
-        this._nav.addItemIn(this._listEl, appTranslator.get('multiplayer.lobby.start'), () => this._actions.start());
-        this._itemKeys.push(MenuLobbyModal.KEY_ADD, MenuLobbyModal.KEY_START);
+        this._itemKeys.push(MenuLobbyModal.KEY_ADD);
     }
 
     _addPlayerIfRoom() {
@@ -157,5 +162,4 @@ class MenuLobbyModal extends AbstractMenuListModal {
     }
 }
 
-MenuLobbyModal.KEY_ADD   = 'add';
-MenuLobbyModal.KEY_START = 'start';
+MenuLobbyModal.KEY_ADD = 'add';
