@@ -1274,8 +1274,8 @@ class WadMapAnalyzer {
     // The mover families a special drives, for resolveTaggedTargets; built =
     // {lifts, rising, doors, stairs} code sets. A floor special never moves a
     // ceiling nor a ceiling special a floor (EV_DoFloor / EV_DoDoor run their
-    // own thinker), 40 does both; a special in neither table (stop lines)
-    // keeps every family. Stair steps resolve by the base step's tag.
+    // own thinker, the two tables are disjoint); a special in neither table
+    // (stop lines) keeps every family. Stair steps resolve by the base step's tag.
     static moverFamilies(analysis, sectors, built, special) {
         const floorFamilies = [
             {ids: analysis.liftIds, prefix: 'lift_', built: built.lifts},
@@ -1284,12 +1284,10 @@ class WadMapAnalyzer {
                 tagOf: (si) => analysis.stairStepTag[si]}
         ];
         const doorFamily = {ids: analysis.doorSectorIds, prefix: 'door_', built: built.doors};
-        const isFloor    = WadConstants.isFloorMoverSpecial(special);
-        const isCeiling  = WadConstants.isCeilingMoverSpecial(special);
-        if (isFloor && !isCeiling) {
+        if (WadConstants.isFloorMoverSpecial(special)) {
             return floorFamilies;
         }
-        if (isCeiling && !isFloor) {
+        if (WadConstants.isCeilingMoverSpecial(special)) {
             return [doorFamily];
         }
         return [...floorFamilies, doorFamily];

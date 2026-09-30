@@ -100,8 +100,8 @@ class WadConstants {
     //    descends — EV_DoDoor close variants, EV_DoCeiling lowers 41/43/44/72
     //    and crushers 6/25/49/73/77/141), 'ceilingRaise' (40 = W1
     //    RaiseCeilingLowerFloor: target = HIGHEST adjacent ceiling, no track
-    //    offset, rest at the own ceiling; its floor half rides the floor-down
-    //    family on the same tag).
+    //    offset, rest at the own ceiling; its floor half never runs — the
+    //    ceiling thinker already holds the sector's single specialdata).
     //  - speed: Doom units/tic — VDOORSPEED = 2, blaze = 8, ceilings
     //    CEILSPEED = 1, fast crushers CEILSPEED*2 = 2 (p_doors.c / p_ceilng.c).
     //  - trigger: 'action' (press E on the panel), 'proximity' (walk line),
@@ -439,11 +439,9 @@ class WadConstants {
         84:  {speed: 1, anim: 'one-way', loop: false, onlyOnce: true, target: 'lowest', change: {source: 'dest', special: 'copy', at: 'complete'}},
         98:  {speed: 4, anim: 'one-way', loop: false, onlyOnce: true, target: 'highest+8'},
         102: {speed: 1, anim: 'one-way', loop: false, onlyOnce: true, target: 'highest'},
-        // Perpetual plats (53 W1 / 87 WR), ceiling-raise floor half (40),
-        // donut hole (9)
+        // Perpetual plats (53 W1 / 87 WR), donut hole (9)
         53:  {speed: 1,   anim: 'perpetual', loop: true,  onlyOnce: false, target: 'lowest'},
         87:  {speed: 1,   anim: 'perpetual', loop: true,  onlyOnce: false, target: 'lowest'},
-        40:  {speed: 1,   anim: 'one-way',   loop: false, onlyOnce: true,  target: 'lowest'},
         9:   {speed: 0.5, anim: 'one-way',   loop: false, onlyOnce: true,  target: 'lowest'}
     };
 
