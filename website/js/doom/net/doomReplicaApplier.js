@@ -104,7 +104,8 @@ class DoomReplicaApplier {
             view.setFrame((((keys !== null) && (state.frame !== null)) ? keys[state.frame] : null), state.bright)
                 .setFacing(state.facing)
                 .setSector(state.sector)
-                .setCrushed(state.crushed);
+                .setCrushed(state.crushed)
+                .setRenderScale(state.scale);
             if (state.offset !== null) {
                 view.setRenderOffset(state.offset[0], state.offset[1], state.offset[2]);
             } else {
@@ -129,7 +130,9 @@ class DoomReplicaApplier {
         if (objId === null) {
             return null;
         }
-        const view = new DoomBodyView(this._spawn(objId, state.x, state.y, state.z), frames, born.kind).setNetId(state.id);
+        const view = new DoomBodyView(this._spawn(objId, state.x, state.y, state.z), frames, born.kind)
+            .setNetId(state.id)
+            .setPlayerId(DoomPlayerBody.playerIdOf(born.kind));
         this._bodies.set(state.id, view);
         this._level.getBodyViews().add(view);
 
@@ -137,6 +140,10 @@ class DoomReplicaApplier {
     }
 
     _framesOfKind(kind) {
+        const playerFrames = this._level.getPlayerBodyFrames(kind);
+        if (playerFrames !== null) {
+            return playerFrames;
+        }
         const spawnable = (this._level.getMonsterSpawnables()[kind] ?? null);
         if (spawnable !== null) {
             return spawnable.frames;

@@ -200,6 +200,29 @@ class AbstractGameProfile {
         return [];
     }
 
+    /**
+     * The visible body of a player seen by the others, as a monster definition
+     * (sprite and states) whose actions never run.
+     *
+     * @returns {DoomMonsterDef}
+     */
+    playerBodyDef() {
+        this._generateException('playerBodyDef must be implemented');
+        return null;
+    }
+
+    /**
+     * The player colour translations (zscript Player.ColorRange / Colorset): the
+     * palette range a player sprite is drawn in, and per slot the range it is
+     * moved to plus the index standing for the colour (map arrow, lobby).
+     *
+     * @returns {{range: int[], slots: {from: int, to: int, marker: int}[]}} slots index 0 = slot 1
+     */
+    playerColors() {
+        this._generateException('playerColors must be implemented');
+        return null;
+    }
+
     // One player per cooperative start (vanilla MAXPLAYERS matches the start count).
     maxPlayers() {
         return this.playerStartTypes().length;

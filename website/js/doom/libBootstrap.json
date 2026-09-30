@@ -1,5 +1,5 @@
 {
-    "version": "v1.1002",
+    "version": "v1.1006",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -113,6 +113,7 @@
             "/js/doom/wad/convert/wadLumpTokenizer.js",
             "/js/doom/wad/convert/wadMapInfo.js",
             "/js/doom/wad/convert/wadPalette.js",
+            "/js/doom/wad/convert/wadPaletteTranslation.js",
             "/js/doom/wad/convert/wadPicture.js",
             "/js/doom/wad/convert/wadTerrainBank.js",
             "/js/doom/wad/convert/wadTextureBank.js",
@@ -244,6 +245,8 @@
             "/js/doom/menu/multiplayerScreen.js",
             "/js/doom/menu/menuNavigator.js",
             "/js/doom/doomPlayer.js",
+            "/js/doom/doomPlayerBody.js",
+            "/js/doom/doomSessionNotice.js",
             "/js/doom/doomPlayerRoster.js",
             "/js/doom/doomItemRules.js",
             "/js/doom/doomGameRules.js",

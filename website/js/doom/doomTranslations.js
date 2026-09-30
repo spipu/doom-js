@@ -1226,6 +1226,12 @@ class DoomTranslations {
                 it: 'In attesa di {nickname}…',
                 es: 'Esperando a {nickname}…'
             },
+            'multiplayer.playerLeft': {
+                fr: '{nickname} a quitté la partie',
+                en: '{nickname} left the game',
+                it: '{nickname} ha lasciato la partita',
+                es: '{nickname} ha dejado la partida'
+            },
             'multiplayer.pausedByMain': {
                 fr: 'Partie en pause par l\'hôte',
                 en: 'Game paused by the host',

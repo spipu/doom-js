@@ -19,6 +19,8 @@ class HudAutomap extends AbstractHud {
         this._profile     = null;
         this._itemCatalog = null;
         this._automap     = null;
+        this._bodies      = null;   // the level's body views, the players' among them
+        this._slotColors  = [];
         this._colors      = null;
         this._keyColors   = {};
         this._buckets     = {};
@@ -68,6 +70,19 @@ class HudAutomap extends AbstractHud {
      *
      * @param {DoomAutomap} automap
      */
+    /**
+     * In cooperative every player shows as an arrow in its slot's colour, its
+     * own included (AM_drawPlayers in a netgame); alone, the green arrow.
+     *
+     * @param {Set<DoomBodyView>} bodies     - the level's body views
+     * @param {string[]}          slotColors - CSS colour per slot, index 0 = slot 1
+     */
+    bindPlayerBodies(bodies, slotColors) {
+        this._bodies     = bodies;
+        this._slotColors = slotColors;
+        return this;
+    }
+
     bindAutomap(automap) {
         this._automap   = automap;
         this._colors    = this._profile.automapColors();
@@ -165,7 +180,7 @@ class HudAutomap extends AbstractHud {
         this._collectLines();
         this._strokeBuckets();
         this._strokeLocked();
-        this._drawPlayer();
+        this._drawPlayers();
     }
 
     // --- Internal ---
@@ -288,17 +303,38 @@ class HudAutomap extends AbstractHud {
         }
     }
 
+    // The viewed player's arrow follows its camera; the others their body.
+    _drawPlayers() {
+        const ownId  = this._user.getPlayerId();
+        let together = false;
+        for (const view of (this._bodies ?? [])) {
+            const id = view.getPlayerId();
+            if (id === null) {
+                continue;
+            }
+            together = true;
+            if (id !== ownId) {
+                const position = view.getInstance().getTransform().position;
+                this._drawArrow(position[0] / WadConstants.SCALE, position[2] / WadConstants.SCALE, view.getFacing() * DEG_TO_RAD, this._slotColor(id));
+            }
+        }
+        const color = ((together) ? this._slotColor(ownId) : AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1));
+        this._drawArrow(this._user.getCameraX() / WadConstants.SCALE, this._user.getCameraZ() / WadConstants.SCALE,
+            WadGeometry.doomAngleYaw(this._user.yaw) * DEG_TO_RAD, color);
+    }
+
+    _slotColor(playerId) {
+        return (this._slotColors[playerId - 1] ?? AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1));
+    }
+
     // The marker size does NOT follow the fitted scale: a wide level would
     // shrink it to nothing.
-    _drawPlayer() {
-        const doomX = this._user.getCameraX() / WadConstants.SCALE;
-        const doomY = this._user.getCameraZ() / WadConstants.SCALE;
-        const x     = this._screenX(doomX, doomY);
-        const y     = this._screenY(doomX, doomY);
-        const angle = WadGeometry.doomAngleYaw(this._user.yaw) * DEG_TO_RAD;
-        const size  = Math.max(HudAutomap.PLAYER_MIN_PX, this._height * HudAutomap.PLAYER_SIZE_RATIO);
+    _drawArrow(doomX, doomY, angle, color) {
+        const x    = this._screenX(doomX, doomY);
+        const y    = this._screenY(doomX, doomY);
+        const size = Math.max(HudAutomap.PLAYER_MIN_PX, this._height * HudAutomap.PLAYER_SIZE_RATIO);
 
-        this._ctx.fillStyle = AbstractHud.rgba(HudAutomap.PLAYER_RGB, 1);
+        this._ctx.fillStyle = color;
         this._ctx.beginPath();
         for (const [distance, offset] of HudAutomap.PLAYER_SHAPE) {
             const [dirX, dirY] = this._screenDir(angle + offset);

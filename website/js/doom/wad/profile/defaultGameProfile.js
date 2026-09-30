@@ -105,6 +105,32 @@ class DefaultGameProfile extends AbstractGameProfile {
         return [1, 2, 3, 4];
     }
 
+    // zscript doomplayer.zs; built on first use, the monster classes load after the profiles.
+    playerBodyDef() {
+        if (DefaultGameProfile._playerBody === null) {
+            DefaultGameProfile._playerBody = new DoomMonsterDef({
+                code: 'player', name: 'Marine', sprite: 'PLAY',
+                health: 100, radius: 16, height: 56, speed: 1, painChance: 255,
+                states: {
+                    spawn:   [['A', -1]],
+                    see:     [['ABCD', 4, null, 'see']],
+                    missile: [['E', 12, null, 'spawn']],
+                    melee:   [['F', 6, null, 'missile', true]],
+                    pain:    [['G', 4], ['G', 4, 'A_Pain', 'spawn']],
+                    death:   [['H', 10], ['I', 10, 'A_PlayerScream'], ['J', 10, 'A_NoBlocking'], ['KLM', 10], ['N', -1]],
+                    xdeath:  [['O', 5], ['P', 5, 'A_XScream'], ['Q', 5, 'A_NoBlocking'], ['RSTUV', 5], ['W', -1]]
+                }
+            });
+        }
+
+        return DefaultGameProfile._playerBody;
+    }
+
+    // zscript doomplayer.zs Player.ColorRange and Colorset 0-3: green, gray, brown, red.
+    playerColors() {
+        return DefaultGameProfile.PLAYER_COLORS;
+    }
+
     // mapinfo/doom2.txt (and tnt/plutonia): only the Icon of Sin's arena lets
     // a teleporting monster stomp — the cubes land on occupied spots.
     monsterTelefragMaps() {
@@ -1367,6 +1393,17 @@ DefaultGameProfile.BOSS_CUBE_SPAWNS = [
 // A_PosAttack / A_SPosAttack / A_CPosAttack all fire the same 3 × (1..5)
 // bullet, and every hitscan monster of the bestiary uses one of them.
 DefaultGameProfile.MONSTER_BULLET = {damage: {base: 3, dice: 5}, puff: 'puff'};
+// Player.ColorRange 112-127, then Player.Colorset 0-3 as [first, last, marker] of doomplayer.zs.
+DefaultGameProfile.PLAYER_COLORS = {
+    range: [0x70, 0x7F],
+    slots: [
+        {from: 0x70, to: 0x7F, marker: 0x72},
+        {from: 0x60, to: 0x6F, marker: 0x62},
+        {from: 0x40, to: 0x4F, marker: 0x42},
+        {from: 0x20, to: 0x2F, marker: 0x22}
+    ]
+};
+DefaultGameProfile._playerBody = null;
 
 // Commercial level songs in map order (mapinfo/doom2.txt, the vanilla
 // mus_runnin + map − 1 sequence): lump = 'D_' + name.

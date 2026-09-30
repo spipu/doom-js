@@ -26,15 +26,11 @@ class DoomSubRole {
         this._multiplayerThings = false;
         this._levelSeq          = null;    // the main's sequence number of the level being built
         this._lastStateAt       = null;
-        this._waitingFor        = [];      // nicknames the game waits for
-        this._mainPaused        = false;
-        this._mainDead          = false;
+        this._notice            = new DoomSessionNotice();
         this._levelOver         = false;   // the main's tally or story text is shown
-        this._notice            = null;
         this._localPaused       = false;
         this._playEvent         = null;
         this._onLevelLoad       = null;
-        this._onNotice          = null;
         this._onPhase           = null;
         this._onModeChange      = null;
     }
@@ -50,8 +46,8 @@ class DoomSubRole {
     follow(playEvent, onLevelLoad, onNotice, onPhase, onEnd, onModeChange) {
         this._playEvent    = playEvent;
         this._onLevelLoad  = onLevelLoad;
-        this._onNotice     = onNotice;
         this._onPhase      = onPhase;
+        this._notice.setOnNotice(onNotice);
         this._onModeChange = onModeChange;
         this._session.setCycle(this).setOnEnd(onEnd);
 
@@ -65,10 +61,7 @@ class DoomSubRole {
         this._levelSeq          = level.seq;
         this._applier           = null;
         this._levelOver         = false;
-        this._mainPaused        = false;
-        this._mainDead          = false;
-        this._waitingFor        = [];
-        this._refreshNotice();
+        this._notice.clear();
         this._session.setLivenessSuspended(true);
     }
 
@@ -167,12 +160,12 @@ class DoomSubRole {
     advance(dt, sampler, onPlayersMoved, now) {
         this._sampler = sampler;
         onPlayersMoved();
-        if ((this._lastStateAt === null) || this._mainPaused || this._levelOver || (this._waitingFor.length > 0)
+        this._notice.update(now);
+        if ((this._lastStateAt === null) || this._notice.isMainPaused() || this._levelOver || this._notice.isWaiting()
             || ((now - this._lastStateAt) <= DoomNetTurnCycle.WAITING_NOTICE_MS)) {
             return;
         }
-        this._waitingFor = [this._session.getHostNickname()];
-        this._refreshNotice();
+        this._notice.setWaiting([this._session.getHostNickname()]);
     }
 
     leave() {
@@ -189,25 +182,27 @@ class DoomSubRole {
     // a player does not watch the main's death.
     modeChanged() {
         this._onModeChange();
-        this._refreshNotice();
+        this._notice.setMainDead(false);
     }
 
     waiting(nicknames) {
-        this._waitingFor = nicknames;
-        this._refreshNotice();
+        this._notice.setWaiting(nicknames);
+    }
+
+    // Another player left the game: it is named for a moment.
+    playerRemoved(message) {
+        this._notice.departed(message.nickname, performance.now());
     }
 
     // No state comes during a phase: a pause ends with the next state, the
     // level's end with the next level.
     phase(message) {
-        this._waitingFor = [];
         if (message.type === DoomNetProtocol.PAUSE) {
-            this._mainPaused = true;
-            this._refreshNotice();
+            this._notice.pausedByMain();
             return;
         }
         this._levelOver = true;
-        this._refreshNotice();
+        this._notice.setWaiting([]);
         this._onPhase(message);
     }
 
@@ -230,40 +225,14 @@ class DoomSubRole {
         const command = (((sampled === null) || this._localPaused) ? this._neutralCommand : sampled);
         this._session.sendBinary(this._codec.encode(snapshot.turn + 1, command));
         this._lastStateAt = performance.now();
-        this._waitingFor  = [];
-        this._mainPaused  = false;
-        this._mainDead    = this._isMainDead(snapshot);
-        this._refreshNotice();
+        this._notice.turnArrived(this._watchesMainDeath(snapshot));
     }
 
-    _isMainDead(snapshot) {
+    // A viewer watches the main's death; a player sees its own.
+    _watchesMainDeath(snapshot) {
         const main = snapshot.players.find((player) => (player.id === DoomPlayer.MAIN_ID));
 
-        return ((main !== undefined) && main.dead);
-    }
-
-    // One message at a time: a wait first, then the main's pause, then its death.
-    _refreshNotice() {
-        const notice = this._noticeText();
-        if (notice === this._notice) {
-            return;
-        }
-        this._notice = notice;
-        this._onNotice(notice);
-    }
-
-    _noticeText() {
-        if (this._waitingFor.length > 0) {
-            return appTranslator.get('multiplayer.waiting', {nickname: this._waitingFor.join(', ')});
-        }
-        if (this._mainPaused) {
-            return appTranslator.get('multiplayer.pausedByMain');
-        }
-        if (this._mainDead && !this._playsOwnPlayer()) {
-            return appTranslator.get('multiplayer.mainDead');
-        }
-
-        return null;
+        return (!this._playsOwnPlayer() && (main !== undefined) && main.dead);
     }
 }
 

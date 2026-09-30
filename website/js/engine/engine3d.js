@@ -12,6 +12,7 @@ class Engine3d {
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this.instanceLight    = 1;    // light multiplier of the instance being drawn (1 for the static map)
         this.instanceRoll     = 0;    // billboard spin of the instance being drawn
+        this.instanceScale    = 1;    // billboard vertical squash of the instance being drawn
         this.textureSmoothing = true; // texture filter: smoothed, or raw texels
         this.viewYaw          = 0;    // cached in setCamera for the sky pass
         this.viewPitch        = 0;
@@ -279,9 +280,11 @@ class Engine3d {
         this.viewMatrix.multiply(Matrix.composeInstanceTransform(instance.getRenderTransform()));
         this.instanceLight = instance.getRenderLight();
         this.instanceRoll  = instance.getRenderRoll();
+        this.instanceScale = instance.getRenderScale();
         this.drawObject(instance.getObject());
         this.instanceLight = 1;
         this.instanceRoll  = 0;
+        this.instanceScale = 1;
         this.matrixPop();
         return this;
     }
@@ -292,7 +295,7 @@ class Engine3d {
     }
 
     drawObject(obj) {
-        obj.ptTransform(this.viewMatrix, this.zBuffer.getNear(), this.instanceRoll);
+        obj.ptTransform(this.viewMatrix, this.zBuffer.getNear(), this.instanceRoll, this.instanceScale);
         if (this._renderer.needsProjection()) {
             obj.ptProjection(this);
         }

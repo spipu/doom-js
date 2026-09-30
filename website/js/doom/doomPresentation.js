@@ -76,7 +76,8 @@ class DoomPresentation {
         this._player             = player;
         this._automap            = builtLevel.getAutomap();
         this._weaponOverlay      = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
-        this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getMonsterLevelData(), builtLevel.getCrushedCorpseView());
+        this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getMonsterLevelData(), builtLevel.getCrushedCorpseView(),
+            builtLevel.getEmptyBodyObject());
         this._projectileRenderer = new DoomProjectileRenderer(builtLevel.getProjectileViews());
         this._effects            = new DoomEffects(builtLevel.getEffectTemplates()).setWorld(world.getCollision());
         this._decals             = ((builtLevel.getDecalTemplates() !== null) ? new DoomDecals(builtLevel.getDecalTemplates()) : null);
@@ -162,7 +163,7 @@ class DoomPresentation {
             .addDescription('(c)2026 Spipu')
         ;
         if (this._automap !== null) {
-            this._hud.bindAutomap(this._automap);
+            this._hud.bindPlayerBodies(this._level.getBodyViews(), this._level.getPlayerColors()).bindAutomap(this._automap);
         }
 
         this._screen.bindHud(this._hud);

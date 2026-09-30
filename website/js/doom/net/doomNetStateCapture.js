@@ -102,7 +102,8 @@ class DoomNetStateCapture {
             bright:  view.isBright(),
             crushed: view.isCrushed(),
             sector:  view.getSector(),
-            offset:  ((offset !== null) ? [offset[0], offset[1], offset[2]] : null)
+            offset:  ((offset !== null) ? [offset[0], offset[1], offset[2]] : null),
+            scale:   view.getRenderScale()
         };
     }
 

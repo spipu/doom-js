@@ -35,7 +35,8 @@ class DoomPlayerWeapon {
         this._attackDown    = false;
         this._fireHeld      = false;
         this._extraLight    = 0;
-        this._noiseCallback = null;
+        this._fireCallback  = null;
+        this._flashCallback = null;
 
         this._ticks      = 0;
         this._untickedMs = 0;
@@ -51,10 +52,17 @@ class DoomPlayerWeapon {
         return this;
     }
 
-    // Fired once per initiated attack (new press AND each refire cycle) —
-    // the vanilla P_FireWeapon site of P_NoiseAlert, every weapon included.
-    setNoiseCallback(callback) {
-        this._noiseCallback = callback;
+    // Called once per initiated attack (new press AND each refire cycle) —
+    // the vanilla P_FireWeapon site of P_NoiseAlert and of the attack state of
+    // the player's body, every weapon included.
+    setFireCallback(callback) {
+        this._fireCallback = callback;
+        return this;
+    }
+
+    // Called when the muzzle flash lights (A_GunFlash: the body's flash state).
+    setFlashCallback(callback) {
+        this._flashCallback = callback;
         return this;
     }
 
@@ -261,6 +269,9 @@ class DoomPlayerWeapon {
     _showFlash(flashKey) {
         if ((flashKey !== undefined) && (this._def().getState(flashKey) !== null)) {
             this._setState(this._flashPsp, flashKey);
+            if (this._flashCallback !== null) {
+                this._flashCallback();
+            }
         }
     }
 
@@ -333,7 +344,7 @@ class DoomPlayerWeapon {
         }
         // P_FireWeapon wakes the neighbourhood (P_NoiseAlert) on every
         // initiated attack — fist and chainsaw included, vanilla.
-        this._noiseCallback();
+        this._fireCallback();
         // Recenter for the shot: the weapon stays steady through sustained fire
         // instead of freezing mid-bob.
         this._motion.recenter();

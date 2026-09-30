@@ -1,5 +1,5 @@
 /**
- * The drawable state of a body — monster, corpse, barrel, drop — in plain
+ * The drawable state of a body — monster, corpse, barrel, drop, player — in plain
  * data: which of its views shows, how it faces, where it stands and how its
  * stepped motion is smoothed. The simulation writes it on the simulating
  * device; a replica writes the same object on any other device, and the
@@ -9,7 +9,7 @@ class DoomBodyView {
     /**
      * @param {Instance}    inst
      * @param {object|null} frames - view key → [objId ×1|×8]; null for a drop, whose sprite never changes
-     * @param {string}      kind   - the monster def code, or the drop key (DoomMonsterSystem.dropKey)
+     * @param {string}      kind   - the monster def code, the drop key (DoomMonsterSystem.dropKey) or DoomPlayerBody.kindOf(slot)
      */
     constructor(inst, frames, kind) {
         this._inst         = inst;
@@ -21,6 +21,8 @@ class DoomBodyView {
         this._facing       = 0;          // Doom degrees
         this._sector       = null;       // sector index the body is lit by
         this._crushed      = false;      // ground into the gib pool
+        this._playerId     = null;       // the player whose body it is, null for any other body
+        this._renderScale  = 1;          // vertical squash (a crouching player)
         this._hasOffset    = false;
         this._renderOffset = [0, 0, 0];  // glide from the previous spot, reused every frame
     }
@@ -91,6 +93,26 @@ class DoomBodyView {
 
     getSector() {
         return this._sector;
+    }
+
+    setPlayerId(playerId) {
+        this._playerId = playerId;
+
+        return this;
+    }
+
+    getPlayerId() {
+        return this._playerId;
+    }
+
+    setRenderScale(scale) {
+        this._renderScale = scale;
+
+        return this;
+    }
+
+    getRenderScale() {
+        return this._renderScale;
     }
 
     setCrushed(crushed) {

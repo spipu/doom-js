@@ -29,6 +29,7 @@ class DoomBuiltLevel {
         this._monsterPlacements = [];          // monster records as DoomMonsterSystem.add takes them, in map order
         this._monsterLevelData  = null;        // sector graph, REJECT, mover codes, monster lines, spots, live heights
         this._monsterSpawnables = {};          // def code → {def, frames}: the bodies born in play
+        this._playerBodies      = null;        // {def, frames: kind → views, colors: CSS per slot, emptyObject}, null without player sprites
         this._dropTemplates     = [];          // {key, code, objId, effect} per item/amount pair
         this._crushedCorpseView = null;        // null when the game has no gib pool
         this._bossBrain         = null;        // DoomBossBrain on an Icon of Sin level
@@ -205,6 +206,39 @@ class DoomBuiltLevel {
 
     getMonsterSpawnables() {
         return this._monsterSpawnables;
+    }
+
+    setPlayerBodies(playerBodies) {
+        this._playerBodies = playerBodies;
+
+        return this;
+    }
+
+    /**
+     * @returns {DoomMonsterDef|null} the definition of a player's visible body, null without player sprites
+     */
+    getPlayerBodyDef() {
+        return ((this._playerBodies !== null) ? this._playerBodies.def : null);
+    }
+
+    /**
+     * @param {string} kind - DoomPlayerBody.kindOf(slot)
+     * @returns {object|null} the views of the bodies of that slot, in its colour
+     */
+    getPlayerBodyFrames(kind) {
+        return ((this._playerBodies !== null) ? (this._playerBodies.frames[kind] ?? null) : null);
+    }
+
+    /**
+     * @returns {string[]} the CSS colour of each slot (index 0 = slot 1), none without player sprites
+     */
+    getPlayerColors() {
+        return ((this._playerBodies !== null) ? this._playerBodies.colors : []);
+    }
+
+    // What a device shows for the body of the player it views: nothing.
+    getEmptyBodyObject() {
+        return ((this._playerBodies !== null) ? this._playerBodies.emptyObject : null);
     }
 
     setDropTemplates(dropTemplates) {

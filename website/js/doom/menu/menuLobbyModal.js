@@ -1,6 +1,6 @@
 /**
- * The lobby of a session: its players in slot order with their ping, updated
- * live. The main adds a player (greyed out once the lobby is full), removes a
+ * The lobby of a session: its players in slot order with their ping and, in
+ * cooperative, the colour of their slot, updated live. The main adds a player (greyed out once the lobby is full), removes a
  * sub by picking its line, and starts; a sub only sees the list — and that the
  * game runs on the main — and can leave.
  */
@@ -73,7 +73,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
     // A new player list is rebuilt; a ping sample only rewrites the pings.
     _refresh() {
         const lobby = this._session.getLobby();
-        const shape = JSON.stringify([lobby.getPlayers().map((player) => player.id), this._session.isStarted()]);
+        const shape = JSON.stringify([lobby.getPlayers().map((player) => [player.id, player.color]), this._session.isStarted()]);
         this._titleEl.textContent = appTranslator.get('multiplayer.lobby.title', {count: lobby.getPlayers().length, capacity: lobby.getCapacity()});
         if (shape !== this._shape) {
             this._shape = shape;
@@ -111,6 +111,11 @@ class MenuLobbyModal extends AbstractMenuListModal {
     _addPlayer(player) {
         const label = appTranslator.get('multiplayer.lobby.player', {slot: player.slot, nickname: player.nickname});
         const item  = this._nav.addItemIn(this._listEl, label, () => this._pickPlayer(player));
+        if (player.color !== null) {
+            const swatch = MenuDom.addElement(item, 'span', 'doom-menu-lobby-color');
+            swatch.style.background = player.color;
+            item.insertBefore(swatch, item.firstChild);
+        }
         this._pingEls.set(player.id, MenuDom.addText(item, 'doom-menu-item-infos', this._pingText(player)));
         this._itemKeys.push(player.id);
     }

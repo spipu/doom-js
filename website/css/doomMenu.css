@@ -147,6 +147,15 @@
     letter-spacing: 0.1em;
 }
 
+/* Colour of a player's slot in a cooperative lobby, before its nickname. */
+.doom-menu-lobby-color {
+    flex-shrink: 0;
+    width: 0.8em;
+    height: 0.8em;
+    margin-right: 0.6em;
+    border-radius: 0.15em;
+}
+
 /* Setting row value (right side of the item, the label pushes it there). */
 .doom-menu-item-value {
     color: rgba(255, 255, 255, 0.9);

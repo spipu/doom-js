@@ -52,6 +52,7 @@ class Instance extends AbstractLoadedEntity {
         this._renderOffset           = null;
         this._renderLight            = 1;
         this._renderRoll             = 0;
+        this._renderScale            = 1;
 
         // Collision (none | faces | box)
         this._collisionShape    = 'none';
@@ -610,6 +611,15 @@ class Instance extends AbstractLoadedEntity {
 
     getRenderRoll() {
         return this._renderRoll;
+    }
+
+    // Draw-time vertical squash of a billboard, feet kept on the ground (1 = full height)
+    setRenderScale(scale) {
+        this._renderScale = scale;
+    }
+
+    getRenderScale() {
+        return this._renderScale;
     }
 
     // The roll turns the body around its origin, not its bounding-sphere centre

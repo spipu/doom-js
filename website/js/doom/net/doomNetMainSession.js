@@ -14,18 +14,22 @@ class DoomNetMainSession {
      * @param {int}          capacity  - players, main included
      * @param {int}          mode      - DoomNetProtocol.MODE_*
      * @param {object}       options   - the mode's game settings, as the subs get them
+     * @param {string[]}     colors    - CSS colour of each slot (index 0 = slot 1), shown in cooperative
      */
-    constructor(links, wadSha256, nickname, capacity, mode, options) {
+    constructor(links, wadSha256, nickname, capacity, mode, options, colors) {
         this._links     = links;
         this._wadSha256 = wadSha256;
+        this._colors    = colors;
         this._lobby     = new DoomNetLobby(capacity).addMain(nickname);
         this._mode      = mode;
         this._options   = options;
+        this._onRemoved = null;
         this._started   = false;
         this._pairing   = null;
         this._onChange  = null;
         this._cycle     = null;
         this._pending   = new Map();   // peer id → nickname of a sub paired but not yet heard
+        this._lobby.setColors(this._colorsOf(mode));
         this._host      = new NetHostSession(appBootstrap.getVersion(), links.linkFactory())
             .setOnPeerOpen((peer) => this._admit(peer))
             .setOnPeerControl((peer, message) => this._receive(peer, message))
@@ -59,6 +63,7 @@ class DoomNetMainSession {
     setMode(mode, options) {
         this._mode    = mode;
         this._options = options;
+        this._lobby.setColors(this._colorsOf(mode));
         for (const peer of this._host.getPeers()) {
             if (this._lobby.getPlayer(peer.getId()) !== null) {
                 this._welcome(peer);
@@ -66,6 +71,20 @@ class DoomNetMainSession {
         }
 
         return this;
+    }
+
+    /**
+     * @param {function(string)} callback - the nickname of a player who left a cooperative game
+     */
+    setOnPlayerRemoved(callback) {
+        this._onRemoved = callback;
+
+        return this;
+    }
+
+    // The players' colours only mean something once they have a body.
+    _colorsOf(mode) {
+        return ((mode === DoomNetProtocol.MODE_COOPERATIVE) ? this._colors : null);
     }
 
     /**
@@ -147,6 +166,7 @@ class DoomNetMainSession {
         }
         peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
         this._cycleCall('gone', peer);
+        this._announceRemoval(peer);
         this._lobby.remove(peerId);
         this._changed();
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
@@ -219,8 +239,26 @@ class DoomNetMainSession {
             return;
         }
         this._cycleCall('gone', peer);
+        this._announceRemoval(peer);
         this._lobby.remove(peer.getId());
         this._changed();
+    }
+
+    // In cooperative the other players are told who left, and so is the main's game.
+    _announceRemoval(peer) {
+        if (this._mode !== DoomNetProtocol.MODE_COOPERATIVE) {
+            return;
+        }
+        const player  = this._lobby.getPlayer(peer.getId());
+        const message = {type: DoomNetProtocol.PLAYER_REMOVED, playerId: player.slot, nickname: player.nickname};
+        for (const other of this._host.getPeers()) {
+            if ((other !== peer) && (this._lobby.getPlayer(other.getId()) !== null)) {
+                other.sendControl(message);
+            }
+        }
+        if (this._onRemoved !== null) {
+            this._onRemoved(player.nickname);
+        }
     }
 
     _cycleCall(event, peer, payload = null) {

@@ -42,6 +42,7 @@ class DoomGame {
         this._netLinks        = new DoomNetLinks();
         this._netAvailability = new DoomNetAvailability(this._netLinks);
         this._netSession      = null;   // DoomNetMainSession while the game hosts a session
+        this._hostNotice      = new DoomSessionNotice().setOnNotice((notice) => this._presentation.setNotice(notice));
         this._joining         = false;  // a sub is building the level the main sent
         this._pendingLevel    = null;   // the level the main sent meanwhile, built next
         this._endReason       = null;   // DoomNetProtocol.END_* once the followed session ended
@@ -236,6 +237,7 @@ class DoomGame {
             return;
         }
         this._role.tickLevelClock(timestamp, !this._paused && !this._transitioning);
+        this._hostNotice.update(timestamp);
 
         // Read on paused frames too, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
@@ -347,7 +349,9 @@ class DoomGame {
         if (typeof this._wadMeta.sha256 !== 'string') {
             return null;
         }
-        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers(), mode, options);
+        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers(), mode, options,
+            this._builtLevel.getPlayerColors())
+            .setOnPlayerRemoved((removedNickname) => this._hostNotice.departed(removedNickname, performance.now()));
         this._netSession = session;
         this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
             .setPingSource(() => session.getLobby().getWorstPing());
@@ -382,13 +386,8 @@ class DoomGame {
         this._netSession.stop(endReason);
         this._netSession = null;
         this._setRules(new DoomSinglePlayerRules());
-        this._showWaiting([]);
+        this._hostNotice.clear();
         this._presentation.setForcedRenderer(null).setPingSource(null);
-    }
-
-    // "Waiting for …" over the frozen game, none clears it.
-    _showWaiting(nicknames) {
-        this._presentation.setNotice(((nicknames.length > 0) ? appTranslator.get('multiplayer.waiting', {nickname: nicknames.join(', ')}) : null));
     }
 
     // The main started another level: the sub builds it and joins again. A
@@ -517,7 +516,7 @@ class DoomGame {
             return;
         }
         this._netSession.start();
-        this._role.startHosting(this._netSession, (nicknames) => this._showWaiting(nicknames));
+        this._role.startHosting(this._netSession, (nicknames) => this._hostNotice.setWaiting(nicknames));
     }
 
     // "{wad} — Episode {n}"; a MAPxx game is episode 1.

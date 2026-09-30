@@ -134,14 +134,20 @@ class DoomNetStateCodec {
 
     // --- Bodies ---
 
-    // Fixed-size record: the offset is always written, its flag says if it counts.
+    // The offset is always written, its flag says if it counts; the squash of
+    // a crouching player follows only when its flag is set.
     static _writeBody(w, b) {
-        const flags = ((b.bright) ? DoomNetStateCodec.BODY_BRIGHT : 0)
+        const scaled = (b.scale !== 1);
+        const flags  = ((b.bright) ? DoomNetStateCodec.BODY_BRIGHT : 0)
             | ((b.crushed) ? DoomNetStateCodec.BODY_CRUSHED : 0)
-            | ((b.offset !== null) ? DoomNetStateCodec.BODY_OFFSET : 0);
+            | ((b.offset !== null) ? DoomNetStateCodec.BODY_OFFSET : 0)
+            | ((scaled) ? DoomNetStateCodec.BODY_SCALED : 0);
         w.u32(b.id).f32(b.x).f32(b.y).f32(b.z).f32(b.facing)
             .u16(b.frame ?? DoomNetStateCodec.NONE_U16).u8(flags).u16(b.sector ?? DoomNetStateCodec.NONE_U16);
         DoomNetStateCodec._writeVector(w, (b.offset ?? DoomNetStateCodec.ZERO_VECTOR));
+        if (scaled) {
+            w.f32(b.scale);
+        }
     }
 
     static _readBody(r) {
@@ -155,6 +161,7 @@ class DoomNetStateCodec {
         b.crushed = ((flags & DoomNetStateCodec.BODY_CRUSHED) !== 0);
         b.sector  = ((si !== DoomNetStateCodec.NONE_U16) ? si : null);
         b.offset  = (((flags & DoomNetStateCodec.BODY_OFFSET) !== 0) ? offset : null);
+        b.scale   = (((flags & DoomNetStateCodec.BODY_SCALED) !== 0) ? r.f32() : 1);
 
         return b;
     }
@@ -363,6 +370,7 @@ DoomNetStateCodec.EVENT_TYPES = [
 DoomNetStateCodec.BODY_BRIGHT   = 1;
 DoomNetStateCodec.BODY_CRUSHED  = 2;
 DoomNetStateCodec.BODY_OFFSET   = 4;
+DoomNetStateCodec.BODY_SCALED   = 8;
 DoomNetStateCodec.NONE_U16      = 0xFFFF;
 DoomNetStateCodec.NONE_U32      = 0xFFFFFFFF;
 DoomNetStateCodec.BITS_PER_BYTE = 8;

@@ -62,7 +62,7 @@ class DoomNetSubSession {
 
     /**
      * Who follows the main's game: {levelLoad(message), state(buffer),
-     * waiting(nicknames), phase(message), modeChanged()} — the lobby screen
+     * waiting(nicknames), phase(message), modeChanged(), playerRemoved(message)} — the lobby screen
      * until the game runs, then the game's role.
      */
     setCycle(cycle) {
@@ -187,6 +187,10 @@ class DoomNetSubSession {
         }
         if (message.type === DoomNetProtocol.WAITING) {
             this._cycleCall('waiting', message.nicknames);
+            return;
+        }
+        if (message.type === DoomNetProtocol.PLAYER_REMOVED) {
+            this._cycleCall('playerRemoved', message);
             return;
         }
         if (DoomNetSubSession.PHASES.includes(message.type)) {

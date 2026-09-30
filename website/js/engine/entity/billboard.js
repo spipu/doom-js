@@ -83,9 +83,10 @@ class Billboard extends Object3d {
     }
 
     // The anchor in camera space is the matrix translation row, world up is
-    // m.v[1]. `roll` (radians) spins the quad in its own plane. The normal is
-    // turned toward the camera so back-face culling keeps the quad.
-    ptTransform(m, minZ = 0, roll = 0) {
+    // m.v[1]. `roll` (radians) spins the quad in its own plane, `scale` squashes
+    // it vertically around its anchor. The normal is turned toward the camera so
+    // back-face culling keeps the quad.
+    ptTransform(m, minZ = 0, roll = 0, scale = 1) {
         const px = m.v[3][0];
         const py = m.v[3][1];
         const pz = m.v[3][2];
@@ -136,9 +137,9 @@ class Billboard extends Object3d {
         }
 
         const hw = this._halfWidth;
-        const h  = this._height;
+        const h  = this._height * scale;
         const ox = this._anchorOffsetX;
-        const oy = this._anchorOffsetY;
+        const oy = this._anchorOffsetY * scale;
 
         const ax = px + ox * rx + oy * ux;
         const ay = py + ox * ry + oy * uy;

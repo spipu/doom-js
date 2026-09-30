@@ -26,18 +26,19 @@ class DoomSimulation {
         this._level       = null;   // the DoomBuiltLevel it adopted
         this._stats       = new DoomLevelStats();
 
-        this._effects        = null;   // spawner of the sprite effects (puffs, explosions)
+        this._effects        = null;        // spawner of the sprite effects (puffs, explosions)
         this._hitscan        = null;
         this._projectiles    = null;
-        this._decals         = null;   // spawner of the impact decals, null without decal graphics
+        this._decals         = null;        // spawner of the impact decals, null without decal graphics
         this._monsters       = null;
         this._monsterDamage  = null;
         this._monsterAttack  = null;
         this._sectorDamage   = null;
-        this._gunTriggers    = null;   // shot-activated lines
-        this._sectorSurfaces = null;   // floor flats/specials rewritten by the "+change" floors
+        this._gunTriggers    = null;        // shot-activated lines
+        this._sectorSurfaces = null;        // floor flats/specials rewritten by the "+change" floors
         this._terrain        = null;
-        this._playerStarts   = {};     // slot → {x, y, z, yaw}, the map's player starts
+        this._playerStarts   = {};          // slot → {x, y, z, yaw}, the map's player starts
+        this._bodies         = new Map();   // player id → DoomPlayerBody, in cooperative
     }
 
     // --- Profile and skill ---
@@ -67,8 +68,42 @@ class DoomSimulation {
         if (this._monsterDamage !== null) {
             this._monsterDamage.setFriendlyFire(rules.allowsFriendlyFire());
         }
+        if (this._world !== null) {
+            this._showPlayerBodies();
+        }
 
         return this;
+    }
+
+    // The players' bodies exist while the subs play their own players.
+    _showPlayerBodies() {
+        for (const player of this._roster.getInLevel()) {
+            if (this._rules.admitsSubPlayers()) {
+                this._addBody(player);
+            } else {
+                this._removeBody(player);
+            }
+        }
+    }
+
+    _addBody(player) {
+        const frames = this._level.getPlayerBodyFrames(DoomPlayerBody.kindOf(player.getId()));
+        if (this._bodies.has(player.getId()) || (frames === null)) {
+            return;
+        }
+        const body = new DoomPlayerBody(player, this._level.getPlayerBodyDef(), frames, this._level.getMonsterLevelData());
+        this._bodies.set(player.getId(), body);
+        this._level.getBodyViews().add(body.getView());
+    }
+
+    _removeBody(player) {
+        const body = (this._bodies.get(player.getId()) ?? null);
+        if (body === null) {
+            return;
+        }
+        loader.instances().scheduleRemoval(body.getView().getInstance());
+        this._level.getBodyViews().delete(body.getView());
+        this._bodies.delete(player.getId());
     }
 
     setSkill(skill) {
@@ -171,6 +206,7 @@ class DoomSimulation {
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
+        this._bodies = new Map();
         this._monsters.setWorld(world);
         this._monsterDamage.setWorld(world).setFriendlyFire(this._rules.allowsFriendlyFire());
         this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._events, this._gunTriggers, this._monsters, this._monsterDamage);
@@ -205,7 +241,14 @@ class DoomSimulation {
         if (user.getActiveWeapon() !== null) {
             player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), player.getWeaponView(), user, this._rng, this._events)
                 .setAttackSystems(this._hitscan, this._projectiles)
-                .setNoiseCallback(() => this._monsters.noiseAlert(user)));
+                .setFireCallback(() => {
+                    this._monsters.noiseAlert(user);
+                    this._bodies.get(player.getId())?.fired();
+                })
+                .setFlashCallback(() => this._bodies.get(player.getId())?.flashed()));
+        }
+        if (this._rules.admitsSubPlayers()) {
+            this._addBody(player);
         }
 
         return this;
@@ -219,6 +262,7 @@ class DoomSimulation {
      */
     removePlayer(player) {
         const user = player.getUser();
+        this._removeBody(player);
         this._world.removeUser(user);
         this._monsters.forgetActor(user);
         this._projectiles.forgetActor(user);
@@ -337,6 +381,9 @@ class DoomSimulation {
         }
         if (this._monsters !== null) {
             this._monsters.update(dt);
+        }
+        for (const [id, body] of this._bodies) {
+            body.update(dt, (commands.get(id) ?? World.NEUTRAL_COMMAND));
         }
     }
 

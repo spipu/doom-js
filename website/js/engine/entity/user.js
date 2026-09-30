@@ -856,6 +856,11 @@ class User {
     }
 
     // --- Geometry ---
+    // Standing height; getCurrentHeight follows the crouch.
+    getHeight() {
+        return this._height;
+    }
+
     getCurrentHeight() {
         return this._height * (1 - this._crouchProgress * (1 - this._crouchRatio));
     }

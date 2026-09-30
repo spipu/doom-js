@@ -234,6 +234,7 @@ class WadWorldBuilder {
         // Things
         const builtFloorCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         const things = this._registerThings(level, palette, analysis, builtFloorCodes);
+        this._registerPlayerBodies(palette);
         this._registerAmbientSounds(level);
         await this._yield();
 
@@ -488,6 +489,50 @@ class WadWorldBuilder {
             }
         }
         this._built.setMonsterSpawnables(catalog);
+    }
+
+    // The players' visible bodies, one colour per slot (a sprite bank decoding
+    // through each slot's translation), built inside the batch for every slot:
+    // any player may enter during the level.
+    _registerPlayerBodies(palette) {
+        const def          = this._profile.playerBodyDef();
+        const colors       = this._profile.playerColors();
+        const frames       = {};
+        const billboardIds = {};
+        let firstView      = null;
+        colors.slots.forEach((slot, index) => {
+            const bank  = new WadSpriteBank(this._wadFile, new WadPaletteTranslation(palette, colors.range, slot.from)).init();
+            const views = DoomMonsterFrames.build(def, bank, true);
+            if (views === null) {
+                return;
+            }
+            frames[DoomPlayerBody.kindOf(index + 1)] = this._monsterBillboards(views, def.getAlpha(), false, billboardIds);
+            firstView = (firstView ?? views[Object.keys(views)[0]][0]);
+        });
+        if (firstView === null) {
+            return;
+        }
+        this._built.setPlayerBodies({
+            def:         def,
+            frames:      frames,
+            colors:      colors.slots.map((slot) => WadWorldBuilder._cssColor(palette.getColor(slot.marker))),
+            emptyObject: this._emptyBillboard(firstView)
+        });
+    }
+
+    // A billboard of no size: drawn, it covers nothing.
+    _emptyBillboard(spr) {
+        return loader.objects().loadBillboardFromData(null, {
+            billboard: true,
+            textures:  [spr.loaderId],
+            halfWidth: 0,
+            height:    0,
+            light:     255
+        });
+    }
+
+    static _cssColor(rgb) {
+        return 'rgb(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ')';
     }
 
     // Crushed-corpse billboard (vanilla S_GIBS), built inside the batch; none

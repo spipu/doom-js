@@ -60,14 +60,15 @@ class MultiplayerScreen extends AbstractMenuScreen {
             MenuNetMessages.showEnd(this._display, reason);
         });
         session.setCycle({
-            levelLoad:   (level) => {
+            levelLoad:     (level) => {
                 lobby.setOnClose(null).close();
                 this._navigator.joinSharedGame(this._wadMeta, session, level);
             },
-            state:       () => {},
-            waiting:     () => {},
-            phase:       () => {},
-            modeChanged: () => {}
+            state:         () => {},
+            waiting:       () => {},
+            phase:         () => {},
+            modeChanged:   () => {},
+            playerRemoved: () => {}
         });
         lobby.openSub(session, {leave: () => session.leave()});
     }

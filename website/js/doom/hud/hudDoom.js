@@ -57,6 +57,11 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
+    bindPlayerBodies(bodies, slotColors) {
+        this._automap.bindPlayerBodies(bodies, slotColors);
+        return this;
+    }
+
     // Level automap, absent when the WAD carries no usable BSP. After bindProfile.
     bindAutomap(automap) {
         this._automap.bindAutomap(automap);

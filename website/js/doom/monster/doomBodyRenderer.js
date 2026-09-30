@@ -1,18 +1,21 @@
 /**
  * Draws the bodies from their views, the same on every device: which of the
  * eight rotation views shows from the viewed player, how bright the instance
- * is lit, and where the glide puts it on screen.
+ * is lit, where the glide puts it on screen and how a crouch squashes it. The
+ * viewed player's own body is never drawn.
  */
 class DoomBodyRenderer {
     /**
      * @param {Set<DoomBodyView>} views       - the level's bodies
      * @param {object}            levelData   - sector lights and their live effects
      * @param {int|null}          crushedView - the gib pool object, null when the game has none
+     * @param {int|null}          emptyView   - the object of the viewed player's own body, null without player bodies
      */
-    constructor(views, levelData, crushedView) {
+    constructor(views, levelData, crushedView, emptyView) {
         this._views       = views;
         this._levelData   = levelData;
         this._crushedView = crushedView;
+        this._emptyView   = emptyView;
         this._shown       = new WeakMap();   // view → what its instance was last given
     }
 
@@ -29,6 +32,7 @@ class DoomBodyRenderer {
             this._drawObject(view, shown, viewer);
             this._drawLight(view, shown);
             this._drawOffset(view, shown);
+            view.getInstance().setRenderScale(view.getRenderScale());
         }
     }
 
@@ -45,6 +49,9 @@ class DoomBodyRenderer {
     // A ground corpse keeps its gib pool whatever its state machine says (it
     // keeps running to its terminal frame for the nightmare respawn).
     _objectOf(view, viewer) {
+        if ((view.getPlayerId() !== null) && (view.getPlayerId() === viewer.getPlayerId())) {
+            return this._emptyView;
+        }
         if (view.isCrushed()) {
             return this._crushedView;
         }

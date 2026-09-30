@@ -12,6 +12,23 @@ class DoomNetLobby {
     constructor(capacity) {
         this._capacity = capacity;
         this._players  = [];
+        this._colors   = null;   // CSS colour per slot, null while the players have no colour
+    }
+
+    /**
+     * @param {string[]|null} colors - index 0 = slot 1, null for none
+     */
+    setColors(colors) {
+        this._colors = colors;
+        for (const player of this._players) {
+            player.color = this._colorOf(player.slot);
+        }
+
+        return this;
+    }
+
+    _colorOf(slot) {
+        return ((this._colors !== null) ? (this._colors[slot - 1] ?? null) : null);
     }
 
     // The main holds slot 1 and player id MAIN_ID.
@@ -20,7 +37,8 @@ class DoomNetLobby {
     }
 
     addPlayer(id, nickname) {
-        this._players.push({id: id, slot: this._lowestFreeSlot(), nickname: nickname, ping: null});
+        const slot = this._lowestFreeSlot();
+        this._players.push({id: id, slot: slot, nickname: nickname, ping: null, color: this._colorOf(slot)});
         this._players.sort((a, b) => (a.slot - b.slot));
 
         return this;
