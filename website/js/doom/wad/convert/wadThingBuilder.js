@@ -215,7 +215,7 @@ class WadThingBuilder {
             return null;
         }
 
-        const baseH = ((def.isCeiling()) ? sect.ch : sect.fh);
+        const baseH = ((def.isCeiling()) ? (sect.ch - def.getHangHeight()) : sect.fh);
 
         return {
             kind:       'monster',

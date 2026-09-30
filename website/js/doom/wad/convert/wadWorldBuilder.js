@@ -433,17 +433,22 @@ class WadWorldBuilder {
     }
 
     /**
-     * Billboard object per (sprite view, alpha, ceiling anchor): the spectre
+     * Billboard object per (sprite view, alpha, hang height): the spectre
      * shares the demon's SARG lumps, the Heretic ghosts their base monsters'.
+     * A hanging body stands hangHeight below its ceiling, where the shots and
+     * the collisions find it: its sprite is lifted by as much, still hanging
+     * from the ceiling.
      *
+     * @param {number} hangHeight - DoomMonsterDef.getHangHeight(), map units
      * @returns {object} view key → array of object ids (one per rotation)
      */
-    _monsterBillboards(frames, alpha, ceiling, billboardIds) {
-        const scale = WadConstants.SCALE;
+    _monsterBillboards(frames, alpha, hangHeight, billboardIds) {
+        const scale   = WadConstants.SCALE;
+        const ceiling = (hangHeight > 0);
         const objectIdsByView = {};
         for (const viewKey of Object.keys(frames)) {
             objectIdsByView[viewKey] = frames[viewKey].map((spr) => {
-                const objKey = spr.loaderId + '|' + alpha + '|' + ceiling;
+                const objKey = spr.loaderId + '|' + alpha + '|' + hangHeight;
                 if (billboardIds[objKey] === undefined) {
                     const geo  = WadGeometry.spriteBillboardData(spr);
                     const sink = spr.topOffset - spr.height;
@@ -453,7 +458,7 @@ class WadWorldBuilder {
                         halfWidth:     geo.halfWidth,
                         height:        geo.height,
                         anchorOffsetX: geo.anchorOffsetX,
-                        anchorOffsetY: ((ceiling) ? sink : Math.max(0, sink)) * scale,
+                        anchorOffsetY: ((ceiling) ? (sink + hangHeight) : Math.max(0, sink)) * scale,
                         anchorTop:     ceiling,
                         light:         255,
                         alpha:         alpha,
@@ -484,7 +489,7 @@ class WadWorldBuilder {
             if (views !== null) {
                 catalog[code] = {
                     def:    def,
-                    frames: this._monsterBillboards(views, def.getAlpha(), def.isCeiling(), billboardIds)
+                    frames: this._monsterBillboards(views, def.getAlpha(), def.getHangHeight(), billboardIds)
                 };
             }
         }
@@ -506,7 +511,7 @@ class WadWorldBuilder {
             if (views === null) {
                 return;
             }
-            frames[DoomPlayerBody.kindOf(index + 1)] = this._monsterBillboards(views, def.getAlpha(), false, billboardIds);
+            frames[DoomPlayerBody.kindOf(index + 1)] = this._monsterBillboards(views, def.getAlpha(), 0, billboardIds);
             firstView = (firstView ?? views[Object.keys(views)[0]][0]);
         });
         if (firstView === null) {
@@ -599,7 +604,7 @@ class WadWorldBuilder {
     // its current sector. Its view is filed here, so a device that only
     // displays the level knows every placed body.
     _registerMonsterThing(thing, i, analysis, builtFloorCodes, billboardIds) {
-        const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.isCeiling(), billboardIds);
+        const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.getHangHeight(), billboardIds);
 
         const code       = 'monster_' + i;
         const ride       = this._resolveThingFloor(thing, analysis, builtFloorCodes);

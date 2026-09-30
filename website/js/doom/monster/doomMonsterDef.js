@@ -142,6 +142,12 @@ class DoomMonsterDef {
         return this._ceiling;
     }
 
+    // Map units a ceiling body hangs below its ceiling (P_SpawnMobj ONCEILINGZ:
+    // z = ceilingz - height), 0 for a floor body.
+    getHangHeight() {
+        return ((this._ceiling) ? this._height : 0);
+    }
+
     getFlags() {
         return this._flags;
     }
