@@ -80,7 +80,12 @@ class MenuOptionsModal extends AbstractMenuListModal {
      * @param {function} onContinue - once the settings are chosen, after this modal closed
      */
     showGameSettings(keys, onContinue) {
-        return this._open('options', 'multiplayer.settings.title', () => this._buildGameSettings(keys, onContinue));
+        const continuation = {label: appTranslator.get('multiplayer.settings.continue'), action: () => {
+            this.close();
+            onContinue();
+        }};
+
+        return this._open('options', 'multiplayer.settings.title', () => this._buildSettingsList(keys.map((key) => doomSettings.getDefinition(key))), continuation);
     }
 
     showAbout() {
@@ -91,10 +96,11 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return this._open('standalone', 'help.guide', () => this._buildHelp());
     }
 
-    _open(mode, titleCode, builder) {
+    // A confirmation ({label, action}) joins the back button in the bottom row.
+    _open(mode, titleCode, builder, confirmation = null) {
         this._mode = mode;
         this._loadLayoutMap();
-        const {titleEl, bodyEl, button} = this._openShell('', appTranslator.get('menu.close'));
+        const {titleEl, bodyEl, button} = this._openShell('', appTranslator.get('menu.close'), confirmation);
         this._titleEl      = titleEl;
         this._bodyEl       = bodyEl;
         this._actionButton = button;
@@ -212,14 +218,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
     }
 
     // The launched mode's settings, then the entry that opens the game on them.
-    _buildGameSettings(keys, onContinue) {
-        const list = this._buildSettingsList(keys.map((key) => doomSettings.getDefinition(key)));
-        this._nav.addItemIn(list, appTranslator.get('multiplayer.settings.continue'), () => {
-            this.close();
-            onContinue();
-        });
-    }
-
     _buildSettingsList(definitions) {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
