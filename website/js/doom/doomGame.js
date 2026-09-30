@@ -581,15 +581,27 @@ class DoomGame {
     _trackDeath(dt) {
         if (!this._localPlayer().isDead()) {
             this._deathClockMs = 0;
+            this._localNotice().setRespawnPrompt(false);
             return;
         }
         if ((this._deathModal !== null) || this._transitioning) {
             return;
         }
         this._deathClockMs += dt;
-        if ((this._deathClockMs >= DoomGame.DEATH_MENU_DELAY_MS) && this._rules.opensDeathMenu() && this._role.showsDeathMenu()) {
+        if (this._deathClockMs < WadConstants.DEATH_SETTLE_MS) {
+            return;
+        }
+        if (this._role.promptsRespawn()) {
+            this._localNotice().setRespawnPrompt(true);
+            return;
+        }
+        if (this._rules.opensDeathMenu() && this._role.showsDeathMenu()) {
             this._openDeathMenu();
         }
+    }
+
+    _localNotice() {
+        return (this._role.getNotice() ?? this._hostNotice);
     }
 
     _openDeathMenu() {
@@ -664,7 +676,8 @@ class DoomGame {
         if (this._transitioning) {
             return;
         }
-        const outcome = {secret: (secret === true), stats: this._role.getLevelStats().exportCounts()};
+        const stats   = this._role.getLevelStats();
+        const outcome = {secret: (secret === true), stats: stats.exportCounts(), players: this._tallyPlayers(stats)};
         this._role.announcePhase(Object.assign({type: DoomNetProtocol.INTERMISSION}, outcome));
         this._showLevelExit(outcome, true);
     }
@@ -682,7 +695,7 @@ class DoomGame {
     }
 
     /**
-     * @param {{secret: boolean, stats: object}} outcome     - how the level ended, its counts as the tally shows them
+     * @param {{secret: boolean, stats: object, players: object[]|null}} outcome - how the level ended, its counts as the tally shows them
      * @param {boolean}                          withButtons - the main presses on; a sub only watches
      */
     _showLevelExit(outcome, withButtons) {
@@ -690,8 +703,9 @@ class DoomGame {
             return;
         }
         this._transitioning = true;
-        // A corpse pushed over an exit line: the exit wins over the death menu.
+        // A corpse pushed over an exit line: the exit wins over the death menu and the respawn prompt.
         this._closeGameMenu();
+        this._localNotice().setRespawnPrompt(false);
         // The next level's bindLevel lifts the freeze.
         doomSound.setPaused(true).playIntermissionMusic();
 
@@ -716,13 +730,13 @@ class DoomGame {
             buttonCode: buttonCode
         };
 
-        modal.tally(this._tallyTitle(nextLevel), this._tallyLines(), ((withButtons) ? appTranslator.get(tallyCode) : null), () => {
+        modal.tally(this._tallyTitle(nextLevel), this._tallyLines(outcome.players), ((withButtons) ? appTranslator.get(tallyCode) : null), () => {
             if (finaleText === null) {
                 this._startNextLevel(display, modal, nextLevel);
                 return;
             }
             this._showFinale(true);
-        });
+        }, this._tallyTable(outcome.players));
     }
 
     // gameinfo finalemusic (D_VICTOR / D_READ_M / MUS_CPTD).
@@ -780,23 +794,64 @@ class DoomGame {
         return ((text !== null) ? DoomFinaleTexts.reflow(text) : null);
     }
 
-    // A score with nothing to find reads "none" instead of 0/0.
-    _tallyLines() {
-        const score = (code, found, total) => ({
-            label: appTranslator.get(code),
-            value: ((total <= 0)
-                ? appTranslator.get('game.tally.none')
-                : found + '/' + total + ' (' + DoomGame.formatPercent(found, total) + ')')
-        });
-
+    // In cooperative, the scores go to the players' table: the time stays common.
+    _tallyLines(players) {
         const stats = this._role.getLevelStats();
+        const time  = {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(stats.getLevelTimeMs())};
+        if (players !== null) {
+            return [time];
+        }
+        const counts = stats.exportCounts();
 
-        return [
-            {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(stats.getLevelTimeMs())},
-            score('game.tally.kills',   stats.getKillsCount(),   stats.getKillsTotal()),
-            score('game.tally.items',   stats.getItemsFound(),   stats.getItemsTotal()),
-            score('game.tally.secrets', stats.getSecretsFound(), stats.getSecretsTotal())
-        ];
+        return [time, ...DoomGame.TALLY_SCORES.map((score) => ({
+            label: appTranslator.get(score.code),
+            value: DoomGame._scoreText(counts[score.found], counts[score.total], true)
+        }))];
+    }
+
+    _tallyTable(players) {
+        if (players === null) {
+            return null;
+        }
+        const counts = this._role.getLevelStats().exportCounts();
+
+        return {
+            columns: players.map((player) => ({name: player.nickname, color: player.color})),
+            rows:    DoomGame.TALLY_SCORES.map((score) => ({
+                label:  appTranslator.get(score.code),
+                values: players.map((player) => DoomGame._scoreText(player[score.found], counts[score.total], false))
+            }))
+        };
+    }
+
+    // The columns of a cooperative tally: the players in the level, in slot
+    // order, named and coloured by the lobby. Null outside cooperative.
+    _tallyPlayers(stats) {
+        if (!this._rules.admitsSubPlayers() || (this._netSession === null)) {
+            return null;
+        }
+        const lobby = this._netSession.getLobby();
+        const ids   = this._roster.getInLevel().map((player) => player.getId()).sort((a, b) => (a - b));
+
+        return stats.playerCounts(ids).map((counts) => {
+            const entry = lobby.getPlayerInSlot(counts.playerId);
+
+            return Object.assign({
+                nickname: ((entry !== null) ? entry.nickname : ''),
+                color:    ((entry !== null) ? entry.color : null)
+            }, counts);
+        });
+    }
+
+    // A score with nothing to find reads "none" instead of 0/0; a player's
+    // column leaves out the level total, its percentage being of that total.
+    static _scoreText(found, total, withTotal) {
+        if (total <= 0) {
+            return appTranslator.get('game.tally.none');
+        }
+        const percent = ' (' + DoomGame.formatPercent(found, total) + ')';
+
+        return ((withTotal) ? (found + '/' + total + percent) : (found + percent));
     }
 
     // M:SS, or H:MM:SS past the hour.
@@ -853,9 +908,12 @@ class DoomGame {
     }
 }
 
-// Delay between the player's death and the death menu: the camera falls and
-// the red tint settles first, and an exit fired right after the death wins.
-DoomGame.DEATH_MENU_DELAY_MS = 1000;
 DoomGame.LOCAL_PLAYER_ID = DoomPlayer.MAIN_ID;
 // Every multiplayer session renders with it, whatever the display setting.
 DoomGame.SESSION_RENDERER = 'webgl';
+// The tally's score rows: `found` keys the level's and each player's counts, `total` the level's total.
+DoomGame.TALLY_SCORES = [
+    {code: 'game.tally.kills',   found: 'kills',   total: 'killsTotal'},
+    {code: 'game.tally.items',   found: 'items',   total: 'itemsTotal'},
+    {code: 'game.tally.secrets', found: 'secrets', total: 'secretsTotal'}
+];

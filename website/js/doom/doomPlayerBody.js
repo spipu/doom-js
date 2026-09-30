@@ -39,8 +39,26 @@ class DoomPlayerBody {
     }
 
     /**
+     * @param {int} slot
+     * @returns {string} the kind of the corpse a dead player of that slot left
+     */
+    static corpseKindOf(slot) {
+        return DoomPlayerBody.CORPSE_PREFIX + slot;
+    }
+
+    /**
      * @param {string} kind
-     * @returns {int|null} the player id of a player body's kind, null for any other body
+     * @returns {int|null} the slot of a player body's or corpse's kind, null for any other body
+     */
+    static slotOf(kind) {
+        const prefix = [DoomPlayerBody.KIND_PREFIX, DoomPlayerBody.CORPSE_PREFIX].find((candidate) => kind.startsWith(candidate));
+
+        return ((prefix !== undefined) ? Number(kind.slice(prefix.length)) : null);
+    }
+
+    /**
+     * @param {string} kind
+     * @returns {int|null} the player id of a player body's kind, null for any other body, a corpse included
      */
     static playerIdOf(kind) {
         return ((kind.startsWith(DoomPlayerBody.KIND_PREFIX)) ? Number(kind.slice(DoomPlayerBody.KIND_PREFIX.length)) : null);
@@ -178,7 +196,8 @@ class DoomPlayerBody {
     }
 }
 
-DoomPlayerBody.KIND_PREFIX = 'player';
+DoomPlayerBody.KIND_PREFIX   = 'player';
+DoomPlayerBody.CORPSE_PREFIX = 'corpse';
 // The state groups of the profile's player body (zscript PlayerPawn).
 DoomPlayerBody.SPAWN   = 'spawn';
 DoomPlayerBody.SEE     = 'see';

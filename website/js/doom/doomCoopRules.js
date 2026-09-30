@@ -1,7 +1,9 @@
 /**
- * The rules of a cooperative game: every sub plays its own player, the
- * multiplayer things appear from the next level built, and friendly fire is
- * the one chosen on the game settings screen when the game opened.
+ * The rules of a cooperative game: every sub plays its own player, a dead
+ * player respawns by pressing use, the weapons and keys picked up stay on the
+ * ground, the multiplayer things appear from the next level built, and
+ * friendly fire is the one chosen on the game settings screen when the game
+ * opened.
  */
 class DoomCoopRules extends DoomGameRules {
     /**
@@ -27,8 +29,9 @@ class DoomCoopRules extends DoomGameRules {
         return true;
     }
 
+    // A dead player respawns by pressing use: no death menu.
     opensDeathMenu() {
-        return true;
+        return false;
     }
 
     allowsSaveAndLoad() {
@@ -48,6 +51,14 @@ class DoomCoopRules extends DoomGameRules {
     }
 
     admitsSubPlayers() {
+        return true;
+    }
+
+    respawnsDeadPlayers() {
+        return true;
+    }
+
+    leavesPickedItems() {
         return true;
     }
 

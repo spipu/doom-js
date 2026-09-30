@@ -39,6 +39,8 @@ class DoomSimulation {
         this._terrain        = null;
         this._playerStarts   = {};          // slot → {x, y, z, yaw}, the map's player starts
         this._bodies         = new Map();   // player id → DoomPlayerBody, in cooperative
+        this._corpses        = [];          // DoomBodyView of the dead players' left bodies, oldest first
+        this._deadMs         = new Map();   // player id → ms since its death
     }
 
     // --- Profile and skill ---
@@ -50,7 +52,7 @@ class DoomSimulation {
     useProfile(profile, itemCatalog) {
         this._profile        = profile;
         this._itemCatalog    = itemCatalog;
-        this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster, this._events);
+        this._itemRules      = new DoomItemRules(profile, itemCatalog, this._roster, this._events).useRules(this._rules);
         this._skillTable     = profile.skillRules();
         this._itemRules.setAmmoFactor(this._skillRule().ammoFactor);
 
@@ -65,6 +67,9 @@ class DoomSimulation {
      */
     useRules(rules) {
         this._rules = rules;
+        if (this._itemRules !== null) {
+            this._itemRules.useRules(rules);
+        }
         if (this._monsterDamage !== null) {
             this._monsterDamage.setFriendlyFire(rules.allowsFriendlyFire());
         }
@@ -94,6 +99,31 @@ class DoomSimulation {
         const body = new DoomPlayerBody(player, this._level.getPlayerBodyDef(), frames, this._level.getMonsterLevelData());
         this._bodies.set(player.getId(), body);
         this._level.getBodyViews().add(body.getView());
+    }
+
+    // G_PlayerReborn: the dead body stays where it fell, as a corpse in the
+    // slot's colour the respawned player sees too, at most CORPSE_QUEUE of them.
+    _leaveCorpse(player) {
+        const body = (this._bodies.get(player.getId()) ?? null);
+        if (body === null) {
+            return;
+        }
+        const views  = this._level.getBodyViews();
+        const view   = body.getView();
+        const corpse = new DoomBodyView(view.getInstance(), view.getFrames(), DoomPlayerBody.corpseKindOf(player.getId()))
+            .setFrame(view.getFrameKey(), view.isBright())
+            .setFacing(view.getFacing())
+            .setSector(view.getSector())
+            .setRenderScale(view.getRenderScale());
+        views.delete(view);
+        views.add(corpse);
+        this._bodies.delete(player.getId());
+        this._corpses.push(corpse);
+        if (this._corpses.length > DoomSimulation.CORPSE_QUEUE) {
+            const oldest = this._corpses.shift();
+            loader.instances().scheduleRemoval(oldest.getInstance());
+            views.delete(oldest);
+        }
     }
 
     _removeBody(player) {
@@ -206,7 +236,9 @@ class DoomSimulation {
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
-        this._bodies = new Map();
+        this._bodies  = new Map();
+        this._corpses = [];
+        this._deadMs  = new Map();
         this._monsters.setWorld(world);
         this._monsterDamage.setWorld(world).setFriendlyFire(this._rules.allowsFriendlyFire());
         this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._events, this._gunTriggers, this._monsters, this._monsterDamage);
@@ -235,9 +267,16 @@ class DoomSimulation {
         player.enterLevel(this._bodyFor(player));
         this._equip(player, restoredState);
         player.markLevelEntry();
+        player.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
+        this._arm(player);
 
+        return this;
+    }
+
+    // The weapon controller that fires the player's equipment and, in
+    // cooperative, the body the others see.
+    _arm(player) {
         const user = player.getUser();
-        user.setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         if (user.getActiveWeapon() !== null) {
             player.setWeapon(new DoomPlayerWeapon(this._itemCatalog, this._profile.weaponFallbackOrder(), player.getWeaponView(), user, this._rng, this._events)
                 .setAttackSystems(this._hitscan, this._projectiles)
@@ -250,8 +289,29 @@ class DoomSimulation {
         if (this._rules.admitsSubPlayers()) {
             this._addBody(player);
         }
+    }
 
-        return this;
+    /**
+     * Puts a body on a spot: the given Y is the floor-search ceiling, like the
+     * initial snap in World.finalizeInit, the body drops onto the floor below it.
+     *
+     * @param {User}     user
+     * @param {number[]} position - [x, y, z]
+     * @param {number}   yaw
+     * @param {number}   pitch
+     */
+    placeUser(user, position, yaw, pitch) {
+        user.x     = position[0];
+        user.y     = position[1];
+        user.z     = position[2];
+        user.yaw   = yaw;
+        user.pitch = pitch;
+        user.syncPositionTracking();
+
+        const floorY = this._world.getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
+        if (floorY !== -Infinity) {
+            user.y = floorY;
+        }
     }
 
     /**
@@ -358,6 +418,7 @@ class DoomSimulation {
     tickPlayers(dt, commands) {
         const players = this._commandedPlayers(commands);
         for (const player of players) {
+            this._respawnOnUse(player, commands.get(player.getId()), dt);
             this._applyPlayerCommand(player, commands.get(player.getId()));
         }
         this._world.update(dt, new Map(players.map((player) => [player.getUser(), commands.get(player.getId())])));
@@ -385,6 +446,38 @@ class DoomSimulation {
         for (const [id, body] of this._bodies) {
             body.update(dt, (commands.get(id) ?? World.NEUTRAL_COMMAND));
         }
+    }
+
+    // P_DeathThink: a dead player whose use is pressed once its death settled
+    // is reborn (G_DoReborn in a netgame).
+    _respawnOnUse(player, command, dt) {
+        const user = player.getUser();
+        if (!user.isDead()) {
+            this._deadMs.delete(player.getId());
+            return;
+        }
+        const deadMs = (this._deadMs.get(player.getId()) ?? 0) + dt;
+        this._deadMs.set(player.getId(), deadMs);
+        if (this._rules.respawnsDeadPlayers() && (deadMs >= WadConstants.DEATH_SETTLE_MS)
+            && command.isJustPressed(UserCommand.ACTION, user.getLastCommand())) {
+            this._respawn(player, command);
+        }
+    }
+
+    // G_PlayerReborn + G_CheckSpot: on a free start of its slot, with the
+    // starting loadout and nothing it carried, in a teleport fog. The press
+    // that brought it back uses nothing (usedown set on reborn).
+    _respawn(player, command) {
+        const user  = player.getUser();
+        const start = this._freeStart(player.getId());
+        this._leaveCorpse(player);
+        user.revive(user.getMaxEnergy()).setLastCommand(command);
+        this.placeUser(user, [start.x, start.y, start.z], start.yaw, 0);
+        user.clearEquipment();
+        this._itemRules.setupLoadout(user);
+        player.enterLevel(user);
+        this._arm(player);
+        this._effects.spawnArrivalFog(user.x, user.y, user.z, WadGeometry.doomAngleYaw(user.yaw));
     }
 
     _commandedPlayers(commands) {
@@ -455,6 +548,8 @@ class DoomSimulation {
 
 // Hurt Me Plenty: the vanilla default, and the fallback of an unknown skill.
 DoomSimulation.DEFAULT_SKILL = 3;
+// Dead players' bodies kept on the ground (G_PlayerReborn's bodyque, BODYQUESIZE).
+DoomSimulation.CORPSE_QUEUE = 32;
 // Buttons and impulse the game adds to the engine's in every UserCommand.
 DoomSimulation.BUTTON_FIRE           = 'fire';
 DoomSimulation.BUTTON_WEAPON_NEXT    = 'weaponNext';

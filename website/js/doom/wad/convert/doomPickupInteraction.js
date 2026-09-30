@@ -1,9 +1,10 @@
 /**
  * Proximity pickup interaction. When a player enters the pickup
  * Instance's radius, the effect descriptor is applied to that DoomUser through
- * DoomItemRules.applyPickup; if anything is consumed the Instance is despawned.
- * Effects that would do nothing (full health/armor, owned weapon/key) leave the
- * sprite in place, faithful to Doom.
+ * DoomItemRules.applyPickup; if anything is consumed the Instance is despawned
+ * — unless it stays on the ground for the other players (a weapon or a key in
+ * a multiplayer game). Effects that would do nothing (full health/armor, owned
+ * weapon/key) leave the sprite in place, faithful to Doom.
  */
 class DoomPickupInteraction extends AbstractInteraction {
     /**
@@ -39,9 +40,11 @@ class DoomPickupInteraction extends AbstractInteraction {
             return;
         }
         if (this._countsItem) {
-            this._stats.addItem();
+            this._stats.addItem(user.getPlayerId());
         }
         user.flashPickup();
-        loader.instances().scheduleRemoval(instance);
+        if (!this._itemRules.staysOnGround(this._effect)) {
+            loader.instances().scheduleRemoval(instance);
+        }
     }
 }

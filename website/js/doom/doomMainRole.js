@@ -38,6 +38,15 @@ class DoomMainRole {
         return true;
     }
 
+    promptsRespawn() {
+        return this._rules.respawnsDeadPlayers();
+    }
+
+    // The host's session message belongs to the game, which shows it solo too.
+    getNotice() {
+        return null;
+    }
+
     savesGame() {
         return true;
     }
@@ -235,22 +244,8 @@ class DoomMainRole {
         this._roster.remove(id);
     }
 
-    // The given Y is the floor-search ceiling, like the initial snap in
-    // World.finalizeInit: the player drops onto the floor below it.
     _applySpawnOverride(spawnOverride) {
-        const user     = this._roster.getLocal().getUser();
-        const position = spawnOverride.position;
-        user.x     = position[0];
-        user.y     = position[1];
-        user.z     = position[2];
-        user.yaw   = spawnOverride.yaw;
-        user.pitch = spawnOverride.pitch;
-        user.syncPositionTracking();
-
-        const floorY = this._simulation.getWorld().getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
-        if (floorY !== -Infinity) {
-            user.y = floorY;
-        }
+        this._simulation.placeUser(this._roster.getLocal().getUser(), spawnOverride.position, spawnOverride.yaw, spawnOverride.pitch);
     }
 }
 

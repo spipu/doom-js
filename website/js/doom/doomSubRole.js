@@ -81,6 +81,14 @@ class DoomSubRole {
         return false;
     }
 
+    promptsRespawn() {
+        return this._playsOwnPlayer();
+    }
+
+    getNotice() {
+        return this._notice;
+    }
+
     savesGame() {
         return false;
     }

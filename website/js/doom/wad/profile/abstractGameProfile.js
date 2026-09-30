@@ -223,6 +223,16 @@ class AbstractGameProfile {
         return null;
     }
 
+    /**
+     * What stays on the ground once picked up in a multiplayer game.
+     *
+     * @returns {{weaponsStay: boolean, keysStay: boolean}}
+     */
+    multiplayerItemRules() {
+        this._generateException('multiplayerItemRules must be implemented');
+        return null;
+    }
+
     // One player per cooperative start (vanilla MAXPLAYERS matches the start count).
     maxPlayers() {
         return this.playerStartTypes().length;

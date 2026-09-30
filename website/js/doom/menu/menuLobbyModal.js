@@ -112,9 +112,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
         const label = appTranslator.get('multiplayer.lobby.player', {slot: player.slot, nickname: player.nickname});
         const item  = this._nav.addItemIn(this._listEl, label, () => this._pickPlayer(player));
         if (player.color !== null) {
-            const swatch = MenuDom.addElement(item, 'span', 'doom-menu-lobby-color');
-            swatch.style.background = player.color;
-            item.insertBefore(swatch, item.firstChild);
+            MenuDom.addColorSwatch(item, player.color);
         }
         this._pingEls.set(player.id, MenuDom.addText(item, 'doom-menu-item-infos', this._pingText(player)));
         this._itemKeys.push(player.id);

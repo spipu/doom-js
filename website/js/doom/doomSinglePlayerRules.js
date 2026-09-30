@@ -27,6 +27,14 @@ class DoomSinglePlayerRules extends DoomGameRules {
         return false;
     }
 
+    respawnsDeadPlayers() {
+        return false;
+    }
+
+    leavesPickedItems() {
+        return false;
+    }
+
     allowsFriendlyFire() {
         return false;
     }

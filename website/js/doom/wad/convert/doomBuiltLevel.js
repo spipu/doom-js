@@ -222,11 +222,16 @@ class DoomBuiltLevel {
     }
 
     /**
-     * @param {string} kind - DoomPlayerBody.kindOf(slot)
+     * @param {string} kind - DoomPlayerBody.kindOf(slot) or DoomPlayerBody.corpseKindOf(slot)
      * @returns {object|null} the views of the bodies of that slot, in its colour
      */
     getPlayerBodyFrames(kind) {
-        return ((this._playerBodies !== null) ? (this._playerBodies.frames[kind] ?? null) : null);
+        const slot = DoomPlayerBody.slotOf(kind);
+        if ((this._playerBodies === null) || (slot === null)) {
+            return null;
+        }
+
+        return (this._playerBodies.frames[DoomPlayerBody.kindOf(slot)] ?? null);
     }
 
     /**

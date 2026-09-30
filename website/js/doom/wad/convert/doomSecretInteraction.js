@@ -54,7 +54,7 @@ class DoomSecretInteraction extends AbstractInteraction {
         const zone = this._zones.zoneUnderFeet(user.x, user.y, user.z);
         if (zone !== null) {
             this._zones.remove(zone);
-            this._stats.addSecretFound();
+            this._stats.addSecretFound(user.getPlayerId());
             // DSSECRET ships in no IWAD, only in some PWADs: elsewhere it plays
             // silence. The finder alone hears it (UZDoom).
             this._events.soundToPlayer('misc/secret', user);

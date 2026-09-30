@@ -63,6 +63,10 @@ class DoomNetLobby {
         return (this._players.find((player) => (player.id === id)) ?? null);
     }
 
+    getPlayerInSlot(slot) {
+        return (this._players.find((player) => (player.slot === slot)) ?? null);
+    }
+
     getPlayers() {
         return this._players;
     }

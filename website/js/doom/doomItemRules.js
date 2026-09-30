@@ -1,7 +1,8 @@
 /**
- * What the items do to the players, on the main alone: every pickup, the
- * starting loadout and the full-kit cheat, applied from the game's item
- * catalog with the ammo factor of the skill.
+ * What the items do to the players, on the main alone: every pickup — and,
+ * in a multiplayer game, which of them stay on the ground —, the starting
+ * loadout and the full-kit cheat, applied from the game's item catalog with
+ * the ammo factor of the skill.
  */
 class DoomItemRules {
     /**
@@ -16,6 +17,39 @@ class DoomItemRules {
         this._roster      = roster;
         this._events      = events;
         this._ammoFactor  = 1;
+        this._rules       = null;
+    }
+
+    // The game mode's rules, which say whether picked weapons and keys stay for the other players.
+    useRules(rules) {
+        this._rules = rules;
+
+        return this;
+    }
+
+    /**
+     * A placed weapon or a key stays on the ground in a multiplayer game, as
+     * the profile says (a weapon a monster dropped never does).
+     *
+     * @param {object} effect - pickup effect descriptor
+     * @returns {boolean}
+     */
+    staysOnGround(effect) {
+        if ((this._rules === null) || !this._rules.leavesPickedItems() || (effect === null) || (effect === undefined)) {
+            return false;
+        }
+        const rules = this._profile.multiplayerItemRules();
+        if (effect.weapon !== undefined) {
+            return (rules.weaponsStay && (effect.dropped !== true));
+        }
+
+        return (rules.keysStay && (effect.item !== undefined) && this._isKey(effect.item));
+    }
+
+    _isKey(code) {
+        const def = this._itemCatalog.getItem(code);
+
+        return ((def !== null) && (def.getType() === 'key'));
     }
 
     setAmmoFactor(factor) {
@@ -44,11 +78,7 @@ class DoomItemRules {
             return 'misc/w_pkup';
         }
         if (effect.item !== undefined) {
-            const def = this._itemCatalog.getItem(effect.item);
-            if ((def !== null) && (def.getType() === 'key')) {
-                return 'misc/k_pkup';
-            }
-            return 'misc/p_pkup';
+            return ((this._isKey(effect.item)) ? 'misc/k_pkup' : 'misc/p_pkup');
         }
 
         return 'misc/i_pkup';
@@ -59,7 +89,7 @@ class DoomItemRules {
             return false;
         }
         if (effect.weapon !== undefined) {
-            return this._pickupWeapon(user, effect.weapon, (effect.dropped === true));
+            return this._pickupWeapon(user, effect.weapon, (effect.dropped === true), this.staysOnGround(effect));
         }
         if (effect.ammo !== undefined) {
             return this._pickupAmmo(user, effect.ammo, effect.amount);
@@ -110,9 +140,11 @@ class DoomItemRules {
         }
     }
 
-    _pickupWeapon(user, code, dropped = false) {
+    // A weapon staying on the ground gives nothing to a player who owns it,
+    // not even its ammo (P_GiveWeapon in a netgame).
+    _pickupWeapon(user, code, dropped = false, stays = false) {
         const def = this._itemCatalog.getWeapon(code);
-        if ((def === null) || !this._itemCatalog.isWeaponAvailable(code)) {
+        if ((def === null) || !this._itemCatalog.isWeaponAvailable(code) || (stays && user.hasWeapon(code))) {
             return false;
         }
         let gaveWeapon = false;

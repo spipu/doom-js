@@ -70,95 +70,54 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Multiplayer
 
-Status: steps 0 to 6 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones). What exists (network layer, QR pairing, nickname and on-screen keyboard, WAD identity, per-turn commands, simulation / presentation split, several players in the engine and the systems, replication, synchronous turn cycle, main and sub roles, full flow on the subs) is documented in the project's knowledge base, not here. This section only specifies what steps 7 to 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds) stays in force.
+Status: steps 0 to 7 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones); mode 2, **drop-in cooperative** opened from the pause menu, works in loopback (respawn, corpses, weapons and keys staying, scores per player and tally in columns, cooperative saves). What exists is documented in the project's knowledge base, not here. This section only specifies what steps 8 and 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds, rules asked by the code and never the mode tested) stays in force.
 
 Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
 
 Vocabulary: the **main** is the player whose browser hosts the game; the **subs** are the other players.
 
-#### Modes still to build
+#### Mode still to build
 
-* **Mode 2, drop-in cooperative** — a new pause menu entry opens the running game to other players, who are really added to it, spawning at the level's player starts. Level changes carry every player along.
-  * Screen sharing and cooperative are exclusive modes of a session: a cooperative session has no viewers, every sub is a player — the viewers of a screen sharing switched to cooperative, and any sub joining it afterwards.
 * **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu gains **Cooperative** and **Deathmatch**, started fresh from the chosen level.
 
 #### Screens and menus
 
-* **Multiplayer screen**: Cooperative and Deathmatch join Join a game and the options shortcut (step 8). They go through the existing episode and difficulty screens, as in single player, then the game settings screen, then open the lobby as main. Join a game stays the way a sub joins any mode.
-* **Pause menu**:
-  * main of a single-player game: the cooperative entry beside "Share screen", opening the game settings screen then the lobby, the game frozen meanwhile;
-  * main of a screen sharing game: the cooperative entry stays available — the viewers already linked become players, spawning at the level's starts, with no new QR code exchange; each viewer, already awaited, gets its player in the simulation on the turn following the switch, by the same rule as a sub entering the cycle;
-  * main of a cooperative game: stop cooperative — every sub is disconnected and taken back to the WAD menu with an information modal, while the main carries on alone, under the single-player rules again (death menu, saves) — the subs' bodies and corpses vanish, the running level keeps the things it was built with;
-  * sub of a cooperative game: leave — its player and body are removed at once, as in vanilla, and the game goes on for the others;
-  * deathmatch: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal;
-  * a sub's pause only opens its own menu: the game goes on, its player standing still and vulnerable, its command neutral every turn — no sub can freeze the others.
-* **Game settings screen**, shown to the main only, just before the lobby, for every launch that has settings — cooperative and deathmatch from the Multiplayer screen, cooperative opened from the pause menu; never for screen sharing:
-  * it lists the settings of the launched mode only — friendly fire in cooperative; monsters, frag limit, time limit and items in deathmatch (already stored in the Multiplayer options) — built by the same settings page builder as the options, so no interface code is duplicated;
-  * it shows the stored values, and what is changed there is stored too, becoming the preset of the next game;
-  * the subs join with the main's settings, carried by the `hello` / `welcome` exchange.
-* **Lobby during a running game**: a player added from it joins the running game, syncing first and awaited only once ready; it shows each player's colour once players have one.
-* **Cooperative HUD**: the kills and secrets counters show the whole level's (every player's kills against the level's total), as in single player; the detail per player is the tally's. No nickname is shown over the other players' bodies, as in vanilla: their colour tells them apart.
+* **Multiplayer screen**: Cooperative and Deathmatch join Join a game and the options shortcut. They go through the existing episode and difficulty screens, as in single player, then the game settings screen, then open the lobby as main. Join a game stays the way a sub joins any mode.
+* **Game settings screen**: deathmatch lists monsters, frag limit, time limit and items (already stored in the Multiplayer options), built by the same settings page builder; cooperative from the Multiplayer screen lists friendly fire, as from the pause.
+* **Pause menu in deathmatch**: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal.
 * **Frags in the deathmatch HUD**: the top-left block of `HudGameBar` shows the player's frag count in place of the kills and secrets counters, which keep their place in single player and cooperative; there are no keys in deathmatch either.
-* **Respawn prompt**: outside single player the death modal is replaced, for the main as for the subs, by a "press use to respawn" prompt, shown after the same delay as the death modal (`DEATH_MENU_DELAY_MS`), use being taken into account from then on. The sub's "the host is dead" notice does not exist in cooperative: every device sees its own death.
 * **Frag table** in the deathmatch intermission.
 
 #### Game rules
 
-* **Profile additions**: each game profile already declares its maximum number of players (4 today) and its player starts 1–4; it still needs its deathmatch start editor number (11), its player colour translations, the player body states (walk, attack, pain, death, gib), the multiplayer item rules (weapon stay, keys stay, altdeath respawn delay) and the respawn loadout. Hexen, once profiled, gets 8 players (starts 1 to 4 then 9100 to 9103).
-* **Player slots**: the lobby already gives each sub the lowest free slot, kept for the whole session. The slot now gives the colour (the profile's translations in slot order), the cooperative start, the column of the tally and the row of the frag table; every list shows players in slot order. **The player id is the slot**: the main keeps slot 1, which is already `DoomPlayer.MAIN_ID`, the subs take 2 to 4; the peer id of the network layer (main 0 in the lobby, subs from 1) stays internal to the session and never names a player — today a sub's peer id 1 would collide with the main's player id. A sub learns its player id from `welcome`, and its local player carries it instead of the main's id.
-* **Player bodies**: `DoomPlayerBody`, the visible body of every other player — an 8-rotation billboard driven by the profile's player states, recoloured by the slot's colour translation at sprite decode time. The viewed player never draws its own body. Its state (walk, attack, pain, death, gib frame) and each player's frags join the replicated state.
-  * A crouching player's body is squashed vertically to the crouched height, feet on the floor, as GZDoom does without a dedicated crouch sprite — continuously, following the crouch transition (user decision, 2026-09-30): a generic engine primitive `Instance.setRenderScale`, modelled on `setRenderRoll` and honoured by the billboards, and the factor of every body travels in the turn state.
-  * The body machine runs on the main without random draws: walking while the player moves (`P_XYMovement`), the attack state on every shot (`P_FireWeapon`), the flash state with the muzzle flash (`A_GunFlash`), pain on any drop of health — always, where vanilla draws a 255/256 chance, so the game's random sequence never shifts —, death, and the gibbed death past the overkill already measured for the screams. Heretic's skull (`A_SkullPop`) and fire death are left out: the game has neither mechanic for the player.
-  * Bodies only exist in cooperative (solo and screen sharing untouched): every player present has one, the main's included, born when the player enters or when the game switches to cooperative, gone when it leaves or the cooperative stops. They travel as bodies born in play of kind `player<slot>`, the network format unchanged but for the scale factor. A device draws an empty object for the body of the player it views: no visibility primitive in the engine, existing primitives suffice.
-  * The lobby shows each slot's colour in cooperative: the main computes the colours from the profile and the palette and sends them in the lobby data, a sub not having read its WAD yet.
-  * A dead player's corpse stays on the ground once it respawns, as vanilla's body queue does (`G_PlayerReborn`, at most 32, the oldest removed first): coloured, inert, neither solid nor pickable; its weapons and ammo are lost, vanilla dropping nothing. It comes with the respawn that detaches it (lot 3 of step 7, user decision 2026-09-30); until then a dead player keeps its dead body until the next level.
-* **Mode rules**: `DoomCoopRules` and `DoomDeathmatchRules` beside `DoomSinglePlayerRules`, answering the questions the modes add — spawn point of a player, what happens on death, whether a picked item stays, item respawn delay, friendly fire, save and load permissions, full kit cheat permission, end of level, whether the main holds a level start for the subs' `levelReady`. `DoomGame` and the systems keep asking the rules, never testing the mode. The rules become replaceable during a game: today `DoomGame` builds `DoomSinglePlayerRules` in its constructor and hands them to its role and its simulation, while cooperative opened from the pause switches them to `DoomCoopRules`, and stopping it switches back.
-* **Multiplayer-only things** (`MTF_NOT_SINGLE`) appear from the first level built for multiplayer: a cooperative game opened from the pause menu keeps the running level as built for single player, and they appear from the next level on. `levelLoad` already carries the main's thing filter and skill, so a sub always builds the same entities.
-* **Spawns**: a cooperative player uses the start of its slot, falling back as the free-start rule already does; a deathmatch spawn picks a free deathmatch start at random on the main, as `G_DeathMatchSpawnPlayer` does.
-* **Entering the simulation**: a sub's player enters the simulation on the turn after the state that makes it awaited, with its first command — its body appearing at its level start, with its carried equipment on a level change, with the starting loadout on a drop-in.
-* **Level start in deathmatch**: in screen sharing and cooperative the main starts a level at once and the subs appear as their devices get ready; in deathmatch, where those seconds are free frags, the main holds its own start, showing the waiting message, until every sub awaited before the change has sent `levelReady` or has been dropped.
-* **Pause**: the main's pause freezes the game for everyone, as in screen sharing.
-* **Automap**: each player keeps its own map, revealed by what it has seen; in cooperative the other players show on it as arrows in their colour; in deathmatch they never show.
-* **Full kit cheat**: allowed in cooperative for every player on its own character, a sub's request being the `cheatFullKit` button of its command, applied by the main like any action; forbidden in deathmatch, where the rules ignore that button.
-* **Friendly fire**: in cooperative, as set in the options or the game settings screen; always on in deathmatch.
-* **Death in cooperative** follows vanilla (`G_PlayerReborn`, `P_TouchSpecialThing`): a dead player respawns alone, by pressing use, at its level start with the starting loadout, losing weapons, ammo and keys; the level never restarts, even if everyone is dead at once. In multiplayer, keys and weapons stay on the ground once picked up, so a respawned player can take them again. These item rules come from the profile.
-  * Keys are each player's own: every player picks its own up.
-  * A weapon placed on the map stays and is not taken again by a player who owns it, even for its ammo (`P_GiveWeapon` in a netgame); a weapon dropped by a monster is taken and consumed as in single player.
+* **Profile additions**: each game profile still needs its deathmatch start editor number (11) and the altdeath respawn delay of its multiplayer item rules. Hexen, once profiled, gets 8 players (starts 1 to 4 then 9100 to 9103).
+* **Mode rules**: `DoomDeathmatchRules` beside `DoomSinglePlayerRules` and `DoomCoopRules`, answering the questions of the mode — spawn point, death and respawn, whether a picked item stays, item respawn delay, friendly fire always on, no save or load, no full kit cheat (its button ignored), end of level, whether the main holds a level start for the subs' `levelReady`.
+* **Cooperative from the start**: a cooperative game started from the Multiplayer screen builds its first level with the multiplayer-only things (`MTF_NOT_SINGLE`).
+* **Spawns**: a deathmatch spawn picks a free deathmatch start at random on the main, as `G_DeathMatchSpawnPlayer` does.
+* **Level start in deathmatch**: where the seconds before the subs arrive are free frags, the main holds its own start, showing the waiting message, until every sub awaited before the change has sent `levelReady` or has been dropped.
+* **Automap**: in deathmatch the other players never show.
 * **Deathmatch** adds frags, deathmatch starts, the item rules of the chosen variant ("Weapons stay": nothing respawns; "Items respawn": items back after 30 seconds, weapons vanish once taken), no keys, and the monsters and limits from the options, on top of the cooperative machinery.
-* **End of a cooperative level**: the tally shows the stats per player, one column per player (nickname and colour as the header; kills, items, secrets as rows), under a common line holding the level time, and no total column (the HUD gives the total during play); only the main continues, for the tally as for the story texts, as in screen sharing.
 * **End of a deathmatch level** (frag or time limit reached) follows vanilla: the level ends, the intermission shows the frag table (each player against each other), then the match goes on to the next level with scores reset.
-* **Scores per player**: a kill goes to the player whose attack killed — through the chain of sources, so a barrel counts for the player who set it off —, an item to the player who picked it up, a secret to its finder. A monster killed with no player responsible (infighting, a crusher) counts for the level's total only, as in UZDoom: the columns may add up to less than the HUD's total.
-* **Level changes**: any player reaching an exit (normal or secret) ends the level for everyone, as in vanilla; every player keeps its equipment, as in single player.
-* **Saves**:
-  * cooperative: only the main saves and loads, from its pause menu, exactly as in single player — the same five slots per WAD and the same slots modal. The save holds the world as it stands (sub contributions included) and the main's player only, in the single-player format, so it can be reloaded alone or in cooperative; sub players and their projectiles in flight are left out, and a monster targeting a sub player is left without target on reload. Loading keeps the subs connected: they follow it as a level change, and respawn at the level's starts with their current equipment;
-  * deathmatch: neither save nor load;
-  * a sub never has save or load entries.
-* **Per-player events**: the game shows no pickup text; the pickup flash is already per-player replicated state, and each sub already ignores the events targeted at another player.
 * **Host advantage**: a sub reacts to the previous frame while the main aims on a fresher one — accepted for this version, a known edge in deathmatch.
 
 #### Protocol additions
 
-* **Control messages**: `hello` / `welcome` (player id, slot, mode, options); `levelLoad` also carries the mode and the options; `intermission` also carries the per-player stats and the frag table; `playerRemoved` (main → the other subs, with the nickname: "{nickname} left the game" shows for 3 seconds over the game, on the main as on the remaining subs, where the waiting message shows; a waiting or pause message keeps the priority); `sessionEnd` gains the reasons "invalid message" and "match over".
-* **Command**: a sub already sends its real actions (axes, look angles, buttons, impulses), sampled when the state arrives; the main has to feed them to that sub's player instead of ignoring them (today `DoomMainRole.advance` gives the simulation the local command alone, and `DoomNetTurnCycle` keeps the subs' commands for nobody). A cooperative sub gets the full touch pad back (`DoomSubRole.PAD_CONTROLS` strips it for a viewer); a paused sub sends the neutral command.
-* **State**: the other players' body state and frags; the HUD block of every player is already there, each sub reading the one of the player it views.
+* **Control messages**: `intermission` also carries the frag table; `sessionEnd` gains the reasons "invalid message" and "match over".
+* **State**: each player's frags.
 
 #### Risks still open
 
 * iOS Safari suspends the page when the screen locks or the app goes to the background, which cuts the link: step 9 owns the answer (a rejoin path), not the transport.
 * Carrier NATs defeating STUN, with no TURN relay: confirmed, explicit failure message, a shared hotspot is the workaround. IPv4-only behind a carrier NAT is not measured yet.
 * The slowest device sets everyone's pace; the real turn rate is still to measure on the device matrix.
-* Not yet run on real devices: Android (Chrome), a tablet, two different browsers as subs of one main.
+* Not yet run on real devices: cooperative, Android (Chrome), a tablet, two different browsers as subs of one main.
 * An image that fails to load never marks the game's image assets ready, so a sub would stay on its loading screen.
 * Main performance with four real players (simulation plus per-turn encoding).
 
 #### Step plan
 
-Same working rules as step 6: one commit per lot, each one reviewed (`/doom-review`), solo bit-identical on the benches, README and `libBootstrap.json` versions updated, the loopback test switch removed before every commit.
+Same working rules as steps 6 and 7: one commit per lot, each one reviewed (`/doom-review`), solo bit-identical on the benches, README and `libBootstrap.json` versions updated, the loopback test switch removed before every commit.
 
-7. **Mode 2, drop-in cooperative**, in three lots (user decision, 2026-09-30):
-   1. **Cooperative base**: player id = slot, replaceable rules and `DoomCoopRules`, `hello` / `welcome` and the mode and options in `levelLoad`, the pause entries (cooperative from single player and from screen sharing, stop cooperative, a sub leaving), the game settings screen, the subs' commands fed to their players, the sub as its own player with the full pad, drop-in at the slot's start with the starting loadout, a leaving player removed, the level change carrying every player. The other players are still invisible: checked through their state.
-   2. **Player bodies**: the profiles' player states and slot colour translations (Doom, Heretic), `DoomPlayerBody` replicated, the crouched body squashed (engine `Instance.setRenderScale`), the coloured arrows on the automap, the colours in the lobby, `playerRemoved` and its departure message.
-   3. **Rules and end of level**: death, respawn prompt and respawn, the corpses kept (32 at most), weapons and keys staying, friendly fire and the full kit cheat, the scores per player and the tally in columns, the multiplayer things from the next level, the cooperative save and load.
 8. **Mode 3, new multiplayer game**: Cooperative and Deathmatch on the Multiplayer screen, the game settings screen for both modes, cooperative from the start (`MTF_NOT_SINGLE` things), deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
 9. **Hardening**: iOS backgrounding, full device matrix.
 

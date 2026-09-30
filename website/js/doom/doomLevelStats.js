@@ -1,8 +1,9 @@
 /**
  * The running level's statistics — vanilla totalsecret / totalkills /
- * totalitems, what has been found of them, and leveltime. The simulation
- * counts them on the main; the HUD, the tally and the saves read them without
- * knowing who fills them.
+ * totalitems, what has been found of them, and leveltime — and what each
+ * player found of them (a kill with no player responsible counts for the
+ * level alone). The simulation counts them on the main; the HUD, the tally
+ * and the saves read them without knowing who fills them.
  */
 class DoomLevelStats {
     constructor() {
@@ -18,6 +19,7 @@ class DoomLevelStats {
         this._itemsTotal     = 0;
         this._levelTimeMs    = 0;
         this._levelClockLast = null;
+        this._players        = new Map();   // player id → {kills, items, secrets}
 
         return this;
     }
@@ -60,8 +62,12 @@ class DoomLevelStats {
         return this.restoreProgress(counts.secrets, counts.kills, counts.items, counts.timeMs);
     }
 
-    addSecretFound() {
+    /**
+     * @param {int|null} playerId - the finder
+     */
+    addSecretFound(playerId = null) {
         this._secretsFound++;
+        this._countFor(playerId).secrets++;
     }
 
     getSecretsFound() {
@@ -72,8 +78,12 @@ class DoomLevelStats {
         return this._secretsTotal;
     }
 
-    addKill() {
+    /**
+     * @param {int|null} playerId - the player responsible, null for none (infighting, a crusher)
+     */
+    addKill(playerId = null) {
         this._killsCount++;
+        this._countFor(playerId).kills++;
     }
 
     // A resurrected monster counts again in the total (A_VileChase / Revive).
@@ -89,8 +99,31 @@ class DoomLevelStats {
         return this._killsTotal;
     }
 
-    addItem() {
+    /**
+     * @param {int|null} playerId - who picked it up
+     */
+    addItem(playerId = null) {
         this._itemsFound++;
+        this._countFor(playerId).items++;
+    }
+
+    /**
+     * @param {int[]} playerIds
+     * @returns {{playerId: int, kills: int, items: int, secrets: int}[]} what each of those players found, in that order
+     */
+    playerCounts(playerIds) {
+        return playerIds.map((playerId) => Object.assign({playerId: playerId}, this._countFor(playerId)));
+    }
+
+    // A null player collects the counts nobody is credited with, never read.
+    _countFor(playerId) {
+        let counts = this._players.get(playerId);
+        if (counts === undefined) {
+            counts = {kills: 0, items: 0, secrets: 0};
+            this._players.set(playerId, counts);
+        }
+
+        return counts;
     }
 
     getItemsFound() {

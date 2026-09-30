@@ -35,6 +35,16 @@ class DoomGameRules {
         throw new Error('DoomGameRules: admitsSubPlayers not implemented');
     }
 
+    // Whether a dead player comes back by pressing use (instead of the death menu).
+    respawnsDeadPlayers() {
+        throw new Error('DoomGameRules: respawnsDeadPlayers not implemented');
+    }
+
+    // Whether the weapons and keys a player picks up stay on the ground for the others.
+    leavesPickedItems() {
+        throw new Error('DoomGameRules: leavesPickedItems not implemented');
+    }
+
     // Whether a player's attack hurts the other players (its own blast always hurts itself).
     allowsFriendlyFire() {
         throw new Error('DoomGameRules: allowsFriendlyFire not implemented');

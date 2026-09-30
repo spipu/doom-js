@@ -126,6 +126,13 @@ class DefaultGameProfile extends AbstractGameProfile {
         return DefaultGameProfile._playerBody;
     }
 
+    // Netgame pickups (p_inter.c): P_GiveWeapon leaves a placed weapon on the
+    // ground (not a dropped one), P_TouchSpecialThing returns before removing a
+    // key. Heretic keeps both.
+    multiplayerItemRules() {
+        return DefaultGameProfile.MULTIPLAYER_ITEM_RULES;
+    }
+
     // zscript doomplayer.zs Player.ColorRange and Colorset 0-3: green, gray, brown, red.
     playerColors() {
         return DefaultGameProfile.PLAYER_COLORS;
@@ -1404,6 +1411,7 @@ DefaultGameProfile.PLAYER_COLORS = {
     ]
 };
 DefaultGameProfile._playerBody = null;
+DefaultGameProfile.MULTIPLAYER_ITEM_RULES = {weaponsStay: true, keysStay: true};
 
 // Commercial level songs in map order (mapinfo/doom2.txt, the vanilla
 // mus_runnin + map − 1 sequence): lump = 'D_' + name.

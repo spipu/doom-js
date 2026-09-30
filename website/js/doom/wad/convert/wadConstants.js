@@ -776,6 +776,11 @@ class WadConstants {
     // (Player.TeleportFreezeTime, vanilla reactiontime = 18).
     static TELEPORT_FREEZE_TICS = 18;
 
+    // Ms after a player's death before its menu opens or, in cooperative, the
+    // use button respawns it: the camera falls and the red tint settles first,
+    // and an exit fired right after the death wins.
+    static DEATH_SETTLE_MS = 1000;
+
     // Doom player field of view (horizontal degrees) and the ZDoom telezoom:
     // a teleport arrival jumps the FOV by the boost (capped), then CheckFOV
     // eases it back per tic by max(STEP_MIN, diff × STEP_FACTOR).

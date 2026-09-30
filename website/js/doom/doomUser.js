@@ -378,6 +378,20 @@ class DoomUser extends User {
         return this._effects;
     }
 
+    // Empty-handed, as a body is born (a respawn, before the starting loadout;
+    // G_PlayerReborn): no weapon, ammo, item, effect or armour.
+    clearEquipment() {
+        this._weapons      = {};
+        this._activeWeapon = null;
+        this._ammo         = {};
+        this._ammoMax      = {};
+        this._items        = new Set();
+        this._effects      = {};
+        this.setArmor(0);
+        this.setArmorAbsorb(0);
+        return this;
+    }
+
     // --- Inter-level reset ---
     // Drops the items flagged resetOnNewLevel and every timed effect.
     resetForNewLevel(itemCatalog) {

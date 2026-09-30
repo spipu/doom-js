@@ -1100,6 +1100,12 @@ class DoomTranslations {
                 it: 'Partita in corso sull\'host',
                 es: 'Partida en curso en el anfitrión'
             },
+            'multiplayer.pause.menu': {
+                fr: 'Multijoueur',
+                en: 'Multiplayer',
+                it: 'Multigiocatore',
+                es: 'Multijugador'
+            },
             'multiplayer.pause.share': {
                 fr: 'Partager l\'écran',
                 en: 'Share screen',
@@ -1237,6 +1243,12 @@ class DoomTranslations {
                 en: 'Game paused by the host',
                 it: 'Partita in pausa dall\'host',
                 es: 'Partida en pausa por el anfitrión'
+            },
+            'multiplayer.respawnPrompt': {
+                fr: 'Appuyez sur Action pour réapparaître',
+                en: 'Press Action to respawn',
+                it: 'Premi Azione per riapparire',
+                es: 'Pulsa Acción para reaparecer'
             },
             'multiplayer.mainDead': {
                 fr: 'L\'hôte est mort',

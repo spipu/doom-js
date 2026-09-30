@@ -42,6 +42,15 @@ class MenuDom {
         return element;
     }
 
+    // The square of a player's slot colour, first in its parent.
+    static addColorSwatch(parent, color) {
+        const swatch = MenuDom.addElement(parent, 'span', 'doom-menu-color-swatch');
+        swatch.style.background = color;
+        parent.insertBefore(swatch, parent.firstChild);
+
+        return swatch;
+    }
+
     static addText(parent, className, text) {
         const element = MenuDom.addElement(parent, 'div', className);
         element.textContent = text;

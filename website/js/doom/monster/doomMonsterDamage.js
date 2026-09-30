@@ -109,7 +109,7 @@ class DoomMonsterDamage {
         }
         victim.health -= amount;
         if (victim.health <= 0) {
-            this._kill(victim);
+            this._kill(victim, (opts.source ?? null));
             return;
         }
         if ((this._rng.next() < def.getPainChance()) && (def.getState('pain0') !== null)) {
@@ -352,7 +352,9 @@ class DoomMonsterDamage {
         }
     }
 
-    _kill(record) {
+    // The kill goes to the player behind the source — the shooter, or whoever
+    // set off the barrel — and to nobody for a monster or no source at all.
+    _kill(record, source) {
         const def = record.def;
         record.dead = true;
         // Extreme death: overkill past spawnhealth × the game's gib factor
@@ -364,7 +366,7 @@ class DoomMonsterDamage {
         // Nightmare-respawned actors no longer feed the counter (user
         // decision: ☠ x never exceeds the level total).
         if ((def.getFlags().countsKill !== false) && (record.noKillCount !== true)) {
-            this._stats.addKill();
+            this._stats.addKill(((DoomActorRef.isPlayer(source)) ? source.getPlayerId() : null));
         }
     }
 

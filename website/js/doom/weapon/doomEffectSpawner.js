@@ -33,10 +33,8 @@ class DoomEffectSpawner {
      *                  own teleport voice (D'Sparil's zap) keeps the fogs only
      */
     spawnTeleportFogs(fromX, fromY, fromZ, toX, toY, toZ, doomAngle, silent = false) {
-        const ahead = WadConstants.TELEPORT_FOG_AHEAD * WadConstants.SCALE;
-        const rad   = doomAngle * DEG_TO_RAD;
         this.spawn('teleportFog', fromX, fromY, fromZ);
-        this.spawn('teleportFog', toX + Math.cos(rad) * ahead, toY, toZ + Math.sin(rad) * ahead);
+        this._spawnFogAhead(toX, toY, toZ, doomAngle);
         if (silent) {
             return;
         }
@@ -44,6 +42,21 @@ class DoomEffectSpawner {
         // sites of p_telept.c) — players and monsters alike.
         this._events.soundAt('misc/teleport', [fromX, fromY, fromZ]);
         this._events.soundAt('misc/teleport', [toX, toY, toZ]);
+    }
+
+    /**
+     * The fog of a player respawning in a netgame (G_CheckSpot): the arrival
+     * half of a teleport, ringing too.
+     */
+    spawnArrivalFog(x, y, z, doomAngle) {
+        this._spawnFogAhead(x, y, z, doomAngle);
+        this._events.soundAt('misc/teleport', [x, y, z]);
+    }
+
+    _spawnFogAhead(x, y, z, doomAngle) {
+        const ahead = WadConstants.TELEPORT_FOG_AHEAD * WadConstants.SCALE;
+        const rad   = doomAngle * DEG_TO_RAD;
+        this.spawn('teleportFog', x + Math.cos(rad) * ahead, y, z + Math.sin(rad) * ahead);
     }
 
     /**

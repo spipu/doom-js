@@ -113,12 +113,16 @@ class MenuModal {
      * button. Not dismissable by clicking outside — the player has to press it.
      * Without a label (a sub following the main's), it only shows.
      *
+     * A cooperative tally adds a table under the lines: a column per player,
+     * headed by its name in its colour, a row per score.
+     *
      * @param {string}        title
      * @param {object[]}      lines  - [{label, value}], value already formatted
      * @param {string|null}   label  - button label, null for no button
      * @param {function|null} action
+     * @param {object|null}   table  - {columns: [{name, color|null}], rows: [{label, values}]}, null for none
      */
-    tally(title, lines, label, action) {
+    tally(title, lines, label, action, table = null) {
         const {modal} = this._createShell(title, 'doom-menu-modal', 'doom-menu-modal-message');
 
         const body = MenuDom.addElement(modal, 'div', 'doom-menu-tally');
@@ -126,6 +130,9 @@ class MenuModal {
             const row = MenuDom.addElement(body, 'div', 'doom-menu-tally-line');
             MenuDom.addText(row, 'doom-menu-tally-label', line.label);
             MenuDom.addText(row, 'doom-menu-tally-value', line.value);
+        }
+        if (table !== null) {
+            this._addTallyTable(body, table);
         }
 
         this._addActionButton(modal, label, action);
@@ -164,6 +171,24 @@ class MenuModal {
     }
 
     // --- Internal ---
+
+    _addTallyTable(body, table) {
+        const grid = MenuDom.addElement(body, 'div', 'doom-menu-tally-table');
+        grid.style.gridTemplateColumns = 'auto repeat(' + table.columns.length + ', minmax(0, 1fr))';
+        MenuDom.addElement(grid, 'div', 'doom-menu-tally-label');
+        for (const column of table.columns) {
+            const header = MenuDom.addText(grid, 'doom-menu-tally-player', column.name);
+            if (column.color !== null) {
+                MenuDom.addColorSwatch(header, column.color);
+            }
+        }
+        for (const row of table.rows) {
+            MenuDom.addText(grid, 'doom-menu-tally-label', row.label);
+            for (const value of row.values) {
+                MenuDom.addText(grid, 'doom-menu-tally-value', value);
+            }
+        }
+    }
 
     // The single full-width button of the tally and the finale; none without a label.
     _addActionButton(modal, label, action) {

@@ -327,6 +327,19 @@ class User {
 
     // --- Energy ---
 
+    // Back on its feet (a respawn): alive at that energy, still, the death roll
+    // and the sunk eye undone.
+    revive(energy) {
+        this._energy        = energy;
+        this._dead          = false;
+        this._deathRoll     = 0;
+        this._deathEyeRatio = 1.0;
+        this._energyFlash   = 0;
+        this._pickupFlash   = 0;
+        this._lastOverkill  = 0;
+        return this.haltMotion();
+    }
+
     // Bypasses the armor
     kill() {
         this._energy      = 0;
