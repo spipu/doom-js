@@ -148,20 +148,24 @@ class MenuNavigator {
     }
 
     /**
-     * The main cancelled the launch from its lobby: back to the difficulty of
-     * the same episode, the launch still cooperative.
+     * The launch was cancelled from the lobby, or could not open its session:
+     * back to the difficulty of the same episode, the launch still cooperative.
      *
      * @param {object}      meta
-     * @param {object}      launch - {nickname, episode}
+     * @param {object}      launch     - {nickname, episode}
      * @param {number|null} skill
+     * @param {boolean}     noIdentity - the session failed for want of the WAD's identity
      */
-    startCooperativeAtDifficulty(meta, launch, skill) {
+    startCooperativeAtDifficulty(meta, launch, skill, noIdentity) {
         this._selectedDifficulty = (skill ?? MenuNavigator.DEFAULT_SKILL);
         this._launch             = launch;
 
         return this._boot(() => {
             this._playWadMusic(meta);
             this.openDifficulty(meta, launch.episode);
+            if (noIdentity) {
+                MenuNetMessages.showNoIdentity(this._display);
+            }
         });
     }
 
@@ -336,7 +340,7 @@ class MenuNavigator {
             if (this._launch !== null) {
                 const launch = this._launch;
                 game.openCooperativeOnStart(launch.nickname,
-                    (navigator, wadMeta, skill) => navigator.startCooperativeAtDifficulty(wadMeta, launch, skill));
+                    (navigator, wadMeta, skill, noIdentity) => navigator.startCooperativeAtDifficulty(wadMeta, launch, skill, noIdentity));
             }
             await game.startFromWad(wadFile, startCode, meta, spawnOverride, this._selectedDifficulty);
             modal.close();

@@ -534,7 +534,7 @@ class DoomGame {
      * the lobby until Start. Back there cancels the launch.
      *
      * @param {string}   nickname
-     * @param {function} onCancel - (navigator, wadMeta, skill), the menu to go back to
+     * @param {function} onCancel - (navigator, wadMeta, skill, noIdentity), the menu to go back to
      */
     openCooperativeOnStart(nickname, onCancel) {
         this._setRules(new DoomCoopRules(DoomCoopRules.optionsFromSettings()));
@@ -546,7 +546,7 @@ class DoomGame {
     _showLaunchLobby() {
         const session = this._openNetSession(this._launch.nickname, DoomNetProtocol.MODE_COOPERATIVE, this._rules.getOptions());
         if (session === null) {
-            this._cancelLaunch();
+            this._cancelLaunch(true);
             return;
         }
         this._freeze();
@@ -572,12 +572,13 @@ class DoomGame {
         new MenuModal(this._launchDisplay).confirm(appTranslator.get('multiplayer.pause.stopCoopConfirm'), () => this._cancelLaunch());
     }
 
-    _cancelLaunch() {
+    // Without the WAD's identity no session opens: the menu says why.
+    _cancelLaunch(noIdentity = false) {
         const launch = this._launch;
         this._closeLaunchLobby();
         doomSound.setPaused(false);
         this._teardownLevel();
-        this._leaveLevelTo((navigator, meta) => launch.onCancel(navigator, meta, this._skill));
+        this._leaveLevelTo((navigator, meta) => launch.onCancel(navigator, meta, this._skill, noIdentity));
     }
 
     _closeLaunchLobby() {

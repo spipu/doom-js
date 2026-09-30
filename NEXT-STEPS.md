@@ -78,11 +78,11 @@ Vocabulary: the **main** is the player whose browser hosts the game; the **subs*
 
 #### Mode still to build
 
-* **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu, which already starts a new **Cooperative** game, gains **Deathmatch**, started fresh from the chosen level.
+* **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu, which already starts a "New cooperative game", gains a new **Deathmatch** game, started fresh from the chosen level.
 
 #### Screens and menus
 
-* **Multiplayer screen**: Deathmatch joins Join a game, Cooperative and the options shortcut, through the same flow as Cooperative: the episode and difficulty screens, the game settings screen, then the lobby as main over the frozen first level.
+* **Multiplayer screen**: a new deathmatch game joins "New cooperative game", "Join a game" and the options shortcut, through the same flow as the cooperative one: the episode and difficulty screens, the game settings screen, then the lobby as main over the frozen first level.
 * **Game settings screen**: deathmatch lists monsters, frag limit, time limit and items (already stored in the Multiplayer options), built by the same settings page builder.
 * **Pause menu in deathmatch**: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal.
 * **Frags in the deathmatch HUD**: the top-left block of `HudGameBar` shows the player's frag count in place of the kills and secrets counters, which keep their place in single player and cooperative; there are no keys in deathmatch either.

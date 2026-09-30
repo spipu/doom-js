@@ -1,10 +1,10 @@
 /**
  * Multiplayer sub-menu of the main's pause, its entries following the session
- * state at each render: share screen, cooperative and the multiplayer options
- * outside a session; the lobby, cooperative, stop sharing and the options
- * while the screen is shared; the lobby, stop cooperative and the options in a
- * cooperative game. Its back button, Backspace, Escape and the gamepad back
- * button return to the pause.
+ * state at each render: switch to cooperative, share screen and the
+ * multiplayer options outside a session; the lobby, switch to cooperative,
+ * stop sharing and the options while the screen is shared; the lobby, stop
+ * cooperative and the options in a cooperative game. Its back button,
+ * Backspace, Escape and the gamepad back button return to the pause.
  */
 class MenuMultiplayerModal extends AbstractGameMenuModal {
     /**
@@ -53,21 +53,21 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
                 () => this._confirmStop('multiplayer.pause.stopCoopConfirm'));
             return;
         }
-        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.cooperative'), () => this._switchToCooperative());
+        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.switchToCooperative'), () => this._switchToCooperative());
         this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.stop'), () => this._confirmStop('multiplayer.pause.stopConfirm'));
     }
 
     _addOpeningEntries(listEl) {
         const unavailableReason = this._sessionContext.unavailableReason;
+        if (this._sessionContext.offersCooperative()) {
+            const coop = this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.switchToCooperative'),
+                () => this._openGameSettings((nickname) => this._sessionContext.openCooperative(nickname)));
+            MenuNetGate.greyWhenUnavailable(coop, unavailableReason);
+        }
         if (this._sessionContext.offersScreenSharing()) {
             const share = this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.share'),
                 () => this._open((nickname) => this._sessionContext.openScreenSharing(nickname)));
             MenuNetGate.greyWhenUnavailable(share, unavailableReason);
-        }
-        if (this._sessionContext.offersCooperative()) {
-            const coop = this._nav.addItemIn(listEl, appTranslator.get('multiplayer.cooperative'),
-                () => this._openGameSettings((nickname) => this._sessionContext.openCooperative(nickname)));
-            MenuNetGate.greyWhenUnavailable(coop, unavailableReason);
         }
     }
 

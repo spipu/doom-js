@@ -992,6 +992,12 @@ class DoomTranslations {
                 es: 'Objetos en deathmatch'
             },
             // --- Multiplayer ---
+            'multiplayer.newCooperative': {
+                fr: 'Nouvelle partie coopérative',
+                en: 'New cooperative game',
+                it: 'Nuova partita cooperativa',
+                es: 'Nueva partida cooperativa'
+            },
             'multiplayer.join': {
                 fr: 'Rejoindre une partie',
                 en: 'Join a game',
@@ -1136,11 +1142,11 @@ class DoomTranslations {
                 it: 'Interrompere la condivisione?\nTutti i giocatori saranno disconnessi.',
                 es: '¿Dejar de compartir?\nTodos los jugadores serán desconectados.'
             },
-            'multiplayer.cooperative': {
-                fr: 'Coopératif',
-                en: 'Cooperative',
-                it: 'Cooperativa',
-                es: 'Cooperativo'
+            'multiplayer.pause.switchToCooperative': {
+                fr: 'Passer en coopératif',
+                en: 'Switch to cooperative',
+                it: 'Passa alla cooperativa',
+                es: 'Pasar a cooperativo'
             },
             'multiplayer.pause.stopCoop': {
                 fr: 'Arrêter le coopératif',
