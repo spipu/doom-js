@@ -173,22 +173,37 @@ class DoomHitscan {
         return [Math.sin(yawR) * cp, Math.sin(pitchR), Math.cos(yawR) * cp];
     }
 
-    _shootRay(def, user, yaw, pitch, melee) {
-        const range  = def.getRange();
-        const [dx, dy, dz] = DoomHitscan._direction(yaw, pitch);
-
-        const hit = this._collision.raycast(
-            user.getCameraX(), user.getCameraY(), user.getCameraZ(),
-            dx, dy, dz, range, { floors: true, ceilings: true, dynamic: true }
-        );
-        // A live body crossing the ray before the wall soaks the shot
-        // (PTR_ShootTraverse stops on the first thing); another player only
-        // when the rules let players hurt one another.
-        const flesh = ((this._monsters !== null)
-            ? this._monsters.traceRay(user.getCameraX(), user.getCameraY(), user.getCameraZ(), dx, dy, dz,
-                ((hit !== null) ? Math.min(hit.dist, range) : range),
-                {exclude: user, includePlayers: ((this._damage !== null) && this._damage.allowsFriendlyFire())})
+    /**
+     * What a ray from a player's eye meets: the world, and a live body crossing
+     * the ray before it (PTR_ShootTraverse stops on the first thing) — another
+     * player only when includePlayers, the rules letting players hurt one another.
+     *
+     * @param {Collision}              collision
+     * @param {DoomMonsterSystem|null} monsters
+     * @param {DoomUser}               user
+     * @param {number[]}               dir            - unit [dx, dy, dz]
+     * @param {number}                 range
+     * @param {boolean}                includePlayers
+     * @returns {{hit: object|null, flesh: object|null}}
+     */
+    static traceFromEye(collision, monsters, user, dir, range, includePlayers) {
+        const ox  = user.getCameraX();
+        const oy  = user.getCameraY();
+        const oz  = user.getCameraZ();
+        const hit = collision.raycast(ox, oy, oz, dir[0], dir[1], dir[2], range, {floors: true, ceilings: true, dynamic: true});
+        const flesh = ((monsters !== null)
+            ? monsters.traceRay(ox, oy, oz, dir[0], dir[1], dir[2], ((hit !== null) ? Math.min(hit.dist, range) : range),
+                {exclude: user, includePlayers: includePlayers})
             : null);
+
+        return {hit: hit, flesh: flesh};
+    }
+
+    _shootRay(def, user, yaw, pitch, melee) {
+        const range        = def.getRange();
+        const [dx, dy, dz] = DoomHitscan._direction(yaw, pitch);
+        const {hit, flesh} = DoomHitscan.traceFromEye(this._collision, this._monsters, user, [dx, dy, dz], range,
+            ((this._damage !== null) && this._damage.allowsFriendlyFire()));
         // Impact specials (24/46/47) fire on the 2D trace, hit or not — a shot
         // into the sky above a low shootable wall still crosses its line; a
         // shot stopped by flesh only reaches the flesh.

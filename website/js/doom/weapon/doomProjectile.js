@@ -102,16 +102,42 @@ class DoomProjectileSystem {
             vy = (2 + Math.max(-5, Math.min(5, Math.tan(pitchR)))) * WadConstants.SCALE;
         }
 
-        // P_SpawnPlayerMissile: 32 units above the feet, below the eye, flying
-        // along the free aim; a crouch lowers it with the body.
-        let originY = user.y + WadConstants.MISSILE_SPAWN_HEIGHT * WadConstants.SCALE * user.getCrouchScale();
         if (def.spawnHeight !== null) {
             // Feet-anchored muzzle, nudged by the initial vertical velocity
             // like vanilla (A_FireMacePL1's ball.AddZ(ball.Vel.Z)).
-            originY = user.y + def.spawnHeight + vy;
+            return this._launch(def, user.getCameraX(), user.y + def.spawnHeight + vy, user.getCameraZ(), vx, vy, vz, user);
+        }
+        // P_SpawnPlayerMissile's muzzle, 32 units above the feet (lowered with a
+        // crouch), aimed at what the crosshair covers — a deliberate deviation:
+        // vanilla and UZDoom fly parallel to the view, landing below the crosshair.
+        const ox = user.getCameraX();
+        const oy = user.y + WadConstants.MISSILE_SPAWN_HEIGHT * WadConstants.SCALE * user.getCrouchScale();
+        const oz = user.getCameraZ();
+        if (def.lob) {
+            return this._launch(def, ox, oy, oz, vx, vy, vz, user);
+        }
+        const aim    = this._crosshairPoint(user, [dx, dy, dz]);
+        const length = Math.hypot(aim[0] - ox, aim[1] - oy, aim[2] - oz);
+        if (length === 0) {
+            return this._launch(def, ox, oy, oz, vx, vy, vz, user);
+        }
+        const scale = speed / length;
+
+        return this._launch(def, ox, oy, oz, (aim[0] - ox) * scale, (aim[1] - oy) * scale, (aim[2] - oz) * scale, user);
+    }
+
+    // The first thing the eye ray meets, else a point far down that ray.
+    _crosshairPoint(user, dir) {
+        const range        = DoomProjectileSystem.MAX_TRAVEL;
+        const {hit, flesh} = DoomHitscan.traceFromEye(this._collision, this._monsters, user, dir, range, this._damage.allowsFriendlyFire());
+        if (flesh !== null) {
+            return flesh.point;
+        }
+        if (hit !== null) {
+            return hit.point;
         }
 
-        return this._launch(def, user.getCameraX(), originY, user.getCameraZ(), vx, vy, vz, user);
+        return [user.getCameraX() + dir[0] * range, user.getCameraY() + dir[1] * range, user.getCameraZ() + dir[2] * range];
     }
 
     /**
