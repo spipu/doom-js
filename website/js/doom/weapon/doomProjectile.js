@@ -105,7 +105,7 @@ class DoomProjectileSystem {
         if (def.spawnHeight !== null) {
             // Feet-anchored muzzle, nudged by the initial vertical velocity
             // like vanilla (A_FireMacePL1's ball.AddZ(ball.Vel.Z)).
-            return this._launch(def, user.getCameraX(), user.y + def.spawnHeight + vy, user.getCameraZ(), vx, vy, vz, user);
+            return this._fire(def, user.getCameraX(), user.y + def.spawnHeight + vy, user.getCameraZ(), vx, vy, vz, user);
         }
         // P_SpawnPlayerMissile's muzzle, 32 units above the feet (lowered with a
         // crouch), aimed at what the crosshair covers — a deliberate deviation:
@@ -114,16 +114,16 @@ class DoomProjectileSystem {
         const oy = user.y + WadConstants.MISSILE_SPAWN_HEIGHT * WadConstants.SCALE * user.getCrouchScale();
         const oz = user.getCameraZ();
         if (def.lob) {
-            return this._launch(def, ox, oy, oz, vx, vy, vz, user);
+            return this._fire(def, ox, oy, oz, vx, vy, vz, user);
         }
         const aim    = this._crosshairPoint(user, [dx, dy, dz]);
         const length = Math.hypot(aim[0] - ox, aim[1] - oy, aim[2] - oz);
         if (length === 0) {
-            return this._launch(def, ox, oy, oz, vx, vy, vz, user);
+            return this._fire(def, ox, oy, oz, vx, vy, vz, user);
         }
         const scale = speed / length;
 
-        return this._launch(def, ox, oy, oz, (aim[0] - ox) * scale, (aim[1] - oy) * scale, (aim[2] - oz) * scale, user);
+        return this._fire(def, ox, oy, oz, (aim[0] - ox) * scale, (aim[1] - oy) * scale, (aim[2] - oz) * scale, user);
     }
 
     // The first thing the eye ray meets, else a point far down that ray.
@@ -200,10 +200,7 @@ class DoomProjectileSystem {
             vz = Math.cos(yaw) * flat;
         }
 
-        const shot = this._launch(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter), vx, vy, vz, shooter);
-        if (shot === null) {
-            return null;
-        }
+        const shot = this._fire(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter), vx, vy, vz, shooter);
         if (def.seek !== null) {
             shot.seekTarget = (opts.seekTarget ?? target);
         }
@@ -243,11 +240,9 @@ class DoomProjectileSystem {
         }
         const shot = this._launch(def, DoomActorRef.x(shooter), originY, DoomActorRef.z(shooter),
             (toX / length) * speed, (toY / length) * speed, (toZ / length) * speed, shooter);
-        if (shot === null) {
-            return null;
-        }
         shot.spot        = {x: spot.x, y: spot.y, z: spot.z};
         shot.arrivalTics = Math.max(1, Math.round(length / speed));
+        this._checkMissileSpawn(shot);
 
         return shot;
     }
@@ -271,6 +266,7 @@ class DoomProjectileSystem {
             // many tics it takes to get there.
             spot: null, arrivalTics: 0,
             instId: null, view: null,
+            ended: false,   // gone off the moment it was fired (P_CheckMissileSpawn)
         };
         p.instId = DoomInertInstance.spawn(def.frames[0].objId, [p.x, p.y - def.frames[0].height / 2, p.z]);
         p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames, def.kind).setCenter(p.x, p.y, p.z);
@@ -281,6 +277,69 @@ class DoomProjectileSystem {
         }
 
         return p;
+    }
+
+    // A shot fired in play, as opposed to one restored from a save.
+    _fire(def, x, y, z, vx, vy, vz, owner) {
+        const p = this._launch(def, x, y, z, vx, vy, vz, owner);
+        this._checkMissileSpawn(p);
+
+        return p;
+    }
+
+    // P_CheckMissileSpawn: half a tic forward, so a shot never starts inside its
+    // shooter and one fired point-blank into a wall or a body goes off at once. A
+    // bouncer meets the floor on its first tic instead; a shot aimed at a spot
+    // flies through everything.
+    _checkMissileSpawn(p) {
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+        if (speed === 0) {
+            return;
+        }
+        if (p.spot === null) {
+            this._orient(p, speed);
+            const {hit, flesh} = this._sweep(p, speed / 2);
+            if ((flesh !== null) && (p.def.ripper === null)) {
+                this._hitFlesh(p, flesh);
+                this._end(p);
+                return;
+            }
+            if (hit !== null) {
+                if (p.def.bounce === null) {
+                    this._explode(p, hit);
+                    this._end(p);
+                }
+                return;
+            }
+        }
+        p.x += p.vx / 2;
+        p.y += p.vy / 2;
+        p.z += p.vz / 2;
+        this._publishView(p);
+    }
+
+    _end(p) {
+        p.ended = true;
+        this._views.delete(p.view);
+        loader.instances().scheduleRemoval(loader.instances().get(p.instId));
+    }
+
+    // The direction of a shot follows its current velocity.
+    _orient(p, speed) {
+        p.dx = p.vx / speed;
+        p.dy = p.vy / speed;
+        p.dz = p.vz / speed;
+    }
+
+    // What the shot meets along its heading within dist: a surface, and a live
+    // body before it. The shooter is transparent to its own missile, and so is
+    // anyone it cannot hurt (PIT_CheckThing / CanAttackHurt).
+    _sweep(p, dist) {
+        const hit   = this._collision.raycast(p.x, p.y, p.z, p.dx, p.dy, p.dz, dist, {floors: true, ceilings: true, dynamic: true});
+        const flesh = this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz, ((hit !== null) ? Math.min(hit.dist, dist) : dist),
+            {exclude: p.owner, includePlayers: this._hitsPlayers(p), immuneTo: p.owner, thruGhost: p.def.thruGhost});
+
+        return {hit: hit, flesh: flesh};
     }
 
     // A homing shot locked on a body gone from the level flies straight on.
@@ -296,7 +355,7 @@ class DoomProjectileSystem {
     // save code so an owner or a homing lock can be found again on the
     // rebuilt level (DoomMonsterSystem.actorByCode).
     exportState() {
-        return this._active.map((p) => ({
+        return this._active.filter((p) => !p.ended).map((p) => ({
             kind:      p.def.kind,
             position:  [p.x, p.y, p.z],
             velocity:  [p.vx, p.vy, p.vz],
@@ -353,7 +412,7 @@ class DoomProjectileSystem {
         const kept = [];
         for (const p of this._active) {
             const inst = loader.instances().get(p.instId);
-            if (inst === undefined) {
+            if (p.ended || (inst === undefined)) {
                 continue;
             }
             if ((p.def.lifeTics > 0) && (p.tics >= p.def.lifeTics)) {
@@ -388,22 +447,11 @@ class DoomProjectileSystem {
             // curved path; straight projectiles keep their launch values.
             const step = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
             if (step > 0) {
-                p.dx = p.vx / step;
-                p.dy = p.vy / step;
-                p.dz = p.vz / step;
+                this._orient(p, step);
             }
-            const hit  = this._collision.raycast(
-                p.x, p.y, p.z, p.dx, p.dy, p.dz, step,
-                { floors: true, ceilings: true, dynamic: true }
-            );
             // A live body across this tic's segment soaks the shot before any
             // surface: direct hit roll, then the ball explodes on the flesh.
-            // The shooter is transparent to its own missile, and so is anyone
-            // it cannot hurt (PIT_CheckThing / CanAttackHurt).
-            const flesh = this._monsters.traceRay(p.x, p.y, p.z, p.dx, p.dy, p.dz,
-                ((hit !== null) ? Math.min(hit.dist, step) : step),
-                {exclude: p.owner, includePlayers: this._hitsPlayers(p), immuneTo: p.owner,
-                    thruGhost: p.def.thruGhost});
+            const {hit, flesh} = this._sweep(p, step);
             if ((p.def.spawnMonster !== null) && this._tryHatch(p)) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
@@ -551,7 +599,7 @@ class DoomProjectileSystem {
             return;
         }
         const scatter = p.def.trailScatter;
-        this._launch(def,
+        this._fire(def,
             p.x + (this._rng.nextDiff() / 255) * scatter,
             p.y,
             p.z + (this._rng.nextDiff() / 255) * scatter,
@@ -675,7 +723,7 @@ class DoomProjectileSystem {
             const sideSpeed   = p.vy - scale;
             if ((sideBallDef !== null) && (sideBallDef !== undefined) && (flatSpeed > 0) && (sideSpeed > 0)) {
                 for (const side of [1, -1]) {
-                    this._launch(sideBallDef,
+                    this._fire(sideBallDef,
                         p.x, p.y, p.z,
                         (p.vz / flatSpeed) * side * sideSpeed + p.vx * 0.5,
                         p.vy,
