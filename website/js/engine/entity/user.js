@@ -911,6 +911,12 @@ class User {
     getCameraZ() {
         return this.z;
     }
+
+    // Metres between the body and where the view shows it on a stair step: the
+    // physics takes the step at once, the view glides over it.
+    getStepViewOffset() {
+        return this._stepViewOffset;
+    }
 }
 
 User.MAX_PITCH = 89;

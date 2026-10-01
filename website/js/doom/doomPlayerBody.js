@@ -172,6 +172,16 @@ class DoomPlayerBody {
         this._view.getInstance().setPose([user.x, user.y, user.z], DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
         this._view.showState(this._def.getState(this._stateKey), WadGeometry.doomAngleYaw(user.yaw), this._sectorAt(user))
             .setRenderScale(user.getCrouchScale());
+        this._glideOverStep(user.getStepViewOffset());
+    }
+
+    // The body flows over a stair step the way its player's view does.
+    _glideOverStep(offset) {
+        if (offset === 0) {
+            this._view.clearRenderOffset();
+            return;
+        }
+        this._view.setRenderOffset(0, offset, 0);
     }
 
     _sectorAt(user) {

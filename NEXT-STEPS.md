@@ -68,14 +68,6 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 * **Rising floor on a door or crusher sector**: `_identifyRisingFloors` skips door sectors, so a floor-raise special aimed at one moves nothing (E3M4 tags 4/5: S1 18 on the crusher sectors 128/95; E2M4 tag 9: G1 24 on the crusher 142; Heretic E5M1 tag 4: W1 22 on the pillars 139/141/145/147) while vanilla raises the floor under the ceiling thinker. Same generalisation as the door + lift overlap (rest-floor rule of `_computeDoorHeights`), on the `WadRisingFloorBuilder` side.
 * **Mace balls bouncing on a moving mover**: repositioning at the impact point of a possibly moving floor, untested — to check if a map occurrence lends itself to it.
 
-### Projectile and player-body smoothing — before resuming the multiplayer
-
-Two display smoothings, decided by the user on 2026-10-01, to be done before step 8 of the multiplayer goes on. Both are presentation alone, on every device (main and subs): the simulation and the saves stay as they are, and single player stays bit-identical on the benches.
-
-* **Shots in flight**: a shot moves 35 times a second, on the simulation tics, while the screen is drawn about 60 times a second: it stands still for a frame or two, then jumps its whole speed at once (20 units for a rocket), which shows as a stutter at speed. The monsters are already drawn smoothly between their tics; the shots should be too, as UZDoom draws them.
-* **Another player's body on stairs**: a player's body climbs a step at once, like vanilla, and only its own camera is smoothed over the step; the others see its body jump the whole step (up to 24 units). Its body should flow over the step as its view does, the way the monsters' bodies already glide vertically. Only the steps: the plain walking motion of the other players is fine as it is (user's call).
-  * One smoothing source for both (user decision, 2026-10-01): the player's physics keeps climbing a step at once, as the monsters' does (collisions, hits, pickups, triggers and the replicated position all read the real one); the step offset `User` already computes for the camera becomes the player's display offset, read by the camera and given to its body as its render offset, which the turn state already carries to the subs. The engine only gains a read accessor on that offset.
-
 ### Multiplayer
 
 Status: steps 0 to 7 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones); mode 2, **drop-in cooperative** opened from the pause menu, works in loopback (respawn, corpses, weapons and keys staying, scores per player and tally in columns, cooperative saves). Step 8 has started: a new cooperative game from the Multiplayer screen works in loopback. What exists is documented in the project's knowledge base, not here. This section only specifies what steps 8 and 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds, rules asked by the code and never the mode tested) stays in force.
@@ -159,6 +151,7 @@ A large **performance / rendering** item, to start only **after** everything abo
 
 ## Finished
 
+* **Projectile and player-body smoothing** (2026-10-01): shots in flight drawn smoothly between their tics, and a player's body flowing over stair steps like its view.
 * **Doom 1 level testing** (2026-09-21): every level of Doom 1 played through and fixed.
 * **Liquid splashes** (2026-09-11): terrain splashes on the liquids of every game.
 * **Selectable renderer** (2026-09-10): the renderer switched live from the Display options.

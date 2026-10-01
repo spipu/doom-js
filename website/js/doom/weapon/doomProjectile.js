@@ -267,6 +267,7 @@ class DoomProjectileSystem {
             spot: null, arrivalTics: 0,
             instId: null, view: null,
             ended: false,   // gone off the moment it was fired (P_CheckMissileSpawn)
+            prevX: x, prevY: y, prevZ: z,   // where the last tic started, the drawing glides from it
         };
         p.instId = DoomInertInstance.spawn(def.frames[0].objId, [p.x, p.y - def.frames[0].height / 2, p.z]);
         p.view = new DoomProjectileView(loader.instances().get(p.instId), def.frames, def.kind).setCenter(p.x, p.y, p.z);
@@ -315,7 +316,16 @@ class DoomProjectileSystem {
         p.x += p.vx / 2;
         p.y += p.vy / 2;
         p.z += p.vz / 2;
+        // Drawn from its advanced spot at once: gliding from the launch point
+        // would show it inside its shooter again.
+        this._startGlideHere(p);
         this._publishView(p);
+    }
+
+    _startGlideHere(p) {
+        p.prevX = p.x;
+        p.prevY = p.y;
+        p.prevZ = p.z;
     }
 
     _end(p) {
@@ -406,6 +416,20 @@ class DoomProjectileSystem {
             this._ticCount++;
             this._stepTic();
         }
+        this._showBetweenTics(this._untickedMs / WadConstants.MS_PER_TIC);
+    }
+
+    // A shot moves on the tics, the screen is drawn more often: each frame shows
+    // it between where its last tic started and where it ended, as UZDoom
+    // interpolates its actors. Display alone, the shot itself never moves here.
+    _showBetweenTics(fraction) {
+        for (const p of this._active) {
+            p.view.setCenter(
+                p.prevX + (p.x - p.prevX) * fraction,
+                p.prevY + (p.y - p.prevY) * fraction,
+                p.prevZ + (p.z - p.prevZ) * fraction
+            );
+        }
     }
 
     _stepTic() {
@@ -415,6 +439,7 @@ class DoomProjectileSystem {
             if (p.ended || (inst === undefined)) {
                 continue;
             }
+            this._startGlideHere(p);
             if ((p.def.lifeTics > 0) && (p.tics >= p.def.lifeTics)) {
                 this._effects.spawn(p.def.explosion, p.x, p.y, p.z);
                 loader.instances().scheduleRemoval(inst);
@@ -427,7 +452,7 @@ class DoomProjectileSystem {
                 p.y += p.vy;
                 p.z += p.vz;
                 p.tics += 1;
-                this._syncView(p, inst);
+                this._publishView(p);
                 if (p.tics >= p.arrivalTics) {
                     this._hatchAtSpot(p);
                     loader.instances().scheduleRemoval(inst);
