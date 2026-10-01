@@ -187,7 +187,10 @@ class MenuModal {
             }
         }
         for (const row of table.rows) {
-            MenuDom.addText(grid, 'doom-menu-tally-label', row.label);
+            const label = MenuDom.addText(grid, 'doom-menu-tally-label', row.label);
+            if ((row.color ?? null) !== null) {
+                MenuDom.addColorSwatch(label, row.color);
+            }
             for (const value of row.values) {
                 MenuDom.addText(grid, 'doom-menu-tally-value', value);
             }

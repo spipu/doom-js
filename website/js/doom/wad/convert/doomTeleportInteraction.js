@@ -81,7 +81,7 @@ class DoomTeleportInteraction extends AbstractInteraction {
         for (const other of world.getUsers()) {
             if ((other !== user) && !other.isDead()
                 && WadGeometry.boxesOverlap2d(other.x, other.z, other.getRadius(), user.x, user.z, user.getRadius())) {
-                other.takeDamage(WadConstants.TELEFRAG_DAMAGE);
+                other.takeDamage(WadConstants.TELEFRAG_DAMAGE, user);
             }
         }
     }

@@ -13,7 +13,7 @@
 class DoomThingCatalog {
     /**
      * @param {object} decorations - code → DoomDecoration
-     * @param {object} thingTypes  - editor number → {kind, sprite|code, frames?, animDuration?, solid?, effect?}
+     * @param {object} thingTypes  - editor number → {kind, sprite|code, frames?, animDuration?, solid?, effect?, notDeathmatch?}
      */
     constructor(decorations, thingTypes) {
         this._decorations = decorations;
@@ -41,34 +41,37 @@ class DoomThingCatalog {
         // 'bossSpot' and the Icon of Sin's 'bossTarget' lists must never mix.
         if (entry.kind === 'spot') {
             return {kind: 'spot', spotGroup: entry.group, code: null, frames: [], animDuration: 0,
-                solid: false, radius: 0, ceiling: false, effect: null, spawnerGroup: null};
+                solid: false, radius: 0, ceiling: false, effect: null, notDeathmatch: false, spawnerGroup: null};
         }
         if (entry.kind === 'decoration') {
             const decoration = this._decorations[entry.code];
             return {
-                kind:         'decoration',
-                code:         entry.code,
-                frames:       (entry.frames ?? [decoration.getSprite()]),
-                animDuration: (entry.animDuration ?? 0),
-                solid:        ((entry.solid !== undefined) ? (entry.solid === true) : decoration.isSolid()),
-                radius:       decoration.getRadius(),
-                ceiling:      decoration.isCeiling(),
-                effect:       null,
-                spawnerGroup: null
+                kind:          'decoration',
+                code:          entry.code,
+                frames:        (entry.frames ?? [decoration.getSprite()]),
+                animDuration:  (entry.animDuration ?? 0),
+                solid:         ((entry.solid !== undefined) ? (entry.solid === true) : decoration.isSolid()),
+                radius:        decoration.getRadius(),
+                ceiling:       decoration.isCeiling(),
+                effect:        null,
+                notDeathmatch: false,
+                spawnerGroup:  null
             };
         }
         return {
-            kind:         'pickup',
-            code:         null,
-            frames:       (entry.frames ?? [entry.sprite]),
-            animDuration: (entry.animDuration ?? 0),
-            solid:        false,
-            radius:       0,
-            ceiling:      false,
-            effect:       entry.effect,
+            kind:          'pickup',
+            code:          null,
+            frames:        (entry.frames ?? [entry.sprite]),
+            animDuration:  (entry.animDuration ?? 0),
+            solid:         false,
+            radius:        0,
+            ceiling:       false,
+            effect:        entry.effect,
+            // MF_NOTDMATCH: never spawned in deathmatch (the keys).
+            notDeathmatch: (entry.notDeathmatch === true),
             // Spawner things sharing a group key: only ONE random occurrence
             // per group materializes each level (Heretic MaceSpawner).
-            spawnerGroup: (entry.spawnerGroup ?? null)
+            spawnerGroup:  (entry.spawnerGroup ?? null)
         };
     }
 }

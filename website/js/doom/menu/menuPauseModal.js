@@ -36,8 +36,10 @@ class MenuPauseModal extends AbstractGameMenuModal {
      * offersScreenSharing(), offersCooperative() — read at each render, the
      * mode changing under the pause —, openScreenSharing(nickname) and
      * openCooperative(nickname) → the session, null without a WAD identity,
-     * switchToCooperative(), stop(), unavailableReason() → Promise}. Null when
-     * the game (no stored WAD metadata, a sub) hosts no session.
+     * switchToCooperative(), stop() → whether the game goes on, stopCodes() →
+     * the label and confirmation codes of the stop entry, unavailableReason()
+     * → Promise}. Null when the game (no stored WAD metadata, a sub) hosts no
+     * session.
      *
      * @param {object|null} context
      */

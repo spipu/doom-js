@@ -2,8 +2,8 @@
  * Multiplayer sub-menu of the main's pause, its entries following the session
  * state at each render: switch to cooperative, share screen and the
  * multiplayer options outside a session; the lobby, switch to cooperative,
- * stop sharing and the options while the screen is shared; the lobby, stop
- * cooperative and the options in a cooperative game. Its back button,
+ * stop sharing and the options while the screen is shared; the lobby, the
+ * stop entry of the mode and the options in a game the subs play. Its back button,
  * Backspace, Escape and the gamepad back button return to the pause.
  */
 class MenuMultiplayerModal extends AbstractGameMenuModal {
@@ -48,13 +48,11 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
 
     _addSessionEntries(listEl, session) {
         this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.lobby'), () => this._openLobby());
-        if (session.getMode() === DoomNetProtocol.MODE_COOPERATIVE) {
-            this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.stopCoop'),
-                () => this._confirmStop('multiplayer.pause.stopCoopConfirm'));
-            return;
+        if (!DoomNetProtocol.subsPlayOwnPlayers(session.getMode())) {
+            this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.switchToCooperative'), () => this._switchToCooperative());
         }
-        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.switchToCooperative'), () => this._switchToCooperative());
-        this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.stop'), () => this._confirmStop('multiplayer.pause.stopConfirm'));
+        const stopCodes = this._sessionContext.stopCodes();
+        this._nav.addItemIn(listEl, appTranslator.get(stopCodes.label), () => this._confirmStop(stopCodes.confirm));
     }
 
     _addOpeningEntries(listEl) {
@@ -116,8 +114,9 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
 
     _confirmStop(messageCode) {
         this._confirm(appTranslator.get(messageCode), () => {
-            this._sessionContext.stop();
-            this.show();
+            if (this._sessionContext.stop()) {
+                this.show();
+            }
         });
     }
 

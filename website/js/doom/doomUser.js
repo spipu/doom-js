@@ -21,6 +21,7 @@ class DoomUser extends User {
         this._landingSplash   = null; // (x, y, z) => void, set by DoomSimulation per level
         this._events          = null; // DoomTurnEvents its sounds go to, set by DoomSimulation per level
         this._playerId        = null; // the DoomPlayer this body belongs to
+        this._killer          = null; // the source of the blow it last died of, null for none
     }
 
     setPlayerId(id) {
@@ -180,7 +181,11 @@ class DoomUser extends User {
         return this;
     }
 
-    takeDamage(delta) {
+    /**
+     * @param {number}      delta
+     * @param {object|null} source - the body behind the blow (P_DamageMobj source), null for none
+     */
+    takeDamage(delta, source = null) {
         if (this.hasEffect('invulnerability')) {
             return;
         }
@@ -197,7 +202,24 @@ class DoomUser extends User {
         const wasAlive     = !this.isDead();
         const energyBefore = this.getEnergy();
         super.takeDamage(delta);
+        if (wasAlive && this.isDead()) {
+            this._killer = source;
+        }
         this._voiceDamage(wasAlive, energyBefore);
+    }
+
+    kill() {
+        if (!this.isDead()) {
+            this._killer = null;
+        }
+        super.kill();
+    }
+
+    /**
+     * @returns {object|null} the body behind the blow this player last died of (P_KillMobj source), null for none
+     */
+    getKiller() {
+        return this._killer;
     }
 
     // P_KillMobj / P_DamageMobj cries. The engine clamps the energy, so the

@@ -2,8 +2,9 @@
  * The running level's statistics — vanilla totalsecret / totalkills /
  * totalitems, what has been found of them, and leveltime — and what each
  * player found of them (a kill with no player responsible counts for the
- * level alone). The simulation counts them on the main; the HUD, the tally
- * and the saves read them without knowing who fills them.
+ * level alone), and the frags each player scored against each other one.
+ * The simulation counts them on the main; the HUD, the tally and the saves
+ * read them without knowing who fills them.
  */
 class DoomLevelStats {
     constructor() {
@@ -20,6 +21,7 @@ class DoomLevelStats {
         this._levelTimeMs    = 0;
         this._levelClockLast = null;
         this._players        = new Map();   // player id → {kills, items, secrets}
+        this._frags          = new Map();   // killer id → Map(victim id → frags), player_t frags[]
 
         return this;
     }
@@ -52,14 +54,85 @@ class DoomLevelStats {
             killsTotal:   this._killsTotal,
             items:        this._itemsFound,
             itemsTotal:   this._itemsTotal,
-            timeMs:       this._levelTimeMs
+            timeMs:       this._levelTimeMs,
+            frags:        this._exportFrags()
         };
     }
 
     importCounts(counts) {
         this.setTotals(counts.secretsTotal, counts.killsTotal, counts.itemsTotal);
+        this._frags = new Map();
+        for (const entry of counts.frags) {
+            this._fragsOf(entry.killer).set(entry.victim, entry.count);
+        }
 
         return this.restoreProgress(counts.secrets, counts.kills, counts.items, counts.timeMs);
+    }
+
+    _exportFrags() {
+        const frags = [];
+        for (const [killer, victims] of this._frags) {
+            for (const [victim, count] of victims) {
+                frags.push({killer: killer, victim: victim, count: count});
+            }
+        }
+
+        return frags;
+    }
+
+    /**
+     * A player died of another player's blow, or of its own (killer = victim).
+     *
+     * @param {int} killerId
+     * @param {int} victimId
+     */
+    addFrag(killerId, victimId) {
+        const victims = this._fragsOf(killerId);
+        victims.set(victimId, (victims.get(victimId) ?? 0) + 1);
+    }
+
+    /**
+     * ST_calcFrags: the frags against the other players, less those against oneself.
+     *
+     * @param {int} playerId
+     * @returns {int}
+     */
+    fragScore(playerId) {
+        const victims = this._frags.get(playerId);
+        if (victims === undefined) {
+            return 0;
+        }
+        let score = 0;
+        for (const [victim, count] of victims) {
+            score += ((victim === playerId) ? -count : count);
+        }
+
+        return score;
+    }
+
+    /**
+     * @returns {int} the frags killerId scored against victimId (against itself when they are one)
+     */
+    fragsAgainst(killerId, victimId) {
+        const victims = this._frags.get(killerId);
+
+        return ((victims !== undefined) ? (victims.get(victimId) ?? 0) : 0);
+    }
+
+    // A seat given to another player: what its last player scored is not the newcomer's.
+    forgetPlayer(playerId) {
+        this._players.delete(playerId);
+        this._frags.delete(playerId);
+    }
+
+    _fragsOf(killerId) {
+        let victims = this._frags.get(killerId);
+        if (victims === undefined) {
+            victims = new Map();
+            this._frags.set(killerId, victims);
+        }
+
+        return victims;
     }
 
     /**

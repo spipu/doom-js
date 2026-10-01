@@ -105,6 +105,11 @@ class DefaultGameProfile extends AbstractGameProfile {
         return [1, 2, 3, 4];
     }
 
+    // linuxdoom p_mobj.c P_SpawnMapThing: type 11 fills deathmatchstarts; Heretic keeps it.
+    deathmatchStartType() {
+        return 11;
+    }
+
     playerBodyData() {
         return DefaultGameProfile.PLAYER_BODY;
     }
@@ -114,6 +119,12 @@ class DefaultGameProfile extends AbstractGameProfile {
     // key. Heretic keeps both.
     multiplayerItemRules() {
         return DefaultGameProfile.MULTIPLAYER_ITEM_RULES;
+    }
+
+    // p_mobj.c P_RemoveMobj / P_RespawnSpecials: 30 s, an item fog and itmbk,
+    // never the invulnerability (MT_INV) nor the invisibility (MT_INS).
+    itemRespawnRules() {
+        return DefaultGameProfile.ITEM_RESPAWN_RULES;
     }
 
     // zscript doomplayer.zs Player.ColorRange and Colorset 0-3: green, gray, brown, red.
@@ -232,13 +243,13 @@ class DefaultGameProfile extends AbstractGameProfile {
             2025: {kind: 'pickup', sprite: 'SUITA0', effect: {item: 'radiationSuit'}},
             2026: {kind: 'pickup', sprite: 'PMAPA0', frames: DoomThingCatalog.animFrames('PMAP', 'ABCD'), animDuration: 6 * WadConstants.SECONDS_PER_TIC, effect: {item: 'computerMap'}},
             2045: {kind: 'pickup', sprite: 'PVISA0', frames: DoomThingCatalog.animFrames('PVIS', 'AB'), animDuration: 6 * WadConstants.SECONDS_PER_TIC, effect: {item: 'lightVisor'}},
-            // --- Keys (blink between two frames) ---
-            5:    {kind: 'pickup', sprite: 'BKEYA0', frames: DoomThingCatalog.animFrames('BKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}},
-            13:   {kind: 'pickup', sprite: 'RKEYA0', frames: DoomThingCatalog.animFrames('RKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
-            6:    {kind: 'pickup', sprite: 'YKEYA0', frames: DoomThingCatalog.animFrames('YKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
-            40:   {kind: 'pickup', sprite: 'BSKUA0', frames: DoomThingCatalog.animFrames('BSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}},
-            38:   {kind: 'pickup', sprite: 'RSKUA0', frames: DoomThingCatalog.animFrames('RSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}},
-            39:   {kind: 'pickup', sprite: 'YSKUA0', frames: DoomThingCatalog.animFrames('YSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
+            // --- Keys (blink between two frames; +NOTDMATCH, doomkeys.zs) ---
+            5:    {kind: 'pickup', sprite: 'BKEYA0', frames: DoomThingCatalog.animFrames('BKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}, notDeathmatch: true},
+            13:   {kind: 'pickup', sprite: 'RKEYA0', frames: DoomThingCatalog.animFrames('RKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}, notDeathmatch: true},
+            6:    {kind: 'pickup', sprite: 'YKEYA0', frames: DoomThingCatalog.animFrames('YKEY', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}, notDeathmatch: true},
+            40:   {kind: 'pickup', sprite: 'BSKUA0', frames: DoomThingCatalog.animFrames('BSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}, notDeathmatch: true},
+            38:   {kind: 'pickup', sprite: 'RSKUA0', frames: DoomThingCatalog.animFrames('RSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'redKey'}, notDeathmatch: true},
+            39:   {kind: 'pickup', sprite: 'YSKUA0', frames: DoomThingCatalog.animFrames('YSKU', 'AB'), animDuration: 7 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}, notDeathmatch: true},
             // --- Static floor decorations ---
             2028: {kind: 'decoration', code: 'floorLamp'},
             48:   {kind: 'decoration', code: 'techColumn'},
@@ -854,7 +865,9 @@ class DefaultGameProfile extends AbstractGameProfile {
             {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
                 frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true, spawnSound: ['vile/firestrt', 'vile/firecrkl']},
             // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
-            {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true}
+            {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true},
+            // P_RespawnSpecials fog (zscript ItemFog: IFOG ABABCDE 6 Bright)
+            {name: 'itemFog',       sprite: 'IFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E'], frameTics: [6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: false}
         ];
     }
 
@@ -1138,7 +1151,8 @@ class DefaultGameProfile extends AbstractGameProfile {
             'misc/p_pkup':       {lump: 'DSGETPOW'},
             'misc/i_pkup':       {lump: 'DSITEMUP', pitch: 0},
             'misc/k_pkup':       {lump: 'DSITEMUP', pitch: 0},
-            'misc/teleport':     {lump: 'DSTELEPT'}
+            'misc/teleport':     {lump: 'DSTELEPT'},
+            'misc/spawn':        {lump: 'DSITMBK'}
         };
     }
 
@@ -1408,7 +1422,9 @@ DefaultGameProfile.PLAYER_BODY = {
         xdeath:  [['O', 5], ['P', 5, 'A_XScream'], ['Q', 5, 'A_NoBlocking'], ['RSTUV', 5], ['W', -1]]
     }
 };
-DefaultGameProfile.MULTIPLAYER_ITEM_RULES = {weaponsStay: true, keysStay: true};
+// P_GiveWeapon gives 5 clips for a placed weapon in deathmatch, 2 otherwise.
+DefaultGameProfile.MULTIPLAYER_ITEM_RULES = {weaponsStay: true, keysStay: true, deathmatchWeaponClips: 5};
+DefaultGameProfile.ITEM_RESPAWN_RULES     = {delayTics: 1050, revealTics: 0, effect: 'itemFog', sound: 'misc/spawn', neverTypes: [2022, 2024]};
 
 // Commercial level songs in map order (mapinfo/doom2.txt, the vanilla
 // mus_runnin + map − 1 sequence): lump = 'D_' + name.

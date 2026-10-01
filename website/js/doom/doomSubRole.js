@@ -15,29 +15,29 @@ class DoomSubRole {
      * @param {DoomNetSubSession} session
      */
     constructor(roster, session) {
-        this._roster            = roster;
-        this._session           = session;
-        this._stats             = new DoomLevelStats();
-        this._codec             = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
-        this._sampler           = null;    // the local player's, handed over on each frame
-        this._neutralCommand    = new UserCommand();
-        this._builtLevel        = null;
-        this._applier           = null;
-        this._multiplayerThings = false;
-        this._levelSeq          = null;    // the main's sequence number of the level being built
-        this._lastStateAt       = null;
-        this._notice            = new DoomSessionNotice();
-        this._levelOver         = false;   // the main's tally or story text is shown
-        this._localPaused       = false;
-        this._playEvent         = null;
-        this._onLevelLoad       = null;
-        this._onPhase           = null;
-        this._onModeChange      = null;
+        this._roster         = roster;
+        this._session        = session;
+        this._stats          = new DoomLevelStats();
+        this._codec          = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
+        this._sampler        = null;    // the local player's, handed over on each frame
+        this._neutralCommand = new UserCommand();
+        this._builtLevel     = null;
+        this._applier        = null;
+        this._thingFilter    = null;
+        this._levelSeq       = null;    // the main's sequence number of the level being built
+        this._lastStateAt    = null;
+        this._notice         = new DoomSessionNotice();
+        this._levelOver      = false;   // the main's tally or story text is shown
+        this._localPaused    = false;
+        this._playEvent      = null;
+        this._onLevelLoad    = null;
+        this._onPhase        = null;
+        this._onModeChange   = null;
     }
 
     /**
      * @param {function(object)}      playEvent    - DoomPresentation.playTurnEvent
-     * @param {function(object)}      onLevelLoad  - the main started a level: {levelCode, skill, multiplayerThings, mode, options}
+     * @param {function(object)}      onLevelLoad  - the main started a level: {levelCode, skill, thingFilter, mode, options}
      * @param {function(string|null)} onNotice     - the message to show over the game, null for none
      * @param {function(object)}      onPhase      - the main's tally or story text: its control message
      * @param {function(string)}      onEnd        - the session ended, with its DoomNetProtocol.END_* reason
@@ -57,18 +57,18 @@ class DoomSubRole {
     // The main's thing filter for the level it sent, and which level it is.
     // What the previous level said of the main (its pause, its death) is over.
     prepareLevel(level) {
-        this._multiplayerThings = level.multiplayerThings;
-        this._levelSeq          = level.seq;
-        this._applier           = null;
-        this._levelOver         = false;
+        this._thingFilter = level.thingFilter;
+        this._levelSeq    = level.seq;
+        this._applier     = null;
+        this._levelOver   = false;
         this._notice.clear();
         this._session.setLivenessSuspended(true);
     }
 
     // --- Role ---
 
-    spawnsMultiplayerThings() {
-        return this._multiplayerThings;
+    thingFilter() {
+        return this._thingFilter;
     }
 
     // A sub's pause only opens its own menu: the main's game goes on.
@@ -101,13 +101,13 @@ class DoomSubRole {
         return ((this._playsOwnPlayer()) ? 'multiplayer.pause.leaveGame' : 'multiplayer.pause.leave');
     }
 
-    // A cooperative sub plays with the main's pad; a viewer keeps the menu and the map.
+    // A playing sub has the main's pad; a viewer keeps the menu and the map.
     padControls() {
         return ((this._playsOwnPlayer()) ? DoomMainRole.PAD_CONTROLS : DoomSubRole.PAD_CONTROLS);
     }
 
     _playsOwnPlayer() {
-        return (this._session.getMode() === DoomNetProtocol.MODE_COOPERATIVE);
+        return DoomNetProtocol.subsPlayOwnPlayers(this._session.getMode());
     }
 
     // Its pause freezes nobody: its player stands still, commanded neutral.
@@ -202,6 +202,10 @@ class DoomSubRole {
         this._notice.departed(message.nickname, performance.now());
     }
 
+    playerAway(message) {
+        this._notice.awayChanged(message.nickname, (message.away === true), performance.now());
+    }
+
     // No state comes during a phase: a pause ends with the next state, the
     // level's end with the next level.
     phase(message) {
@@ -224,7 +228,7 @@ class DoomSubRole {
             snapshot = DoomNetStateCodec.decode(buffer);
         } catch (error) {
             console.error('DoomSubRole - invalid state message (' + buffer.byteLength + ' bytes): ' + error.message);
-            this._session.reportInvalid(error);
+            this._session.endInvalid();
             return;
         }
         this._applier.apply(snapshot);

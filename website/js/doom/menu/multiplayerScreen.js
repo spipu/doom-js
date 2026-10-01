@@ -1,9 +1,10 @@
 /**
  * Multiplayer screen of a WAD, above its options: start a new cooperative
- * game, join a game, and a shortcut to the multiplayer options. Both ask for
- * the nickname if there is none and check the WAD's identity first. Joining
- * pairs with the main — its code read, the answer shown — and lands in the
- * lobby until the session ends; cooperative goes on to the episodes.
+ * game or deathmatch, join a game, and a shortcut to the multiplayer options.
+ * Each flow asks for the nickname if there is none and checks the WAD's
+ * identity first. Joining pairs with the main — its code read, the answer
+ * shown — and lands in the lobby until the session ends; a new game goes on
+ * to the episodes.
  */
 class MultiplayerScreen extends AbstractMenuScreen {
     /**
@@ -26,18 +27,24 @@ class MultiplayerScreen extends AbstractMenuScreen {
 
     _build() {
         const {panel, listEl} = this._buildWadPanel(this._wadMeta, appTranslator.get('help.multiplayer'));
-        const coop = this._addListItem(listEl, appTranslator.get('multiplayer.newCooperative'),
-            () => this._afterChecks((nickname) => this._navigator.openCooperativeEpisodes(this._wadMeta, nickname)));
-        const join = this._addListItem(listEl, appTranslator.get('multiplayer.join'),
+
+        const coop       = this._addNewGameItem(listEl, 'multiplayer.newCooperative', DoomCoopRules);
+        const deathmatch = this._addNewGameItem(listEl, 'multiplayer.newDeathmatch', DoomDeathmatchRules);
+        const join       = this._addListItem(listEl, appTranslator.get('multiplayer.join'),
             () => this._afterChecks((nickname, wadSha256) => this._pair(nickname, wadSha256)));
         this._addListItem(listEl, appTranslator.get('multiplayer.options'), () => {
             this._openModal(new MenuOptionsModal(this._display)).showMultiplayer();
         });
         this._addBackButton(panel);
         this._nav.selectFirst();
-        for (const item of [coop, join]) {
+        for (const item of [coop, deathmatch, join]) {
             MenuNetGate.greyWhenUnavailable(item, () => this._availability.unavailableReason());
         }
+    }
+
+    _addNewGameItem(listEl, labelCode, rules) {
+        return this._addListItem(listEl, appTranslator.get(labelCode),
+            () => this._afterChecks((nickname) => this._navigator.openSessionEpisodes(this._wadMeta, nickname, rules)));
     }
 
     _onBack() {
@@ -77,7 +84,8 @@ class MultiplayerScreen extends AbstractMenuScreen {
             waiting:       () => {},
             phase:         () => {},
             modeChanged:   () => {},
-            playerRemoved: () => {}
+            playerRemoved: () => {},
+            playerAway:    () => {}
         });
         lobby.openSub(session, {leave: () => session.leave()});
     }

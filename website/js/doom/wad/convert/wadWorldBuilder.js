@@ -12,34 +12,34 @@ class WadWorldBuilder {
     /**
      * @param {WadFile} wadFile
      * @param {string}  levelCode
-     * @param {object}  options - {onLevelExit: function, turnEvents: DoomTurnEvents, thingCatalog: DoomThingCatalog, monsterCatalog: DoomMonsterCatalog, skill: number, multiplayerThings: boolean, profile: AbstractGameProfile}
+     * @param {object}  options - {onLevelExit: function, turnEvents: DoomTurnEvents, thingCatalog: DoomThingCatalog, monsterCatalog: DoomMonsterCatalog, skill: number, thingFilter: object, profile: AbstractGameProfile}
      *                  onLevelExit is wired on the exit switches; turnEvents
      *                  takes the sounds of the switches, the shot lines and the
      *                  terrain; thingCatalog
      *                  maps THING types to world sprites/pickups and monsterCatalog
      *                  to monster definitions; skill (1..5, default 3) drives the
-     *                  thing filtering, with the multiplayer-only things
-     *                  (MTF_NOT_SINGLE) when multiplayerThings; profile carries
+     *                  thing filtering, with the mode's thingFilter (see
+     *                  DoomGameRules.thingFilter, single player by default); profile carries
      *                  the per-game policy (Doom by default). What only the
      *                  simulating device wires comes back in plain data.
      */
     constructor(wadFile, levelCode, options = null) {
         options = options ?? {};
 
-        this._wadFile           = wadFile;
-        this._levelCode         = levelCode;
-        this._onLevelExit       = options.onLevelExit ?? null;
-        this._turnEvents        = options.turnEvents;
-        this._thingCatalog      = options.thingCatalog ?? null;
-        this._skill             = options.skill ?? 3;
-        this._multiplayerThings = (options.multiplayerThings === true);
-        this._profile           = options.profile ?? new DoomGameProfile();
-        this._monsterCatalog    = options.monsterCatalog ?? null;
-        this._level             = null;
-        this._sectorPolys       = null;   // walked on demand, see _sectorPolyCache
-        this._built             = null;   // DoomBuiltLevel handed back by build()
-        this._useLineCache      = null;   // world-space linedefs of the use traces, see _useLines
-        this._sectorHeights     = null;   // live sector heights (DoomSectorHeights), set with the level data
+        this._wadFile        = wadFile;
+        this._levelCode      = levelCode;
+        this._onLevelExit    = options.onLevelExit ?? null;
+        this._turnEvents     = options.turnEvents;
+        this._thingCatalog   = options.thingCatalog ?? null;
+        this._skill          = options.skill ?? 3;
+        this._thingFilter    = options.thingFilter ?? WadThingBuilder.SINGLE_PLAYER_FILTER;
+        this._profile        = options.profile ?? new DoomGameProfile();
+        this._monsterCatalog = options.monsterCatalog ?? null;
+        this._level          = null;
+        this._sectorPolys    = null;   // walked on demand, see _sectorPolyCache
+        this._built          = null;   // DoomBuiltLevel handed back by build()
+        this._useLineCache   = null;   // world-space linedefs of the use traces, see _useLines
+        this._sectorHeights  = null;   // live sector heights (DoomSectorHeights), set with the level data
     }
 
     /**
@@ -334,8 +334,9 @@ class WadWorldBuilder {
             this._monsterCatalog,
             // Out-of-range dev skill: null, the builder falls back to the flag bits.
             (this._profile.skillRules()[this._skill] ?? null)
-        ).setMultiplayerThings(this._multiplayerThings)
+        ).setThingFilter(this._thingFilter)
             .setPlayerStartTypes(this._profile.playerStartTypes())
+            .setDeathmatchStartType(this._profile.deathmatchStartType())
             .setSpawnerSeed(this._thingsSeed());
         const things = builder.buildAll();
 
@@ -381,9 +382,9 @@ class WadWorldBuilder {
             if (countsItem) {
                 itemsTotal++;
             }
-            const ride = this._resolveThingFloor(thing, analysis, builtFloorCodes);
+            const ride     = this._resolveThingFloor(thing, analysis, builtFloorCodes);
             const position = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
-            loader.instances().loadFromData(null, {
+            const data     = {
                 code:                  code,
                 object:                billboardIds[objKey],
                 position:              position,
@@ -402,12 +403,16 @@ class WadWorldBuilder {
                 interactionReachAbove: ((isPickup) ? WadConstants.PLAYER_HEIGHT : 0),
                 interaction:           ((isPickup) ? code : null),
                 keyframes:             []
-            });
+            };
+            loader.instances().loadFromData(null, data);
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
             if (isPickup) {
-                pickups.push({code: code, effect: thing.effect, countsItem: countsItem});
+                // The recipe that brings it back when the items respawn: the
+                // descriptor at the rest pose of the floor it follows.
+                pickups.push({code: code, effect: thing.effect, countsItem: countsItem, type: thing.type,
+                    spawnData: Object.assign({}, data, {position: [...position]}), rideCode: ride.floorCode});
             }
         }
         this._built.setKillsTotal(killsTotal).setItemsTotal(itemsTotal).setPickups(pickups).setMonsterPlacements(placements);
@@ -427,7 +432,8 @@ class WadWorldBuilder {
             });
         }
 
-        this._built.setPlayerStarts(this._spawnPoses(builder.getPlayerStarts()));
+        this._built.setPlayerStarts(this._spawnPoses(builder.getPlayerStarts()))
+            .setDeathmatchStarts(builder.getDeathmatchStarts().map((start) => this._spawnPose(start)));
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
     }
@@ -1180,22 +1186,26 @@ class WadWorldBuilder {
         return AppHash.fnv1a32(new Uint8Array(things.buffer, things.byteOffset, things.byteLength));
     }
 
-    // Each start just above its sector floor, in world space.
     _spawnPoses(starts) {
         const poses = {};
         for (const slot of Object.keys(starts)) {
-            const start   = starts[slot];
-            const sect    = this._findSector(start.x, start.y);
-            const floorFh = ((sect !== null) ? sect.fh : 0);
-            poses[slot] = {
-                x:   start.x * WadConstants.SCALE,
-                y:   floorFh * WadConstants.SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
-                z:   start.y * WadConstants.SCALE,
-                yaw: WadGeometry.doomAngleYaw(start.angle)
-            };
+            poses[slot] = this._spawnPose(starts[slot]);
         }
 
         return poses;
+    }
+
+    // A start just above its sector floor, in world space.
+    _spawnPose(start) {
+        const sect    = this._findSector(start.x, start.y);
+        const floorFh = ((sect !== null) ? sect.fh : 0);
+
+        return {
+            x:   start.x * WadConstants.SCALE,
+            y:   floorFh * WadConstants.SCALE + WadConstants.SPAWN_FLOOR_CLEARANCE,
+            z:   start.y * WadConstants.SCALE,
+            yaw: WadGeometry.doomAngleYaw(start.angle)
+        };
     }
 
     // Teleport landings by sector tag: {x, y, topY, z, yaw} in world space.

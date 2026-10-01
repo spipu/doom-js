@@ -79,7 +79,7 @@ class MenuLobbyModal extends AbstractMenuListModal {
     // A new player list is rebuilt; a ping sample only rewrites the pings.
     _refresh() {
         const lobby = this._session.getLobby();
-        const shape = JSON.stringify([lobby.getPlayers().map((player) => [player.id, player.color]), this._session.isStarted()]);
+        const shape = JSON.stringify([lobby.getPlayers().map((player) => [player.id, player.color]), lobby.getReserved(), this._session.isStarted()]);
         this._titleEl.textContent = appTranslator.get('multiplayer.lobby.title', {count: lobby.getPlayers().length, capacity: lobby.getCapacity()});
         if (shape !== this._shape) {
             this._shape = shape;
@@ -102,8 +102,13 @@ class MenuLobbyModal extends AbstractMenuListModal {
         this._nav.clear();
         this._pingEls.clear();
         this._itemKeys = [];
-        for (const player of lobby.getPlayers()) {
-            this._addPlayer(player);
+        const seats = [...lobby.getPlayers(), ...lobby.getReserved()].sort((a, b) => (a.slot - b.slot));
+        for (const seat of seats) {
+            if (lobby.getReserved().includes(seat)) {
+                this._addReservedSeat(seat);
+            } else {
+                this._addPlayer(seat);
+            }
         }
         if (this._isMain) {
             this._addMainActions(lobby);
@@ -115,13 +120,27 @@ class MenuLobbyModal extends AbstractMenuListModal {
     }
 
     _addPlayer(player) {
-        const label = appTranslator.get('multiplayer.lobby.player', {slot: player.slot, nickname: player.nickname});
-        const item  = this._nav.addItemIn(this._listEl, label, () => this._pickPlayer(player));
-        if (player.color !== null) {
-            MenuDom.addColorSwatch(item, player.color);
-        }
+        const item = this._addSeatItem(player, () => this._pickPlayer(player));
         this._pingEls.set(player.id, MenuDom.addText(item, 'doom-menu-item-infos', this._pingText(player)));
         this._itemKeys.push(player.id);
+    }
+
+    // A lost player's seat, kept for its return: nothing to do with it.
+    _addReservedSeat(seat) {
+        const item = this._addSeatItem(seat, () => {});
+        item.classList.add('doom-menu-item-disabled');
+        MenuDom.addText(item, 'doom-menu-item-infos', appTranslator.get('multiplayer.lobby.disconnected'));
+        this._itemKeys.push(MenuLobbyModal.KEY_RESERVED + seat.slot);
+    }
+
+    _addSeatItem(seat, action) {
+        const label = appTranslator.get('multiplayer.lobby.player', {slot: seat.slot, nickname: seat.nickname});
+        const item  = this._nav.addItemIn(this._listEl, label, action);
+        if (seat.color !== null) {
+            MenuDom.addColorSwatch(item, seat.color);
+        }
+
+        return item;
     }
 
     _addMainActions(lobby) {
@@ -153,6 +172,9 @@ class MenuLobbyModal extends AbstractMenuListModal {
         if (player.id === DoomNetLobby.MAIN_ID) {
             return appTranslator.get('multiplayer.lobby.main');
         }
+        if (player.away === true) {
+            return appTranslator.get('multiplayer.lobby.away');
+        }
         if (player.ping === null) {
             return appTranslator.get('multiplayer.lobby.pingPending');
         }
@@ -162,4 +184,5 @@ class MenuLobbyModal extends AbstractMenuListModal {
     }
 }
 
-MenuLobbyModal.KEY_ADD = 'add';
+MenuLobbyModal.KEY_ADD      = 'add';
+MenuLobbyModal.KEY_RESERVED = 'reserved-';

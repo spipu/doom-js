@@ -4,14 +4,14 @@ class DoomGame {
      *                                               the main's game, null for a game of its own
      */
     constructor(subSession = null) {
-        this._rules           = new DoomSinglePlayerRules();
+        this._rules           = ((subSession !== null) ? DoomGameRules.forMode(subSession.getMode(), subSession.getOptions()) : new DoomSinglePlayerRules());
         this._subSession      = subSession;
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(((subSession !== null) ? subSession.getViewedPlayerId() : DoomGame.LOCAL_PLAYER_ID)));
         this._turnEvents      = new DoomTurnEvents();
         this._role            = ((subSession !== null)
             ? new DoomSubRole(this._roster, subSession)
             : new DoomMainRole(this._roster, this._rules, this._turnEvents));
-        this._presentation    = new DoomPresentation();
+        this._presentation    = new DoomPresentation().useRules(this._rules);
         this._profile         = null;
         this._itemCatalog     = null;
         this._thingCatalog    = null;
@@ -37,7 +37,7 @@ class DoomGame {
         this._pauseModal      = null;
         this._deathDisplay    = null;
         this._deathModal      = null;
-        this._launch          = null;   // {nickname, onCancel} of a cooperative game started from the Multiplayer screen
+        this._launch          = null;   // {nickname, mode, onCancel} of a multiplayer game started from the Multiplayer screen
         this._launchDisplay   = null;
         this._launchLobby     = null;   // its lobby, over the frozen first level until Start
         this._deathClockMs    = 0;
@@ -49,6 +49,7 @@ class DoomGame {
         this._joining         = false;  // a sub is building the level the main sent
         this._pendingLevel    = null;   // the level the main sent meanwhile, built next
         this._endReason       = null;   // DoomNetProtocol.END_* once the followed session ended
+        this._aloneOver       = false;  // every opponent gone: the game leaves on its next frame
         this._animateCallback = this._animate.bind(this);
 
         this._presentation.setPadControls(this._role.padControls());
@@ -68,7 +69,7 @@ class DoomGame {
      *
      * @param {WadFile}     wadFile
      * @param {object|null} wadMeta - null keeps the game's, on a level change
-     * @param {object}      level   - {levelCode, skill, multiplayerThings}
+     * @param {object}      level   - {levelCode, skill, thingFilter}
      */
     async joinSharedGame(wadFile, wadMeta, level) {
         this._joining = true;
@@ -103,13 +104,15 @@ class DoomGame {
     }
 
     /**
-     * The mode changes during the game: cooperative opened, or back to single player.
+     * The mode changes during the game: cooperative opened, or back to single
+     * player. A sub holds the rules of its session's mode for what it shows.
      *
      * @param {DoomGameRules} rules
      */
     _setRules(rules) {
         this._rules = rules;
         this._role.useRules(rules);
+        this._presentation.useRules(rules);
     }
 
     // --- Save / load ---
@@ -159,7 +162,7 @@ class DoomGame {
         this._builtLevel = await new DoomLevelLoader(this._profile, this._thingCatalog, this._monsterCatalog, this._itemCatalog)
             .load(wadFile, levelCode, {
                 skill:             this._skill,
-                multiplayerThings: this._role.spawnsMultiplayerThings(),
+                thingFilter:       this._role.thingFilter(),
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });
@@ -215,7 +218,8 @@ class DoomGame {
         this._pauseWasDown = true;
 
         this._presentation.startLevelSound(this._mapInfo.musicLumpsFor(this._levelCode));
-        this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, multiplayerThings: this._role.spawnsMultiplayerThings()});
+        this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, thingFilter: this._role.thingFilter()});
+        this._releaseSeats();
         // A session opened from the pause and never started: the level just
         // shown is the one its subs build (a save loaded there, a restart).
         this._startPendingSession();
@@ -240,6 +244,10 @@ class DoomGame {
 
     _animate(timestamp) {
         if (!this._running) {
+            return;
+        }
+        if (this._aloneOver) {
+            this._endAlone();
             return;
         }
         this._role.tickLevelClock(timestamp, !this._paused && !this._transitioning);
@@ -342,7 +350,8 @@ class DoomGame {
             openScreenSharing:   (nickname) => this._openNetSession(nickname, DoomNetProtocol.MODE_SCREEN_SHARING, {}),
             openCooperative:     (nickname) => this._openCooperative(nickname),
             switchToCooperative: () => this._switchToCooperative(),
-            stop:                () => this._stopSession(),
+            stop:                () => this._stopFromPause(),
+            stopCodes:           () => this._rules.sessionStopCodes(),
             unavailableReason:   () => this._netAvailability.unavailableReason()
         };
     }
@@ -355,7 +364,9 @@ class DoomGame {
         }
         const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers(), mode, options,
             this._builtLevel.getPlayerColors())
-            .setOnPlayerRemoved((removedNickname) => this._hostNotice.departed(removedNickname, performance.now()));
+            .setOnPlayerRemoved((removedNickname) => this._onPlayerRemoved(removedNickname))
+            .setOnPlayerAway((awayNickname, away) => this._hostNotice.awayChanged(awayNickname, away, performance.now()))
+            .setOnSeatReleased((slot) => this._role.releaseSeat(slot));
         this._netSession = session;
         this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
             .setPingSource(() => session.getLobby().getWorstPing());
@@ -363,9 +374,40 @@ class DoomGame {
         return session;
     }
 
+    _onPlayerRemoved(nickname) {
+        this._hostNotice.departed(nickname, performance.now());
+        this._checkAlone();
+    }
+
+    // A game the rules end once alone leaves on the next frame: the departure
+    // may be heard in the middle of one (a sub dropped for its silence). A
+    // seat kept for a lost player keeps the game going until it is released.
+    _checkAlone() {
+        const lobby = this._netSession.getLobby();
+        if (this._rules.endsWhenAlone() && this._netSession.isStarted() && (lobby.getPlayers().length <= 1) && !lobby.hasReservations()) {
+            this._aloneOver = true;
+        }
+    }
+
+    // The seats kept for lost players last the level they were left in.
+    _releaseSeats() {
+        if (this._netSession === null) {
+            return;
+        }
+        this._netSession.releaseSeats();
+        this._checkAlone();
+    }
+
+    _endAlone() {
+        this._aloneOver = false;
+        this._closeGameMenu();
+        this._teardownLevel();
+        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenuAfterSession(meta, DoomNetProtocol.END_MATCH_OVER), DoomNetProtocol.END_MATCH_OVER);
+    }
+
     _openCooperative(nickname) {
         const rules   = DoomCoopRules.fromSettings();
-        const session = this._openNetSession(nickname, DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
+        const session = this._openNetSession(nickname, DoomCoopRules.MODE, rules.getOptions());
         if (session !== null) {
             this._setRules(rules);
         }
@@ -377,7 +419,20 @@ class DoomGame {
     _switchToCooperative() {
         const rules = DoomCoopRules.fromSettings();
         this._setRules(rules);
-        this._netSession.setMode(DoomNetProtocol.MODE_COOPERATIVE, rules.getOptions());
+        this._netSession.setMode(DoomCoopRules.MODE, rules.getOptions());
+    }
+
+    // A session the rules end once alone takes the main's game with it: the
+    // match is over for everyone. Otherwise the main plays on alone.
+    _stopFromPause() {
+        if (!this._rules.endsWhenAlone()) {
+            this._stopSession();
+            return true;
+        }
+        this._closeGameMenu();
+        this._quitToMenu();
+
+        return false;
     }
 
     _stopSession(endReason = DoomNetProtocol.END_STOPPED) {
@@ -442,6 +497,7 @@ class DoomGame {
     // A viewer becomes a player: it views its own player from now on, on the
     // same body, and plays with the full pad.
     _onSessionModeChange() {
+        this._setRules(DoomGameRules.forMode(this._subSession.getMode(), this._subSession.getOptions()));
         const viewedId = this._subSession.getViewedPlayerId();
         const current  = this._localPlayer();
         if (current.getId() !== viewedId) {
@@ -524,25 +580,26 @@ class DoomGame {
         }
     }
 
-    // --- Cooperative launch (Multiplayer screen) ---
+    // --- Multiplayer launch (Multiplayer screen) ---
 
     /**
-     * The game starts as a cooperative one: its first level is built under the
-     * cooperative rules, multiplayer things included, then shows frozen under
-     * the lobby until Start. Back there cancels the launch.
+     * The game starts as a multiplayer one: its first level is built under the
+     * rules of its mode, on the game settings as stored now, then shows frozen
+     * under the lobby until Start. Back there cancels the launch.
      *
+     * @param {function} rules    - the DoomGameRules class of the mode (DoomCoopRules, DoomDeathmatchRules)
      * @param {string}   nickname
      * @param {function} onCancel - (navigator, wadMeta, skill, noIdentity), the menu to go back to
      */
-    openCooperativeOnStart(nickname, onCancel) {
-        this._setRules(DoomCoopRules.fromSettings());
-        this._launch = {nickname: nickname, onCancel: onCancel};
+    openSessionOnStart(rules, nickname, onCancel) {
+        this._setRules(rules.fromSettings());
+        this._launch = {nickname: nickname, mode: rules.MODE, onCancel: onCancel};
 
         return this;
     }
 
     _showLaunchLobby() {
-        const session = this._openNetSession(this._launch.nickname, DoomNetProtocol.MODE_COOPERATIVE, this._rules.getOptions());
+        const session = this._openNetSession(this._launch.nickname, this._launch.mode, this._rules.getOptions());
         if (session === null) {
             this._cancelLaunch(true);
             return;
@@ -566,7 +623,7 @@ class DoomGame {
             this._cancelLaunch();
             return;
         }
-        new MenuModal(this._launchDisplay).confirm(appTranslator.get('multiplayer.pause.stopCoopConfirm'), () => this._cancelLaunch());
+        new MenuModal(this._launchDisplay).confirm(appTranslator.get(this._rules.sessionStopCodes().confirm), () => this._cancelLaunch());
     }
 
     // Without the WAD's identity no session opens: the menu says why.
@@ -873,7 +930,7 @@ class DoomGame {
         return ((text !== null) ? DoomFinaleTexts.reflow(text) : null);
     }
 
-    // In cooperative, the scores go to the players' table: the time stays common.
+    // With players of their own, the scores go to the players' table: the time stays common.
     _tallyLines(players) {
         const stats = this._role.getLevelStats();
         const time  = {label: appTranslator.get('game.tally.time'), value: DoomGame.formatDuration(stats.getLevelTimeMs())};
@@ -892,6 +949,9 @@ class DoomGame {
         if (players === null) {
             return null;
         }
+        if (this._rules.scoresFrags()) {
+            return this._fragTable(players);
+        }
         const counts = this._role.getLevelStats().exportCounts();
 
         return {
@@ -903,8 +963,24 @@ class DoomGame {
         };
     }
 
-    // The columns of a cooperative tally: the players in the level, in slot
-    // order, named and coloured by the lobby. Null outside cooperative.
+    // WI_drawDeathmatchStats: each player's frags against each other one, then its score.
+    _fragTable(players) {
+        const stats = this._role.getLevelStats();
+
+        return {
+            columns: [...players.map((player) => ({name: player.nickname, color: player.color})),
+                {name: appTranslator.get('game.tally.fragsTotal'), color: null}],
+            rows:    players.map((killer) => ({
+                label:  killer.nickname,
+                color:  killer.color,
+                values: [...players.map((victim) => String(stats.fragsAgainst(killer.playerId, victim.playerId))),
+                    String(stats.fragScore(killer.playerId))]
+            }))
+        };
+    }
+
+    // The players of a cooperative or deathmatch tally: those in the level, in
+    // slot order, named and coloured by the lobby. Null when the subs only watch.
     _tallyPlayers(stats) {
         if (!this._rules.admitsSubPlayers() || (this._netSession === null)) {
             return null;
@@ -960,7 +1036,7 @@ class DoomGame {
             modal.close();
             display.destroy();
             this._transitioning = false;
-            this._backToMenu(DoomNetProtocol.END_GAME_OVER);
+            this._backToMenu(this._rules.endOfGameReason());
             return;
         }
 

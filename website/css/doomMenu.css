@@ -382,8 +382,8 @@
     white-space: nowrap;
 }
 
-/* Cooperative tally: one column per player, set by the code, under the
-   common time line. */
+/* Cooperative and deathmatch tally: one column per player, set by the code,
+   under the common time line. */
 .doom-menu-tally-table {
     display: grid;
     overflow-x: auto;
@@ -395,6 +395,8 @@
 }
 
 .doom-menu-tally-table > .doom-menu-tally-label {
+    display: flex;
+    align-items: center;
     padding-left: 0.2em;
 }
 

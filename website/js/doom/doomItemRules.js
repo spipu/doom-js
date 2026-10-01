@@ -153,16 +153,28 @@ class DoomItemRules {
             this._raiseWeapon(user, code);
             gaveWeapon = true;
         }
-        // Heretic sets a per-weapon ammoGive, Doom gives two clips. An owned
-        // weapon is still picked up as long as it tops up ammo.
+        // An owned weapon is still picked up as long as it tops up ammo.
         let gaveAmmo = false;
         const ammoType = def.getAmmoType();
         if (ammoType !== null) {
             // A weapon dropped by a monster gives half (vanilla wp_dropped).
-            const baseAmmo = ((def.getAmmoGive() !== null) ? def.getAmmoGive() : this._itemCatalog.getAmmo(ammoType).getClip() * 2);
+            const baseAmmo = this._weaponAmmo(def, ammoType, stays);
             gaveAmmo = this._grantAmmo(user, ammoType, baseAmmo * ((dropped) ? 0.5 : 1) * this._ammoFactor);
         }
         return (gaveWeapon || gaveAmmo);
+    }
+
+    // Heretic sets a per-weapon ammoGive; Doom gives two clips, or the
+    // profile's deathmatch clips for a weapon that stays (P_GiveWeapon).
+    _weaponAmmo(def, ammoType, stays) {
+        if (def.getAmmoGive() !== null) {
+            return def.getAmmoGive();
+        }
+        const deathmatchClips = this._profile.multiplayerItemRules().deathmatchWeaponClips;
+        const deathmatchAmmo  = (stays && (deathmatchClips !== null) && this._rules.givesDeathmatchWeaponAmmo());
+        const clips           = ((deathmatchAmmo) ? deathmatchClips : DoomItemRules.WEAPON_CLIPS);
+
+        return this._itemCatalog.getAmmo(ammoType).getClip() * clips;
     }
 
     _pickupAmmo(user, type, amount) {
@@ -254,6 +266,14 @@ class DoomItemRules {
         user.setArmor(0);
     }
 
+    giveAllKeys(user) {
+        for (const code of this._itemCatalog.getItemCodes()) {
+            if (this._isKey(code)) {
+                user.giveItem(code);
+            }
+        }
+    }
+
     // Debug cheat (the 'o' key).
     applyCheatFullKit(user) {
         for (const code of this._itemCatalog.getWeaponCodes()) {
@@ -266,11 +286,7 @@ class DoomItemRules {
             user.giveAmmo(code, user.getAmmoMax(code));
         }
 
-        for (const code of this._itemCatalog.getItemCodes()) {
-            if (this._itemCatalog.getItem(code).getType() === 'key') {
-                user.giveItem(code);
-            }
-        }
+        this.giveAllKeys(user);
 
         const armor = this._profile.cheatKitArmor();
         user.setEnergy(user.getMaxEnergy());
@@ -279,3 +295,6 @@ class DoomItemRules {
         user.setArmorAbsorb(armor.absorb);
     }
 }
+
+// Clips of ammo a weapon picked up gives (P_GiveWeapon).
+DoomItemRules.WEAPON_CLIPS = 2;

@@ -26,6 +26,7 @@ class DoomBuiltLevel {
         this._killsTotal        = 0;
         this._itemsTotal        = 0;
         this._playerStarts      = {};          // slot → {x, y, z, yaw}
+        this._deathmatchStarts  = [];          // {x, y, z, yaw} in map order
         this._monsterPlacements = [];          // monster records as DoomMonsterSystem.add takes them, in map order
         this._monsterLevelData  = null;        // sector graph, REJECT, mover codes, monster lines, spots, live heights
         this._monsterSpawnables = {};          // def code → {def, frames}: the bodies born in play
@@ -34,7 +35,7 @@ class DoomBuiltLevel {
         this._crushedCorpseView = null;        // null when the game has no gib pool
         this._bossBrain         = null;        // DoomBossBrain on an Icon of Sin level
         this._bossRules         = [];          // A_BossDeath rules of the level
-        this._pickups           = [];          // {code, effect, countsItem} of the map pickups
+        this._pickups           = [];          // {code, effect, countsItem, type, spawnData, rideCode} of the map pickups
         this._teleports         = [];          // {code, destination} of the teleport lines
         this._pushZones         = null;        // null when no sector pushes
         this._secretZones       = null;        // null when the level has no secret
@@ -176,6 +177,16 @@ class DoomBuiltLevel {
 
     getPlayerStarts() {
         return this._playerStarts;
+    }
+
+    setDeathmatchStarts(deathmatchStarts) {
+        this._deathmatchStarts = deathmatchStarts;
+
+        return this;
+    }
+
+    getDeathmatchStarts() {
+        return this._deathmatchStarts;
     }
 
     setMonsterPlacements(monsterPlacements) {

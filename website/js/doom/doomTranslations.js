@@ -640,6 +640,12 @@ class DoomTranslations {
                 it: 'Segreti',
                 es: 'Secretos'
             },
+            'game.tally.fragsTotal': {
+                fr: 'Total',
+                en: 'Total',
+                it: 'Totale',
+                es: 'Total'
+            },
             'game.tally.none': {
                 fr: 'aucun',
                 en: 'none',
@@ -683,6 +689,12 @@ class DoomTranslations {
                 en: 'AMMO',
                 it: 'MUNIZIONI',
                 es: 'MUNICIÓN'
+            },
+            'hud.frags': {
+                fr: 'FRAGS',
+                en: 'FRAGS',
+                it: 'FRAG',
+                es: 'FRAGS'
             },
             'hud.automap': {
                 fr: 'Carte',
@@ -998,6 +1010,12 @@ class DoomTranslations {
                 it: 'Nuova partita cooperativa',
                 es: 'Nueva partida cooperativa'
             },
+            'multiplayer.newDeathmatch': {
+                fr: 'Nouveau deathmatch',
+                en: 'New deathmatch',
+                it: 'Nuovo deathmatch',
+                es: 'Nuevo deathmatch'
+            },
             'multiplayer.join': {
                 fr: 'Rejoindre une partie',
                 en: 'Join a game',
@@ -1069,6 +1087,18 @@ class DoomTranslations {
                 en: 'Connecting…',
                 it: 'Connessione…',
                 es: 'Conectando…'
+            },
+            'multiplayer.lobby.away': {
+                fr: 'En veille',
+                en: 'Away',
+                it: 'In standby',
+                es: 'En espera'
+            },
+            'multiplayer.lobby.disconnected': {
+                fr: 'Hors ligne',
+                en: 'Offline',
+                it: 'Non in linea',
+                es: 'Sin conexión'
             },
             'multiplayer.lobby.add': {
                 fr: 'Ajouter un joueur',
@@ -1160,6 +1190,18 @@ class DoomTranslations {
                 it: 'Interrompere la cooperativa?\nTutti i giocatori saranno disconnessi.',
                 es: '¿Detener el cooperativo?\nTodos los jugadores serán desconectados.'
             },
+            'multiplayer.pause.stopDeathmatch': {
+                fr: 'Arrêter le deathmatch',
+                en: 'Stop deathmatch',
+                it: 'Interrompi il deathmatch',
+                es: 'Detener el deathmatch'
+            },
+            'multiplayer.pause.stopDeathmatchConfirm': {
+                fr: 'Arrêter le deathmatch ?\nTous les joueurs seront déconnectés.',
+                en: 'Stop deathmatch?\nEvery player will be disconnected.',
+                it: 'Interrompere il deathmatch?\nTutti i giocatori saranno disconnessi.',
+                es: '¿Detener el deathmatch?\nTodos los jugadores serán desconectados.'
+            },
             'multiplayer.pause.leaveGame': {
                 fr: 'Quitter la partie',
                 en: 'Leave the game',
@@ -1244,6 +1286,18 @@ class DoomTranslations {
                 it: '{nickname} ha lasciato la partita',
                 es: '{nickname} ha dejado la partida'
             },
+            'multiplayer.playerAway': {
+                fr: 'Absence de {nickname}',
+                en: '{nickname} is away',
+                it: 'Assenza di {nickname}',
+                es: 'Ausencia de {nickname}'
+            },
+            'multiplayer.playerBack': {
+                fr: 'Retour de {nickname}',
+                en: '{nickname} is back',
+                it: 'Ritorno di {nickname}',
+                es: 'Regreso de {nickname}'
+            },
             'multiplayer.pausedByMain': {
                 fr: 'Partie en pause par l\'hôte',
                 en: 'Game paused by the host',
@@ -1273,6 +1327,18 @@ class DoomTranslations {
                 en: 'The host\'s game is over',
                 it: 'La partita dell\'host è finita',
                 es: 'La partida del anfitrión ha terminado'
+            },
+            'multiplayer.end.matchOver': {
+                fr: 'Le match est terminé',
+                en: 'The match is over',
+                it: 'La partita è finita',
+                es: 'La partida ha terminado'
+            },
+            'multiplayer.end.invalid': {
+                fr: 'Message réseau invalide : la session est terminée',
+                en: 'Invalid network message: the session has ended',
+                it: 'Messaggio di rete non valido: la sessione è terminata',
+                es: 'Mensaje de red no válido: la sesión ha terminado'
             },
             'multiplayer.end.removed': {
                 fr: 'L\'hôte vous a retiré de la partie',

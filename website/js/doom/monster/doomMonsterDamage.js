@@ -154,7 +154,7 @@ class DoomMonsterDamage {
         if (user.isDead()) {
             return;
         }
-        user.takeDamage(amount);
+        user.takeDamage(amount, (opts.source ?? null));
         this._thrust(user, amount, opts);
     }
 

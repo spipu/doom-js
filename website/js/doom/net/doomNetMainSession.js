@@ -4,7 +4,10 @@
  * mode and its options), keeps the lobby — each sub's slot, nickname and
  * ping — and sends it to every sub whenever it changes and with every ping
  * sample, changes the mode, removes a sub, and stops the whole session. A sub
- * that leaves or whose link is lost simply drops out of the lobby.
+ * that leaves drops out of the lobby; one lost against its will — its link
+ * gone, or too slow — once the game runs with players of their own leaves its
+ * seat reserved for its return; one whose page goes to the background stays
+ * in it, marked away.
  */
 class DoomNetMainSession {
     /**
@@ -24,6 +27,8 @@ class DoomNetMainSession {
         this._mode      = mode;
         this._options   = options;
         this._onRemoved = null;
+        this._onAway    = null;
+        this._onRelease = null;
         this._started   = false;
         this._pairing   = null;
         this._onChange  = null;
@@ -34,7 +39,7 @@ class DoomNetMainSession {
             .setOnPeerOpen((peer) => this._admit(peer))
             .setOnPeerControl((peer, message) => this._receive(peer, message))
             .setOnPeerBinary((peer, buffer) => this._cycleCall('binary', peer, buffer))
-            .setOnPeerLost((peer) => this._drop(peer));
+            .setOnPeerLost((peer) => this._drop(peer, true));
         this._pingTimer = setInterval(() => this._samplePings(), NetConfig.PING_PERIOD_MS);
     }
 
@@ -82,9 +87,44 @@ class DoomNetMainSession {
         return this;
     }
 
+    /**
+     * @param {function(string, boolean)} callback - the nickname of a player of a cooperative game, and whether it went away or came back
+     */
+    setOnPlayerAway(callback) {
+        this._onAway = callback;
+
+        return this;
+    }
+
+    /**
+     * @param {function(int)} callback - the slot of a seat no longer kept for its lost player
+     */
+    setOnSeatReleased(callback) {
+        this._onRelease = callback;
+
+        return this;
+    }
+
+    // A reserved seat lasts the level it was left in.
+    releaseSeats() {
+        const slots = this._lobby.releaseSeats();
+        for (const slot of slots) {
+            this._seatReleased(slot);
+        }
+        if (slots.length > 0) {
+            this._changed();
+        }
+    }
+
+    _seatReleased(slot) {
+        if (this._onRelease !== null) {
+            this._onRelease(slot);
+        }
+    }
+
     // The players' colours only mean something once they have a body.
     _colorsOf(mode) {
-        return ((mode === DoomNetProtocol.MODE_COOPERATIVE) ? this._colors : null);
+        return ((DoomNetProtocol.subsPlayOwnPlayers(mode)) ? this._colors : null);
     }
 
     /**
@@ -98,7 +138,7 @@ class DoomNetMainSession {
 
     /**
      * The turn cycle of the running game, told about every sub in the lobby:
-     * {admitted(peer), gone(peer), control(peer, message), binary(peer, buffer)}.
+     * {admitted(peer), gone(peer, keepsSeat), awayChanged(peer, away), control(peer, message), binary(peer, buffer)}.
      * Null detaches it.
      */
     setCycle(cycle) {
@@ -165,7 +205,7 @@ class DoomNetMainSession {
             return;
         }
         peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
-        this._drop(peer);
+        this._drop(peer, (reason === DoomNetProtocol.END_TIMEOUT));
         setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
@@ -202,7 +242,11 @@ class DoomNetMainSession {
             return;
         }
         this._pending.delete(peer.getId());
-        this._lobby.addPlayer(peer.getId(), nickname);
+        const seat = this._lobby.claimSeat(nickname);
+        this._lobby.addPlayer(peer.getId(), nickname, seat.slot);
+        if (seat.released !== null) {
+            this._seatReleased(seat.released);
+        }
         this._welcome(peer);
         if (this._started) {
             peer.sendControl({type: DoomNetProtocol.START});
@@ -225,35 +269,58 @@ class DoomNetMainSession {
             this._join(peer);
             return;
         }
+        if (message.type === DoomNetProtocol.AWAY) {
+            this._setAway(peer, (message.away === true));
+            return;
+        }
         this._cycleCall('control', peer, message);
     }
 
-    // The turn cycle hears of the departure before the lobby forgets the sub's slot.
-    _drop(peer) {
-        this._pending.delete(peer.getId());
-        if (this._lobby.getPlayer(peer.getId()) === null) {
+    _setAway(peer, away) {
+        const player = this._lobby.getPlayer(peer.getId());
+        if ((player === null) || (player.away === away)) {
             return;
         }
-        this._cycleCall('gone', peer);
-        this._announceRemoval(peer);
-        this._lobby.remove(peer.getId());
+        this._lobby.setAway(peer.getId(), away);
+        this._cycleCall('awayChanged', peer, away);
+        this._tellOtherPlayers(peer, {type: DoomNetProtocol.PLAYER_AWAY, nickname: player.nickname, away: away});
         this._changed();
+        if (DoomNetProtocol.subsPlayOwnPlayers(this._mode) && (this._onAway !== null)) {
+            this._onAway(player.nickname, away);
+        }
     }
 
-    // In cooperative the other players are told who left, and so is the main's game.
-    _announceRemoval(peer) {
-        if (this._mode !== DoomNetProtocol.MODE_COOPERATIVE) {
+    // The turn cycle hears of the departure before the lobby forgets the sub's
+    // slot; the main's game once the lobby has.
+    _drop(peer, lostAgainstWill = false) {
+        this._pending.delete(peer.getId());
+        const player = this._lobby.getPlayer(peer.getId());
+        if (player === null) {
             return;
         }
-        const player  = this._lobby.getPlayer(peer.getId());
-        const message = {type: DoomNetProtocol.PLAYER_REMOVED, playerId: player.slot, nickname: player.nickname};
+        const keepsSeat = (lostAgainstWill && this._started && DoomNetProtocol.subsPlayOwnPlayers(this._mode));
+        this._cycleCall('gone', peer, keepsSeat);
+        this._tellOtherPlayers(peer, {type: DoomNetProtocol.PLAYER_REMOVED, playerId: player.slot, nickname: player.nickname});
+        if (keepsSeat) {
+            this._lobby.reserve(peer.getId());
+        } else {
+            this._lobby.remove(peer.getId());
+        }
+        this._changed();
+        if (DoomNetProtocol.subsPlayOwnPlayers(this._mode) && (this._onRemoved !== null)) {
+            this._onRemoved(player.nickname);
+        }
+    }
+
+    // When the subs play, the other players hear of what happens to one of them.
+    _tellOtherPlayers(peer, message) {
+        if (!DoomNetProtocol.subsPlayOwnPlayers(this._mode)) {
+            return;
+        }
         for (const other of this._host.getPeers()) {
             if ((other !== peer) && (this._lobby.getPlayer(other.getId()) !== null)) {
                 other.sendControl(message);
             }
-        }
-        if (this._onRemoved !== null) {
-            this._onRemoved(player.nickname);
         }
     }
 

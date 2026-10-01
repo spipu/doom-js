@@ -6,8 +6,9 @@
  * entering the level, the save restore and capture, the spawn override, the
  * level clock — and, while it hosts a session, the turn cycle of the subs
  * (DoomNetTurnCycle) and, in cooperative, their players: each one enters the
- * level with its first command and leaves it with its sub. A device that only
- * follows the game holds a DoomSubRole.
+ * level with its first command and leaves it with its sub — kept aside, with
+ * its equipment, while its seat is reserved, and given back on its return. A
+ * device that only follows the game holds a DoomSubRole.
  */
 class DoomMainRole {
     /**
@@ -21,13 +22,14 @@ class DoomMainRole {
         this._events     = events;
         this._simulation = new DoomSimulation(roster, rules, events);
         this._builtLevel = null;
-        this._level      = null;   // {levelCode, skill, multiplayerThings} of the level shown
+        this._level      = null;        // {levelCode, skill, thingFilter} of the level shown
         this._cycle      = null;
-        this._recorder   = null;   // DoomNetEvents listening to the turn events while hosting
+        this._recorder   = null;        // DoomNetEvents listening to the turn events while hosting
+        this._seats      = new Map();   // player id → {player, state} of a lost player whose seat is reserved
     }
 
-    spawnsMultiplayerThings() {
-        return this._rules.spawnsMultiplayerThings();
+    thingFilter() {
+        return this._rules.thingFilter();
     }
 
     pauseFreezes() {
@@ -73,7 +75,8 @@ class DoomMainRole {
      * @param {function(string[])} onWaiting - the nicknames waited for, none once the wait is over
      */
     startHosting(session, onWaiting) {
-        this._cycle = new DoomNetTurnCycle(session).setOnWaiting(onWaiting).setOnPlayerGone((id) => this._removePlayer(id));
+        this._cycle = new DoomNetTurnCycle(session).setOnWaiting(onWaiting).setOnPlayerGone((id, keepsSeat) => this._removePlayer(id, keepsSeat))
+            .setHoldsLevelStart(this._rules.holdsLevelStart());
         this._hostLevel();
         session.setCycle(this._cycle);
     }
@@ -82,6 +85,7 @@ class DoomMainRole {
     stopHosting() {
         this._detachRecorder();
         this._cycle = null;
+        this._seats.clear();
         for (const player of this._roster.getAll()) {
             if (player !== this._roster.getLocal()) {
                 this._removePlayer(player.getId());
@@ -138,6 +142,9 @@ class DoomMainRole {
     useRules(rules) {
         this._rules = rules;
         this._simulation.useRules(rules);
+        if (this._cycle !== null) {
+            this._cycle.setHoldsLevelStart(rules.holdsLevelStart());
+        }
 
         return this;
     }
@@ -221,22 +228,48 @@ class DoomMainRole {
     // start, with what it carried in, or the starting loadout on a drop-in.
     _addSubCommands(commands) {
         for (const [id, command] of this._cycle.commands()) {
-            let player = this._roster.getById(id);
+            let player   = this._roster.getById(id);
+            let restored = null;
             if (player === null) {
-                player = new DoomPlayer(id);
+                const seat = (this._seats.get(id) ?? null);
+                this._seats.delete(id);
+                player   = ((seat !== null) ? seat.player : new DoomPlayer(id));
+                restored = ((seat !== null) ? seat.state : null);
                 this._roster.add(player);
             }
             if (!player.isInLevel()) {
-                this._simulation.addPlayer(player, null);
+                this._simulation.addPlayer(player, restored);
             }
             commands.set(id, command);
         }
+        // A player whose sub is away stands still, under gravity and damage like any other.
+        for (const player of this._roster.getInLevel()) {
+            if (!commands.has(player.getId())) {
+                commands.set(player.getId(), World.NEUTRAL_COMMAND);
+            }
+        }
     }
 
-    _removePlayer(id) {
+    /**
+     * The seat of a lost player is no longer kept: its next player starts afresh.
+     *
+     * @param {int} id
+     */
+    releaseSeat(id) {
+        this._seats.delete(id);
+        this._simulation.getLevelStats().forgetPlayer(id);
+    }
+
+    // A player whose seat is kept takes back what it held, keys and timed
+    // effects included; a dead one enters again as any joining player does.
+    _removePlayer(id, keepsSeat = false) {
         const player = this._roster.getById(id);
         if ((player === null) || (player === this._roster.getLocal())) {
             return;
+        }
+        if (keepsSeat) {
+            const state = ((player.isInLevel() && !player.isDead()) ? player.getUser().exportState() : null);
+            this._seats.set(id, {player: player, state: state});
         }
         if (player.isInLevel()) {
             this._simulation.removePlayer(player);

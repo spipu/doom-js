@@ -20,7 +20,7 @@ class DoomImageAssets {
         return this._ready;
     }
 
-    // Settles once every image is decoded, at once when they already are.
+    // Settles once every image is decoded or failed, at once when they already are.
     whenReady() {
         if (this._ready) {
             return Promise.resolve();
@@ -52,22 +52,35 @@ class DoomImageAssets {
         }
 
         let pending = files.length;
+        const settle = () => {
+            pending -= 1;
+            if (pending === 0) {
+                this._markReady(callback);
+            }
+        };
         for (const file of files) {
             const img = new Image();
             img.onload = () => {
-                const canvas  = document.createElement('canvas');
-                canvas.width  = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                this._imageData[file.key] = ctx.getImageData(0, 0, img.width, img.height);
-                pending -= 1;
-                if (pending === 0) {
-                    this._markReady(callback);
-                }
+                this._imageData[file.key] = DoomImageAssets._decode(img);
+                settle();
+            };
+            // A missing image is left out (get() → null, which its consumers skip): waiting for it would never end.
+            img.onerror = () => {
+                console.error('DoomImageAssets - image failed to load: ' + file.url);
+                settle();
             };
             img.src = appBootstrap.buildUrl(file.url);
         }
+    }
+
+    static _decode(img) {
+        const canvas  = document.createElement('canvas');
+        canvas.width  = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        return ctx.getImageData(0, 0, img.width, img.height);
     }
 
     _markReady(callback) {

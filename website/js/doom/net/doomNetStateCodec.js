@@ -9,7 +9,7 @@
  *
  * Layout: type, turn, time step; then players, bodies, bodies born in play,
  * shots, map pickups (presence bits), movers, switches on, rewritten floors,
- * light levels, level statistics, events — each section behind its count.
+ * light levels, level statistics with the frags, events — each section behind its count.
  */
 class DoomNetStateCodec {
     /**
@@ -38,6 +38,7 @@ class DoomNetStateCodec {
         const stats = snapshot.stats;
         w.u16(stats.secrets).u16(stats.secretsTotal).u16(stats.kills).u16(stats.killsTotal)
             .u16(stats.items).u16(stats.itemsTotal).u32(Math.round(stats.timeMs));
+        DoomNetStateCodec._list(w, stats.frags, (frag) => w.u8(frag.killer).u8(frag.victim).u16(frag.count), true);
         DoomNetStateCodec._list(w, snapshot.events, (event) => DoomNetStateCodec._writeEvent(w, event));
 
         return w.toBytes().buffer;
@@ -70,7 +71,8 @@ class DoomNetStateCodec {
         snapshot.lights      = DoomNetStateCodec._readList(r, () => r.u8());
         snapshot.stats       = {
             secrets: r.u16(), secretsTotal: r.u16(), kills: r.u16(), killsTotal: r.u16(),
-            items: r.u16(), itemsTotal: r.u16(), timeMs: r.u32()
+            items: r.u16(), itemsTotal: r.u16(), timeMs: r.u32(),
+            frags: DoomNetStateCodec._readList(r, () => ({killer: r.u8(), victim: r.u8(), count: r.u16()}), true)
         };
         snapshot.events      = DoomNetStateCodec._readList(r, () => DoomNetStateCodec._readEvent(r));
         if (!r.isAtEnd()) {

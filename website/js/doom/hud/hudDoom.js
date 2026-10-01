@@ -57,7 +57,16 @@ class HudDoom extends AbstractHud {
         return this;
     }
 
+    // The game mode's rules: what the scores and the map show.
+    bindRules(rules) {
+        this._debug.bindRules(rules);
+        this._gameBar.bindRules(rules);
+        this._automap.bindRules(rules);
+        return this;
+    }
+
     bindPlayerBodies(bodies, slotColors) {
+        this._gameBar.bindPlayerBodies(bodies, slotColors);
         this._automap.bindPlayerBodies(bodies, slotColors);
         return this;
     }

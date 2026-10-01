@@ -169,7 +169,8 @@ class HereticGameProfile extends DefaultGameProfile {
             'misc/k_pkup':           {lump: 'KEYUP', pitch: 0},
             'misc/p_pkup':           {lump: 'ARTIUP'},
             'misc/w_pkup':           {alias: '*weaponlaugh'},
-            'misc/teleport':         {lump: 'TELEPT'}
+            'misc/teleport':         {lump: 'TELEPT'},
+            'misc/spawn':            {lump: 'RESPAWN'}
         };
     }
 
@@ -300,6 +301,18 @@ class HereticGameProfile extends DefaultGameProfile {
     // zscript hereticplayer.zs Player.ColorRange and Colorset 0-3: green, yellow, red, blue.
     playerColors() {
         return HereticGameProfile.PLAYER_COLORS;
+    }
+
+    // No deathmatch ammo bonus: UZDoom Weapon.AddAmmo keeps the ×5/2 to Doom and Chex.
+    multiplayerItemRules() {
+        return HereticGameProfile.MULTIPLAYER_ITEM_RULES;
+    }
+
+    // zscript Inventory HideSpecial: hidden 1400 tics, then the ACLO cloud, the item
+    // takeable again at A_RestoreSpecialThing2; the ring of invulnerability is a
+    // BIGPOWERUP, never back.
+    itemRespawnRules() {
+        return HereticGameProfile.ITEM_RESPAWN_RULES;
     }
 
     // A_HBossDeath (heretic p_enemy.c): map 8 of every episode fires
@@ -460,10 +473,10 @@ class HereticGameProfile extends DefaultGameProfile {
             32:   {kind: 'pickup', sprite: 'SPHLA0', effect: {health: 100}},
             85:   {kind: 'pickup', sprite: 'SHLDA0', effect: {armor: {points: 100, absorb: 0.5}}},
             31:   {kind: 'pickup', sprite: 'SHD2A0', effect: {armor: {points: 200, absorb: 0.75}}},
-            // --- Keys ---
-            73:   {kind: 'pickup', sprite: 'AKYYA0', frames: DoomThingCatalog.animFrames('AKYY', 'ABCDEFGHIJ'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'greenKey'}},
-            79:   {kind: 'pickup', sprite: 'BKYYA0', frames: DoomThingCatalog.animFrames('BKYY', 'ABCDEFGHIJ'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}},
-            80:   {kind: 'pickup', sprite: 'CKYYA0', frames: DoomThingCatalog.animFrames('CKYY', 'ABCDEFGHI'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}},
+            // --- Keys (+NOTDMATCH, heretickeys.zs) ---
+            73:   {kind: 'pickup', sprite: 'AKYYA0', frames: DoomThingCatalog.animFrames('AKYY', 'ABCDEFGHIJ'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'greenKey'}, notDeathmatch: true},
+            79:   {kind: 'pickup', sprite: 'BKYYA0', frames: DoomThingCatalog.animFrames('BKYY', 'ABCDEFGHIJ'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'blueKey'}, notDeathmatch: true},
+            80:   {kind: 'pickup', sprite: 'CKYYA0', frames: DoomThingCatalog.animFrames('CKYY', 'ABCDEFGHI'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'yellowKey'}, notDeathmatch: true},
             // --- Artifacts with a transposable immediate effect ---
             84:   {kind: 'pickup', sprite: 'INVUA0', frames: DoomThingCatalog.animFrames('INVU', 'ABCD'), animDuration: 3 * WadConstants.SECONDS_PER_TIC, effect: {item: 'invulnerability'}},
             75:   {kind: 'pickup', sprite: 'INVSA0', effect: {item: 'invisibility'}},
@@ -1071,7 +1084,9 @@ class HereticGameProfile extends DefaultGameProfile {
             {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false},
             {name: 'lavaSmoke',         sprite: 'LVAS', letters: ['G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5], alpha: 0.4, rise: 0, additive: false},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
-            {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32}
+            {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32},
+            // A hidden artifact coming back (zscript Inventory HideSpecial: ACLO A, then BABCBCDC, then D, 4 tics each)
+            {name: 'itemRestore',      sprite: 'ACLO', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'D', 'C', 'D'], frameTics: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false}
         ];
     }
 
@@ -1465,6 +1480,9 @@ class HereticGameProfile extends DefaultGameProfile {
 
 // A_KnightAttack (knight.zs): fist in reach, else an axe thrown from 36 units
 // up — the red one, far nastier, on a 40/256 jet (always, for a ghost).
+HereticGameProfile.MULTIPLAYER_ITEM_RULES = {weaponsStay: true, keysStay: true, deathmatchWeaponClips: null};
+HereticGameProfile.ITEM_RESPAWN_RULES     = {delayTics: 1400, revealTics: 36, effect: 'itemRestore', sound: 'misc/spawn', neverTypes: [84]};
+
 HereticGameProfile.KNIGHT_ATTACK = ['A_KnightAttack', {
     damage:     {base: 3, dice: 8},
     kind:       'knightAxe',

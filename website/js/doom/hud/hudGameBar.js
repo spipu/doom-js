@@ -3,7 +3,9 @@
  * the screen corners over the letterboxed display:
  *   - bottom-left : running power-ups, health and armor bars
  *   - bottom-right: ammo of the active weapon ('—' if none)
- *   - top-left    : key pips (lit when owned), secret and kill counts
+ *   - top-left    : key pips (lit when owned), secret and kill counts — or,
+ *                   when the rules score the frags, the viewed player's frags
+ *                   and, under them, each other player's in its colour
  *   - top-right   : weapon slots + active weapon name
  *   - bottom-centre: optional fps readout, with the ping during a session
  *
@@ -16,12 +18,16 @@ class HudGameBar extends AbstractHud {
         this._profile     = null;
         this._itemCatalog = null;
         this._stats       = null;
+        this._rules       = null;
+        this._bodies      = null;   // the level's body views, the players' among them
+        this._slotColors  = [];
         this._pingSource  = null;
         this._root        = null;
         this._els         = {};
         this._keyEls      = {};
         this._armsEls     = {};
         this._effectEls   = {};
+        this._otherFrags  = [];     // {row, swatch, value} per other player shown, built on demand
     }
 
     bindProfile(profile) {
@@ -36,6 +42,22 @@ class HudGameBar extends AbstractHud {
 
     bindLevelStats(stats) {
         this._stats = stats;
+        return this;
+    }
+
+    // The game mode's rules: whether frags are scored and keys worth showing.
+    bindRules(rules) {
+        this._rules = rules;
+        return this;
+    }
+
+    /**
+     * @param {Set<DoomBodyView>} bodies     - the level's body views: the players' tell who is in the level
+     * @param {string[]}          slotColors - CSS colour per slot, index 0 = slot 1
+     */
+    bindPlayerBodies(bodies, slotColors) {
+        this._bodies     = bodies;
+        this._slotColors = slotColors;
         return this;
     }
 
@@ -104,9 +126,7 @@ class HudGameBar extends AbstractHud {
         this._updateArms(user);
         this._updateKeys(user);
         this._updateEffects(user);
-
-        this._els.secretsValue.innerText = this._stats.getSecretsFound() + '/' + this._stats.getSecretsTotal();
-        this._els.killsValue.innerText   = this._stats.getKillsCount() + '/' + this._stats.getKillsTotal();
+        this._updateScores(user);
 
         this._updateFps();
     }
@@ -195,6 +215,46 @@ class HudGameBar extends AbstractHud {
                 el.innerText = appTranslator.get(effectLine.labelCode);
             }
         }
+    }
+
+    // Every player of a deathmatch holds every key: the pips would say nothing.
+    _updateScores(user) {
+        const scoresFrags = ((this._rules !== null) && this._rules.scoresFrags());
+        const keysShown   = ((this._rules === null) || !this._rules.givesAllKeys());
+        this._els.keysRow.style.display = ((keysShown) ? 'flex' : 'none');
+        this._els.scores.style.display  = ((scoresFrags) ? 'none' : 'block');
+        this._els.frags.style.display   = ((scoresFrags) ? 'block' : 'none');
+        if (scoresFrags) {
+            this._els.fragsValue.innerText = String(this._stats.fragScore(user.getPlayerId()));
+            this._updateOtherFrags(user.getPlayerId());
+            return;
+        }
+        this._els.secretsValue.innerText = this._stats.getSecretsFound() + '/' + this._stats.getSecretsTotal();
+        this._els.killsValue.innerText   = this._stats.getKillsCount() + '/' + this._stats.getKillsTotal();
+    }
+
+    // The other players in the level, in slot order; a row more is built only
+    // when a player more is there.
+    _updateOtherFrags(ownId) {
+        const others = [];
+        for (const view of (this._bodies ?? [])) {
+            const id = view.getPlayerId();
+            if ((id !== null) && (id !== ownId)) {
+                others.push(id);
+            }
+        }
+        others.sort((a, b) => (a - b));
+        while (this._otherFrags.length < others.length) {
+            this._otherFrags.push(this._buildOtherFragRow());
+        }
+        this._otherFrags.forEach((entry, i) => {
+            const id = (others[i] ?? null);
+            entry.row.style.display = ((id !== null) ? 'flex' : 'none');
+            if (id !== null) {
+                entry.swatch.style.backgroundColor = (this._slotColors[id - 1] ?? 'transparent');
+                entry.value.innerText              = String(this._stats.fragScore(id));
+            }
+        });
     }
 
     _updateKeys(user) {
@@ -295,7 +355,12 @@ class HudGameBar extends AbstractHud {
             this._keyEls[key] = pip;
             keysRow.appendChild(pip);
         }
+        this._els.keysRow = keysRow;
         block.appendChild(keysRow);
+
+        const scores = this._createEl('div', {});
+        this._els.scores = scores;
+        block.appendChild(scores);
 
         const secrets = this._createEl('div', {
             display: 'flex', alignItems: 'center', gap: '0.35em',
@@ -307,7 +372,7 @@ class HudGameBar extends AbstractHud {
         this._els.secretsValue.innerText = '0/0';
         secrets.appendChild(icon);
         secrets.appendChild(this._els.secretsValue);
-        block.appendChild(secrets);
+        scores.appendChild(secrets);
 
         const kills = this._createEl('div', {
             display: 'flex', alignItems: 'center', gap: '0.35em',
@@ -319,9 +384,46 @@ class HudGameBar extends AbstractHud {
         this._els.killsValue.innerText = '0/0';
         kills.appendChild(skull);
         kills.appendChild(this._els.killsValue);
-        block.appendChild(kills);
+        scores.appendChild(kills);
 
+        block.appendChild(this._buildFrags());
         this._root.appendChild(block);
+    }
+
+    // ST_drawWidgets in deathmatch: FRAGS and the score, hidden until the rules
+    // score them; the other players' rows follow, built as they come.
+    _buildFrags() {
+        const frags = this._createEl('div', {display: 'none'});
+        this._els.frags = frags;
+        const label = this._createEl('div', {color: '#ccc'});
+        label.innerText = appTranslator.get('hud.frags');
+        const own = this._buildFragRow(label);
+        own.row.style.display = 'flex';
+        this._els.fragsValue = own.value;
+
+        return frags;
+    }
+
+    _buildOtherFragRow() {
+        const swatch = this._createEl('div', {width: '0.7em', height: '0.7em', border: '0.1em solid rgba(255, 255, 255, 0.5)'});
+        const other  = this._buildFragRow(swatch);
+
+        return {row: other.row, swatch: swatch, value: other.value};
+    }
+
+    // One line of the frags block, at the size of the health value: its lead
+    // (the FRAGS label, a player's colour) left, the score right-aligned.
+    _buildFragRow(lead) {
+        const row = this._createEl('div', {
+            display: 'none', alignItems: 'center', gap: '0.5em', marginTop: '0.25em', fontSize: '1.1em', fontWeight: '700'
+        });
+        const value = this._createEl('div', {marginLeft: 'auto', minWidth: '2.2em', textAlign: 'right', color: '#eee'});
+        value.innerText = '0';
+        row.appendChild(lead);
+        row.appendChild(value);
+        this._els.frags.appendChild(row);
+
+        return {row: row, value: value};
     }
 
     _buildArms() {

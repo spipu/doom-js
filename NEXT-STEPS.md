@@ -14,6 +14,15 @@ A ToDo item that specifies a project split into steps (Multiplayer) keeps only w
 
 Finish playing through every level of Doom 2, Freedoom 1 and Freedoom 2.
 
+### Multiplayer testing
+
+Screen sharing has been checked on real devices (a PC with an iPhone, two iPhones); everything else has only run in loopback, two tabs on one machine. To play on real devices:
+
+* **Cooperative and deathmatch**, drop-in and new game, through a whole level change, a death and a departure.
+* **Device matrix**: Android (Chrome), a tablet, two different browsers as subs of one main.
+* **Four real players**: the main's frame time (simulation plus per-turn encoding) and the real turn rate, which the slowest device sets for everyone.
+* **iOS backgrounding**: a sub's screen locked for a few seconds, then for more than 30 s — whether the link survives and the sub picks up again, or is dropped and gets its player back by pairing again under the same nickname.
+
 ### Heretic inventory
 
 The artifact bar and everything it holds (flight, tome of power, morph ovum, chaos device, time bomb…) is the last large gap of an otherwise playable game.
@@ -39,6 +48,7 @@ The converter understands vanilla specials only, so most community WADs load wit
 The WAD loads under the fallback profile only. It needs its own thing and special semantics, its hub progression, and its script and polyobject machinery.
 
 * A far more divergent profile than Heretic: extended map format (**16-byte linedefs, specials with args**) and **shared manas with HUD gauges**.
+* Its multiplayer has 8 players: starts 1 to 4, then 9100 to 9103.
 * The profile must be probed **before** Heretic in `GameProfileList`: `hexen.wad` carries a `TINTTAB` lump, so it matches the Heretic profile today (and inherits its rules, `mapEndSlot` MAP30 = end of game included, meaningless for its hubs).
 * **No level of `hexen.wad` converts today** (measured on MAP01): the parser reads the Hexen LINEDEFS (16 bytes, with args) as Doom ones (14), so the sidedef indices are absurd and the analysis breaks as early as `WadMapAnalyzer._identifyLifts` on `sidedefs[ld.right] is undefined` — the launch falls back cleanly to the error modal.
 * The first Hexen step is therefore **the level parser**, before any game semantics. `WadBspTree.build` already refuses this WAD (out-of-bounds index guard), and the polygon fallback is useless as long as the linedefs are misread.
@@ -67,58 +77,6 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 * **Moving flats not scrolling**: a pushing / lava sector whose floor is a mover (lift, rising floor, stair step — top flat built by the builders through `addSectorTopFlat`) or a door loses the visual scrolling of its flat (`uvScroll` is set by the static builder only). To wire in the builders if a level makes it visible.
 * **Rising floor on a door or crusher sector**: `_identifyRisingFloors` skips door sectors, so a floor-raise special aimed at one moves nothing (E3M4 tags 4/5: S1 18 on the crusher sectors 128/95; E2M4 tag 9: G1 24 on the crusher 142; Heretic E5M1 tag 4: W1 22 on the pillars 139/141/145/147) while vanilla raises the floor under the ceiling thinker. Same generalisation as the door + lift overlap (rest-floor rule of `_computeDoorHeights`), on the `WadRisingFloorBuilder` side.
 * **Mace balls bouncing on a moving mover**: repositioning at the impact point of a possibly moving floor, untested — to check if a map occurrence lends itself to it.
-
-### Multiplayer
-
-Status: steps 0 to 7 are done — mode 1, **screen sharing**, works end to end and was checked on real devices (a PC with an iPhone, two iPhones); mode 2, **drop-in cooperative** opened from the pause menu, works in loopback (respawn, corpses, weapons and keys staying, scores per player and tally in columns, cooperative saves). Step 8 has started: a new cooperative game from the Multiplayer screen works in loopback. What exists is documented in the project's knowledge base, not here. This section only specifies what steps 8 and 9 still have to build; every rule of the existing design (host-authoritative simulation, synchronous cycle, self-contained per-turn state, one ordered channel, presentation reading only state every device holds, rules asked by the code and never the mode tested) stays in force.
-
-Every label quoted below is a working title: the final wording of each one is chosen when it is implemented, and every one of them goes through the translation catalogue in all languages.
-
-Vocabulary: the **main** is the player whose browser hosts the game; the **subs** are the other players.
-
-#### Mode still to build
-
-* **Mode 3, new multiplayer game** — the "Multiplayer" screen of the WAD menu, which already starts a "New cooperative game", gains a new **Deathmatch** game, started fresh from the chosen level.
-
-#### Screens and menus
-
-* **Multiplayer screen**: a new deathmatch game joins "New cooperative game", "Join a game" and the options shortcut, through the same flow as the cooperative one: the episode and difficulty screens, the game settings screen, then the lobby as main over the frozen first level.
-* **Game settings screen**: deathmatch lists monsters, frag limit, time limit and items (already stored in the Multiplayer options), built by the same settings page builder.
-* **Pause menu in deathmatch**: a sub quitting, or whose link is lost, is removed and the match goes on for the others; the main quitting ends it for everyone; once every sub has gone, the match ends and the main leaves the game, back to the WAD menu with an information modal.
-* **Frags in the deathmatch HUD**: the top-left block of `HudGameBar` shows the player's frag count in place of the kills and secrets counters, which keep their place in single player and cooperative; there are no keys in deathmatch either.
-* **Frag table** in the deathmatch intermission.
-
-#### Game rules
-
-* **Profile additions**: each game profile still needs its deathmatch start editor number (11) and the altdeath respawn delay of its multiplayer item rules. Hexen, once profiled, gets 8 players (starts 1 to 4 then 9100 to 9103).
-* **Mode rules**: `DoomDeathmatchRules` beside `DoomSinglePlayerRules` and `DoomCoopRules`, answering the questions of the mode — spawn point, death and respawn, whether a picked item stays, item respawn delay, friendly fire always on, no save or load, no full kit cheat (its button ignored), end of level, whether the main holds a level start for the subs' `levelReady`.
-* **Spawns**: a deathmatch spawn picks a free deathmatch start at random on the main, as `G_DeathMatchSpawnPlayer` does.
-* **Level start in deathmatch**: where the seconds before the subs arrive are free frags, the main holds its own start, showing the waiting message, until every sub awaited before the change has sent `levelReady` or has been dropped.
-* **Automap**: in deathmatch the other players never show.
-* **Deathmatch** adds frags, deathmatch starts, the item rules of the chosen variant ("Weapons stay": nothing respawns; "Items respawn": items back after 30 seconds, weapons vanish once taken), no keys, and the monsters and limits from the options, on top of the cooperative machinery.
-* **End of a deathmatch level** (frag or time limit reached) follows vanilla: the level ends, the intermission shows the frag table (each player against each other), then the match goes on to the next level with scores reset.
-* **Host advantage**: a sub reacts to the previous frame while the main aims on a fresher one — accepted for this version, a known edge in deathmatch.
-
-#### Protocol additions
-
-* **Control messages**: `intermission` also carries the frag table; `sessionEnd` gains the reasons "invalid message" and "match over".
-* **State**: each player's frags.
-
-#### Risks still open
-
-* iOS Safari suspends the page when the screen locks or the app goes to the background, which cuts the link: step 9 owns the answer (a rejoin path), not the transport.
-* Carrier NATs defeating STUN, with no TURN relay: confirmed, explicit failure message, a shared hotspot is the workaround. IPv4-only behind a carrier NAT is not measured yet.
-* The slowest device sets everyone's pace; the real turn rate is still to measure on the device matrix.
-* Not yet run on real devices: cooperative, Android (Chrome), a tablet, two different browsers as subs of one main.
-* An image that fails to load never marks the game's image assets ready, so a sub would stay on its loading screen.
-* Main performance with four real players (simulation plus per-turn encoding).
-
-#### Step plan
-
-Same working rules as steps 6 and 7: one commit per lot, each one reviewed (`/doom-review`), solo bit-identical on the benches, README and `libBootstrap.json` versions updated, the loopback test switch removed before every commit.
-
-8. **Mode 3, new multiplayer game**, in lots (user decision, 2026-09-30): lot 1, the cooperative from the Multiplayer screen, is done; the deathmatch remains, split when planned. Deathmatch on the Multiplayer screen, its game settings screen, deathmatch rules (starts, no keys, frags, variants, limits, 30 s item respawn), frag table intermission, match end.
-9. **Hardening**: iOS backgrounding, full device matrix.
 
 ### Visibility culling (PVS / portals) — last, after everything else
 
@@ -151,7 +109,11 @@ A large **performance / rendering** item, to start only **after** everything abo
 
 ## Finished
 
+* **Multiplayer hardening** (2026-10-01): a sub whose page goes to the background no longer holds the game, a lost player gets its seat back by joining again, and neither a missing image nor a stuck level build blocks a sub.
+* **Deathmatch** (2026-10-01): a new deathmatch from the Multiplayer screen, with frags, both item rules, frag and time limits, a frag table tally and the end of the match.
 * **Projectile and player-body smoothing** (2026-10-01): shots in flight drawn smoothly between their tics, and a player's body flowing over stair steps like its view.
+* **Cooperative** (2026-09-30): players joining the running game from the pause, or a new cooperative game from the Multiplayer screen, each with its own body and colour, respawning, weapons and keys left on the ground, and a tally per player.
+* **Screen sharing** (2026-09-29): devices paired by QR code over a direct peer-to-peer link, following the host's game with its pause, death, tally and finale texts.
 * **Doom 1 level testing** (2026-09-21): every level of Doom 1 played through and fixed.
 * **Liquid splashes** (2026-09-11): terrain splashes on the liquids of every game.
 * **Selectable renderer** (2026-09-10): the renderer switched live from the Display options.

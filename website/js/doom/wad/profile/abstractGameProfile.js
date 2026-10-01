@@ -201,6 +201,14 @@ class AbstractGameProfile {
     }
 
     /**
+     * @returns {int} editor number of the deathmatch starts
+     */
+    deathmatchStartType() {
+        this._generateException('deathmatchStartType must be implemented');
+        return 0;
+    }
+
+    /**
      * The visible body of a player seen by the others, as a monster definition
      * (sprite and states) whose actions never run. Built on first use: the
      * monster classes load after the profiles.
@@ -237,12 +245,25 @@ class AbstractGameProfile {
     }
 
     /**
-     * What stays on the ground once picked up in a multiplayer game.
+     * What stays on the ground once picked up in a multiplayer game, and the
+     * clips a weapon left there gives in deathmatch (null: its usual ammo).
      *
-     * @returns {{weaponsStay: boolean, keysStay: boolean}}
+     * @returns {{weaponsStay: boolean, keysStay: boolean, deathmatchWeaponClips: int|null}}
      */
     multiplayerItemRules() {
         this._generateException('multiplayerItemRules must be implemented');
+        return null;
+    }
+
+    /**
+     * How a map item taken comes back when the items respawn (deathmatch):
+     * after delayTics its effect and sound play on its spot, and it is back
+     * revealTics later; the thing types listed never come back.
+     *
+     * @returns {{delayTics: int, revealTics: int, effect: string, sound: string, neverTypes: int[]}}
+     */
+    itemRespawnRules() {
+        this._generateException('itemRespawnRules must be implemented');
         return null;
     }
 

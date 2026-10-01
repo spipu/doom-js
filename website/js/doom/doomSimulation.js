@@ -26,21 +26,26 @@ class DoomSimulation {
         this._level       = null;   // the DoomBuiltLevel it adopted
         this._stats       = new DoomLevelStats();
 
-        this._effects        = null;        // spawner of the sprite effects (puffs, explosions)
-        this._hitscan        = null;
-        this._projectiles    = null;
-        this._decals         = null;        // spawner of the impact decals, null without decal graphics
-        this._monsters       = null;
-        this._monsterDamage  = null;
-        this._monsterAttack  = null;
-        this._sectorDamage   = null;
-        this._gunTriggers    = null;        // shot-activated lines
-        this._sectorSurfaces = null;        // floor flats/specials rewritten by the "+change" floors
-        this._terrain        = null;
-        this._playerStarts   = {};          // slot → {x, y, z, yaw}, the map's player starts
-        this._bodies         = new Map();   // player id → DoomPlayerBody, in cooperative
-        this._corpses        = [];          // DoomBodyView of the dead players' left bodies, oldest first
-        this._deadMs         = new Map();   // player id → ms since its death
+        this._effects          = null;        // spawner of the sprite effects (puffs, explosions)
+        this._hitscan          = null;
+        this._projectiles      = null;
+        this._decals           = null;        // spawner of the impact decals, null without decal graphics
+        this._monsters         = null;
+        this._monsterDamage    = null;
+        this._monsterAttack    = null;
+        this._sectorDamage     = null;
+        this._gunTriggers      = null;        // shot-activated lines
+        this._sectorSurfaces   = null;        // floor flats/specials rewritten by the "+change" floors
+        this._terrain          = null;
+        this._playerStarts     = {};          // slot → {x, y, z, yaw}, the map's player starts
+        this._deathmatchStarts = [];          // {x, y, z, yaw}, the map's deathmatch starts
+        this._bodies           = new Map();   // player id → DoomPlayerBody, while the subs play
+        this._corpses          = [];          // DoomBodyView of the dead players' left bodies, oldest first
+        this._deadMs           = new Map();   // player id → ms since its death
+        this._itemRespawns     = null;        // DoomItemRespawnQueue of the level
+        this._onLevelExit      = null;        // (secret) => void, what an exit line calls
+        this._simulatedMs      = 0;           // the level's simulated time (leveltime), for its time limit
+        this._limitReached     = false;
     }
 
     // --- Profile and skill ---
@@ -162,6 +167,7 @@ class DoomSimulation {
      * @param {function}       onLevelExit - (secret) => void
      */
     adoptLevel(built, onLevelExit) {
+        this._onLevelExit = onLevelExit;
         this._stats.reset();
         this._adoptLevelServices(built);
         this._adoptMonsters(built, onLevelExit);
@@ -210,7 +216,15 @@ class DoomSimulation {
             loader.interactions().loadFromData(new DoomSecretInteraction(built.getSecretZones(), this._stats, this._events));
         }
         for (const pickup of built.getPickups()) {
-            loader.interactions().loadFromData(new DoomPickupInteraction(pickup.code, pickup.effect, this._itemRules, this._stats, pickup.countsItem));
+            loader.interactions().loadFromData(new DoomPickupInteraction(pickup.code, pickup.effect, this._itemRules, this._stats, pickup.countsItem)
+                .setOnRemoved((code) => this._itemRemoved(code)));
+        }
+    }
+
+    // A map item taken comes back later when the rules respawn the items.
+    _itemRemoved(code) {
+        if (this._rules.respawnsItems()) {
+            this._itemRespawns.taken(code);
         }
     }
 
@@ -238,9 +252,12 @@ class DoomSimulation {
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
-        this._bodies  = new Map();
-        this._corpses = [];
-        this._deadMs  = new Map();
+        this._bodies       = new Map();
+        this._corpses      = [];
+        this._deadMs       = new Map();
+        this._simulatedMs  = 0;
+        this._limitReached = false;
+        this._itemRespawns = new DoomItemRespawnQueue(this._level.getPickups(), this._profile.itemRespawnRules(), this._effects, this._events);
         this._monsters.setWorld(world);
         this._monsterDamage.setWorld(world).setFriendlyFire(this._rules.allowsFriendlyFire());
         this._hitscan = new DoomHitscan(collision, this._effects, this._rng, this._decals, this._events, this._gunTriggers, this._monsters, this._monsterDamage);
@@ -268,6 +285,7 @@ class DoomSimulation {
     addPlayer(player, restoredState) {
         player.enterLevel(this._bodyFor(player));
         this._equip(player, restoredState);
+        this._giveSpawnKeys(player.getUser());
         player.markLevelEntry();
         player.getUser().setUseProbeDistance(WadConstants.USE_RANGE * WadConstants.SCALE);
         this._arm(player);
@@ -333,17 +351,51 @@ class DoomSimulation {
         return this;
     }
 
-    // The main takes the body the world definition built on the player 1 start;
-    // any other player gets a new one on a free start.
+    // The main takes the body the world definition built on the player 1 start,
+    // moved to a deathmatch start in deathmatch; any other player gets a new
+    // one on its spawn spot.
     _bodyFor(player) {
         if (player.getId() === DoomPlayer.MAIN_ID) {
-            return this._world.getUser();
+            const user = this._world.getUser();
+            if (this._rules.spawnsAtDeathmatchStarts()) {
+                const start = this._spawnSpot(player.getId());
+                this.placeUser(user, [start.x, start.y, start.z], start.yaw, 0);
+            }
+
+            return user;
         }
-        const start = this._freeStart(player.getId());
+        const start = this._spawnSpot(player.getId());
         const user  = loader.world().createUser([start.x, start.y, start.z], start.yaw);
         this._world.addUser(user);
 
         return user;
+    }
+
+    _spawnSpot(slot) {
+        return ((this._rules.spawnsAtDeathmatchStarts()) ? this._deathmatchStart(slot) : this._freeStart(slot));
+    }
+
+    // G_DeathMatchSpawnPlayer: twenty random draws for a free deathmatch start,
+    // then the player's own start (a map without any falls back on it too).
+    _deathmatchStart(slot) {
+        const radius = this._world.getUser().getRadius();
+        if (this._deathmatchStarts.length > 0) {
+            for (let tries = 0; tries < DoomSimulation.DEATHMATCH_SPAWN_TRIES; tries++) {
+                const start = this._deathmatchStarts[this._rng.next() % this._deathmatchStarts.length];
+                if (!this._monsters.isSpotOccupied(start.x, start.z, radius)) {
+                    return start;
+                }
+            }
+        }
+
+        return this._freeStart(slot);
+    }
+
+    // P_SpawnPlayer gives every key in deathmatch.
+    _giveSpawnKeys(user) {
+        if (this._rules.givesAllKeys()) {
+            this._itemRules.giveAllKeys(user);
+        }
     }
 
     // G_CheckSpot / G_DoReborn: its own start when free, else another free
@@ -388,12 +440,13 @@ class DoomSimulation {
     // --- Level services handed back by the world builder ---
 
     _adoptLevelServices(built) {
-        this._level          = built;
-        this._gunTriggers    = built.getGunTriggers();
-        this._sectorDamage   = built.getSectorDamage();
-        this._sectorSurfaces = built.getSectorSurfaces();
-        this._terrain        = built.getTerrain();
-        this._playerStarts   = built.getPlayerStarts();
+        this._level            = built;
+        this._gunTriggers      = built.getGunTriggers();
+        this._sectorDamage     = built.getSectorDamage();
+        this._sectorSurfaces   = built.getSectorSurfaces();
+        this._terrain          = built.getTerrain();
+        this._playerStarts     = built.getPlayerStarts();
+        this._deathmatchStarts = built.getDeathmatchStarts();
         this._stats.setTotals(built.getSecretsTotal(), built.getKillsTotal(), built.getItemsTotal());
     }
 
@@ -448,6 +501,12 @@ class DoomSimulation {
         for (const [id, body] of this._bodies) {
             body.update(dt, (commands.get(id) ?? World.NEUTRAL_COMMAND));
         }
+        this._itemRespawns.update(dt);
+        this._simulatedMs += dt;
+        const timeLimit = this._rules.timeLimitMs();
+        if ((timeLimit !== null) && (this._simulatedMs >= timeLimit)) {
+            this._endLevelOnLimit();
+        }
     }
 
     // P_DeathThink: a dead player whose use is pressed once its death settled
@@ -458,6 +517,9 @@ class DoomSimulation {
             this._deadMs.delete(player.getId());
             return;
         }
+        if (!this._deadMs.has(player.getId())) {
+            this._creditDeath(player);
+        }
         const deadMs = (this._deadMs.get(player.getId()) ?? 0) + dt;
         this._deadMs.set(player.getId(), deadMs);
         if (this._rules.respawnsDeadPlayers() && (deadMs >= WadConstants.DEATH_SETTLE_MS)
@@ -466,16 +528,48 @@ class DoomSimulation {
         }
     }
 
+    // P_KillMobj: a player killed by another player is that one's frag, a
+    // player killed by nothing is its own, one killed by a monster nobody's.
+    _creditDeath(player) {
+        const killer = player.getUser().getKiller();
+        if (killer === null) {
+            this._stats.addFrag(player.getId(), player.getId());
+            return;
+        }
+        if (DoomActorRef.isPlayer(killer)) {
+            this._stats.addFrag(killer.getPlayerId(), player.getId());
+            this._checkFragLimit(killer.getPlayerId());
+        }
+    }
+
+    // UZDoom P_KillMobj fraglimit: the killer reaching the limit ends the level.
+    _checkFragLimit(playerId) {
+        const limit = this._rules.fragLimit();
+        if ((limit !== null) && (this._stats.fragScore(playerId) >= limit)) {
+            this._endLevelOnLimit();
+        }
+    }
+
+    // The level ends as through an exit line, once.
+    _endLevelOnLimit() {
+        if (this._limitReached) {
+            return;
+        }
+        this._limitReached = true;
+        this._onLevelExit(false);
+    }
+
     // G_PlayerReborn + G_CheckSpot, in a teleport fog; the press that brought
     // it back uses nothing (usedown set on reborn).
     _respawn(player, command) {
         const user  = player.getUser();
-        const start = this._freeStart(player.getId());
+        const start = this._spawnSpot(player.getId());
         this._leaveCorpse(player);
         user.revive(user.getMaxEnergy()).setLastCommand(command);
         this.placeUser(user, [start.x, start.y, start.z], start.yaw, 0);
         user.clearEquipment();
         this._itemRules.setupLoadout(user);
+        this._giveSpawnKeys(user);
         player.enterLevel(user);
         this._arm(player);
         this._effects.spawnArrivalFog(user.x, user.y, user.z, WadGeometry.doomAngleYaw(user.yaw));
@@ -551,6 +645,8 @@ class DoomSimulation {
 DoomSimulation.DEFAULT_SKILL = 3;
 // Dead players' bodies kept on the ground (G_PlayerReborn's bodyque, BODYQUESIZE).
 DoomSimulation.CORPSE_QUEUE = 32;
+// Random deathmatch starts tried for a free one before the player's own start (G_DeathMatchSpawnPlayer).
+DoomSimulation.DEATHMATCH_SPAWN_TRIES = 20;
 // Buttons and impulse the game adds to the engine's in every UserCommand.
 DoomSimulation.BUTTON_FIRE           = 'fire';
 DoomSimulation.BUTTON_WEAPON_NEXT    = 'weaponNext';

@@ -832,13 +832,14 @@ class DoomMonsterSystem {
         return ((spot.blockers.length > 0) || (spot.players.length > 0));
     }
 
-    // PIT_StompThing: every occupant of the spot takes the telefrag.
-    _stomp(spot) {
+    // PIT_StompThing: every occupant of the spot takes the telefrag, the
+    // landing body behind it (a player stomped by a monster scores no frag).
+    _stomp(spot, source) {
         for (const other of spot.blockers) {
             this._damage.damage(other, WadConstants.TELEFRAG_DAMAGE, {});
         }
         for (const user of spot.players) {
-            user.takeDamage(WadConstants.TELEFRAG_DAMAGE);
+            user.takeDamage(WadConstants.TELEFRAG_DAMAGE, source);
         }
     }
 
@@ -970,14 +971,15 @@ class DoomMonsterSystem {
      * @param {number}      x       world position of the spot
      * @param {number}      z
      * @param {string}      kind    catalog key of the body about to land
-     * @param {object|null} exclude a body that does not count as an occupant
+     * @param {object|null} exclude a body that does not count as an occupant:
+     *                            the one that sent the lander, behind the telefrag
      */
     telefragAt(x, z, kind, exclude = null) {
         const template = ((this._spawnables !== null) ? (this._spawnables[kind] ?? null) : null);
         if (template === null) {
             return;
         }
-        this._stomp(this._spotOccupancy(x, z, template.def.getRadius() * WadConstants.SCALE, exclude));
+        this._stomp(this._spotOccupancy(x, z, template.def.getRadius() * WadConstants.SCALE, exclude), exclude);
     }
 
     /**
@@ -1949,7 +1951,7 @@ class DoomMonsterSystem {
             if (this._levelData.monstersTelefrag !== true) {
                 return false;
             }
-            this._stomp(spot);
+            this._stomp(spot, m);
         }
         // ONFLOORZ: the landing sector may be a mover — the floor is resolved
         // live from the sector ceiling, landing.y is only the build fallback.

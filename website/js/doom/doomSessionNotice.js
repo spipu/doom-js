@@ -1,9 +1,9 @@
 /**
  * The one message a session shows over the game, by priority: the players
  * the game waits for, then the host's pause, then the local player's respawn
- * prompt, then a player who just left (for DEPARTURE_MS), then the host's
- * death. Each device keeps its own: the main shows who it waits for and who
- * left, a sub everything the main tells it.
+ * prompt, then the last news of another player — left, away, back — (for
+ * NEWS_MS), then the host's death. Each device keeps its own: the main shows
+ * who it waits for and the players' news, a sub everything the main tells it.
  */
 class DoomSessionNotice {
     constructor() {
@@ -11,7 +11,7 @@ class DoomSessionNotice {
         this._mainPaused = false;
         this._mainDead   = false;
         this._respawn    = false;   // the local player is dead and may respawn
-        this._departure  = null;    // {nickname, until} of the player who left last
+        this._news       = null;    // {code, nickname, until}: the last thing that happened to another player
         this._shown      = null;
         this._onNotice   = null;
     }
@@ -72,14 +72,27 @@ class DoomSessionNotice {
      * @param {number} now      - performance.now() clock
      */
     departed(nickname, now) {
-        this._departure = {nickname: nickname, until: now + DoomSessionNotice.DEPARTURE_MS};
+        this._tell('multiplayer.playerLeft', nickname, now);
+    }
+
+    /**
+     * @param {string}  nickname
+     * @param {boolean} away     - whether its page went to the background, or came back
+     * @param {number}  now      - performance.now() clock
+     */
+    awayChanged(nickname, away, now) {
+        this._tell(((away) ? 'multiplayer.playerAway' : 'multiplayer.playerBack'), nickname, now);
+    }
+
+    _tell(code, nickname, now) {
+        this._news = {code: code, nickname: nickname, until: now + DoomSessionNotice.NEWS_MS};
         this._refresh();
     }
 
-    // Called every frame: a departure message runs out.
+    // Called every frame: a player's news runs out.
     update(now) {
-        if ((this._departure !== null) && (now >= this._departure.until)) {
-            this._departure = null;
+        if ((this._news !== null) && (now >= this._news.until)) {
+            this._news = null;
             this._refresh();
         }
     }
@@ -90,7 +103,7 @@ class DoomSessionNotice {
         this._mainPaused = false;
         this._mainDead   = false;
         this._respawn    = false;
-        this._departure  = null;
+        this._news       = null;
         this._refresh();
     }
 
@@ -113,8 +126,8 @@ class DoomSessionNotice {
         if (this._respawn) {
             return appTranslator.get('multiplayer.respawnPrompt');
         }
-        if (this._departure !== null) {
-            return appTranslator.get('multiplayer.playerLeft', {nickname: this._departure.nickname});
+        if (this._news !== null) {
+            return appTranslator.get(this._news.code, {nickname: this._news.nickname});
         }
         if (this._mainDead) {
             return appTranslator.get('multiplayer.mainDead');
@@ -124,4 +137,4 @@ class DoomSessionNotice {
     }
 }
 
-DoomSessionNotice.DEPARTURE_MS = 3000;
+DoomSessionNotice.NEWS_MS = 3000;

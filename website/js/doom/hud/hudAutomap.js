@@ -21,6 +21,7 @@ class HudAutomap extends AbstractHud {
         this._automap     = null;
         this._bodies      = null;   // the level's body views, the players' among them
         this._slotColors  = [];
+        this._rules       = null;
         this._colors      = null;
         this._keyColors   = {};
         this._buckets     = {};
@@ -66,7 +67,8 @@ class HudAutomap extends AbstractHud {
 
     /**
      * In cooperative every player shows as an arrow in its slot's colour, its
-     * own included (AM_drawPlayers in a netgame); alone, the green arrow.
+     * own included (AM_drawPlayers in a netgame); alone, the green arrow. The
+     * rules may keep the others off the map (deathmatch).
      *
      * @param {Set<DoomBodyView>} bodies     - the level's body views
      * @param {string[]}          slotColors - CSS colour per slot, index 0 = slot 1
@@ -74,6 +76,11 @@ class HudAutomap extends AbstractHud {
     bindPlayerBodies(bodies, slotColors) {
         this._bodies     = bodies;
         this._slotColors = slotColors;
+        return this;
+    }
+
+    bindRules(rules) {
+        this._rules = rules;
         return this;
     }
 
@@ -305,15 +312,16 @@ class HudAutomap extends AbstractHud {
 
     // The viewed player's arrow follows its camera; the others their body.
     _drawPlayers() {
-        const ownId  = this._user.getPlayerId();
-        let together = false;
+        const ownId      = this._user.getPlayerId();
+        const showOthers = ((this._rules === null) || this._rules.showsOtherPlayersOnMap());
+        let together     = false;
         for (const view of (this._bodies ?? [])) {
             const id = view.getPlayerId();
             if (id === null) {
                 continue;
             }
             together = true;
-            if (id !== ownId) {
+            if ((id !== ownId) && showOthers) {
                 const position = view.getInstance().getTransform().position;
                 this._drawArrow(position[0] / WadConstants.SCALE, position[2] / WadConstants.SCALE, view.getFacing() * DEG_TO_RAD, this._slotColor(id));
             }

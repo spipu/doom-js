@@ -17,7 +17,7 @@ class MenuNavigator {
 
         this._currentScreen      = null;
         this._selectedDifficulty = MenuNavigator.DEFAULT_SKILL;
-        this._launch             = null;   // {nickname, episode} of the cooperative game being launched, null for single player
+        this._launch             = null;   // {nickname, episode, rules: the DoomGameRules class} of the multiplayer game being launched, null for single player
     }
 
     /**
@@ -135,28 +135,29 @@ class MenuNavigator {
     }
 
     /**
-     * Cooperative chosen on the Multiplayer screen, its checks passed: the
-     * episode, the difficulty and the game settings, then the first level
-     * built under the cooperative rules with the lobby over it.
+     * A new multiplayer game chosen on the Multiplayer screen, its checks
+     * passed: the episode, the difficulty and the game settings of its mode,
+     * then the first level built under the mode's rules with the lobby over it.
      *
-     * @param {object} meta
-     * @param {string} nickname
+     * @param {object}   meta
+     * @param {string}   nickname
+     * @param {function} rules    - the DoomGameRules class of the mode (DoomCoopRules, DoomDeathmatchRules)
      */
-    openCooperativeEpisodes(meta, nickname) {
-        this._launch = {nickname: nickname, episode: null};
+    openSessionEpisodes(meta, nickname, rules) {
+        this._launch = {nickname: nickname, episode: null, rules: rules};
         this.openEpisodes(meta);
     }
 
     /**
      * The launch was cancelled from the lobby, or could not open its session:
-     * back to the difficulty of the same episode, the launch still cooperative.
+     * back to the difficulty of the same episode, the launch still in its mode.
      *
      * @param {object}      meta
-     * @param {object}      launch     - {nickname, episode}
+     * @param {object}      launch     - {nickname, episode, rules}
      * @param {number|null} skill
      * @param {boolean}     noIdentity - the session failed for want of the WAD's identity
      */
-    startCooperativeAtDifficulty(meta, launch, skill, noIdentity) {
+    startSessionAtDifficulty(meta, launch, skill, noIdentity) {
         this._selectedDifficulty = (skill ?? MenuNavigator.DEFAULT_SKILL);
         this._launch             = launch;
 
@@ -228,7 +229,7 @@ class MenuNavigator {
         }
         // Over the difficulty screen: its Back gives up and stays there.
         new MenuOptionsModal(this._display)
-            .showGameSettings(DoomCoopRules.SETTING_KEYS, () => this._launchFromWad(meta, levelCode));
+            .showGameSettings(this._launch.rules.SETTING_KEYS, () => this._launchFromWad(meta, levelCode));
     }
 
     /**
@@ -249,7 +250,7 @@ class MenuNavigator {
      *
      * @param {object}            meta
      * @param {DoomNetSubSession} session
-     * @param {object}            level   - {levelCode, skill, multiplayerThings}
+     * @param {object}            level   - {levelCode, skill, thingFilter}
      */
     async joinSharedGame(meta, session, level) {
         const modal = new MenuModal(this._display)
@@ -339,8 +340,8 @@ class MenuNavigator {
             const game = new DoomGame();
             if (this._launch !== null) {
                 const launch = this._launch;
-                game.openCooperativeOnStart(launch.nickname,
-                    (navigator, wadMeta, skill, noIdentity) => navigator.startCooperativeAtDifficulty(wadMeta, launch, skill, noIdentity));
+                game.openSessionOnStart(launch.rules, launch.nickname,
+                    (navigator, wadMeta, skill, noIdentity) => navigator.startSessionAtDifficulty(wadMeta, launch, skill, noIdentity));
             }
             await game.startFromWad(wadFile, startCode, meta, spawnOverride, this._selectedDifficulty);
             modal.close();

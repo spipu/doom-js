@@ -25,6 +25,7 @@ class DoomReplicaApplier {
         this._restPoses   = new Map();   // mover id → position it was built at
         this._goneBodies  = new Map();   // id → last position of a body removed this turn
         this._switches    = [];
+        this._pickups     = new Map(builtLevel.getPickups().map((pickup) => [pickup.code, pickup]));
         for (const view of builtLevel.getBodyViews()) {
             this._bodies.set(this._ids.idOfView(view), view);
         }
@@ -205,10 +206,15 @@ class DoomReplicaApplier {
 
     // --- Level state ---
 
+    // A pickup back in the state (the items respawn) comes back here too.
     _applyPickups(present) {
         this._ids.getPickupCodes().forEach((code, i) => {
-            if (!present[i] && (loader.instances().idByCode(code) !== null)) {
+            const here = (loader.instances().idByCode(code) !== null);
+            if (!present[i] && here) {
                 loader.instances().scheduleRemoval(loader.instances().getByCode(code));
+            }
+            if (present[i] && !here) {
+                DoomPickupSpawner.respawn(this._pickups.get(code));
             }
         });
     }

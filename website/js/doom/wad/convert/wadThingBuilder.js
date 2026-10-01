@@ -1,8 +1,8 @@
 /**
  * Builds the world things (decorations + pickups + monsters) from the level
  * THINGS lump. Each mapped thing becomes a camera-facing Billboard sprite;
- * the player starts are collected apart, deathmatch starts and teleport
- * landings are left out (not mapped in the catalogs). Monsters resolve
+ * the player and deathmatch starts are collected apart, teleport landings
+ * are left out (not mapped in the catalogs). Monsters resolve
  * through the monster catalog and carry their rotation sets + facing.
  *
  * Returns a flat list of placed things; WadWorldBuilder deduplicates the shared
@@ -19,26 +19,31 @@ class WadThingBuilder {
      * @param {object}             skillRule      the profile's skillRules()[skill] (null = legacy bits)
      */
     constructor(level, catalog, spriteBank, sectorFinder, skill = 3, monsterCatalog = null, skillRule = null) {
-        this._level             = level;
-        this._catalog           = catalog;
-        this._spriteBank        = spriteBank;
-        this._sectorFinder      = sectorFinder;
-        this._skill             = skill;
-        this._monsterCatalog    = monsterCatalog;
-        this._skillRule         = skillRule;
-        this._multiplayerThings = false;
-        this._spawnerSeed       = 0;
-        this._skipped           = 0;
-        this._filtered          = 0;
-        this._monsterCount      = 0;
-        this._spots             = {};
-        this._playerStartTypes  = [];
-        this._playerStarts      = {};
-        this._paddedFrames      = {};   // anim key → padded frame view
+        this._level               = level;
+        this._catalog             = catalog;
+        this._spriteBank          = spriteBank;
+        this._sectorFinder        = sectorFinder;
+        this._skill               = skill;
+        this._monsterCatalog      = monsterCatalog;
+        this._skillRule           = skillRule;
+        this._thingFilter         = WadThingBuilder.SINGLE_PLAYER_FILTER;
+        this._spawnerSeed         = 0;
+        this._skipped             = 0;
+        this._filtered            = 0;
+        this._monsterCount        = 0;
+        this._spots               = {};
+        this._playerStartTypes    = [];
+        this._playerStarts        = {};
+        this._deathmatchStartType = null;
+        this._deathmatchStarts    = [];
+        this._paddedFrames        = {};   // anim key → padded frame view
     }
 
-    setMultiplayerThings(spawned) {
-        this._multiplayerThings = (spawned === true);
+    /**
+     * @param {{multiplayer: boolean, deathmatch: boolean, monsters: boolean}} filter - see DoomGameRules.thingFilter
+     */
+    setThingFilter(filter) {
+        this._thingFilter = filter;
 
         return this;
     }
@@ -56,8 +61,25 @@ class WadThingBuilder {
         return this;
     }
 
-    _excludedByMode(thing) {
-        return (!this._multiplayerThings && ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0));
+    setDeathmatchStartType(type) {
+        this._deathmatchStartType = type;
+
+        return this;
+    }
+
+    // P_SpawnMapThing: the MTF_NOT_SINGLE things outside a netgame, the
+    // MF_NOTDMATCH ones in deathmatch.
+    _excludedByMode(thing, notDeathmatch) {
+        if (!this._thingFilter.multiplayer && ((thing.flags & WadConstants.MTF_NOT_SINGLE) !== 0)) {
+            return true;
+        }
+
+        return (this._thingFilter.deathmatch && notDeathmatch);
+    }
+
+    // -nomonsters: every MF_COUNTKILL monster (the lost soul counts a kill here, vanilla tests it apart).
+    _excludedMonster(thing, def) {
+        return (this._excludedByMode(thing, false) || (!this._thingFilter.monsters && (def.getFlags().countsKill !== false)));
     }
 
     /**
@@ -69,11 +91,12 @@ class WadThingBuilder {
     buildAll() {
         const entries  = [];
         const spawners = {};
-        this._skipped      = 0;
-        this._filtered     = 0;
-        this._monsterCount = 0;
-        this._spots        = {};
-        this._playerStarts = {};
+        this._skipped          = 0;
+        this._filtered         = 0;
+        this._monsterCount     = 0;
+        this._spots            = {};
+        this._playerStarts     = {};
+        this._deathmatchStarts = [];
 
         // P_SpawnMapThing skill bit; without a profile rule: 0-2 → 0x01,
         // 3 → 0x02, 4-5 → 0x04.
@@ -83,6 +106,10 @@ class WadThingBuilder {
 
         for (const thing of this._level.things) {
             // Vanilla takes the starts before any filter; a later one of a slot wins.
+            if (thing.type === this._deathmatchStartType) {
+                this._deathmatchStarts.push({x: thing.x, y: thing.y, angle: thing.angle});
+                continue;
+            }
             const slot = this._playerStartTypes.indexOf(thing.type) + 1;
             if (slot > 0) {
                 this._playerStarts[slot] = {x: thing.x, y: thing.y, angle: thing.angle};
@@ -90,7 +117,7 @@ class WadThingBuilder {
             }
             const monsterDef = ((this._monsterCatalog !== null) ? this._monsterCatalog.getMonsterForType(thing.type) : null);
             if (monsterDef !== null) {
-                if (this._excludedByMode(thing) || ((thing.flags & skillBit) === 0)) {
+                if (this._excludedMonster(thing, monsterDef) || ((thing.flags & skillBit) === 0)) {
                     this._filtered++;
                     continue;
                 }
@@ -136,7 +163,7 @@ class WadThingBuilder {
                 continue;
             }
 
-            if (this._excludedByMode(thing)) {
+            if (this._excludedByMode(thing, desc.notDeathmatch)) {
                 this._filtered++;
                 continue;
             }
@@ -305,12 +332,19 @@ class WadThingBuilder {
         return this._playerStarts;
     }
 
+    /**
+     * @returns {object[]} {x, y, angle} in Doom units, every deathmatch start of the map in map order
+     */
+    getDeathmatchStarts() {
+        return this._deathmatchStarts;
+    }
+
     // Number of mapped things dropped because no sector was found (call after buildAll).
     getSkipped() {
         return this._skipped;
     }
 
-    // Number of mapped things filtered out by skill / multiplayer flag (call after buildAll).
+    // Number of mapped things filtered out by skill or game mode (call after buildAll).
     getFiltered() {
         return this._filtered;
     }
@@ -320,3 +354,6 @@ class WadThingBuilder {
         return this._monsterCount;
     }
 }
+
+// The things a single player game is built with.
+WadThingBuilder.SINGLE_PLAYER_FILTER = {multiplayer: false, deathmatch: false, monsters: true};

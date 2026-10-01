@@ -33,9 +33,11 @@ MenuNetMessages.UNAVAILABLE = {
     [DoomNetAvailability.NO_CAMERA]: 'multiplayer.unavailable.camera'
 };
 MenuNetMessages.ENDS = {
-    [DoomNetProtocol.END_STOPPED]:   'multiplayer.end.stopped',
-    [DoomNetProtocol.END_REMOVED]:   'multiplayer.end.removed',
-    [DoomNetProtocol.END_TIMEOUT]:   'multiplayer.end.timeout',
-    [DoomNetProtocol.END_LOST]:      'multiplayer.end.lost',
-    [DoomNetProtocol.END_GAME_OVER]: 'multiplayer.end.gameOver'
+    [DoomNetProtocol.END_STOPPED]:    'multiplayer.end.stopped',
+    [DoomNetProtocol.END_REMOVED]:    'multiplayer.end.removed',
+    [DoomNetProtocol.END_TIMEOUT]:    'multiplayer.end.timeout',
+    [DoomNetProtocol.END_LOST]:       'multiplayer.end.lost',
+    [DoomNetProtocol.END_GAME_OVER]:  'multiplayer.end.gameOver',
+    [DoomNetProtocol.END_MATCH_OVER]: 'multiplayer.end.matchOver',
+    [DoomNetProtocol.END_INVALID]:    'multiplayer.end.invalid'
 };

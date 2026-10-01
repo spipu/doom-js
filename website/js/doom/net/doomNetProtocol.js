@@ -5,6 +5,13 @@
  * messages.
  */
 class DoomNetProtocol {
+    /**
+     * @param {int} mode - DoomNetProtocol.MODE_*
+     * @returns {boolean} whether every sub of a session in that mode plays its own player, rather than watching the main's
+     */
+    static subsPlayOwnPlayers(mode) {
+        return (mode !== DoomNetProtocol.MODE_SCREEN_SHARING);
+    }
 }
 
 // Sub → main, once its link is open: it joins the session and waits for its welcome.
@@ -14,11 +21,15 @@ DoomNetProtocol.HELLO          = 'hello';
 DoomNetProtocol.WELCOME        = 'welcome';
 // Main → the other subs of a cooperative game: a player left (playerId, nickname).
 DoomNetProtocol.PLAYER_REMOVED = 'playerRemoved';
+// Sub → main: its page went to the background (away true) or came back (away false).
+DoomNetProtocol.AWAY           = 'away';
+// Main → the other subs of a cooperative game: a player went away or came back (nickname, away).
+DoomNetProtocol.PLAYER_AWAY    = 'playerAway';
 // Main → every sub: the lobby as it stands (DoomNetLobby.toData).
 DoomNetProtocol.LOBBY          = 'lobby';
 // Main → every sub: the game runs.
 DoomNetProtocol.START          = 'start';
-// Main → a sub: the level to build (seq, levelCode, skill, multiplayerThings, mode, options), and the sub is syncing.
+// Main → a sub: the level to build (seq, levelCode, skill, thingFilter, mode, options), and the sub is syncing.
 DoomNetProtocol.LEVEL_LOAD     = 'levelLoad';
 // Sub → main: the level of that seq is built, the sub joins the turn cycle with the next state.
 DoomNetProtocol.LEVEL_READY    = 'levelReady';
@@ -33,15 +44,18 @@ DoomNetProtocol.FINALE         = 'finale';
 // Either side: the session ends for the receiver, with one of the END_* reasons.
 DoomNetProtocol.SESSION_END    = 'sessionEnd';
 
-DoomNetProtocol.END_STOPPED   = 'stopped';  // the main stopped the session
-DoomNetProtocol.END_REMOVED   = 'removed';  // the main removed that sub
-DoomNetProtocol.END_TIMEOUT   = 'timeout';  // that sub's command never came: too slow a link
-DoomNetProtocol.END_LEFT      = 'left';     // the sub left
-DoomNetProtocol.END_LOST      = 'lost';     // the link went silent or failed
-DoomNetProtocol.END_GAME_OVER = 'gameOver'; // the main finished its game
+DoomNetProtocol.END_STOPPED    = 'stopped';   // the main stopped the session
+DoomNetProtocol.END_REMOVED    = 'removed';   // the main removed that sub
+DoomNetProtocol.END_TIMEOUT    = 'timeout';   // that sub's command never came: too slow a link
+DoomNetProtocol.END_LEFT       = 'left';      // the sub left
+DoomNetProtocol.END_LOST       = 'lost';      // the link went silent or failed
+DoomNetProtocol.END_GAME_OVER  = 'gameOver';  // the main finished its game
+DoomNetProtocol.END_MATCH_OVER = 'matchOver'; // the deathmatch is over: its last level, or no opponent left
+DoomNetProtocol.END_INVALID    = 'invalid';   // a message the receiver could not decode
 
 DoomNetProtocol.MODE_SCREEN_SHARING = 1;
 DoomNetProtocol.MODE_COOPERATIVE    = 2;
+DoomNetProtocol.MODE_DEATHMATCH     = 3;
 
 // First byte of a binary message (0xFF is the network layer's chunk).
 DoomNetProtocol.MESSAGE_STATE   = 1;   // main → subs, every turn

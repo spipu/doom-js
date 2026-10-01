@@ -14,6 +14,7 @@ class DoomPresentation {
         this._itemCatalog        = null;
         this._level              = null;
         this._stats              = null;
+        this._rules              = null;   // the game mode's, for what the HUD and the map show
         this._world              = null;
         this._player             = null;
         this._automap            = null;
@@ -49,6 +50,18 @@ class DoomPresentation {
 
     getEngine() {
         return this._engine;
+    }
+
+    /**
+     * @param {DoomGameRules} rules - the game mode's: what the scores and the automap show
+     */
+    useRules(rules) {
+        this._rules = rules;
+        if (this._hud !== null) {
+            this._hud.bindRules(rules);
+        }
+
+        return this;
     }
 
     /**
@@ -158,12 +171,14 @@ class DoomPresentation {
             .bindProfile(this._profile)
             .bindItemCatalog(this._itemCatalog)
             .bindLevelStats(this._stats)
+            .bindRules(this._rules)
             .bindPingSource(this._pingSource)
             .setLevelInfo(this._levelInfo.wadId, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
             .addDescription('(c)2026 Spipu')
         ;
+        this._hud.bindPlayerBodies(this._level.getBodyViews(), this._level.getPlayerColors());
         if (this._automap !== null) {
-            this._hud.bindPlayerBodies(this._level.getBodyViews(), this._level.getPlayerColors()).bindAutomap(this._automap);
+            this._hud.bindAutomap(this._automap);
         }
 
         this._screen.bindHud(this._hud);
