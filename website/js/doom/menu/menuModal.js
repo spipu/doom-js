@@ -113,8 +113,8 @@ class MenuModal {
      * button. Not dismissable by clicking outside — the player has to press it.
      * Without a label (a sub following the main's), it only shows.
      *
-     * A cooperative tally adds a table under the lines: a column per player,
-     * headed by its name in its colour, a row per score.
+     * A cooperative tally adds a table under the lines, in a wider shell: a
+     * column per player, headed by its name in its colour, a row per score.
      *
      * @param {string}        title
      * @param {object[]}      lines  - [{label, value}], value already formatted
@@ -123,7 +123,8 @@ class MenuModal {
      * @param {object|null}   table  - {columns: [{name, color|null}], rows: [{label, values}]}, null for none
      */
     tally(title, lines, label, action, table = null) {
-        const {modal} = this._createShell(title, 'doom-menu-modal', 'doom-menu-modal-message');
+        const shellClass = ((table !== null) ? 'doom-menu-modal doom-menu-modal-tally' : 'doom-menu-modal');
+        const {modal}    = this._createShell(title, shellClass, 'doom-menu-modal-message');
 
         const body = MenuDom.addElement(modal, 'div', 'doom-menu-tally');
         for (const line of lines) {

@@ -319,6 +319,11 @@
     width: 75%;
 }
 
+/* A tally with a players' table: room for four columns and their names. */
+.doom-menu-modal-tally {
+    width: 80%;
+}
+
 .doom-menu-modal-error {
     color: rgba(231, 76, 60, 0.95);
 }
@@ -403,6 +408,7 @@
 .doom-menu-tally-player {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     color: rgba(255, 255, 255, 0.9);
     font-size: 0.8em;
     white-space: nowrap;

@@ -20,6 +20,7 @@ class DoomLevelStats {
         this._itemsTotal     = 0;
         this._levelTimeMs    = 0;
         this._levelClockLast = null;
+        this._matchTimeMs    = 0;
         this._players        = new Map();   // player id → {kills, items, secrets}
         this._frags          = new Map();   // killer id → Map(victim id → frags), player_t frags[]
 
@@ -55,13 +56,15 @@ class DoomLevelStats {
             items:        this._itemsFound,
             itemsTotal:   this._itemsTotal,
             timeMs:       this._levelTimeMs,
+            matchMs:      this._matchTimeMs,
             frags:        this._exportFrags()
         };
     }
 
     importCounts(counts) {
         this.setTotals(counts.secretsTotal, counts.killsTotal, counts.itemsTotal);
-        this._frags = new Map();
+        this._matchTimeMs = counts.matchMs;
+        this._frags       = new Map();
         for (const entry of counts.frags) {
             this._fragsOf(entry.killer).set(entry.victim, entry.count);
         }
@@ -209,6 +212,20 @@ class DoomLevelStats {
 
     getLevelTimeMs() {
         return this._levelTimeMs;
+    }
+
+    /**
+     * The level's simulated time (vanilla leveltime): the clock of the match's
+     * time limit and of the deathmatch HUD, advanced by the simulation alone.
+     *
+     * @param {number} dt - ms
+     */
+    addMatchTime(dt) {
+        this._matchTimeMs += dt;
+    }
+
+    getMatchTimeMs() {
+        return this._matchTimeMs;
     }
 
     /**

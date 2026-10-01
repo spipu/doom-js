@@ -4,8 +4,9 @@
  *   - bottom-left : running power-ups, health and armor bars
  *   - bottom-right: ammo of the active weapon ('—' if none)
  *   - top-left    : key pips (lit when owned), secret and kill counts — or,
- *                   when the rules score the frags, the viewed player's frags
- *                   and, under them, each other player's in its colour
+ *                   when the rules score the frags, the match clock and every
+ *                   player's frags in slot order, each behind its colour, the
+ *                   viewed player's in bold
  *   - top-right   : weapon slots + active weapon name
  *   - bottom-centre: optional fps readout, with the ping during a session
  *
@@ -27,7 +28,7 @@ class HudGameBar extends AbstractHud {
         this._keyEls      = {};
         this._armsEls     = {};
         this._effectEls   = {};
-        this._otherFrags  = [];     // {row, swatch, value} per other player shown, built on demand
+        this._fragRows    = [];     // {row, swatch, value} per player shown, built on demand
     }
 
     bindProfile(profile) {
@@ -207,9 +208,7 @@ class HudGameBar extends AbstractHud {
                 continue;
             }
             if (effectLine.timed) {
-                const seconds = Math.ceil(remainingMs / 1000);
-                el.innerText = appTranslator.get(effectLine.labelCode) + ' '
-                    + Math.trunc(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+                el.innerText = appTranslator.get(effectLine.labelCode) + ' ' + MenuDom.formatClock(Math.ceil(remainingMs / 1000), 1);
                 el.style.visibility = ((user.isEffectVisible(effectLine.code)) ? 'visible' : 'hidden');
             } else {
                 el.innerText = appTranslator.get(effectLine.labelCode);
@@ -225,32 +224,41 @@ class HudGameBar extends AbstractHud {
         this._els.scores.style.display  = ((scoresFrags) ? 'none' : 'block');
         this._els.frags.style.display   = ((scoresFrags) ? 'block' : 'none');
         if (scoresFrags) {
-            this._els.fragsValue.innerText = String(this._stats.fragScore(user.getPlayerId()));
-            this._updateOtherFrags(user.getPlayerId());
+            this._updateMatchClock();
+            this._updateFragRows(user.getPlayerId());
             return;
         }
         this._els.secretsValue.innerText = this._stats.getSecretsFound() + '/' + this._stats.getSecretsTotal();
         this._els.killsValue.innerText   = this._stats.getKillsCount() + '/' + this._stats.getKillsTotal();
     }
 
-    // The other players in the level, in slot order; a row more is built only
-    // when a player more is there.
-    _updateOtherFrags(ownId) {
-        const others = [];
+    // Counting down to the time limit when the rules set one, up otherwise.
+    _updateMatchClock() {
+        const limit   = this._rules.timeLimitMs();
+        const matchMs = this._stats.getMatchTimeMs();
+        const seconds = ((limit !== null) ? Math.ceil(Math.max(0, limit - matchMs) / 1000) : Math.floor(matchMs / 1000));
+        this._els.matchClock.innerText = MenuDom.formatClock(seconds, 2);
+    }
+
+    // Every player in the level, in slot order; a row more is built only when
+    // a player more is there.
+    _updateFragRows(ownId) {
+        const ids = [];
         for (const view of (this._bodies ?? [])) {
             const id = view.getPlayerId();
-            if ((id !== null) && (id !== ownId)) {
-                others.push(id);
+            if (id !== null) {
+                ids.push(id);
             }
         }
-        others.sort((a, b) => (a - b));
-        while (this._otherFrags.length < others.length) {
-            this._otherFrags.push(this._buildOtherFragRow());
+        ids.sort((a, b) => (a - b));
+        while (this._fragRows.length < ids.length) {
+            this._fragRows.push(this._buildFragRow());
         }
-        this._otherFrags.forEach((entry, i) => {
-            const id = (others[i] ?? null);
+        this._fragRows.forEach((entry, i) => {
+            const id = (ids[i] ?? null);
             entry.row.style.display = ((id !== null) ? 'flex' : 'none');
             if (id !== null) {
+                entry.row.style.fontWeight         = ((id === ownId) ? '800' : '400');
                 entry.swatch.style.backgroundColor = (this._slotColors[id - 1] ?? 'transparent');
                 entry.value.innerText              = String(this._stats.fragScore(id));
             }
@@ -390,40 +398,32 @@ class HudGameBar extends AbstractHud {
         this._root.appendChild(block);
     }
 
-    // ST_drawWidgets in deathmatch: FRAGS and the score, hidden until the rules
-    // score them; the other players' rows follow, built as they come.
+    // ST_drawWidgets in deathmatch: the match clock, then the players' rows,
+    // built as they come; hidden until the rules score the frags.
     _buildFrags() {
         const frags = this._createEl('div', {display: 'none'});
         this._els.frags = frags;
-        const label = this._createEl('div', {color: '#ccc'});
-        label.innerText = appTranslator.get('hud.frags');
-        const own = this._buildFragRow(label);
-        own.row.style.display = 'flex';
-        this._els.fragsValue = own.value;
+        this._els.matchClock = this._createEl('div', {textAlign: 'center', fontSize: '1.1em', fontWeight: '700', color: '#eee'});
+        frags.appendChild(this._els.matchClock);
 
         return frags;
     }
 
-    _buildOtherFragRow() {
-        const swatch = this._createEl('div', {width: '0.7em', height: '0.7em', border: '0.1em solid rgba(255, 255, 255, 0.5)'});
-        const other  = this._buildFragRow(swatch);
-
-        return {row: other.row, swatch: swatch, value: other.value};
-    }
-
-    // One line of the frags block, at the size of the health value: its lead
-    // (the FRAGS label, a player's colour) left, the score right-aligned.
-    _buildFragRow(lead) {
+    // One line of the frags block, at the size of the health value: the
+    // player's colour left, the score right-aligned, wide enough for the block
+    // to keep the same margin to the virtual pad's menu button as to the edge.
+    _buildFragRow() {
         const row = this._createEl('div', {
-            display: 'none', alignItems: 'center', gap: '0.5em', marginTop: '0.25em', fontSize: '1.1em', fontWeight: '700'
+            display: 'none', alignItems: 'center', gap: '0.5em', marginTop: '0.25em', fontSize: '1.1em'
         });
-        const value = this._createEl('div', {marginLeft: 'auto', minWidth: '2.2em', textAlign: 'right', color: '#eee'});
+        const swatch = this._createEl('div', {width: '0.7em', height: '0.7em', border: '0.1em solid rgba(255, 255, 255, 0.5)'});
+        const value  = this._createEl('div', {marginLeft: 'auto', minWidth: '2.4em', textAlign: 'right', color: '#eee'});
         value.innerText = '0';
-        row.appendChild(lead);
+        row.appendChild(swatch);
         row.appendChild(value);
         this._els.frags.appendChild(row);
 
-        return {row: row, value: value};
+        return {row: row, swatch: swatch, value: value};
     }
 
     _buildArms() {

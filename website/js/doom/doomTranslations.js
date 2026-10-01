@@ -690,12 +690,6 @@ class DoomTranslations {
                 it: 'MUNIZIONI',
                 es: 'MUNICIÓN'
             },
-            'hud.frags': {
-                fr: 'FRAGS',
-                en: 'FRAGS',
-                it: 'FRAG',
-                es: 'FRAGS'
-            },
             'hud.automap': {
                 fr: 'Carte',
                 en: 'Map',

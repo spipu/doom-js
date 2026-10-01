@@ -111,6 +111,15 @@ class MenuDom {
         return bytes + ' ' + appTranslator.get('unit.byte');
     }
 
+    /**
+     * @param {int} totalSeconds
+     * @param {int} minuteDigits - minutes padded to this many digits
+     * @returns {string} M:SS or MM:SS
+     */
+    static formatClock(totalSeconds, minuteDigits) {
+        return String(Math.trunc(totalSeconds / 60)).padStart(minuteDigits, '0') + ':' + String(totalSeconds % 60).padStart(2, '0');
+    }
+
     // Seconds are for the save slots: two saves may land in the same minute.
     static formatDate(timestamp, withSeconds = false) {
         const date        = new Date(timestamp);

@@ -803,14 +803,10 @@ class DoomGame {
 
     // M:SS, or H:MM:SS past the hour.
     static formatDuration(ms) {
-        const total   = Math.max(0, Math.floor(ms / 1000));
-        const seconds = String(total % 60).padStart(2, '0');
-        const minutes = Math.floor(total / 60) % 60;
-        const hours   = Math.floor(total / 3600);
+        const total = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(total / 3600);
 
-        return ((hours > 0)
-            ? (hours + ':' + String(minutes).padStart(2, '0') + ':' + seconds)
-            : (minutes + ':' + seconds));
+        return ((hours > 0) ? (hours + ':' + MenuDom.formatClock(total % 3600, 2)) : MenuDom.formatClock(total, 1));
     }
 
     // Truncated like the vanilla integer division: 199/200 reads 99 %, not 100 %.

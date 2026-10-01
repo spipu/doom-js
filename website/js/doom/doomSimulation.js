@@ -44,7 +44,6 @@ class DoomSimulation {
         this._deadMs           = new Map();   // player id → ms since its death
         this._itemRespawns     = null;        // DoomItemRespawnQueue of the level
         this._onLevelExit      = null;        // (secret) => void, what an exit line calls
-        this._simulatedMs      = 0;           // the level's simulated time (leveltime), for its time limit
         this._limitReached     = false;
     }
 
@@ -255,7 +254,6 @@ class DoomSimulation {
         this._bodies       = new Map();
         this._corpses      = [];
         this._deadMs       = new Map();
-        this._simulatedMs  = 0;
         this._limitReached = false;
         this._itemRespawns = new DoomItemRespawnQueue(this._level.getPickups(), this._profile.itemRespawnRules(), this._effects, this._events);
         this._monsters.setWorld(world);
@@ -502,9 +500,9 @@ class DoomSimulation {
             body.update(dt, (commands.get(id) ?? World.NEUTRAL_COMMAND));
         }
         this._itemRespawns.update(dt);
-        this._simulatedMs += dt;
+        this._stats.addMatchTime(dt);
         const timeLimit = this._rules.timeLimitMs();
-        if ((timeLimit !== null) && (this._simulatedMs >= timeLimit)) {
+        if ((timeLimit !== null) && (this._stats.getMatchTimeMs() >= timeLimit)) {
             this._endLevelOnLimit();
         }
     }
