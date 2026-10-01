@@ -22,7 +22,7 @@ class DoomReplicaApplier {
         this._playEvent   = playEvent;
         this._bodies      = new Map();   // id → DoomBodyView
         this._projectiles = new Map();   // id → DoomProjectileView
-        this._restPoses   = new Map();   // mover id → position it was built at
+        this._restPoses   = new Map();   // mover id → {position it was built at, atRest: posed there now}
         this._goneBodies  = new Map();   // id → last position of a body removed this turn
         this._switches    = [];
         this._pickups     = new Map(builtLevel.getPickups().map((pickup) => [pickup.code, pickup]));
@@ -219,7 +219,8 @@ class DoomReplicaApplier {
         });
     }
 
-    // A mover absent from the state is back at the pose it was built at.
+    // A mover absent from the state is back at the pose it was built at, posed
+    // there once.
     _applyMovers(movers) {
         const seen = new Set();
         for (const mover of movers) {
@@ -228,16 +229,21 @@ class DoomReplicaApplier {
                 continue;
             }
             if (!this._restPoses.has(mover.id)) {
-                this._restPoses.set(mover.id, [...instance.getTransform().position]);
+                this._restPoses.set(mover.id, {position: [...instance.getTransform().position], atRest: false});
             }
+            this._restPoses.get(mover.id).atRest = false;
             seen.add(mover.id);
             instance.setPose(mover.position, mover.translate, mover.rotate);
         }
-        for (const [id, position] of this._restPoses) {
-            const instance = this._ids.instanceOf(id);
-            if (!seen.has(id) && (instance !== null)) {
-                instance.setPose(position, DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
+        for (const [id, rest] of this._restPoses) {
+            if (seen.has(id) || rest.atRest) {
+                continue;
             }
+            const instance = this._ids.instanceOf(id);
+            if (instance !== null) {
+                instance.setPose(rest.position, DoomInertInstance.NO_DELTA, DoomInertInstance.NO_DELTA);
+            }
+            rest.atRest = true;
         }
     }
 

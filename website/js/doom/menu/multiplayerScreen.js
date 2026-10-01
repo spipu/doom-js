@@ -65,7 +65,7 @@ class MultiplayerScreen extends AbstractMenuScreen {
 
     _pair(nickname, wadSha256) {
         const session = new DoomNetSubSession(this._links, wadSha256, nickname);
-        new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session));
+        new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session), () => session.dispose());
     }
 
     // The lobby until the main's game sends its level, which this device then builds.
@@ -76,16 +76,10 @@ class MultiplayerScreen extends AbstractMenuScreen {
             MenuNetMessages.showEnd(this._display, reason);
         });
         session.setCycle({
-            levelLoad:     (level) => {
+            levelLoad: (level) => {
                 lobby.setOnClose(null).close();
                 this._navigator.joinSharedGame(this._wadMeta, session, level);
-            },
-            state:         () => {},
-            waiting:       () => {},
-            phase:         () => {},
-            modeChanged:   () => {},
-            playerRemoved: () => {},
-            playerAway:    () => {}
+            }
         });
         lobby.openSub(session, {leave: () => session.leave()});
     }

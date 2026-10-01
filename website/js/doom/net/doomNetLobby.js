@@ -75,7 +75,8 @@ class DoomNetLobby {
      * lowest free slot, else the lowest reserved seat, whose player loses it.
      *
      * @param {string} nickname
-     * @returns {{slot: int, released: int|null}} released: the slot of the seat lost
+     * @returns {{slot: int, released: int|null}|null} released: the slot of the seat
+     *          lost; null when every slot is taken and none is reserved
      */
     claimSeat(nickname) {
         const own = (this._reserved.find((seat) => (seat.nickname === nickname)) ?? null);
@@ -84,8 +85,11 @@ class DoomNetLobby {
             return {slot: own.slot, released: null};
         }
         const free = this._lowestFreeSlot();
-        if ((free <= this._capacity) || (this._reserved.length === 0)) {
+        if (free <= this._capacity) {
             return {slot: free, released: null};
+        }
+        if (this._reserved.length === 0) {
+            return null;
         }
         const lost = this._reserved[0].slot;
         this._unreserve(lost);

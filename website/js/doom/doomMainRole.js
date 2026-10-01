@@ -10,13 +10,15 @@
  * its equipment, while its seat is reserved, and given back on its return. A
  * device that only follows the game holds a DoomSubRole.
  */
-class DoomMainRole {
+class DoomMainRole extends AbstractGameRole {
     /**
      * @param {DoomPlayerRoster} roster
      * @param {DoomGameRules}    rules
      * @param {DoomTurnEvents}   events
      */
     constructor(roster, rules, events) {
+        super();
+
         this._roster     = roster;
         this._rules      = rules;
         this._events     = events;
@@ -220,7 +222,7 @@ class DoomMainRole {
         onPlayersMoved();
         this._simulation.tickWorld(dt, commands);
         if (this._cycle !== null) {
-            this._cycle.sendState(dt, now);
+            this._cycle.sendState(now);
         }
     }
 

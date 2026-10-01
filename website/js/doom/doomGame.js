@@ -1,3 +1,11 @@
+/**
+ * The flow of a game every device shares — a level built and shown, its
+ * frames, the pause and death menus, the tally and the story text, the next
+ * level, the saves — driven on the role of the device (DoomMainRole simulates,
+ * DoomSubRole follows) and the rules of the mode, never on which they are. The
+ * session it hosts (DoomHostedSession) or follows (DoomFollowedSession) reaches
+ * it through the public surface below.
+ */
 class DoomGame {
     /**
      * @param {DoomNetSubSession|null} subSession - the session of a sub following
@@ -5,7 +13,6 @@ class DoomGame {
      */
     constructor(subSession = null) {
         this._rules           = ((subSession !== null) ? DoomGameRules.forMode(subSession.getMode(), subSession.getOptions()) : new DoomSinglePlayerRules());
-        this._subSession      = subSession;
         this._roster          = new DoomPlayerRoster().setLocal(new DoomPlayer(((subSession !== null) ? subSession.getViewedPlayerId() : DoomGame.LOCAL_PLAYER_ID)));
         this._turnEvents      = new DoomTurnEvents();
         this._role            = ((subSession !== null)
@@ -37,59 +44,100 @@ class DoomGame {
         this._pauseModal      = null;
         this._deathDisplay    = null;
         this._deathModal      = null;
-        this._launch          = null;   // {nickname, mode, onCancel} of a multiplayer game started from the Multiplayer screen
-        this._launchDisplay   = null;
-        this._launchLobby     = null;   // its lobby, over the frozen first level until Start
         this._deathClockMs    = 0;
         this._levelExit       = null;   // {display, modal, outcome, nextLevel, finaleText, buttonCode} of the tally shown
-        this._netLinks        = new DoomNetLinks();
-        this._netAvailability = new DoomNetAvailability(this._netLinks);
-        this._netSession      = null;   // DoomNetMainSession while the game hosts a session
-        this._hostNotice      = new DoomSessionNotice().setOnNotice((notice) => this._presentation.setNotice(notice));
-        this._joining         = false;  // a sub is building the level the main sent
-        this._pendingLevel    = null;   // the level the main sent meanwhile, built next
-        this._endReason       = null;   // DoomNetProtocol.END_* once the followed session ended
-        this._aloneOver       = false;  // every opponent gone: the game leaves on its next frame
         this._animateCallback = this._animate.bind(this);
 
         this._presentation.setPadControls(this._role.padControls());
         this._turnEvents.addListener((event) => this._presentation.playTurnEvent(event));
-        if (subSession !== null) {
-            this._role.follow((event) => this._presentation.playTurnEvent(event), (level) => this._followLevel(level),
-                (notice) => this._presentation.setNotice(notice), (message) => this._onMainPhase(message),
-                (reason) => this._onSessionEnd(reason), () => this._onSessionModeChange());
-            this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
-                .setPingSource(() => subSession.getHostPing());
-        }
+        // After the role and the presentation: both sessions reach them.
+        this._hosted   = new DoomHostedSession(this);
+        this._followed = ((subSession !== null) ? new DoomFollowedSession(this, subSession) : null);
+    }
+
+    // --- Surface the sessions and the menus reach ---
+
+    getRules() {
+        return this._rules;
     }
 
     /**
-     * A sub joins the main's game on the level the main sent. The decoded
-     * images come first: the effect and decal templates are only built with them.
+     * The mode changes during the game: cooperative opened, or back to single
+     * player. A sub holds the rules of its session's mode for what it shows.
+     *
+     * @param {DoomGameRules} rules
+     */
+    setRules(rules) {
+        this._rules = rules;
+        this._role.useRules(rules);
+        this._presentation.useRules(rules);
+
+        return this;
+    }
+
+    getRole() {
+        return this._role;
+    }
+
+    getPresentation() {
+        return this._presentation;
+    }
+
+    getRoster() {
+        return this._roster;
+    }
+
+    getWadMeta() {
+        return this._wadMeta;
+    }
+
+    getWadFile() {
+        return this._wadFile;
+    }
+
+    getProfile() {
+        return this._profile;
+    }
+
+    getBuiltLevel() {
+        return this._builtLevel;
+    }
+
+    getSkill() {
+        return this._skill;
+    }
+
+    /**
+     * A sub joins the main's game on the level the main sent.
      *
      * @param {WadFile}     wadFile
      * @param {object|null} wadMeta - null keeps the game's, on a level change
-     * @param {object}      level   - {levelCode, skill, thingFilter}
+     * @param {object}      level   - {seq, levelCode, skill, thingFilter}
      */
-    async joinSharedGame(wadFile, wadMeta, level) {
-        this._joining = true;
-        try {
-            await doomImageAssets.whenReady();
-            this._role.prepareLevel(level);
-            await this.startFromWad(wadFile, level.levelCode, wadMeta, null, level.skill);
-        } finally {
-            this._joining = false;
-        }
-        // What the session told meanwhile, handled once the build is over.
-        if (this._endReason !== null) {
-            this._leaveEndedSession();
-            return;
-        }
-        if (this._pendingLevel !== null) {
-            const pending = this._pendingLevel;
-            this._pendingLevel = null;
-            await this._followLevel(pending);
-        }
+    joinSharedGame(wadFile, wadMeta, level) {
+        return this._followed.join(wadFile, wadMeta, level);
+    }
+
+    /**
+     * The game starts as a multiplayer one (Multiplayer screen): see DoomHostedSession.requestStart.
+     *
+     * @param {function} rules    - the DoomGameRules class of the mode
+     * @param {string}   nickname
+     * @param {function} onCancel - (navigator, wadMeta, skill, noIdentity), the menu to go back to
+     */
+    openSessionOnStart(rules, nickname, onCancel) {
+        this._hosted.requestStart(rules, nickname, onCancel);
+
+        return this;
+    }
+
+    /**
+     * @param {boolean} transitioning - a level change is under way: the frames freeze
+     */
+    setTransitioning(transitioning) {
+        this._transitioning = transitioning;
+
+        return this;
     }
 
     /**
@@ -101,18 +149,6 @@ class DoomGame {
 
     _wadId() {
         return ((this._wadMeta !== null) ? this._wadMeta.id : null);
-    }
-
-    /**
-     * The mode changes during the game: cooperative opened, or back to single
-     * player. A sub holds the rules of its session's mode for what it shows.
-     *
-     * @param {DoomGameRules} rules
-     */
-    _setRules(rules) {
-        this._rules = rules;
-        this._role.useRules(rules);
-        this._presentation.useRules(rules);
     }
 
     // --- Save / load ---
@@ -154,7 +190,7 @@ class DoomGame {
             player.packForNextLevel();
         }
 
-        this._teardownLevel();
+        this.teardownLevel();
         loader.beginBatch();
         const onLevelExit = (secret) => {
             this._onLevelExit(secret);
@@ -167,7 +203,7 @@ class DoomGame {
                 turnEvents:        this._turnEvents
             });
         // The followed session ended during the build: the level never starts.
-        if (this._endReason !== null) {
+        if ((this._followed !== null) && this._followed.hasEnded()) {
             return;
         }
         this._role.adoptLevel(this._builtLevel, onLevelExit);
@@ -219,15 +255,15 @@ class DoomGame {
 
         this._presentation.startLevelSound(this._mapInfo.musicLumpsFor(this._levelCode));
         this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, thingFilter: this._role.thingFilter()});
-        this._releaseSeats();
+        this._hosted.releaseSeats();
         // A session opened from the pause and never started: the level just
         // shown is the one its subs build (a save loaded there, a restart).
-        this._startPendingSession();
+        this._hosted.startPending();
 
         this._running = true;
         requestAnimationFrame(this._animateCallback);
-        if (this._launch !== null) {
-            this._showLaunchLobby();
+        if (this._hosted.hasStartPending()) {
+            this._hosted.showStartLobby();
         }
     }
 
@@ -246,18 +282,18 @@ class DoomGame {
         if (!this._running) {
             return;
         }
-        if (this._aloneOver) {
-            this._endAlone();
+        if (this._hosted.isOver()) {
+            this._hosted.leaveAlone();
             return;
         }
         this._role.tickLevelClock(timestamp, !this._paused && !this._transitioning);
-        this._hostNotice.update(timestamp);
+        this._hosted.update(timestamp);
 
         // Read on paused frames too, to keep the edge state.
         const pauseDown = this._inputs.readButtonPause();
         if (pauseDown && !this._pauseWasDown && !this._transitioning && (this._deathModal === null)) {
             if (this._paused) {
-                // A stacked modal, or the launch lobby, handles Escape itself as one step back.
+                // A stacked modal, or the start lobby, handles Escape itself as one step back.
                 if ((this._pauseModal !== null) && this._pauseModal.isAtRoot()) {
                     this._leavePause();
                 }
@@ -309,7 +345,7 @@ class DoomGame {
 
     // A gamepad pause can leave the pointer lock engaged. Inputs are null
     // before the first level.
-    _teardownLevel() {
+    teardownLevel() {
         if (this._inputs !== null) {
             this._inputs.releaseMouse();
         }
@@ -320,7 +356,7 @@ class DoomGame {
     // --- Pause menu ---
 
     _enterPause() {
-        this._freeze();
+        this.freeze();
         this._role.announcePhase({type: DoomNetProtocol.PAUSE});
         doomSound.playUi('menu/activate');
 
@@ -329,192 +365,12 @@ class DoomGame {
             .setOnResume(() => this._leavePause())
             .setOnQuit(() => {
                 this._leavePause(false);
-                this._quitToMenu();
+                this.quitToMenu();
             })
             .setSaveContext(this._saveContext())
-            .setSessionContext(this._sessionContext())
+            .setSessionContext(this._hosted.pauseContext())
             .setQuitCode(this._role.quitCode())
             .show(() => this._pauseTitle());
-    }
-
-    // Null without WAD metadata (the subs check the WAD identity) or on a
-    // device that only follows the game.
-    _sessionContext() {
-        if ((this._wadMeta === null) || !this._role.hostsSessions()) {
-            return null;
-        }
-        return {
-            getSession:          () => this._netSession,
-            offersScreenSharing: () => this._rules.allowsScreenSharing(),
-            offersCooperative:   () => this._rules.allowsCooperative(),
-            openScreenSharing:   (nickname) => this._openNetSession(nickname, DoomNetProtocol.MODE_SCREEN_SHARING, {}),
-            openCooperative:     (nickname) => this._openCooperative(nickname),
-            switchToCooperative: () => this._switchToCooperative(),
-            stop:                () => this._stopFromPause(),
-            stopCodes:           () => this._rules.sessionStopCodes(),
-            unavailableReason:   () => this._netAvailability.unavailableReason()
-        };
-    }
-
-    // The identity is computed by the WAD menu in the background: a WAD whose
-    // hash this browser could not compute cannot be shared.
-    _openNetSession(nickname, mode, options) {
-        if (typeof this._wadMeta.sha256 !== 'string') {
-            return null;
-        }
-        const session = new DoomNetMainSession(this._netLinks, this._wadMeta.sha256, nickname, this._profile.maxPlayers(), mode, options,
-            this._builtLevel.getPlayerColors())
-            .setOnPlayerRemoved((removedNickname) => this._onPlayerRemoved(removedNickname))
-            .setOnPlayerAway((awayNickname, away) => this._hostNotice.awayChanged(awayNickname, away, performance.now()))
-            .setOnSeatReleased((slot) => this._role.releaseSeat(slot));
-        this._netSession = session;
-        this._presentation.setForcedRenderer(DoomGame.SESSION_RENDERER)
-            .setPingSource(() => session.getLobby().getWorstPing());
-
-        return session;
-    }
-
-    _onPlayerRemoved(nickname) {
-        this._hostNotice.departed(nickname, performance.now());
-        this._checkAlone();
-    }
-
-    // A game the rules end once alone leaves on the next frame: the departure
-    // may be heard in the middle of one (a sub dropped for its silence). A
-    // seat kept for a lost player keeps the game going until it is released.
-    _checkAlone() {
-        const lobby = this._netSession.getLobby();
-        if (this._rules.endsWhenAlone() && this._netSession.isStarted() && (lobby.getPlayers().length <= 1) && !lobby.hasReservations()) {
-            this._aloneOver = true;
-        }
-    }
-
-    // The seats kept for lost players last the level they were left in.
-    _releaseSeats() {
-        if (this._netSession === null) {
-            return;
-        }
-        this._netSession.releaseSeats();
-        this._checkAlone();
-    }
-
-    _endAlone() {
-        this._aloneOver = false;
-        this._closeGameMenu();
-        this._teardownLevel();
-        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenuAfterSession(meta, DoomNetProtocol.END_MATCH_OVER), DoomNetProtocol.END_MATCH_OVER);
-    }
-
-    _openCooperative(nickname) {
-        const rules   = DoomCoopRules.fromSettings();
-        const session = this._openNetSession(nickname, DoomCoopRules.MODE, rules.getOptions());
-        if (session !== null) {
-            this._setRules(rules);
-        }
-
-        return session;
-    }
-
-    // The viewers already linked become players: their commands give them one from the next turn.
-    _switchToCooperative() {
-        const rules = DoomCoopRules.fromSettings();
-        this._setRules(rules);
-        this._netSession.setMode(DoomCoopRules.MODE, rules.getOptions());
-    }
-
-    // A session the rules end once alone takes the main's game with it: the
-    // match is over for everyone. Otherwise the main plays on alone.
-    _stopFromPause() {
-        if (!this._rules.endsWhenAlone()) {
-            this._stopSession();
-            return true;
-        }
-        this._closeGameMenu();
-        this._quitToMenu();
-
-        return false;
-    }
-
-    _stopSession(endReason = DoomNetProtocol.END_STOPPED) {
-        if (this._netSession === null) {
-            return;
-        }
-        this._role.stopHosting();
-        this._netSession.stop(endReason);
-        this._netSession = null;
-        this._setRules(new DoomSinglePlayerRules());
-        this._hostNotice.clear();
-        this._presentation.setForcedRenderer(null).setPingSource(null);
-    }
-
-    // The main started another level: the sub builds it and joins again. A
-    // level sent while one is being built waits for that build; the last
-    // one sent wins. A failed build leaves the session for the menu.
-    async _followLevel(level) {
-        if (this._joining) {
-            this._pendingLevel = level;
-            return;
-        }
-        this._transitioning = true;
-        this._closeGameMenu();
-        const display = new MenuDisplay('screen').init(true);
-        const modal   = new MenuModal(display).showLoading(appTranslator.get('game.level.loading', {level: level.levelCode}));
-        try {
-            await this.joinSharedGame(this._wadFile, null, level);
-            modal.close();
-            display.destroy();
-            this._transitioning = false;
-        } catch (error) {
-            console.error(error);
-            modal.close();
-            display.destroy();
-            this._transitioning = false;
-            this._leaveFailedBuild(error);
-        }
-    }
-
-    // The session may have ended during the failed build: that end wins.
-    _leaveFailedBuild(error) {
-        this._pendingLevel = null;
-        if (this._endReason !== null) {
-            this._leaveEndedSession();
-            return;
-        }
-        this._teardownLevel();
-        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenuAfterBuildError(meta, error));
-    }
-
-    // The main stopped, removed this sub, or the link is lost. During a level
-    // build, the build's end handles it: a teardown now would leave the build
-    // starting a game over the menu.
-    _onSessionEnd(reason) {
-        this._endReason = reason;
-        if (!this._joining) {
-            this._leaveEndedSession();
-        }
-    }
-
-    // A viewer becomes a player: it views its own player from now on, on the
-    // same body, and plays with the full pad.
-    _onSessionModeChange() {
-        this._setRules(DoomGameRules.forMode(this._subSession.getMode(), this._subSession.getOptions()));
-        const viewedId = this._subSession.getViewedPlayerId();
-        const current  = this._localPlayer();
-        if (current.getId() !== viewedId) {
-            const player = new DoomPlayer(viewedId);
-            if (current.getUser() !== null) {
-                player.enterLevel(current.getUser());
-            }
-            this._roster.replaceLocal(player);
-            this._presentation.setViewedPlayer(player);
-        }
-        this._presentation.changePadControls(this._role.padControls());
-    }
-
-    _leaveEndedSession() {
-        this._closeGameMenu();
-        this._teardownLevel();
-        new MenuNavigator().startAtWadMenuAfterSession(this._wadMeta, this._endReason);
     }
 
     // Null without WAD metadata (direct test shortcut: saves are keyed by WAD)
@@ -546,11 +402,11 @@ class DoomGame {
         this._pauseDisplay.destroy();
         this._pauseModal   = null;
         this._pauseDisplay = null;
-        this._unfreeze(backToGame);
+        this.unfreeze(backToGame);
     }
 
     // The level stops under a menu of the game: clock, turns, sound, inputs.
-    _freeze() {
+    freeze() {
         this._paused = true;
         this._role.setLocalPaused(true);
         doomSound.setPaused(true);
@@ -559,7 +415,7 @@ class DoomGame {
 
     // The browser refuses the mouse grab on an Escape resume (no user
     // activation): the player re-clicks the canvas.
-    _unfreeze(backToGame) {
+    unfreeze(backToGame) {
         doomSound.setPaused(false);
         this._role.setLocalPaused(false);
         this._paused       = false;
@@ -568,7 +424,7 @@ class DoomGame {
         if (!backToGame) {
             return;
         }
-        this._startPendingSession();
+        this._hosted.startPending();
         this._role.turnsResumed(performance.now());
         // Before the grab: a renderer changed from the pause options
         // replaces the canvas, and a lock asked on the old one fails.
@@ -580,81 +436,6 @@ class DoomGame {
         }
     }
 
-    // --- Multiplayer launch (Multiplayer screen) ---
-
-    /**
-     * The game starts as a multiplayer one: its first level is built under the
-     * rules of its mode, on the game settings as stored now, then shows frozen
-     * under the lobby until Start. Back there cancels the launch.
-     *
-     * @param {function} rules    - the DoomGameRules class of the mode (DoomCoopRules, DoomDeathmatchRules)
-     * @param {string}   nickname
-     * @param {function} onCancel - (navigator, wadMeta, skill, noIdentity), the menu to go back to
-     */
-    openSessionOnStart(rules, nickname, onCancel) {
-        this._setRules(rules.fromSettings());
-        this._launch = {nickname: nickname, mode: rules.MODE, onCancel: onCancel};
-
-        return this;
-    }
-
-    _showLaunchLobby() {
-        const session = this._openNetSession(this._launch.nickname, this._launch.mode, this._rules.getOptions());
-        if (session === null) {
-            this._cancelLaunch(true);
-            return;
-        }
-        this._freeze();
-        this._launchDisplay = new MenuDisplay('screen').init(true);
-        this._launchLobby   = new MenuLobbyModal(this._launchDisplay).openMain(session, {
-            start: () => this._startLaunchedGame(),
-            back:  () => this._backFromLaunchLobby()
-        });
-    }
-
-    _startLaunchedGame() {
-        this._closeLaunchLobby();
-        this._unfreeze(true);
-    }
-
-    // Players already there are disconnected: they are asked for first.
-    _backFromLaunchLobby() {
-        if (this._netSession.getLobby().getPlayers().length <= 1) {
-            this._cancelLaunch();
-            return;
-        }
-        new MenuModal(this._launchDisplay).confirm(appTranslator.get(this._rules.sessionStopCodes().confirm), () => this._cancelLaunch());
-    }
-
-    // Without the WAD's identity no session opens: the menu says why.
-    _cancelLaunch(noIdentity = false) {
-        const launch = this._launch;
-        this._closeLaunchLobby();
-        doomSound.setPaused(false);
-        this._teardownLevel();
-        this._leaveLevelTo((navigator, meta) => launch.onCancel(navigator, meta, this._skill, noIdentity));
-    }
-
-    _closeLaunchLobby() {
-        if (this._launchLobby !== null) {
-            this._launchLobby.setOnClose(null).close();
-            this._launchDisplay.destroy();
-        }
-        this._launchLobby   = null;
-        this._launchDisplay = null;
-        this._launch        = null;
-    }
-
-    // A session opened from the pause starts with the game: on Start, or with
-    // the next level shown (a save loaded from the pause, a restart).
-    _startPendingSession() {
-        if ((this._netSession === null) || this._netSession.isStarted()) {
-            return;
-        }
-        this._netSession.start();
-        this._role.startHosting(this._netSession, (nicknames) => this._hostNotice.setWaiting(nicknames));
-    }
-
     // "{wad} — Episode {n}"; a MAPxx game is episode 1.
     _pauseTitle() {
         const episode  = (WadLevelCode.parse(this._levelCode).episode ?? 1);
@@ -663,8 +444,8 @@ class DoomGame {
         return wadTitle + ' — ' + appTranslator.get('menu.episode.item', {episode: episode});
     }
 
-    _quitToMenu() {
-        this._teardownLevel();
+    quitToMenu() {
+        this.teardownLevel();
         this._backToMenu();
     }
 
@@ -686,7 +467,7 @@ class DoomGame {
 
         // In place, like a level change: a shared screen carries on, the subs follow.
         this._transitioning = true;
-        this._closeGameMenu();
+        this.closeGameMenu();
         this.setRestoreSnapshot(snapshot);
         const loadingDisplay = new MenuDisplay('screen').init(true);
         await this._loadLevel(loadingDisplay, new MenuModal(loadingDisplay), snapshot.levelCode,
@@ -695,10 +476,10 @@ class DoomGame {
 
     // The death menu does not freeze the game: its frames run live under it.
     _isGameMenuOpen() {
-        return ((this._pauseDisplay !== null) || (this._deathDisplay !== null) || (this._launchDisplay !== null));
+        return ((this._pauseDisplay !== null) || (this._deathDisplay !== null) || this._hosted.isStartLobbyOpen());
     }
 
-    _closeGameMenu() {
+    closeGameMenu() {
         if (this._pauseModal !== null) {
             this._leavePause(false);
         }
@@ -737,7 +518,7 @@ class DoomGame {
     }
 
     _localNotice() {
-        return (this._role.getNotice() ?? this._hostNotice);
+        return (this._role.getNotice() ?? this._hosted.getNotice());
     }
 
     _openDeathMenu() {
@@ -748,12 +529,12 @@ class DoomGame {
             .setOnRestart(() => this._restartLevel())
             .setOnNewGame(() => {
                 this._closeDeathMenu();
-                this._teardownLevel();
-                this._leaveLevelTo((navigator, meta) => navigator.startAtEpisodes(meta, this._skill));
+                this.teardownLevel();
+                this.leaveLevelTo((navigator, meta) => navigator.startAtEpisodes(meta, this._skill));
             })
             .setOnQuit(() => {
                 this._closeDeathMenu();
-                this._quitToMenu();
+                this.quitToMenu();
             })
             .setSaveContext(this._saveContext())
             .show(() => appTranslator.get('game.death.title'));
@@ -781,12 +562,18 @@ class DoomGame {
 
     // Carries the skill over so a new game preselects it.
     _backToMenu(endReason = DoomNetProtocol.END_STOPPED) {
-        this._leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill), endReason);
+        this.leaveLevelTo((navigator, meta) => navigator.startAtWadMenu(meta, this._skill), endReason);
     }
 
-    // The game ends: so does the screen sharing, the subs told why.
-    _leaveLevelTo(openMenu, endReason = DoomNetProtocol.END_STOPPED) {
-        this._stopSession(endReason);
+    /**
+     * The game ends: so does the session it hosts, the subs told why; a
+     * followed session is left.
+     *
+     * @param {function(MenuNavigator, object)} openMenu  - the menu to open, with the WAD metadata
+     * @param {string}                          endReason - DoomNetProtocol.END_*, told to the subs
+     */
+    leaveLevelTo(openMenu, endReason = DoomNetProtocol.END_STOPPED) {
+        this._hosted.stop(endReason);
         this._role.leave();
         const navigator = new MenuNavigator();
         if (this._wadMeta !== null) {
@@ -818,9 +605,13 @@ class DoomGame {
         this._showLevelExit(outcome, true);
     }
 
-    // On a sub: the main's tally, then its story text. A sub joining during
-    // the story text opens the tally first, which the text replaces.
-    _onMainPhase(message) {
+    /**
+     * On a sub: the main's tally, then its story text. A sub joining during
+     * the story text opens the tally first, which the text replaces.
+     *
+     * @param {object} message - the DoomNetProtocol.INTERMISSION or FINALE control message
+     */
+    showMainPhase(message) {
         if (this._levelExit === null) {
             this._role.getLevelStats().importCounts(message.stats);
             this._showLevelExit(message, false);
@@ -840,7 +631,7 @@ class DoomGame {
         }
         this._transitioning = true;
         // A corpse pushed over an exit line: the exit wins over the death menu and the respawn prompt.
-        this._closeGameMenu();
+        this.closeGameMenu();
         this._localNotice().setRespawnPrompt(false);
         // The next level's bindLevel lifts the freeze.
         doomSound.setPaused(true).playIntermissionMusic();
@@ -982,10 +773,11 @@ class DoomGame {
     // The players of a cooperative or deathmatch tally: those in the level, in
     // slot order, named and coloured by the lobby. Null when the subs only watch.
     _tallyPlayers(stats) {
-        if (!this._rules.admitsSubPlayers() || (this._netSession === null)) {
+        const session = this._hosted.getSession();
+        if (!this._rules.admitsSubPlayers() || (session === null)) {
             return null;
         }
-        const lobby = this._netSession.getLobby();
+        const lobby = session.getLobby();
         const ids   = this._roster.getInLevel().map((player) => player.getId()).sort((a, b) => (a - b));
 
         return stats.playerCounts(ids).map((counts) => {
@@ -1032,7 +824,7 @@ class DoomGame {
     async _startNextLevel(display, modal, nextLevel) {
         this._levelExit = null;
         if (nextLevel === null) {
-            this._teardownLevel();
+            this.teardownLevel();
             modal.close();
             display.destroy();
             this._transitioning = false;

@@ -11,21 +11,22 @@
  */
 class DoomNetMainSession {
     /**
-     * @param {DoomNetLinks} links
-     * @param {string}       wadSha256 - identity of the WAD every sub must hold
-     * @param {string}       nickname  - the main's
-     * @param {int}          capacity  - players, main included
-     * @param {int}          mode      - DoomNetProtocol.MODE_*
-     * @param {object}       options   - the mode's game settings, as the subs get them
-     * @param {string[]}     colors    - CSS colour of each slot (index 0 = slot 1), shown in cooperative
+     * @param {object}       config
+     * @param {DoomNetLinks} config.links
+     * @param {string}       config.wadSha256 - identity of the WAD every sub must hold
+     * @param {string}       config.nickname  - the main's
+     * @param {int}          config.capacity  - players, main included
+     * @param {int}          config.mode      - DoomNetProtocol.MODE_*
+     * @param {object}       config.options   - the mode's game settings, as the subs get them
+     * @param {string[]}     config.colors    - CSS colour of each slot (index 0 = slot 1), shown in cooperative
      */
-    constructor(links, wadSha256, nickname, capacity, mode, options, colors) {
-        this._links     = links;
-        this._wadSha256 = wadSha256;
-        this._colors    = colors;
-        this._lobby     = new DoomNetLobby(capacity).addMain(nickname);
-        this._mode      = mode;
-        this._options   = options;
+    constructor(config) {
+        this._links     = config.links;
+        this._wadSha256 = config.wadSha256;
+        this._colors    = config.colors;
+        this._lobby     = new DoomNetLobby(config.capacity).addMain(config.nickname);
+        this._mode      = config.mode;
+        this._options   = config.options;
         this._onRemoved = null;
         this._onAway    = null;
         this._onRelease = null;
@@ -34,8 +35,8 @@ class DoomNetMainSession {
         this._onChange  = null;
         this._cycle     = null;
         this._pending   = new Map();   // peer id → nickname of a sub paired but not yet heard
-        this._lobby.setColors(this._colorsOf(mode));
-        this._host      = new NetHostSession(appBootstrap.getVersion(), links.linkFactory())
+        this._lobby.setColors(this._colorsOf(config.mode));
+        this._host      = new NetHostSession(appBootstrap.getVersion(), config.links.linkFactory())
             .setOnPeerOpen((peer) => this._admit(peer))
             .setOnPeerControl((peer, message) => this._receive(peer, message))
             .setOnPeerBinary((peer, buffer) => this._cycleCall('binary', peer, buffer))
@@ -138,8 +139,8 @@ class DoomNetMainSession {
 
     /**
      * The turn cycle of the running game, told about every sub in the lobby:
-     * {admitted(peer), gone(peer, keepsSeat), awayChanged(peer, away), control(peer, message), binary(peer, buffer)}.
-     * Null detaches it.
+     * {admitted(peer), gone(peer, keepsSeat), awayChanged(peer, away), control(peer, message), binary(peer, buffer)},
+     * each method optional. Null detaches it.
      */
     setCycle(cycle) {
         this._cycle = cycle;
@@ -217,7 +218,11 @@ class DoomNetMainSession {
         this._cycle = null;
         this.cancelPairing();
         this._host.broadcastControl({type: DoomNetProtocol.SESSION_END, reason: reason});
-        this._onChange = null;
+        // The subs answer the end during the grace: a stopped session tells nobody of their going.
+        this._onChange  = null;
+        this._onRemoved = null;
+        this._onAway    = null;
+        this._onRelease = null;
         setTimeout(() => this._host.close(), DoomNetProtocol.END_GRACE_MS);
     }
 
@@ -243,6 +248,10 @@ class DoomNetMainSession {
         }
         this._pending.delete(peer.getId());
         const seat = this._lobby.claimSeat(nickname);
+        if (seat === null) {
+            this._refuse(peer, DoomNetProtocol.END_FULL);
+            return;
+        }
         this._lobby.addPlayer(peer.getId(), nickname, seat.slot);
         if (seat.released !== null) {
             this._seatReleased(seat.released);
@@ -257,6 +266,12 @@ class DoomNetMainSession {
 
     _welcome(peer) {
         peer.sendControl({type: DoomNetProtocol.WELCOME, playerId: this.playerIdOf(peer), mode: this._mode, options: this._options});
+    }
+
+    // A peer that never entered the lobby is told why and let go, nobody else hearing of it.
+    _refuse(peer, reason) {
+        peer.sendControl({type: DoomNetProtocol.SESSION_END, reason: reason});
+        setTimeout(() => this._host.remove(peer), DoomNetProtocol.END_GRACE_MS);
     }
 
     _receive(peer, message) {
@@ -325,9 +340,7 @@ class DoomNetMainSession {
     }
 
     _cycleCall(event, peer, payload = null) {
-        if (this._cycle !== null) {
-            this._cycle[event](peer, payload);
-        }
+        this._cycle?.[event]?.(peer, payload);
     }
 
     _samplePings() {

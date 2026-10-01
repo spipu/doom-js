@@ -9,18 +9,19 @@
  * presentation views. It follows the main's level changes and mode changes,
  * and tells the game when the session ends.
  */
-class DoomSubRole {
+class DoomSubRole extends AbstractGameRole {
     /**
      * @param {DoomPlayerRoster}  roster
      * @param {DoomNetSubSession} session
      */
     constructor(roster, session) {
+        super();
+
         this._roster         = roster;
         this._session        = session;
         this._stats          = new DoomLevelStats();
         this._codec          = new DoomNetCommandCodec(DoomSimulation.COMMAND_BUTTONS, DoomSimulation.COMMAND_IMPULSES);
         this._sampler        = null;    // the local player's, handed over on each frame
-        this._neutralCommand = new UserCommand();
         this._builtLevel     = null;
         this._applier        = null;
         this._thingFilter    = null;
@@ -115,6 +116,7 @@ class DoomSubRole {
         this._localPaused = paused;
     }
 
+    // The profile only serves what a sub shows, bound by the game: nothing to simulate with.
     useProfile() {
         return this;
     }
@@ -146,14 +148,16 @@ class DoomSubRole {
         return this._stats;
     }
 
+    // The level clock is the main's: a sub shows the time the state carries.
     tickLevelClock() {
     }
 
+    // Every frame draws: the state, not a turn, moves a sub's world.
     isTurnReady() {
         return true;
     }
 
-    // Only the simulating device announces phases.
+    // Only the simulating device announces phases and resumes the turns.
     announcePhase() {
     }
 
@@ -234,7 +238,7 @@ class DoomSubRole {
         this._applier.apply(snapshot);
         // Sampled even when paused: what the menu took must not reach the game on resuming.
         const sampled = ((this._sampler !== null) ? this._sampler.sample() : null);
-        const command = (((sampled === null) || this._localPaused) ? this._neutralCommand : sampled);
+        const command = (((sampled === null) || this._localPaused) ? World.NEUTRAL_COMMAND : sampled);
         this._session.sendBinary(this._codec.encode(snapshot.turn + 1, command));
         this._lastStateAt = performance.now();
         this._notice.turnArrived(this._watchesMainDeath(snapshot));

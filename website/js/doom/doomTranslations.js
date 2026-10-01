@@ -1340,6 +1340,12 @@ class DoomTranslations {
                 it: 'Messaggio di rete non valido: la sessione è terminata',
                 es: 'Mensaje de red no válido: la sesión ha terminado'
             },
+            'multiplayer.end.full': {
+                fr: 'Le salon est complet',
+                en: 'The lobby is full',
+                it: 'La sala è al completo',
+                es: 'La sala está completa'
+            },
             'multiplayer.end.removed': {
                 fr: 'L\'hôte vous a retiré de la partie',
                 en: 'The host removed you from the game',

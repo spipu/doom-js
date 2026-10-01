@@ -76,6 +76,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 * **Moving flats not scrolling**: a pushing / lava sector whose floor is a mover (lift, rising floor, stair step — top flat built by the builders through `addSectorTopFlat`) or a door loses the visual scrolling of its flat (`uvScroll` is set by the static builder only). To wire in the builders if a level makes it visible.
 * **Rising floor on a door or crusher sector**: `_identifyRisingFloors` skips door sectors, so a floor-raise special aimed at one moves nothing (E3M4 tags 4/5: S1 18 on the crusher sectors 128/95; E2M4 tag 9: G1 24 on the crusher 142; Heretic E5M1 tag 4: W1 22 on the pillars 139/141/145/147) while vanilla raises the floor under the ceiling thinker. Same generalisation as the door + lift overlap (rest-floor rule of `_computeDoorHeights`), on the `WadRisingFloorBuilder` side.
+* **`DoomSimulation` split**: the player spawn spots (own start, free start, deathmatch draws, `placeUser`) and the players' bodies and corpses (`_addBody`, `_leaveCorpse`, the 32-corpse queue) are two responsibilities to extract (`DoomPlayerSpawner`, `DoomPlayerBodies`), with the solo bench identical bit for bit as the proof.
 * **Mace balls bouncing on a moving mover**: repositioning at the impact point of a possibly moving floor, untested — to check if a map occurrence lends itself to it.
 
 ### Visibility culling (PVS / portals) — last, after everything else

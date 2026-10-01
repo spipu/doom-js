@@ -32,8 +32,8 @@ class MenuPauseModal extends AbstractGameMenuModal {
     }
 
     /**
-     * Session wiring provided by the running game: {getSession(),
-     * offersScreenSharing(), offersCooperative() — read at each render, the
+     * Session wiring provided by the running game (DoomHostedSession.pauseContext): {getSession(),
+     * offersScreenSharing(), offersCooperative(), admitsSubPlayers() — read at each render, the
      * mode changing under the pause —, openScreenSharing(nickname) and
      * openCooperative(nickname) → the session, null without a WAD identity,
      * switchToCooperative(), stop() → whether the game goes on, stopCodes() →

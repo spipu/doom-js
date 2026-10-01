@@ -23,16 +23,14 @@ class DoomNetStateCapture {
     }
 
     /**
-     * @param {int}    turn      - counted from the start of the session
-     * @param {number} elapsedMs - the time step of the turn
+     * @param {int} turn - counted from the start of the session
      * @returns {object} the StateSnapshot of the turn
      */
-    capture(turn, elapsedMs) {
+    capture(turn) {
         const bodies = Array.from(this._level.getBodyViews());
 
         return {
             turn:        turn,
-            elapsedMs:   elapsedMs,
             players:     this._roster.getInLevel().map((player) => this._player(player)),
             bodies:      bodies.map((view) => this._body(view)),
             bornBodies:  bodies.filter((view) => this._ids.isBornInPlay(view)).map((view) => this._bornBody(view)),
@@ -126,7 +124,7 @@ class DoomNetStateCapture {
         const movers = [];
         loader.instances().getAll().forEach((instance) => {
             const id = this._ids.idOfInstance(instance);
-            if ((id === null) || instance.getCode().startsWith(DoomGameSnapshot.MONSTER_PREFIX) || !DoomNetStateCapture._isMoved(instance)) {
+            if ((id === null) || instance.getCode().startsWith(WadWorldBuilder.MONSTER_CODE_PREFIX) || !DoomNetStateCapture._isMoved(instance)) {
                 return;
             }
             const transform = instance.getTransform();

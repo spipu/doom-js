@@ -233,9 +233,9 @@ class DoomNetTurnCycle {
      * After the turn is simulated: the state goes to every sub in the cycle,
      * a joining one included, which is awaited from the next turn on.
      *
-     * @param {number} elapsedMs - the time step of the turn
+     * @param {number} now - performance.now() clock, when the state leaves
      */
-    sendState(elapsedMs, now) {
+    sendState(now) {
         const receivers = Array.from(this._subs.values())
             .filter((sub) => ((sub.phase !== DoomNetTurnCycle.SYNCING) && !DoomNetTurnCycle._isAway(sub)));
         this._levelTurn++;
@@ -244,7 +244,7 @@ class DoomNetTurnCycle {
             this._turn++;
             return;
         }
-        const buffer = DoomNetStateCodec.encode(this._capture.capture(this._turn, elapsedMs));
+        const buffer = DoomNetStateCodec.encode(this._capture.capture(this._turn));
         this._turn++;
         for (const sub of receivers) {
             sub.peer.sendBinary(buffer);

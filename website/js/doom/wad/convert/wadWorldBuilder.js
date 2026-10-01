@@ -378,7 +378,7 @@ class WadWorldBuilder {
                 });
             }
             const countsItem = (isPickup && countedItems.has(thing.type));
-            const code       = ((isPickup) ? 'pickup_' + i : 'thing_' + i);
+            const code       = ((isPickup) ? WadWorldBuilder.PICKUP_CODE_PREFIX : WadWorldBuilder.THING_CODE_PREFIX) + i;
             if (countsItem) {
                 itemsTotal++;
             }
@@ -612,7 +612,7 @@ class WadWorldBuilder {
     _registerMonsterThing(thing, i, analysis, builtFloorCodes, billboardIds) {
         const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.getHangHeight(), billboardIds);
 
-        const code       = 'monster_' + i;
+        const code       = WadWorldBuilder.MONSTER_CODE_PREFIX + i;
         const ride       = this._resolveThingFloor(thing, analysis, builtFloorCodes);
         const spawnState = thing.def.getState('spawn0');
         loader.instances().loadFromData(null, {
@@ -1358,3 +1358,8 @@ class WadWorldBuilder {
 
 // Sprite billboards baked fullbright: the presentation lights each instance from its sector.
 WadWorldBuilder.FULLBRIGHT = 255;
+// Instance code prefixes of the things placed by the map, followed by the thing index:
+// part of the save format and of the network ids, never to change.
+WadWorldBuilder.PICKUP_CODE_PREFIX  = 'pickup_';
+WadWorldBuilder.THING_CODE_PREFIX   = 'thing_';
+WadWorldBuilder.MONSTER_CODE_PREFIX = 'monster_';

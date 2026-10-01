@@ -53,8 +53,7 @@ class NetLink {
         if (!this._open) {
             return false;
         }
-        this._send(message);
-        return true;
+        return this._send(message);
     }
 
     /**
@@ -65,6 +64,8 @@ class NetLink {
     }
 
     /**
+     * Diagnostics only (the pairing test page), never read by a game.
+     *
      * @returns {Promise<string>} a human-readable description of the route in use
      */
     async describeRoute() {
@@ -102,6 +103,8 @@ class NetLink {
 
     /**
      * Hands a message to the transport; called only while open.
+     *
+     * @returns {boolean} false when the transport could not take it
      */
     _send(message) {
         throw new Error('NetLink._send is abstract');

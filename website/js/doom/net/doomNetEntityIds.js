@@ -27,7 +27,7 @@ class DoomNetEntityIds {
             if (code === null) {
                 return;
             }
-            if (code.startsWith(DoomGameSnapshot.PICKUP_PREFIX)) {
+            if (code.startsWith(WadWorldBuilder.PICKUP_CODE_PREFIX)) {
                 this._pickupCodes.push(code);
             }
             this._byCode.set(code, this._codes.length);

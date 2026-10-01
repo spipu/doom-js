@@ -48,7 +48,7 @@ class MenuMultiplayerModal extends AbstractGameMenuModal {
 
     _addSessionEntries(listEl, session) {
         this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.lobby'), () => this._openLobby());
-        if (!DoomNetProtocol.subsPlayOwnPlayers(session.getMode())) {
+        if (!this._sessionContext.admitsSubPlayers()) {
             this._nav.addItemIn(listEl, appTranslator.get('multiplayer.pause.switchToCooperative'), () => this._switchToCooperative());
         }
         const stopCodes = this._sessionContext.stopCodes();

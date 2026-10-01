@@ -3,7 +3,8 @@
  * of DoomTurnEvents that keeps each event with its references turned into
  * network ids — a body by its id, a player by its player id, the mover a decal
  * rides by its instance's id. An event says what happens and where, never how
- * a device perceives it.
+ * a device perceives it. An event about a player no longer in the game is
+ * dropped: the subs have nothing to play it on.
  */
 class DoomNetEvents {
     /**
@@ -33,50 +34,33 @@ class DoomNetEvents {
     }
 
     _record(event) {
-        const converter = DoomNetEvents.CONVERTERS[event.type];
-        this._events.push(Object.assign({type: event.type}, converter.call(this, event)));
-    }
-
-    _sound(event) {
-        return {
-            name:        event.name,
-            attenuation: (event.options.attenuation ?? null),
-            replaceKey:  (event.options.replaceKey ?? null)
-        };
-    }
-
-    _playerId(user) {
-        return this._roster.getByUser(user).getId();
-    }
-
-    _follow(follow) {
-        if (follow === null) {
-            return null;
+        const converted = this[DoomNetEvents.CONVERTERS[event.type]](event);
+        if (converted !== null) {
+            this._events.push(Object.assign({type: event.type}, converted));
         }
-        const isBody = (follow.target instanceof DoomBodyView);
-
-        return {
-            player: ((isBody) ? null : this._playerId(follow.target)),
-            body:   ((isBody) ? this._ids.idOfView(follow.target) : null),
-            ahead:  follow.ahead
-        };
     }
-}
 
-DoomNetEvents.CONVERTERS = {
-    [DoomTurnEvents.SOUND_AT]: function (event) {
+    _convertSoundAt(event) {
         return Object.assign({point: event.point}, this._sound(event));
-    },
-    [DoomTurnEvents.SOUND_FROM_BODY]: function (event) {
+    }
+
+    _convertSoundFromBody(event) {
         return Object.assign({body: this._ids.idOfView(event.body)}, this._sound(event));
-    },
-    [DoomTurnEvents.SOUND_FROM_PLAYER]: function (event) {
-        return {name: event.name, player: this._playerId(event.user), channel: event.channel};
-    },
-    [DoomTurnEvents.SOUND_TO_PLAYER]: function (event) {
-        return {name: event.name, player: this._playerId(event.user)};
-    },
-    [DoomTurnEvents.EFFECT]: function (event) {
+    }
+
+    _convertSoundFromPlayer(event) {
+        const player = this._playerId(event.user);
+
+        return ((player !== null) ? {name: event.name, player: player, channel: event.channel} : null);
+    }
+
+    _convertSoundToPlayer(event) {
+        const player = this._playerId(event.user);
+
+        return ((player !== null) ? {name: event.name, player: player} : null);
+    }
+
+    _convertEffect(event) {
         return {
             name:       event.name,
             x:          event.x,
@@ -90,8 +74,9 @@ DoomNetEvents.CONVERTERS = {
             roll:       event.roll,
             follow:     this._follow(event.follow)
         };
-    },
-    [DoomTurnEvents.DECAL]: function (event) {
+    }
+
+    _convertDecal(event) {
         return {
             key:      event.key,
             variant:  event.variant,
@@ -100,8 +85,52 @@ DoomNetEvents.CONVERTERS = {
             owner:    ((event.owner !== null) ? this._ids.idOfInstance(event.owner) : null),
             fade:     event.fade
         };
-    },
-    [DoomTurnEvents.PLAYER_TELEPORTED]: function (event) {
-        return {player: this._playerId(event.user)};
     }
+
+    _convertPlayerTeleported(event) {
+        const player = this._playerId(event.user);
+
+        return ((player !== null) ? {player: player} : null);
+    }
+
+    _sound(event) {
+        return {
+            name:        event.name,
+            attenuation: (event.options.attenuation ?? null),
+            replaceKey:  (event.options.replaceKey ?? null)
+        };
+    }
+
+    /**
+     * @returns {int|null} null once the body's player left the game
+     */
+    _playerId(user) {
+        const player = this._roster.getByUser(user);
+
+        return ((player !== null) ? player.getId() : null);
+    }
+
+    // An effect that followed a player gone stands where it was spawned.
+    _follow(follow) {
+        if (follow === null) {
+            return null;
+        }
+        if (follow.target instanceof DoomBodyView) {
+            return {player: null, body: this._ids.idOfView(follow.target), ahead: follow.ahead};
+        }
+        const player = this._playerId(follow.target);
+
+        return ((player !== null) ? {player: player, body: null, ahead: follow.ahead} : null);
+    }
+}
+
+// Event type → the method that turns it into its message record.
+DoomNetEvents.CONVERTERS = {
+    [DoomTurnEvents.SOUND_AT]:          '_convertSoundAt',
+    [DoomTurnEvents.SOUND_FROM_BODY]:   '_convertSoundFromBody',
+    [DoomTurnEvents.SOUND_FROM_PLAYER]: '_convertSoundFromPlayer',
+    [DoomTurnEvents.SOUND_TO_PLAYER]:   '_convertSoundToPlayer',
+    [DoomTurnEvents.EFFECT]:            '_convertEffect',
+    [DoomTurnEvents.DECAL]:             '_convertDecal',
+    [DoomTurnEvents.PLAYER_TELEPORTED]: '_convertPlayerTeleported'
 };

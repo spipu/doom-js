@@ -100,7 +100,7 @@ class DoomGameSnapshot {
         const states = {};
         loader.instances().getAll().forEach((instance) => {
             const code = instance.getCode();
-            if ((code === null) || code.startsWith(DoomGameSnapshot.MONSTER_PREFIX)) {
+            if ((code === null) || code.startsWith(WadWorldBuilder.MONSTER_CODE_PREFIX)) {
                 return;
             }
             states[code] = instance.exportAnimState();
@@ -114,12 +114,12 @@ class DoomGameSnapshot {
     _applyInstances(states, collision) {
         loader.instances().getAll().forEach((instance) => {
             const code = instance.getCode();
-            if ((code === null) || code.startsWith(DoomGameSnapshot.MONSTER_PREFIX)) {
+            if ((code === null) || code.startsWith(WadWorldBuilder.MONSTER_CODE_PREFIX)) {
                 return;
             }
             const state = states[code];
             if (state === undefined) {
-                if (code.startsWith(DoomGameSnapshot.PICKUP_PREFIX)) {
+                if (code.startsWith(WadWorldBuilder.PICKUP_CODE_PREFIX)) {
                     loader.instances().scheduleRemoval(instance);
                 }
                 return;
@@ -170,9 +170,6 @@ class DoomGameSnapshot {
     }
 }
 
-// Instance code prefixes of WadWorldBuilder (_registerThings / _registerMonsterThing)
-DoomGameSnapshot.MONSTER_PREFIX = 'monster_';
-DoomGameSnapshot.PICKUP_PREFIX  = 'pickup_';
 // Extra height given to the initial spawn override: a Y exactly at floor level
 // misses the floor snap (the saved Y is the search ceiling). The exact saved Y
 // is re-applied by apply() once the movers are restored.

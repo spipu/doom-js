@@ -34,7 +34,6 @@ class DoomNetSubSession {
             .setOnControl((message) => this._receive(message))
             .setOnBinary((buffer) => this._cycleCall('state', buffer))
             .setOnLost(() => this._end(DoomNetProtocol.END_LOST));
-        document.addEventListener('visibilitychange', this._onVisibility);
     }
 
     getLobby() {
@@ -68,8 +67,8 @@ class DoomNetSubSession {
 
     /**
      * Who follows the main's game: {levelLoad(message), state(buffer),
-     * waiting(nicknames), phase(message), modeChanged(), playerRemoved(message), playerAway(message)}
-     * — the lobby screen until the game runs, then the game's role.
+     * waiting(nicknames), phase(message), modeChanged(), playerRemoved(message), playerAway(message)},
+     * each method optional — the lobby screen until the game runs, then the game's role.
      */
     setCycle(cycle) {
         this._cycle = cycle;
@@ -160,6 +159,7 @@ class DoomNetSubSession {
         return this._pairing.join((invite) => DoomNetInvite.answerFor(invite, this._wadSha256, this._nickname))
             .then((result) => {
                 this._guest.sendControl({type: DoomNetProtocol.HELLO});
+                this._watchVisibility();
                 return result;
             });
     }
@@ -179,9 +179,29 @@ class DoomNetSubSession {
             return;
         }
         this._ended = true;
-        document.removeEventListener('visibilitychange', this._onVisibility);
+        this._unwatchVisibility();
         this._guest.sendControl({type: DoomNetProtocol.SESSION_END, reason: DoomNetProtocol.END_LEFT});
         setTimeout(() => this._guest.close(), DoomNetProtocol.END_GRACE_MS);
+    }
+
+    // A session whose pairing failed or was cancelled: nothing of it may stay alive.
+    dispose() {
+        if (this._ended) {
+            return;
+        }
+        this._ended = true;
+        this._unwatchVisibility();
+        this._guest.close();
+    }
+
+    // Watched once linked: a page already in the background says so at once.
+    _watchVisibility() {
+        document.addEventListener('visibilitychange', this._onVisibility);
+        this._visibilityChanged();
+    }
+
+    _unwatchVisibility() {
+        document.removeEventListener('visibilitychange', this._onVisibility);
     }
 
     _receive(message) {
@@ -241,16 +261,14 @@ class DoomNetSubSession {
             return;
         }
         this._ended = true;
-        document.removeEventListener('visibilitychange', this._onVisibility);
+        this._unwatchVisibility();
         if (this._onEnd !== null) {
             this._onEnd(reason);
         }
     }
 
     _cycleCall(event, payload) {
-        if (this._cycle !== null) {
-            this._cycle[event](payload);
-        }
+        this._cycle?.[event]?.(payload);
     }
 
     _changed() {

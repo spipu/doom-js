@@ -27,12 +27,13 @@ class MenuPairingModal extends MenuModal {
      *
      * @param {DoomNetSubSession} session
      * @param {function}          onPaired - once the link to the main is open
+     * @param {function}          onFailed - the pairing was cancelled or failed: the session is over
      */
-    openForSub(session, onPaired) {
+    openForSub(session, onPaired, onFailed) {
         return this._open(appTranslator.get('multiplayer.join'), {
             show: appTranslator.get('multiplayer.pairing.showToMain'),
             read: appTranslator.get('multiplayer.pairing.readMain')
-        }, true, session, (view) => session.join(view), onPaired);
+        }, true, session, (view) => session.join(view), onPaired, onFailed);
     }
 
     /**
@@ -42,8 +43,9 @@ class MenuPairingModal extends MenuModal {
      * @param {object}                       session    - its cancelPairing() and getCodeChannel()
      * @param {function(object): Promise}    pair       - runs the session's flow through the view
      * @param {function}                     onPaired
+     * @param {function}                     onFailed
      */
-    _open(title, captions, sequential, session, pair, onPaired) {
+    _open(title, captions, sequential, session, pair, onPaired, onFailed = () => {}) {
         const {modal}  = this._createShell(title, 'doom-menu-modal doom-menu-modal-wide doom-menu-modal-pairing', 'doom-menu-subtitle');
         const stage    = MenuDom.addElement(modal, 'div', 'doom-menu-pairing-stage'
             + ((sequential) ? ' doom-menu-pairing-stage-sequential' : ''));
@@ -65,18 +67,19 @@ class MenuPairingModal extends MenuModal {
         this._view = new QrPairingView(new QrScanner(), elements, captions, session.getCodeChannel())
             .setSequential(sequential)
             .enableZoom();
-        this._run(pair, onPaired);
+        this._run(pair, onPaired, onFailed);
 
         return this;
     }
 
     // A cancel simply closes the modal; any other failure explains itself.
-    async _run(pair, onPaired) {
+    async _run(pair, onPaired, onFailed) {
         try {
             await QrModule.prepare(appBootstrap.buildUrl(MenuPairingModal.WASM_URL));
             await pair(this._view);
         } catch (error) {
             this.close();
+            onFailed();
             this._fail(error);
             return;
         }

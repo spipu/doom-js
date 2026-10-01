@@ -52,6 +52,7 @@ DoomNetProtocol.END_LOST       = 'lost';      // the link went silent or failed
 DoomNetProtocol.END_GAME_OVER  = 'gameOver';  // the main finished its game
 DoomNetProtocol.END_MATCH_OVER = 'matchOver'; // the deathmatch is over: its last level, or no opponent left
 DoomNetProtocol.END_INVALID    = 'invalid';   // a message the receiver could not decode
+DoomNetProtocol.END_FULL       = 'full';      // the lobby had no seat left for that sub
 
 DoomNetProtocol.MODE_SCREEN_SHARING = 1;
 DoomNetProtocol.MODE_COOPERATIVE    = 2;

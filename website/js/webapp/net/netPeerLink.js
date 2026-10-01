@@ -36,6 +36,8 @@ class NetPeerLink extends NetLink {
     }
 
     /**
+     * Diagnostics only (the pairing test page), never read by a game.
+     *
      * @returns {string[]} 'type address:port' of every local candidate put in the signal
      */
     getLocalCandidates() {
@@ -60,8 +62,14 @@ class NetPeerLink extends NetLink {
         return NetPeerLink._describeCandidate(local) + ' → ' + NetPeerLink._describeCandidate(remote) + ' (' + local.protocol + ')';
     }
 
+    // The channel enters 'closing' before its close event clears the open flag: a
+    // send in between would throw out of the game loop.
     _send(message) {
+        if (this._channel.readyState !== 'open') {
+            return false;
+        }
         this._channel.send(message);
+        return true;
     }
 
     _closeTransport() {

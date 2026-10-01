@@ -34,6 +34,7 @@ class NetLoopbackLink extends NetLink {
 
     _send(message) {
         this._channel.postMessage({kind: NetLoopbackLink.DATA, data: message});
+        return true;
     }
 
     _closeTransport() {

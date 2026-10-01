@@ -39,5 +39,6 @@ MenuNetMessages.ENDS = {
     [DoomNetProtocol.END_LOST]:       'multiplayer.end.lost',
     [DoomNetProtocol.END_GAME_OVER]:  'multiplayer.end.gameOver',
     [DoomNetProtocol.END_MATCH_OVER]: 'multiplayer.end.matchOver',
-    [DoomNetProtocol.END_INVALID]:    'multiplayer.end.invalid'
+    [DoomNetProtocol.END_INVALID]:    'multiplayer.end.invalid',
+    [DoomNetProtocol.END_FULL]:       'multiplayer.end.full'
 };

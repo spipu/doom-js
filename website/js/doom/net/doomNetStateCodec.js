@@ -7,7 +7,7 @@
  * is handed over, and a read that does not end exactly on its last byte is
  * refused.
  *
- * Layout: type, turn, time step; then players, bodies, bodies born in play,
+ * Layout: type, turn; then players, bodies, bodies born in play,
  * shots, map pickups (presence bits), movers, switches on, rewritten floors,
  * light levels, level statistics with the frags, events — each section behind its count.
  */
@@ -18,7 +18,7 @@ class DoomNetStateCodec {
      */
     static encode(snapshot) {
         const w = new NetByteWriter();
-        w.u8(DoomNetProtocol.MESSAGE_STATE).u32(snapshot.turn).f32(snapshot.elapsedMs);
+        w.u8(DoomNetProtocol.MESSAGE_STATE).u32(snapshot.turn);
         DoomNetStateCodec._list(w, snapshot.players, (player) => DoomNetStateCodec._writePlayer(w, player), true);
         DoomNetStateCodec._list(w, snapshot.bodies, (body) => DoomNetStateCodec._writeBody(w, body));
         DoomNetStateCodec._list(w, snapshot.bornBodies, (born) => w.u32(born.id).u8(((born.drop) ? 1 : 0)).ascii(born.kind));
@@ -54,7 +54,7 @@ class DoomNetStateCodec {
         if (r.u8() !== DoomNetProtocol.MESSAGE_STATE) {
             throw new NetError(NetError.INVALID_MESSAGE, 'Not a state message');
         }
-        const snapshot = {turn: r.u32(), elapsedMs: r.f32()};
+        const snapshot = {turn: r.u32()};
         snapshot.players     = DoomNetStateCodec._readList(r, () => DoomNetStateCodec._readPlayer(r), true);
         snapshot.bodies      = DoomNetStateCodec._readList(r, () => DoomNetStateCodec._readBody(r));
         snapshot.bornBodies  = DoomNetStateCodec._readList(r, () => ({id: r.u32(), drop: (r.u8() === 1), kind: r.ascii()}));
