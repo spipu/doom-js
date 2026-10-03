@@ -37,6 +37,7 @@ BenchSimulationRun.SEED            = 7;
 BenchSimulationRun.TRACE_PRECISION = 10000;
 
 BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks, restore) => {
+    ${BenchScenario.COMMAND_SCRIPT}
     const game   = {profile: new GameProfileList().getForWad(wadFile)};
     game.itemCatalog = new DoomItemCatalog(game.profile);
     const roster = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomPlayer.MAIN_ID));
@@ -63,16 +64,8 @@ BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks, rest
     const user  = roster.getLocal().getUser();
     const trace = [];
     const round = (v) => (Math.round(v * __precision) / __precision);
-    let step = 0;
     for (let frame = ((restore !== null) ? restore.fromFrame : 0); frame < scenario.frames; frame++) {
-        while (scenario.plan[step].until <= frame) {
-            step++;
-        }
-        const s = scenario.plan[step];
-        const command = new UserCommand().setMove(s.move[0], s.move[1]).setLook(s.look[0], s.look[1]);
-        if ((s.buttons !== undefined) && ((s.every === undefined) || (frame % s.every === 0))) {
-            s.buttons.forEach((b) => command.press(b));
-        }
+        const command = commandAt(scenario.plan, frame);
         frameEvents.length = 0;
         role.advance(frameMs, {sample: () => command}, () => {}, frame * frameMs);
         trace.push([round(user.x), round(user.y), round(user.z), round(user.yaw), round(user.pitch), user.isDead(), user.getEnergy(), user.getArmor(),

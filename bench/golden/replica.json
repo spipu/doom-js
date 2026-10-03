@@ -1,0 +1,60 @@
+{
+  "Doom2/MAP01@3/screen": {
+    "turns": 400,
+    "mismatches": {},
+    "subTraceSha": "4bd1a05292531ada71927b41990107f1529d59decea3b518ae04d53d81068fbd",
+    "subEventsSha": "860b5d18e5a8779864893bd154dc330bd5ed6200c971abfcb8eb355aa0dfc2d3",
+    "subEvents": 40,
+    "mainTraceSha": "22f48bfaaaafc741a8d65b7050780e2d2a97f30f3cdc19ad959763bdfb6091ac",
+    "mainPlayers": [
+      1
+    ],
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "Doom2/MAP01@3/coop": {
+    "turns": 400,
+    "mismatches": {},
+    "subTraceSha": "98ddf495a3d685fedf15474324b0ba90b9abdaf741f59bb09bb888d42b87bb21",
+    "subEventsSha": "9613dff428cbdff8d7e4ccb51cf0a6936980c7a2c71c27ead894c8d88ec4a092",
+    "subEvents": 59,
+    "mainTraceSha": "5b1cd92f9f180834530478734c41bd912b4b88ef4c49b6a6a98709da872b9b9b",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "heretic/E1M1@3/screen": {
+    "turns": 400,
+    "mismatches": {},
+    "subTraceSha": "67da3226c85dd10542f291e9d7d195470573aff6d24c31b3a41161cc6f51e765",
+    "subEventsSha": "ed1963cec39b243f96668b6745f13bdd612536a7708c98830b01fb954e985873",
+    "subEvents": 31,
+    "mainTraceSha": "b83589d382ce0826d883587f83c61be00b8e17dcd8f59ca66032428170700e66",
+    "mainPlayers": [
+      1
+    ],
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "heretic/E1M1@3/coop": {
+    "turns": 400,
+    "mismatches": {},
+    "subTraceSha": "30548ad47e731cda5981d11a053e07985ee730d7e5040ecc7dd3e83be31f4112",
+    "subEventsSha": "8ef50f81165f889ea29c0cacaea3e9f16a921948acdf3d191871a74e62549268",
+    "subEvents": 50,
+    "mainTraceSha": "55822769f7248e1a333d0c35ffff9aa6091a88687bad20d69179289ab873c454",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  }
+}

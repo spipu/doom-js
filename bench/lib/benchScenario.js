@@ -68,4 +68,16 @@ BenchScenario.FRAME_MS = 1000 / 60;
 BenchScenario.FRAMES   = 1200;
 BenchScenario.SKILL    = 3;
 
+// Inlined in the app-context scripts: the UserCommand a plan gives at a frame.
+BenchScenario.COMMAND_SCRIPT = `
+    const commandAt = (plan, frame) => {
+        const s = (plan.find((step) => (frame < step.until)) ?? plan[plan.length - 1]);
+        const command = new UserCommand().setMove(s.move[0], s.move[1]).setLook(s.look[0], s.look[1]);
+        if ((s.buttons !== undefined) && ((s.every === undefined) || (frame % s.every === 0))) {
+            s.buttons.forEach((b) => command.press(b));
+        }
+        return command;
+    };
+`;
+
 module.exports = {BenchScenario};

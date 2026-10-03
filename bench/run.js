@@ -3,7 +3,7 @@
  * Golden-master bench of Spipu-Doom, run from the repository root:
  *
  *   node bench/run.js                      every suite against bench/golden/
- *   node bench/run.js --suite build        one suite (build | simulation | codecs | save)
+ *   node bench/run.js --suite build        one suite (build | simulation | codecs | save | replica)
  *   node bench/run.js --wad Doom1 --wad heretic
  *   node bench/run.js --update             rewrite the golden files from this run
  *   node bench/run.js --verbose            echo the app's console
