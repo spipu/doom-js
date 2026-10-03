@@ -2,8 +2,8 @@
  * WAD storage on IndexedDB (spipudoom schema), built on the generic AppDatabase.
  *
  * Stores:
- *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, described?} — sha256 = identity
- *    of the file, title/version = the known edition of the file (null when unknown), described = the editions table version they were read with;
+ *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, rank?, described?} — sha256 = identity
+ *    of the file, title/version/rank = the known edition of the file (null when unknown, rank = release order within a title), described = the editions table version they were read with;
  *    all absent until computed
  *  - wadData: {id, data: ArrayBuffer}
  *  - settings: {key, value} — persisted game settings (read by DoomSettings)
@@ -47,11 +47,24 @@ class WadStorage {
      * @param {ArrayBuffer} arrayBuffer
      */
     async saveWad(meta, arrayBuffer) {
+        await this.replaceWad(meta, arrayBuffer, [], []);
+    }
+
+    /**
+     * The WAD and the changes to its saves in a single transaction.
+     *
+     * @param {object}      meta
+     * @param {ArrayBuffer} arrayBuffer
+     * @param {object[]}    rewrittenSaves - [{id, snapshot}]
+     * @param {string[]}    removedSaveIds
+     */
+    async replaceWad(meta, arrayBuffer, rewrittenSaves, removedSaveIds) {
         try {
-            await this._database.putMulti([
+            await this._database.writeMulti([
                 {storeName: 'wadMeta', record: meta},
-                {storeName: 'wadData', record: {id: meta.id, data: arrayBuffer}}
-            ]);
+                {storeName: 'wadData', record: {id: meta.id, data: arrayBuffer}},
+                ...rewrittenSaves.map((save) => ({storeName: 'saveData', record: save}))
+            ], WadStorage._saveKeys(removedSaveIds));
         } catch (error) {
             if (error && (error.name === 'QuotaExceededError')) {
                 throw new WadError('quota-exceeded', 'Storage quota exceeded');
@@ -62,6 +75,16 @@ class WadStorage {
         // Asked right after the user chose to store tens of megabytes; not
         // awaited, a permission prompt must not hold the screen back.
         AppDatabase.requestPersistentStorage();
+    }
+
+    /**
+     * @param {string} wadId
+     * @returns {Promise<object[]>} [{meta, snapshot}] of the WAD's saves, in slot order
+     */
+    async readSaves(wadId) {
+        const metas = (await this._saveMetasOf(wadId)).sort((a, b) => (a.slot - b.slot));
+
+        return Promise.all(metas.map(async (meta) => ({meta: meta, snapshot: (await this._database.get('saveData', meta.id)).snapshot})));
     }
 
     /**
@@ -111,15 +134,20 @@ class WadStorage {
      * @param {string} id
      */
     async deleteWad(id) {
-        const saveIds = (await this._database.getAll('saveMeta'))
-            .filter((meta) => (meta.wadId === id))
-            .map((meta) => meta.id);
+        const saveIds = (await this._saveMetasOf(id)).map((meta) => meta.id);
 
         await this._database.deleteMulti([
             {storeName: 'wadMeta', key: id},
             {storeName: 'wadData', key: id},
-            ...saveIds.map((saveId) => ({storeName: 'saveMeta', key: saveId})),
-            ...saveIds.map((saveId) => ({storeName: 'saveData', key: saveId}))
+            ...WadStorage._saveKeys(saveIds)
         ]);
+    }
+
+    async _saveMetasOf(wadId) {
+        return (await this._database.getAll('saveMeta')).filter((meta) => (meta.wadId === wadId));
+    }
+
+    static _saveKeys(saveIds) {
+        return saveIds.flatMap((saveId) => [{storeName: 'saveMeta', key: saveId}, {storeName: 'saveData', key: saveId}]);
     }
 }

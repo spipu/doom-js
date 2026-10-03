@@ -83,18 +83,7 @@ class AppDatabase {
      * @param {object[]} records - [{storeName: string, record: object}]
      */
     async putMulti(records) {
-        // IndexedDB refuses a transaction over zero stores.
-        if (records.length === 0) {
-            return;
-        }
-        const storeNames = [...new Set(records.map((item) => item.storeName))];
-        const transaction = this._transaction(storeNames, 'readwrite');
-
-        for (const item of records) {
-            transaction.objectStore(item.storeName).put(item.record);
-        }
-
-        await this._promisifyTransaction(transaction);
+        await this.writeMulti(records, []);
     }
 
     /**
@@ -103,12 +92,26 @@ class AppDatabase {
      * @param {object[]} keys - [{storeName: string, key: *}]
      */
     async deleteMulti(keys) {
-        if (keys.length === 0) {
+        await this.writeMulti([], keys);
+    }
+
+    /**
+     * Writes the records and deletes the keys in a single transaction.
+     *
+     * @param {object[]} records - [{storeName: string, record: object}]
+     * @param {object[]} keys    - [{storeName: string, key: *}]
+     */
+    async writeMulti(records, keys) {
+        // IndexedDB refuses a transaction over zero stores.
+        if ((records.length === 0) && (keys.length === 0)) {
             return;
         }
-        const storeNames = [...new Set(keys.map((item) => item.storeName))];
+        const storeNames  = [...new Set([...records, ...keys].map((item) => item.storeName))];
         const transaction = this._transaction(storeNames, 'readwrite');
 
+        for (const item of records) {
+            transaction.objectStore(item.storeName).put(item.record);
+        }
         for (const item of keys) {
             transaction.objectStore(item.storeName).delete(item.key);
         }

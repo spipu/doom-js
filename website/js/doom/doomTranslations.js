@@ -119,6 +119,30 @@ class DoomTranslations {
                 it: '{wad} aggiunto',
                 es: '{wad} añadido'
             },
+            'menu.wad.updated': {
+                fr: '{wad} mis à jour',
+                en: '{wad} updated',
+                it: '{wad} aggiornato',
+                es: '{wad} actualizado'
+            },
+            'menu.wad.updateConfirm': {
+                fr: 'Mettre à jour {wad} de {from} vers {to} ?',
+                en: 'Update {wad} from {from} to {to}?',
+                it: 'Aggiornare {wad} da {from} a {to}?',
+                es: '¿Actualizar {wad} de {from} a {to}?'
+            },
+            'menu.wad.updateRestarted': {
+                fr: 'Niveau modifié par la mise à jour, ces sauvegardes repartiront de son début : {slots}',
+                en: 'Level changed by the update, these saves will restart from its beginning: {slots}',
+                it: 'Livello modificato dall\'aggiornamento, questi salvataggi ripartiranno dal suo inizio: {slots}',
+                es: 'Nivel modificado por la actualización, estas partidas volverán a su inicio: {slots}'
+            },
+            'menu.wad.updateRemoved': {
+                fr: 'Niveau absent de la nouvelle version, ces sauvegardes seront supprimées : {slots}',
+                en: 'Level missing from the new version, these saves will be deleted: {slots}',
+                it: 'Livello assente dalla nuova versione, questi salvataggi saranno eliminati: {slots}',
+                es: 'Nivel ausente de la nueva versión, estas partidas se eliminarán: {slots}'
+            },
             'menu.wad.delete': {
                 fr: 'Supprimer',
                 en: 'Delete',
@@ -553,6 +577,18 @@ class DoomTranslations {
                 en: 'WAD not found',
                 it: 'WAD non trovato',
                 es: 'WAD no encontrado'
+            },
+            'error.wadDuplicate': {
+                fr: 'Ce WAD est déjà dans la liste',
+                en: 'This WAD is already in the list',
+                it: 'Questo WAD è già nella lista',
+                es: 'Este WAD ya está en la lista'
+            },
+            'error.wadOlder': {
+                fr: 'Une version plus récente de ce WAD est déjà dans la liste',
+                en: 'A newer version of this WAD is already in the list',
+                it: 'Una versione più recente di questo WAD è già nella lista',
+                es: 'Una versión más reciente de este WAD ya está en la lista'
             },
 
             // --- Game (pause menu + level chaining modals) ---

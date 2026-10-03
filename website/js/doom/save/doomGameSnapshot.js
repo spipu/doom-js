@@ -54,9 +54,35 @@ class DoomGameSnapshot {
         };
     }
 
+    /**
+     * A save that only keeps its level, skill and the player's equipment: it
+     * loads as an entry into the level, the level in its initial state.
+     *
+     * @param {object} snapshot
+     * @returns {object}
+     */
+    static levelStartOf(snapshot) {
+        return {
+            formatVersion: snapshot.formatVersion,
+            wadId:         snapshot.wadId,
+            levelCode:     snapshot.levelCode,
+            skill:         snapshot.skill,
+            savedAt:       snapshot.savedAt,
+            levelStart:    true,
+            player:        {state: snapshot.player.state}
+        };
+    }
+
+    static isLevelStart(snapshot) {
+        return ((snapshot !== null) && (snapshot.levelStart === true));
+    }
+
     // Runs once the rebuilt level is wired, before the first frame. The player
     // equipment is restored earlier by DoomSimulation, in place of the level loadout.
     apply(context, snapshot) {
+        if (DoomGameSnapshot.isLevelStart(snapshot)) {
+            return;
+        }
         // itemsFound and levelTimeMs postdate FORMAT_VERSION 2; the version is
         // compared strictly, so bumping it would discard every existing save.
         context.stats.restoreProgress(snapshot.stats.secretsFound, snapshot.stats.killsCount,
@@ -151,6 +177,9 @@ class DoomGameSnapshot {
      * @returns {{position: number[], yaw: number, pitch: number}} a spawn override
      */
     static spawnOverrideOf(snapshot) {
+        if (DoomGameSnapshot.isLevelStart(snapshot)) {
+            return null;
+        }
         const player = snapshot.player;
 
         return {

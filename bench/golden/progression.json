@@ -1,7 +1,8 @@
 {
   "freedoom1/identity": {
     "name": "Freedoom - Phase 1",
-    "version": "0.13.0"
+    "version": "0.13.0",
+    "rank": 3
   },
   "freedoom1/E1M1": {
     "next": "E1M2",
@@ -374,7 +375,8 @@
   },
   "freedoom2/identity": {
     "name": "Freedoom - Phase 2",
-    "version": "0.13.0"
+    "version": "0.13.0",
+    "rank": 3
   },
   "freedoom2/MAP01": {
     "next": "MAP02",
@@ -698,7 +700,8 @@
   },
   "Doom1/identity": {
     "name": "Doom 1",
-    "version": "1.9"
+    "version": "1.9",
+    "rank": 4
   },
   "Doom1/E1M1": {
     "next": "E1M2",
@@ -972,7 +975,8 @@
   },
   "Doom2/identity": {
     "name": "Doom 2",
-    "version": "1.9"
+    "version": "1.9",
+    "rank": 5
   },
   "Doom2/MAP01": {
     "next": "MAP02",
@@ -1296,7 +1300,8 @@
   },
   "heretic/identity": {
     "name": "Heretic",
-    "version": "1.3"
+    "version": "1.3",
+    "rank": 2
   },
   "heretic/E1M1": {
     "next": "E1M2",
@@ -1780,7 +1785,8 @@
   },
   "hexen/identity": {
     "name": "Hexen",
-    "version": "1.1"
+    "version": "1.1",
+    "rank": 2
   },
   "hexen/MAP01": {
     "next": "MAP02",

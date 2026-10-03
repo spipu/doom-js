@@ -145,10 +145,9 @@ class WadListScreen extends AbstractMenuScreen {
         this._setBusy(true);
         this._setStatus(appTranslator.get('menu.wad.downloading'));
         try {
-            const meta = await this._registry.addFromUrl(url);
+            const wadImport = await this._registry.addFromUrl(url);
             this._urlInput.value = '';
-            this._setStatus(appTranslator.get('menu.wad.added', {wad: WadRegistry.displayTitle(meta)}));
-            await this._refresh();
+            await this._offerImport(wadImport);
         } catch (error) {
             this._showError(error);
         }
@@ -164,14 +163,54 @@ class WadListScreen extends AbstractMenuScreen {
         this._setBusy(true);
         this._setStatus(appTranslator.get('menu.wad.reading'));
         try {
-            const meta = await this._registry.addFromFile(file);
-            this._setStatus(appTranslator.get('menu.wad.added', {wad: WadRegistry.displayTitle(meta)}));
-            await this._refresh();
+            await this._offerImport(await this._registry.addFromFile(file));
         } catch (error) {
             this._showError(error);
         }
         this._fileInput.value = '';
         this._setBusy(false);
+    }
+
+    async _offerImport(wadImport) {
+        if (wadImport.replaced === null) {
+            await this._applyImport(wadImport);
+            return;
+        }
+        this._clearStatus();
+        this._confirm(WadListScreen._updateMessage(wadImport), async () => {
+            try {
+                await this._applyImport(wadImport);
+            } catch (error) {
+                this._showError(error);
+            }
+        });
+    }
+
+    async _applyImport(wadImport) {
+        const meta = await this._registry.applyImport(wadImport);
+        const code = ((wadImport.replaced !== null) ? 'menu.wad.updated' : 'menu.wad.added');
+        this._setStatus(appTranslator.get(code, {wad: WadRegistry.displayLabel(meta)}));
+        await this._refresh();
+    }
+
+    static _updateMessage(wadImport) {
+        const lines = [appTranslator.get('menu.wad.updateConfirm', {
+            wad:  WadRegistry.displayTitle(wadImport.meta),
+            from: WadRegistry.versionLabel(wadImport.replaced),
+            to:   WadRegistry.versionLabel(wadImport.meta)
+        })];
+        if (wadImport.saves.restarted.length > 0) {
+            lines.push(appTranslator.get('menu.wad.updateRestarted', {slots: WadListScreen._slotList(wadImport.saves.restarted)}));
+        }
+        if (wadImport.saves.removed.length > 0) {
+            lines.push(appTranslator.get('menu.wad.updateRemoved', {slots: WadListScreen._slotList(wadImport.saves.removed)}));
+        }
+
+        return lines.join('\n\n');
+    }
+
+    static _slotList(saves) {
+        return saves.map((save) => appTranslator.get('menu.save.slot', {n: save.meta.slot}) + ' (' + save.meta.levelCode + ')').join(', ');
     }
 
     _onDeleteWad(meta) {

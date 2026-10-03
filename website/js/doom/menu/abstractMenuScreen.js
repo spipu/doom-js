@@ -219,7 +219,9 @@ class AbstractMenuScreen {
             'invalid-format':      'error.invalidFormat',
             'quota-exceeded':      'error.quotaExceeded',
             'storage-unavailable': 'error.storageUnavailable',
-            'not-found':           'error.notFound'
+            'not-found':           'error.notFound',
+            'duplicate':           'error.wadDuplicate',
+            'older-edition':       'error.wadOlder'
         };
 
         const code = ((error instanceof WadError) ? error.getCode() : null);

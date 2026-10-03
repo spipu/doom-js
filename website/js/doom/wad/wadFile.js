@@ -151,6 +151,32 @@ class WadFile {
     }
 
     /**
+     * @param {WadFile} other
+     * @param {string}  mapName
+     * @returns {boolean} whether both files hold the same lumps for this map, byte for byte
+     */
+    mapEquals(other, mapName) {
+        const mine   = this.getMapLumps(mapName);
+        const theirs = other.getMapLumps(mapName);
+        const names  = Object.keys(mine);
+        if (names.length !== Object.keys(theirs).length) {
+            return false;
+        }
+
+        return names.every((name) => ((theirs[name] !== undefined) && WadFile._sameBytes(mine[name], theirs[name])));
+    }
+
+    static _sameBytes(a, b) {
+        if (a.byteLength !== b.byteLength) {
+            return false;
+        }
+        const bytesA = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+        const bytesB = new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+
+        return bytesA.every((byte, i) => (byte === bytesB[i]));
+    }
+
+    /**
      * Fingerprint of a map: its marker, THINGS, LINEDEFS, SIDEDEFS, SECTORS and
      * BEHAVIOR lumps hashed in UZDoom's MapData::GetChecksum order.
      *

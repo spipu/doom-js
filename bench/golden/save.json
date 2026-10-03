@@ -9,7 +9,9 @@
     "endSaveSha": "04a87abac10c41bb49e44d7820aead0bcb72a00b02d95178550eaf2fcbe2bcc9",
     "dead": false,
     "energy": 82.60751129547552,
-    "uninterruptedEnergy": 84.20723811538952
+    "uninterruptedEnergy": 84.20723811538952,
+    "levelStartAtSpawn": true,
+    "levelStartSha": "08ec6fa7d52690e935afc0ac3c2f5b8a8c6d070952b6ef3a25520e0be14c9f04"
   },
   "Doom2/MAP01@3": {
     "idempotent": true,
@@ -21,7 +23,9 @@
     "endSaveSha": "bad0f323c36ce146f71b3c4acd8205e206313457371f8cfe0a7cdcbc0953a32b",
     "dead": false,
     "energy": 74.5,
-    "uninterruptedEnergy": 62.5
+    "uninterruptedEnergy": 62.5,
+    "levelStartAtSpawn": true,
+    "levelStartSha": "28abc59c5e3fe4124803d285cd7e9b64812fc5af23650f57759b097a601205e2"
   },
   "freedoom1/E1M1@3": {
     "idempotent": true,
@@ -33,7 +37,9 @@
     "endSaveSha": "1664b054e532235429a4566200c850a7abed150f6779bee4f166b3ea3515ad26",
     "dead": false,
     "energy": 44.833144773724825,
-    "uninterruptedEnergy": 44.833144773724825
+    "uninterruptedEnergy": 44.833144773724825,
+    "levelStartAtSpawn": true,
+    "levelStartSha": "7023bf53a1631576ca720f03b4f9dc75133873a71ab86a92adb4a209eb023b71"
   },
   "heretic/E1M1@3": {
     "idempotent": true,
@@ -45,7 +51,9 @@
     "endSaveSha": "559c1e0a384e0973f5233bf24f3f1b321c232ffb9dc261bb07a4bcdaa10b6d3f",
     "dead": true,
     "energy": 0,
-    "uninterruptedEnergy": 2
+    "uninterruptedEnergy": 2,
+    "levelStartAtSpawn": true,
+    "levelStartSha": "f84a5cf343e5fd5e9469eb40527fef904d825926638370f9fd6b56f9397adb74"
   },
   "heretic/E1M3@3": {
     "idempotent": true,
@@ -57,6 +65,8 @@
     "endSaveSha": "a11a1100bdd962e4519dfff778d96bba9278603d7be74044b5b0306942acdf4a",
     "dead": false,
     "energy": 97.75,
-    "uninterruptedEnergy": 100
+    "uninterruptedEnergy": 100,
+    "levelStartAtSpawn": true,
+    "levelStartSha": "9c9456d6ed2c21685c68bb8ae0642b7d47428774fb800a6c7913e5e55001ae87"
   }
 }

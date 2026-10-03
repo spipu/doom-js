@@ -133,6 +133,15 @@ class DoomPlayer {
     }
 
     /**
+     * @param {object} state - the equipment to take into the level about to be built
+     */
+    carry(state) {
+        this._carriedState = state;
+
+        return this;
+    }
+
+    /**
      * @returns {object|null} the equipment carried into the level, null for a fresh loadout
      */
     getCarriedState() {

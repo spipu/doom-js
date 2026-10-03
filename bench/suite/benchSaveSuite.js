@@ -1,7 +1,8 @@
 /**
  * A save captured half-way through a scenario, restored on a rebuilt level and
  * played on: the save recaptured right after the restore must equal the one
- * restored. The resumed run drifts from the uninterrupted one by design (the
+ * restored. The same save brought back to its level start replays the first
+ * half from the spawn, with the saved equipment. The resumed run drifts from the uninterrupted one by design (the
  * save leaves out momentum, sub-tic accumulators and transient effects): the
  * drift is recorded, its growth is the regression.
  */
@@ -47,6 +48,8 @@ class BenchSaveSuite {
         const saved     = hooks.saved;
         const resumed   = await runs.run(wadFile, scenario, null, {snapshot: saved, fromFrame: BenchSaveSuite.CAPTURE_FRAME + 1});
         const tail      = reference.trace.slice(BenchSaveSuite.CAPTURE_FRAME + 1);
+        const firstHalf = new BenchScenario(scenario.wad, scenario.level, scenario.skill, BenchSaveSuite.CAPTURE_FRAME, scenario.plan);
+        const restarted = await runs.run(wadFile, firstHalf, null, {snapshot: app.run('DoomGameSnapshot').levelStartOf(saved), fromFrame: 0});
 
         return {
             idempotent:          (BenchFingerprint.json(resumed.reloaded) === BenchFingerprint.json(saved)),
@@ -58,7 +61,9 @@ class BenchSaveSuite {
             endSaveSha:          BenchFingerprint.sha(resumed.snapshot),
             dead:                resumed.dead,
             energy:              resumed.energy,
-            uninterruptedEnergy: reference.energy
+            uninterruptedEnergy: reference.energy,
+            levelStartAtSpawn:   (BenchSaveSuite._drift(reference.trace.slice(0, 1), restarted.trace.slice(0, 1), Math.max) === 0),
+            levelStartSha:       BenchFingerprint.sha(restarted.trace)
         };
     }
 

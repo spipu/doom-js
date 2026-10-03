@@ -17,13 +17,13 @@ class WadRegistry {
     }
 
     /**
-     * @returns {Promise<object[]>} metadata sorted by title, then version,
+     * @returns {Promise<object[]>} metadata sorted by title, then release,
      *                              then file name (natural order: doom2 before doom10)
      */
     async getList() {
         const list = await this._storage.listMeta();
         list.sort((a, b) => (WadRegistry._compare(WadRegistry.displayTitle(a), WadRegistry.displayTitle(b))
-            || WadRegistry._compare(a.version ?? '', b.version ?? '')
+            || ((a.rank ?? WadRegistry.NO_RANK) - (b.rank ?? WadRegistry.NO_RANK))
             || WadRegistry._compare(a.name, b.name)));
 
         return list;
@@ -93,11 +93,11 @@ class WadRegistry {
     }
 
     /**
-     * Download a WAD from an URL and store it: raw fetch (no
-     * appBootstrap.buildUrl) through bypassUrl.
+     * Download a WAD from an URL: raw fetch (no appBootstrap.buildUrl) through
+     * bypassUrl. Nothing is stored before applyImport.
      *
      * @param {string} rawUrl
-     * @returns {Promise<object>} the stored metadata
+     * @returns {Promise<object>} the import, see _prepareImport
      */
     async addFromUrl(rawUrl) {
         const url = WadRegistry.normalizeUrl(rawUrl);
@@ -119,19 +119,35 @@ class WadRegistry {
 
         const buffer = await response.arrayBuffer();
 
-        return this._validateAndSave(buffer, this._extractFileName(url), {type: 'url', value: url});
+        return this._prepareImport(buffer, this._extractFileName(url), {type: 'url', value: url});
     }
 
     /**
-     * Store a local file.
+     * Read a local file. Nothing is stored before applyImport.
      *
      * @param {File} file
-     * @returns {Promise<object>} the stored metadata
+     * @returns {Promise<object>} the import, see _prepareImport
      */
     async addFromFile(file) {
         const buffer = await file.arrayBuffer();
 
-        return this._validateAndSave(buffer, file.name, {type: 'file', value: file.name});
+        return this._prepareImport(buffer, file.name, {type: 'file', value: file.name});
+    }
+
+    /**
+     * @param {object} wadImport - from addFromUrl / addFromFile
+     * @returns {Promise<object>} the stored metadata
+     */
+    async applyImport(wadImport) {
+        if (wadImport.replaced === null) {
+            await this._storage.saveWad(wadImport.meta, wadImport.buffer);
+            return wadImport.meta;
+        }
+        const restarted = wadImport.saves.restarted.map((save) => ({id: save.meta.id, snapshot: DoomGameSnapshot.levelStartOf(save.snapshot)}));
+        const removed   = wadImport.saves.removed.map((save) => save.meta.id);
+        await this._storage.replaceWad(wadImport.meta, wadImport.buffer, restarted, removed);
+
+        return wadImport.meta;
     }
 
     /**
@@ -307,7 +323,13 @@ class WadRegistry {
         }
     }
 
-    async _validateAndSave(buffer, name, source) {
+    /**
+     * @returns {Promise<{meta: object, buffer: ArrayBuffer, replaced: object|null,
+     *          saves: {restarted: object[], removed: object[]}|null}>}
+     *          replaced = the stored WAD an update overwrites, null for a new one;
+     *          saves = the saves ({meta, snapshot}) the update restarts or deletes, the others untouched
+     */
+    async _prepareImport(buffer, name, source) {
         const meta = {
             id:      this._buildId(name),
             name:    name,
@@ -317,9 +339,53 @@ class WadRegistry {
         };
         Object.assign(meta, await this._describe(buffer));
 
-        await this._storage.saveWad(meta, buffer);
+        const stored = await this._describedList();
+        const same   = stored.find((other) => ((typeof meta.sha256 === 'string') && (other.sha256 === meta.sha256)));
+        if (same !== undefined) {
+            throw new WadError('duplicate', 'WAD already stored', WadRegistry.displayLabel(same));
+        }
+        const releases = stored.filter((other) => ((meta.rank !== null) && (other.title === meta.title) && (other.rank !== null)));
+        const newer    = releases.find((other) => (other.rank > meta.rank));
+        if (newer !== undefined) {
+            throw new WadError('older-edition', 'A newer release of this WAD is stored', WadRegistry.displayLabel(newer));
+        }
+        const replaced = (releases.filter((other) => (other.rank < meta.rank)).sort((a, b) => (b.rank - a.rank))[0] ?? null);
+        if (replaced === null) {
+            return {meta: meta, buffer: buffer, replaced: null, saves: null};
+        }
+        meta.id = replaced.id;
 
-        return meta;
+        return {meta: meta, buffer: buffer, replaced: replaced, saves: await this._sortSaves(replaced.id, buffer)};
+    }
+
+    async _describedList() {
+        const list = await this._storage.listMeta();
+        for (const meta of list.filter((other) => !WadRegistry.isDescribed(other))) {
+            await this.ensureIdentity(meta);
+        }
+
+        return list;
+    }
+
+    async _sortSaves(wadId, buffer) {
+        const saves  = await this._storage.readSaves(wadId);
+        const sorted = {restarted: [], removed: []};
+        if (saves.length === 0) {
+            return sorted;
+        }
+        const before = new WadFile((await this._storage.readWad(wadId)).data).parse();
+        const after  = new WadFile(buffer).parse();
+        const levels = after.getLevelNames();
+        for (const save of saves) {
+            const level = save.meta.levelCode;
+            if (!levels.includes(level)) {
+                sorted.removed.push(save);
+            } else if (!DoomGameSnapshot.isLevelStart(save.snapshot) && !before.mapEquals(after, level)) {
+                sorted.restarted.push(save);
+            }
+        }
+
+        return sorted;
     }
 
     async _describe(buffer) {
@@ -329,6 +395,7 @@ class WadRegistry {
         const described = {
             title:     (edition?.name ?? null),
             version:   (edition?.version ?? null),
+            rank:      (edition?.rank ?? null),
             described: WadRegistry.DESCRIPTION_VERSION
         };
         if (sha256 !== null) {
@@ -356,7 +423,8 @@ class WadRegistry {
 
 WadRegistry.SHORT_IDENTITY_LENGTH = 8;
 // Bump when the editions table changes: stored WADs are described again.
-WadRegistry.DESCRIPTION_VERSION   = 2;
+WadRegistry.DESCRIPTION_VERSION   = 3;
+WadRegistry.NO_RANK               = -1;
 WadRegistry.NUMBERED_VERSION      = /^\d/;
 WadRegistry.VERSION_PREFIX        = 'v';
 WadRegistry.LABEL_SEPARATOR       = ' - ';

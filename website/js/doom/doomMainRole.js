@@ -173,8 +173,13 @@ class DoomMainRole extends AbstractGameRole {
      * @param {object|null} spawnOverride - {position, yaw, pitch}, debug only
      */
     enterLevel(world, snapshot, spawnOverride) {
+        const local      = this._roster.getLocal();
+        const levelStart = DoomGameSnapshot.isLevelStart(snapshot);
+        if (levelStart) {
+            local.carry(snapshot.player.state);
+        }
         this._simulation.startLevel(world);
-        this._simulation.addPlayer(this._roster.getLocal(), ((snapshot !== null) ? snapshot.player.state : null));
+        this._simulation.addPlayer(local, (((snapshot !== null) && !levelStart) ? snapshot.player.state : null));
         if (spawnOverride !== null) {
             this._applySpawnOverride(spawnOverride);
         }
