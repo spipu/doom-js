@@ -1,10 +1,11 @@
 /**
  * The view a NetPairing flow drives, over DOM elements the caller owns: the code shown as a
  * QR code, the other side's code read with the camera, each with its caption shown only
- * while its step lasts, and the camera released once the pairing is over. With a code
- * channel, codes are published and read through it instead, and the camera stays closed.
- * Captions come translated from the caller. A frame shown carries QrPairingView.SHOWN_CLASS,
- * which the caller styles.
+ * while its step lasts, a status line once the codes are exchanged and the link is being
+ * opened, and the camera released once the pairing is over. With a code channel, codes are
+ * published and read through it instead, and the camera stays closed. Captions come
+ * translated from the caller. A frame shown carries QrPairingView.SHOWN_CLASS, which the
+ * caller styles.
  */
 class QrPairingView {
     /** @type {QrScanner}                   */ _scanner;
@@ -19,8 +20,10 @@ class QrPairingView {
 
     /**
      * @param {QrScanner} scanner
-     * @param {{qr: HTMLElement, camera: HTMLVideoElement, qrCaption: HTMLElement, cameraCaption: HTMLElement}} elements
-     * @param {{show: string, read: string}} captions    - under the code shown, under the camera while it reads
+     * @param {{qr: HTMLElement, camera: HTMLVideoElement, qrCaption: HTMLElement, cameraCaption: HTMLElement, status: HTMLElement}} elements
+     * @param {{show: string, read: string, connecting: function(Uint8Array): string}} captions - under the code shown,
+     *                                           under the camera while it reads, and the status line of the link being
+     *                                           opened (built from the other side's application payload)
      * @param {{publish: function, read: function, cancelRead: function}|null} codeChannel - hands codes around in
      *                                           place of the QR code and the camera (NetLoopbackCodeChannel in tests)
      */
@@ -107,12 +110,25 @@ class QrPairingView {
     }
 
     /**
+     * Both frames step aside for the status line; the camera stream stays open until finish().
+     *
+     * @param {Uint8Array} payload - the other side's application payload
+     */
+    connecting(payload) {
+        this.hideCode();
+        this._hide(this._elements.camera);
+        this._elements.cameraCaption.textContent = '';
+        this._elements.status.textContent        = this._captions.connecting(payload);
+    }
+
+    /**
      * The pairing is over: code hidden and camera released (the next prepare() opens it again).
      */
     finish() {
         this.hideCode();
         const stopped = this._scanner.close();
         this._elements.cameraCaption.textContent = '';
+        this._elements.status.textContent        = '';
         this._hide(this._elements.camera);
         if (this._codeChannel === null) {
             this._onCameraClose?.(stopped);

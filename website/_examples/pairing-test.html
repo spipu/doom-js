@@ -43,6 +43,7 @@ label           { margin: 0 8px; }
                 <video id="camera" class="frame" playsinline muted></video>
                 <div id="cameraCaption" class="caption"></div>
             </div>
+            <div id="connecting" class="connecting"></div>
         </div>
         <table id="players"></table>
         <table id="metrics"></table>
@@ -111,7 +112,7 @@ function setMetric(name, value)
 
 function fail(error)
 {
-    const code = ((error instanceof NetError) ? ' [' + error.getCode() + ']' : '');
+    const code = ((error instanceof NetError) ? ' [' + error.getCode() + ((error.getDetail() !== null) ? ', ' + error.getDetail() : '') + ']' : '');
     setStatus('Error' + code + ': ' + ((error instanceof Error) ? error.message : String(error)));
     console.error(error);
 }
@@ -135,7 +136,7 @@ function pingText(ping)
 
 function pairingView(captions)
 {
-    const elements = {qr: el('qr'), camera: el('camera'), qrCaption: el('qrCaption'), cameraCaption: el('cameraCaption')};
+    const elements = {qr: el('qr'), camera: el('camera'), qrCaption: el('qrCaption'), cameraCaption: el('cameraCaption'), status: el('connecting')};
     return new QrPairingView(scanner, elements, captions, codes)
         .enableZoom()
         .setOnCameraOpen((settings, openMs) => {
@@ -164,11 +165,11 @@ function describeLocalCandidates(link)
         return;
     }
     const candidates = link.getLocalCandidates();
-    const hosts      = candidates.filter(c => c.startsWith('host '));
-    setMetric('Local candidates', candidates.join(' | '));
+    const hosts      = candidates.filter(c => (c.type === 'host'));
+    setMetric('Local candidates', candidates.map(c => c.type + ' ' + c.address + ':' + c.port).join(' | '));
     setMetric('Host addresses', ((hosts.length === 0) ? 'none'
-        : (hosts.every(c => c.includes('.local:')) ? 'mDNS only (hidden)' : 'real addresses')));
-    setMetric('STUN reached', (candidates.some(c => c.startsWith('srflx ')) ? 'yes' : 'no'));
+        : (hosts.every(c => c.address.endsWith('.local')) ? 'mDNS only (hidden)' : 'real addresses')));
+    setMetric('STUN reached', (candidates.some(c => (c.type === 'srflx')) ? 'yes' : 'no'));
 }
 
 // ---- main ----
@@ -187,7 +188,7 @@ function startHost()
             setStatus('Player ' + peer.getId() + ' lost: ' + reason + '.');
             refreshPlayers();
         });
-    pairing = new NetHostPairing(host, pairingView({show: 'Please scan it from a sub', read: 'Please scan the sub\'s answer'}));
+    pairing = new NetHostPairing(host, pairingView({show: 'Please scan it from a sub', read: 'Please scan the sub\'s answer', connecting: (payload) => 'Connecting to ' + asciiOf(payload) + '…'}));
     el('hostControls').classList.remove('hidden');
     setStatus('Add a player.');
 }
@@ -267,7 +268,7 @@ async function startJoin()
         .setOnControl(onGuestControl)
         .setOnBinary(onGuestBinary)
         .setOnLost((reason) => setStatus('Link to the main lost: ' + reason + '.'));
-    pairing = new NetGuestPairing(guest, pairingView({show: 'Please show it to the main', read: 'Please scan the main QR code'}));
+    pairing = new NetGuestPairing(guest, pairingView({show: 'Please show it to the main', read: 'Please scan the main QR code', connecting: () => 'Connecting…'}));
     setStatus('Waiting for the code of the main.');
     await runPairing(() => pairing.join(() => Uint8Array.from(nickname, c => c.charCodeAt(0))));
 }

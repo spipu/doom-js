@@ -1,5 +1,5 @@
 {
-    "version": "v1.1085",
+    "version": "v1.1090",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -54,6 +54,7 @@
             "/js/webapp/net/netByteWriter.js",
             "/js/webapp/net/netByteReader.js",
             "/js/webapp/net/netSignalCodec.js",
+            "/js/webapp/net/netReachability.js",
             "/js/webapp/net/netPairingCode.js",
             "/js/webapp/net/netLink.js",
             "/js/webapp/net/netPeerLink.js",

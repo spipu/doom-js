@@ -72,6 +72,22 @@ class NetLink {
         return '';
     }
 
+    /**
+     * @returns {{type: string, address: string, port: int, priority: int}[]} the addresses this side
+     *          put in its signal; empty when the transport has none (loopback)
+     */
+    getLocalCandidates() {
+        return [];
+    }
+
+    /**
+     * @returns {{type: string, address: string, port: int, priority: int}[]} the addresses read from
+     *          the other side's signal; empty before it was accepted, or when the transport has none
+     */
+    getRemoteCandidates() {
+        return [];
+    }
+
     isOpen() {
         return this._open;
     }

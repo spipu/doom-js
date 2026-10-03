@@ -6,6 +6,7 @@
 class NetPeerLink extends NetLink {
     /** @type {RTCPeerConnection}   */ _peer;
     /** @type {RTCDataChannel|null} */ _channel;
+    /** @type {object[]}            */ _remoteCandidates;
 
     /**
      * @param {string[]} stunServers
@@ -13,8 +14,9 @@ class NetPeerLink extends NetLink {
     constructor(stunServers = NetConfig.STUN_SERVERS) {
         super();
 
-        this._channel = null;
-        this._peer    = new RTCPeerConnection({iceServers: [{urls: stunServers}]});
+        this._channel          = null;
+        this._remoteCandidates = [];
+        this._peer             = new RTCPeerConnection({iceServers: [{urls: stunServers}]});
         this._peer.addEventListener('connectionstatechange', () => this._onConnectionState());
         this._peer.addEventListener('datachannel', (event) => this._bindChannel(event.channel));
     }
@@ -26,26 +28,25 @@ class NetPeerLink extends NetLink {
     }
 
     async acceptOffer(offer) {
-        await this._peer.setRemoteDescription(NetSignalCodec.decode(offer, 'offer'));
+        await this._setRemote(NetSignalCodec.decode(offer, 'offer'));
         await this._peer.setLocalDescription(NetPeerLink._passive(await this._peer.createAnswer()));
         return NetSignalCodec.encode(await this._gather());
     }
 
     async acceptAnswer(answer) {
-        await this._peer.setRemoteDescription(NetSignalCodec.decode(answer, 'answer'));
+        await this._setRemote(NetSignalCodec.decode(answer, 'answer'));
     }
 
-    /**
-     * Diagnostics only (the pairing test page), never read by a game.
-     *
-     * @returns {string[]} 'type address:port' of every local candidate put in the signal
-     */
     getLocalCandidates() {
         const description = this._peer.localDescription;
         if (description === null) {
             return [];
         }
-        return NetSignalCodec.candidatesOf(description.sdp).map(c => c.type + ' ' + c.address + ':' + c.port);
+        return NetSignalCodec.candidatesOf(description.sdp);
+    }
+
+    getRemoteCandidates() {
+        return this._remoteCandidates;
     }
 
     async describeRoute() {
@@ -75,6 +76,11 @@ class NetPeerLink extends NetLink {
     _closeTransport() {
         this._channel?.close();
         this._peer.close();
+    }
+
+    async _setRemote(signal) {
+        this._remoteCandidates = signal.candidates;
+        await this._peer.setRemoteDescription(signal.description);
     }
 
     // The joining side's ICE checks succeed before the inviting side has read its answer: as

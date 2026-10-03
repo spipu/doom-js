@@ -1,8 +1,9 @@
 /**
  * The pairing of one sub, over the menus: the code this device shows as a QR
- * code, the camera reading the other side's code, each with its caption, and
- * a cancel button. The session runs the flow; this modal is its view, and
- * turns every failure into an explicit message.
+ * code, the camera reading the other side's code, each with its caption, then
+ * the player being connected to, and a cancel button. The session runs the
+ * flow; this modal is its view, and turns every failure into an explicit
+ * message — a link that cannot open says which network to put both devices on.
  */
 class MenuPairingModal extends MenuModal {
     /**
@@ -17,8 +18,9 @@ class MenuPairingModal extends MenuModal {
     // The main invites one more sub: its code shown, the sub's answer read.
     openForMain(session) {
         return this._open(appTranslator.get('multiplayer.lobby.add'), {
-            show: appTranslator.get('multiplayer.pairing.showToSub'),
-            read: appTranslator.get('multiplayer.pairing.readSub')
+            show:       appTranslator.get('multiplayer.pairing.showToSub'),
+            read:       appTranslator.get('multiplayer.pairing.readSub'),
+            connecting: (payload) => MenuPairingModal._connectingTo(payload)
         }, false, session, (view) => session.addPlayer(view), () => {});
     }
 
@@ -31,14 +33,15 @@ class MenuPairingModal extends MenuModal {
      */
     openForSub(session, onPaired, onFailed) {
         return this._open(appTranslator.get('multiplayer.join'), {
-            show: appTranslator.get('multiplayer.pairing.showToMain'),
-            read: appTranslator.get('multiplayer.pairing.readMain')
+            show:       appTranslator.get('multiplayer.pairing.showToMain'),
+            read:       appTranslator.get('multiplayer.pairing.readMain'),
+            connecting: () => appTranslator.get('multiplayer.pairing.connecting')
         }, true, session, (view) => session.join(view), onPaired, onFailed);
     }
 
     /**
      * @param {string}                       title
-     * @param {{show: string, read: string}} captions   - under the code shown, under the camera while it reads
+     * @param {{show: string, read: string, connecting: function}} captions - see QrPairingView
      * @param {boolean}                      sequential - reads first, then shows: one frame at a time
      * @param {object}                       session    - its cancelPairing() and getCodeChannel()
      * @param {function(object): Promise}    pair       - runs the session's flow through the view
@@ -53,7 +56,8 @@ class MenuPairingModal extends MenuModal {
             qr:            MenuPairingModal._tile(stage, 'div', 'doom-menu-pairing-qr'),
             camera:        MenuPairingModal._tile(stage, 'video', 'doom-menu-pairing-camera'),
             qrCaption:     null,
-            cameraCaption: null
+            cameraCaption: null,
+            status:        MenuDom.addElement(stage, 'div', 'doom-menu-pairing-status')
         };
         elements.qrCaption     = MenuDom.addElement(elements.qr.parentElement, 'div', 'doom-menu-pairing-caption');
         elements.cameraCaption = MenuDom.addElement(elements.camera.parentElement, 'div', 'doom-menu-pairing-caption');
@@ -100,7 +104,19 @@ class MenuPairingModal extends MenuModal {
         new MenuModal(this._display).info(appTranslator.get(code));
     }
 
+    // The sub's answer names it; a payload that does not decode leaves the line nameless.
+    static _connectingTo(payload) {
+        try {
+            return appTranslator.get('multiplayer.pairing.connectingTo', {nickname: DoomNetInvite.decodeAnswer(payload)});
+        } catch (error) {
+            return appTranslator.get('multiplayer.pairing.connecting');
+        }
+    }
+
     static _errorCode(error) {
+        if ((error instanceof NetError) && MenuPairingModal.NETWORK_CODES.includes(error.getCode())) {
+            return (MenuPairingModal.NETWORK_MESSAGES[error.getDetail()] ?? MenuPairingModal.NETWORK_DEFAULT);
+        }
         if (error instanceof NetError) {
             return (MenuPairingModal.ERROR_CODES[error.getCode()] ?? MenuPairingModal.ERROR_DEFAULT);
         }
@@ -125,8 +141,15 @@ MenuPairingModal.ERROR_CODES   = {
     [NetError.VERSION_MISMATCH]:  'multiplayer.error.version',
     [DoomNetInvite.WAD_MISMATCH]: 'multiplayer.error.wad',
     [NetError.INVITE_USED]:       'multiplayer.error.invite',
-    [NetError.UNKNOWN_INVITE]:    'multiplayer.error.invite',
-    [NetError.LINK_LOST]:         'multiplayer.error.linkLost'
+    [NetError.UNKNOWN_INVITE]:    'multiplayer.error.invite'
+};
+// A link that could not open: the message follows the network verdict carried by the error.
+MenuPairingModal.NETWORK_CODES    = [NetError.LINK_LOST, NetError.CONNECT_TIMEOUT, NetError.UNREACHABLE];
+MenuPairingModal.NETWORK_DEFAULT  = 'multiplayer.error.connect';
+MenuPairingModal.NETWORK_MESSAGES = {
+    [NetReachability.SAME_NETWORK]: 'multiplayer.error.sameNetwork',
+    [NetReachability.INTERNET]:     'multiplayer.error.otherNetwork',
+    [NetReachability.UNREACHABLE]:  'multiplayer.error.otherNetwork'
 };
 // The camera refused, missing or busy (getUserMedia).
 MenuPairingModal.CAMERA_ERRORS = ['NotAllowedError', 'NotFoundError', 'NotReadableError', 'OverconstrainedError'];

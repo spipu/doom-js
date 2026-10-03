@@ -761,6 +761,23 @@
     text-align: center;
 }
 
+/* The codes are exchanged: the link being opened replaces both tiles. */
+.doom-menu-pairing-status {
+    flex: 1 1 0;
+    align-self: center;
+    padding: 3em 0;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: center;
+}
+
+.doom-menu-pairing-status:empty {
+    display: none;
+}
+
+.doom-menu-pairing-stage:has(> .doom-menu-pairing-status:not(:empty)) .doom-menu-pairing-tile {
+    display: none;
+}
+
 /* --- Message over the running game (a turn waiting for a player) --- */
 
 .doom-game-notice {

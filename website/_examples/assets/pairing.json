@@ -1,5 +1,5 @@
 {
-    "version": "v1.23",
+    "version": "v1.26",
     "files": {
         "assets": [
             "/js/lib/zxing-wasm/zxing_full.wasm"
@@ -15,6 +15,7 @@
             "/js/webapp/net/netByteWriter.js",
             "/js/webapp/net/netByteReader.js",
             "/js/webapp/net/netSignalCodec.js",
+            "/js/webapp/net/netReachability.js",
             "/js/webapp/net/netPairingCode.js",
             "/js/webapp/net/netLink.js",
             "/js/webapp/net/netPeerLink.js",

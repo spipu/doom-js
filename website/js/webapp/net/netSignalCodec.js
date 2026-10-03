@@ -34,7 +34,7 @@ class NetSignalCodec {
     /**
      * @param {Uint8Array} bytes
      * @param {string}     type  - 'offer' | 'answer'
-     * @returns {RTCSessionDescriptionInit}
+     * @returns {{description: RTCSessionDescriptionInit, candidates: {type: string, address: string, port: int, priority: int}[]}}
      */
     static decode(bytes, type) {
         const reader = new NetByteReader(bytes);
@@ -54,7 +54,7 @@ class NetSignalCodec {
         if (!reader.isAtEnd()) {
             throw new NetError(NetError.INVALID_SIGNAL, 'Trailing bytes in the signal');
         }
-        return {type, sdp: NetSignalCodec._buildSdp(signal)};
+        return {description: {type, sdp: NetSignalCodec._buildSdp(signal)}, candidates: signal.candidates};
     }
 
     /**
@@ -148,7 +148,7 @@ class NetSignalCodec {
             writer.u8(NetSignalCodec.ADDRESS_IPV4).bytes(address.split('.').map(Number));
             return;
         }
-        const ipv6 = NetSignalCodec._ipv6ToBytes(address);
+        const ipv6 = NetSignalCodec.ipv6ToBytes(address);
         if (ipv6 !== null) {
             writer.u8(NetSignalCodec.ADDRESS_IPV6).bytes(ipv6);
             return;
@@ -183,8 +183,13 @@ class NetSignalCodec {
         return groups.join('-');
     }
 
-    // A zone id or a mapped IPv4 would be silently corrupted: null sends them as names.
-    static _ipv6ToBytes(address) {
+    /**
+     * A zone id or a mapped IPv4 would be silently corrupted: null sends them as names.
+     *
+     * @param {string} address
+     * @returns {Uint8Array|null} the 16 bytes of an IPv6 address, null for anything else
+     */
+    static ipv6ToBytes(address) {
         const halves = address.split('::');
         if ((halves.length > 2) || !address.includes(':')) {
             return null;

@@ -1,6 +1,6 @@
 /**
  * Pairing flow of the joining side: invite read, answer shown, link open once the inviting
- * side has read the answer.
+ * side has read the answer — within NetConfig.ANSWER_CONNECT_TIMEOUT_MS, scan included.
  */
 class NetGuestPairing extends NetPairing {
     /**
@@ -15,8 +15,9 @@ class NetGuestPairing extends NetPairing {
                 const invite = await this._readCode(NetPairingCode.KIND_INVITE);
                 const answer = await this._session.acceptInvite(invite, payloadFor);
                 this._throwIfCancelled();
+                const verdict = this._verdictOf(answer.link);
                 await this._view.showCode(answer.code, answer.link);
-                await this._session.getHost().whenOpen();
+                await this._awaitOpen(this._session.getHost(), NetConfig.ANSWER_CONNECT_TIMEOUT_MS, verdict);
                 return answer;
             } catch (error) {
                 this._session.close();

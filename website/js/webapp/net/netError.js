@@ -1,20 +1,27 @@
 /**
- * Typed error of the network layer: its code tells the caller which explicit message to show.
+ * Typed error of the network layer: its code tells the caller which explicit message to show,
+ * its detail refines it (the network verdict of a connection that could not open).
  */
 class NetError extends Error {
     /**
-     * @param {string} code    - one of the NetError constants
-     * @param {string} message - English, console-bound
+     * @param {string}      code    - one of the NetError constants
+     * @param {string}      message - English, console-bound
+     * @param {string|null} detail  - code-specific refinement, null when the code says it all
      */
-    constructor(code, message) {
+    constructor(code, message, detail = null) {
         super(message);
 
-        this.name  = 'NetError';
-        this._code = code;
+        this.name    = 'NetError';
+        this._code   = code;
+        this._detail = detail;
     }
 
     getCode() {
         return this._code;
+    }
+
+    getDetail() {
+        return this._detail;
     }
 }
 
@@ -26,4 +33,6 @@ NetError.INVITE_USED      = 'invite-used';
 NetError.INVALID_SIGNAL   = 'invalid-signal';
 NetError.INVALID_MESSAGE  = 'invalid-message';
 NetError.LINK_LOST        = 'link-lost';
+NetError.UNREACHABLE      = 'unreachable';
+NetError.CONNECT_TIMEOUT  = 'connect-timeout';
 NetError.CANCELLED        = 'cancelled';

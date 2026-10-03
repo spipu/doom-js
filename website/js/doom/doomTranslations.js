@@ -1052,6 +1052,18 @@ class DoomTranslations {
                 it: 'Inquadra la risposta dell\'altro dispositivo',
                 es: 'Escanea la respuesta del otro dispositivo'
             },
+            'multiplayer.pairing.connecting': {
+                fr: 'Connexion en cours…',
+                en: 'Connecting…',
+                it: 'Connessione in corso…',
+                es: 'Conectando…'
+            },
+            'multiplayer.pairing.connectingTo': {
+                fr: 'Connexion à {nickname} en cours…',
+                en: 'Connecting to {nickname}…',
+                it: 'Connessione a {nickname} in corso…',
+                es: 'Conectando con {nickname}…'
+            },
             'multiplayer.lobby.title': {
                 fr: 'Salon — {count}/{capacity} joueurs',
                 en: 'Lobby — {count}/{capacity} players',
@@ -1244,11 +1256,23 @@ class DoomTranslations {
                 it: 'Questo codice è già stato usato: aggiungi di nuovo il giocatore',
                 es: 'Este código ya se usó: añade de nuevo al jugador'
             },
-            'multiplayer.error.linkLost': {
-                fr: 'La connexion n\'a pas pu être établie',
-                en: 'The connection could not be established',
-                it: 'Impossibile stabilire la connessione',
-                es: 'No se pudo establecer la conexión'
+            'multiplayer.error.connect': {
+                fr: 'La connexion entre les deux appareils n\'a pas pu être établie : mettez-les sur le même Wi-Fi, ou sur le partage de connexion de l\'un d\'eux',
+                en: 'The two devices could not connect: put them on the same Wi-Fi, or on one device\'s hotspot',
+                it: 'I due dispositivi non sono riusciti a connettersi: mettili sulla stessa rete Wi-Fi, o sull\'hotspot di uno dei due',
+                es: 'Los dos dispositivos no pudieron conectarse: ponlos en la misma red Wi-Fi, o en el punto de acceso de uno de ellos'
+            },
+            'multiplayer.error.otherNetwork': {
+                fr: 'L\'autre appareil est sur un autre réseau (Wi-Fi contre données mobiles, par exemple) : mettez les deux appareils sur le même Wi-Fi, ou sur le partage de connexion de l\'un d\'eux',
+                en: 'The other device is on another network (Wi-Fi against mobile data, for instance): put both devices on the same Wi-Fi, or on one device\'s hotspot',
+                it: 'L\'altro dispositivo è su un\'altra rete (Wi-Fi contro dati mobili, per esempio): metti entrambi i dispositivi sulla stessa rete Wi-Fi, o sull\'hotspot di uno dei due',
+                es: 'El otro dispositivo está en otra red (Wi-Fi frente a datos móviles, por ejemplo): pon ambos dispositivos en la misma red Wi-Fi, o en el punto de acceso de uno de ellos'
+            },
+            'multiplayer.error.sameNetwork': {
+                fr: 'Les deux appareils sont sur le même réseau mais ne parviennent pas à se joindre : ce Wi-Fi isole peut-être ses appareils entre eux (réseau invité)',
+                en: 'The two devices are on the same network but cannot reach each other: this Wi-Fi may keep its devices apart (guest network)',
+                it: 'I due dispositivi sono sulla stessa rete ma non riescono a raggiungersi: questo Wi-Fi forse isola i suoi dispositivi (rete ospiti)',
+                es: 'Los dos dispositivos están en la misma red pero no logran comunicarse: este Wi-Fi quizá aísla sus dispositivos entre sí (red de invitados)'
             },
             'multiplayer.error.pairing': {
                 fr: 'L\'appairage a échoué',

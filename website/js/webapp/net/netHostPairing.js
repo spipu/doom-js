@@ -1,6 +1,6 @@
 /**
  * Pairing flow of the inviting side: one call adds one peer — invite shown, answer read,
- * link open. Called again for every further peer.
+ * link open within NetConfig.CONNECT_TIMEOUT_MS. Called again for every further peer.
  */
 class NetHostPairing extends NetPairing {
     /** @type {NetPeer|null} */ _pendingPeer;
@@ -31,7 +31,9 @@ class NetHostPairing extends NetPairing {
                 this._view.hideCode();
                 this._pendingPeer = await this._session.acceptAnswer(answer);
                 this._throwIfCancelled();
-                return await this._pendingPeer.whenOpen();
+                const verdict = this._verdictOf(this._pendingPeer.getLink());
+                this._view.connecting(this._pendingPeer.getPayload());
+                return await this._awaitOpen(this._pendingPeer, NetConfig.CONNECT_TIMEOUT_MS, verdict);
             } catch (error) {
                 this._session.cancelInvite(invite.inviteId);
                 this._abort();

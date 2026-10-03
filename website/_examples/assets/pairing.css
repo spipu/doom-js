@@ -12,6 +12,9 @@ button:disabled { opacity: 0.4; }
 .frame.shown    { visibility: visible; }
 .frame.zoomed   { position: fixed; inset: 0; width: 100vw; height: 100vh; aspect-ratio: auto; z-index: 10; cursor: zoom-out; }
 .caption        { text-align: center; color: #FFD27A; margin-top: 6px; min-height: 1.4em; }
+.connecting     { flex: 1 1 0; align-self: center; text-align: center; color: #FFD27A; font-size: 16px; }
+.connecting:empty { display: none; }
+#stage:has(> .connecting:not(:empty)) .tile { display: none; }
 #qr             { background: #000; }
 #qr svg         { width: 100%; height: 100%; display: block; }
 #camera         { object-fit: cover; background: #000; }
