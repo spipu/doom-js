@@ -3,12 +3,13 @@
  * Golden-master bench of Spipu-Doom, run from the repository root:
  *
  *   node bench/run.js                      every suite against bench/golden/
- *   node bench/run.js --suite build        one suite (build | simulation | codecs | save | replica | progression | static | net)
+ *   node bench/run.js --suite build        one suite (build | simulation | codecs | save | replica | progression | static | net | perf)
  *   node bench/run.js --wad Doom1 --wad heretic
  *   node bench/run.js --update             rewrite the golden files from this run
  *   node bench/run.js --verbose            echo the app's console
  *
  * A wanted difference is recorded by --update in the same commit as its cause.
+ * A field prefixed "~" (a wall time) is informative: printed next to its golden value, never compared.
  */
 const {BenchRunner} = require('./benchRunner');
 

@@ -7,6 +7,7 @@ const fs   = require('fs');
 const path = require('path');
 const {BenchContext}         = require('./lib/benchContext');
 const {BenchWads}            = require('./lib/benchWads');
+const {BenchGolden}          = require('./lib/benchGolden');
 const {BenchBuildSuite}       = require('./suite/benchBuildSuite');
 const {BenchSimulationSuite}  = require('./suite/benchSimulationSuite');
 const {BenchCodecsSuite}      = require('./suite/benchCodecsSuite');
@@ -15,6 +16,7 @@ const {BenchReplicaSuite}     = require('./suite/benchReplicaSuite');
 const {BenchProgressionSuite} = require('./suite/benchProgressionSuite');
 const {BenchStaticSuite}      = require('./suite/benchStaticSuite');
 const {BenchNetSuite}         = require('./suite/benchNetSuite');
+const {BenchPerfSuite}        = require('./suite/benchPerfSuite');
 
 class BenchRunner {
     /**
@@ -86,11 +88,15 @@ class BenchRunner {
                 failures++;
                 continue;
             }
-            if (JSON.stringify(expected) === JSON.stringify(result[key])) {
+            const informed = BenchGolden.inform(expected, result[key]);
+            if (informed !== null) {
+                process.stdout.write('[' + suiteName + '] ' + key + ': ' + informed + '\n');
+            }
+            if (BenchGolden.same(expected, result[key])) {
                 continue;
             }
             failures++;
-            process.stdout.write('[' + suiteName + '] ' + key + ': CHANGED' + BenchRunner._describe(expected, result[key]) + '\n');
+            process.stdout.write('[' + suiteName + '] ' + key + ': CHANGED' + BenchGolden.describe(expected, result[key]) + '\n');
         }
         if (partial === false) {
             for (const key of Object.keys(golden)) {
@@ -106,18 +112,6 @@ class BenchRunner {
         return failures;
     }
 
-    // The readable counts that differ; the shas alone say nothing to a reader.
-    static _describe(expected, actual) {
-        const parts = [];
-        for (const field of new Set([...Object.keys(expected), ...Object.keys(actual)])) {
-            if ((!field.toLowerCase().endsWith('sha')) && (JSON.stringify(expected[field]) !== JSON.stringify(actual[field]))) {
-                parts.push(field + ' ' + JSON.stringify(expected[field]) + ' → ' + JSON.stringify(actual[field]));
-            }
-        }
-
-        return ((parts.length > 0) ? (' (' + parts.join(', ') + ')') : ' (same counts, different content)');
-    }
-
     static _values(argv, flag) {
         const values = [];
         argv.forEach((arg, i) => {
@@ -131,7 +125,7 @@ class BenchRunner {
 }
 
 BenchRunner.GOLDEN_DIR     = path.join(__dirname, 'golden');
-BenchRunner.SUITES         = [BenchBuildSuite, BenchSimulationSuite, BenchCodecsSuite, BenchSaveSuite, BenchReplicaSuite, BenchProgressionSuite, BenchStaticSuite, BenchNetSuite];
+BenchRunner.SUITES         = [BenchBuildSuite, BenchSimulationSuite, BenchCodecsSuite, BenchSaveSuite, BenchReplicaSuite, BenchProgressionSuite, BenchStaticSuite, BenchNetSuite, BenchPerfSuite];
 BenchRunner.PROGRESS_WIDTH = 100;
 BenchRunner.MS_PER_S       = 1000;
 
