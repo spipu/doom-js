@@ -2,6 +2,8 @@
  * Drives a scenario through DoomMainRole, the path the game takes without
  * its presentation: build, enter, then one advance() per frame with the
  * scripted command. Returns the per-frame trace and the final save snapshot.
+ * A run may instead resume a save: the level is rebuilt and restored as
+ * DoomGame does on a load, and the frames start where the save was taken.
  */
 const {BenchLevelBuild} = require('./benchLevelBuild');
 const {BenchScenario}   = require('./benchScenario');
@@ -19,20 +21,22 @@ class BenchSimulationRun {
      * @param {object}        wadFile  - WadFile of the context
      * @param {BenchScenario} scenario
      * @param {object|null}   hooks    - {afterEnter(ctx), afterFrame(frame, ctx)}, called inside the context
-     * @returns {Promise<{trace: Array, snapshot: object, exits: boolean[], dead: boolean, energy: number}>}
+     * @param {object|null}   restore  - {snapshot, fromFrame}: the save to resume from, and the first frame played
+     * @returns {Promise<{trace: Array, snapshot: object, reloaded: object|null, exits: boolean[], dead: boolean, energy: number}>}
+     *          reloaded = the save captured again right after the restore, before any frame
      */
-    run(wadFile, scenario, hooks = null) {
+    run(wadFile, scenario, hooks = null, restore = null) {
         this._app.seedRandom(BenchSimulationRun.SEED);
         const build = (wad, game, code, options) => this._builds.build(wad, game, code, options);
 
-        return this._app.run(BenchSimulationRun.RUN_SCRIPT, {__build: build, __precision: BenchSimulationRun.TRACE_PRECISION})(wadFile, scenario.toData(), BenchScenario.FRAME_MS, (hooks ?? {}));
+        return this._app.run(BenchSimulationRun.RUN_SCRIPT, {__build: build, __precision: BenchSimulationRun.TRACE_PRECISION})(wadFile, scenario.toData(), BenchScenario.FRAME_MS, (hooks ?? {}), restore);
     }
 }
 
 BenchSimulationRun.SEED            = 7;
 BenchSimulationRun.TRACE_PRECISION = 10000;
 
-BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks) => {
+BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks, restore) => {
     const game   = {profile: new GameProfileList().getForWad(wadFile)};
     game.itemCatalog = new DoomItemCatalog(game.profile);
     const roster = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomPlayer.MAIN_ID));
@@ -44,7 +48,14 @@ BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks) => {
     events.addListener((event) => frameEvents.push(event.type + ((event.name !== undefined) ? (':' + event.name) : '')));
 
     const {built, world} = await __build(wadFile, game, scenario.level, {skill: scenario.skill, role: role, events: events, onLevelExit: (secret) => exits.push(secret)});
-    role.enterLevel(world, null, null);
+    const saved = ((restore !== null) ? restore.snapshot : null);
+    role.enterLevel(world, saved, ((saved !== null) ? DoomGameSnapshot.spawnOverrideOf(saved) : null));
+    let reloaded = null;
+    if (saved !== null) {
+        role.restoreSnapshot(saved);
+        reloaded = role.captureSnapshot(saved.wadId, scenario.level);
+        delete reloaded.savedAt;
+    }
     if (hooks.afterEnter !== undefined) {
         hooks.afterEnter({role: role, roster: roster, built: built, events: events});
     }
@@ -53,7 +64,7 @@ BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks) => {
     const trace = [];
     const round = (v) => (Math.round(v * __precision) / __precision);
     let step = 0;
-    for (let frame = 0; frame < scenario.frames; frame++) {
+    for (let frame = ((restore !== null) ? restore.fromFrame : 0); frame < scenario.frames; frame++) {
         while (scenario.plan[step].until <= frame) {
             step++;
         }
@@ -73,7 +84,7 @@ BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks) => {
     const snapshot = role.captureSnapshot('bench', scenario.level);
     delete snapshot.savedAt;
 
-    return {trace: trace, snapshot: snapshot, exits: exits, dead: user.isDead(), energy: user.getEnergy()};
+    return {trace: trace, snapshot: snapshot, reloaded: reloaded, exits: exits, dead: user.isDead(), energy: user.getEnergy()};
 })`;
 
 module.exports = {BenchSimulationRun};

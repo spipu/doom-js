@@ -1,0 +1,62 @@
+{
+  "Doom1/E1M1@3": {
+    "idempotent": true,
+    "maxDrift": 0.12,
+    "endDrift": 0,
+    "frames": 599,
+    "resumedSha": "f3c74e9e845be8ecddab49268e285aa85c0f6792c60cfaa2075cc78c35e5081c",
+    "saveSha": "09c5e49c66ecb8c8473c53c2f2a35a3284f83632a9b2525cfd97065416489c0c",
+    "endSaveSha": "04a87abac10c41bb49e44d7820aead0bcb72a00b02d95178550eaf2fcbe2bcc9",
+    "dead": false,
+    "energy": 82.60751129547552,
+    "uninterruptedEnergy": 84.20723811538952
+  },
+  "Doom2/MAP01@3": {
+    "idempotent": true,
+    "maxDrift": 0.927,
+    "endDrift": 0.281,
+    "frames": 599,
+    "resumedSha": "d45074b79f7c9444abb7159f6c9763c431793204ae539af51d573e5c5a425040",
+    "saveSha": "64fb38e254da5733bd0dbe45affef38103c52517593d2b2993297d719b0835c1",
+    "endSaveSha": "bad0f323c36ce146f71b3c4acd8205e206313457371f8cfe0a7cdcbc0953a32b",
+    "dead": false,
+    "energy": 74.5,
+    "uninterruptedEnergy": 62.5
+  },
+  "freedoom1/E1M1@3": {
+    "idempotent": true,
+    "maxDrift": 0.853,
+    "endDrift": 0,
+    "frames": 599,
+    "resumedSha": "07e44e8a2b2108c41ba88ab08675f2f9e941e92a6840ff3039f98ecc8e281e5b",
+    "saveSha": "025e33834030b28d62ce1a627374c4c790e2a60d8ed1ba197d8fffcd2d02d315",
+    "endSaveSha": "1664b054e532235429a4566200c850a7abed150f6779bee4f166b3ea3515ad26",
+    "dead": false,
+    "energy": 44.833144773724825,
+    "uninterruptedEnergy": 44.833144773724825
+  },
+  "heretic/E1M1@3": {
+    "idempotent": true,
+    "maxDrift": 16.232,
+    "endDrift": 15.974,
+    "frames": 599,
+    "resumedSha": "69e69aefd049358655a2899d43773c54430d1597d8f3418ee65710368ee89fcb",
+    "saveSha": "d612efdef1d343b62ec76e984133e399b79d08ff026580c08d0bc8229b0a08f2",
+    "endSaveSha": "559c1e0a384e0973f5233bf24f3f1b321c232ffb9dc261bb07a4bcdaa10b6d3f",
+    "dead": true,
+    "energy": 0,
+    "uninterruptedEnergy": 2
+  },
+  "heretic/E1M3@3": {
+    "idempotent": true,
+    "maxDrift": 0.241,
+    "endDrift": 0,
+    "frames": 599,
+    "resumedSha": "fc09cf6bce4bf7bc7a7af23b8b50ec23098b532608d756f37ae3dab4fd7936b9",
+    "saveSha": "2e31faec382feae72d67975f773a576d2c76c3c870a495752bb9a0ee3e4f131b",
+    "endSaveSha": "a11a1100bdd962e4519dfff778d96bba9278603d7be74044b5b0306942acdf4a",
+    "dead": false,
+    "energy": 97.75,
+    "uninterruptedEnergy": 100
+  }
+}
