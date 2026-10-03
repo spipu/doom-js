@@ -27,7 +27,9 @@
 
 ### Banc de non-régression
 
-* Lancer `node bench/run.js` **avant tout commit** touchant `js/engine/`, `js/doom/wad/`, la simulation (`doomSimulation.js`, `doomMainRole.js`, `monster/`, `weapon/`) ou `net/`. Il rejoue la construction de tous les niveaux des WAD de `./.source/wad/`, des scénarios de simulation et les codecs réseau, et compare leurs empreintes aux goldens de `bench/golden/`.
+* Lancer `node bench/run.js` **avant tout commit** touchant `js/engine/`, `js/doom/wad/`, la simulation (`doomSimulation.js`, `doomMainRole.js`, `monster/`, `weapon/`), `net/`, `doomTranslations.js` ou un `libBootstrap.json`. Il rejoue neuf suites et compare leurs empreintes aux goldens de `bench/golden/` : `build` (construction de tous les niveaux des WAD de `./.source/wad/`), `simulation` (scénarios pilotés image par image), `codecs` (état et commandes réseau), `save` (aller-retour de sauvegarde), `replica` (main et sub câblés par le cycle de tours), `progression` (sorties, finales, musiques et noms par niveau), `static` (catalogue de traductions complet dans toutes les langues, codes résolus, bootstraps cohérents avec le disque), `net` (signal compact, appairage, découpage, joignabilité, lobby) et `perf` (compteurs de travail déterministes des chemins chauds).
+* Un champ de golden préfixé `~` (le temps par image de `perf`) est informatif : affiché face à sa valeur golden, jamais comparé. Les autres champs sont tous comparés.
+* Le banc est documenté ici et dans la base documentaire, jamais dans `README.md`.
 * Toute ligne `CHANGED` doit être un écart voulu et expliqué ; on régénère alors les goldens avec `node bench/run.js --update` **dans le même commit** que la modification qui les change. Ne jamais mettre à jour un golden pour faire taire une différence qu'on ne comprend pas.
 
 ### Messages de commit
