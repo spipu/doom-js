@@ -24,13 +24,13 @@
   },
   "bootstrap/doom": {
     "versionValid": true,
-    "declared": 265,
+    "declared": 268,
     "missing": [],
     "duplicates": [],
     "undeclared": []
   },
   "bootstrap/webapp": {
-    "files": 30,
+    "files": 32,
     "undeclared": []
   }
 }

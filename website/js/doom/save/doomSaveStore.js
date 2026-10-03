@@ -1,10 +1,10 @@
 /**
- * Persistence of the save slots (spipudoom database, stores saveMeta/saveData).
+ * Persistence of the save slots (spipudoom database, stores save/saveFile).
  *
- * Saves are partitioned by WAD and limited to MAX_SLOTS slots each; the
- * WAD+slot unicity is carried by the primary key itself (saveId). The light
- * metadata lives apart from the snapshot so listing the slots never
- * deserializes a full game state. Snapshots must stay pure JSON-safe data.
+ * Saves are partitioned by WAD and limited to MAX_SLOTS slots each; a unique
+ * index keeps one save per WAD and slot. The light metadata lives apart from
+ * the snapshot so listing the slots never deserializes a full game state.
+ * Snapshots must stay pure JSON-safe data.
  */
 class DoomSaveStore {
     static MAX_SLOTS      = 5;
@@ -12,10 +12,6 @@ class DoomSaveStore {
 
     constructor() {
         this._database = null;
-    }
-
-    static saveId(wadId, slot) {
-        return wadId + ':' + slot;
     }
 
     /**
@@ -30,58 +26,59 @@ class DoomSaveStore {
     /**
      * Metadata of every used slot of a WAD, keyed by slot number.
      *
-     * @param {string} wadId
+     * @param {int} wadId
      * @returns {Promise<Object<number, object>>}
      */
     async list(wadId) {
-        const rows = await this._database.getAll('saveMeta');
         const slots = Object.create(null);
-        for (const meta of rows) {
-            if (meta.wadId === wadId) {
-                slots[meta.slot] = meta;
-            }
+        for (const meta of await this._database.getAllByIndex(DoomDatabaseSchema.SAVE, DoomDatabaseSchema.SAVE_BY_WAD, wadId)) {
+            slots[meta.slot] = meta;
         }
 
         return slots;
     }
 
     /**
-     * @param {string} wadId
+     * @param {int}    wadId
      * @param {number} slot
      * @returns {Promise<{meta: object, snapshot: object}>}
      */
     async read(wadId, slot) {
-        const id = DoomSaveStore.saveId(wadId, slot);
-        const meta = await this._database.get('saveMeta', id);
-        const record = await this._database.get('saveData', id);
-
-        if ((meta === null) || (record === null)) {
-            throw new Error('Save not found: ' + id);
+        const meta   = await this._slot(wadId, slot);
+        const record = ((meta !== null) ? await this._database.get(DoomDatabaseSchema.SAVE_FILE, meta.id) : null);
+        if (record === null) {
+            throw new Error('Save not found: WAD ' + wadId + ', slot ' + slot);
         }
 
         return {meta: meta, snapshot: record.snapshot};
     }
 
     /**
-     * Write metadata + snapshot in a single transaction; an existing slot is
+     * Writes metadata + snapshot in a single transaction; an existing slot is
      * replaced (the caller confirms the overwrite beforehand).
      *
-     * @param {object} meta - {id, wadId, slot, levelCode, skill, savedAt, formatVersion}
+     * @param {object} meta - {wadId, slot, levelCode, skill, savedAt, formatVersion}
      * @param {object} snapshot
      */
     async write(meta, snapshot) {
-        await this._database.putMulti([
-            {storeName: 'saveMeta', record: meta},
-            {storeName: 'saveData', record: {id: meta.id, snapshot: snapshot}}
+        await this._database.upsert(DoomDatabaseSchema.SAVE, DoomDatabaseSchema.SAVE_BY_SLOT, meta, [
+            {storeName: DoomDatabaseSchema.SAVE_FILE, record: {snapshot: snapshot}}
         ]);
     }
 
     async remove(wadId, slot) {
-        const id = DoomSaveStore.saveId(wadId, slot);
+        const meta = await this._slot(wadId, slot);
+        if (meta === null) {
+            return;
+        }
         await this._database.deleteMulti([
-            {storeName: 'saveMeta', key: id},
-            {storeName: 'saveData', key: id}
+            {storeName: DoomDatabaseSchema.SAVE, key: meta.id},
+            {storeName: DoomDatabaseSchema.SAVE_FILE, key: meta.id}
         ]);
+    }
+
+    async _slot(wadId, slot) {
+        return this._database.getByIndex(DoomDatabaseSchema.SAVE, DoomDatabaseSchema.SAVE_BY_SLOT, [wadId, slot]);
     }
 }
 

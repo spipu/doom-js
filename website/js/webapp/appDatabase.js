@@ -1,19 +1,13 @@
 class AppDatabase {
-    /** @type {string}      */ _dbName;
-    /** @type {int}         */ _dbVersion;
-    /** @type {object[]}    */ _storeDefinitions;
-    /** @type {IDBDatabase} */ _db;
+    /** @type {AppDatabaseSchema} */ _schema;
+    /** @type {IDBDatabase}       */ _db;
 
     /**
-     * @param {string}   dbName
-     * @param {int}      dbVersion
-     * @param {object[]} storeDefinitions - [{name: string, keyPath: string}]
+     * @param {AppDatabaseSchema} schema
      */
-    constructor(dbName, dbVersion, storeDefinitions) {
-        this._dbName = dbName;
-        this._dbVersion = dbVersion;
-        this._storeDefinitions = storeDefinitions;
-        this._db = null;
+    constructor(schema) {
+        this._schema = schema;
+        this._db     = null;
     }
 
     isOpen() {
@@ -30,30 +24,30 @@ class AppDatabase {
         }
 
         this._db = await new Promise((resolve, reject) => {
-            const request = window.indexedDB.open(this._dbName, this._dbVersion);
-            request.onupgradeneeded = () => {
-                this._createMissingStores(request.result);
+            const request = window.indexedDB.open(this._schema.getName(), this._schema.getVersion());
+            let failure   = null;
+            request.onupgradeneeded = (event) => {
+                this._schema.upgrade(new AppDatabaseUpgrade(request.result, request.transaction), event.oldVersion).catch((error) => {
+                    failure = error;
+                    request.transaction.abort();
+                });
+            };
+            request.onblocked = () => {
+                console.warn('AppDatabase - the upgrade of [' + this._schema.getName() + '] waits for its other tabs to close');
             };
             request.onsuccess = () => {
                 resolve(request.result);
             };
             request.onerror = () => {
-                reject(request.error);
+                reject(failure ?? request.error);
             };
         });
+        // A later version opened in another tab must not wait for this one.
+        this._db.onversionchange = () => {
+            this._db.close();
+        };
 
         return this;
-    }
-
-    /**
-     * @param {IDBDatabase} db
-     */
-    _createMissingStores(db) {
-        for (const definition of this._storeDefinitions) {
-            if (!db.objectStoreNames.contains(definition.name)) {
-                db.createObjectStore(definition.name, {keyPath: definition.keyPath});
-            }
-        }
     }
 
     async put(storeName, record) {
@@ -71,6 +65,53 @@ class AppDatabase {
         const store = this._transaction([storeName], 'readonly').objectStore(storeName);
 
         return this._promisifyRequest(store.getAll());
+    }
+
+    async getByIndex(storeName, indexName, value) {
+        const index  = this._transaction([storeName], 'readonly').objectStore(storeName).index(indexName);
+        const result = await this._promisifyRequest(index.get(value));
+
+        return ((result === undefined) ? null : result);
+    }
+
+    async getAllByIndex(storeName, indexName, value) {
+        const index = this._transaction([storeName], 'readonly').objectStore(storeName).index(indexName);
+
+        return this._promisifyRequest(index.getAll(value));
+    }
+
+    async clear(storeName) {
+        const transaction = this._transaction([storeName], 'readwrite');
+        transaction.objectStore(storeName).clear();
+
+        await this._promisifyTransaction(transaction);
+    }
+
+    /**
+     * Adds a record under a new id, with its linked records stored under the
+     * same id, in a single transaction.
+     *
+     * @param {string}   storeName
+     * @param {object}   record - its id, if any, is ignored
+     * @param {object[]} linked - [{storeName, record}], one-to-one with the record
+     * @returns {Promise<int>} the id
+     */
+    async insert(storeName, record, linked = []) {
+        return this._putUnderId(storeName, record, null, linked);
+    }
+
+    /**
+     * Writes a record over the one a unique index finds, or under a new id,
+     * with its linked records, in a single transaction.
+     *
+     * @param {string}   storeName
+     * @param {string}   indexName - a unique index of the store
+     * @param {object}   record    - its id, if any, is ignored
+     * @param {object[]} linked    - [{storeName, record}], one-to-one with the record
+     * @returns {Promise<int>} the id
+     */
+    async upsert(storeName, indexName, record, linked = []) {
+        return this._putUnderId(storeName, record, indexName, linked);
     }
 
     async delete(storeName, key) {
@@ -117,6 +158,41 @@ class AppDatabase {
         }
 
         await this._promisifyTransaction(transaction);
+    }
+
+    // The lookup and the write share the transaction: no other writer can slip in between.
+    _putUnderId(storeName, record, indexName, linked) {
+        const transaction = this._transaction([storeName, ...linked.map((item) => item.storeName)], 'readwrite');
+        const store       = transaction.objectStore(storeName);
+        const done        = this._promisifyTransaction(transaction);
+        let id            = null;
+        const write = (existingId) => {
+            const stored = Object.assign({}, record);
+            delete stored[store.keyPath];
+            if (existingId !== undefined) {
+                stored[store.keyPath] = existingId;
+            }
+            store.put(stored).onsuccess = (event) => {
+                id = event.target.result;
+                for (const item of linked) {
+                    transaction.objectStore(item.storeName).put(Object.assign({}, item.record, {[store.keyPath]: id}));
+                }
+            };
+        };
+        if (indexName === null) {
+            write(undefined);
+        } else {
+            const index = store.index(indexName);
+            index.getKey(AppDatabase._indexValue(index, record)).onsuccess = (event) => {
+                write(event.target.result);
+            };
+        }
+
+        return done.then(() => id);
+    }
+
+    static _indexValue(index, record) {
+        return ((Array.isArray(index.keyPath)) ? index.keyPath.map((path) => record[path]) : record[index.keyPath]);
     }
 
     _transaction(storeNames, mode) {

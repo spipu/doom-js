@@ -80,7 +80,7 @@ class DoomPresentation {
      * @param {DoomBuiltLevel} builtLevel - what the world builder handed back for it
      * @param {DoomLevelStats} stats
      * @param {DoomPlayer}     player     - the viewed one
-     * @param {{wadId: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
+     * @param {{wadId: int|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
     showLevel(world, builtLevel, stats, player, levelInfo) {
         this._world              = world;

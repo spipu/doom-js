@@ -30,7 +30,7 @@ class MenuNavigator {
      *     given location instead of the WAD spawn.
      * An unknown WAD falls back to the normal WAD list.
      *
-     * @param {string|null} wadName       WAD name or id (case-insensitive, with or without ".wad")
+     * @param {string|null} wadName       WAD file name or title (case-insensitive, with or without ".wad")
      * @param {string|null} levelCode     level code, e.g. "E1M1" (case-insensitive)
      * @param {{position: number[], yaw: number, pitch: number}|null} spawnOverride
      * @param {number} skill   difficulty 0..5 for the direct shortcut
@@ -406,13 +406,14 @@ class MenuNavigator {
     }
 
     _findWad(wads, wadName) {
-        const target = wadName.toLowerCase().replace(/\.wad$/, '');
-        for (const meta of wads) {
-            if ((meta.id === target) || (meta.name.toLowerCase() === wadName.toLowerCase())) {
-                return meta;
-            }
-        }
-        return null;
+        const target = MenuNavigator._withoutExtension(wadName);
+
+        return (wads.find((meta) => ((MenuNavigator._withoutExtension(meta.name) === target)
+            || (MenuNavigator._withoutExtension(WadRegistry.displayTitle(meta)) === target))) ?? null);
+    }
+
+    static _withoutExtension(name) {
+        return name.toLowerCase().replace(/\.wad$/, '');
     }
 
     /**

@@ -1,5 +1,5 @@
 {
-    "version": "v1.1101",
+    "version": "v1.1103",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -44,6 +44,8 @@
         "js": [
             "/js/lib/libadlmidi/libadlmidi.js",
             "/js/webapp/screenWakeLock.js",
+            "/js/webapp/appDatabaseSchema.js",
+            "/js/webapp/appDatabaseUpgrade.js",
             "/js/webapp/appDatabase.js",
             "/js/webapp/appTranslator.js",
             "/js/webapp/appHash.js",
@@ -82,6 +84,7 @@
             "/js/doom/wad/wadDehackedStrings.js",
             "/js/doom/wad/wadSoundDecoder.js",
             "/js/doom/wad/wadGenmidi.js",
+            "/js/doom/doomDatabaseSchema.js",
             "/js/doom/wad/wadStorage.js",
             "/js/doom/wad/wadRegistry.js",
             "/js/doom/wad/convert/wadConstants.js",

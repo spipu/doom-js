@@ -137,7 +137,7 @@ class DoomSettings {
         this._database = database;
         this._values   = Object.create(null);
         try {
-            const rows = await database.getAll('settings');
+            const rows = await database.getAll(DoomDatabaseSchema.SETTING);
             for (const row of rows) {
                 this._values[row.key] = row.value;
             }
@@ -240,7 +240,7 @@ class DoomSettings {
     set(key, value) {
         this._values[key] = value;
         if (this._database !== null) {
-            this._database.put('settings', {key: key, value: value}).catch((error) => {
+            this._database.upsert(DoomDatabaseSchema.SETTING, DoomDatabaseSchema.SETTING_BY_KEY, {key: key, value: value}).catch((error) => {
                 console.warn('DoomSettings - unable to save [' + key + ']: ' + error.message);
             });
         }
@@ -343,9 +343,7 @@ class DoomSettings {
     resetAll() {
         this._values = Object.create(null);
         if (this._database !== null) {
-            this._database.getAll('settings').then((rows) => this._database.deleteMulti(
-                rows.map((row) => ({storeName: 'settings', key: row.key}))
-            )).catch((error) => {
+            this._database.clear(DoomDatabaseSchema.SETTING).catch((error) => {
                 console.warn('DoomSettings - unable to reset the settings: ' + error.message);
             });
         }

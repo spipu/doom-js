@@ -382,7 +382,6 @@ class DoomGame {
         return {
             wadMeta:   this._wadMeta,
             buildMeta: (slot) => ({
-                id:            DoomSaveStore.saveId(this._wadMeta.id, slot),
                 wadId:         this._wadMeta.id,
                 slot:          slot,
                 levelCode:     this._levelCode,

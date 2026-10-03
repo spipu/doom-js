@@ -141,7 +141,7 @@ website/
 ├── assets/spipu/             Our own graphics: the generic splash masks, colourised at level load
 ├── _examples/                Spipu3D demos + their assets and bootstrap definitions
 └── js/
-    ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper, translation catalog, content hash, wake lock
+    ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper with versioned schema upgrades, translation catalog, content hash, wake lock
     │   ├── net/                 Peer-to-peer network layer — WebRTC and loopback links, compact signals, pairing codes and flows, messages, ping, star sessions
     │   └── qr/                  QR code writing, camera scanning, camera probe and the pairing view (code shown, code read)
     ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
@@ -173,6 +173,7 @@ website/
     │   ├── doomCoopRules.js     Their cooperative answers
     │   ├── doomDeathmatchRules.js  Their deathmatch answers
     │   ├── doomPresentation.js  What a device shows of the game through one player: screen, HUD, weapon overlay, view effects, sound
+    │   ├── doomDatabaseSchema.js  The versions of the game's database, upgraded at start-up
     │   ├── doomSettings.js      Persistent settings (IndexedDB)
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)

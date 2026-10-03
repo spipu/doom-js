@@ -1,24 +1,18 @@
 /**
- * WAD storage on IndexedDB (spipudoom schema), built on the generic AppDatabase.
+ * WAD storage on the spipudoom database (DoomDatabaseSchema).
  *
  * Stores:
- *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, rank?, described?} — sha256 = identity
- *    of the file, title/version/rank = the known edition of the file (null when unknown, rank = release order within a title), described = the editions table version they were read with;
- *    all absent until computed
- *  - wadData: {id, data: ArrayBuffer}
- *  - settings: {key, value} — persisted game settings (read by DoomSettings)
- *  - saveMeta: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)
- *  - saveData: {id, snapshot} — full game snapshot of a slot, only read on load
+ *  - wad: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, rank?, described?} — sha256 = identity
+ *    of the file, title/version/rank = the known edition of the file (null when unknown, rank = release order within a title),
+ *    described = the editions table version they were read with; all absent until computed
+ *  - wadFile: {id, data: ArrayBuffer} — one-to-one with its wad
+ *  - setting: {id, key, value} — persisted game settings (read by DoomSettings)
+ *  - save: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)
+ *  - saveFile: {id, snapshot} — one-to-one with its save, only read on load
  */
 class WadStorage {
     constructor() {
-        this._database = new AppDatabase('spipudoom', 3, [
-            {name: 'wadMeta', keyPath: 'id'},
-            {name: 'wadData', keyPath: 'id'},
-            {name: 'settings', keyPath: 'key'},
-            {name: 'saveMeta', keyPath: 'id'},
-            {name: 'saveData', keyPath: 'id'}
-        ]);
+        this._database = new AppDatabase(DoomDatabaseSchema.build());
     }
 
     async open() {
@@ -41,50 +35,43 @@ class WadStorage {
     }
 
     /**
-     * Save metadata + binary content in a single transaction.
+     * Stores a new WAD; its id is written on the metadata.
      *
      * @param {object}      meta
      * @param {ArrayBuffer} arrayBuffer
      */
     async saveWad(meta, arrayBuffer) {
-        await this.replaceWad(meta, arrayBuffer, [], []);
+        meta.id = await WadStorage._withStorageErrors(() => this._database.insert(DoomDatabaseSchema.WAD, meta, [
+            {storeName: DoomDatabaseSchema.WAD_FILE, record: {data: arrayBuffer}}
+        ]));
+        WadStorage._askPersistence();
     }
 
     /**
      * The WAD and the changes to its saves in a single transaction.
      *
-     * @param {object}      meta
+     * @param {object}      meta - a stored WAD's
      * @param {ArrayBuffer} arrayBuffer
      * @param {object[]}    rewrittenSaves - [{id, snapshot}]
-     * @param {string[]}    removedSaveIds
+     * @param {int[]}       removedSaveIds
      */
     async replaceWad(meta, arrayBuffer, rewrittenSaves, removedSaveIds) {
-        try {
-            await this._database.writeMulti([
-                {storeName: 'wadMeta', record: meta},
-                {storeName: 'wadData', record: {id: meta.id, data: arrayBuffer}},
-                ...rewrittenSaves.map((save) => ({storeName: 'saveData', record: save}))
-            ], WadStorage._saveKeys(removedSaveIds));
-        } catch (error) {
-            if (error && (error.name === 'QuotaExceededError')) {
-                throw new WadError('quota-exceeded', 'Storage quota exceeded');
-            }
-            throw new WadError('storage-unavailable', 'Unable to save the WAD: ' + error.message);
-        }
-
-        // Asked right after the user chose to store tens of megabytes; not
-        // awaited, a permission prompt must not hold the screen back.
-        AppDatabase.requestPersistentStorage();
+        await WadStorage._withStorageErrors(() => this._database.writeMulti([
+            {storeName: DoomDatabaseSchema.WAD, record: meta},
+            {storeName: DoomDatabaseSchema.WAD_FILE, record: {id: meta.id, data: arrayBuffer}},
+            ...rewrittenSaves.map((save) => ({storeName: DoomDatabaseSchema.SAVE_FILE, record: save}))
+        ], WadStorage._saveKeys(removedSaveIds)));
+        WadStorage._askPersistence();
     }
 
     /**
-     * @param {string} wadId
+     * @param {int} wadId
      * @returns {Promise<object[]>} [{meta, snapshot}] of the WAD's saves, in slot order
      */
     async readSaves(wadId) {
-        const metas = (await this._saveMetasOf(wadId)).sort((a, b) => (a.slot - b.slot));
+        const metas = (await this._savesOf(wadId)).sort((a, b) => (a.slot - b.slot));
 
-        return Promise.all(metas.map(async (meta) => ({meta: meta, snapshot: (await this._database.get('saveData', meta.id)).snapshot})));
+        return Promise.all(metas.map(async (meta) => ({meta: meta, snapshot: (await this._database.get(DoomDatabaseSchema.SAVE_FILE, meta.id)).snapshot})));
     }
 
     /**
@@ -95,10 +82,10 @@ class WadStorage {
      * @returns {Promise<boolean>} false when the WAD no longer exists
      */
     async saveMeta(meta) {
-        if ((await this._database.get('wadMeta', meta.id)) === null) {
+        if ((await this._database.get(DoomDatabaseSchema.WAD, meta.id)) === null) {
             return false;
         }
-        await this._database.put('wadMeta', meta);
+        await this._database.put(DoomDatabaseSchema.WAD, meta);
 
         return true;
     }
@@ -109,17 +96,16 @@ class WadStorage {
      * @returns {Promise<object[]>}
      */
     async listMeta() {
-        return this._database.getAll('wadMeta');
+        return this._database.getAll(DoomDatabaseSchema.WAD);
     }
 
     /**
-     * @param {string} id
+     * @param {int} id
      * @returns {Promise<{meta: object, data: ArrayBuffer}>}
      */
     async readWad(id) {
-        const meta = await this._database.get('wadMeta', id);
-        const record = await this._database.get('wadData', id);
-
+        const meta   = await this._database.get(DoomDatabaseSchema.WAD, id);
+        const record = await this._database.get(DoomDatabaseSchema.WAD_FILE, id);
         if ((meta === null) || (record === null)) {
             throw new WadError('not-found', 'WAD not found: ' + id);
         }
@@ -128,26 +114,46 @@ class WadStorage {
     }
 
     /**
-     * Delete metadata + binary content + every save slot of the WAD, in a
-     * single transaction (the WAD and its saves disappear together or not at all).
+     * Deletes the WAD, its file and every save slot of it in a single
+     * transaction: they disappear together or not at all.
      *
-     * @param {string} id
+     * @param {int} id
      */
     async deleteWad(id) {
-        const saveIds = (await this._saveMetasOf(id)).map((meta) => meta.id);
+        const saveIds = (await this._savesOf(id)).map((meta) => meta.id);
 
         await this._database.deleteMulti([
-            {storeName: 'wadMeta', key: id},
-            {storeName: 'wadData', key: id},
+            {storeName: DoomDatabaseSchema.WAD, key: id},
+            {storeName: DoomDatabaseSchema.WAD_FILE, key: id},
             ...WadStorage._saveKeys(saveIds)
         ]);
     }
 
-    async _saveMetasOf(wadId) {
-        return (await this._database.getAll('saveMeta')).filter((meta) => (meta.wadId === wadId));
+    async _savesOf(wadId) {
+        return this._database.getAllByIndex(DoomDatabaseSchema.SAVE, DoomDatabaseSchema.SAVE_BY_WAD, wadId);
     }
 
     static _saveKeys(saveIds) {
-        return saveIds.flatMap((saveId) => [{storeName: 'saveMeta', key: saveId}, {storeName: 'saveData', key: saveId}]);
+        return saveIds.flatMap((saveId) => [
+            {storeName: DoomDatabaseSchema.SAVE, key: saveId},
+            {storeName: DoomDatabaseSchema.SAVE_FILE, key: saveId}
+        ]);
+    }
+
+    static async _withStorageErrors(write) {
+        try {
+            return await write();
+        } catch (error) {
+            if (error && (error.name === 'QuotaExceededError')) {
+                throw new WadError('quota-exceeded', 'Storage quota exceeded');
+            }
+            throw new WadError('storage-unavailable', 'Unable to save the WAD: ' + error.message);
+        }
+    }
+
+    // Asked right after the user chose to store tens of megabytes; not
+    // awaited, a permission prompt must not hold the screen back.
+    static _askPersistence() {
+        AppDatabase.requestPersistentStorage();
     }
 }

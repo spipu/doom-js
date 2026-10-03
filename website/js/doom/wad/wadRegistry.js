@@ -151,7 +151,7 @@ class WadRegistry {
     }
 
     /**
-     * @param {string} id
+     * @param {int} id
      */
     async remove(id) {
         await this._storage.deleteWad(id);
@@ -164,7 +164,7 @@ class WadRegistry {
      * provides the display name (a proper noun, never translated — null when
      * it declares none: the screen then only shows the episode number).
      *
-     * @param {string} id
+     * @param {int} id
      * @returns {Promise<object[]>} [{episode, firstLevel, name}]
      */
     async getEpisodes(id) {
@@ -178,7 +178,7 @@ class WadRegistry {
     }
 
     /**
-     * @param {string} id
+     * @param {int} id
      * @returns {Promise<WadFile>} the parsed WAD file
      */
     async getWadFile(id) {
@@ -331,7 +331,6 @@ class WadRegistry {
      */
     async _prepareImport(buffer, name, source) {
         const meta = {
-            id:      this._buildId(name),
             name:    name,
             size:    buffer.byteLength,
             addedAt: Date.now(),
@@ -407,10 +406,6 @@ class WadRegistry {
 
     static _compare(a, b) {
         return a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'});
-    }
-
-    _buildId(name) {
-        return name.toLowerCase().replace(/\.wad$/, '');
     }
 
     _extractFileName(url) {

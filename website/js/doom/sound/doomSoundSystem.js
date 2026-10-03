@@ -134,7 +134,7 @@ class DoomSoundSystem {
      * malformed lump degrades to silence. Reloading the same WAD is a no-op.
      *
      * @param {WadFile} wadFile parsed WAD
-     * @param {string} wadId
+     * @param {int}     wadId
      */
     loadForWad(wadFile, wadId) {
         if ((this._engine === null) || (this._wadId === wadId)) {
