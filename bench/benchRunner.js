@@ -14,6 +14,7 @@ const {BenchSaveSuite}        = require('./suite/benchSaveSuite');
 const {BenchReplicaSuite}     = require('./suite/benchReplicaSuite');
 const {BenchProgressionSuite} = require('./suite/benchProgressionSuite');
 const {BenchStaticSuite}      = require('./suite/benchStaticSuite');
+const {BenchNetSuite}         = require('./suite/benchNetSuite');
 
 class BenchRunner {
     /**
@@ -130,7 +131,7 @@ class BenchRunner {
 }
 
 BenchRunner.GOLDEN_DIR     = path.join(__dirname, 'golden');
-BenchRunner.SUITES         = [BenchBuildSuite, BenchSimulationSuite, BenchCodecsSuite, BenchSaveSuite, BenchReplicaSuite, BenchProgressionSuite, BenchStaticSuite];
+BenchRunner.SUITES         = [BenchBuildSuite, BenchSimulationSuite, BenchCodecsSuite, BenchSaveSuite, BenchReplicaSuite, BenchProgressionSuite, BenchStaticSuite, BenchNetSuite];
 BenchRunner.PROGRESS_WIDTH = 100;
 BenchRunner.MS_PER_S       = 1000;
 

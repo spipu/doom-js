@@ -1,0 +1,150 @@
+{
+  "signal": {
+    "signalBytes": "9318f3cd9e3e70ebafd3848e215e3ccc5e63e1b1a7b7dace507253842153a591",
+    "length": 161,
+    "stable": true,
+    "candidates": [
+      {
+        "type": "host",
+        "address": "192.168.1.10",
+        "port": 50000,
+        "priority": 2130706431
+      },
+      {
+        "type": "host",
+        "address": "2a01:cb04:1234:5678:abcd:ef01:2345:6789",
+        "port": 50001,
+        "priority": 2130706430
+      },
+      {
+        "type": "host",
+        "address": "0123abcd-4567-89ef-0123-456789abcdef.local",
+        "port": 50002,
+        "priority": 2130706429
+      },
+      {
+        "type": "srflx",
+        "address": "82.64.12.34",
+        "port": 61234,
+        "priority": 1694498815
+      },
+      {
+        "type": "relay",
+        "address": "turn.example.net",
+        "port": 3478,
+        "priority": 16777215
+      }
+    ],
+    "sdpLines": [
+      "v=0",
+      "s=-",
+      "t=0 0",
+      "a=group:BUNDLE 0",
+      "a=msid-semantic: WMS",
+      "m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
+      "c=IN IP4 0.0.0.0",
+      "a=ice-ufrag:bEnc",
+      "a=ice-pwd:Pa55w0rdPa55w0rdPa55w0rd",
+      "a=fingerprint:sha-256 00:07:0E:15:1C:23:2A:31:38:3F:46:4D:54:5B:62:69:70:77:7E:85:8C:93:9A:A1:A8:AF:B6:BD:C4:CB:D2:D9",
+      "a=setup:actpass",
+      "a=mid:0",
+      "a=sctp-port:5000",
+      "a=candidate:0 1 udp 2130706431 192.168.1.10 50000 typ host",
+      "a=candidate:1 1 udp 2130706430 2a01:cb04:1234:5678:abcd:ef01:2345:6789 50001 typ host",
+      "a=candidate:2 1 udp 2130706429 0123abcd-4567-89ef-0123-456789abcdef.local 50002 typ host",
+      "a=candidate:3 1 udp 1694498815 82.64.12.34 61234 typ srflx raddr 0.0.0.0 rport 0",
+      "a=candidate:4 1 udp 16777215 turn.example.net 3478 typ relay raddr 0.0.0.0 rport 0",
+      "a=end-of-candidates"
+    ],
+    "rejects": {
+      "mid": "invalid-signal",
+      "hash": "invalid-signal",
+      "setup": "invalid-signal",
+      "trailing": "invalid-signal"
+    }
+  },
+  "pairingCode": {
+    "codeBytes": "b8b62c57e165eaa84704795adccf329f64281d71c4793a9be6340524e12e348b",
+    "length": 48,
+    "inviteId": 4242,
+    "signal": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "invite": {
+      "wadSha256": "abababababababababababababababababababababababababababababababab",
+      "mode": 2
+    },
+    "nickname": "Zoe_42",
+    "accented": "refused: error: Non-ASCII character in an ASCII field",
+    "otherWad": "refused: wad-mismatch",
+    "otherVersion": "version-mismatch",
+    "otherKind": "wrong-kind",
+    "truncated": "invalid-code",
+    "garbage": "invalid-code"
+  },
+  "chunks": {
+    "chunks": 3,
+    "chunkSizes": [
+      16393,
+      16393,
+      1243
+    ],
+    "rebuilt": true,
+    "small": [
+      17,
+      1,
+      2,
+      3
+    ],
+    "delivered": 2,
+    "invalid": [
+      "invalid-message",
+      "invalid-message",
+      "invalid-message"
+    ]
+  },
+  "reachability": {
+    "wifi-wifi": "same-network",
+    "wifi-4g": "internet",
+    "wifi-4g-no-public": "unreachable",
+    "same-nat": "same-network",
+    "ipv6-same-prefix": "same-network",
+    "ipv6-other-prefix": "internet",
+    "ipv6-link-local": "unreachable",
+    "mdns": "unknown",
+    "empty": "unknown",
+    "loopback": "unreachable",
+    "cgnat-shared": "same-network",
+    "ipv6-ula": "same-network"
+  },
+  "lobby": {
+    "steps": [
+      "three in: 1=Host 2=Ann 3=Bob",
+      "Ann left, Cid takes her slot: 1=Host 2=Cid 3=Bob",
+      "Bob lost: 1=Host 2=Cid | reserved 3=Bob",
+      "Dee skips the reserved seat: 1=Host 2=Cid 4=Dee | reserved 3=Bob",
+      "Bob back in his seat: 1=Host 2=Cid 3=Bob 4=Dee",
+      "seats evicted in slot order: 1=Host 2=Cid 3=Eve 4=Fay"
+    ],
+    "back": {
+      "slot": 3,
+      "released": null
+    },
+    "eve": {
+      "slot": 3,
+      "released": 3
+    },
+    "fay": {
+      "slot": 4,
+      "released": 4
+    },
+    "none": null,
+    "released": [],
+    "full": true,
+    "mirrored": true
+  }
+}
