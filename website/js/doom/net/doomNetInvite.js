@@ -11,7 +11,15 @@ class DoomNetInvite {
      * @returns {Uint8Array}
      */
     static encodeInvite(wadSha256, mode, wadLabel) {
-        return new NetByteWriter().bytes(NetHex.toBytes(wadSha256)).u8(mode).ascii(wadLabel).toBytes();
+        return new NetByteWriter().bytes(NetHex.toBytes(wadSha256)).u8(mode).ascii(DoomNetInvite._asciiLabel(wadLabel)).toBytes();
+    }
+
+    // The label of an unknown WAD is its file name: any language, any length.
+    static _asciiLabel(label) {
+        return label.normalize('NFD')
+            .replace(DoomNetInvite.DIACRITICS, '')
+            .replace(DoomNetInvite.NON_ASCII, DoomNetInvite.NON_ASCII_SUBSTITUTE)
+            .substring(0, DoomNetInvite.MAX_LABEL_LENGTH);
     }
 
     /**
@@ -61,5 +69,9 @@ class DoomNetInvite {
     }
 }
 
-DoomNetInvite.SHA256_BYTES = 32;
-DoomNetInvite.WAD_MISMATCH = 'wad-mismatch';
+DoomNetInvite.SHA256_BYTES         = 32;
+DoomNetInvite.WAD_MISMATCH         = 'wad-mismatch';
+DoomNetInvite.MAX_LABEL_LENGTH     = 64;
+DoomNetInvite.DIACRITICS           = /[\u0300-\u036f]/g;
+DoomNetInvite.NON_ASCII            = /[^\x20-\x7e]/g;
+DoomNetInvite.NON_ASCII_SUBSTITUTE = '?';

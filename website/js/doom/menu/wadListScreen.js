@@ -114,7 +114,9 @@ class WadListScreen extends AbstractMenuScreen {
         for (const result of results.filter((r) => (r.status === 'rejected'))) {
             console.warn('WadListScreen - unable to describe a WAD: ' + result.reason.message);
         }
-        if (this._listEl !== null) {
+        // Only a description actually stored changes the list: anything else would describe it again, endlessly.
+        const described = results.some((r) => ((r.status === 'fulfilled') && (r.value !== null)));
+        if (described && (this._container !== null)) {
             await this._refresh();
         }
     }
@@ -178,11 +180,14 @@ class WadListScreen extends AbstractMenuScreen {
         }
         this._clearStatus();
         this._confirm(WadListScreen._updateMessage(wadImport), async () => {
+            this._setBusy(true);
+            this._setStatus(appTranslator.get('menu.wad.updating', {wad: WadRegistry.displayTitle(wadImport.meta)}));
             try {
                 await this._applyImport(wadImport);
             } catch (error) {
                 this._showError(error);
             }
+            this._setBusy(false);
         });
     }
 
@@ -210,7 +215,7 @@ class WadListScreen extends AbstractMenuScreen {
     }
 
     static _slotList(saves) {
-        return saves.map((save) => appTranslator.get('menu.save.slot', {n: save.meta.slot}) + ' (' + save.meta.levelCode + ')').join(', ');
+        return saves.map((save) => appTranslator.get('menu.wad.updateSlot', {n: save.meta.slot, level: save.meta.levelCode})).join(', ');
     }
 
     _onDeleteWad(meta) {

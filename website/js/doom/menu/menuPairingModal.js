@@ -141,10 +141,10 @@ class MenuPairingModal extends MenuModal {
     }
 }
 
-MenuPairingModal.WASM_URL      = '/js/lib/zxing-wasm/zxing_full.wasm';
+MenuPairingModal.WASM_URL       = '/js/lib/zxing-wasm/zxing_full.wasm';
 MenuPairingModal.NO_BREAK_SPACE = '\u00A0';
-MenuPairingModal.ERROR_DEFAULT = 'multiplayer.error.pairing';
-MenuPairingModal.ERROR_CODES   = {
+MenuPairingModal.ERROR_DEFAULT  = 'multiplayer.error.pairing';
+MenuPairingModal.ERROR_CODES    = {
     [NetError.VERSION_MISMATCH]:  'multiplayer.error.version',
     [DoomNetInvite.WAD_MISMATCH]: 'multiplayer.error.wad',
     [NetError.INVITE_USED]:       'multiplayer.error.invite',

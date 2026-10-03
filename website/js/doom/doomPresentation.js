@@ -80,7 +80,7 @@ class DoomPresentation {
      * @param {DoomBuiltLevel} builtLevel - what the world builder handed back for it
      * @param {DoomLevelStats} stats
      * @param {DoomPlayer}     player     - the viewed one
-     * @param {{wadId: int|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
+     * @param {{wadName: string|null, levelCode: string, skill: int, levelName: string|null}} levelInfo
      */
     showLevel(world, builtLevel, stats, player, levelInfo) {
         this._world              = world;
@@ -173,7 +173,7 @@ class DoomPresentation {
             .bindLevelStats(this._stats)
             .bindRules(this._rules)
             .bindPingSource(this._pingSource)
-            .setLevelInfo(this._levelInfo.wadId, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
+            .setLevelInfo(this._levelInfo.wadName, this._levelInfo.levelCode, this._levelInfo.skill, this._levelInfo.levelName)
             .addDescription('(c)2026 Spipu')
         ;
         this._hud.bindPlayerBodies(this._level.getBodyViews(), this._level.getPlayerColors());

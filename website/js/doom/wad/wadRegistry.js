@@ -23,6 +23,7 @@ class WadRegistry {
     async getList() {
         const list = await this._storage.listMeta();
         list.sort((a, b) => (WadRegistry._compare(WadRegistry.displayTitle(a), WadRegistry.displayTitle(b))
+            || WadRegistry._compare(a.branch ?? '', b.branch ?? '')
             || ((a.rank ?? WadRegistry.NO_RANK) - (b.rank ?? WadRegistry.NO_RANK))
             || WadRegistry._compare(a.name, b.name)));
 
@@ -201,11 +202,12 @@ class WadRegistry {
         if ((typeof meta.sha256 === 'string') && WadRegistry.isDescribed(meta)) {
             return meta.sha256;
         }
-        const stored = await this._storage.readWad(meta.id);
-        Object.assign(meta, await this._describe(stored.data));
-        if (typeof meta.sha256 !== 'string') {
+        const stored    = await this._storage.readWad(meta.id);
+        const described = await this._describe(stored.data);
+        if ((typeof described.sha256 !== 'string') || (stored.meta.addedAt !== meta.addedAt)) {
             return null;
         }
+        Object.assign(meta, described);
         await this._storage.saveMeta(meta);
 
         return meta.sha256;
@@ -330,7 +332,8 @@ class WadRegistry {
      *          saves = the saves ({meta, snapshot}) the update restarts or deletes, the others untouched
      */
     async _prepareImport(buffer, name, source) {
-        const meta = {
+        const wadFile = new WadFile(buffer).parse();
+        const meta    = {
             name:    name,
             size:    buffer.byteLength,
             addedAt: Date.now(),
@@ -343,7 +346,7 @@ class WadRegistry {
         if (same !== undefined) {
             throw new WadError('duplicate', 'WAD already stored', WadRegistry.displayLabel(same));
         }
-        const releases = stored.filter((other) => ((meta.rank !== null) && (other.title === meta.title) && (other.rank !== null)));
+        const releases = stored.filter((other) => ((meta.rank !== null) && (other.title === meta.title) && (other.branch === meta.branch) && (other.rank !== null)));
         const newer    = releases.find((other) => (other.rank > meta.rank));
         if (newer !== undefined) {
             throw new WadError('older-edition', 'A newer release of this WAD is stored', WadRegistry.displayLabel(newer));
@@ -354,7 +357,7 @@ class WadRegistry {
         }
         meta.id = replaced.id;
 
-        return {meta: meta, buffer: buffer, replaced: replaced, saves: await this._sortSaves(replaced.id, buffer)};
+        return {meta: meta, buffer: buffer, replaced: replaced, saves: await this._sortSaves(replaced.id, wadFile)};
     }
 
     async _describedList() {
@@ -366,14 +369,13 @@ class WadRegistry {
         return list;
     }
 
-    async _sortSaves(wadId, buffer) {
+    async _sortSaves(wadId, after) {
         const saves  = await this._storage.readSaves(wadId);
         const sorted = {restarted: [], removed: []};
         if (saves.length === 0) {
             return sorted;
         }
         const before = new WadFile((await this._storage.readWad(wadId)).data).parse();
-        const after  = new WadFile(buffer).parse();
         const levels = after.getLevelNames();
         for (const save of saves) {
             const level = save.meta.levelCode;
@@ -388,12 +390,12 @@ class WadRegistry {
     }
 
     async _describe(buffer) {
-        new WadFile(buffer).parse();
-        const sha256  = await AppHash.sha256Hex(buffer);
-        const edition = DoomWadEditions.describe(await AppHash.sha1Hex(buffer));
+        const sha256    = await AppHash.sha256Hex(buffer);
+        const edition   = DoomWadEditions.describe(await AppHash.sha1Hex(buffer));
         const described = {
             title:     (edition?.name ?? null),
             version:   (edition?.version ?? null),
+            branch:    (edition?.branch ?? null),
             rank:      (edition?.rank ?? null),
             described: WadRegistry.DESCRIPTION_VERSION
         };
@@ -418,7 +420,7 @@ class WadRegistry {
 
 WadRegistry.SHORT_IDENTITY_LENGTH = 8;
 // Bump when the editions table changes: stored WADs are described again.
-WadRegistry.DESCRIPTION_VERSION   = 3;
+WadRegistry.DESCRIPTION_VERSION   = 8;
 WadRegistry.NO_RANK               = -1;
 WadRegistry.NUMBERED_VERSION      = /^\d/;
 WadRegistry.VERSION_PREFIX        = 'v';

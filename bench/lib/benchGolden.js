@@ -37,6 +37,17 @@ class BenchGolden {
         return ((parts.length > 0) ? parts.join(', ') : null);
     }
 
+    /**
+     * @returns {object} the entry of a run that threw: always a difference, never a golden value
+     */
+    static errorEntry(error) {
+        return {[BenchGolden.ERROR]: String(error.message).split('\n')[0]};
+    }
+
+    static isError(entry) {
+        return (entry[BenchGolden.ERROR] !== undefined);
+    }
+
     static informative(name) {
         return BenchGolden.INFORMATIVE_PREFIX + name;
     }
@@ -47,5 +58,6 @@ class BenchGolden {
 }
 
 BenchGolden.INFORMATIVE_PREFIX = '~';
+BenchGolden.ERROR              = 'error';
 
 module.exports = {BenchGolden};

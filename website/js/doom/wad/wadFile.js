@@ -156,14 +156,26 @@ class WadFile {
      * @returns {boolean} whether both files hold the same lumps for this map, byte for byte
      */
     mapEquals(other, mapName) {
-        const mine   = this.getMapLumps(mapName);
-        const theirs = other.getMapLumps(mapName);
+        const mine   = this._comparedMapLumps(mapName);
+        const theirs = other._comparedMapLumps(mapName);
         const names  = Object.keys(mine);
         if (names.length !== Object.keys(theirs).length) {
             return false;
         }
 
         return names.every((name) => ((theirs[name] !== undefined) && WadFile._sameBytes(mine[name], theirs[name])));
+    }
+
+    // The Hexen scripts change a map as much as its geometry does.
+    _comparedMapLumps(mapName) {
+        const lumps    = this.getMapLumps(mapName);
+        const mapIndex = this._lumps.findIndex((lump) => (lump.name === mapName));
+        const behavior = ((mapIndex >= 0) ? this._mapSubLump(mapIndex, WadFile.BEHAVIOR_LUMP) : null);
+        if (behavior !== null) {
+            lumps[WadFile.BEHAVIOR_LUMP] = this._lumpView(behavior);
+        }
+
+        return lumps;
     }
 
     static _sameBytes(a, b) {
@@ -272,3 +284,4 @@ class WadFile {
 
 WadFile.CHECKSUM_LUMPS   = ['THINGS', 'LINEDEFS', 'SIDEDEFS', 'SECTORS', 'BEHAVIOR'];
 WadFile.MAX_MAP_SUB_LUMPS = 11;
+WadFile.BEHAVIOR_LUMP     = 'BEHAVIOR';

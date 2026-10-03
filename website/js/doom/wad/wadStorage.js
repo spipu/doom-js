@@ -1,14 +1,6 @@
 /**
- * WAD storage on the spipudoom database (DoomDatabaseSchema).
- *
- * Stores:
- *  - wad: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, rank?, described?} — sha256 = identity
- *    of the file, title/version/rank = the known edition of the file (null when unknown, rank = release order within a title),
- *    described = the editions table version they were read with; all absent until computed
- *  - wadFile: {id, data: ArrayBuffer} — one-to-one with its wad
- *  - setting: {id, key, value} — persisted game settings (read by DoomSettings)
- *  - save: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)
- *  - saveFile: {id, snapshot} — one-to-one with its save, only read on load
+ * WAD storage on the spipudoom database (DoomDatabaseSchema), the saves of a
+ * WAD going with it on an update or a delete.
  */
 class WadStorage {
     constructor() {
@@ -19,7 +11,7 @@ class WadStorage {
         try {
             await this._database.open();
         } catch (error) {
-            throw new WadError('storage-unavailable', 'IndexedDB is not available: ' + error.message);
+            throw WadStorage._storageError(error, 'IndexedDB is not available: ');
         }
 
         return this;
@@ -76,13 +68,14 @@ class WadStorage {
 
     /**
      * Rewrites the metadata of a stored WAD, its binary untouched. A WAD
-     * deleted meanwhile stays deleted: no orphan metadata is written back.
+     * deleted or replaced by an update meanwhile is left as it is.
      *
      * @param {object} meta
-     * @returns {Promise<boolean>} false when the WAD no longer exists
+     * @returns {Promise<boolean>} false when the stored WAD is no longer this one
      */
     async saveMeta(meta) {
-        if ((await this._database.get(DoomDatabaseSchema.WAD, meta.id)) === null) {
+        const stored = await this._database.get(DoomDatabaseSchema.WAD, meta.id);
+        if ((stored === null) || (stored.addedAt !== meta.addedAt)) {
             return false;
         }
         await this._database.put(DoomDatabaseSchema.WAD, meta);
@@ -144,11 +137,16 @@ class WadStorage {
         try {
             return await write();
         } catch (error) {
-            if (error && (error.name === 'QuotaExceededError')) {
-                throw new WadError('quota-exceeded', 'Storage quota exceeded');
-            }
-            throw new WadError('storage-unavailable', 'Unable to save the WAD: ' + error.message);
+            throw WadStorage._storageError(error, 'Unable to save the WAD: ');
         }
+    }
+
+    static _storageError(error, context) {
+        if (error && (error.name === 'QuotaExceededError')) {
+            return new WadError('quota-exceeded', 'Storage quota exceeded');
+        }
+
+        return new WadError('storage-unavailable', context + error.message);
     }
 
     // Asked right after the user chose to store tens of megabytes; not

@@ -238,7 +238,7 @@ class DoomGame {
         }
         this._applyGameSettings();
         this._presentation.showLevel(world, this._builtLevel, this._role.getLevelStats(), player, {
-            wadId:     this._wadId(),
+            wadName:   ((this._wadMeta !== null) ? this._wadMeta.name : null),
             levelCode: this._levelCode,
             skill:     this._skill,
             levelName: this._levelName

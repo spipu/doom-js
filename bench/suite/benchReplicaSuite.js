@@ -6,6 +6,7 @@ const {BenchContext}     = require('../lib/benchContext');
 const {BenchReplicaRun}  = require('../lib/benchReplicaRun');
 const {BenchScenario}    = require('../lib/benchScenario');
 const {BenchFingerprint} = require('../lib/benchFingerprint');
+const {BenchGolden}      = require('../lib/benchGolden');
 
 class BenchReplicaSuite {
     static get name() {
@@ -33,7 +34,7 @@ class BenchReplicaSuite {
                 try {
                     result[key] = BenchReplicaSuite._digest(await new BenchReplicaRun(app, subApp).run(files.get(scenario.wad), scenario, mode));
                 } catch (error) {
-                    result[key] = {error: String(error.message).split('\n')[0]};
+                    result[key] = BenchGolden.errorEntry(error);
                 }
                 app.takeLogs();
                 subApp.takeLogs();

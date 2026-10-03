@@ -82,6 +82,11 @@
     "nickname": "Zoe_42",
     "accented": "refused: error: Non-ASCII character in an ASCII field",
     "otherWad": "refused: wad-mismatch (Doom 2 - v1.9)",
+    "labels": [
+      "Heretique - 1a2b3c4d",
+      "???",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ],
     "otherVersion": "version-mismatch",
     "otherKind": "wrong-kind",
     "truncated": "invalid-code",

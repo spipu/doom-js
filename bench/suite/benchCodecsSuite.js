@@ -5,6 +5,7 @@
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
 const {BenchFingerprint}   = require('../lib/benchFingerprint');
+const {BenchGolden}        = require('../lib/benchGolden');
 
 class BenchCodecsSuite {
     static get name() {
@@ -31,7 +32,7 @@ class BenchCodecsSuite {
             await new BenchSimulationRun(app).run(wadFile, scenario, hooks);
             result[scenario.key] = BenchCodecsSuite._digest(hooks.samples);
         } catch (error) {
-            result[scenario.key] = {error: String(error.message).split('\n')[0]};
+            result[scenario.key] = BenchGolden.errorEntry(error);
         }
         app.takeLogs();
 
@@ -75,7 +76,7 @@ BenchCodecsSuite.HOOKS_SCRIPT = `(() => {
                 samples.mismatches++;
             }
             samples.commands.push(new Uint8Array(encoded));
-            if (frame % __sampleEvery !== 0) {
+            if ((frame % __sampleEvery) !== 0) {
                 return;
             }
             const bytes = DoomNetStateCodec.encode(capture.capture(frame));

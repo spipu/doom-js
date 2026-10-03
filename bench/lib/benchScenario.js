@@ -71,7 +71,7 @@ BenchScenario.COMMAND_SCRIPT = `
     const commandAt = (plan, frame) => {
         const s = (plan.find((step) => (frame < step.until)) ?? plan[plan.length - 1]);
         const command = new UserCommand().setMove(s.move[0], s.move[1]).setLook(s.look[0], s.look[1]);
-        if ((s.buttons !== undefined) && ((s.every === undefined) || (frame % s.every === 0))) {
+        if ((s.buttons !== undefined) && ((s.every === undefined) || ((frame % s.every) === 0))) {
             s.buttons.forEach((b) => command.press(b));
         }
         return command;

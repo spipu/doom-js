@@ -3,6 +3,15 @@
  * they were created (WADs, settings, save slots, all keyed by a name); 4 moves
  * every store to an auto-incremented integer id, the saves rewired on the new
  * id of their WAD.
+ *
+ * Records:
+ *  - wad: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, branch?, rank?, described?}
+ *    sha256 = identity of the file; title/version/branch/rank = its known edition (null when unknown; rank = release order
+ *    within a branch); described = the editions table version they were read with; all absent until computed
+ *  - wadFile: {id, data: ArrayBuffer} — one-to-one with its wad
+ *  - setting: {id, key, value}
+ *  - save: {id, wadId, slot, levelCode, skill, savedAt, formatVersion}
+ *  - saveFile: {id, snapshot} — one-to-one with its save, only read on load
  */
 class DoomDatabaseSchema {
     /**

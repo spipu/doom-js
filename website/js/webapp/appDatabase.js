@@ -1,13 +1,24 @@
 class AppDatabase {
     /** @type {AppDatabaseSchema} */ _schema;
     /** @type {IDBDatabase}       */ _db;
+    /** @type {function|null}     */ _onBlocked;
 
     /**
      * @param {AppDatabaseSchema} schema
      */
     constructor(schema) {
-        this._schema = schema;
-        this._db     = null;
+        this._schema    = schema;
+        this._db        = null;
+        this._onBlocked = null;
+    }
+
+    /**
+     * @param {function|null} callback - fired when the upgrade waits for other tabs to close their connection
+     */
+    setOnBlocked(callback) {
+        this._onBlocked = callback;
+
+        return this;
     }
 
     isOpen() {
@@ -34,6 +45,7 @@ class AppDatabase {
             };
             request.onblocked = () => {
                 console.warn('AppDatabase - the upgrade of [' + this._schema.getName() + '] waits for its other tabs to close');
+                this._onBlocked?.();
             };
             request.onsuccess = () => {
                 resolve(request.result);
@@ -44,7 +56,9 @@ class AppDatabase {
         });
         // A later version opened in another tab must not wait for this one.
         this._db.onversionchange = () => {
+            console.warn('AppDatabase - [' + this._schema.getName() + '] closed for a newer version opened elsewhere');
             this._db.close();
+            this._db = null;
         };
 
         return this;
@@ -160,7 +174,6 @@ class AppDatabase {
         await this._promisifyTransaction(transaction);
     }
 
-    // The lookup and the write share the transaction: no other writer can slip in between.
     _putUnderId(storeName, record, indexName, linked) {
         const transaction = this._transaction([storeName, ...linked.map((item) => item.storeName)], 'readwrite');
         const store       = transaction.objectStore(storeName);

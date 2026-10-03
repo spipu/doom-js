@@ -120,11 +120,11 @@ class MenuDom {
         return String(Math.trunc(totalSeconds / 60)).padStart(minuteDigits, '0') + ':' + String(totalSeconds % 60).padStart(2, '0');
     }
 
-    // Seconds are for the save slots: two saves may land in the same minute.
     static formatDay(timestamp) {
         return new Date(timestamp).toLocaleDateString(appTranslator.getLocale());
     }
 
+    // Seconds are for the save slots: two saves may land in the same minute.
     static formatDate(timestamp, withSeconds = false) {
         const date        = new Date(timestamp);
         const locale      = appTranslator.getLocale();

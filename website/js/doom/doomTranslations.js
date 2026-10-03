@@ -46,6 +46,18 @@ class DoomTranslations {
                 it: 'Archiviazione del browser non disponibile — impossibile gestire i WAD.',
                 es: 'Almacenamiento del navegador no disponible — imposible gestionar los WAD.'
             },
+            'menu.storageBlocked': {
+                fr: 'Mise à jour des données en attente : fermez les autres onglets ou fenêtres de Spipu-Doom.',
+                en: 'Data update waiting: close the other Spipu-Doom tabs or windows.',
+                it: 'Aggiornamento dei dati in attesa: chiudi le altre schede o finestre di Spipu-Doom.',
+                es: 'Actualización de datos en espera: cierra las demás pestañas o ventanas de Spipu-Doom.'
+            },
+            'menu.storageFull': {
+                fr: 'Espace insuffisant pour mettre à jour les données : libérez de la place sur l\'appareil, puis rechargez.',
+                en: 'Not enough space to update the data: free some space on the device, then reload.',
+                it: 'Spazio insufficiente per aggiornare i dati: libera spazio sul dispositivo, poi ricarica.',
+                es: 'Espacio insuficiente para actualizar los datos: libera espacio en el dispositivo y recarga.'
+            },
 
             'menu.wad.title': {
                 fr: 'Fichiers WAD',
@@ -124,6 +136,18 @@ class DoomTranslations {
                 en: '{wad} updated',
                 it: '{wad} aggiornato',
                 es: '{wad} actualizado'
+            },
+            'menu.wad.updating': {
+                fr: 'Mise à jour de {wad}…',
+                en: 'Updating {wad}…',
+                it: 'Aggiornamento di {wad}…',
+                es: 'Actualizando {wad}…'
+            },
+            'menu.wad.updateSlot': {
+                fr: 'Slot {n} ({level})',
+                en: 'Slot {n} ({level})',
+                it: 'Slot {n} ({level})',
+                es: 'Ranura {n} ({level})'
             },
             'menu.wad.updateConfirm': {
                 fr: 'Mettre à jour {wad} de {from} vers {to} ?',

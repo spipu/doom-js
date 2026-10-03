@@ -3,6 +3,7 @@
  * pairing envelope, chunked messages, reachability verdicts and lobby seats.
  */
 const {BenchFingerprint} = require('../lib/benchFingerprint');
+const {BenchGolden}      = require('../lib/benchGolden');
 
 class BenchNetSuite {
     static get name() {
@@ -22,7 +23,7 @@ class BenchNetSuite {
             try {
                 result[key] = BenchNetSuite._digest(app.run(script)());
             } catch (error) {
-                result[key] = {error: String(error.message).split('\n')[0]};
+                result[key] = BenchGolden.errorEntry(error);
             }
             app.takeLogs();
         }
@@ -95,7 +96,7 @@ BenchNetSuite.CHECKS = {
             length:      bytes.length,
             stable:      (NetHex.fromBytes(bytes) === NetHex.fromBytes(again)),
             candidates:  decoded.candidates,
-            sdpLines:    decoded.description.sdp.split('\\r\\n').filter((line) => (line !== '') && !line.startsWith('o=')),
+            sdpLines:    decoded.description.sdp.split('\\r\\n').filter((line) => ((line !== '') && !line.startsWith('o='))),
             rejects:     rejects
         };
     })`,
@@ -124,6 +125,7 @@ BenchNetSuite.CHECKS = {
             nickname:     answerOf('ab'.repeat(32), 'Zoe_42'),
             accented:     answerOf('ab'.repeat(32), 'Zoé'),
             otherWad:     answerOf('cd'.repeat(32), 'Zoe_42'),
+            labels:       ['Hérétique - 1a2b3c4d', '日本語', 'x'.repeat(300)].map((label) => DoomNetInvite.decodeInvite(DoomNetInvite.encodeInvite('ab'.repeat(32), 2, label)).wadLabel),
             otherVersion: refused(code, 'v1.1', NetPairingCode.KIND_INVITE),
             otherKind:    refused(code, 'v1.0', NetPairingCode.KIND_ANSWER),
             truncated:    refused(code.slice(0, code.length - payload.length - 2), 'v1.0', NetPairingCode.KIND_INVITE),

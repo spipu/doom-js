@@ -31,7 +31,7 @@ class BenchPerfSuite {
             try {
                 result[scenario.key] = await BenchPerfSuite._measure(runs, counters, wadFile, scenario);
             } catch (error) {
-                result[scenario.key] = {error: String(error.message).split('\n')[0]};
+                result[scenario.key] = BenchGolden.errorEntry(error);
             }
             app.takeLogs();
         }

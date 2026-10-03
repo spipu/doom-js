@@ -69,6 +69,11 @@ class BenchRunner {
         const golden  = ((fs.existsSync(file)) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
         const partial = (this._wads.length > 0);
         if (this._update === true) {
+            const errors = Object.keys(result).filter((key) => BenchGolden.isError(result[key]));
+            if (errors.length > 0) {
+                process.stdout.write('[' + suiteName + '] not written, these entries fail: ' + errors.join(', ') + '\n');
+                return errors.length;
+            }
             const merged = (((partial === true) && (golden !== null)) ? Object.assign(golden, result) : result);
             fs.writeFileSync(file, JSON.stringify(merged, null, 2) + '\n');
             process.stdout.write('[' + suiteName + '] golden written: ' + Object.keys(result).length + ' entries (' + seconds.toFixed(0) + ' s)\n');
@@ -86,6 +91,11 @@ class BenchRunner {
             if (expected === undefined) {
                 process.stdout.write('[' + suiteName + '] ' + key + ': NEW (not in golden)\n');
                 failures++;
+                continue;
+            }
+            if (BenchGolden.isError(result[key])) {
+                failures++;
+                process.stdout.write('[' + suiteName + '] ' + key + ': ERROR ' + result[key][BenchGolden.ERROR] + '\n');
                 continue;
             }
             const informed = BenchGolden.inform(expected, result[key]);

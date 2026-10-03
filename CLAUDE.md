@@ -31,6 +31,7 @@
 * Un champ de golden préfixé `~` (le temps par image de `perf`) est informatif : affiché face à sa valeur golden, jamais comparé. Les autres champs sont tous comparés.
 * Le banc est documenté ici et dans la base documentaire, jamais dans `README.md`.
 * Toute ligne `CHANGED` doit être un écart voulu et expliqué ; on régénère alors les goldens avec `node bench/run.js --update` **dans le même commit** que la modification qui les change. Ne jamais mettre à jour un golden pour faire taire une différence qu'on ne comprend pas.
+* Une entrée `error` (suite qui plante) est toujours une différence, jamais un golden : `--update` refuse de l'écrire. Un WAD qu'une suite ne sait pas traiter s'exclut explicitement dans la suite (ex. Hexen en `build`), avec sa raison.
 
 ### Messages de commit
 

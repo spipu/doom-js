@@ -5,6 +5,7 @@
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
 const {BenchFingerprint}   = require('../lib/benchFingerprint');
+const {BenchGolden}        = require('../lib/benchGolden');
 
 class BenchSimulationSuite {
     static get name() {
@@ -30,7 +31,7 @@ class BenchSimulationSuite {
             try {
                 result[scenario.key] = BenchSimulationSuite._digest(await runs.run(wadFile, scenario));
             } catch (error) {
-                result[scenario.key] = {error: String(error.message).split('\n')[0]};
+                result[scenario.key] = BenchGolden.errorEntry(error);
             }
             app.takeLogs();
         }
@@ -56,6 +57,5 @@ class BenchSimulationSuite {
         };
     }
 }
-
 
 module.exports = {BenchSimulationSuite};

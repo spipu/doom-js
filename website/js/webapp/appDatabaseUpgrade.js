@@ -56,9 +56,19 @@ class AppDatabaseUpgrade {
                     resolve();
                     return;
                 }
-                const record = transform(cursor.value);
+                let record;
+                try {
+                    record = transform(cursor.value);
+                } catch (error) {
+                    reject(error);
+                    return;
+                }
                 if (record !== null) {
-                    target.put(record);
+                    // The schema aborts the upgrade once, with this cause: no automatic abort first.
+                    target.put(record).onerror = (event) => {
+                        event.preventDefault();
+                        reject(event.target.error);
+                    };
                 }
                 cursor.continue();
             };

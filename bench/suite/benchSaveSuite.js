@@ -2,13 +2,15 @@
  * A save captured half-way through a scenario, restored on a rebuilt level and
  * played on: the save recaptured right after the restore must equal the one
  * restored. The same save brought back to its level start replays the first
- * half from the spawn, with the saved equipment. The resumed run drifts from the uninterrupted one by design (the
- * save leaves out momentum, sub-tic accumulators and transient effects): the
- * drift is recorded, its growth is the regression.
+ * half from the spawn, with the saved equipment. The resumed run drifts from
+ * the uninterrupted one by design (the save leaves out momentum, sub-tic
+ * accumulators and transient effects): the drift is recorded, its growth is
+ * the regression.
  */
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
 const {BenchFingerprint}   = require('../lib/benchFingerprint');
+const {BenchGolden}        = require('../lib/benchGolden');
 
 class BenchSaveSuite {
     static get name() {
@@ -34,7 +36,7 @@ class BenchSaveSuite {
             try {
                 result[scenario.key] = await BenchSaveSuite._roundTrip(app, runs, wadFile, scenario);
             } catch (error) {
-                result[scenario.key] = {error: String(error.message).split('\n')[0]};
+                result[scenario.key] = BenchGolden.errorEntry(error);
             }
             app.takeLogs();
         }

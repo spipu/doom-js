@@ -6,6 +6,7 @@ const crypto             = require('crypto');
 const fs                 = require('fs');
 const {BenchLevelBuild}  = require('../lib/benchLevelBuild');
 const {BenchFingerprint} = require('../lib/benchFingerprint');
+const {BenchGolden}      = require('../lib/benchGolden');
 
 class BenchProgressionSuite {
     static get name() {
@@ -32,7 +33,7 @@ class BenchProgressionSuite {
                     result[wad.name + '/' + row.code] = BenchProgressionSuite._entry(row);
                 }
             } catch (error) {
-                result[wad.name] = {error: String(error.message).split('\n')[0]};
+                result[wad.name] = BenchGolden.errorEntry(error);
             }
             app.takeLogs();
         }

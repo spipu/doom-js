@@ -69,8 +69,11 @@ class BenchStaticSuite {
 
     static _usage(catalog, sources) {
         const literals = new Set([...sources.matchAll(BenchStaticSuite.CODE_LITERAL)].map((m) => m[1]));
-        const prefixes = [...literals].filter((literal) => literal.endsWith('.'));
-        const codes    = [...sources.matchAll(BenchStaticSuite.CODE_WRITTEN)].map((m) => (m[1] ?? m[2]));
+        const prefixes = [...sources.matchAll(BenchStaticSuite.CODE_PREFIX)].map((m) => m[1]);
+        const codes    = [
+            ...BenchStaticSuite._translatorArguments(sources).flatMap((argument) => [...argument.matchAll(BenchStaticSuite.CODE_LITERAL)].map((m) => m[1])),
+            ...[...sources.matchAll(BenchStaticSuite.CODE_FIELD)].map((m) => m[1])
+        ];
         const written  = new Set(codes.filter((code) => !code.endsWith('.')));
         const used     = (key) => (literals.has(key) || prefixes.some((prefix) => key.startsWith(prefix)));
 
@@ -79,6 +82,27 @@ class BenchStaticSuite {
             unresolved: [...written].filter((code) => (catalog[code] === undefined)).sort(),
             orphans:    Object.keys(catalog).filter((key) => !used(key))
         };
+    }
+
+    /**
+     * @returns {string[]} the first argument of every appTranslator.get / has call, as written
+     */
+    static _translatorArguments(sources) {
+        const found = [];
+        for (const match of sources.matchAll(BenchStaticSuite.TRANSLATOR_CALL)) {
+            let depth = 0;
+            let end   = match.index + match[0].length;
+            for (; end < sources.length; end++) {
+                const char = sources[end];
+                if ((depth === 0) && ((char === ',') || (char === ')'))) {
+                    break;
+                }
+                depth += ((char === '(') ? 1 : ((char === ')') ? -1 : 0));
+            }
+            found.push(sources.substring(match.index + match[0].length, end));
+        }
+
+        return found;
     }
 
     static _bootstrap(bootstrap, declared) {
@@ -117,7 +141,7 @@ class BenchStaticSuite {
      */
     static _sourcesOf(trees) {
         const walk = (dir) => fs.readdirSync(path.join(BenchContext.WEBSITE, dir), {withFileTypes: true})
-            .flatMap((entry) => (entry.isDirectory()
+            .flatMap((entry) => ((entry.isDirectory())
                 ? walk(dir + '/' + entry.name)
                 : ((entry.name.endsWith('.js')) ? ['/' + dir + '/' + entry.name] : [])));
 
@@ -131,7 +155,9 @@ BenchStaticSuite.CATALOG_FILE     = '/js/doom/doomTranslations.js';
 BenchStaticSuite.PRECACHED_ONLY   = ['/js/webapp/appBootstrap.js', '/js/webapp/appServiceWorker.js'];
 BenchStaticSuite.PLACEHOLDER      = /\{([a-zA-Z0-9_]+)\}/g;
 BenchStaticSuite.CODE_LITERAL     = /'([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9_]*)+)'/g;
-BenchStaticSuite.CODE_WRITTEN     = /appTranslator\.get\('([^']+)'|[a-z][a-zA-Z]*Code: *'([^']*\.[^']*)'/g;
+BenchStaticSuite.CODE_PREFIX      = /'([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9_]+)*\.)' *\+/g;
+BenchStaticSuite.CODE_FIELD       = /[a-z][a-zA-Z]*Code: *'([^']*\.[^']*)'/g;
+BenchStaticSuite.TRANSLATOR_CALL  = /appTranslator\.(?:get|has)\(/g;
 BenchStaticSuite.VERSION          = /^v\d+\.\d+$/;
 
 module.exports = {BenchStaticSuite};

@@ -7,7 +7,7 @@
 class HudDoomDebug extends HudDebug {
     constructor(engine) {
         super(engine);
-        this._wadId      = null;
+        this._wadName    = null;
         this._levelCode  = null;
         this._skill      = null;
         this._levelName  = null;
@@ -17,8 +17,8 @@ class HudDoomDebug extends HudDebug {
 
     // The [LEVEL] line starts with the arguments of MenuNavigator.start()
     // (wad / level / skill) so a spawn can be reproduced from a screenshot.
-    setLevelInfo(wadId, levelCode, skill, levelName = null) {
-        this._wadId     = wadId;
+    setLevelInfo(wadName, levelCode, skill, levelName = null) {
+        this._wadName   = wadName;
         this._levelCode = levelCode;
         this._skill     = skill;
         this._levelName = levelName;
@@ -46,7 +46,7 @@ class HudDoomDebug extends HudDebug {
         const user = this._user;
         const lines = [];
 
-        lines.push('[LEVEL] ' + (this._wadId ?? '?') + ' / ' + (this._levelCode ?? '?')
+        lines.push('[LEVEL] ' + (this._wadName ?? '?') + ' / ' + (this._levelCode ?? '?')
             + ' / ' + (this._skill ?? '?')
             + ((this._levelName !== null) ? ' — ' + this._levelName : ''));
 

@@ -127,7 +127,7 @@ BenchReplicaRun.HOST_SCRIPT = `((wadFile, scenario, mode) => {
             if ((mode === '${BenchReplicaRun.DEATHMATCH}') && (frame === ${BenchReplicaRun.KILL_FRAME}) && (victim !== null)) {
                 victim.getUser().takeDamage(${BenchReplicaRun.KILL_DAMAGE}, roster.getLocal().getUser());
             }
-            role.advance(1000 / 60, {sample: () => command}, () => {}, now);
+            role.advance(${BenchScenario.FRAME_MS}, {sample: () => command}, () => {}, now);
             const user = roster.getLocal().getUser();
             trace.push([round(user.x), round(user.y), round(user.z), user.getEnergy(), roster.getInLevel().length]);
         },
@@ -153,10 +153,16 @@ BenchReplicaRun.GUEST_SCRIPT = `((wadFile, scenario, mode) => {
     const mismatches = {};
     const samples    = [];
     let turns = 0;
-    role.follow((event) => played.push(event.type + ((event.name !== undefined) ? (':' + event.name) : '')),
+    const heard = (event) => [
+        event.type + ((event.name !== undefined) ? (':' + event.name) : ''),
+        ((event.point !== undefined) ? ('@' + event.point.map(round).join(',')) : ''),
+        ((event.options?.replaceKey !== undefined) ? ('#' + event.options.replaceKey) : ''),
+        ((event.user !== undefined) ? ((event.user === roster.getLocal().getUser()) ? '+local' : '+other') : '')
+    ].join('');
+    role.follow((event) => played.push(heard(event)),
         (level) => { pending = level; }, () => {}, () => { flags.phases++; }, (reason) => flags.ended.push(reason), () => {});
     const sections = ['bodies', 'bornBodies', 'projectiles', 'pickups', 'movers', 'switches', 'surfaces', 'lights', 'stats'];
-    const json = (v) => JSON.stringify(v, (k, x) => ((typeof x === 'number' && Object.is(x, -0)) ? 0 : x));
+    const json = (v) => JSON.stringify(v, (k, x) => (((typeof x === 'number') && Object.is(x, -0)) ? 0 : x));
     const compare = (received, mine) => {
         for (const section of sections) {
             if (json(received[section]) !== json(mine[section])) {
@@ -199,7 +205,7 @@ BenchReplicaRun.GUEST_SCRIPT = `((wadFile, scenario, mode) => {
         },
         frame: (frame, now) => {
             const command = commandAt(scenario.plan, frame);
-            role.advance(1000 / 60, {sample: () => command}, () => {}, now);
+            role.advance(${BenchScenario.FRAME_MS}, {sample: () => command}, () => {}, now);
         },
         finish: () => ({turns: turns, trace: trace, played: played, mismatches: mismatches, samples: samples, flags: flags})
     };

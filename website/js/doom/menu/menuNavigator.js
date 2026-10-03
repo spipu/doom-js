@@ -83,14 +83,16 @@ class MenuNavigator {
     _boot(onReady) {
         this._display.init();
 
+        this._storage.getDatabase().setOnBlocked(() => this._showFallback(FallbackScreen.BLOCKED));
         this._registry.init()
             .then(() => doomSettings.init(this._storage.getDatabase()))
             .then(() => doomSaveStore.init(this._storage.getDatabase()))
             .then(() => doomSettings.applyToTranslator(appTranslator))
             .then(() => doomSound.boot())
             .then(onReady)
-            .catch(() => {
-                this._showFallback();
+            .catch((error) => {
+                const full = ((error instanceof WadError) && (error.getCode() === 'quota-exceeded'));
+                this._showFallback(((full) ? FallbackScreen.FULL : FallbackScreen.UNAVAILABLE));
             });
 
         return this;
@@ -118,7 +120,7 @@ class MenuNavigator {
         this._playWadMusic(meta);
         this._switchTo(this._wadMenuScreen.setWad(meta));
         this._registry.ensureIdentity(meta).catch((error) => {
-            console.warn('MenuNavigator - unable to compute the identity of [' + meta.id + ']: ' + error.message);
+            console.warn('MenuNavigator - unable to compute the identity of [' + meta.name + ']: ' + error.message);
         });
     }
 
@@ -189,7 +191,7 @@ class MenuNavigator {
         try {
             return await this._registry.ensureIdentity(meta);
         } catch (error) {
-            console.warn('MenuNavigator - unable to compute the identity of [' + meta.id + ']: ' + error.message);
+            console.warn('MenuNavigator - unable to compute the identity of [' + meta.name + ']: ' + error.message);
             return null;
         }
     }
@@ -441,8 +443,8 @@ class MenuNavigator {
         this._display.destroy();
     }
 
-    _showFallback() {
-        this._switchTo(this._fallbackScreen);
+    _showFallback(messageCode) {
+        this._switchTo(this._fallbackScreen.setMessageCode(messageCode));
     }
 }
 

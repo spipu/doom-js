@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const {BenchLevelBuild}  = require('../lib/benchLevelBuild');
 const {BenchFingerprint} = require('../lib/benchFingerprint');
+const {BenchGolden}      = require('../lib/benchGolden');
 
 class BenchBuildSuite {
     static get name() {
@@ -21,7 +22,7 @@ class BenchBuildSuite {
     static async run(app, wads, progress) {
         const builds = new BenchLevelBuild(app);
         const result = {};
-        for (const wad of wads) {
+        for (const wad of wads.filter((w) => !BenchBuildSuite.UNBUILT_WADS.includes(w.name))) {
             const wadFile = app.readWad(wad.path);
             const game    = builds.resolveGame(wadFile);
             for (const code of app.run('__wad.getLevelNames()', {__wad: wadFile})) {
@@ -32,7 +33,7 @@ class BenchBuildSuite {
                     const {built, world} = await builds.build(wadFile, game, code);
                     result[key] = BenchBuildSuite._digest(app.run(BenchBuildSuite.SUMMARY_SCRIPT)(built, world));
                 } catch (error) {
-                    result[key] = {error: String(error.message).split('\n')[0]};
+                    result[key] = BenchGolden.errorEntry(error);
                 }
                 app.takeLogs();
             }
@@ -123,5 +124,8 @@ BenchBuildSuite.SUMMARY_SCRIPT = `((built, world) => {
 
     return {objects: objects, textures: textures, instances: instances, interactions: interactions, level: level};
 })`;
+
+// Its Hexen-format LINEDEFS are not read yet (NEXT-STEPS.md § Hexen): no level converts.
+BenchBuildSuite.UNBUILT_WADS = ['hexen'];
 
 module.exports = {BenchBuildSuite};
