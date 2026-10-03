@@ -257,21 +257,16 @@ class WadStaticMapBuilder {
                 continue;
             }
 
-            let ybot;
-            let ytop;
-            let yo;
-            if (lowerUnpeg) {
-                ybot = botDu;
-                ytop = Math.min(topDu, botDu + th);
-                yo = mSd.yo + (th - (ytop - ybot));
-            } else {
-                ytop = topDu;
-                ybot = Math.max(botDu, topDu - th);
-                yo = mSd.yo;
-            }
+            // R_RenderMaskedSegRange: the row offset moves the texture band
+            // itself, and the opening clips it.
+            const texTop = ((lowerUnpeg) ? (botDu + mSd.yo + th) : (topDu + mSd.yo));
+            const texBot = texTop - th;
+            const ytop   = Math.min(topDu, texTop);
+            const ybot   = Math.max(botDu, texBot);
             if (ytop <= ybot) {
                 continue;
             }
+            const yo = texTop - ytop;
 
             const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
 
