@@ -51,7 +51,7 @@ class DoomTurnEvents {
         this._emit({type: DoomTurnEvents.SOUND_FROM_PLAYER, name: name, user: user, channel: channel});
     }
 
-    // Heard by that player alone (a secret found).
+    // Heard by that player alone (a secret found, a pickup).
     soundToPlayer(name, user) {
         this._emit({type: DoomTurnEvents.SOUND_TO_PLAYER, name: name, user: user});
     }

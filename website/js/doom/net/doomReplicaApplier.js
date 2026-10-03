@@ -268,7 +268,7 @@ class DoomReplicaApplier {
             case DoomTurnEvents.SOUND_FROM_BODY:
                 return this._bodySound(event);
             case DoomTurnEvents.SOUND_FROM_PLAYER:
-                return ((player !== null) ? {type: event.type, name: event.name, user: player.getUser(), channel: event.channel} : null);
+                return this._playerSound(event, player);
             case DoomTurnEvents.SOUND_TO_PLAYER:
             case DoomTurnEvents.PLAYER_TELEPORTED:
                 return ((player !== null) ? {type: event.type, name: event.name, user: player.getUser()} : null);
@@ -279,6 +279,16 @@ class DoomReplicaApplier {
         }
 
         return null;
+    }
+
+    // A player this device holds speaks centred; any other from where it stood this
+    // turn, on that player's channel.
+    _playerSound(event, player) {
+        if (player !== null) {
+            return {type: event.type, name: event.name, user: player.getUser(), channel: event.channel};
+        }
+
+        return {type: DoomTurnEvents.SOUND_AT, name: event.name, point: event.point, options: {replaceKey: DoomSoundSystem.playerChannelKey(event.player, event.channel)}};
     }
 
     // A body gone in the same turn rings from where it was last.

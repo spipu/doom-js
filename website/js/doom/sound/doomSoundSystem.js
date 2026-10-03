@@ -310,10 +310,28 @@ class DoomSoundSystem {
      * @returns {object|null} the channel handle, null when refused or unknown
      */
     playFromPlayer(name, user, channel) {
-        const origin = ((this._listener.isUser(user)) ? null : [user.x, user.getCameraY(), user.z]);
-        const key    = ((channel !== null) ? ('player:' + (user.getPlayerId() ?? '') + ':' + channel) : null);
+        const origin = ((this._listener.isUser(user)) ? null : DoomSoundSystem.playerEarPoint(user));
 
-        return this.playAt(name, origin, {replaceKey: key});
+        return this.playAt(name, origin, {replaceKey: DoomSoundSystem.playerChannelKey(user.getPlayerId(), channel)});
+    }
+
+    /**
+     * @param {DoomUser} user
+     * @returns {number[]} where a player's own sounds come from: its ears
+     */
+    static playerEarPoint(user) {
+        return [user.x, user.getCameraY(), user.z];
+    }
+
+    /**
+     * The replacement key of a player's channel: a new sound on it replaces the previous one.
+     *
+     * @param {int|null}    playerId
+     * @param {string|null} channel  CHANNEL_*, null = replaces nothing
+     * @returns {string|null}
+     */
+    static playerChannelKey(playerId, channel) {
+        return ((channel !== null) ? ('player:' + (playerId ?? '') + ':' + channel) : null);
     }
 
     // A sound for one player's ears only, centred (a secret found): nobody

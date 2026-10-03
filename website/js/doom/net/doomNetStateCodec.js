@@ -185,6 +185,7 @@ class DoomNetStateCodec {
             case DoomTurnEvents.SOUND_FROM_PLAYER:
                 w.ascii(event.name).u8(event.player);
                 DoomNetStateCodec._writeName(w, event.channel);
+                DoomNetStateCodec._writeVector(w, event.point);
                 break;
             case DoomTurnEvents.SOUND_TO_PLAYER:
                 w.ascii(event.name).u8(event.player);
@@ -213,7 +214,7 @@ class DoomNetStateCodec {
             case DoomTurnEvents.SOUND_FROM_BODY:
                 return Object.assign({type: type, name: r.ascii(), body: r.u32()}, DoomNetStateCodec._readSoundOptions(r));
             case DoomTurnEvents.SOUND_FROM_PLAYER:
-                return {type: type, name: r.ascii(), player: r.u8(), channel: DoomNetStateCodec._readName(r)};
+                return {type: type, name: r.ascii(), player: r.u8(), channel: DoomNetStateCodec._readName(r), point: DoomNetStateCodec._readVector(r)};
             case DoomTurnEvents.SOUND_TO_PLAYER:
                 return {type: type, name: r.ascii(), player: r.u8()};
             case DoomTurnEvents.EFFECT:

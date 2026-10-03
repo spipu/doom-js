@@ -1,9 +1,9 @@
 {
   "Doom2/MAP01@3": {
-    "statesSha": "ef3c816268e71027eff9867f5a2bc42c002680f1f84f700305a43dc2809a8d53",
+    "statesSha": "43c9fe0221b1a69af18e37bb84385f70fed00271347bd864dcbfdef4af2b0675",
     "commandsSha": "16a1253b1320db50c2e828b408741d87fe740ecaf14f7d24dd082447f4af3f2e",
     "states": 20,
-    "stateBytes": 21038,
+    "stateBytes": 21194,
     "commands": 400,
     "mismatches": 0
   }

@@ -48,10 +48,11 @@ class DoomNetEvents {
         return Object.assign({body: this._ids.idOfView(event.body)}, this._sound(event));
     }
 
+    // Where the player stood: a sub that does not hold that player plays it from there.
     _convertSoundFromPlayer(event) {
         const player = this._playerId(event.user);
 
-        return ((player !== null) ? {name: event.name, player: player, channel: event.channel} : null);
+        return ((player !== null) ? {name: event.name, player: player, channel: event.channel, point: DoomSoundSystem.playerEarPoint(event.user)} : null);
     }
 
     _convertSoundToPlayer(event) {

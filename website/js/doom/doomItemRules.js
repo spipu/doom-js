@@ -61,11 +61,12 @@ class DoomItemRules {
     // --- Pickups ---
 
     // False leaves the thing on the ground (health/armor/ammo already full, key
-    // already held). Effect shapes come from DoomThingCatalog.
+    // already held). Effect shapes come from DoomThingCatalog. The pickup rings
+    // for the taker alone (P_TouchSpecialThing plays it for the console player only).
     applyPickup(user, effect) {
         const consumed = this._applyPickupEffect(user, effect);
         if (consumed) {
-            this._events.soundFromPlayer(this._pickupSoundFor(effect), user, null);
+            this._events.soundToPlayer(this._pickupSoundFor(effect), user);
         }
 
         return consumed;
