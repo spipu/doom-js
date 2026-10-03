@@ -432,8 +432,8 @@ class WadWorldBuilder {
             });
         }
 
-        this._built.setPlayerStarts(this._spawnPoses(builder.getPlayerStarts()))
-            .setDeathmatchStarts(builder.getDeathmatchStarts().map((start) => this._spawnPose(start)));
+        this._built.setPlayerStarts(this._spawnPoses(builder.getPlayerStarts(), analysis))
+            .setDeathmatchStarts(builder.getDeathmatchStarts().map((start) => this._spawnPose(start, analysis)));
 
         return {count: things.length, skipped: builder.getSkipped(), filtered: builder.getFiltered(), monsters: builder.getMonsterCount()};
     }
@@ -1186,19 +1186,20 @@ class WadWorldBuilder {
         return AppHash.fnv1a32(new Uint8Array(things.buffer, things.byteOffset, things.byteLength));
     }
 
-    _spawnPoses(starts) {
+    _spawnPoses(starts, analysis) {
         const poses = {};
         for (const slot of Object.keys(starts)) {
-            poses[slot] = this._spawnPose(starts[slot]);
+            poses[slot] = this._spawnPose(starts[slot], analysis);
         }
 
         return poses;
     }
 
-    // A start just above its sector floor, in world space.
-    _spawnPose(start) {
+    // A start just above its sector floor at rest, in world space: a lift
+    // sector's fh is patched to its low position.
+    _spawnPose(start, analysis) {
         const sect    = this._findSector(start.x, start.y);
-        const floorFh = ((sect !== null) ? sect.fh : 0);
+        const floorFh = ((sect !== null) ? (analysis.liftOriginalFh[sect.si] ?? sect.fh) : 0);
 
         return {
             x:   start.x * WadConstants.SCALE,
