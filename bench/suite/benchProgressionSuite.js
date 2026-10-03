@@ -1,11 +1,9 @@
 /**
- * Golden master of the progression: for every level of every WAD, the next
- * level after a normal and a secret exit, the story text each exit brings,
- * the music candidates and the level name as the game resolves it (UMAPINFO,
- * then the WAD's DEHACKED strings, then the profile's table) — the vanilla
- * routing rules, the per-game slots and the lump overlays, which no scenario
- * walks through.
+ * Per level: exits, finales, music and the name as the game resolves them;
+ * per WAD: its title and version.
  */
+const crypto             = require('crypto');
+const fs                 = require('fs');
 const {BenchLevelBuild}  = require('../lib/benchLevelBuild');
 const {BenchFingerprint} = require('../lib/benchFingerprint');
 
@@ -18,7 +16,8 @@ class BenchProgressionSuite {
      * @param {BenchContext} app
      * @param {{name: string, path: string}[]} wads
      * @param {function(string)} progress
-     * @returns {Promise<object>} key "wad/level" → {next, nextSecret, finale, finaleSecret, music, name}
+     * @returns {Promise<object>} key "wad/level" → {next, nextSecret, finale, finaleSecret, music, name},
+     *                            key "wad/identity" → {name, version}
      */
     static async run(app, wads, progress) {
         const builds = new BenchLevelBuild(app);
@@ -28,6 +27,7 @@ class BenchProgressionSuite {
             progress(wad.name);
             const wadFile = app.readWad(wad.path);
             try {
+                result[wad.name + '/identity'] = BenchProgressionSuite._identity(app, wad.path);
                 for (const row of table(wadFile, builds.resolveGame(wadFile).profile)) {
                     result[wad.name + '/' + row.code] = BenchProgressionSuite._entry(row);
                 }
@@ -38,6 +38,12 @@ class BenchProgressionSuite {
         }
 
         return result;
+    }
+
+    static _identity(app, wadPath) {
+        const sha1 = crypto.createHash('sha1').update(fs.readFileSync(wadPath)).digest('hex');
+
+        return (app.run('DoomWadEditions').describe(sha1) ?? {name: null, version: null});
     }
 
     static _entry(row) {
@@ -51,7 +57,6 @@ class BenchProgressionSuite {
         };
     }
 
-    // A UMAPINFO text is kept by its fingerprint, a catalog text by its code.
     static _finale(finale) {
         if (finale === null) {
             return null;

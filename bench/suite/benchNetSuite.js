@@ -1,10 +1,6 @@
 /**
- * Golden master of the pure network layer, the part the replica suite never
- * reaches: a session description compacted for a QR code and rebuilt, the
- * pairing envelope accepted and refused as it should, a binary message cut
- * into chunks and rebuilt whatever their order, the reachability verdicts
- * on a table of address pairs, and the lobby seats through joins, losses,
- * reclaims and evictions.
+ * The pure network layer the replica suite never reaches: compact signal,
+ * pairing envelope, chunked messages, reachability verdicts and lobby seats.
  */
 const {BenchFingerprint} = require('../lib/benchFingerprint');
 
@@ -45,9 +41,10 @@ class BenchNetSuite {
     }
 }
 
-// Shared by the checks: the outcome of a call expected to throw, as its NetError code.
 BenchNetSuite.ATTEMPT_SCRIPT = `
-    const codeOf  = (error) => ((error instanceof NetError) ? error.getCode() : 'error: ' + error.message);
+    const codeOf  = (error) => ((error instanceof NetError)
+        ? error.getCode() + (((error.getDetail() !== null) && (error.getDetail() !== '')) ? ' (' + error.getDetail() + ')' : '')
+        : 'error: ' + error.message);
     const attempt = (call) => {
         try {
             call();
@@ -106,7 +103,7 @@ BenchNetSuite.CHECKS = {
     pairingCode: `(() => {
         ${BenchNetSuite.ATTEMPT_SCRIPT}
         const signal   = new Uint8Array([1, 2, 3, 4, 5]);
-        const payload  = DoomNetInvite.encodeInvite('ab'.repeat(32), 2);
+        const payload  = DoomNetInvite.encodeInvite('ab'.repeat(32), 2, 'Doom 2 - v1.9');
         const code     = NetPairingCode.encode('v1.0', NetPairingCode.KIND_INVITE, 4242, signal, payload);
         const decoded  = NetPairingCode.decode(code, 'v1.0', NetPairingCode.KIND_INVITE);
         const refused  = (bytes, version, kind) => attempt(() => NetPairingCode.decode(bytes, version, kind));

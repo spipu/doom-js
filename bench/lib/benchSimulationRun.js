@@ -1,9 +1,6 @@
 /**
- * Drives a scenario through DoomMainRole, the path the game takes without
- * its presentation: build, enter, then one advance() per frame with the
- * scripted command. Returns the per-frame trace and the final save snapshot.
- * A run may instead resume a save: the level is rebuilt and restored as
- * DoomGame does on a load, and the frames start where the save was taken.
+ * Drives a scenario through DoomMainRole without presentation, or resumes a
+ * save on a rebuilt level as DoomGame does on a load.
  */
 const {BenchLevelBuild} = require('./benchLevelBuild');
 const {BenchScenario}   = require('./benchScenario');
@@ -35,6 +32,11 @@ class BenchSimulationRun {
 
 BenchSimulationRun.SEED            = 7;
 BenchSimulationRun.TRACE_PRECISION = 10000;
+BenchSimulationRun.TRACE_X         = 0;
+BenchSimulationRun.TRACE_Z         = 2;
+BenchSimulationRun.TRACE_WEAPON    = 8;
+BenchSimulationRun.TRACE_COUNTS    = 10;
+BenchSimulationRun.TRACE_EVENTS    = 11;
 
 BenchSimulationRun.RUN_SCRIPT = `(async (wadFile, scenario, frameMs, hooks, restore) => {
     ${BenchScenario.COMMAND_SCRIPT}

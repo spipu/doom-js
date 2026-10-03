@@ -254,7 +254,7 @@ class MenuNavigator {
      */
     async joinSharedGame(meta, session, level) {
         const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.level.loading', {level: level.levelCode, wad: meta.name}));
+            .showLoading(appTranslator.get('menu.level.loading', {level: level.levelCode, wad: WadRegistry.displayTitle(meta)}));
         try {
             const wadFile = await this._registry.getWadFile(meta.id);
             // Ended while the WAD was read: the lobby already said why.
@@ -301,14 +301,14 @@ class MenuNavigator {
 
     async _launchFromWad(meta, levelCode, spawnOverride = null) {
         const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.level.loading', {level: levelCode, wad: meta.name}));
+            .showLoading(appTranslator.get('menu.level.loading', {level: levelCode, wad: WadRegistry.displayTitle(meta)}));
         await this._launchGame(meta, levelCode, spawnOverride, modal, false);
     }
 
     // Saved-game counterpart of _launchGame.
     async _launchFromSave(meta, saveMeta) {
         const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: meta.name}));
+            .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: WadRegistry.displayTitle(meta)}));
         try {
             const {snapshot} = await doomSaveStore.read(saveMeta.wadId, saveMeta.slot);
             if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
@@ -401,7 +401,7 @@ class MenuNavigator {
         }
 
         const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.wad.loading', {wad: meta.name}));
+            .showLoading(appTranslator.get('menu.wad.loading', {wad: WadRegistry.displayTitle(meta)}));
         await this._launchGame(meta, levelCode, spawnOverride, modal, true);
     }
 

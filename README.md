@@ -40,7 +40,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 
 ## Features
 
-- **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Each WAD carries a SHA-256 fingerprint of its file, computed at import (at the first opening of its menu for older ones) and shown shortened in the list, by which multiplayer devices will check they play the same WAD. Mouse, keyboard, gamepad and touch drive every menu the same way.
+- **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Each WAD is listed under the game, edition and version of the known official releases, recognised by file hash (Doom 1 - Ultimate v1.9, Doom 2 - Plutonia, Freedoom - Phase 2 v0.13.0…), the file name standing in for an unrecognised file; a SHA-256 fingerprint of the file, computed at import, is by which multiplayer devices check they play the same WAD, a refusal naming the host's WAD. Mouse, keyboard, gamepad and touch drive every menu the same way.
 - **WAD menu & game flow**: *New game*, *Load game*, *Options*, *About*, *Report a bug* (opens the GitHub issues page), *Quit* — then the episodes actually present in the WAD and the five vanilla skills plus a pacifist skill 0 — the normal-skill world, but the monsters never attack — with the original per-skill rules.
 - **Save / load**: five slots per WAD; a save captures the full game state and loading rebuilds the level and restores it exactly (transient visuals excepted).
 - **Pause menu**: `ESC` freezes the game under a translucent overlay — resume, load, save, options, leave the level.

@@ -1,7 +1,6 @@
 /**
- * How a golden entry is compared and told apart: every field counts, except
- * the informative ones (prefixed "~", a wall time for instance), which are
- * printed next to their golden value and never fail a run.
+ * Golden entry comparison: every field counts except the informative ones
+ * (prefixed "~"), printed next to their golden value and never failing a run.
  */
 class BenchGolden {
     /**

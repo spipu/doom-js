@@ -64,8 +64,8 @@
     }
   },
   "pairingCode": {
-    "codeBytes": "b8b62c57e165eaa84704795adccf329f64281d71c4793a9be6340524e12e348b",
-    "length": 48,
+    "codeBytes": "24b881adf5ca2092e9cbbd66d0af4fb3bd3ebd10f52b6fd3756ac575316f79fd",
+    "length": 62,
     "inviteId": 4242,
     "signal": [
       1,
@@ -76,11 +76,12 @@
     ],
     "invite": {
       "wadSha256": "abababababababababababababababababababababababababababababababab",
-      "mode": 2
+      "mode": 2,
+      "wadLabel": "Doom 2 - v1.9"
     },
     "nickname": "Zoe_42",
     "accented": "refused: error: Non-ASCII character in an ASCII field",
-    "otherWad": "refused: wad-mismatch",
+    "otherWad": "refused: wad-mismatch (Doom 2 - v1.9)",
     "otherVersion": "version-mismatch",
     "otherKind": "wrong-kind",
     "truncated": "invalid-code",

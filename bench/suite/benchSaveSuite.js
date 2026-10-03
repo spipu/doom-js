@@ -1,13 +1,9 @@
 /**
- * Golden master of the save round trip: a scenario runs uninterrupted and its
- * save is captured half-way; the level is then rebuilt, the save restored as a
- * load does, and the remaining frames are played again. Two checks: the save
- * captured right after the restore must equal the one restored (nothing is
- * lost or invented by a load), and the resumed trace is fingerprinted, with
- * how far the player drifts from the uninterrupted run — the save leaves out
- * the player's momentum, the sub-tic accumulators and the transient effects
- * on purpose, so the two runs part by centimetres from the first frame; a
- * drift that grows is a regression.
+ * A save captured half-way through a scenario, restored on a rebuilt level and
+ * played on: the save recaptured right after the restore must equal the one
+ * restored. The resumed run drifts from the uninterrupted one by design (the
+ * save leaves out momentum, sub-tic accumulators and transient effects): the
+ * drift is recorded, its growth is the regression.
  */
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
@@ -72,8 +68,8 @@ class BenchSaveSuite {
     static _drift(reference, resumed, reduce) {
         let drift = 0;
         for (let i = 0; i < Math.min(reference.length, resumed.length); i++) {
-            const dx = (reference[i][BenchSaveSuite.TRACE_X] - resumed[i][BenchSaveSuite.TRACE_X]);
-            const dz = (reference[i][BenchSaveSuite.TRACE_Z] - resumed[i][BenchSaveSuite.TRACE_Z]);
+            const dx = (reference[i][BenchSimulationRun.TRACE_X] - resumed[i][BenchSimulationRun.TRACE_X]);
+            const dz = (reference[i][BenchSimulationRun.TRACE_Z] - resumed[i][BenchSimulationRun.TRACE_Z]);
             drift = reduce(drift, Math.hypot(dx, dz));
         }
 
@@ -81,15 +77,10 @@ class BenchSaveSuite {
     }
 }
 
-// Columns of a trace row, as BenchSimulationRun writes them.
-BenchSaveSuite.TRACE_X         = 0;
-BenchSaveSuite.TRACE_Z         = 2;
 BenchSaveSuite.DRIFT_PRECISION = 1000;
+BenchSaveSuite.CAPTURE_FRAME   = 600;
 
-// Half-way through the standard 1200-frame plan, inside the shooting sweep's aftermath.
-BenchSaveSuite.CAPTURE_FRAME = 600;
-
-// The save of the uninterrupted run, taken once the capture frame has been played, like a pause would.
+// Taken once the capture frame has been played, like a pause would.
 BenchSaveSuite.HOOKS_SCRIPT = `(() => {
     const hooks = {saved: null};
     hooks.afterFrame = (frame, {role}) => {

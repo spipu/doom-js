@@ -1,10 +1,6 @@
 /**
- * Work counters of the simulation along the standard scenarios: how many
- * times the hot paths run — world and system updates, instance advances,
- * collision resolutions, ray casts and spatial grid queries. Deterministic,
- * so a path that starts running twice as often is caught like a changed
- * fingerprint. The wall time per frame rides along as an informative field,
- * compared by eye only: it depends on the machine.
+ * Call counts of the simulation's hot paths along the standard scenarios,
+ * deterministic; the wall time per frame rides along as an informative field.
  */
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
@@ -57,7 +53,6 @@ class BenchPerfSuite {
         return entry;
     }
 
-    // Installed once per context: the prototypes stay wrapped, reset() zeroes the counts.
     static countersScript() {
         const wraps = Object.entries(BenchPerfSuite.COUNTED)
             .map(([name, [className, method]]) => ("wrap('" + name + "', " + className + ".prototype, '" + method + "');"))
@@ -90,7 +85,6 @@ class BenchPerfSuite {
 BenchPerfSuite.NS_PER_MS    = 1e6;
 BenchPerfSuite.MS_PRECISION = 100;
 
-// Counter name → [class, method]; every call of the method bumps the counter.
 BenchPerfSuite.COUNTED = {
     worldUpdates:      ['World',                'update'],
     simulationTicks:   ['DoomSimulation',       'tickWorld'],

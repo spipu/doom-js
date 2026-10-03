@@ -121,6 +121,10 @@ class MenuDom {
     }
 
     // Seconds are for the save slots: two saves may land in the same minute.
+    static formatDay(timestamp) {
+        return new Date(timestamp).toLocaleDateString(appTranslator.getLocale());
+    }
+
     static formatDate(timestamp, withSeconds = false) {
         const date        = new Date(timestamp);
         const locale      = appTranslator.getLocale();

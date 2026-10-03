@@ -1,14 +1,8 @@
 /**
- * A main and a sub in two app contexts, wired directly: what the main's turn
- * cycle sends reaches the sub's role as the message it is, and the sub's
- * answer comes back the same way — no transport, no clock, the turn N+1 only
- * once the sub answered the state N, as the synchronous cycle wants. The sub
- * re-captures the state it applied and compares it, section by section, to
- * the state it received: a replica must hold what the main sent. Three modes:
- * screen sharing (the sub views the main's player), cooperative and
- * deathmatch (the sub plays its own, entering with its first command). In
- * deathmatch the main kills the sub's player by hand at KILL_FRAME, so that
- * the frag, the death, the corpse and the respawn travel through the cycle.
+ * A main and a sub in two app contexts, wired without transport nor clock:
+ * turn N+1 only once the sub answered state N, as the synchronous cycle wants.
+ * In deathmatch the main kills the sub's player at KILL_FRAME, so that the
+ * frag, the death and the respawn travel through the cycle.
  */
 const {BenchLevelBuild} = require('./benchLevelBuild');
 const {BenchScenario}   = require('./benchScenario');
@@ -54,7 +48,6 @@ class BenchReplicaRun {
         return {main: host.finish(), sub: guest.finish()};
     }
 
-    // Delivers every pending message in order, until both directions are empty.
     async _pump(wire, host, guest) {
         while ((wire.toSub.length > 0) || (wire.toMain.length > 0)) {
             while (wire.toSub.length > 0) {
@@ -68,7 +61,6 @@ class BenchReplicaRun {
         }
     }
 
-    // The sub's choreography: the main's, mirrored left to right.
     static subPlan(plan) {
         return plan.map((step) => Object.assign({}, step, {move: [-step.move[0], step.move[1]], look: [-step.look[0], step.look[1]]}));
     }
@@ -84,7 +76,6 @@ BenchReplicaRun.KILL_FRAME     = 300;
 BenchReplicaRun.KILL_DAMAGE    = 500;
 BenchReplicaRun.PRECISION      = 10000;
 
-// Shared by both scripts: the mode's rules on the main, its protocol mode, and whether the sub plays its own player.
 BenchReplicaRun.COMMON_SCRIPT = `
     ${BenchScenario.COMMAND_SCRIPT}
     const round    = (v) => (Math.round(v * ${BenchReplicaRun.PRECISION}) / ${BenchReplicaRun.PRECISION});
@@ -173,7 +164,7 @@ BenchReplicaRun.GUEST_SCRIPT = `((wadFile, scenario, mode) => {
                 if (samples.length < 3) { samples.push(section + '@' + received.turn + ': ' + json(received[section]).substring(0, 160) + ' | ' + json(mine[section]).substring(0, 160)); }
             }
         }
-        // The sub's own player, once it has entered the main's level (a coop player enters with its first command).
+        // A coop player only enters the level with its first command.
         const got  = received.players.find((p) => (p.id === localId));
         const have = mine.players.find((p) => (p.id === localId));
         if ((got !== undefined) && (json(got) !== json(have ?? null))) {

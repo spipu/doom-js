@@ -34,8 +34,6 @@ class BenchScenario {
         return {level: this.level, skill: this.skill, frames: this.frames, plan: this.plan};
     }
 
-    // Cheat, sweep a full turn shooting, walk in, cycle the weapons, jump, use,
-    // strafe under fire: the same choreography on every level, 20 s at 60 frames/s.
     static standardPlan() {
         return [
             {until: 1,    move: [0, 0],   look: [0, 0],    buttons: ['cheatFullKit']},
@@ -68,7 +66,7 @@ BenchScenario.FRAME_MS = 1000 / 60;
 BenchScenario.FRAMES   = 1200;
 BenchScenario.SKILL    = 3;
 
-// Inlined in the app-context scripts: the UserCommand a plan gives at a frame.
+// Inlined in the app-context scripts.
 BenchScenario.COMMAND_SCRIPT = `
     const commandAt = (plan, frame) => {
         const s = (plan.find((step) => (frame < step.until)) ?? plan[plan.length - 1]);

@@ -2,7 +2,9 @@
  * WAD storage on IndexedDB (spipudoom schema), built on the generic AppDatabase.
  *
  * Stores:
- *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?} — sha256 = identity of the file, absent until computed
+ *  - wadMeta: {id, name, size, addedAt, source: {type: 'url'|'file', value}, sha256?, title?, version?, described?} — sha256 = identity
+ *    of the file, title/version = the known edition of the file (null when unknown), described = the editions table version they were read with;
+ *    all absent until computed
  *  - wadData: {id, data: ArrayBuffer}
  *  - settings: {key, value} — persisted game settings (read by DoomSettings)
  *  - saveMeta: {id, wadId, slot, levelCode, skill, savedAt, formatVersion} — save slots (read by DoomSaveStore)

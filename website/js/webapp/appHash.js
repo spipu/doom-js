@@ -1,5 +1,5 @@
 /**
- * Content hashes: SHA-256 through Web Crypto, which only exists in a secure
+ * Content hashes: SHA-256 and SHA-1 through Web Crypto, which only exists in a secure
  * context (HTTPS, or localhost) and is null elsewhere; FNV-1a, synchronous and
  * always available, for seeds that are not a security matter.
  */
@@ -9,10 +9,22 @@ class AppHash {
      * @returns {Promise<string|null>} lowercase hexadecimal SHA-256, null without Web Crypto
      */
     static async sha256Hex(bytes) {
+        return AppHash._digestHex('SHA-256', bytes);
+    }
+
+    /**
+     * @param {ArrayBuffer|Uint8Array} bytes
+     * @returns {Promise<string|null>} lowercase hexadecimal SHA-1, null without Web Crypto
+     */
+    static async sha1Hex(bytes) {
+        return AppHash._digestHex('SHA-1', bytes);
+    }
+
+    static async _digestHex(algorithm, bytes) {
         if ((typeof crypto === 'undefined') || (crypto.subtle === undefined)) {
             return null;
         }
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const digest = await crypto.subtle.digest(algorithm, bytes);
 
         return Array.from(new Uint8Array(digest), (byte) => byte.toString(AppHash.RADIX).padStart(AppHash.DIGITS, '0')).join('');
     }

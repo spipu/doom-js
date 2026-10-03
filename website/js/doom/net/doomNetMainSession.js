@@ -14,6 +14,7 @@ class DoomNetMainSession {
      * @param {object}       config
      * @param {DoomNetLinks} config.links
      * @param {string}       config.wadSha256 - identity of the WAD every sub must hold
+     * @param {string}       config.wadLabel  - its title and version, named in a sub's refusal
      * @param {string}       config.nickname  - the main's
      * @param {int}          config.capacity  - players, main included
      * @param {int}          config.mode      - DoomNetProtocol.MODE_*
@@ -23,6 +24,7 @@ class DoomNetMainSession {
     constructor(config) {
         this._links     = config.links;
         this._wadSha256 = config.wadSha256;
+        this._wadLabel  = config.wadLabel;
         this._colors    = config.colors;
         this._lobby     = new DoomNetLobby(config.capacity).addMain(config.nickname);
         this._mode      = config.mode;
@@ -178,7 +180,7 @@ class DoomNetMainSession {
     addPlayer(view) {
         this._pairing = new NetHostPairing(this._host, view);
 
-        return this._pairing.addPeer(DoomNetInvite.encodeInvite(this._wadSha256, this._mode));
+        return this._pairing.addPeer(DoomNetInvite.encodeInvite(this._wadSha256, this._mode, this._wadLabel));
     }
 
     cancelPairing() {

@@ -1,8 +1,6 @@
 /**
- * Golden master of the network codecs: along a short scenario, the turn
- * state is captured and encoded as the main does, decoded as a sub does,
- * and re-encoded — the bytes must match and their fingerprint is kept; every
- * scripted command goes through the command codec the same way.
+ * Turn states and commands encoded as the main does, decoded as a sub does and
+ * re-encoded: the bytes must match.
  */
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');

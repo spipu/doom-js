@@ -1,9 +1,7 @@
 /**
- * Static checks of the sources, which no run exercises: the translation
- * catalog complete in every language with the same placeholders, every
- * translation code written in the game layer resolvable and every catalog
- * entry used, and both libBootstrap.json consistent with the disk — a file
- * forgotten there is never served, one listed twice is loaded twice.
+ * Checks no run exercises: the translation catalog complete in every language
+ * with the same placeholders, every written code resolvable, every entry used,
+ * both libBootstrap.json consistent with the disk.
  */
 const fs   = require('fs');
 const path = require('path');

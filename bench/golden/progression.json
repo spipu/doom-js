@@ -1,4 +1,8 @@
 {
+  "freedoom1/identity": {
+    "name": "Freedoom - Phase 1",
+    "version": "0.13.0"
+  },
   "freedoom1/E1M1": {
     "next": "E1M2",
     "nextSecret": "E1M9",
@@ -368,6 +372,10 @@
     ],
     "name": "Operations"
   },
+  "freedoom2/identity": {
+    "name": "Freedoom - Phase 2",
+    "version": "0.13.0"
+  },
   "freedoom2/MAP01": {
     "next": "MAP02",
     "nextSecret": "MAP31",
@@ -688,6 +696,10 @@
     ],
     "name": "MAP32: Not Sure"
   },
+  "Doom1/identity": {
+    "name": "Doom 1",
+    "version": "1.9"
+  },
   "Doom1/E1M1": {
     "next": "E1M2",
     "nextSecret": "E1M9",
@@ -957,6 +969,10 @@
       "D_E3M9"
     ],
     "name": "Warrens"
+  },
+  "Doom2/identity": {
+    "name": "Doom 2",
+    "version": "1.9"
   },
   "Doom2/MAP01": {
     "next": "MAP02",
@@ -1277,6 +1293,10 @@
       "D_ULTIMA"
     ],
     "name": "Grosse"
+  },
+  "heretic/identity": {
+    "name": "Heretic",
+    "version": "1.3"
   },
   "heretic/E1M1": {
     "next": "E1M2",
@@ -1757,6 +1777,10 @@
       "MUS_E1M6"
     ],
     "name": null
+  },
+  "hexen/identity": {
+    "name": "Hexen",
+    "version": "1.1"
   },
   "hexen/MAP01": {
     "next": "MAP02",

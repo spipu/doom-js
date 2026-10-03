@@ -101,7 +101,13 @@ class MenuPairingModal extends MenuModal {
             console.error(error);
         }
         doomSound.playUi('menu/invalid');
-        new MenuModal(this._display).info(appTranslator.get(code));
+        new MenuModal(this._display).info(MenuPairingModal._message(code, error));
+    }
+
+    static _message(code, error) {
+        const named = ((error instanceof NetError) && (error.getCode() === DoomNetInvite.WAD_MISMATCH) && (error.getDetail() !== null) && (error.getDetail() !== ''));
+
+        return ((named) ? appTranslator.get('multiplayer.error.wadNamed', {wad: error.getDetail().replace(/ /g, MenuPairingModal.NO_BREAK_SPACE)}) : appTranslator.get(code));
     }
 
     // The sub's answer names it; a payload that does not decode leaves the line nameless.
@@ -136,6 +142,7 @@ class MenuPairingModal extends MenuModal {
 }
 
 MenuPairingModal.WASM_URL      = '/js/lib/zxing-wasm/zxing_full.wasm';
+MenuPairingModal.NO_BREAK_SPACE = '\u00A0';
 MenuPairingModal.ERROR_DEFAULT = 'multiplayer.error.pairing';
 MenuPairingModal.ERROR_CODES   = {
     [NetError.VERSION_MISMATCH]:  'multiplayer.error.version',

@@ -17,12 +17,14 @@ class WadRegistry {
     }
 
     /**
-     * @returns {Promise<object[]>} metadata sorted by name (natural order:
-     *                              doom2 before doom10)
+     * @returns {Promise<object[]>} metadata sorted by title, then version,
+     *                              then file name (natural order: doom2 before doom10)
      */
     async getList() {
         const list = await this._storage.listMeta();
-        list.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+        list.sort((a, b) => (WadRegistry._compare(WadRegistry.displayTitle(a), WadRegistry.displayTitle(b))
+            || WadRegistry._compare(a.version ?? '', b.version ?? '')
+            || WadRegistry._compare(a.name, b.name)));
 
         return list;
     }
@@ -171,47 +173,69 @@ class WadRegistry {
 
     /**
      * Identity of a stored WAD: the SHA-256 of its whole file, which two
-     * devices compare to know they play the same WAD. Computed and stored the
-     * first time it is missing (WADs imported before it existed), and written
-     * on the given metadata too; null while Web Crypto is unavailable, retried
+     * devices compare to know they play the same WAD, plus the title and
+     * version of a known edition. Computed and stored when missing or
+     * outdated; the hash stays null while Web Crypto is unavailable, retried
      * on the next call.
      *
      * @param {object} meta - stored metadata, updated in place
-     * @returns {Promise<string|null>}
+     * @returns {Promise<string|null>} the SHA-256
      */
     async ensureIdentity(meta) {
-        if (typeof meta.sha256 === 'string') {
+        if ((typeof meta.sha256 === 'string') && WadRegistry.isDescribed(meta)) {
             return meta.sha256;
         }
         const stored = await this._storage.readWad(meta.id);
-        const sha256 = await AppHash.sha256Hex(stored.data);
-        if (sha256 === null) {
+        Object.assign(meta, await this._describe(stored.data));
+        if (typeof meta.sha256 !== 'string') {
             return null;
         }
-        meta.sha256 = sha256;
         await this._storage.saveMeta(meta);
 
-        return sha256;
+        return meta.sha256;
     }
 
     /**
      * @param {object} meta
-     * @returns {string|null} the first characters of the identity, enough to tell two WADs apart by eye
+     * @returns {boolean} false for a WAD stored before the current title and version rules
      */
-    static shortIdentity(meta) {
+    static isDescribed(meta) {
+        return (meta.described === WadRegistry.DESCRIPTION_VERSION);
+    }
+
+    /**
+     * @param {object} meta
+     * @returns {string|null} the version of a known edition ("v1.9", "BFG Edition"),
+     *          else the first characters of the identity, enough to tell two WADs apart by eye
+     */
+    static versionLabel(meta) {
+        if (typeof meta.version === 'string') {
+            return ((WadRegistry.NUMBERED_VERSION.test(meta.version)) ? WadRegistry.VERSION_PREFIX + meta.version : meta.version);
+        }
+
         return ((typeof meta.sha256 === 'string') ? meta.sha256.slice(0, WadRegistry.SHORT_IDENTITY_LENGTH) : null);
     }
 
     /**
-     * Display title of a stored WAD: the file name without its extension.
-     * meta.name itself stays untouched — the messages and the registry
-     * lookups rely on the raw file name.
+     * @param {object} meta
+     * @returns {string} "title - version label" when there is a label, the title alone otherwise
+     */
+    static displayLabel(meta) {
+        const version = WadRegistry.versionLabel(meta);
+
+        return WadRegistry.displayTitle(meta) + ((version !== null) ? WadRegistry.LABEL_SEPARATOR + version : '');
+    }
+
+    /**
+     * Display title of a stored WAD: the game and edition of a known file,
+     * else the file name without its extension. meta.name itself stays
+     * untouched — the registry lookups rely on the raw file name.
      *
      * @param {object} meta
      * @returns {string}
      */
     static displayTitle(meta) {
-        return meta.name.replace(/\.wad$/i, '');
+        return (meta.title ?? meta.name.replace(/\.wad$/i, ''));
     }
 
     // --- Internal ---
@@ -284,8 +308,6 @@ class WadRegistry {
     }
 
     async _validateAndSave(buffer, name, source) {
-        new WadFile(buffer).parse();
-
         const meta = {
             id:      this._buildId(name),
             name:    name,
@@ -293,14 +315,31 @@ class WadRegistry {
             addedAt: Date.now(),
             source:  source
         };
-        const sha256 = await AppHash.sha256Hex(buffer);
-        if (sha256 !== null) {
-            meta.sha256 = sha256;
-        }
+        Object.assign(meta, await this._describe(buffer));
 
         await this._storage.saveWad(meta, buffer);
 
         return meta;
+    }
+
+    async _describe(buffer) {
+        new WadFile(buffer).parse();
+        const sha256  = await AppHash.sha256Hex(buffer);
+        const edition = DoomWadEditions.describe(await AppHash.sha1Hex(buffer));
+        const described = {
+            title:     (edition?.name ?? null),
+            version:   (edition?.version ?? null),
+            described: WadRegistry.DESCRIPTION_VERSION
+        };
+        if (sha256 !== null) {
+            described.sha256 = sha256;
+        }
+
+        return described;
+    }
+
+    static _compare(a, b) {
+        return a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'});
     }
 
     _buildId(name) {
@@ -316,3 +355,8 @@ class WadRegistry {
 }
 
 WadRegistry.SHORT_IDENTITY_LENGTH = 8;
+// Bump when the editions table changes: stored WADs are described again.
+WadRegistry.DESCRIPTION_VERSION   = 2;
+WadRegistry.NUMBERED_VERSION      = /^\d/;
+WadRegistry.VERSION_PREFIX        = 'v';
+WadRegistry.LABEL_SEPARATOR       = ' - ';

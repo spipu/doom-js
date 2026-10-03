@@ -78,6 +78,7 @@ class DoomHostedSession {
         const session = new DoomNetMainSession({
             links:     this._links,
             wadSha256: wadMeta.sha256,
+            wadLabel:  WadRegistry.displayLabel(wadMeta),
             nickname:  nickname,
             capacity:  game.getProfile().maxPlayers(),
             mode:      mode,

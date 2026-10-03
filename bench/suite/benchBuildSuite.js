@@ -1,10 +1,7 @@
 /**
- * Golden master of the level build: every level of every WAD, converted as
- * the game converts it (skill 3, single-player things), reduced to a
- * fingerprint of what the loader holds afterwards — meshes, textures,
- * instances with their cycles, interactions with their targets, and what the
- * built level hands the game. The summary reads private fields of the engine
- * entities on purpose: the bench is a diagnostic tool, not game code.
+ * Every level of every WAD converted as the game does (skill 3, single-player
+ * things), fingerprinted on what the loader holds afterwards. Reads private
+ * fields of the engine entities on purpose: a diagnostic tool, not game code.
  */
 const crypto = require('crypto');
 const {BenchLevelBuild}  = require('../lib/benchLevelBuild');

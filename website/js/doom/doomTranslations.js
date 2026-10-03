@@ -1250,6 +1250,12 @@ class DoomTranslations {
                 it: 'L\'host usa un altro file WAD',
                 es: 'El anfitrión juega con otro archivo WAD'
             },
+            'multiplayer.error.wadNamed': {
+                fr: 'L\'hôte joue avec un autre fichier WAD :\n{wad}',
+                en: 'The host plays another WAD file:\n{wad}',
+                it: 'L\'host usa un altro file WAD:\n{wad}',
+                es: 'El anfitrión juega con otro archivo WAD:\n{wad}'
+            },
             'multiplayer.error.invite': {
                 fr: 'Ce code a déjà servi : ajoutez à nouveau le joueur',
                 en: 'This code was already used: add the player again',

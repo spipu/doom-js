@@ -1,10 +1,6 @@
 /**
- * Golden master of the replication: a main and a sub run a scenario through
- * the synchronous turn cycle, wired directly in two app contexts (see
- * BenchReplicaRun), in screen sharing, cooperative and deathmatch. The state the sub
- * re-captures after applying each turn must equal the one it received, and
- * what it played — sounds, effects — and the course of both players are
- * fingerprinted.
+ * A main and a sub through the turn cycle (BenchReplicaRun) in every mode:
+ * the state the sub re-captures must equal the one it received.
  */
 const {BenchContext}     = require('../lib/benchContext');
 const {BenchReplicaRun}  = require('../lib/benchReplicaRun');
@@ -71,8 +67,7 @@ class BenchReplicaSuite {
     }
 }
 
-// 600 frames: the cheat, the shooting sweep, the walk in and the use presses — enough for shots,
-// drops and movers to travel, and for a killed deathmatch player to respawn.
+// Enough for shots, drops and movers to travel, and for a killed deathmatch player to respawn.
 BenchReplicaSuite.FRAMES = 600;
 
 module.exports = {BenchReplicaSuite};

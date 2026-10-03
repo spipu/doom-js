@@ -1,8 +1,6 @@
 /**
- * Golden master of the simulation: scripted scenarios driven frame by frame
- * through DoomMainRole, fingerprinted on the player's trace (position, view,
- * vitals, equipment, level counts, turn events) and on the save captured at
- * the end.
+ * Scripted scenarios driven frame by frame through DoomMainRole, fingerprinted
+ * on the player's trace and on the save captured at the end.
  */
 const {BenchSimulationRun} = require('../lib/benchSimulationRun');
 const {BenchScenario}      = require('../lib/benchScenario');
@@ -42,16 +40,16 @@ class BenchSimulationSuite {
 
     static _digest(outcome) {
         const last   = outcome.trace[outcome.trace.length - 1];
-        const counts = last[BenchSimulationSuite.TRACE_COUNTS];
+        const counts = last[BenchSimulationRun.TRACE_COUNTS];
 
         return {
             sha:     BenchFingerprint.sha(outcome.trace),
             saveSha: BenchFingerprint.sha(outcome.snapshot),
             frames:  outcome.trace.length,
-            events:  outcome.trace.reduce((n, row) => (n + row[BenchSimulationSuite.TRACE_EVENTS].length), 0),
+            events:  outcome.trace.reduce((n, row) => (n + row[BenchSimulationRun.TRACE_EVENTS].length), 0),
             dead:    outcome.dead,
             energy:  outcome.energy,
-            weapon:  last[BenchSimulationSuite.TRACE_WEAPON],
+            weapon:  last[BenchSimulationRun.TRACE_WEAPON],
             kills:   (counts.kills ?? null),
             items:   (counts.items ?? null),
             exits:   outcome.exits.length
@@ -59,9 +57,5 @@ class BenchSimulationSuite {
     }
 }
 
-// Columns of a trace row, as BenchSimulationRun writes them.
-BenchSimulationSuite.TRACE_WEAPON = 8;
-BenchSimulationSuite.TRACE_COUNTS = 10;
-BenchSimulationSuite.TRACE_EVENTS = 11;
 
 module.exports = {BenchSimulationSuite};

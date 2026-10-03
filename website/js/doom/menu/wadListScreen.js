@@ -97,18 +97,34 @@ class WadListScreen extends AbstractMenuScreen {
             return;
         }
 
-        for (const meta of list) {
-            this._buildItem(meta);
-        }
+        const titles = list.map((meta) => WadRegistry.displayTitle(meta));
+        const shared = new Set(titles.filter((title, i) => (titles.indexOf(title) !== i)));
+        list.forEach((meta, i) => {
+            this._buildItem(meta, shared.has(titles[i]));
+        });
         this._nav.selectFirst();
+        this._completeIdentities(list.filter((meta) => !WadRegistry.isDescribed(meta)));
     }
 
-    _buildItem(meta) {
-        const item = this._addListItem(this._listEl, meta.name, () => {
+    async _completeIdentities(pending) {
+        if (pending.length === 0) {
+            return;
+        }
+        const results = await Promise.allSettled(pending.map((meta) => this._registry.ensureIdentity(meta)));
+        for (const result of results.filter((r) => (r.status === 'rejected'))) {
+            console.warn('WadListScreen - unable to describe a WAD: ' + result.reason.message);
+        }
+        if (this._listEl !== null) {
+            await this._refresh();
+        }
+    }
+
+    _buildItem(meta, ambiguousTitle) {
+        const item = this._addListItem(this._listEl, WadRegistry.displayTitle(meta), () => {
             this._onSelectWad(meta);
         });
 
-        const infos = [WadRegistry.shortIdentity(meta), MenuDom.formatSize(meta.size), MenuDom.formatDate(meta.addedAt)];
+        const infos = [((ambiguousTitle) ? meta.name : null), WadRegistry.versionLabel(meta), MenuDom.formatSize(meta.size), MenuDom.formatDay(meta.addedAt)];
         this._addListItemInfos(item, infos.filter((info) => (info !== null)).join(' — '));
 
         MenuDom.addDeleteButton(item, appTranslator.get('menu.wad.delete'), () => {
@@ -131,7 +147,7 @@ class WadListScreen extends AbstractMenuScreen {
         try {
             const meta = await this._registry.addFromUrl(url);
             this._urlInput.value = '';
-            this._setStatus(appTranslator.get('menu.wad.added', {wad: meta.name}));
+            this._setStatus(appTranslator.get('menu.wad.added', {wad: WadRegistry.displayTitle(meta)}));
             await this._refresh();
         } catch (error) {
             this._showError(error);
@@ -149,7 +165,7 @@ class WadListScreen extends AbstractMenuScreen {
         this._setStatus(appTranslator.get('menu.wad.reading'));
         try {
             const meta = await this._registry.addFromFile(file);
-            this._setStatus(appTranslator.get('menu.wad.added', {wad: meta.name}));
+            this._setStatus(appTranslator.get('menu.wad.added', {wad: WadRegistry.displayTitle(meta)}));
             await this._refresh();
         } catch (error) {
             this._showError(error);
@@ -159,7 +175,7 @@ class WadListScreen extends AbstractMenuScreen {
     }
 
     _onDeleteWad(meta) {
-        this._confirm(appTranslator.get('menu.wad.deleteConfirm', {wad: meta.name}), async () => {
+        this._confirm(appTranslator.get('menu.wad.deleteConfirm', {wad: WadRegistry.displayLabel(meta)}), async () => {
             try {
                 await this._registry.remove(meta.id);
                 this._clearStatus();
