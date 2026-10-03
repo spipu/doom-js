@@ -34,6 +34,10 @@ python3 -m http.server 8080
 
 Then open `http://localhost:8080` and follow steps 2 and 3 above.
 
+## Non-regression bench
+
+`node bench/run.js` replays, in Node and without a browser, the conversion of every level of the WADs found in `.source/wad/`, scripted runs of the simulation and the network codecs, and compares their fingerprints to the golden files committed in `bench/golden/`. A difference names the level or scenario that changed; `--update` records a wanted change in the same commit as its cause. `--suite build|simulation|codecs` and `--wad <name>` narrow a run.
+
 ## Features
 
 - **WAD list**: stored WADs persist in IndexedDB across sessions and updates; add one by URL or local file, delete with confirmation. Each WAD carries a SHA-256 fingerprint of its file, computed at import (at the first opening of its menu for older ones) and shown shortened in the list, by which multiplayer devices will check they play the same WAD. Mouse, keyboard, gamepad and touch drive every menu the same way.
@@ -127,6 +131,7 @@ Demo objects (cube, sphere, lotus, van…) and the labyrinth world live in `_exa
 The static collision geometry is indexed once per level in a uniform XZ spatial grid, so every floor/wall/ray query only tests the triangles of the cells it touches. Dynamic movers stay on a linear scan.
 
 ```
+bench/                        Non-regression bench: Node runner, app context, suites (build, simulation, codecs) and their golden fingerprints
 website/
 ├── index.html                Spipu-Doom shell (PWA)
 ├── appServiceWorker.js       Service Worker — cache-first, offline (must stay at webroot: SW scope)

@@ -25,6 +25,11 @@
 * Le `README.md` décrit le **quoi**, jamais le **comment** : 2 à 4 lignes par fonctionnalité (ce que le joueur ou le développeur obtient), une ligne par répertoire dans l'arborescence. Les détails d'implémentation (numéros de specials, formules, études de cas par niveau, justifications de fidélité vanilla) n'y ont pas leur place — ils vivent dans la base documentaire.
 * Respecter les standards de codage en place dans le projet (ci-dessous).
 
+### Banc de non-régression
+
+* Lancer `node bench/run.js` **avant tout commit** touchant `js/engine/`, `js/doom/wad/`, la simulation (`doomSimulation.js`, `doomMainRole.js`, `monster/`, `weapon/`) ou `net/`. Il rejoue la construction de tous les niveaux des WAD de `./.source/wad/`, des scénarios de simulation et les codecs réseau, et compare leurs empreintes aux goldens de `bench/golden/`.
+* Toute ligne `CHANGED` doit être un écart voulu et expliqué ; on régénère alors les goldens avec `node bench/run.js --update` **dans le même commit** que la modification qui les change. Ne jamais mettre à jour un golden pour faire taire une différence qu'on ne comprend pas.
+
 ### Messages de commit
 
 * Une phrase courte de description, rien de plus : pas de longs messages détaillant chaque modification.
