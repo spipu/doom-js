@@ -1,0 +1,36 @@
+{
+  "translations/catalog": {
+    "keys": 248,
+    "languages": [
+      "en",
+      "es",
+      "fr",
+      "it"
+    ],
+    "missing": [],
+    "placeholders": []
+  },
+  "translations/usage": {
+    "codes": 160,
+    "unresolved": [],
+    "orphans": []
+  },
+  "bootstrap/engine": {
+    "versionValid": true,
+    "declared": 52,
+    "missing": [],
+    "duplicates": [],
+    "undeclared": []
+  },
+  "bootstrap/doom": {
+    "versionValid": true,
+    "declared": 264,
+    "missing": [],
+    "duplicates": [],
+    "undeclared": []
+  },
+  "bootstrap/webapp": {
+    "files": 30,
+    "undeclared": []
+  }
+}
