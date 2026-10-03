@@ -4,7 +4,11 @@
  * answer comes back the same way — no transport, no clock, the turn N+1 only
  * once the sub answered the state N, as the synchronous cycle wants. The sub
  * re-captures the state it applied and compares it, section by section, to
- * the state it received: a replica must hold what the main sent.
+ * the state it received: a replica must hold what the main sent. Three modes:
+ * screen sharing (the sub views the main's player), cooperative and
+ * deathmatch (the sub plays its own, entering with its first command). In
+ * deathmatch the main kills the sub's player by hand at KILL_FRAME, so that
+ * the frag, the death, the corpse and the respawn travel through the cycle.
  */
 const {BenchLevelBuild} = require('./benchLevelBuild');
 const {BenchScenario}   = require('./benchScenario');
@@ -22,7 +26,7 @@ class BenchReplicaRun {
     /**
      * @param {string}        wadPath
      * @param {BenchScenario} scenario - the main's plan; the sub plays BenchReplicaRun.subPlan() of it
-     * @param {string}        mode     - BenchReplicaRun.SCREEN_SHARING | COOPERATIVE
+     * @param {string}        mode     - BenchReplicaRun.SCREEN_SHARING | COOPERATIVE | DEATHMATCH
      * @returns {Promise<object>} what the sub saw and the main did
      */
     async run(wadPath, scenario, mode) {
@@ -73,21 +77,34 @@ class BenchReplicaRun {
 BenchReplicaRun.SEED           = 7;
 BenchReplicaRun.SCREEN_SHARING = 'screen';
 BenchReplicaRun.COOPERATIVE    = 'coop';
+BenchReplicaRun.DEATHMATCH     = 'deathmatch';
 BenchReplicaRun.SUB_PEER_ID    = 1;
 BenchReplicaRun.SUB_PLAYER_ID  = 2;
+BenchReplicaRun.KILL_FRAME     = 300;
+BenchReplicaRun.KILL_DAMAGE    = 500;
 BenchReplicaRun.PRECISION      = 10000;
 
-// Shared by both scripts.
+// Shared by both scripts: the mode's rules on the main, its protocol mode, and whether the sub plays its own player.
 BenchReplicaRun.COMMON_SCRIPT = `
     ${BenchScenario.COMMAND_SCRIPT}
-    const round = (v) => (Math.round(v * ${BenchReplicaRun.PRECISION}) / ${BenchReplicaRun.PRECISION});
+    const round    = (v) => (Math.round(v * ${BenchReplicaRun.PRECISION}) / ${BenchReplicaRun.PRECISION});
+    const rulesOf  = {
+        '${BenchReplicaRun.SCREEN_SHARING}': () => new DoomSinglePlayerRules(),
+        '${BenchReplicaRun.COOPERATIVE}':    () => new DoomCoopRules({friendlyFire: true}),
+        '${BenchReplicaRun.DEATHMATCH}':     () => new DoomDeathmatchRules({monsters: true, fragLimit: null, timeLimit: null, items: DoomSettings.DEATHMATCH_ITEMS_RESPAWN})
+    };
+    const netModes = {
+        '${BenchReplicaRun.SCREEN_SHARING}': DoomNetProtocol.MODE_SCREEN_SHARING,
+        '${BenchReplicaRun.COOPERATIVE}':    DoomNetProtocol.MODE_COOPERATIVE,
+        '${BenchReplicaRun.DEATHMATCH}':     DoomNetProtocol.MODE_DEATHMATCH
+    };
+    const playsOwn = (mode !== '${BenchReplicaRun.SCREEN_SHARING}');
+    const netMode  = netModes[mode];
 `;
 
 BenchReplicaRun.HOST_SCRIPT = `((wadFile, scenario, mode) => {
     ${BenchReplicaRun.COMMON_SCRIPT}
-    const coop    = (mode === '${BenchReplicaRun.COOPERATIVE}');
-    const rules   = ((coop) ? new DoomCoopRules({friendlyFire: true}) : new DoomSinglePlayerRules());
-    const netMode = ((coop) ? DoomNetProtocol.MODE_COOPERATIVE : DoomNetProtocol.MODE_SCREEN_SHARING);
+    const rules   = rulesOf[mode]();
     const game    = {profile: new GameProfileList().getForWad(wadFile)};
     game.itemCatalog = new DoomItemCatalog(game.profile);
     const roster  = new DoomPlayerRoster().setLocal(new DoomPlayer(DoomPlayer.MAIN_ID));
@@ -98,7 +115,7 @@ BenchReplicaRun.HOST_SCRIPT = `((wadFile, scenario, mode) => {
     let cycle = null;
     const peer    = {getId: () => ${BenchReplicaRun.SUB_PEER_ID}, sendControl: (m) => __out.control(m), sendBinary: (b) => __out.binary(b), setLivenessSuspended: () => {}};
     const session = {
-        playerIdOf: () => ${BenchReplicaRun.SUB_PLAYER_ID}, nicknameOf: () => 'SUB', getMode: () => netMode, getOptions: () => ((coop) ? rules.getOptions() : {}),
+        playerIdOf: () => ${BenchReplicaRun.SUB_PLAYER_ID}, nicknameOf: () => 'SUB', getMode: () => netMode, getOptions: () => ((playsOwn) ? rules.getOptions() : {}),
         remove: (id, reason) => removed.push(reason), setCycle: (c) => { cycle = c; }
     };
     return {
@@ -115,21 +132,23 @@ BenchReplicaRun.HOST_SCRIPT = `((wadFile, scenario, mode) => {
         frame: (frame, now) => {
             if (!role.isTurnReady(now)) { trace.push('held'); return; }
             const command = commandAt(scenario.plan, frame);
+            const victim  = roster.getById(${BenchReplicaRun.SUB_PLAYER_ID});
+            if ((mode === '${BenchReplicaRun.DEATHMATCH}') && (frame === ${BenchReplicaRun.KILL_FRAME}) && (victim !== null)) {
+                victim.getUser().takeDamage(${BenchReplicaRun.KILL_DAMAGE}, roster.getLocal().getUser());
+            }
             role.advance(1000 / 60, {sample: () => command}, () => {}, now);
             const user = roster.getLocal().getUser();
             trace.push([round(user.x), round(user.y), round(user.z), user.getEnergy(), roster.getInLevel().length]);
         },
-        finish: () => ({trace: trace, removed: removed, players: roster.getInLevel().map((p) => p.getId())})
+        finish: () => ({trace: trace, removed: removed, players: roster.getInLevel().map((p) => p.getId()), stats: role.getLevelStats().exportCounts()})
     };
 })`;
 
 BenchReplicaRun.GUEST_SCRIPT = `((wadFile, scenario, mode) => {
     ${BenchReplicaRun.COMMON_SCRIPT}
-    const coop    = (mode === '${BenchReplicaRun.COOPERATIVE}');
-    const netMode = ((coop) ? DoomNetProtocol.MODE_COOPERATIVE : DoomNetProtocol.MODE_SCREEN_SHARING);
     const game    = {profile: new GameProfileList().getForWad(wadFile)};
     game.itemCatalog = new DoomItemCatalog(game.profile);
-    const localId = ((coop) ? ${BenchReplicaRun.SUB_PLAYER_ID} : DoomPlayer.MAIN_ID);
+    const localId = ((playsOwn) ? ${BenchReplicaRun.SUB_PLAYER_ID} : DoomPlayer.MAIN_ID);
     const roster  = new DoomPlayerRoster().setLocal(new DoomPlayer(localId));
     const played  = [];
     const flags   = {invalid: 0, phases: 0, ended: []};

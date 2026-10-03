@@ -1,58 +1,166 @@
 {
   "Doom2/MAP01@3/screen": {
-    "turns": 400,
+    "turns": 600,
     "mismatches": {},
-    "subTraceSha": "4bd1a05292531ada71927b41990107f1529d59decea3b518ae04d53d81068fbd",
-    "subEventsSha": "860b5d18e5a8779864893bd154dc330bd5ed6200c971abfcb8eb355aa0dfc2d3",
-    "subEvents": 40,
-    "mainTraceSha": "22f48bfaaaafc741a8d65b7050780e2d2a97f30f3cdc19ad959763bdfb6091ac",
+    "subTraceSha": "63e6c42cb4499b5ae11c7ad580a9233e94aabdafef5c3d5ee52de32faee5d32c",
+    "subEventsSha": "6aa12540a27db263258c5686a23c01ed1112b939be8df0e46d1cfed50fa416bd",
+    "subEvents": 71,
+    "mainTraceSha": "21c6bc2ff6712a4388b9b3d629ba1fd57a0fb15a8e26475f2ad34225ca0d2ca9",
     "mainPlayers": [
       1
     ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 5,
+      "kills": 0,
+      "killsTotal": 19,
+      "items": 0,
+      "itemsTotal": 9,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
     "heldFrames": 0,
     "removed": [],
     "invalid": 0
   },
   "Doom2/MAP01@3/coop": {
-    "turns": 400,
+    "turns": 600,
     "mismatches": {},
-    "subTraceSha": "98ddf495a3d685fedf15474324b0ba90b9abdaf741f59bb09bb888d42b87bb21",
-    "subEventsSha": "9613dff428cbdff8d7e4ccb51cf0a6936980c7a2c71c27ead894c8d88ec4a092",
-    "subEvents": 59,
-    "mainTraceSha": "5b1cd92f9f180834530478734c41bd912b4b88ef4c49b6a6a98709da872b9b9b",
+    "subTraceSha": "e1ac452109de20595692669bb6d9b4ff1c6eb16f3f6a1045aa1a7da21b3253df",
+    "subEventsSha": "6215d973607b02c919cd5b6581f8057959bd8fb932d0241f7e32f8b995b92178",
+    "subEvents": 111,
+    "mainTraceSha": "7fdaa324521893b4de181f1a1211220bfde3743027a72d9637bc697e67ac696f",
     "mainPlayers": [
       1,
       2
     ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 5,
+      "kills": 1,
+      "killsTotal": 19,
+      "items": 0,
+      "itemsTotal": 9,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "Doom2/MAP01@3/deathmatch": {
+    "turns": 600,
+    "mismatches": {},
+    "subTraceSha": "c7a0f561654e9a39c430a6153481a8003e8dc0eb736515229a180168eb6c4b8c",
+    "subEventsSha": "543000ab6f787b78f21311e4fb995207f0255cc56f9733193a9a13420ea774b1",
+    "subEvents": 112,
+    "mainTraceSha": "13f3ccdc2adb1514012f2a95fd0754529d3e003993e7ed695f00ec2e650e9d21",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 5,
+      "kills": 1,
+      "killsTotal": 19,
+      "items": 4,
+      "itemsTotal": 9,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": [
+        {
+          "killer": 1,
+          "victim": 2,
+          "count": 1
+        }
+      ]
+    },
     "heldFrames": 0,
     "removed": [],
     "invalid": 0
   },
   "heretic/E1M1@3/screen": {
-    "turns": 400,
+    "turns": 600,
     "mismatches": {},
-    "subTraceSha": "67da3226c85dd10542f291e9d7d195470573aff6d24c31b3a41161cc6f51e765",
-    "subEventsSha": "ed1963cec39b243f96668b6745f13bdd612536a7708c98830b01fb954e985873",
-    "subEvents": 31,
-    "mainTraceSha": "b83589d382ce0826d883587f83c61be00b8e17dcd8f59ca66032428170700e66",
+    "subTraceSha": "7811956afaa2b7834f2f0cabbe54480602298f08546952c7782db6218aa0010f",
+    "subEventsSha": "ec0dc1dae049446a8ae3281d8429eaaf21e33b508132537b36ad478bf3c693be",
+    "subEvents": 73,
+    "mainTraceSha": "de59cff1f9b3712b63184cc5224cbaec0fcfed8dc0a002d5ae2420f50f14d1c5",
     "mainPlayers": [
       1
     ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 4,
+      "kills": 0,
+      "killsTotal": 39,
+      "items": 0,
+      "itemsTotal": 2,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
     "heldFrames": 0,
     "removed": [],
     "invalid": 0
   },
   "heretic/E1M1@3/coop": {
-    "turns": 400,
+    "turns": 600,
     "mismatches": {},
-    "subTraceSha": "30548ad47e731cda5981d11a053e07985ee730d7e5040ecc7dd3e83be31f4112",
-    "subEventsSha": "8ef50f81165f889ea29c0cacaea3e9f16a921948acdf3d191871a74e62549268",
-    "subEvents": 50,
-    "mainTraceSha": "55822769f7248e1a333d0c35ffff9aa6091a88687bad20d69179289ab873c454",
+    "subTraceSha": "903287b9aa48d50cb16d76c69a4cea95808d81acdb42d0104d98282ed51b7f54",
+    "subEventsSha": "098cb5e92ae36f1194b51b10b964ef0e35894e8639ad0a0f2a56880f8318cb0a",
+    "subEvents": 102,
+    "mainTraceSha": "6d98d994a6a77f1a9b34c36c1e1a4e14e1dfbe3be9e5f4ff81573abd7122ef74",
     "mainPlayers": [
       1,
       2
     ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 4,
+      "kills": 0,
+      "killsTotal": 39,
+      "items": 0,
+      "itemsTotal": 4,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "heretic/E1M1@3/deathmatch": {
+    "turns": 600,
+    "mismatches": {},
+    "subTraceSha": "60fab4793040a4f0f922c150fdc5f1249b30279d90360730efbc542b048ebd1c",
+    "subEventsSha": "ae9c6729a3c72205712a633855cbef6b6143fa9f67f6a8b35b67bd74c3c115f7",
+    "subEvents": 113,
+    "mainTraceSha": "e8362ffc6d84cfd37e334991044b87582f7c811c3551ec05b851f01172ebee2e",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "mainStats": {
+      "secrets": 2,
+      "secretsTotal": 4,
+      "kills": 0,
+      "killsTotal": 39,
+      "items": 0,
+      "itemsTotal": 4,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": [
+        {
+          "killer": 1,
+          "victim": 2,
+          "count": 1
+        }
+      ]
+    },
     "heldFrames": 0,
     "removed": [],
     "invalid": 0

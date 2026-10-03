@@ -1,7 +1,7 @@
 /**
  * Golden master of the replication: a main and a sub run a scenario through
  * the synchronous turn cycle, wired directly in two app contexts (see
- * BenchReplicaRun), in screen sharing and in cooperative. The state the sub
+ * BenchReplicaRun), in screen sharing, cooperative and deathmatch. The state the sub
  * re-captures after applying each turn must equal the one it received, and
  * what it played — sounds, effects — and the course of both players are
  * fingerprinted.
@@ -31,7 +31,7 @@ class BenchReplicaSuite {
                 continue;
             }
             subApp = (subApp ?? new BenchContext());
-            for (const mode of [BenchReplicaRun.SCREEN_SHARING, BenchReplicaRun.COOPERATIVE]) {
+            for (const mode of [BenchReplicaRun.SCREEN_SHARING, BenchReplicaRun.COOPERATIVE, BenchReplicaRun.DEATHMATCH]) {
                 const key = scenario.key + '/' + mode;
                 progress(key);
                 try {
@@ -63,6 +63,7 @@ class BenchReplicaSuite {
             subEvents:    outcome.sub.played.length,
             mainTraceSha: BenchFingerprint.sha(outcome.main.trace),
             mainPlayers:  outcome.main.players,
+            mainStats:    outcome.main.stats,
             heldFrames:   outcome.main.trace.filter((row) => (row === 'held')).length,
             removed:      outcome.main.removed,
             invalid:      outcome.sub.flags.invalid
@@ -70,7 +71,8 @@ class BenchReplicaSuite {
     }
 }
 
-// 400 frames: the cheat, the shooting sweep and the walk in, enough for shots, drops and movers to travel.
-BenchReplicaSuite.FRAMES = 400;
+// 600 frames: the cheat, the shooting sweep, the walk in and the use presses — enough for shots,
+// drops and movers to travel, and for a killed deathmatch player to respawn.
+BenchReplicaSuite.FRAMES = 600;
 
 module.exports = {BenchReplicaSuite};
