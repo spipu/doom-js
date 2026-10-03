@@ -1,0 +1,2009 @@
+{
+  "freedoom1/E1M1": {
+    "next": "E1M2",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M1"
+    ],
+    "name": "Outer Prison"
+  },
+  "freedoom1/E1M2": {
+    "next": "E1M3",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M2"
+    ],
+    "name": "Communications Center"
+  },
+  "freedoom1/E1M3": {
+    "next": "E1M4",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M3"
+    ],
+    "name": "Waste Disposal"
+  },
+  "freedoom1/E1M4": {
+    "next": "E1M5",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M4"
+    ],
+    "name": "Supply Depot"
+  },
+  "freedoom1/E1M5": {
+    "next": "E1M6",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M5"
+    ],
+    "name": "Armory"
+  },
+  "freedoom1/E1M6": {
+    "next": "E1M7",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M6"
+    ],
+    "name": "Training Facility"
+  },
+  "freedoom1/E1M7": {
+    "next": "E1M8",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M7"
+    ],
+    "name": "Xenobiotic Materials Lab"
+  },
+  "freedoom1/E1M8": {
+    "next": null,
+    "nextSecret": "E1M9",
+    "finale": "E1TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E1M8"
+    ],
+    "name": "Outpost Quarry"
+  },
+  "freedoom1/E1M9": {
+    "next": "E1M4",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M9"
+    ],
+    "name": "Nutrient Recycling"
+  },
+  "freedoom1/E2M1": {
+    "next": "E2M2",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M1"
+    ],
+    "name": "Elemental Gate"
+  },
+  "freedoom1/E2M2": {
+    "next": "E2M3",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M2"
+    ],
+    "name": "Shifter"
+  },
+  "freedoom1/E2M3": {
+    "next": "E2M4",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M3"
+    ],
+    "name": "Reclaimed Facilities"
+  },
+  "freedoom1/E2M4": {
+    "next": "E2M5",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M4"
+    ],
+    "name": "Flooded Installation"
+  },
+  "freedoom1/E2M5": {
+    "next": "E2M6",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M5"
+    ],
+    "name": "Underground Hub"
+  },
+  "freedoom1/E2M6": {
+    "next": "E2M7",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M6"
+    ],
+    "name": "Hidden Sector"
+  },
+  "freedoom1/E2M7": {
+    "next": "E2M8",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M7"
+    ],
+    "name": "Control Complex"
+  },
+  "freedoom1/E2M8": {
+    "next": null,
+    "nextSecret": "E2M9",
+    "finale": "E2TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E2M8"
+    ],
+    "name": "Containment Cell"
+  },
+  "freedoom1/E2M9": {
+    "next": "E2M6",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M9"
+    ],
+    "name": "Fortress 31"
+  },
+  "freedoom1/E3M1": {
+    "next": "E3M2",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M1"
+    ],
+    "name": "Land of the Lost"
+  },
+  "freedoom1/E3M2": {
+    "next": "E3M3",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M2"
+    ],
+    "name": "Geothermal Tunnels"
+  },
+  "freedoom1/E3M3": {
+    "next": "E3M4",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M3"
+    ],
+    "name": "Sacrificial Bastion"
+  },
+  "freedoom1/E3M4": {
+    "next": "E3M5",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M4"
+    ],
+    "name": "Oblation Temple"
+  },
+  "freedoom1/E3M5": {
+    "next": "E3M6",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M5"
+    ],
+    "name": "Infernal Hallows"
+  },
+  "freedoom1/E3M6": {
+    "next": "E3M7",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M6"
+    ],
+    "name": "Igneous Intrusion"
+  },
+  "freedoom1/E3M7": {
+    "next": "E3M8",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M7"
+    ],
+    "name": "No Regrets"
+  },
+  "freedoom1/E3M8": {
+    "next": null,
+    "nextSecret": "E3M9",
+    "finale": "E3TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E3M8"
+    ],
+    "name": "Ancient Lair"
+  },
+  "freedoom1/E3M9": {
+    "next": "E3M7",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M9"
+    ],
+    "name": "Acquainted With Grief"
+  },
+  "freedoom1/E4M1": {
+    "next": "E4M2",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M1",
+      "D_E3M4"
+    ],
+    "name": "Maintenance Area"
+  },
+  "freedoom1/E4M2": {
+    "next": "E4M3",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M2",
+      "D_E3M2"
+    ],
+    "name": "Research Complex"
+  },
+  "freedoom1/E4M3": {
+    "next": "E4M4",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M3",
+      "D_E3M3"
+    ],
+    "name": "Central Computing"
+  },
+  "freedoom1/E4M4": {
+    "next": "E4M5",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M4",
+      "D_E1M5"
+    ],
+    "name": "Hydroponic Facility"
+  },
+  "freedoom1/E4M5": {
+    "next": "E4M6",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M5",
+      "D_E2M7"
+    ],
+    "name": "Engineering Station"
+  },
+  "freedoom1/E4M6": {
+    "next": "E4M7",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M6",
+      "D_E2M4"
+    ],
+    "name": "Command Center"
+  },
+  "freedoom1/E4M7": {
+    "next": "E4M8",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M7",
+      "D_E2M6"
+    ],
+    "name": "Waste Treatment"
+  },
+  "freedoom1/E4M8": {
+    "next": null,
+    "nextSecret": "E4M9",
+    "finale": "E4TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E4M8",
+      "D_E2M5"
+    ],
+    "name": "Launch Bay"
+  },
+  "freedoom1/E4M9": {
+    "next": "E4M3",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E4M9",
+      "D_E1M9"
+    ],
+    "name": "Operations"
+  },
+  "freedoom2/MAP01": {
+    "next": "MAP02",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_RUNNIN"
+    ],
+    "name": "MAP01: Hydroelectric Plant"
+  },
+  "freedoom2/MAP02": {
+    "next": "MAP03",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STALKS"
+    ],
+    "name": "MAP02: Filtration Tunnels"
+  },
+  "freedoom2/MAP03": {
+    "next": "MAP04",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_COUNTD"
+    ],
+    "name": "MAP03: Crude Processing Center"
+  },
+  "freedoom2/MAP04": {
+    "next": "MAP05",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_BETWEE"
+    ],
+    "name": "MAP04: Containment Bay"
+  },
+  "freedoom2/MAP05": {
+    "next": "MAP06",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DOOM"
+    ],
+    "name": "MAP05: Sludge Burrow"
+  },
+  "freedoom2/MAP06": {
+    "next": "MAP07",
+    "nextSecret": "MAP31",
+    "finale": "C1TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THE_DA"
+    ],
+    "name": "MAP06: Janus Terminal"
+  },
+  "freedoom2/MAP07": {
+    "next": "MAP08",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN"
+    ],
+    "name": "MAP07: Logic Gate"
+  },
+  "freedoom2/MAP08": {
+    "next": "MAP09",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBLU"
+    ],
+    "name": "MAP08: Astronomy Complex"
+  },
+  "freedoom2/MAP09": {
+    "next": "MAP10",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_IN_CIT"
+    ],
+    "name": "MAP09: Datacenter"
+  },
+  "freedoom2/MAP10": {
+    "next": "MAP11",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DEAD"
+    ],
+    "name": "MAP10: Deadly Outlands"
+  },
+  "freedoom2/MAP11": {
+    "next": "MAP12",
+    "nextSecret": "MAP31",
+    "finale": "C2TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STLKS2"
+    ],
+    "name": "MAP11: Dimensional Rift Observatory"
+  },
+  "freedoom2/MAP12": {
+    "next": "MAP13",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THEDA2"
+    ],
+    "name": "MAP12: Railroads"
+  },
+  "freedoom2/MAP13": {
+    "next": "MAP14",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DOOM2"
+    ],
+    "name": "MAP13: Station Earth"
+  },
+  "freedoom2/MAP14": {
+    "next": "MAP15",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBL2"
+    ],
+    "name": "MAP14: Nuclear Zone"
+  },
+  "freedoom2/MAP15": {
+    "next": "MAP16",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_RUNNI2"
+    ],
+    "name": "MAP15: Hostile Takeover"
+  },
+  "freedoom2/MAP16": {
+    "next": "MAP17",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DEAD2"
+    ],
+    "name": "MAP16: Urban Jungle"
+  },
+  "freedoom2/MAP17": {
+    "next": "MAP18",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STLKS3"
+    ],
+    "name": "MAP17: City Capitol"
+  },
+  "freedoom2/MAP18": {
+    "next": "MAP19",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ROMERO"
+    ],
+    "name": "MAP18: Aquatics Lab"
+  },
+  "freedoom2/MAP19": {
+    "next": "MAP20",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN2"
+    ],
+    "name": "MAP19: Sewage Control"
+  },
+  "freedoom2/MAP20": {
+    "next": "MAP21",
+    "nextSecret": "MAP31",
+    "finale": "C3TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_MESSAG"
+    ],
+    "name": "MAP20: Blood Ember Fortress"
+  },
+  "freedoom2/MAP21": {
+    "next": "MAP22",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_COUNT2"
+    ],
+    "name": "MAP21: Under Realm"
+  },
+  "freedoom2/MAP22": {
+    "next": "MAP23",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBL3"
+    ],
+    "name": "MAP22: Remanasu"
+  },
+  "freedoom2/MAP23": {
+    "next": "MAP24",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_AMPIE"
+    ],
+    "name": "MAP23: Underground Facility"
+  },
+  "freedoom2/MAP24": {
+    "next": "MAP25",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THEDA3"
+    ],
+    "name": "MAP24: Abandoned Teleporter Lab"
+  },
+  "freedoom2/MAP25": {
+    "next": "MAP26",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ADRIAN"
+    ],
+    "name": "MAP25: Persistence of Memory"
+  },
+  "freedoom2/MAP26": {
+    "next": "MAP27",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_MESSG2"
+    ],
+    "name": "MAP26: Dark Depths"
+  },
+  "freedoom2/MAP27": {
+    "next": "MAP28",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ROMER2"
+    ],
+    "name": "MAP27: Palace of Red"
+  },
+  "freedoom2/MAP28": {
+    "next": "MAP29",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_TENSE"
+    ],
+    "name": "MAP28: Grim Redoubt"
+  },
+  "freedoom2/MAP29": {
+    "next": "MAP30",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN3"
+    ],
+    "name": "MAP29: Melting Point"
+  },
+  "freedoom2/MAP30": {
+    "next": null,
+    "nextSecret": null,
+    "finale": "C4TEXT",
+    "finaleSecret": "C4TEXT",
+    "music": [
+      "D_OPENIN"
+    ],
+    "name": "MAP30: Jaws of Defeat"
+  },
+  "freedoom2/MAP31": {
+    "next": "MAP16",
+    "nextSecret": "MAP32",
+    "finale": null,
+    "finaleSecret": "C6TEXT",
+    "music": [
+      "D_EVIL"
+    ],
+    "name": "MAP31: Be Quiet"
+  },
+  "freedoom2/MAP32": {
+    "next": "MAP16",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ULTIMA"
+    ],
+    "name": "MAP32: Not Sure"
+  },
+  "Doom1/E1M1": {
+    "next": "E1M2",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M1"
+    ],
+    "name": "Hangar"
+  },
+  "Doom1/E1M2": {
+    "next": "E1M3",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M2"
+    ],
+    "name": "Nuclear Plant"
+  },
+  "Doom1/E1M3": {
+    "next": "E1M4",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M3"
+    ],
+    "name": "Toxin Refinery"
+  },
+  "Doom1/E1M4": {
+    "next": "E1M5",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M4"
+    ],
+    "name": "Command Control"
+  },
+  "Doom1/E1M5": {
+    "next": "E1M6",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M5"
+    ],
+    "name": "Phobos Lab"
+  },
+  "Doom1/E1M6": {
+    "next": "E1M7",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M6"
+    ],
+    "name": "Central Processing"
+  },
+  "Doom1/E1M7": {
+    "next": "E1M8",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M7"
+    ],
+    "name": "Computer Station"
+  },
+  "Doom1/E1M8": {
+    "next": null,
+    "nextSecret": "E1M9",
+    "finale": "E1TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E1M8"
+    ],
+    "name": "Phobos Anomaly"
+  },
+  "Doom1/E1M9": {
+    "next": "E1M4",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E1M9"
+    ],
+    "name": "Military Base"
+  },
+  "Doom1/E2M1": {
+    "next": "E2M2",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M1"
+    ],
+    "name": "Deimos Anomaly"
+  },
+  "Doom1/E2M2": {
+    "next": "E2M3",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M2"
+    ],
+    "name": "Containment Area"
+  },
+  "Doom1/E2M3": {
+    "next": "E2M4",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M3"
+    ],
+    "name": "Refinery"
+  },
+  "Doom1/E2M4": {
+    "next": "E2M5",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M4"
+    ],
+    "name": "Deimos Lab"
+  },
+  "Doom1/E2M5": {
+    "next": "E2M6",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M5"
+    ],
+    "name": "Command Center"
+  },
+  "Doom1/E2M6": {
+    "next": "E2M7",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M6"
+    ],
+    "name": "Halls of the Damned"
+  },
+  "Doom1/E2M7": {
+    "next": "E2M8",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M7"
+    ],
+    "name": "Spawning Vats"
+  },
+  "Doom1/E2M8": {
+    "next": null,
+    "nextSecret": "E2M9",
+    "finale": "E2TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E2M8"
+    ],
+    "name": "Tower of Babel"
+  },
+  "Doom1/E2M9": {
+    "next": "E2M6",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E2M9"
+    ],
+    "name": "Fortress of Mystery"
+  },
+  "Doom1/E3M1": {
+    "next": "E3M2",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M1"
+    ],
+    "name": "Hell Keep"
+  },
+  "Doom1/E3M2": {
+    "next": "E3M3",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M2"
+    ],
+    "name": "Slough of Despair"
+  },
+  "Doom1/E3M3": {
+    "next": "E3M4",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M3"
+    ],
+    "name": "Pandemonium"
+  },
+  "Doom1/E3M4": {
+    "next": "E3M5",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M4"
+    ],
+    "name": "House of Pain"
+  },
+  "Doom1/E3M5": {
+    "next": "E3M6",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M5"
+    ],
+    "name": "Unholy Cathedral"
+  },
+  "Doom1/E3M6": {
+    "next": "E3M7",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M6"
+    ],
+    "name": "Mt. Erebus"
+  },
+  "Doom1/E3M7": {
+    "next": "E3M8",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M7"
+    ],
+    "name": "Limbo"
+  },
+  "Doom1/E3M8": {
+    "next": null,
+    "nextSecret": "E3M9",
+    "finale": "E3TEXT",
+    "finaleSecret": null,
+    "music": [
+      "D_E3M8"
+    ],
+    "name": "Dis"
+  },
+  "Doom1/E3M9": {
+    "next": "E3M7",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "D_E3M9"
+    ],
+    "name": "Warrens"
+  },
+  "Doom2/MAP01": {
+    "next": "MAP02",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_RUNNIN"
+    ],
+    "name": "Entryway"
+  },
+  "Doom2/MAP02": {
+    "next": "MAP03",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STALKS"
+    ],
+    "name": "Underhalls"
+  },
+  "Doom2/MAP03": {
+    "next": "MAP04",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_COUNTD"
+    ],
+    "name": "The Gantlet"
+  },
+  "Doom2/MAP04": {
+    "next": "MAP05",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_BETWEE"
+    ],
+    "name": "The Focus"
+  },
+  "Doom2/MAP05": {
+    "next": "MAP06",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DOOM"
+    ],
+    "name": "The Waste Tunnels"
+  },
+  "Doom2/MAP06": {
+    "next": "MAP07",
+    "nextSecret": "MAP31",
+    "finale": "C1TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THE_DA"
+    ],
+    "name": "The Crusher"
+  },
+  "Doom2/MAP07": {
+    "next": "MAP08",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN"
+    ],
+    "name": "Dead Simple"
+  },
+  "Doom2/MAP08": {
+    "next": "MAP09",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBLU"
+    ],
+    "name": "Tricks and Traps"
+  },
+  "Doom2/MAP09": {
+    "next": "MAP10",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_IN_CIT"
+    ],
+    "name": "The Pit"
+  },
+  "Doom2/MAP10": {
+    "next": "MAP11",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DEAD"
+    ],
+    "name": "Refueling Base"
+  },
+  "Doom2/MAP11": {
+    "next": "MAP12",
+    "nextSecret": "MAP31",
+    "finale": "C2TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STLKS2"
+    ],
+    "name": "'O' of Destruction!"
+  },
+  "Doom2/MAP12": {
+    "next": "MAP13",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THEDA2"
+    ],
+    "name": "The Factory"
+  },
+  "Doom2/MAP13": {
+    "next": "MAP14",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DOOM2"
+    ],
+    "name": "Downtown"
+  },
+  "Doom2/MAP14": {
+    "next": "MAP15",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBL2"
+    ],
+    "name": "The Inmost Dens"
+  },
+  "Doom2/MAP15": {
+    "next": "MAP16",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_RUNNI2"
+    ],
+    "name": "Industrial Zone"
+  },
+  "Doom2/MAP16": {
+    "next": "MAP17",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DEAD2"
+    ],
+    "name": "Suburbs"
+  },
+  "Doom2/MAP17": {
+    "next": "MAP18",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_STLKS3"
+    ],
+    "name": "Tenements"
+  },
+  "Doom2/MAP18": {
+    "next": "MAP19",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ROMERO"
+    ],
+    "name": "The Courtyard"
+  },
+  "Doom2/MAP19": {
+    "next": "MAP20",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN2"
+    ],
+    "name": "The Citadel"
+  },
+  "Doom2/MAP20": {
+    "next": "MAP21",
+    "nextSecret": "MAP31",
+    "finale": "C3TEXT",
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_MESSAG"
+    ],
+    "name": "Gotcha!"
+  },
+  "Doom2/MAP21": {
+    "next": "MAP22",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_COUNT2"
+    ],
+    "name": "Nirvana"
+  },
+  "Doom2/MAP22": {
+    "next": "MAP23",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_DDTBL3"
+    ],
+    "name": "The Catacombs"
+  },
+  "Doom2/MAP23": {
+    "next": "MAP24",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_AMPIE"
+    ],
+    "name": "Barrels o' Fun"
+  },
+  "Doom2/MAP24": {
+    "next": "MAP25",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_THEDA3"
+    ],
+    "name": "The Chasm"
+  },
+  "Doom2/MAP25": {
+    "next": "MAP26",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ADRIAN"
+    ],
+    "name": "Bloodfalls"
+  },
+  "Doom2/MAP26": {
+    "next": "MAP27",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_MESSG2"
+    ],
+    "name": "The Abandoned Mines"
+  },
+  "Doom2/MAP27": {
+    "next": "MAP28",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ROMER2"
+    ],
+    "name": "Monster Condo"
+  },
+  "Doom2/MAP28": {
+    "next": "MAP29",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_TENSE"
+    ],
+    "name": "The Spirit World"
+  },
+  "Doom2/MAP29": {
+    "next": "MAP30",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_SHAWN3"
+    ],
+    "name": "The Living End"
+  },
+  "Doom2/MAP30": {
+    "next": null,
+    "nextSecret": null,
+    "finale": "C4TEXT",
+    "finaleSecret": "C4TEXT",
+    "music": [
+      "D_OPENIN"
+    ],
+    "name": "Icon of Sin"
+  },
+  "Doom2/MAP31": {
+    "next": "MAP16",
+    "nextSecret": "MAP32",
+    "finale": null,
+    "finaleSecret": "C6TEXT",
+    "music": [
+      "D_EVIL"
+    ],
+    "name": "Wolfenstein"
+  },
+  "Doom2/MAP32": {
+    "next": "MAP16",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": "C5TEXT",
+    "music": [
+      "D_ULTIMA"
+    ],
+    "name": "Grosse"
+  },
+  "heretic/E1M1": {
+    "next": "E1M2",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M1"
+    ],
+    "name": "The Docks"
+  },
+  "heretic/E1M2": {
+    "next": "E1M3",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M2"
+    ],
+    "name": "The Dungeons"
+  },
+  "heretic/E1M3": {
+    "next": "E1M4",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M3"
+    ],
+    "name": "The Gatehouse"
+  },
+  "heretic/E1M4": {
+    "next": "E1M5",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M4"
+    ],
+    "name": "The Guard Tower"
+  },
+  "heretic/E1M5": {
+    "next": "E1M6",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M5"
+    ],
+    "name": "The Citadel"
+  },
+  "heretic/E1M6": {
+    "next": "E1M7",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M6"
+    ],
+    "name": "The Cathedral"
+  },
+  "heretic/E1M7": {
+    "next": "E1M8",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M7"
+    ],
+    "name": "The Crypts"
+  },
+  "heretic/E1M8": {
+    "next": null,
+    "nextSecret": "E1M9",
+    "finale": "HE1TEXT",
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M8"
+    ],
+    "name": "Hell's Maw"
+  },
+  "heretic/E1M9": {
+    "next": "E1M7",
+    "nextSecret": "E1M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M9"
+    ],
+    "name": "The Graveyard"
+  },
+  "heretic/E2M1": {
+    "next": "E2M2",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M1"
+    ],
+    "name": "The Crater"
+  },
+  "heretic/E2M2": {
+    "next": "E2M3",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M2"
+    ],
+    "name": "The Lava Pits"
+  },
+  "heretic/E2M3": {
+    "next": "E2M4",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M3"
+    ],
+    "name": "The River of Fire"
+  },
+  "heretic/E2M4": {
+    "next": "E2M5",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M4"
+    ],
+    "name": "The Ice Grotto"
+  },
+  "heretic/E2M5": {
+    "next": "E2M6",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M4"
+    ],
+    "name": "The Catacombs"
+  },
+  "heretic/E2M6": {
+    "next": "E2M7",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M6"
+    ],
+    "name": "The Labyrinth"
+  },
+  "heretic/E2M7": {
+    "next": "E2M8",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M7"
+    ],
+    "name": "The Great Hall"
+  },
+  "heretic/E2M8": {
+    "next": null,
+    "nextSecret": "E2M9",
+    "finale": "HE2TEXT",
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M8"
+    ],
+    "name": "The Portals of Chaos"
+  },
+  "heretic/E2M9": {
+    "next": "E2M5",
+    "nextSecret": "E2M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M9"
+    ],
+    "name": "The Glacier"
+  },
+  "heretic/E3M1": {
+    "next": "E3M2",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M1"
+    ],
+    "name": "The Storehouse"
+  },
+  "heretic/E3M2": {
+    "next": "E3M3",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E3M2"
+    ],
+    "name": "The Cesspool"
+  },
+  "heretic/E3M3": {
+    "next": "E3M4",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E3M3"
+    ],
+    "name": "The Confluence"
+  },
+  "heretic/E3M4": {
+    "next": "E3M5",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M6"
+    ],
+    "name": "The Azure Fortress"
+  },
+  "heretic/E3M5": {
+    "next": "E3M6",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M3"
+    ],
+    "name": "The Ophidian Lair"
+  },
+  "heretic/E3M6": {
+    "next": "E3M7",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M2"
+    ],
+    "name": "The Halls of Fear"
+  },
+  "heretic/E3M7": {
+    "next": "E3M8",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M5"
+    ],
+    "name": "The Chasm"
+  },
+  "heretic/E3M8": {
+    "next": null,
+    "nextSecret": "E3M9",
+    "finale": "HE3TEXT",
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M9"
+    ],
+    "name": "D'Sparil's Keep"
+  },
+  "heretic/E3M9": {
+    "next": "E3M5",
+    "nextSecret": "E3M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M6"
+    ],
+    "name": "The Aquifer"
+  },
+  "heretic/E4M1": {
+    "next": "E4M2",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M6"
+    ],
+    "name": "Catafalque"
+  },
+  "heretic/E4M2": {
+    "next": "E4M3",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M2"
+    ],
+    "name": "Blockhouse"
+  },
+  "heretic/E4M3": {
+    "next": "E4M4",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M3"
+    ],
+    "name": "Ambulatory"
+  },
+  "heretic/E4M4": {
+    "next": "E4M5",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M4"
+    ],
+    "name": "Sepulcher"
+  },
+  "heretic/E4M5": {
+    "next": "E4M6",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M5"
+    ],
+    "name": "Great Stair"
+  },
+  "heretic/E4M6": {
+    "next": "E4M7",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M1"
+    ],
+    "name": "Halls of the Apostate"
+  },
+  "heretic/E4M7": {
+    "next": "E4M8",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M7"
+    ],
+    "name": "Ramparts of Perdition"
+  },
+  "heretic/E4M8": {
+    "next": null,
+    "nextSecret": "E4M9",
+    "finale": "HE4TEXT",
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M8"
+    ],
+    "name": "Shattered Bridge"
+  },
+  "heretic/E4M9": {
+    "next": "E4M5",
+    "nextSecret": "E4M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M9"
+    ],
+    "name": "Mausoleum"
+  },
+  "heretic/E5M1": {
+    "next": "E5M2",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M1"
+    ],
+    "name": "Ochre Cliffs"
+  },
+  "heretic/E5M2": {
+    "next": "E5M3",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M2"
+    ],
+    "name": "Rapids"
+  },
+  "heretic/E5M3": {
+    "next": "E5M4",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M3"
+    ],
+    "name": "Quay"
+  },
+  "heretic/E5M4": {
+    "next": "E5M5",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M4"
+    ],
+    "name": "Courtyard"
+  },
+  "heretic/E5M5": {
+    "next": "E5M6",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M4"
+    ],
+    "name": "Hydratyr"
+  },
+  "heretic/E5M6": {
+    "next": "E5M7",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M6"
+    ],
+    "name": "Colonnade"
+  },
+  "heretic/E5M7": {
+    "next": "E5M8",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M7"
+    ],
+    "name": "Foetid Manse"
+  },
+  "heretic/E5M8": {
+    "next": null,
+    "nextSecret": "E5M9",
+    "finale": "HE5TEXT",
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M8"
+    ],
+    "name": "Field of Judgement"
+  },
+  "heretic/E5M9": {
+    "next": "E5M4",
+    "nextSecret": "E5M9",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E2M9"
+    ],
+    "name": "Skein of D'Sparil"
+  },
+  "heretic/E6M1": {
+    "next": "E6M2",
+    "nextSecret": "E6M2",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E3M2"
+    ],
+    "name": null
+  },
+  "heretic/E6M2": {
+    "next": "E6M3",
+    "nextSecret": "E6M3",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E3M3"
+    ],
+    "name": null
+  },
+  "heretic/E6M3": {
+    "next": "E6M1",
+    "nextSecret": "E6M1",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [
+      "MUS_E1M6"
+    ],
+    "name": null
+  },
+  "hexen/MAP01": {
+    "next": "MAP02",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP02": {
+    "next": "MAP03",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP03": {
+    "next": "MAP04",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP04": {
+    "next": "MAP05",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP05": {
+    "next": "MAP06",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP06": {
+    "next": "MAP08",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP08": {
+    "next": "MAP09",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP09": {
+    "next": "MAP10",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP10": {
+    "next": "MAP11",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP11": {
+    "next": "MAP12",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP12": {
+    "next": "MAP13",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP13": {
+    "next": "MAP21",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP21": {
+    "next": "MAP22",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP22": {
+    "next": "MAP23",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP23": {
+    "next": "MAP24",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP24": {
+    "next": "MAP25",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP25": {
+    "next": "MAP26",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP26": {
+    "next": "MAP27",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP27": {
+    "next": "MAP28",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP28": {
+    "next": "MAP30",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP30": {
+    "next": null,
+    "nextSecret": null,
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP31": {
+    "next": "MAP32",
+    "nextSecret": "MAP32",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP32": {
+    "next": "MAP33",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP33": {
+    "next": "MAP34",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP34": {
+    "next": "MAP35",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP35": {
+    "next": "MAP36",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP36": {
+    "next": "MAP37",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP37": {
+    "next": "MAP38",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP38": {
+    "next": "MAP39",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP39": {
+    "next": "MAP40",
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  },
+  "hexen/MAP40": {
+    "next": null,
+    "nextSecret": "MAP31",
+    "finale": null,
+    "finaleSecret": null,
+    "music": [],
+    "name": null
+  }
+}
