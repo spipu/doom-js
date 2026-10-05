@@ -979,18 +979,15 @@ class WadWorldBuilder {
         return levelActions;
     }
 
-    // Vanilla fires these from a dummy line: a virtual linedef lets the analyzer
-    // build a mover no real line aims at (E1M8's 666); a real line wins (MAP07).
+    // Vanilla fires these from a dummy line, so the boss special gets its own cycle
+    // unless a real line already carries it (MAP07): Freedoom E1M8's tag 666 only has a 19.
     _bossVirtualLinedefs(level, bossActions) {
-        const isMover = (special) => ((WadConstants.DOOR_BY_SPECIAL[special] !== undefined)
-            || WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special)
-            || WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special));
         const virtual = [];
         for (const action of bossActions) {
             if (action.exit === true) {
                 continue;
             }
-            if (!level.linedefs.some((ld) => ((ld.tag === action.tag) && isMover(ld.special)))) {
+            if (!level.linedefs.some((ld) => ((ld.tag === action.tag) && (ld.special === action.special)))) {
                 // v1/v2 = -1 so an accidental vertex read fails loudly, not as NaN geometry.
                 virtual.push({special: action.special, tag: action.tag, left: -1, right: -1, v1: -1, v2: -1});
             }

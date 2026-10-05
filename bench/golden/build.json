@@ -84,7 +84,7 @@
     "secrets": 8
   },
   "freedoom1/E1M8": {
-    "sha": "71a934de92731fa30968148fb03845ea57847e5e29590b19b23958c26a2c4e27",
+    "sha": "ed43c06d2e0de4a6a4aee7ee113eab1e3988ff523c323bc03ce40a91ffe3b52d",
     "objects": 807,
     "points": 10162,
     "faces": 5975,
@@ -504,7 +504,7 @@
     "secrets": 2
   },
   "freedoom2/MAP07": {
-    "sha": "7abf69b28fc665094c2355f5aff7a131d5f075aa29e711af6a4a16d4064e6aa9",
+    "sha": "d8d9293b0e49614aff6871aba7ac94067a8695c31e4233b0173873d3a77f164f",
     "objects": 1623,
     "points": 16039,
     "faces": 8811,
