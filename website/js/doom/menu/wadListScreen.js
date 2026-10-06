@@ -28,11 +28,11 @@ class WadListScreen extends AbstractMenuScreen {
         this._fileInput   = null;
         this._formButtons = [];
 
-        const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
+        const {panel, subtitleEl, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
-        const joinCorner = this._addElement('div', 'doom-menu-corner doom-menu-corner-left');
-        const joinButton = MenuDom.addButton(joinCorner, 'doom-menu-button', appTranslator.get('multiplayer.join'),
+        subtitleEl.classList.add('doom-menu-subtitle-with-action');
+        const joinButton = MenuDom.addButton(subtitleEl, 'doom-menu-button doom-menu-subtitle-action', appTranslator.get('multiplayer.join'),
             () => this._join.start());
         this._join.greyWhenUnavailable(joinButton);
 
@@ -40,11 +40,12 @@ class WadListScreen extends AbstractMenuScreen {
         this._languageButton = MenuDom.addButton(corner, 'doom-menu-button doom-menu-language',
             doomSettings.getListLabel(this._languageDefinition()),
             () => this._cycleLanguage());
+        // Up from the list enters the row by its last button: the join one, right above the list.
         this._nav.setSideButtons([
-            joinButton,
             this._languageButton,
             MenuDom.addButton(corner, 'doom-menu-button', appTranslator.get('help.guide'),
-                () => this._openHelp())
+                () => this._openHelp()),
+            joinButton
         ]);
 
         this._buildAddForm(panel);

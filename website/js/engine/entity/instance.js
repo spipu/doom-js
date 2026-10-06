@@ -177,7 +177,7 @@ class Instance extends AbstractLoadedEntity {
         return this;
     }
 
-    // Re-bases the ride at the new Y, or the next sync would snap it back.
+    // Without it, the next ride sync would snap the body back to its old height.
     _rebaseRide() {
         if (this.getRideOn() !== null) {
             this.setRideOn(this._rideOn);

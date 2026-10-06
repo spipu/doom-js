@@ -84,10 +84,10 @@ class AbstractMenuScreen {
     _buildPanel(subtitleText) {
         this._addTitle('Spipu-Doom');
 
-        const panel = this._addElement('div', 'doom-menu-panel');
-        MenuDom.addText(panel, 'doom-menu-subtitle', subtitleText);
+        const panel      = this._addElement('div', 'doom-menu-panel');
+        const subtitleEl = MenuDom.addText(panel, 'doom-menu-subtitle', subtitleText);
 
-        return {panel: panel, listEl: this._addElement('div', 'doom-menu-list', panel)};
+        return {panel: panel, subtitleEl: subtitleEl, listEl: this._addElement('div', 'doom-menu-list', panel)};
     }
 
     _buildWadPanel(wadMeta, subtitleLabel) {
