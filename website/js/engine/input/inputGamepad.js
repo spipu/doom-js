@@ -97,6 +97,11 @@ class InputGamepad {
         return this._button(9);
     }
 
+    // Left stick press (L3), held like the keyboard run key.
+    readButtonRun() {
+        return this._button(10);
+    }
+
     // Weapon switch on the shoulder buttons (standard mapping: 4 = L1, 5 = R1).
     // Provisional indices, to be confirmed on the physical pad.
     readButtonWeaponPrev() {

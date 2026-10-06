@@ -103,6 +103,9 @@ class WorldLoader {
         if (userDef.moveSpeed       !== undefined) {
             user.setMoveSpeed(userDef.moveSpeed);
         }
+        if (userDef.runSpeed        !== undefined) {
+            user.setRunSpeed(userDef.runSpeed);
+        }
         if (userDef.stepHeight      !== undefined) {
             user.setStepHeight(userDef.stepHeight);
         }

@@ -362,6 +362,10 @@ class MenuOptionsModal extends AbstractMenuListModal {
         if (labelCode !== undefined) {
             return appTranslator.get(labelCode);
         }
+        const modifier = code.match(MenuOptionsModal.MODIFIER_CODE);
+        if (modifier !== null) {
+            return this._modifierLabel(modifier[1], modifier[2]);
+        }
         if ((this._layoutMap !== null) && this._layoutMap.has(code)) {
             return this._layoutMap.get(code).toUpperCase();
         }
@@ -376,6 +380,13 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }
 
         return code;
+    }
+
+    // 'ShiftLeft' → 'Left Shift' / 'Maj gauche': the side reads in each language's order.
+    _modifierLabel(name, side) {
+        const key = ((name === 'Shift') ? appTranslator.get('key.shift') : MenuOptionsModal.MODIFIER_NAMES[name]);
+
+        return appTranslator.get(((side === 'Left') ? 'key.left' : 'key.right'), {key: key});
     }
 
     _buildHelp() {
@@ -410,4 +421,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
     }
 }
 
-MenuOptionsModal.RENDERER_KEY = 'display.renderer';
+MenuOptionsModal.RENDERER_KEY   = 'display.renderer';
+MenuOptionsModal.MODIFIER_CODE  = /^(Shift|Control|Alt)(Left|Right)$/;
+// Key cap names, the same in every language (Shift alone is translated).
+MenuOptionsModal.MODIFIER_NAMES = {Control: 'Ctrl', Alt: 'Alt'};

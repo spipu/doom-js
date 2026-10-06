@@ -28,7 +28,7 @@ class InputCommandSampler {
         this._buttonReaders  = new Map([
             [UserCommand.JUMP, () => inputs.readButtonJump()],
             [UserCommand.CROUCH, () => inputs.readButtonCrouch()],
-            [UserCommand.WALK_SLOW, () => inputs.readButtonWalkSlow()],
+            [UserCommand.RUN, () => inputs.readButtonRun()],
             [UserCommand.ACTION, () => inputs.readButtonAction()]
         ]);
         this._impulseReaders = new Map();

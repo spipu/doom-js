@@ -4,8 +4,7 @@
  *   - joy 1 axes  : movement, -1..+1 (+X = strafe right, +Y = forward)
  *   - joy 2 deltas: look, pixel-equivalent (mouse delta passthrough, stick
  *                   position converted with the look speed and the given dt)
- *   - buttons     : jump, action, crouch, fire, pause + the keyboard-only
- *                   walk-slow modifier
+ *   - buttons     : jump, action, crouch, run, fire, pause
  * Device priority: gamepad > virtual gamepad (touch-only device) > keyboard+mouse.
  * Gamepad presence is event-driven (gamepadconnected / gamepaddisconnected —
  * the browser only exposes a gamepad after a button has been pressed on it).
@@ -262,13 +261,12 @@ class Inputs {
         return (keyPause || mousePause);
     }
 
-    // Keyboard-only modifier: the analog sticks already give slow walking
-    // through partial deflection, so the pad modes return false
-    readButtonWalkSlow() {
-        if (this._pad() !== null) {
-            return false;
+    readButtonRun() {
+        const pad = this._pad();
+        if (pad !== null) {
+            return pad.readButtonRun();
         }
-        return this._keyboard.readAction('walkSlow');
+        return this._keyboard.readAction('run');
     }
 
     // Keyboard-only debug cheat (fixed 'o' key, not remappable): grant the

@@ -6,9 +6,11 @@
  *
  * The layout is built for a 4-finger claw grip: the thumbs hold the bottom
  * corners (move, aim/fire — the constant actions), the index fingers the top
- * ones (menu, weapon switch), which is what makes "move + jump" genuinely
- * simultaneous. Jump, crouch and use are stacked on the right edge: all three
- * are pressed while not firing, so the aim thumb is free to reach them.
+ * ones (menu, map, run, weapon switch), which is what makes "move + jump"
+ * genuinely simultaneous. Run is a toggle: with both thumbs on the sticks, no
+ * finger is left to hold it. Jump, crouch and use are stacked on the right
+ * edge: all three are pressed while not firing, so the aim thumb is free to
+ * reach them.
  *
  * Aim and fire share one gesture: the right half is a floating stick whose
  * LOWER band aims silently and UPPER band aims and fires. The mode is decided
@@ -59,6 +61,7 @@ class InputVirtualGamepad {
             fire:       false,
             pause:      false,
             map:        false,
+            run:        false,
             weaponNext: false
         };
 
@@ -71,14 +74,15 @@ class InputVirtualGamepad {
         };
         this._fireSensitivity = 1;
 
-        // The map ships hidden: unlike the others, no game has one until it asks.
+        // The map and run ship hidden: unlike the others, no game has them until it asks.
         this._buttonAllowed = {
             jump:       true,
             crouch:     true,
             action:     true,
             pause:      true,
             weaponNext: true,
-            map:        false
+            map:        false,
+            run:        false
         };
         // Fire is the aim stick's upper band, not a button: withdrawn on its own.
         this._fireAllowed  = true;
@@ -152,7 +156,7 @@ class InputVirtualGamepad {
      * answering touches and stops being drawn. Survives the overlay rebuild.
      *
      * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
-     *                          'weaponNext' | 'map' | 'fire' | 'move' | 'aim'
+     *                          'weaponNext' | 'map' | 'run' | 'fire' | 'move' | 'aim'
      * @param {boolean} allowed
      */
     allowControl(control, allowed) {
@@ -209,6 +213,10 @@ class InputVirtualGamepad {
         return this._buttons.map;
     }
 
+    readButtonRun() {
+        return this._buttons.run;
+    }
+
     // The top-right zone cycles to the next weapon. There is no previous
     // binding on the virtual gamepad.
     readButtonWeaponNext() {
@@ -248,6 +256,7 @@ class InputVirtualGamepad {
         this._buttonEls = {};
         for (const name in InputVirtualGamepad.BUTTONS) {
             this._buttonEls[name] = this._createRect(overlay, InputVirtualGamepad.BUTTONS[name]);
+            this._setButtonPressed(name, this._buttons[name]);
         }
         for (const name in this._buttonAllowed) {
             this._applyButtonAllowed(name);
@@ -486,6 +495,9 @@ class InputVirtualGamepad {
     }
 
     _releaseControl(owned) {
+        if (owned.kind === 'toggle') {
+            return;
+        }
         if (owned.kind === 'button') {
             this._buttons[owned.button] = false;
             this._setButtonPressed(owned.button, false);
@@ -517,6 +529,12 @@ class InputVirtualGamepad {
         const ny = py / rect.height;
 
         const button = this._hitButton(nx, ny);
+        if ((button !== null) && (InputVirtualGamepad.BUTTONS[button].toggle === true)) {
+            this._buttons[button] = !this._buttons[button];
+            this._setButtonPressed(button, this._buttons[button]);
+            this._touches.set(touch.identifier, { kind: 'toggle', button: button });
+            return;
+        }
         if (button !== null) {
             this._buttons[button] = true;
             this._setButtonPressed(button, true);
@@ -573,10 +591,14 @@ class InputVirtualGamepad {
         return null;
     }
 
+    // Granted again on every level: only a withdrawal lets go of the button, so
+    // a toggle keeps its state from one level to the next.
     _allowButton(name, allowed) {
         this._buttonAllowed[name] = (allowed === true);
-        this._buttons[name]       = false;
-        this._setButtonPressed(name, false);
+        if (!this._buttonAllowed[name]) {
+            this._buttons[name] = false;
+            this._setButtonPressed(name, false);
+        }
         this._applyButtonAllowed(name);
 
         return this;
@@ -673,8 +695,8 @@ class InputVirtualGamepad {
         return {x: nx * factor, y: ny * factor};
     }
 
-    // Neutralizes every input (used on rebuild and when the overlay is hidden,
-    // since hiding fires no touchend for fingers still down).
+    // Neutralizes every input but the toggles (used on rebuild and when the
+    // overlay is hidden, since hiding fires no touchend for fingers still down).
     _resetState() {
         this._touches.clear();
         this._joy1.x = 0;
@@ -682,11 +704,13 @@ class InputVirtualGamepad {
         this._joy2.x = 0;
         this._joy2.y = 0;
         for (const name in this._buttons) {
-            this._buttons[name] = false;
+            if (InputVirtualGamepad.BUTTONS[name]?.toggle !== true) {
+                this._buttons[name] = false;
+            }
         }
         if (this._buttonEls !== null) {
             for (const name in this._buttonEls) {
-                this._setButtonPressed(name, false);
+                this._setButtonPressed(name, this._buttons[name]);
             }
         }
         if (this._moveStick !== null) {
@@ -750,7 +774,9 @@ InputVirtualGamepad.ICONS = {
     // Strokes and not a filled shape: the creases would vanish into the fill.
     map:    {shapes: '<path d="M3.2 6.2 L9 4.4 L15 6.6 L20.8 4.6 V17.8 L15 19.8 L9 17.6 L3.2 19.6 Z"'
                    + ' fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
-                   + '<path d="M9 4.4 V17.6 M15 6.6 V19.8" fill="none" stroke="currentColor" stroke-width="1.4"/>'}
+                   + '<path d="M9 4.4 V17.6 M15 6.6 V19.8" fill="none" stroke="currentColor" stroke-width="1.4"/>'},
+    run:    {shapes: '<path d="M4.2 5 L11.4 12 L4.2 19 H8.6 L15.8 12 L8.6 5 Z"/>'
+                   + '<path d="M10.6 5 L17.8 12 L10.6 19 H15 L22.2 12 L15 5 Z"/>'}
 };
 
 // Icon side as a fraction of its button's height, and the height of the
@@ -758,16 +784,18 @@ InputVirtualGamepad.ICONS = {
 InputVirtualGamepad.ICON_SCALE_DEFAULT = 0.5;
 InputVirtualGamepad.AIM_MARK_ICON_SIZE = 5.5;
 
-// Rectangular targets, hit-tested in declaration order, all four buttons the
-// same size. The right column (jump, crouch, use) sits as low as the HUD
-// allows: below it the ammo block starts at y 0.86. Menu clears the counters
-// block, which ends at y 0.18; the weapon zone is drawn dashed over the ARMS
-// panel (one tap = next weapon).
+// Rectangular targets, hit-tested in declaration order, all the buttons the
+// same size; a `toggle` one flips on each tap instead of following the finger.
+// The right column (jump, crouch, use) sits as low as the HUD allows: below it
+// the ammo block starts at y 0.86. Menu clears the counters block, which ends
+// at y 0.18; the weapon zone is drawn dashed over the ARMS panel (one tap =
+// next weapon).
 InputVirtualGamepad.BUTTONS = {
     pause:      {x: 0.128, y: 0.020, w: 0.079, h: 0.112, icon: 'menu'},
     // Right of the menu: on its left it would sit on the HUD's keys / secrets /
     // kills block.
     map:        {x: 0.216, y: 0.020, w: 0.079, h: 0.112, icon: 'map'},
+    run:        {x: 0.304, y: 0.020, w: 0.079, h: 0.112, icon: 'run', toggle: true},
     jump:       {x: 0.902, y: 0.506, w: 0.079, h: 0.112, icon: 'jump'},
     crouch:     {x: 0.902, y: 0.626, w: 0.079, h: 0.112, icon: 'crouch'},
     action:     {x: 0.902, y: 0.746, w: 0.079, h: 0.112, icon: 'action'},

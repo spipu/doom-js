@@ -102,13 +102,13 @@ class DoomSettings {
             {key: 'keyboard.backward',            nameCode: 'settings.keyboard.backward',          type: 'char', default: 'KeyS',      action: 'backward'},
             {key: 'keyboard.strafe_left',         nameCode: 'settings.keyboard.strafeLeft',        type: 'char', default: 'KeyA',      action: 'strafeLeft'},
             {key: 'keyboard.strafe_right',        nameCode: 'settings.keyboard.strafeRight',       type: 'char', default: 'KeyD',      action: 'strafeRight'},
-            {key: 'keyboard.jump',                nameCode: 'settings.keyboard.jump',              type: 'char', default: 'ShiftLeft', action: 'jump'},
-            {key: 'keyboard.crouch',              nameCode: 'settings.keyboard.crouch',            type: 'char', default: 'ControlLeft', action: 'crouch'},
+            {key: 'keyboard.run',                 nameCode: 'settings.keyboard.run',               type: 'char', default: 'ShiftLeft', action: 'run'},
+            {key: 'keyboard.jump',                nameCode: 'settings.keyboard.jump',              type: 'char', default: 'Space',     action: 'jump'},
+            {key: 'keyboard.crouch',              nameCode: 'settings.keyboard.crouch',            type: 'char', default: 'KeyC',      action: 'crouch'},
             {key: 'keyboard.action',              nameCode: 'settings.keyboard.action',            type: 'char', default: 'KeyE',      action: 'action'},
             {key: 'keyboard.fire',                nameCode: 'settings.keyboard.fire',              type: 'char', default: 'KeyQ',      action: 'fire'},
             {key: 'keyboard.weapon_prev',         nameCode: 'settings.keyboard.weaponPrev',        type: 'char', default: 'KeyF',      action: 'weaponPrev'},
             {key: 'keyboard.weapon_next',         nameCode: 'settings.keyboard.weaponNext',        type: 'char', default: 'KeyG',      action: 'weaponNext'},
-            {key: 'keyboard.walk_slow',           nameCode: 'settings.keyboard.walkSlow',          type: 'char', default: 'AltLeft',   action: 'walkSlow'},
             {key: 'keyboard.toggle_hud',          nameCode: 'settings.keyboard.toggleHud',         type: 'char', default: 'KeyH',      action: 'toggleHud'},
             {key: 'keyboard.map',                 nameCode: 'settings.keyboard.map',               type: 'char', default: 'Tab',       action: 'map'},
             {key: 'keyboard.look_down',           nameCode: 'settings.keyboard.lookDown',          type: 'char', default: 'KeyK',      action: 'lookDown'},
@@ -145,8 +145,22 @@ class DoomSettings {
             console.warn('DoomSettings - unable to load the settings: ' + error.message);
         }
         this._repairValues();
+        this._yieldTakenDefaults();
 
         return this;
+    }
+
+    // A key serves one action only: an action still on its default key gives it
+    // up when the player saved that key for another action (a default that moved
+    // onto a key the player had already chosen).
+    _yieldTakenDefaults() {
+        const keyDefs = DoomSettings.DEFINITIONS.filter((def) => (def.type === 'char'));
+        const saved   = new Set(keyDefs.filter((def) => (this._values[def.key] !== undefined)).map((def) => this._values[def.key]));
+        for (const def of keyDefs) {
+            if ((this._values[def.key] === undefined) && saved.has(def.default)) {
+                this.set(def.key, '');
+            }
+        }
     }
 
     // Resets every stored value its definition no longer accepts, before any

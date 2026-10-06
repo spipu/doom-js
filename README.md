@@ -78,15 +78,15 @@ Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY
 |---|---|---|
 | WASD | Left stick | Move / strafe (analog on the stick) |
 | Mouse (click canvas first) | Right stick | Look around |
-| Left Shift | Button 1 | Jump |
-| Left Ctrl | Button 0 | Crouch — careful: holding it with the key that types `q` is Ctrl+Q, which quits Firefox (a browser-privileged shortcut); remap if it bites you |
+| Left Shift (hold) | Left stick press, L3 (hold) | Run at the original game's speed; the virtual pad has a run toggle beside the map button |
+| Space | Button 1 | Jump |
+| C | Button 0 | Crouch |
 | E | Button 3 | Interact (open door, trigger lift or switch) |
 | Left click / Q | Button 2 / right trigger | Fire the active weapon |
 | ESC | Button 9 | Pause menu over the frozen game (not remappable) |
 | F / G | Buttons 4 / 5 | Previous / next weapon (wrapping) |
 | H | — | Toggle the game HUD ↔ debug overlay (keyboard only) |
 | Tab | D-pad up | Show / hide the automap over the game |
-| Left Alt | — | Walk slowly (sticks do it through partial deflection) |
 | IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | O | — | Debug cheat (not remappable): grant the full kit |
 

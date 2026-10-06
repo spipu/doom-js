@@ -253,4 +253,4 @@ class DoomSubRole extends AbstractGameRole {
 }
 
 // A viewer's command is ignored by the main: its pad keeps the menu and the map only.
-DoomSubRole.PAD_CONTROLS = {jump: false, crouch: false, action: false, fire: false, weaponNext: false, move: false, aim: false};
+DoomSubRole.PAD_CONTROLS = {jump: false, crouch: false, action: false, run: false, fire: false, weaponNext: false, move: false, aim: false};

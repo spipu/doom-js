@@ -1104,10 +1104,13 @@ class WadConstants {
         // 0.5625 m) at the vanilla gravity: v = sqrt(2 * 19.141 * 0.5625).
         maxJumpVelocity: 4.640,
         maxSlopeAngle:   50,
-        // Run by default (cl_run) at ~2/3 of the vanilla forwardmove 50
-        // (≈ 0.0091): deliberate deviation — the jump (absent from vanilla)
-        // keeps the run-across gaps crossable at a tamer top speed.
+        // ~2/3 of the vanilla run: deliberate deviation — the jump (absent
+        // from vanilla) keeps the run-across gaps crossable at a tamer speed.
         moveSpeed:       0.006,
+        // Vanilla run while the run key is held: forwardmove 0x32 thrusts
+        // 50 × 2048 / 65536 per tic against ORIG_FRICTION 0xE800 → 16.67
+        // units/tic, × 35 tics × SCALE per 1000 ms.
+        runSpeed:        0.009115,
         stepHeight:      0.375,
         // Fall damage thresholds (multiples of the player height): nothing
         // under 277 map units, the full bar at 1663 — the engine's own

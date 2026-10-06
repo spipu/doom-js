@@ -98,5 +98,5 @@ class UserCommand {
 
 UserCommand.JUMP      = 'jump';
 UserCommand.CROUCH    = 'crouch';
-UserCommand.WALK_SLOW = 'walkSlow';
+UserCommand.RUN       = 'run';
 UserCommand.ACTION    = 'action';

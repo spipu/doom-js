@@ -3,21 +3,21 @@ let InputKeyboard_private = null;
 class InputKeyboard {
     // Default binding of each game action: ONE physical key code per action
     // (layout independent: WASD = ZQSD on AZERTY), '' = unmapped.
-    // Trap: crouch (left Ctrl) held with the key printing 'q' QUITS Firefox, a
-    // shortcut no page JS can cancel (the dev Playwright profile disables it).
+    // Trap: left Ctrl held with the key printing 'q' (strafe left on AZERTY)
+    // QUITS Firefox, a shortcut no page JS can cancel — hence crouch on C.
     static get DEFAULT_MAPPING() {
         return {
             forward:     'KeyW',
             backward:    'KeyS',
             strafeLeft:  'KeyA',
             strafeRight: 'KeyD',
-            jump:        'ShiftLeft',
-            crouch:      'ControlLeft',
+            run:         'ShiftLeft',
+            jump:        'Space',
+            crouch:      'KeyC',
             action:      'KeyE',
             fire:        'KeyQ',
             weaponPrev:  'KeyF',
             weaponNext:  'KeyG',
-            walkSlow:    'AltLeft',
             toggleHud:   'KeyH',
             // Layout-independent, unlike a letter: 'KeyM' is the QWERTY
             // position, which prints ',' on AZERTY.
@@ -48,8 +48,9 @@ class InputKeyboard {
                 e.preventDefault();
             }
             // Tab would walk the browser focus, and a focused button then eats
-            // the next Enter as a native re-click.
-            if ((e.code === 'Tab') && !typing) {
+            // the next Enter as a native re-click; Space (jump) would re-click
+            // it as well, or scroll the page.
+            if (((e.code === 'Tab') || (e.code === 'Space')) && !typing) {
                 e.preventDefault();
             }
         });

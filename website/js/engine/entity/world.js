@@ -99,7 +99,7 @@ class World extends AbstractLoadedEntity {
     // The move follows the yaw of the previous turn, the look comes after.
     _applyCommand(user, command, previous, dt) {
         user.beginFrame(dt);
-        user.setWalkSlow(command.isPressed(UserCommand.WALK_SLOW));
+        user.setRunning(command.isPressed(UserCommand.RUN));
         user.setCrouch(command.isPressed(UserCommand.CROUCH));
         if (command.isJustPressed(UserCommand.JUMP, previous)) {
             user.pressJump();

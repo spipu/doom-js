@@ -290,4 +290,4 @@ class DoomMainRole extends AbstractGameRole {
 }
 
 // Given back on every level: the pad outlives a game, and a followed one withdrew them.
-DoomMainRole.PAD_CONTROLS = {action: true, fire: true, weaponNext: true, move: true, aim: true};
+DoomMainRole.PAD_CONTROLS = {action: true, run: true, fire: true, weaponNext: true, move: true, aim: true};

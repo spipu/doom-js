@@ -522,6 +522,24 @@ class DoomTranslations {
                 it: 'Spazio',
                 es: 'Espacio'
             },
+            'key.shift': {
+                fr: 'Maj',
+                en: 'Shift',
+                it: 'Maiusc',
+                es: 'Mayús'
+            },
+            'key.left': {
+                fr: '{key} gauche',
+                en: 'Left {key}',
+                it: '{key} sinistro',
+                es: '{key} izquierda'
+            },
+            'key.right': {
+                fr: '{key} droite',
+                en: 'Right {key}',
+                it: '{key} destro',
+                es: '{key} derecha'
+            },
             'key.numpad': {
                 fr: 'Num {key}',
                 en: 'Numpad {key}',
@@ -1526,6 +1544,12 @@ class DoomTranslations {
                 it: 'Passo a destra',
                 es: 'Paso a la derecha'
             },
+            'settings.keyboard.run': {
+                fr: 'Courir',
+                en: 'Run',
+                it: 'Corri',
+                es: 'Correr'
+            },
             'settings.keyboard.jump': {
                 fr: 'Sauter',
                 en: 'Jump',
@@ -1561,12 +1585,6 @@ class DoomTranslations {
                 en: 'Next weapon',
                 it: 'Arma successiva',
                 es: 'Arma siguiente'
-            },
-            'settings.keyboard.walkSlow': {
-                fr: 'Marcher lentement',
-                en: 'Walk slowly',
-                it: 'Cammina lentamente',
-                es: 'Caminar despacio'
             },
             'settings.keyboard.toggleHud': {
                 fr: 'Afficher le HUD de debug',

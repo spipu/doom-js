@@ -26,6 +26,8 @@ class User {
         this._leanSpeed        = 5.0;
         this._maxEnergy        = maxEnergy;
         this._moveSpeed        = 0.003;
+        // null = no run speed: running keeps the move speed
+        this._runSpeed         = null;
         // Fall thresholds in actor heights: nothing below safe, full energy at max
         this._fallDamage       = true;
         this._fallSafeFactor   = 2.5;
@@ -47,7 +49,7 @@ class User {
         this._prevX          = x;
         this._prevZ          = z;
         this._realVelocityXZ = 0;
-        this._walkSlow       = false;
+        this._running        = false;
         this._vx             = 0;
         this._vz             = 0;
         this._inputX         = 0;
@@ -227,6 +229,11 @@ class User {
 
     setMoveSpeed(v) {
         this._moveSpeed = v;
+        return this;
+    }
+
+    setRunSpeed(v) {
+        this._runSpeed = v;
         return this;
     }
 
@@ -452,9 +459,9 @@ class User {
         this.pitch  = Math.max(-User.MAX_PITCH, Math.min(User.MAX_PITCH, this.pitch + pitch));
     }
 
-    setWalkSlow(slow) {
+    setRunning(running) {
         if (!this.isDead()) {
-            this._walkSlow = slow;
+            this._running = running;
         }
     }
 
@@ -477,6 +484,10 @@ class User {
     }
 
     // --- Game hooks (no-ops here) ---
+
+    _currentMoveSpeed() {
+        return (((this._running) && (this._runSpeed !== null)) ? this._runSpeed : this._moveSpeed);
+    }
 
     // fallDist in metres. Fires even with fall damage off: a game may voice a
     // landing it never bills.
@@ -598,11 +609,7 @@ class User {
                     // Clamped rather than normalised: analog deflections keep
                     // their magnitude
                     const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
-                    let speed = this._moveSpeed;
-                    if (this._walkSlow) {
-                        speed *= 0.5;
-                    }
-                    speed *= (1 - this._crouchProgress * 0.4);
+                    const speed = this._currentMoveSpeed() * (1 - this._crouchProgress * 0.4);
                     targetVx = this._inputX * norm * speed;
                     targetVz = this._inputZ * norm * speed;
                 }
@@ -620,13 +627,14 @@ class User {
             } else if (inputLen > 1e-10) {
                 // Air steering
                 const norm = ((inputLen > 1) ? (1 / inputLen) : 1);
-                const nudge = this._moveSpeed * this._airControl;
+                const maxSpeed = this._currentMoveSpeed();
+                const nudge    = maxSpeed * this._airControl;
                 this._vx += this._inputX * norm * nudge * dtS;
                 this._vz += this._inputZ * norm * nudge * dtS;
                 const vLen = Math.sqrt(this._vx*this._vx + this._vz*this._vz);
-                if (vLen > this._moveSpeed) {
-                    this._vx = this._vx / vLen * this._moveSpeed;
-                    this._vz = this._vz / vLen * this._moveSpeed;
+                if (vLen > maxSpeed) {
+                    this._vx = this._vx / vLen * maxSpeed;
+                    this._vz = this._vz / vLen * maxSpeed;
                 }
             }
         }
