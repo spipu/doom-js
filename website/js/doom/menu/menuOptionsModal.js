@@ -57,19 +57,19 @@ class MenuOptionsModal extends AbstractMenuListModal {
     constructor(display) {
         super(display);
 
-        this._titleEl        = null;
-        this._bodyEl         = null;
-        this._actionButton   = null;
-        this._pageStack      = [];
-        this._pageTimer      = null;
-        this._shownDevices   = null;
-        this._captureHandler = null;
-        this._captureTimer   = null;
-        this._restoreIndex   = null;
-        this._layoutMap      = null;
-        this._mode           = null;
-        this._inGame         = false;
-        this._rendererLocked = false;
+        this._titleEl         = null;
+        this._bodyEl          = null;
+        this._actionButton    = null;
+        this._pageStack       = [];
+        this._pageTimer       = null;
+        this._shownDevices    = null;
+        this._captureHandler  = null;
+        this._captureTimer    = null;
+        this._pendingListView = null;
+        this._layoutMap       = null;
+        this._mode            = null;
+        this._inGame          = false;
+        this._rendererLocked  = false;
     }
 
     // Over a running game: the multiplayer settings only apply to the next
@@ -176,10 +176,27 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._bodyEl.innerHTML           = '';
         this._nav.clear();
         current.builder();
-        if (this._restoreIndex !== null) {
-            this._nav.selectIndex(this._restoreIndex);
-            this._restoreIndex = null;
+        if (this._pendingListView !== null) {
+            this._applyListView(this._pendingListView);
+            this._pendingListView = null;
         }
+    }
+
+    // The selected row and the exact scroll of the list, so a rebuilt page
+    // shows the player the very same view.
+    _readListView() {
+        const list = this._bodyEl.querySelector('.doom-menu-list');
+
+        return {index: this._nav.getSelectedIndex(), scrollTop: ((list !== null) ? list.scrollTop : 0)};
+    }
+
+    // The scroll first: selecting a visible row then leaves it untouched.
+    _applyListView(view) {
+        const list = this._bodyEl.querySelector('.doom-menu-list');
+        if (list !== null) {
+            list.scrollTop = view.scrollTop;
+        }
+        this._nav.selectIndex(view.index);
     }
 
     _clearPageTimer() {
@@ -358,7 +375,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         doomSound.applyVolumes();
 
         if (definition.key === 'display.language') {
-            this._restoreIndex = this._nav.getSelectedIndex();
+            this._pendingListView = this._readListView();
             this._renderPage();
             return;
         }
@@ -415,7 +432,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
     // unbound elsewhere. Capture phase, so neither the list navigation nor the
     // game shortcuts see the press.
     _startKeyCapture(definition, inputs) {
-        const returnIndex = this._openCapturePage(definition, 'help.keyCapture');
+        const returnView = this._openCapturePage(definition, 'help.keyCapture');
 
         this._captureHandler = (event) => {
             // F1-F12 stay with the browser; Escape is the fixed pause key.
@@ -428,7 +445,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
                 return;
             }
             this._saveBinding(definition, event.code, inputs);
-            this._endCapture(returnIndex);
+            this._endCapture(returnView);
         };
         document.addEventListener('keydown', this._captureHandler, true);
     }
@@ -489,41 +506,41 @@ class MenuOptionsModal extends AbstractMenuListModal {
      * @param {function} step - the captured value, null while waiting
      */
     _pollPadCapture(definition, inputs, promptCode, step) {
-        const returnIndex = this._openCapturePage(definition, promptCode);
-        const pad         = inputs.getGamepad();
+        const returnView = this._openCapturePage(definition, promptCode);
+        const pad        = inputs.getGamepad();
 
         this._captureTimer = setInterval(() => {
             if (!pad.isAvailable()) {
-                this._endCapture(returnIndex);
+                this._endCapture(returnView);
                 return;
             }
             const value = step();
             if (value !== null) {
                 this._saveBinding(definition, value, inputs);
-                this._endCapture(returnIndex);
+                this._endCapture(returnView);
             }
         }, MenuOptionsModal.CAPTURE_POLL_MS);
     }
 
-    // Returns the selected row, restored when the capture ends.
+    // Returns the view of the list, restored when the capture ends.
     _openCapturePage(definition, promptCode) {
-        const returnIndex = this._nav.getSelectedIndex();
+        const returnView = this._readListView();
         this._pushPage(definition.nameCode, () => {
             MenuDom.addText(this._bodyEl, 'doom-menu-modal-line',
                 appTranslator.get(promptCode, {action: appTranslator.get(definition.nameCode)}));
         }, true);
 
-        return returnIndex;
+        return returnView;
     }
 
     _saveBinding(definition, value, inputs) {
         doomSettings.bind(definition, value).applyToInputs(inputs);
     }
 
-    _endCapture(returnIndex) {
+    _endCapture(returnView) {
         this._stopCapture();
         this._pageStack.pop();
-        this._restoreIndex = returnIndex;
+        this._pendingListView = returnView;
         this._renderPage();
     }
 
