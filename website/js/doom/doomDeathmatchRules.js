@@ -56,6 +56,10 @@ class DoomDeathmatchRules extends DoomGameRules {
         return false;
     }
 
+    allowsLevelRestart() {
+        return false;
+    }
+
     allowsCheatFullKit() {
         return false;
     }

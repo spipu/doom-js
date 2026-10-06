@@ -50,6 +50,10 @@ class DoomCoopRules extends DoomGameRules {
         return true;
     }
 
+    allowsLevelRestart() {
+        return true;
+    }
+
     allowsCheatFullKit() {
         return true;
     }

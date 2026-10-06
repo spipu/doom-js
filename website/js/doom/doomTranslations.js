@@ -700,11 +700,23 @@ class DoomTranslations {
                 it: 'Sei morto',
                 es: 'Has muerto'
             },
-            'game.death.restart': {
+            'game.level.restart': {
                 fr: 'Recommencer le niveau',
                 en: 'Restart the level',
                 it: 'Ricomincia il livello',
                 es: 'Reiniciar el nivel'
+            },
+            'game.level.restartConfirm': {
+                fr: 'Recommencer le niveau ? Chaque joueur repart avec l\'équipement qu\'il avait en y entrant.',
+                en: 'Restart the level? Every player starts again with the equipment they had on entering it.',
+                it: 'Ricominciare il livello? Ogni giocatore riparte con l\'equipaggiamento che aveva entrandoci.',
+                es: '¿Reiniciar el nivel? Cada jugador vuelve a empezar con el equipo que tenía al entrar.'
+            },
+            'game.level.restartButton': {
+                fr: 'Recommencer',
+                en: 'Restart',
+                it: 'Ricomincia',
+                es: 'Reiniciar'
             },
             'game.level.loading': {
                 fr: 'Chargement du niveau {level}',

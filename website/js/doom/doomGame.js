@@ -363,6 +363,7 @@ class DoomGame {
         this._pauseDisplay = new MenuDisplay('screen').init(true);
         this._pauseModal   = new MenuPauseModal(this._pauseDisplay)
             .setOnResume(() => this._leavePause())
+            .setOnRestart(((this._rules.allowsLevelRestart() && this._role.restartsLevel()) ? () => this._restartLevel() : null))
             .setOnQuit(() => {
                 this._leavePause(false);
                 this.quitToMenu();
@@ -547,10 +548,10 @@ class DoomGame {
     }
 
     // Replays the level with the equipment it began with (the level-start
-    // autosave of the modern ports).
+    // autosave of the modern ports), from the death or the pause menu.
     _restartLevel() {
         this._transitioning = true;
-        this._closeDeathMenu();
+        this.closeGameMenu();
         for (const player of this._roster.getAll()) {
             player.requestRestart();
         }

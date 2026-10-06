@@ -29,7 +29,7 @@ class MenuDeathModal extends AbstractGameMenuModal {
     }
 
     _addEntries(listEl) {
-        this._nav.addItemIn(listEl, appTranslator.get('game.death.restart'), () => this._restart());
+        this._nav.addItemIn(listEl, appTranslator.get('game.level.restart'), () => this._restart());
         this._nav.addItemIn(listEl, appTranslator.get('menu.game.newGame'), () => this._newGame());
         if (this._saveContext !== null) {
             this._nav.addItemIn(listEl, appTranslator.get('menu.game.load'), () => this._openSlots(MenuSaveSlotsModal.MODE_LOAD));

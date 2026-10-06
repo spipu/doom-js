@@ -4,8 +4,8 @@
  * the main of a session), DoomSubRole follows a main's game. DoomGame runs the
  * flow every device shares and asks its role, never which role it is. Every
  * method here is answered by both roles; what only the simulating device does
- * (hosting a session, saving) lives on DoomMainRole alone, behind the
- * hostsSessions() and savesGame() answers.
+ * (hosting a session, saving, restarting the level) lives on DoomMainRole
+ * alone, behind the hostsSessions(), savesGame() and restartsLevel() answers.
  */
 class AbstractGameRole {
     /**
@@ -39,6 +39,10 @@ class AbstractGameRole {
 
     savesGame() {
         throw new Error('AbstractGameRole: savesGame not implemented');
+    }
+
+    restartsLevel() {
+        throw new Error('AbstractGameRole: restartsLevel not implemented');
     }
 
     hostsSessions() {

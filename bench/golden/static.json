@@ -1,6 +1,6 @@
 {
   "translations/catalog": {
-    "keys": 275,
+    "keys": 277,
     "languages": [
       "en",
       "es",
@@ -11,7 +11,7 @@
     "placeholders": []
   },
   "translations/usage": {
-    "codes": 179,
+    "codes": 181,
     "unresolved": [],
     "orphans": []
   },

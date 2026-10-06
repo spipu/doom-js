@@ -1,10 +1,10 @@
 /**
  * Pause modal, shown by the game over its own frozen frame. Title
- * "{wad} — Episode {n}", navigable entries (resume / load / save /
- * multiplayer / options / leave, labelled by the game) and no bottom button:
- * Backspace and the gamepad back button resume, the Escape toggle stays
- * driven by the game loop — and closes everything, the stacked options,
- * save-slots or multiplayer modal included.
+ * "{wad} — Episode {n}", navigable entries (resume / restart the level /
+ * load / save / multiplayer / options / leave, labelled by the game) and no
+ * bottom button: Backspace and the gamepad back button resume, the Escape
+ * toggle stays driven by the game loop — and closes everything, the stacked
+ * options, save-slots or multiplayer modal included.
  */
 class MenuPauseModal extends AbstractGameMenuModal {
     /**
@@ -14,12 +14,20 @@ class MenuPauseModal extends AbstractGameMenuModal {
         super(display);
 
         this._onResume       = null;
+        this._onRestart      = null;
         this._sessionContext = null;
         this._quitCode       = 'game.pause.quit';
     }
 
     setOnResume(callback) {
         this._onResume = callback;
+
+        return this;
+    }
+
+    // Null when the game cannot be restarted from here: the entry is not offered.
+    setOnRestart(callback) {
+        this._onRestart = callback;
 
         return this;
     }
@@ -57,6 +65,9 @@ class MenuPauseModal extends AbstractGameMenuModal {
 
     _addEntries(listEl) {
         this._nav.addItemIn(listEl, appTranslator.get('game.pause.resume'), () => this._resume());
+        if (this._onRestart !== null) {
+            this._nav.addItemIn(listEl, appTranslator.get('game.level.restart'), () => this._confirmRestart());
+        }
         if (this._saveContext !== null) {
             this._nav.addItemIn(listEl, appTranslator.get('menu.game.load'), () => this._openSlots(MenuSaveSlotsModal.MODE_LOAD));
             this._nav.addItemIn(listEl, appTranslator.get('game.pause.save'), () => this._trySave());
@@ -76,6 +87,10 @@ class MenuPauseModal extends AbstractGameMenuModal {
         if (this._onResume !== null) {
             this._onResume();
         }
+    }
+
+    _confirmRestart() {
+        this._confirm(appTranslator.get('game.level.restartConfirm'), this._onRestart, appTranslator.get('game.level.restartButton'));
     }
 
     _openOptions() {

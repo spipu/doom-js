@@ -55,6 +55,10 @@ class DoomMainRole extends AbstractGameRole {
         return true;
     }
 
+    restartsLevel() {
+        return true;
+    }
+
     hostsSessions() {
         return true;
     }

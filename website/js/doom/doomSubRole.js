@@ -94,6 +94,10 @@ class DoomSubRole extends AbstractGameRole {
         return false;
     }
 
+    restartsLevel() {
+        return false;
+    }
+
     hostsSessions() {
         return false;
     }
