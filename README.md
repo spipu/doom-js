@@ -90,7 +90,7 @@ Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY
 | IJKL | — | Look around — keyboard fallback when the mouse / Pointer Lock is unavailable |
 | O | — | Debug cheat (not remappable): grant the full kit |
 
-The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices select the virtual gamepad (see **Inputs** above). On iOS the touch mapping and the menus stay aligned with the display across device rotation.
+The gamepad is only visible to the page after a button has been pressed on it (browser privacy rule); it then takes priority over keyboard+mouse. Touch-only devices select the virtual gamepad (see **Inputs** above). The **Device** line of Options > Controls keeps this automatic choice or forces one of the devices available, and lists the settings of the device in use. On iOS the touch mapping and the menus stay aligned with the display across device rotation.
 
 ## The Spipu3D engine
 

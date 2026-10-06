@@ -9,6 +9,14 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return 500;
     }
 
+    static get DEVICE_KEY() {
+        return 'controls.device';
+    }
+
+    static get GAMEPAD_NAME_MAX_LENGTH() {
+        return 24;
+    }
+
     // Settings key prefixes of each input mode (DoomSettings definitions).
     static get SETTING_PREFIXES_BY_MODE() {
         return {
@@ -36,8 +44,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._actionButton   = null;
         this._pageStack      = [];
         this._pageTimer      = null;
-        this._deviceLineEl   = null;
-        this._controlsMode   = null;
+        this._shownDevices   = null;
         this._captureHandler = null;
         this._restoreIndex   = null;
         this._layoutMap      = null;
@@ -187,15 +194,21 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, null, appTranslator.get('menu.back'));
     }
 
-    // Lists the settings of the device the game itself would use (Inputs'
-    // priority); a device change rebuilds the page.
+    // The Device line picks the device the game plays with (automatic or one
+    // of the available ones), and the settings below are those of the device
+    // in use; a change of the available devices rebuilds the page.
     _buildControls() {
         const inputs = new Inputs();
-        this._controlsMode = inputs.getMode();
-        this._deviceLineEl = MenuDom.addText(this._bodyEl, 'doom-menu-modal-line', this._deviceLabel(inputs));
+        const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
+        const device = this._nav.addItemIn(list, appTranslator.get('settings.controls.device'), () => {
+            this._stepDevice(inputs, 1);
+        }, (dir) => {
+            this._stepDevice(inputs, dir);
+        });
+        MenuDom.addText(device, 'doom-menu-item-value', this._deviceChoiceLabel(this._currentDeviceChoice(inputs), inputs));
 
-        const list = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
-        for (const prefix of MenuOptionsModal.SETTING_PREFIXES_BY_MODE[this._controlsMode]) {
+        this._shownDevices = this._devicesState(inputs);
+        for (const prefix of MenuOptionsModal.SETTING_PREFIXES_BY_MODE[inputs.getMode()]) {
             for (const definition of doomSettings.getDefinitions(prefix)) {
                 this._addSettingItem(list, definition, inputs);
             }
@@ -203,12 +216,72 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._nav.selectFirst();
 
         this._pageTimer = setInterval(() => {
-            if (inputs.getMode() !== this._controlsMode) {
+            if (this._devicesState(inputs) !== this._shownDevices) {
                 this._renderPage();
-                return;
             }
-            this._deviceLineEl.textContent = this._deviceLabel(inputs);
         }, MenuOptionsModal.DEVICE_REFRESH_MS);
+    }
+
+    // Automatic first, then the devices available right now.
+    _deviceChoices(inputs) {
+        return [DoomSettings.DEVICE_AUTO].concat(inputs.getAvailableModes());
+    }
+
+    // A saved device that is not available shows as the automatic choice it falls back on.
+    _currentDeviceChoice(inputs) {
+        const saved = doomSettings.get(MenuOptionsModal.DEVICE_KEY);
+
+        return ((this._deviceChoices(inputs).includes(saved)) ? saved : DoomSettings.DEVICE_AUTO);
+    }
+
+    // The settings listed below follow the device: the page is rebuilt.
+    _stepDevice(inputs, dir) {
+        const choices = this._deviceChoices(inputs);
+        const index   = choices.indexOf(this._currentDeviceChoice(inputs));
+        const next    = choices[((index + dir + choices.length) % choices.length)];
+
+        doomSettings.set(MenuOptionsModal.DEVICE_KEY, next).applyToInputs(inputs);
+        this._renderPage();
+    }
+
+    // What the page shows depends on: the devices offered, the one in use, the gamepad's name.
+    _devicesState(inputs) {
+        return [inputs.getAvailableModes().join(','), inputs.getMode(), (inputs.getGamepadName() ?? '')].join('|');
+    }
+
+    _deviceChoiceLabel(choice, inputs) {
+        if (choice === DoomSettings.DEVICE_AUTO) {
+            return appTranslator.get('device.auto', {device: this._deviceLabel(inputs.getAutoMode(), inputs)});
+        }
+
+        return this._deviceLabel(choice, inputs);
+    }
+
+    _deviceLabel(mode, inputs) {
+        if (mode === 'virtualGamepad') {
+            return appTranslator.get('device.virtualPad');
+        }
+        if (mode === 'gamepad') {
+            return appTranslator.get('device.gamepad', {name: MenuOptionsModal.gamepadDisplayName(inputs.getGamepadName() ?? '')});
+        }
+
+        return appTranslator.get('device.keyboardMouse');
+    }
+
+    /**
+     * The browser's gamepad id stripped of its vendor / product numbers
+     * (Firefox "054c-0ce6-Name", Chrome "Name (STANDARD GAMEPAD Vendor: 054c
+     * Product: 0ce6)"), cut to fit the settings line.
+     * @param {string} id
+     * @returns {string}
+     */
+    static gamepadDisplayName(id) {
+        const name = (id.replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, '').replace(/\s*\([^)]*Vendor:[^)]*\)\s*$/i, '').trim() || id.trim());
+        if (name.length <= MenuOptionsModal.GAMEPAD_NAME_MAX_LENGTH) {
+            return name;
+        }
+
+        return name.slice(0, (MenuOptionsModal.GAMEPAD_NAME_MAX_LENGTH - 1)).trimEnd() + '…';
     }
 
     _buildSettingsPage(prefix) {
@@ -224,18 +297,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
             this._addSettingItem(list, definition, inputs);
         }
         this._nav.selectFirst();
-    }
-
-    _deviceLabel(inputs) {
-        const mode = inputs.getMode();
-        if (mode === 'virtualGamepad') {
-            return appTranslator.get('device.virtualPad');
-        }
-        if (mode === 'gamepad') {
-            return appTranslator.get('device.gamepad', {name: (inputs.getGamepadName() ?? '')}).trim();
-        }
-
-        return appTranslator.get('device.keyboardMouse');
     }
 
     _addSettingItem(listEl, definition, inputs) {

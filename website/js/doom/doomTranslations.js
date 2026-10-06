@@ -416,10 +416,10 @@ class DoomTranslations {
                 es: 'En un teléfono o una tableta, instala Spipu-Doom para jugar a pantalla completa, sin la barra del navegador: en iPhone y iPad, con Safari, toca el botón Compartir y luego «Añadir a pantalla de inicio»; en Android, con Chrome, abre el menú ⋮ (los tres puntos) y luego «Instalar aplicación». Aparece un icono, y el juego funciona después incluso sin conexión a internet.'
             },
             'help.guide.controls': {
-                fr: 'Jouez au clavier et à la souris, à la manette, ou avec les commandes tactiles qui s\'affichent à l\'écran : Spipu-Doom reconnaît tout seul ce que vous utilisez. Chaque touche peut être changée dans les options, une fois un jeu choisi.',
-                en: 'Play with the keyboard and mouse, with a gamepad, or with the touch controls shown on screen: Spipu-Doom works out on its own what you are using. Every key can be changed in the options, once you have picked a game.',
-                it: 'Gioca con tastiera e mouse, con un controller, o con i comandi touch che compaiono sullo schermo: Spipu-Doom riconosce da solo quello che stai usando. Ogni tasto può essere cambiato nelle opzioni, dopo aver scelto un gioco.',
-                es: 'Juega con teclado y ratón, con un mando, o con los controles táctiles que aparecen en pantalla: Spipu-Doom reconoce por sí solo lo que estás usando. Cada tecla puede cambiarse en las opciones, una vez elegido un juego.'
+                fr: 'Jouez au clavier et à la souris, à la manette, ou avec les commandes tactiles qui s\'affichent à l\'écran : Spipu-Doom reconnaît tout seul l\'appareil que vous utilisez, sauf si vous en choisissez un dans les options. Chaque touche peut être changée dans les options, une fois un jeu choisi.',
+                en: 'Play with the keyboard and mouse, with a gamepad, or with the touch controls shown on screen: Spipu-Doom works out on its own which device you are using, unless you pick one in the options. Every key can be changed in the options, once you have picked a game.',
+                it: 'Gioca con tastiera e mouse, con un controller, o con i comandi touch che compaiono sullo schermo: Spipu-Doom riconosce da solo il dispositivo che stai usando, a meno che tu non ne scelga uno nelle opzioni. Ogni tasto può essere cambiato nelle opzioni, dopo aver scelto un gioco.',
+                es: 'Juega con teclado y ratón, con un mando, o con los controles táctiles que aparecen en pantalla: Spipu-Doom reconoce por sí solo el dispositivo que estás usando, salvo que elijas uno en las opciones. Cada tecla puede cambiarse en las opciones, una vez elegido un juego.'
             },
             'help.keyCapture': {
                 fr: 'Appuyez sur la touche à utiliser pour « {action} »…',
@@ -546,17 +546,23 @@ class DoomTranslations {
                 it: 'Num {key}',
                 es: 'Num {key}'
             },
+            'device.auto': {
+                fr: 'Automatique : {device}',
+                en: 'Automatic: {device}',
+                it: 'Automatico: {device}',
+                es: 'Automático: {device}'
+            },
             'device.gamepad': {
-                fr: 'Manette {name}',
-                en: 'Gamepad {name}',
-                it: 'Controller {name}',
-                es: 'Mando {name}'
+                fr: 'Manette ({name})',
+                en: 'Gamepad ({name})',
+                it: 'Controller ({name})',
+                es: 'Mando ({name})'
             },
             'device.virtualPad': {
-                fr: 'Manette virtuelle',
-                en: 'Virtual gamepad',
-                it: 'Controller virtuale',
-                es: 'Mando virtual'
+                fr: 'Commandes tactiles',
+                en: 'Touch controls',
+                it: 'Comandi touch',
+                es: 'Controles táctiles'
             },
             'device.keyboardMouse': {
                 fr: 'Clavier et souris',
@@ -1477,6 +1483,12 @@ class DoomTranslations {
                 en: 'Effects volume',
                 it: 'Volume degli effetti',
                 es: 'Volumen de los efectos'
+            },
+            'settings.controls.device': {
+                fr: 'Appareil',
+                en: 'Device',
+                it: 'Dispositivo',
+                es: 'Dispositivo'
             },
             'settings.pad.yInverse': {
                 fr: 'Inverser l\'axe vertical',

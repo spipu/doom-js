@@ -5,7 +5,8 @@
  *   - joy 2 deltas: look, pixel-equivalent (mouse delta passthrough, stick
  *                   position converted with the look speed and the given dt)
  *   - buttons     : jump, action, crouch, run, fire, pause
- * Device priority: gamepad > virtual gamepad (touch-only device) > keyboard+mouse.
+ * Device priority: gamepad > virtual gamepad (touch-only device) > keyboard+mouse,
+ * unless the page forces an available device (setPreferredMode).
  * Gamepad presence is event-driven (gamepadconnected / gamepaddisconnected —
  * the browser only exposes a gamepad after a button has been pressed on it).
  */
@@ -20,6 +21,15 @@ class Inputs {
             return 0;
         }
         return (magnitude - deadZone) / (1 - deadZone);
+    }
+
+    // Order in which the devices are listed to the player.
+    static get MODES() {
+        return ['keyboardMouse', 'gamepad', 'virtualGamepad'];
+    }
+
+    static get AUTO_PRIORITY() {
+        return ['gamepad', 'virtualGamepad', 'keyboardMouse'];
     }
 
     // Movement stick reaches full speed at 80% of its travel, not only at the
@@ -50,6 +60,7 @@ class Inputs {
         this._lookInvertY    = {gamepad: false, virtualGamepad: false, keyboardMouse: false};
 
         this._virtualPadSuppressed = false;
+        this._preferredMode        = null;
         this._selectMode();
         // gamepadconnected fires on the first button press of the pad
         // (anti-fingerprinting), gamepaddisconnected on unplug / BT sleep.
@@ -111,10 +122,43 @@ class Inputs {
         return this._mode;
     }
 
-    // Name (Gamepad.id) of the active physical gamepad, null when the
-    // current mode is not 'gamepad'.
+    /**
+     * Forces the device to play with; one that is not available falls back
+     * on the automatic choice until it comes back.
+     * @param {string|null} mode - an input mode, null for the automatic choice
+     */
+    setPreferredMode(mode) {
+        this._preferredMode = (mode ?? null);
+        this._selectMode();
+        return this;
+    }
+
+    /**
+     * Devices usable right now: the keyboard and mouse off touch-only
+     * devices, the virtual gamepad on them, a physical gamepad once detected.
+     * @returns {string[]}
+     */
+    getAvailableModes() {
+        const touchOnly = this._isTouchOnlyDevice();
+
+        return Inputs.MODES.filter((mode) => (
+            ((mode === 'keyboardMouse') && !touchOnly)
+            || ((mode === 'virtualGamepad') && touchOnly)
+            || ((mode === 'gamepad') && this._gamepad.isAvailable())
+        ));
+    }
+
+    /**
+     * The device the automatic choice picks: gamepad > virtual gamepad > keyboard+mouse.
+     * @returns {string}
+     */
+    getAutoMode() {
+        return this._autoModeOf(this.getAvailableModes());
+    }
+
+    // Name (Gamepad.id) of the detected physical gamepad, active or not, null without one.
     getGamepadName() {
-        return ((this._mode === 'gamepad') ? this._gamepad.getName() : null);
+        return this._gamepad.getName();
     }
 
     // Look Y inversion, one flag per input mode ('gamepad' | 'virtualGamepad'
@@ -360,15 +404,14 @@ class Inputs {
     }
 
     _selectMode() {
-        let mode = 'keyboardMouse';
-        if (this._isTouchOnlyDevice()) {
-            mode = 'virtualGamepad';
-        }
-        if (this._gamepad.isAvailable()) {
-            mode = 'gamepad';
-        }
-        this._mode = mode;
+        const available = this.getAvailableModes();
+
+        this._mode = ((available.includes(this._preferredMode)) ? this._preferredMode : this._autoModeOf(available));
         this._applyVirtualPadVisibility();
+    }
+
+    _autoModeOf(available) {
+        return Inputs.AUTO_PRIORITY.find((mode) => available.includes(mode));
     }
 
     // Primary pointer, not `any-pointer`: the latter reports *possible*

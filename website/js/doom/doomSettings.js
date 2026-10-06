@@ -88,6 +88,8 @@ class DoomSettings {
             // 100 % is the UZDoom default (snd_sfxvolume / snd_musicvolume).
             {key: 'sound.volume_music',           nameCode: 'settings.sound.volumeMusic',          type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
             {key: 'sound.volume_effects',         nameCode: 'settings.sound.volumeEffects',        type: 'list', default: '100', values: DoomSettings.VOLUME_VALUES},
+            // Codes must match Inputs.MODES; the Controls page offers the available ones only.
+            {key: 'controls.device',              nameCode: 'settings.controls.device',            type: 'list', default: DoomSettings.DEVICE_AUTO, values: [{code: DoomSettings.DEVICE_AUTO, labelCode: 'device.auto'}, {code: 'keyboardMouse', labelCode: 'device.keyboardMouse'}, {code: 'gamepad', labelCode: 'device.gamepad'}, {code: 'virtualGamepad', labelCode: 'device.virtualPad'}]},
             {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
             {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
             // The firing gesture is the upper band of the aim stick, not a third stick.
@@ -366,6 +368,7 @@ class DoomSettings {
     }
 
     applyToInputs(inputs) {
+        inputs.setPreferredMode(this.getControlsDevice());
         inputs.setLookInvertY('gamepad', this.getPadYInverse());
         inputs.setLookInvertY('virtualGamepad', this.getVirtualPadYInverse());
         inputs.setLookInvertY('keyboardMouse', this.getMouseYInverse());
@@ -387,6 +390,13 @@ class DoomSettings {
     }
 
     // --- Dedicated getters (game side) ---
+
+    // The forced input mode, null for the automatic choice.
+    getControlsDevice() {
+        const device = this.get('controls.device');
+
+        return ((device !== DoomSettings.DEVICE_AUTO) ? device : null);
+    }
 
     getPadYInverse() {
         return (this.get('pad.y_inverse') === true);
@@ -499,6 +509,7 @@ class DoomSettings {
 
 DoomSettings.DIACRITICS               = /\p{M}/gu;
 DoomSettings.LIMIT_NONE               = 'none';
+DoomSettings.DEVICE_AUTO              = 'auto';
 DoomSettings.DEATHMATCH_WEAPONS_STAY  = 'weapons_stay';
 DoomSettings.DEATHMATCH_ITEMS_RESPAWN = 'items_respawn';
 
