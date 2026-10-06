@@ -1,21 +1,23 @@
 /**
- * The session of a sub: it answers the main's invite — refused for another
- * WAD —, says hello once linked and keeps what the main's welcome tells (its
- * player id, the mode and its options), mirrors the main's lobby, knows when
- * the game runs, and ends on leaving, on the main's word (stopped, removed)
- * or on a lost link. It tells the main when its page goes to the background
- * and comes back, and keeps its own liveness timeout off meanwhile: a
- * suspended page hears nothing, and must not take the link for lost on waking.
+ * The session of a sub: it answers the main's invite — taken for the stored
+ * WAD the main plays, refused when there is none —, says hello once linked
+ * and keeps what the main's welcome tells (its player id, the mode and its
+ * options), mirrors the main's lobby, knows when the game runs, and ends on
+ * leaving, on the main's word (stopped, removed) or on a lost link. It tells
+ * the main when its page goes to the background and comes back, and keeps its
+ * own liveness timeout off meanwhile: a suspended page hears nothing, and must
+ * not take the link for lost on waking.
  */
 class DoomNetSubSession {
     /**
      * @param {DoomNetLinks} links
-     * @param {string}       wadSha256 - identity of the sub's WAD
+     * @param {object[]}     wads     - the stored WADs, their identity computed
      * @param {string}       nickname
      */
-    constructor(links, wadSha256, nickname) {
+    constructor(links, wads, nickname) {
         this._links        = links;
-        this._wadSha256    = wadSha256;
+        this._wads         = wads;
+        this._wad          = null;
         this._nickname     = nickname;
         this._lobby        = new DoomNetLobby(0);
         this._started      = false;
@@ -34,6 +36,11 @@ class DoomNetSubSession {
             .setOnControl((message) => this._receive(message))
             .setOnBinary((buffer) => this._cycleCall('state', buffer))
             .setOnLost(() => this._end(DoomNetProtocol.END_LOST));
+    }
+
+    // The metadata of the stored WAD the main plays, null until its invite is read.
+    getWad() {
+        return this._wad;
     }
 
     getLobby() {
@@ -156,7 +163,11 @@ class DoomNetSubSession {
     join(view) {
         this._pairing = new NetGuestPairing(this._guest, view);
 
-        return this._pairing.join((invite) => DoomNetInvite.answerFor(invite, this._wadSha256, this._nickname))
+        const accept = (invite) => {
+            this._wad = DoomNetWadMatch.find(this._wads, invite);
+        };
+
+        return this._pairing.join((invite) => DoomNetInvite.answerFor(invite, accept, this._nickname))
             .then((result) => {
                 this._guest.sendControl({type: DoomNetProtocol.HELLO});
                 this._watchVisibility();

@@ -104,10 +104,11 @@ class MenuPairingModal extends MenuModal {
         new MenuModal(this._display).info(MenuPairingModal._message(code, error));
     }
 
+    // A WAD refusal names the main's WAD, on one line.
     static _message(code, error) {
-        const named = ((error instanceof NetError) && (error.getCode() === DoomNetInvite.WAD_MISMATCH) && (error.getDetail() !== null) && (error.getDetail() !== ''));
+        const wad = (((error instanceof NetError) && MenuPairingModal.WAD_CODES.includes(error.getCode())) ? (error.getDetail() ?? '') : '');
 
-        return ((named) ? appTranslator.get('multiplayer.error.wadNamed', {wad: error.getDetail().replace(/ /g, MenuPairingModal.NO_BREAK_SPACE)}) : appTranslator.get(code));
+        return appTranslator.get(code, {wad: wad.replace(/ /g, MenuPairingModal.NO_BREAK_SPACE)});
     }
 
     // The sub's answer names it; a payload that does not decode leaves the line nameless.
@@ -145,11 +146,13 @@ MenuPairingModal.WASM_URL       = '/js/lib/zxing-wasm/zxing_full.wasm';
 MenuPairingModal.NO_BREAK_SPACE = '\u00A0';
 MenuPairingModal.ERROR_DEFAULT  = 'multiplayer.error.pairing';
 MenuPairingModal.ERROR_CODES    = {
-    [NetError.VERSION_MISMATCH]:  'multiplayer.error.version',
-    [DoomNetInvite.WAD_MISMATCH]: 'multiplayer.error.wad',
-    [NetError.INVITE_USED]:       'multiplayer.error.invite',
-    [NetError.UNKNOWN_INVITE]:    'multiplayer.error.invite'
+    [NetError.VERSION_MISMATCH]:     'multiplayer.error.version',
+    [DoomNetWadMatch.MISSING]:       'multiplayer.error.wadMissing',
+    [DoomNetWadMatch.OTHER_VERSION]: 'multiplayer.error.wadVersion',
+    [NetError.INVITE_USED]:          'multiplayer.error.invite',
+    [NetError.UNKNOWN_INVITE]:       'multiplayer.error.invite'
 };
+MenuPairingModal.WAD_CODES      = [DoomNetWadMatch.MISSING, DoomNetWadMatch.OTHER_VERSION];
 // A link that could not open: the message follows the network verdict carried by the error.
 MenuPairingModal.NETWORK_CODES    = [NetError.LINK_LOST, NetError.CONNECT_TIMEOUT, NetError.UNREACHABLE];
 MenuPairingModal.NETWORK_DEFAULT  = 'multiplayer.error.connect';

@@ -104,17 +104,18 @@ BenchNetSuite.CHECKS = {
     pairingCode: `(() => {
         ${BenchNetSuite.ATTEMPT_SCRIPT}
         const signal   = new Uint8Array([1, 2, 3, 4, 5]);
-        const payload  = DoomNetInvite.encodeInvite('ab'.repeat(32), 2, 'Doom 2 - v1.9');
+        const payload  = DoomNetInvite.encodeInvite('ab'.repeat(32), 2, 'Doom 2 - v1.9', 'Doom 2');
         const code     = NetPairingCode.encode('v1.0', NetPairingCode.KIND_INVITE, 4242, signal, payload);
         const decoded  = NetPairingCode.decode(code, 'v1.0', NetPairingCode.KIND_INVITE);
         const refused  = (bytes, version, kind) => attempt(() => NetPairingCode.decode(bytes, version, kind));
-        const answerOf = (wadSha256, nickname) => {
+        const answerOf = (wads, nickname) => {
             try {
-                return DoomNetInvite.decodeAnswer(DoomNetInvite.answerFor(decoded.payload, wadSha256, nickname));
+                return DoomNetInvite.decodeAnswer(DoomNetInvite.answerFor(decoded.payload, (invite) => DoomNetWadMatch.find(wads, invite), nickname));
             } catch (error) {
                 return 'refused: ' + codeOf(error);
             }
         };
+        const hostWad  = [{sha256: 'ab'.repeat(32), title: 'Doom 2'}];
 
         return {
             codeBytes:    code,
@@ -122,10 +123,13 @@ BenchNetSuite.CHECKS = {
             inviteId:     decoded.inviteId,
             signal:       Array.from(decoded.signal),
             invite:       DoomNetInvite.decodeInvite(decoded.payload),
-            nickname:     answerOf('ab'.repeat(32), 'Zoe_42'),
-            accented:     answerOf('ab'.repeat(32), 'Zoé'),
-            otherWad:     answerOf('cd'.repeat(32), 'Zoe_42'),
-            labels:       ['Hérétique - 1a2b3c4d', '日本語', 'x'.repeat(300)].map((label) => DoomNetInvite.decodeInvite(DoomNetInvite.encodeInvite('ab'.repeat(32), 2, label)).wadLabel),
+            nickname:     answerOf(hostWad, 'Zoe_42'),
+            accented:     answerOf(hostWad, 'Zoé'),
+            amongOthers:  answerOf([{sha256: 'cd'.repeat(32), title: null}].concat(hostWad), 'Zoe_42'),
+            otherEdition: answerOf([{sha256: 'cd'.repeat(32), title: 'Doom 2'}], 'Zoe_42'),
+            otherWad:     answerOf([{sha256: 'cd'.repeat(32), title: 'Heretic'}], 'Zoe_42'),
+            noWad:        answerOf([], 'Zoe_42'),
+            labels:       ['Hérétique - 1a2b3c4d', '日本語', 'x'.repeat(300)].map((label) => DoomNetInvite.decodeInvite(DoomNetInvite.encodeInvite('ab'.repeat(32), 2, label, '')).wadLabel),
             otherVersion: refused(code, 'v1.1', NetPairingCode.KIND_INVITE),
             otherKind:    refused(code, 'v1.0', NetPairingCode.KIND_ANSWER),
             truncated:    refused(code.slice(0, code.length - payload.length - 2), 'v1.0', NetPairingCode.KIND_INVITE),

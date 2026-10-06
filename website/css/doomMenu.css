@@ -498,6 +498,11 @@
     gap: 0.4em;
 }
 
+.doom-menu-corner-left {
+    right: auto;
+    left: 0.5em;
+}
+
 /* Tall column layout: the body grows, the actions stick to the bottom right.
    Capped height: a long settings list scrolls inside the body instead of
    growing the modal past the screen. */

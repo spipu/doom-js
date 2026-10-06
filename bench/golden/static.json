@@ -11,7 +11,7 @@
     "placeholders": []
   },
   "translations/usage": {
-    "codes": 181,
+    "codes": 180,
     "unresolved": [],
     "orphans": []
   },
@@ -24,7 +24,7 @@
   },
   "bootstrap/doom": {
     "versionValid": true,
-    "declared": 268,
+    "declared": 270,
     "missing": [],
     "duplicates": [],
     "undeclared": []

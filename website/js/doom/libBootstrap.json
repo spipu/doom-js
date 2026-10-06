@@ -1,5 +1,5 @@
 {
-    "version": "v1.1127",
+    "version": "v1.1130",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -213,6 +213,7 @@
             "/js/doom/doomTurnEvents.js",
             "/js/doom/net/doomNetProtocol.js",
             "/js/doom/net/doomNetInvite.js",
+            "/js/doom/net/doomNetWadMatch.js",
             "/js/doom/net/doomNetLobby.js",
             "/js/doom/net/doomNetLinks.js",
             "/js/doom/net/doomNetAvailability.js",
@@ -241,6 +242,7 @@
             "/js/doom/menu/menuNetMessages.js",
             "/js/doom/menu/menuNetGate.js",
             "/js/doom/menu/menuPairingModal.js",
+            "/js/doom/menu/menuJoinFlow.js",
             "/js/doom/menu/menuLobbyModal.js",
             "/js/doom/menu/menuMultiplayerModal.js",
             "/js/doom/menu/abstractMenuScreen.js",

@@ -197,6 +197,21 @@ class MenuNavigator {
     }
 
     /**
+     * The stored WADs a joined game can be played on: every one whose identity
+     * is known, computed now when missing.
+     *
+     * @returns {Promise<object[]>}
+     */
+    async getIdentifiedWads() {
+        const wads = await this._registry.getList();
+        for (const meta of wads) {
+            await this.ensureWadIdentity(meta);
+        }
+
+        return wads.filter((meta) => (typeof meta.sha256 === 'string'));
+    }
+
+    /**
      * New game requested → pick the episode.
      * @param {object} meta
      */

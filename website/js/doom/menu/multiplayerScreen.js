@@ -1,10 +1,9 @@
 /**
  * Multiplayer screen of a WAD, above its options: start a new cooperative
  * game or deathmatch, join a game, and a shortcut to the multiplayer options.
- * Each flow asks for the nickname if there is none and checks the WAD's
- * identity first. Joining pairs with the main — its code read, the answer
- * shown — and lands in the lobby until the session ends; a new game goes on
- * to the episodes.
+ * A new game asks for the nickname if there is none and checks the WAD's
+ * identity first, then goes on to the episodes; joining is the MenuJoinFlow
+ * of the WAD list, whatever WAD the main plays.
  */
 class MultiplayerScreen extends AbstractMenuScreen {
     /**
@@ -17,6 +16,7 @@ class MultiplayerScreen extends AbstractMenuScreen {
         this._wadMeta      = null;
         this._links        = new DoomNetLinks();
         this._availability = new DoomNetAvailability(this._links);
+        this._join         = new MenuJoinFlow(navigator, display, this._links, this._availability);
     }
 
     setWad(meta) {
@@ -30,8 +30,7 @@ class MultiplayerScreen extends AbstractMenuScreen {
 
         const coop       = this._addNewGameItem(listEl, 'multiplayer.newCooperative', DoomCoopRules);
         const deathmatch = this._addNewGameItem(listEl, 'multiplayer.newDeathmatch', DoomDeathmatchRules);
-        const join       = this._addListItem(listEl, appTranslator.get('multiplayer.join'),
-            () => this._afterChecks((nickname, wadSha256) => this._pair(nickname, wadSha256)));
+        const join       = this._addListItem(listEl, appTranslator.get('multiplayer.join'), () => this._join.start());
         this._addListItem(listEl, appTranslator.get('multiplayer.options'), () => {
             this._openModal(new MenuOptionsModal(this._display)).showMultiplayer();
         });
@@ -51,36 +50,14 @@ class MultiplayerScreen extends AbstractMenuScreen {
         this._navigator.openWadMenu(this._wadMeta);
     }
 
-    // Availability and nickname, then the WAD's identity, before any session flow.
+    // Availability and nickname, then the WAD's identity, before a new game.
     _afterChecks(onReady) {
         MenuNetGate.enter(this._display, () => this._availability.unavailableReason(), async (nickname) => {
-            const wadSha256 = await this._navigator.ensureWadIdentity(this._wadMeta);
-            if (wadSha256 === null) {
+            if ((await this._navigator.ensureWadIdentity(this._wadMeta)) === null) {
                 MenuNetMessages.showNoIdentity(this._display);
                 return;
             }
-            onReady(nickname, wadSha256);
+            onReady(nickname);
         });
-    }
-
-    _pair(nickname, wadSha256) {
-        const session = new DoomNetSubSession(this._links, wadSha256, nickname);
-        new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session), () => session.dispose());
-    }
-
-    // The lobby until the main's game sends its level, which this device then builds.
-    _showLobby(session) {
-        const lobby = new MenuLobbyModal(this._display);
-        session.setOnEnd((reason) => {
-            lobby.close();
-            MenuNetMessages.showEnd(this._display, reason);
-        });
-        session.setCycle({
-            levelLoad: (level) => {
-                lobby.setOnClose(null).close();
-                this._navigator.joinSharedGame(this._wadMeta, session, level);
-            }
-        });
-        lobby.openSub(session, {leave: () => session.leave()});
     }
 }

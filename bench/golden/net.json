@@ -64,8 +64,8 @@
     }
   },
   "pairingCode": {
-    "codeBytes": "24b881adf5ca2092e9cbbd66d0af4fb3bd3ebd10f52b6fd3756ac575316f79fd",
-    "length": 62,
+    "codeBytes": "aaaaaaae261f23ccae23767be0464a261dc0c872b27af6f446a01d3a525bf685",
+    "length": 69,
     "inviteId": 4242,
     "signal": [
       1,
@@ -77,11 +77,15 @@
     "invite": {
       "wadSha256": "abababababababababababababababababababababababababababababababab",
       "mode": 2,
-      "wadLabel": "Doom 2 - v1.9"
+      "wadLabel": "Doom 2 - v1.9",
+      "wadTitle": "Doom 2"
     },
     "nickname": "Zoe_42",
     "accented": "refused: error: Non-ASCII character in an ASCII field",
-    "otherWad": "refused: wad-mismatch (Doom 2 - v1.9)",
+    "amongOthers": "Zoe_42",
+    "otherEdition": "refused: wad-other-version (Doom 2 - v1.9)",
+    "otherWad": "refused: wad-missing (Doom 2 - v1.9)",
+    "noWad": "refused: wad-missing (Doom 2 - v1.9)",
     "labels": [
       "Heretique - 1a2b3c4d",
       "???",

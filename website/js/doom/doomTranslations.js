@@ -1376,17 +1376,17 @@ class DoomTranslations {
                 it: 'L\'altro dispositivo usa un\'altra versione del gioco: ricaricali entrambi',
                 es: 'El otro dispositivo usa otra versión del juego: recarga ambos'
             },
-            'multiplayer.error.wad': {
-                fr: 'L\'hôte joue avec un autre fichier WAD',
-                en: 'The host plays another WAD file',
-                it: 'L\'host usa un altro file WAD',
-                es: 'El anfitrión juega con otro archivo WAD'
+            'multiplayer.error.wadMissing': {
+                fr: 'Vous n\'avez pas le WAD de l\'hôte :\n{wad}',
+                en: 'You do not have the host\'s WAD:\n{wad}',
+                it: 'Non hai il WAD dell\'host:\n{wad}',
+                es: 'No tienes el WAD del anfitrión:\n{wad}'
             },
-            'multiplayer.error.wadNamed': {
-                fr: 'L\'hôte joue avec un autre fichier WAD :\n{wad}',
-                en: 'The host plays another WAD file:\n{wad}',
-                it: 'L\'host usa un altro file WAD:\n{wad}',
-                es: 'El anfitrión juega con otro archivo WAD:\n{wad}'
+            'multiplayer.error.wadVersion': {
+                fr: 'Vous avez ce jeu, mais pas dans la version de l\'hôte :\n{wad}',
+                en: 'You have this game, but not in the host\'s version:\n{wad}',
+                it: 'Hai questo gioco, ma non nella versione dell\'host:\n{wad}',
+                es: 'Tienes este juego, pero no en la versión del anfitrión:\n{wad}'
             },
             'multiplayer.error.invite': {
                 fr: 'Ce code a déjà servi : ajoutez à nouveau le joueur',

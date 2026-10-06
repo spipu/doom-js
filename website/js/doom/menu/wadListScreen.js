@@ -1,5 +1,6 @@
 /**
- * Screen 1: list of the stored WAD files, with add (url or local file) and delete.
+ * Screen 1: list of the stored WAD files, with add (url or local file) and
+ * delete, and the way to join a game whatever WAD it is played on.
  */
 class WadListScreen extends AbstractMenuScreen {
     /**
@@ -10,7 +11,10 @@ class WadListScreen extends AbstractMenuScreen {
     constructor(navigator, display, registry) {
         super(navigator, display);
 
+        const links = new DoomNetLinks();
+
         this._registry       = registry;
+        this._join           = new MenuJoinFlow(navigator, display, links, new DoomNetAvailability(links));
         this._listEl         = null;
         this._urlInput       = null;
         this._fileInput      = null;
@@ -27,11 +31,17 @@ class WadListScreen extends AbstractMenuScreen {
         const {panel, listEl} = this._buildPanel(appTranslator.get('menu.wad.title'));
         this._listEl = listEl;
 
+        const joinCorner = this._addElement('div', 'doom-menu-corner doom-menu-corner-left');
+        const joinButton = MenuDom.addButton(joinCorner, 'doom-menu-button', appTranslator.get('multiplayer.join'),
+            () => this._join.start());
+        this._join.greyWhenUnavailable(joinButton);
+
         const corner = this._addElement('div', 'doom-menu-corner');
         this._languageButton = MenuDom.addButton(corner, 'doom-menu-button doom-menu-language',
             doomSettings.getListLabel(this._languageDefinition()),
             () => this._cycleLanguage());
         this._nav.setSideButtons([
+            joinButton,
             this._languageButton,
             MenuDom.addButton(corner, 'doom-menu-button', appTranslator.get('help.guide'),
                 () => this._openHelp())

@@ -79,6 +79,7 @@ class DoomHostedSession {
             links:     this._links,
             wadSha256: wadMeta.sha256,
             wadLabel:  WadRegistry.displayLabel(wadMeta),
+            wadTitle:  (wadMeta.title ?? ''),
             nickname:  nickname,
             capacity:  game.getProfile().maxPlayers(),
             mode:      mode,

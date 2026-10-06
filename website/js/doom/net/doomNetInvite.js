@@ -1,21 +1,23 @@
 /**
- * The application payload of the pairing codes: the WAD identity, the mode
- * and the WAD's label from the main to a sub, the nickname from the sub back
- * to the main. A sub refuses an invite for another WAD before any answer exists.
+ * The application payload of the pairing codes: the WAD identity, the mode,
+ * the WAD's label and edition title from the main to a sub, the nickname from
+ * the sub back to the main. A sub refuses an invite before any answer exists.
  */
 class DoomNetInvite {
     /**
      * @param {string} wadSha256 - hexadecimal SHA-256 of the WAD
      * @param {int}    mode      - DoomNetProtocol.MODE_*
      * @param {string} wadLabel  - title and version of the WAD, for the sub's refusal message
+     * @param {string} wadTitle  - game and edition of a known WAD (DoomWadEditions), '' for an unknown one
      * @returns {Uint8Array}
      */
-    static encodeInvite(wadSha256, mode, wadLabel) {
-        return new NetByteWriter().bytes(NetHex.toBytes(wadSha256)).u8(mode).ascii(DoomNetInvite._asciiLabel(wadLabel)).toBytes();
+    static encodeInvite(wadSha256, mode, wadLabel, wadTitle) {
+        return new NetByteWriter().bytes(NetHex.toBytes(wadSha256)).u8(mode)
+            .ascii(DoomNetInvite.asciiLabel(wadLabel)).ascii(DoomNetInvite.asciiLabel(wadTitle)).toBytes();
     }
 
     // The label of an unknown WAD is its file name: any language, any length.
-    static _asciiLabel(label) {
+    static asciiLabel(label) {
         return label.normalize('NFD')
             .replace(DoomNetInvite.DIACRITICS, '')
             .replace(DoomNetInvite.NON_ASCII, DoomNetInvite.NON_ASCII_SUBSTITUTE)
@@ -23,11 +25,11 @@ class DoomNetInvite {
     }
 
     /**
-     * @returns {{wadSha256: string, mode: int, wadLabel: string}}
+     * @returns {{wadSha256: string, mode: int, wadLabel: string, wadTitle: string}}
      */
     static decodeInvite(bytes) {
         const reader = new NetByteReader(bytes);
-        const invite = {wadSha256: NetHex.fromBytes(reader.bytes(DoomNetInvite.SHA256_BYTES)), mode: reader.u8(), wadLabel: reader.ascii()};
+        const invite = {wadSha256: NetHex.fromBytes(reader.bytes(DoomNetInvite.SHA256_BYTES)), mode: reader.u8(), wadLabel: reader.ascii(), wadTitle: reader.ascii()};
         DoomNetInvite._checkEnd(reader);
 
         return invite;
@@ -46,18 +48,15 @@ class DoomNetInvite {
     }
 
     /**
-     * The answer to an invite, built by the sub: refused (thrown) for another WAD.
+     * The answer to an invite, built by the sub once `accept` took it.
      *
-     * @param {Uint8Array} inviteBytes
-     * @param {string}     wadSha256   - the sub's own WAD
-     * @param {string}     nickname
+     * @param {Uint8Array}       inviteBytes
+     * @param {function(object)} accept      - receives the decoded invite, throws to refuse it
+     * @param {string}           nickname
      * @returns {Uint8Array}
      */
-    static answerFor(inviteBytes, wadSha256, nickname) {
-        const invite = DoomNetInvite.decodeInvite(inviteBytes);
-        if (invite.wadSha256 !== wadSha256) {
-            throw new NetError(DoomNetInvite.WAD_MISMATCH, 'The invite is for another WAD', invite.wadLabel);
-        }
+    static answerFor(inviteBytes, accept, nickname) {
+        accept(DoomNetInvite.decodeInvite(inviteBytes));
 
         return DoomNetInvite.encodeAnswer(nickname);
     }
@@ -70,7 +69,6 @@ class DoomNetInvite {
 }
 
 DoomNetInvite.SHA256_BYTES         = 32;
-DoomNetInvite.WAD_MISMATCH         = 'wad-mismatch';
 DoomNetInvite.MAX_LABEL_LENGTH     = 64;
 DoomNetInvite.DIACRITICS           = /[\u0300-\u036f]/g;
 DoomNetInvite.NON_ASCII            = /[^\x20-\x7e]/g;
