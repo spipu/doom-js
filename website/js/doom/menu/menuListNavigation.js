@@ -54,7 +54,7 @@ class MenuListNavigation {
         this._keyDownListener   = this._onKeyDown.bind(this);
         this._mouseMoveListener = this._onMouseMove.bind(this);
         this._mouseArmed        = false;
-        this._pad               = new InputGamepad();
+        this._pad               = new Inputs().getGamepad();
         this._padTimer          = null;
         this._padSeen           = false;
         this._padState          = {validate: false, back: false, start: false};

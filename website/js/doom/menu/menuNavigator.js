@@ -87,7 +87,7 @@ class MenuNavigator {
         this._registry.init()
             .then(() => doomSettings.init(this._storage.getDatabase()))
             .then(() => doomSaveStore.init(this._storage.getDatabase()))
-            .then(() => doomSettings.applyToTranslator(appTranslator))
+            .then(() => doomSettings.applyToTranslator(appTranslator).applyToInputs(new Inputs()))
             .then(() => doomSound.boot())
             .then(onReady)
             .catch((error) => {

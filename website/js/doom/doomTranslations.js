@@ -421,6 +421,24 @@ class DoomTranslations {
                 it: 'Gioca con tastiera e mouse, con un controller, o con i comandi touch che compaiono sullo schermo: Spipu-Doom riconosce da solo il dispositivo che stai usando, a meno che tu non ne scelga uno nelle opzioni. Ogni tasto può essere cambiato nelle opzioni, dopo aver scelto un gioco.',
                 es: 'Juega con teclado y ratón, con un mando, o con los controles táctiles que aparecen en pantalla: Spipu-Doom reconoce por sí solo el dispositivo que estás usando, salvo que elijas uno en las opciones. Cada tecla puede cambiarse en las opciones, una vez elegido un juego.'
             },
+            'help.padButtonCapture': {
+                fr: 'Appuyez sur le bouton de la manette à utiliser pour « {action} »…',
+                en: 'Press the gamepad button to use for "{action}"…',
+                it: 'Premi il pulsante del controller da usare per «{action}»…',
+                es: 'Pulsa el botón del mando que quieres usar para «{action}»…'
+            },
+            'help.padAxisCapture.right': {
+                fr: 'Poussez vers la droite le stick à utiliser pour « {action} »…',
+                en: 'Push right on the stick to use for "{action}"…',
+                it: 'Spingi a destra lo stick da usare per «{action}»…',
+                es: 'Empuja hacia la derecha el stick que quieres usar para «{action}»…'
+            },
+            'help.padAxisCapture.up': {
+                fr: 'Poussez vers le haut le stick à utiliser pour « {action} »…',
+                en: 'Push up on the stick to use for "{action}"…',
+                it: 'Spingi in alto lo stick da usare per «{action}»…',
+                es: 'Empuja hacia arriba el stick que quieres usar para «{action}»…'
+            },
             'help.keyCapture': {
                 fr: 'Appuyez sur la touche à utiliser pour « {action} »…',
                 en: 'Press the key to use for "{action}"…',
@@ -539,6 +557,24 @@ class DoomTranslations {
                 en: 'Right {key}',
                 it: '{key} destro',
                 es: '{key} derecha'
+            },
+            'pad.button': {
+                fr: 'Bouton {number}',
+                en: 'Button {number}',
+                it: 'Pulsante {number}',
+                es: 'Botón {number}'
+            },
+            'pad.axis': {
+                fr: 'Axe {number}',
+                en: 'Axis {number}',
+                it: 'Asse {number}',
+                es: 'Eje {number}'
+            },
+            'pad.axisInverted': {
+                fr: 'Axe {number} inversé',
+                en: 'Axis {number} inverted',
+                it: 'Asse {number} invertito',
+                es: 'Eje {number} invertido'
             },
             'key.numpad': {
                 fr: 'Num {key}',
@@ -1496,6 +1532,30 @@ class DoomTranslations {
                 it: 'Inverti l\'asse verticale',
                 es: 'Invertir el eje vertical'
             },
+            'settings.pad.moveX': {
+                fr: 'Déplacement — axe horizontal',
+                en: 'Movement — horizontal axis',
+                it: 'Movimento — asse orizzontale',
+                es: 'Movimiento — eje horizontal'
+            },
+            'settings.pad.moveY': {
+                fr: 'Déplacement — axe vertical',
+                en: 'Movement — vertical axis',
+                it: 'Movimento — asse verticale',
+                es: 'Movimiento — eje vertical'
+            },
+            'settings.pad.lookX': {
+                fr: 'Regard — axe horizontal',
+                en: 'Look — horizontal axis',
+                it: 'Visuale — asse orizzontale',
+                es: 'Mirada — eje horizontal'
+            },
+            'settings.pad.lookY': {
+                fr: 'Regard — axe vertical',
+                en: 'Look — vertical axis',
+                it: 'Visuale — asse verticale',
+                es: 'Mirada — eje vertical'
+            },
             'settings.virtualPad.yInverse': {
                 fr: 'Inverser l\'axe vertical',
                 en: 'Invert the vertical axis',
@@ -1556,47 +1616,53 @@ class DoomTranslations {
                 it: 'Passo a destra',
                 es: 'Paso a la derecha'
             },
-            'settings.keyboard.run': {
+            'settings.action.run': {
                 fr: 'Courir',
                 en: 'Run',
                 it: 'Corri',
                 es: 'Correr'
             },
-            'settings.keyboard.jump': {
+            'settings.action.jump': {
                 fr: 'Sauter',
                 en: 'Jump',
                 it: 'Salta',
                 es: 'Saltar'
             },
-            'settings.keyboard.crouch': {
+            'settings.action.crouch': {
                 fr: 'S\'accroupir',
                 en: 'Crouch',
                 it: 'Accovacciati',
                 es: 'Agacharse'
             },
-            'settings.keyboard.action': {
+            'settings.action.action': {
                 fr: 'Action / utiliser',
                 en: 'Action / use',
                 it: 'Azione / usa',
                 es: 'Acción / usar'
             },
-            'settings.keyboard.fire': {
+            'settings.action.fire': {
                 fr: 'Tirer',
                 en: 'Fire',
                 it: 'Spara',
                 es: 'Disparar'
             },
-            'settings.keyboard.weaponPrev': {
+            'settings.action.weaponPrev': {
                 fr: 'Arme précédente',
                 en: 'Previous weapon',
                 it: 'Arma precedente',
                 es: 'Arma anterior'
             },
-            'settings.keyboard.weaponNext': {
+            'settings.action.weaponNext': {
                 fr: 'Arme suivante',
                 en: 'Next weapon',
                 it: 'Arma successiva',
                 es: 'Arma siguiente'
+            },
+            'settings.action.pause': {
+                fr: 'Pause',
+                en: 'Pause',
+                it: 'Pausa',
+                es: 'Pausa'
             },
             'settings.keyboard.toggleHud': {
                 fr: 'Afficher le HUD de debug',
@@ -1604,7 +1670,7 @@ class DoomTranslations {
                 it: 'Mostra l\'HUD di debug',
                 es: 'Mostrar el HUD de depuración'
             },
-            'settings.keyboard.map': {
+            'settings.action.map': {
                 fr: 'Afficher la carte',
                 en: 'Show the map',
                 it: 'Mostra la mappa',

@@ -23,6 +23,24 @@ class Inputs {
         return (magnitude - deadZone) / (1 - deadZone);
     }
 
+    /**
+     * Rebinding shared by the devices: the defaults overridden by the given
+     * entries, unknown keys ignored.
+     *
+     * @param {object} defaults  - a fresh copy, modified and returned
+     * @param {object|null} overrides
+     * @returns {object}
+     */
+    static mergeMapping(defaults, overrides) {
+        for (const key of Object.keys(overrides ?? {})) {
+            if (defaults[key] !== undefined) {
+                defaults[key] = overrides[key];
+            }
+        }
+
+        return defaults;
+    }
+
     // Order in which the devices are listed to the player.
     static get MODES() {
         return ['keyboardMouse', 'gamepad', 'virtualGamepad'];
@@ -178,6 +196,24 @@ class Inputs {
         return this;
     }
 
+    // Optional gamepad button rebinding ({action: index|null}, see
+    // InputGamepad.DEFAULT_MAPPING): actions left out keep their defaults.
+    setGamepadButtonMapping(mapping) {
+        this._gamepad.setButtonMapping(mapping);
+        return this;
+    }
+
+    // Optional gamepad stick axis rebinding, see InputGamepad.setAxisMapping.
+    setGamepadAxisMapping(bindings) {
+        this._gamepad.setAxisMapping(bindings);
+        return this;
+    }
+
+    // The physical gamepad, shared with the menus so they follow its bindings.
+    getGamepad() {
+        return this._gamepad;
+    }
+
     // Dead zone of one virtual-pad gesture ('move' | 'aim' | 'fire'), as a
     // fraction of the stick travel. Game settings: the coordinator only carries
     // the value to the device, which owns the behaviour.
@@ -196,9 +232,8 @@ class Inputs {
 
     /**
      * Withdraws a control the game has nothing for, so the pad never shows a
-     * target that answers nothing. Only the virtual pad is concerned: a
-     * physical pad and a keyboard have fixed buttons, and the game already
-     * refuses the move itself.
+     * target that answers nothing. Only the virtual pad is concerned: on a
+     * physical pad or a keyboard, the game refuses the move itself.
      *
      * @param {string}  control 'jump' | 'crouch' | 'action' | 'pause' |
      *                          'weaponNext' | 'map' | 'fire' | 'move' | 'aim'

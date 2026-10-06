@@ -44,7 +44,7 @@ class AbstractGameMenuModal extends AbstractMenuListModal {
     show(titleProvider) {
         this._titleProvider = titleProvider ?? this._titleProvider;
 
-        const {modal} = this._createShell(this._titleProvider(), 'doom-menu-modal', 'doom-menu-subtitle');
+        const {modal} = this._createShell(this._titleProvider(), 'doom-menu-modal doom-menu-modal-wide', 'doom-menu-subtitle');
         const listEl  = MenuDom.addElement(modal, 'div', 'doom-menu-list');
         this._addEntries(listEl);
 

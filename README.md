@@ -64,7 +64,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
   A dead player respawns at its start by pressing use, leaving its corpse behind; placed weapons and keys stay on the ground for everyone. The tally gives each player's kills, items and secrets, and the host saves and loads the game, the other players following it.
 - **Deathmatch**: the WAD's Multiplayer screen starts a new deathmatch through the same episode, difficulty, game settings and lobby screens. Every player enters and respawns on a random deathmatch start, holding every key while the map's keys stay out; monsters are there or not as the settings say, every attack hurts the others, and there is no save, load or cheat. The HUD shows the match clock — counting down to the time limit, or up without one — and every player's frags in slot order behind their colours, one's own in bold (a death by nothing counts against oneself); the map never shows the other players. The game settings choose between weapons that stay on the ground (giving extra ammo in Doom) and items that all come back a while after being taken, in a fog and with a sound, except the strongest power-ups.
   A frag limit or a time limit ends the level, whose tally shows every player's frags against every other; each level starts once every player has built it, and the match ends for everyone on the last level, or for the host once nobody is left to play against.
-- **Options & persistent settings**: Display, Game, Multiplayer, Sound and Controls pages — full keyboard remapping included, one key per action — persisted in IndexedDB, with a confirmed reset. The Multiplayer page, offered from a WAD's menu and from the pause's Multiplayer entry, holds the cooperative and deathmatch game settings and the player's nickname, typed on an on-screen keyboard laid out like the interface language's (AZERTY in French, QWERTY otherwise) and walked with the mouse, touch, arrows or gamepad, or on the physical keyboard — never through the OS keyboard.
+- **Options & persistent settings**: Display, Game, Multiplayer, Sound and Controls pages — full keyboard and gamepad remapping included, one key or button per action — persisted in IndexedDB, with a confirmed reset. The Multiplayer page, offered from a WAD's menu and from the pause's Multiplayer entry, holds the cooperative and deathmatch game settings and the player's nickname, typed on an on-screen keyboard laid out like the interface language's (AZERTY in French, QWERTY otherwise) and walked with the mouse, touch, arrows or gamepad, or on the physical keyboard — never through the OS keyboard.
 - **Renderer choice**: the Display page picks one of the four rendering modes (see **The 3D engine** below), WebGL by default. A change applies to the running level without reloading it: the screen, the engine and the HUD are rebuilt on the next live frame, the level and the player carry on untouched.
 - **Inputs**: keyboard+mouse, gamepad (press a button to activate it), or a touch virtual gamepad laid out for a 4-finger claw grip, with per-gesture dead zones and firing sensitivity. The devices never reach the simulation directly: a command sampler turns them into one plain-data command per turn — movement axes, look angles in degrees, named buttons (the game's fire, weapon switch and full-kit cheat included), the weapon wheel steps — which the world and the game consume.
 - **Translation (en / fr / it / es)**: every user-facing text goes through a translation catalog addressed by code, the finale texts included; locale-dependent formats go through `Intl`.
@@ -72,7 +72,7 @@ Then open `http://localhost:8080` and follow steps 2 and 3 above.
 
 ## Controls
 
-Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key. The `lights`, `game` and `world` demos share this input stack, at the default keys: they answer to the gamepad and to the touch pad the same way, each keeping only the controls it has a use for.
+Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY layout) and every one of them can be remapped in the Options modal (from a WAD's menu), one key per action — except `ESC`, the fixed pause key. The gamepad defaults below fit a PlayStation 5 pad; its buttons (pause included) and its four stick axes can be remapped the same way, one button or axis per action. The `lights`, `game` and `world` demos share this input stack, at the default keys: they answer to the gamepad and to the touch pad the same way, each keeping only the controls it has a use for.
 
 | Keyboard / mouse | Gamepad | Action |
 |---|---|---|
@@ -82,8 +82,8 @@ Keyboard defaults below are **physical key positions** (WASD = ZQSD on an AZERTY
 | Space | Button 1 | Jump |
 | C | Button 0 | Crouch |
 | E | Button 3 | Interact (open door, trigger lift or switch) |
-| Left click / Q | Button 2 / right trigger | Fire the active weapon |
-| ESC | Button 9 | Pause menu over the frozen game (not remappable) |
+| Left click / Q | Right trigger (button 7) | Fire the active weapon |
+| ESC | Button 9 | Pause menu over the frozen game (`ESC` not remappable) |
 | F / G | Buttons 4 / 5 | Previous / next weapon (wrapping) |
 | H | — | Toggle the game HUD ↔ debug overlay (keyboard only) |
 | Tab | D-pad up | Show / hide the automap over the game |

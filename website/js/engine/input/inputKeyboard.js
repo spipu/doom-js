@@ -71,13 +71,7 @@ class InputKeyboard {
      * @param {object} mapping - {action: string}
      */
     setMapping(mapping) {
-        const merged = InputKeyboard.DEFAULT_MAPPING;
-        for (const action of Object.keys(mapping ?? {})) {
-            if (merged[action] !== undefined) {
-                merged[action] = mapping[action];
-            }
-        }
-        this._mapping = merged;
+        this._mapping = Inputs.mergeMapping(InputKeyboard.DEFAULT_MAPPING, mapping);
 
         return this;
     }

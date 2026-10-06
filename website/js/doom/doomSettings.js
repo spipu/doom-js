@@ -3,7 +3,9 @@
  * of the spipudoom IndexedDB base. The settings UI is built from DEFINITIONS
  * and uses the generic get(); the game reads the dedicated getters.
  *
- * Types: 'bool', 'char' (one physical key code), 'list' (the stored value is
+ * Types: 'bool', 'char' (one physical key code), 'padButton' (one gamepad
+ * button index, null unmapped), 'padAxis' (a signed axis code, see axisCode,
+ * AXIS_NONE unmapped), 'list' (the stored value is
  * one of `values: [{code, ...}]`) and 'text' (a free string restricted to its
  * `charset`, `maxLength` long at most, uppercased). A list value carries exactly
  * one of: `label` (a proper name, never translated), `labelCode` (a translation
@@ -91,6 +93,22 @@ class DoomSettings {
             // Codes must match Inputs.MODES; the Controls page offers the available ones only.
             {key: 'controls.device',              nameCode: 'settings.controls.device',            type: 'list', default: DoomSettings.DEVICE_AUTO, values: [{code: DoomSettings.DEVICE_AUTO, labelCode: 'device.auto'}, {code: 'keyboardMouse', labelCode: 'device.keyboardMouse'}, {code: 'gamepad', labelCode: 'device.gamepad'}, {code: 'virtualGamepad', labelCode: 'device.virtualPad'}]},
             {key: 'pad.y_inverse',                nameCode: 'settings.pad.yInverse',               type: 'bool', default: false},
+            // Captured by pushing the stick towards `direction`; the defaults
+            // mirror InputGamepad.DEFAULT_AXIS_MAPPING.
+            {key: 'pad.move_x',                   nameCode: 'settings.pad.moveX',                  type: 'padAxis', default: '+0', action: 'moveX', direction: 'right'},
+            {key: 'pad.move_y',                   nameCode: 'settings.pad.moveY',                  type: 'padAxis', default: '+1', action: 'moveY', direction: 'up'},
+            {key: 'pad.look_x',                   nameCode: 'settings.pad.lookX',                  type: 'padAxis', default: '+2', action: 'lookX', direction: 'right'},
+            {key: 'pad.look_y',                   nameCode: 'settings.pad.lookY',                  type: 'padAxis', default: '+5', action: 'lookY', direction: 'up'},
+            // The defaults mirror InputGamepad.DEFAULT_MAPPING.
+            {key: 'pad.run',                      nameCode: 'settings.action.run',                 type: 'padButton', default: 10, action: 'run'},
+            {key: 'pad.jump',                     nameCode: 'settings.action.jump',                type: 'padButton', default: 1,  action: 'jump'},
+            {key: 'pad.crouch',                   nameCode: 'settings.action.crouch',              type: 'padButton', default: 0,  action: 'crouch'},
+            {key: 'pad.action',                   nameCode: 'settings.action.action',              type: 'padButton', default: 3,  action: 'action'},
+            {key: 'pad.fire',                     nameCode: 'settings.action.fire',                type: 'padButton', default: 7,  action: 'fire'},
+            {key: 'pad.weapon_prev',              nameCode: 'settings.action.weaponPrev',          type: 'padButton', default: 4,  action: 'weaponPrev'},
+            {key: 'pad.weapon_next',              nameCode: 'settings.action.weaponNext',          type: 'padButton', default: 5,  action: 'weaponNext'},
+            {key: 'pad.map',                      nameCode: 'settings.action.map',                 type: 'padButton', default: 12, action: 'map'},
+            {key: 'pad.pause',                    nameCode: 'settings.action.pause',               type: 'padButton', default: 9,  action: 'pause'},
             {key: 'virtual_pad.y_inverse',        nameCode: 'settings.virtualPad.yInverse',        type: 'bool', default: false},
             // The firing gesture is the upper band of the aim stick, not a third stick.
             {key: 'virtual_pad.move_dead_zone',   nameCode: 'settings.virtualPad.moveDeadZone',    type: 'list', default: '15',  values: DoomSettings.DEAD_ZONE_VALUES},
@@ -104,15 +122,15 @@ class DoomSettings {
             {key: 'keyboard.backward',            nameCode: 'settings.keyboard.backward',          type: 'char', default: 'KeyS',      action: 'backward'},
             {key: 'keyboard.strafe_left',         nameCode: 'settings.keyboard.strafeLeft',        type: 'char', default: 'KeyA',      action: 'strafeLeft'},
             {key: 'keyboard.strafe_right',        nameCode: 'settings.keyboard.strafeRight',       type: 'char', default: 'KeyD',      action: 'strafeRight'},
-            {key: 'keyboard.run',                 nameCode: 'settings.keyboard.run',               type: 'char', default: 'ShiftLeft', action: 'run'},
-            {key: 'keyboard.jump',                nameCode: 'settings.keyboard.jump',              type: 'char', default: 'Space',     action: 'jump'},
-            {key: 'keyboard.crouch',              nameCode: 'settings.keyboard.crouch',            type: 'char', default: 'KeyC',      action: 'crouch'},
-            {key: 'keyboard.action',              nameCode: 'settings.keyboard.action',            type: 'char', default: 'KeyE',      action: 'action'},
-            {key: 'keyboard.fire',                nameCode: 'settings.keyboard.fire',              type: 'char', default: 'KeyQ',      action: 'fire'},
-            {key: 'keyboard.weapon_prev',         nameCode: 'settings.keyboard.weaponPrev',        type: 'char', default: 'KeyF',      action: 'weaponPrev'},
-            {key: 'keyboard.weapon_next',         nameCode: 'settings.keyboard.weaponNext',        type: 'char', default: 'KeyG',      action: 'weaponNext'},
+            {key: 'keyboard.run',                 nameCode: 'settings.action.run',                 type: 'char', default: 'ShiftLeft', action: 'run'},
+            {key: 'keyboard.jump',                nameCode: 'settings.action.jump',                type: 'char', default: 'Space',     action: 'jump'},
+            {key: 'keyboard.crouch',              nameCode: 'settings.action.crouch',              type: 'char', default: 'KeyC',      action: 'crouch'},
+            {key: 'keyboard.action',              nameCode: 'settings.action.action',              type: 'char', default: 'KeyE',      action: 'action'},
+            {key: 'keyboard.fire',                nameCode: 'settings.action.fire',                type: 'char', default: 'KeyQ',      action: 'fire'},
+            {key: 'keyboard.weapon_prev',         nameCode: 'settings.action.weaponPrev',          type: 'char', default: 'KeyF',      action: 'weaponPrev'},
+            {key: 'keyboard.weapon_next',         nameCode: 'settings.action.weaponNext',          type: 'char', default: 'KeyG',      action: 'weaponNext'},
             {key: 'keyboard.toggle_hud',          nameCode: 'settings.keyboard.toggleHud',         type: 'char', default: 'KeyH',      action: 'toggleHud'},
-            {key: 'keyboard.map',                 nameCode: 'settings.keyboard.map',               type: 'char', default: 'Tab',       action: 'map'},
+            {key: 'keyboard.map',                 nameCode: 'settings.action.map',                 type: 'char', default: 'Tab',       action: 'map'},
             {key: 'keyboard.look_down',           nameCode: 'settings.keyboard.lookDown',          type: 'char', default: 'KeyK',      action: 'lookDown'},
             {key: 'keyboard.look_up',             nameCode: 'settings.keyboard.lookUp',            type: 'char', default: 'KeyI',      action: 'lookUp'},
             {key: 'keyboard.look_right',          nameCode: 'settings.keyboard.lookRight',         type: 'char', default: 'KeyL',      action: 'lookRight'},
@@ -152,15 +170,18 @@ class DoomSettings {
         return this;
     }
 
-    // A key serves one action only: an action still on its default key gives it
-    // up when the player saved that key for another action (a default that moved
-    // onto a key the player had already chosen).
+    // A key, a button or an axis serves one action only: an action still on its
+    // default gives it up when the player saved it for another action (a
+    // default that moved onto a key the player had already chosen).
     _yieldTakenDefaults() {
-        const keyDefs = DoomSettings.DEFINITIONS.filter((def) => (def.type === 'char'));
-        const saved   = new Set(keyDefs.filter((def) => (this._values[def.key] !== undefined)).map((def) => this._values[def.key]));
-        for (const def of keyDefs) {
-            if ((this._values[def.key] === undefined) && saved.has(def.default)) {
-                this.set(def.key, '');
+        for (const type of DoomSettings.BINDING_TYPES) {
+            const bindingDefs = DoomSettings.DEFINITIONS.filter((def) => (def.type === type));
+            const saved       = new Set(bindingDefs.filter((def) => (this._values[def.key] !== undefined))
+                .map((def) => DoomSettings.boundControl(def, this._values[def.key])));
+            for (const def of bindingDefs) {
+                if ((this._values[def.key] === undefined) && saved.has(DoomSettings.boundControl(def, def.default))) {
+                    this.set(def.key, DoomSettings.UNBOUND_VALUES[type]);
+                }
             }
         }
     }
@@ -232,6 +253,12 @@ class DoomSettings {
         }
         if (def.type === 'char') {
             return (typeof value === 'string');
+        }
+        if (def.type === 'padButton') {
+            return ((value === null) || (Number.isInteger(value) && (value >= 0)));
+        }
+        if (def.type === 'padAxis') {
+            return ((value === DoomSettings.AXIS_NONE) || ((typeof value === 'string') && DoomSettings.AXIS_CODE.test(value)));
         }
         if (def.type === 'text') {
             return ((typeof value === 'string') && (DoomSettings.sanitizeText(def, value) === value));
@@ -331,27 +358,89 @@ class DoomSettings {
         return codes[((index + direction + codes.length) % codes.length)];
     }
 
-    // A key serves one action only: every other binding holding it becomes '' (unmapped).
-    unbindKeyCode(code, exceptKey) {
+    /**
+     * Binds a key, a button or an axis to one action: every other binding of
+     * the same kind holding it becomes unmapped.
+     *
+     * @param {object} definition - a 'char', 'padButton' or 'padAxis' definition
+     * @param {string|int} value
+     */
+    bind(definition, value) {
+        const target = DoomSettings.boundControl(definition, value);
         for (const def of DoomSettings.DEFINITIONS) {
-            if ((def.type === 'char') && (def.key !== exceptKey) && (this.get(def.key) === code)) {
-                this.set(def.key, '');
+            if ((def.type === definition.type) && (def.key !== definition.key) && (DoomSettings.boundControl(def, this.get(def.key)) === target)) {
+                this.set(def.key, DoomSettings.UNBOUND_VALUES[def.type]);
             }
         }
 
-        return this;
+        return this.set(definition.key, value);
+    }
+
+    /**
+     * What a binding holds: the key or the button itself, the axis whatever its
+     * direction ('+3' and '-3' hold the same axis).
+     *
+     * @param {object} def - a binding definition
+     * @param {string|int|null} value
+     * @returns {string|int|null}
+     */
+    static boundControl(def, value) {
+        return ((def.type === 'padAxis') ? DoomSettings.parseAxisCode(value).index : value);
     }
 
     // {action: code}: only the bindings saved by the player override the engine defaults.
     getKeyboardMapping() {
+        return this._getSavedBindings('char');
+    }
+
+    // {action: index|null}, same rule as the keyboard.
+    getPadButtonMapping() {
+        return this._getSavedBindings('padButton');
+    }
+
+    // {slot: {index, inverted}}, same rule as the keyboard, a null index unmapping the slot.
+    getPadAxisMapping() {
+        const mapping = this._getSavedBindings('padAxis');
+        for (const slot of Object.keys(mapping)) {
+            mapping[slot] = DoomSettings.parseAxisCode(mapping[slot]);
+        }
+
+        return mapping;
+    }
+
+    _getSavedBindings(type) {
         const mapping = {};
         for (const def of DoomSettings.DEFINITIONS) {
-            if ((def.type === 'char') && (this._values[def.key] !== undefined)) {
+            if ((def.type === type) && (this._values[def.key] !== undefined)) {
                 mapping[def.action] = this._values[def.key];
             }
         }
 
         return mapping;
+    }
+
+    /**
+     * Stored form of a stick axis binding, in the hardware convention: '+3' is
+     * axis 3, '-3' the same axis inverted.
+     *
+     * @param {int} index
+     * @param {boolean} inverted
+     * @returns {string}
+     */
+    static axisCode(index, inverted) {
+        return ((inverted ? '-' : '+') + index);
+    }
+
+    /**
+     * @param {string} code - an axisCode or AXIS_NONE
+     * @returns {object} {index, inverted}, index null when unmapped
+     */
+    static parseAxisCode(code) {
+        if (!DoomSettings.AXIS_CODE.test(code)) {
+            return {index: null, inverted: false};
+        }
+
+        return {index: parseInt(code.slice(1), 10), inverted: code.startsWith('-')};
     }
 
     // Wipes the whole store, not just the known keys, so orphan rows of older
@@ -373,6 +462,8 @@ class DoomSettings {
         inputs.setLookInvertY('virtualGamepad', this.getVirtualPadYInverse());
         inputs.setLookInvertY('keyboardMouse', this.getMouseYInverse());
         inputs.setKeyMapping(this.getKeyboardMapping());
+        inputs.setGamepadButtonMapping(this.getPadButtonMapping());
+        inputs.setGamepadAxisMapping(this.getPadAxisMapping());
         inputs.setVirtualPadDeadZone('move', this.getVirtualPadMoveDeadZone());
         inputs.setVirtualPadDeadZone('aim', this.getVirtualPadAimDeadZone());
         inputs.setVirtualPadDeadZone('fire', this.getVirtualPadFireDeadZone());
@@ -510,6 +601,10 @@ class DoomSettings {
 DoomSettings.DIACRITICS               = /\p{M}/gu;
 DoomSettings.LIMIT_NONE               = 'none';
 DoomSettings.DEVICE_AUTO              = 'auto';
+DoomSettings.AXIS_NONE                = 'none';
+DoomSettings.AXIS_CODE                = /^[+-]\d+$/;
+DoomSettings.BINDING_TYPES            = ['char', 'padButton', 'padAxis'];
+DoomSettings.UNBOUND_VALUES           = {char: '', padButton: null, padAxis: DoomSettings.AXIS_NONE};
 DoomSettings.DEATHMATCH_WEAPONS_STAY  = 'weapons_stay';
 DoomSettings.DEATHMATCH_ITEMS_RESPAWN = 'items_respawn';
 

@@ -17,6 +17,24 @@ class MenuOptionsModal extends AbstractMenuListModal {
         return 24;
     }
 
+    static get CAPTURE_POLL_MS() {
+        return 16;
+    }
+
+    // Travel from its rest value that captures an axis, then that brings it back to rest.
+    static get AXIS_CAPTURE_DELTA() {
+        return 0.5;
+    }
+
+    static get AXIS_REST_DELTA() {
+        return 0.25;
+    }
+
+    // Sign of a push towards each capture direction, in the hardware convention (down positive).
+    static get AXIS_DIRECTION_SIGNS() {
+        return {right: 1, up: -1};
+    }
+
     // Settings key prefixes of each input mode (DoomSettings definitions).
     static get SETTING_PREFIXES_BY_MODE() {
         return {
@@ -46,6 +64,7 @@ class MenuOptionsModal extends AbstractMenuListModal {
         this._pageTimer      = null;
         this._shownDevices   = null;
         this._captureHandler = null;
+        this._captureTimer   = null;
         this._restoreIndex   = null;
         this._layoutMap      = null;
         this._mode           = null;
@@ -118,15 +137,15 @@ class MenuOptionsModal extends AbstractMenuListModal {
     }
 
     _teardown() {
-        this._stopKeyCapture();
+        this._stopCapture();
         this._clearPageTimer();
     }
 
     // --- Page stack ---
 
-    // Also blocked while a key capture is running.
+    // Also blocked while a key or gamepad capture is running.
     _navBlocked() {
-        return ((this._captureHandler !== null) || !this._isTopOverlay());
+        return ((this._captureHandler !== null) || (this._captureTimer !== null) || !this._isTopOverlay());
     }
 
     // titleCode, not a resolved label: the breadcrumb is rebuilt from the codes
@@ -307,6 +326,14 @@ class MenuOptionsModal extends AbstractMenuListModal {
                 this._startKeyCapture(definition, inputs);
                 return;
             }
+            if (definition.type === 'padButton') {
+                this._startPadButtonCapture(definition, inputs);
+                return;
+            }
+            if (definition.type === 'padAxis') {
+                this._startPadAxisCapture(definition, inputs);
+                return;
+            }
             if (definition.type === 'text') {
                 this._openTextEntry(definition, valueEl);
                 return;
@@ -359,21 +386,36 @@ class MenuOptionsModal extends AbstractMenuListModal {
         if (definition.type === 'char') {
             return this._keyLabel(doomSettings.get(definition.key));
         }
+        if (definition.type === 'padButton') {
+            return this._padButtonLabel(doomSettings.get(definition.key));
+        }
+        if (definition.type === 'padAxis') {
+            return this._padAxisLabel(doomSettings.get(definition.key));
+        }
 
         return String(doomSettings.get(definition.key));
     }
 
-    // --- Key binding capture ---
+    _padButtonLabel(index) {
+        return ((index !== null) ? appTranslator.get('pad.button', {number: index}) : '');
+    }
+
+    _padAxisLabel(code) {
+        const binding = DoomSettings.parseAxisCode(code);
+        if (binding.index === null) {
+            return '';
+        }
+
+        return appTranslator.get((binding.inverted ? 'pad.axisInverted' : 'pad.axis'), {number: binding.index});
+    }
+
+    // --- Binding capture ---
 
     // A page left only by pressing a key: one key, one action, so the key is
     // unbound elsewhere. Capture phase, so neither the list navigation nor the
     // game shortcuts see the press.
     _startKeyCapture(definition, inputs) {
-        const returnIndex = this._nav.getSelectedIndex();
-        this._pushPage(definition.nameCode, () => {
-            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line',
-                appTranslator.get('help.keyCapture', {action: appTranslator.get(definition.nameCode)}));
-        }, true);
+        const returnIndex = this._openCapturePage(definition, 'help.keyCapture');
 
         this._captureHandler = (event) => {
             // F1-F12 stay with the browser; Escape is the fixed pause key.
@@ -385,21 +427,114 @@ class MenuOptionsModal extends AbstractMenuListModal {
             if (event.repeat) {
                 return;
             }
-            doomSettings.unbindKeyCode(event.code, definition.key);
-            doomSettings.set(definition.key, event.code);
-            doomSettings.applyToInputs(inputs);
-            this._stopKeyCapture();
-            this._pageStack.pop();
-            this._restoreIndex = returnIndex;
-            this._renderPage();
+            this._saveBinding(definition, event.code, inputs);
+            this._endCapture(returnIndex);
         };
         document.addEventListener('keydown', this._captureHandler, true);
     }
 
-    _stopKeyCapture() {
+    // A button held when the page opens (the one that opened it) is only
+    // armed once released.
+    _startPadButtonCapture(definition, inputs) {
+        const pad   = inputs.getGamepad();
+        const armed = pad.readRawButtons().map((down) => !down);
+        let held    = null;
+
+        this._pollPadCapture(definition, inputs, 'help.padButtonCapture', () => {
+            const buttons = pad.readRawButtons();
+            if (held !== null) {
+                return ((buttons[held] === true) ? null : held);
+            }
+            buttons.forEach((down, index) => {
+                armed[index] = (armed[index] || !down);
+            });
+            const index = buttons.findIndex((down, i) => (down && armed[i]));
+
+            held = ((index >= 0) ? index : null);
+
+            return null;
+        });
+    }
+
+    // The first axis that leaves its rest value is taken, inverted when pushed
+    // against the asked direction.
+    _startPadAxisCapture(definition, inputs) {
+        const pad    = inputs.getGamepad();
+        const rest   = pad.readRawAxes();
+        const travel = (axes, index) => (axes[index] - (rest[index] ?? 0));
+        let pushed   = null;
+
+        this._pollPadCapture(definition, inputs, 'help.padAxisCapture.' + definition.direction, () => {
+            const axes = pad.readRawAxes();
+            if (pushed !== null) {
+                return ((Math.abs(travel(axes, pushed.index)) < MenuOptionsModal.AXIS_REST_DELTA) ? pushed.code : null);
+            }
+            const index = axes.findIndex((value, i) => (Math.abs(travel(axes, i)) > MenuOptionsModal.AXIS_CAPTURE_DELTA));
+            if (index < 0) {
+                return null;
+            }
+            const inverted = (Math.sign(travel(axes, index)) !== MenuOptionsModal.AXIS_DIRECTION_SIGNS[definition.direction]);
+
+            pushed = {index: index, code: DoomSettings.axisCode(index, inverted)};
+
+            return null;
+        });
+    }
+
+    /**
+     * Polls the gamepad until `step` returns the captured value, which it only
+     * does once released: the press never reaches the list navigation when the
+     * page closes. A pad lost meanwhile cancels.
+     *
+     * @param {function} step - the captured value, null while waiting
+     */
+    _pollPadCapture(definition, inputs, promptCode, step) {
+        const returnIndex = this._openCapturePage(definition, promptCode);
+        const pad         = inputs.getGamepad();
+
+        this._captureTimer = setInterval(() => {
+            if (!pad.isAvailable()) {
+                this._endCapture(returnIndex);
+                return;
+            }
+            const value = step();
+            if (value !== null) {
+                this._saveBinding(definition, value, inputs);
+                this._endCapture(returnIndex);
+            }
+        }, MenuOptionsModal.CAPTURE_POLL_MS);
+    }
+
+    // Returns the selected row, restored when the capture ends.
+    _openCapturePage(definition, promptCode) {
+        const returnIndex = this._nav.getSelectedIndex();
+        this._pushPage(definition.nameCode, () => {
+            MenuDom.addText(this._bodyEl, 'doom-menu-modal-line',
+                appTranslator.get(promptCode, {action: appTranslator.get(definition.nameCode)}));
+        }, true);
+
+        return returnIndex;
+    }
+
+    _saveBinding(definition, value, inputs) {
+        doomSettings.bind(definition, value).applyToInputs(inputs);
+    }
+
+    _endCapture(returnIndex) {
+        this._stopCapture();
+        this._pageStack.pop();
+        this._restoreIndex = returnIndex;
+        this._renderPage();
+    }
+
+    _stopCapture() {
         if (this._captureHandler !== null) {
             document.removeEventListener('keydown', this._captureHandler, true);
             this._captureHandler = null;
+        }
+        if (this._captureTimer !== null) {
+            clearInterval(this._captureTimer);
+            this._captureTimer = null;
         }
     }
 
