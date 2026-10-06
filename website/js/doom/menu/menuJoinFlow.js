@@ -18,7 +18,6 @@ class MenuJoinFlow {
         this._availability = availability;
     }
 
-    // The entry that starts the flow greys out on a device unable to play.
     greyWhenUnavailable(item) {
         MenuNetGate.greyWhenUnavailable(item, () => this._availability.unavailableReason());
 
@@ -36,7 +35,6 @@ class MenuJoinFlow {
         new MenuPairingModal(this._display).openForSub(session, () => this._showLobby(session), () => session.dispose());
     }
 
-    // The lobby until the main's game sends its level, which this device then builds.
     _showLobby(session) {
         const lobby = new MenuLobbyModal(this._display);
         session.setOnEnd((reason) => {

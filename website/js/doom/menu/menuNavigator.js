@@ -196,12 +196,7 @@ class MenuNavigator {
         }
     }
 
-    /**
-     * The stored WADs a joined game can be played on: every one whose identity
-     * is known, computed now when missing.
-     *
-     * @returns {Promise<object[]>}
-     */
+    // A missing identity is computed here, once: it stays stored.
     async getIdentifiedWads() {
         const wads = await this._registry.getList();
         for (const meta of wads) {

@@ -376,14 +376,7 @@ class DoomSettings {
         return this.set(definition.key, value);
     }
 
-    /**
-     * What a binding holds: the key or the button itself, the axis whatever its
-     * direction ('+3' and '-3' hold the same axis).
-     *
-     * @param {object} def - a binding definition
-     * @param {string|int|null} value
-     * @returns {string|int|null}
-     */
+    // An axis is held whatever its direction: '+3' and '-3' hold the same axis.
     static boundControl(def, value) {
         return ((def.type === 'padAxis') ? DoomSettings.parseAxisCode(value).index : value);
     }
@@ -419,22 +412,12 @@ class DoomSettings {
         return mapping;
     }
 
-    /**
-     * Stored form of a stick axis binding, in the hardware convention: '+3' is
-     * axis 3, '-3' the same axis inverted.
-     *
-     * @param {int} index
-     * @param {boolean} inverted
-     * @returns {string}
-     */
+    // Hardware convention: '+3' is axis 3, '-3' the same axis inverted.
     static axisCode(index, inverted) {
         return ((inverted ? '-' : '+') + index);
     }
 
-    /**
-     * @param {string} code - an axisCode or AXIS_NONE
-     * @returns {object} {index, inverted}, index null when unmapped
-     */
+    // AXIS_NONE gives a null index.
     static parseAxisCode(code) {
         if (!DoomSettings.AXIS_CODE.test(code)) {
             return {index: null, inverted: false};

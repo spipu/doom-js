@@ -23,14 +23,7 @@ class Inputs {
         return (magnitude - deadZone) / (1 - deadZone);
     }
 
-    /**
-     * Rebinding shared by the devices: the defaults overridden by the given
-     * entries, unknown keys ignored.
-     *
-     * @param {object} defaults  - a fresh copy, modified and returned
-     * @param {object|null} overrides
-     * @returns {object}
-     */
+    // `defaults` must be a fresh copy: it is modified and returned.
     static mergeMapping(defaults, overrides) {
         for (const key of Object.keys(overrides ?? {})) {
             if (defaults[key] !== undefined) {
@@ -166,10 +159,6 @@ class Inputs {
         ));
     }
 
-    /**
-     * The device the automatic choice picks: gamepad > virtual gamepad > keyboard+mouse.
-     * @returns {string}
-     */
     getAutoMode() {
         return this._autoModeOf(this.getAvailableModes());
     }
@@ -203,7 +192,6 @@ class Inputs {
         return this;
     }
 
-    // Optional gamepad stick axis rebinding, see InputGamepad.setAxisMapping.
     setGamepadAxisMapping(bindings) {
         this._gamepad.setAxisMapping(bindings);
         return this;

@@ -182,8 +182,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }
     }
 
-    // The selected row and the exact scroll of the list, so a rebuilt page
-    // shows the player the very same view.
     _readListView() {
         const list = this._bodyEl.querySelector('.doom-menu-list');
 
@@ -230,9 +228,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, null, appTranslator.get('menu.back'));
     }
 
-    // The Device line picks the device the game plays with (automatic or one
-    // of the available ones), and the settings below are those of the device
-    // in use; a change of the available devices rebuilds the page.
     _buildControls() {
         const inputs = new Inputs();
         const list   = MenuDom.addElement(this._bodyEl, 'div', 'doom-menu-list');
@@ -258,7 +253,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, MenuOptionsModal.DEVICE_REFRESH_MS);
     }
 
-    // Automatic first, then the devices available right now.
     _deviceChoices(inputs) {
         return [DoomSettings.DEVICE_AUTO].concat(inputs.getAvailableModes());
     }
@@ -473,8 +467,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         });
     }
 
-    // The first axis that leaves its rest value is taken, inverted when pushed
-    // against the asked direction.
     _startPadAxisCapture(definition, inputs) {
         const pad    = inputs.getGamepad();
         const rest   = pad.readRawAxes();
@@ -498,13 +490,8 @@ class MenuOptionsModal extends AbstractMenuListModal {
         });
     }
 
-    /**
-     * Polls the gamepad until `step` returns the captured value, which it only
-     * does once released: the press never reaches the list navigation when the
-     * page closes. A pad lost meanwhile cancels.
-     *
-     * @param {function} step - the captured value, null while waiting
-     */
+    // `step` only returns the value once released: the press must not reach the
+    // list navigation when the page closes.
     _pollPadCapture(definition, inputs, promptCode, step) {
         const returnView = this._openCapturePage(definition, promptCode);
         const pad        = inputs.getGamepad();
@@ -522,7 +509,6 @@ class MenuOptionsModal extends AbstractMenuListModal {
         }, MenuOptionsModal.CAPTURE_POLL_MS);
     }
 
-    // Returns the view of the list, restored when the capture ends.
     _openCapturePage(definition, promptCode) {
         const returnView = this._readListView();
         this._pushPage(definition.nameCode, () => {

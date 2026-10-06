@@ -548,7 +548,7 @@ class DoomGame {
     }
 
     // Replays the level with the equipment it began with (the level-start
-    // autosave of the modern ports), from the death or the pause menu.
+    // autosave of the modern ports).
     _restartLevel() {
         this._transitioning = true;
         this.closeGameMenu();

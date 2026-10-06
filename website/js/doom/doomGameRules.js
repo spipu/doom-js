@@ -60,7 +60,6 @@ class DoomGameRules {
         throw new Error('DoomGameRules: allowsSaveAndLoad not implemented');
     }
 
-    // Whether the main's pause menu offers to replay the level, like the death menu does.
     allowsLevelRestart() {
         throw new Error('DoomGameRules: allowsLevelRestart not implemented');
     }

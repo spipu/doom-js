@@ -80,14 +80,12 @@ class InputGamepad {
         return this;
     }
 
-    // Down flags of every button of the active pad, empty without one (binding capture).
     readRawButtons() {
         const pad = this._getPad();
 
         return ((pad !== null) ? Array.from(pad.buttons, (button) => this._isDown(button)) : []);
     }
 
-    // Values of every axis of the active pad, empty without one (binding capture).
     readRawAxes() {
         const pad = this._getPad();
 
