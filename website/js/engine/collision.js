@@ -991,12 +991,13 @@ class Collision {
         const nix  = -sdz / slen, niz = sdx / slen;
         const dist = nix * (cx - ax) + niz * (cz - az);
         const vn   = nix * vx + niz * vz;
-        if (Math.abs(vn) > 1e-10) {
-            const sn = ((dist >= 0) ? 1 : -1);
-            // A circle already in contact (or overlapping) and pushing into the
-            // wall is a hit at t = 0: the exact-contact case would otherwise give
-            // a rounding-sign t and let the whole move pass through the wall.
-            const t  = ((((sn * dist) <= r) && ((sn * vn) < 0)) ? 0 : (sn * r - dist) / vn);
+        const sn   = ((dist >= 0) ? 1 : -1);
+        // Only a move toward the line can meet it: leaving a contact (or the
+        // rounding overlap of a depenetration) would else block the way out.
+        if ((sn * vn) < -1e-10) {
+            // In contact and pushing in: a hit at t = 0, never a rounding-sign t
+            // that would let the whole move pass through the wall.
+            const t = (((sn * dist) <= r) ? 0 : (sn * r - dist) / vn);
             if ((t >= 0) && (t <= 1)) {
                 const s = (cx + t*vx - ax) * (sdx/slen) + (cz + t*vz - az) * (sdz/slen);
                 if ((s >= 0) && (s <= slen)) {

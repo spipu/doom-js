@@ -15,17 +15,17 @@
   },
   "Doom2/MAP01@3": {
     "idempotent": true,
-    "maxDrift": 0.927,
-    "endDrift": 0.281,
+    "maxDrift": 6.07,
+    "endDrift": 0.01,
     "frames": 599,
-    "resumedSha": "d45074b79f7c9444abb7159f6c9763c431793204ae539af51d573e5c5a425040",
-    "saveSha": "64fb38e254da5733bd0dbe45affef38103c52517593d2b2993297d719b0835c1",
-    "endSaveSha": "bad0f323c36ce146f71b3c4acd8205e206313457371f8cfe0a7cdcbc0953a32b",
+    "resumedSha": "ad3e96bd0d8757036a1fe3408f8418257e79abfeb774ad896d82eeae34e0cc97",
+    "saveSha": "ef7174212dffdd8aea202228d80ba5641aa54cc473a79e2f423783091e183eec",
+    "endSaveSha": "7111a73f4f40f8e42964162df0abc263b5786e9d936c016817fb2d41c540a86b",
     "dead": false,
-    "energy": 74.5,
-    "uninterruptedEnergy": 62.5,
+    "energy": 81.5,
+    "uninterruptedEnergy": 86.5,
     "levelStartAtSpawn": true,
-    "levelStartSha": "28abc59c5e3fe4124803d285cd7e9b64812fc5af23650f57759b097a601205e2"
+    "levelStartSha": "1f84f1af3b90b347bf65a32e09772d0de4562391fce79cf4f177cc51cb9b264d"
   },
   "freedoom1/E1M1@3": {
     "idempotent": true,
@@ -43,17 +43,17 @@
   },
   "heretic/E1M1@3": {
     "idempotent": true,
-    "maxDrift": 16.232,
-    "endDrift": 15.974,
+    "maxDrift": 0.755,
+    "endDrift": 0.087,
     "frames": 599,
-    "resumedSha": "69e69aefd049358655a2899d43773c54430d1597d8f3418ee65710368ee89fcb",
-    "saveSha": "d612efdef1d343b62ec76e984133e399b79d08ff026580c08d0bc8229b0a08f2",
-    "endSaveSha": "559c1e0a384e0973f5233bf24f3f1b321c232ffb9dc261bb07a4bcdaa10b6d3f",
-    "dead": true,
-    "energy": 0,
-    "uninterruptedEnergy": 2,
+    "resumedSha": "a128af7c4efef296c9417759ad819152b9703deb992c26dd2899107516d9932e",
+    "saveSha": "ec37ef2ff79808c4ccd907bdd14cbec991c742895fd9a302237ab40e7ce6ddbb",
+    "endSaveSha": "889ed473bd1b9e2d417eeb5fe6511c8783ab74d3e227389e18999c823bc399bd",
+    "dead": false,
+    "energy": 92,
+    "uninterruptedEnergy": 93.5,
     "levelStartAtSpawn": true,
-    "levelStartSha": "f84a5cf343e5fd5e9469eb40527fef904d825926638370f9fd6b56f9397adb74"
+    "levelStartSha": "8c12e3bca08735653e41345bfdec61a38bd5c83d60ce438d346ea2b560214293"
   },
   "heretic/E1M3@3": {
     "idempotent": true,

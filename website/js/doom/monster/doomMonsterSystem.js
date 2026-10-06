@@ -577,8 +577,7 @@ class DoomMonsterSystem {
     // the entry action (A_Explode, A_NoBlocking, A_Look) on a state the saved
     // game already went through.
     _restoreRecord(m, rec) {
-        const pos = m.inst.getTransform().position;
-        m.inst.translate(rec.position[0] - pos[0], rec.position[1] - pos[1], rec.position[2] - pos[2]);
+        m.inst.placeAt(rec.position[0], rec.position[1], rec.position[2]);
         m.facing       = rec.facing;
         m.si           = rec.si;
         m.stateKey     = rec.stateKey;

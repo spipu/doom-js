@@ -160,11 +160,28 @@ class Instance extends AbstractLoadedEntity {
         this._worldCenter[0] += dx;
         this._worldCenter[1] += dy;
         this._worldCenter[2] += dz;
-        // Re-bases the ride at the new Y, or the next sync would snap it back
+        this._rebaseRide();
+        return this;
+    }
+
+    // Translating by (target - position) can miss the target by a rounding
+    // bit: a restored save must land exactly where it was taken.
+    placeAt(x, y, z) {
+        this._worldCenter[0] += (x - this._position[0]);
+        this._worldCenter[1] += (y - this._position[1]);
+        this._worldCenter[2] += (z - this._position[2]);
+        this._position[0]     = x;
+        this._position[1]     = y;
+        this._position[2]     = z;
+        this._rebaseRide();
+        return this;
+    }
+
+    // Re-bases the ride at the new Y, or the next sync would snap it back.
+    _rebaseRide() {
         if (this.getRideOn() !== null) {
             this.setRideOn(this._rideOn);
         }
-        return this;
     }
 
     _computeWorldCenter() {

@@ -12,14 +12,14 @@
     "exits": 0
   },
   "Doom2/MAP01@3": {
-    "sha": "287cf7c69c9bfc06994dbed00ce41bc710e1881f90f4ed27378551e18cc83d20",
-    "saveSha": "42ab4ddbfc7b4a811487e8f19610ecc36d9a49f27229af19fc67813494497dc7",
+    "sha": "71cb1648e06c6c255c661b23bb99f8e48b5265ceab66029089b022fee2e6dc3d",
+    "saveSha": "7d6d2d47059d82d0cd675ea49b9cbdc451b31083af9456ef60512d2a069924fb",
     "frames": 1200,
-    "events": 209,
+    "events": 198,
     "dead": false,
-    "energy": 62.5,
+    "energy": 86.5,
     "weapon": "chainsaw",
-    "kills": 1,
+    "kills": 3,
     "items": 0,
     "exits": 0
   },
@@ -36,12 +36,12 @@
     "exits": 0
   },
   "heretic/E1M1@3": {
-    "sha": "49b044ff12572eff84a315b199d31cb25a4ee69c7ce941977f0d6eb8c1cf765f",
-    "saveSha": "a247df0d1f13dcb808a45d5df4c1b89613ccbac29dbc29efc1aee14b7f8744a4",
+    "sha": "2fab7b9efb05fe28058150a18bb1e7bac2f6f38fcb40e596bc24024215514486",
+    "saveSha": "8fec65131d10016eb0e40ef2b3f63584fe95c5f50ba4525f07268e8ff4216cca",
     "frames": 1200,
-    "events": 155,
+    "events": 90,
     "dead": false,
-    "energy": 2,
+    "energy": 93.5,
     "weapon": "gauntlets",
     "kills": 0,
     "items": 0,
