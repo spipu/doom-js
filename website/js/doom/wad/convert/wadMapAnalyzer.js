@@ -788,8 +788,8 @@ class WadMapAnalyzer {
     }
 
     // Rising floors: unlike lifts, fh is not patched, the moving flat rises from
-    // the WAD height. A target not above the floor means no movement in vanilla:
-    // the sector is dropped.
+    // the WAD height. A target at the floor moves nothing; a target below it is
+    // reached on the first tic (T_MovePlane), the instant-drop trick of E2M1.
     _identifyRisingFloors(doorSectorIds, liftIds, instantRaise = {}, liftOriginalFh = {}) {
         const {sectors} = this._level;
         const linedefs              = this._moverLinedefs();
@@ -805,10 +805,18 @@ class WadMapAnalyzer {
                     if ((sectors[si].tag === ld.tag)
                         && !doorSectorIds.has(si) && !liftIds.has(si)) {
                         const target = this._risingFloorTarget(si, ld.special, liftOriginalFh);
-                        if (target > sectors[si].fh) {
-                            risingFloorIds.add(si);
-                            risingFloorSpecial[si]  = ld.special;
-                            risingFloorTargetFh[si] = target;
+                        if (target === sectors[si].fh) {
+                            continue;
+                        }
+                        risingFloorIds.add(si);
+                        risingFloorSpecial[si]  = ld.special;
+                        risingFloorTargetFh[si] = target;
+                        if (target < sectors[si].fh) {
+                            risingFloorInstantIds.add(si);
+                            risingFloorPopUpRise[si] = target - sectors[si].fh;
+                        } else {
+                            risingFloorInstantIds.delete(si);
+                            delete risingFloorPopUpRise[si];
                         }
                     }
                 }
@@ -1386,10 +1394,12 @@ class WadMapAnalyzer {
         }
         if (code.startsWith('risingfloor_')) {
             const si = WadMapAnalyzer._sectorOfCode(code, 'risingfloor_');
-            // A pop-up floor covers its whole travel in one tic.
-            return (analysis.risingFloorPopUpRise[si]
-                ?? WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed
-                ?? 1);
+            // A pop-up or instant-drop floor covers its whole travel in one tic.
+            const popUpRise = analysis.risingFloorPopUpRise[si];
+            if (popUpRise !== undefined) {
+                return Math.abs(popUpRise);
+            }
+            return (WadConstants.FLOOR_UP_BY_SPECIAL[analysis.risingFloorSpecial[si]]?.speed ?? 1);
         }
         if (code.startsWith('door_')) {
             const si = WadMapAnalyzer._sectorOfCode(code, 'door_');

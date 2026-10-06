@@ -106,7 +106,7 @@ class WadStaticMapBuilder {
                     const uv = WadMeshBuilder.floorPeggedWallUv(ld, rSd, rSec, rSec.ch, floorMovers, th);
                     WadMeshBuilder.addWallQuad(mesh, ti,
                         wx1, wz1, wx2, wz2,
-                        rSec.fh * SCALE, rSec.ch * SCALE,
+                        this._wallFloorOf(rSd.sector) * SCALE, rSec.ch * SCALE,
                         wallLen, tw, th,
                         {xOff: rSd.xo, yOff: uv.yOff, flip: true, light: rSec.light, uScrollTexelsPerSec: uScroll, lightGroup: this._lightGroupOf(rSd.sector),
                             uvAnchor: uv.uvAnchor});
@@ -122,9 +122,9 @@ class WadStaticMapBuilder {
             const switchWall = switchWalls.get(ldIdx) ?? null;
             const isSwitchFace = (side, slot) => ((switchWall !== null) && (switchWall.side === side) && (switchWall.slot === slot));
 
-            const rFh = rSec.fh;
+            const rFh = this._wallFloorOf(rSd.sector);
             const rCh = rSec.ch;
-            const lFh = lSec.fh;
+            const lFh = this._wallFloorOf(lSd.sector);
             const lCh = lSec.ch;
 
             const upperUnpeg = ((ld.flags & WadConstants.ML_DONTPEGTOP) !== 0);
@@ -285,6 +285,17 @@ class WadStaticMapBuilder {
     // Also emitted over a blocking middle texture: the texture covers its own
     // height only, the flag blocks the full gap. A single facing is enough —
     // the wall resolution is side-agnostic and the raycast skips the face.
+    // An instant-drop floor's walls reach down to its target: the mover's
+    // skirt hides them at rest, and nothing stands in the way once it fell.
+    _wallFloorOf(si) {
+        const fh = this._level.sectors[si].fh;
+        if (!this._analysis.risingFloorInstantIds.has(si)) {
+            return fh;
+        }
+
+        return Math.min(fh, this._analysis.risingFloorTargetFh[si]);
+    }
+
     _buildBlockingWall(mesh, rFh, rCh, lFh, lCh, wx1, wz1, wx2, wz2, wallLen) {
         const botDu = Math.max(rFh, lFh);
         const topDu = Math.min(rCh, lCh);

@@ -1365,7 +1365,8 @@ class HereticGameProfile extends DefaultGameProfile {
             100: 1100,
             // W1 secret exit (Doom already has it as 124)
             105: 124,
-            // Thing_Destroy of the E1M8 boss walls — needs enemies, dropped
+            // W1 Thing_Destroy (massacre), carried by no heretic.wad line —
+            // Raven PWADs only, not implemented yet
             515: 0
         };
     }
