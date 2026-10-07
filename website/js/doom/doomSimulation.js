@@ -266,7 +266,7 @@ class DoomSimulation {
             this._monsters.setTerrain(this._terrain);
             this._monsterDamage.setTerrain(this._terrain);
         }
-        this._projectiles.setWorld(world);
+        this._projectiles.setWorld(world).setSectorHeights(this._level.getMonsterLevelData().heights);
         this._monsterAttack.setChannels(this._hitscan, this._projectiles, this._effects);
 
         return this;

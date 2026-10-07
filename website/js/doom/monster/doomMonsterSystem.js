@@ -668,9 +668,7 @@ class DoomMonsterSystem {
         if (this._levelData === null) {
             return null;
         }
-        const S   = WadConstants.SCALE;
-        const sec = this._levelData.findSector(x / S, z / S);
-        return ((sec !== null) ? sec.si : null);
+        return this._levelData.heights.sectorIndexAt(x, z);
     }
 
     _stepTic() {

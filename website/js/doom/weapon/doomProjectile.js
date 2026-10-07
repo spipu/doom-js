@@ -31,6 +31,7 @@ class DoomProjectileSystem {
         this._damage     = damageModule;
         this._collision  = null;
         this._terrain    = null;
+        this._heights    = null;
         this._fast       = false;
         this._active     = [];
         this._untickedMs = 0;
@@ -54,6 +55,15 @@ class DoomProjectileSystem {
      */
     setTerrain(terrain) {
         this._terrain = terrain;
+
+        return this;
+    }
+
+    /**
+     * @param {DoomSectorHeights} heights the live floors and ceilings a mover may raise or lower onto a shot
+     */
+    setSectorHeights(heights) {
+        this._heights = heights;
 
         return this;
     }
@@ -476,7 +486,10 @@ class DoomProjectileSystem {
             }
             // A live body across this tic's segment soaks the shot before any
             // surface: direct hit roll, then the ball explodes on the flesh.
-            const {hit, flesh} = this._sweep(p, step);
+            // P_ZMovement checks the live floorz and ceilingz every tic, so a
+            // mover that overtook the shot is met before it moves.
+            const overtaken = this._overtakingSurface(p);
+            const {hit, flesh} = ((overtaken !== null) ? {hit: overtaken, flesh: null} : this._sweep(p, step));
             if ((p.def.spawnMonster !== null) && this._tryHatch(p)) {
                 loader.instances().scheduleRemoval(inst);
                 continue;
@@ -712,6 +725,34 @@ class DoomProjectileSystem {
         this._damage.damage(flesh.ref, ripper.damage, {point: flesh.point, source: p.owner, srcX: p.x, srcZ: p.z});
     }
 
+    // The face of a moving floor risen above the shot, or of a moving ceiling
+    // come down below it, found by a short ray from its live height; null
+    // while the shot stays between them or its sector has no mover. Only a
+    // face one tic of travel away counts: a shot far beyond it flies over a
+    // shut door under the sky, where nothing overtook it.
+    _overtakingSurface(p) {
+        if (this._heights === null) {
+            return null;
+        }
+        const si = this._heights.sectorIndexAt(p.x, p.z);
+        if ((si === null) || !this._heights.hasMover(si)) {
+            return null;
+        }
+        const scale  = WadConstants.SCALE;
+        const probe  = DoomProjectileSystem.OVERTAKE_PROBE;
+        const gap    = DoomProjectileSystem.OVERTAKE_MAX_GAP;
+        const floorY = this._heights.floorOf(si) * scale;
+        if ((p.y < floorY) && (p.y > floorY - gap)) {
+            return this._collision.raycast(p.x, floorY + probe, p.z, 0, -1, 0, 2 * probe, {floors: true, dynamic: true});
+        }
+        const ceilingY = this._heights.ceilingOf(si) * scale;
+        if ((p.y > ceilingY) && (p.y < ceilingY + gap)) {
+            return this._collision.raycast(p.x, ceilingY - probe, p.z, 0, 1, 0, 2 * probe, {ceilings: true, dynamic: true});
+        }
+
+        return null;
+    }
+
     // Floor bounce of the Heretic mace balls (P_FloorBounceMissile +
     // A_MaceBallImpact/A_MaceBallImpact2): on an upward-facing hit while
     // falling, the vertical speed reflects damped (×0.75). FX1/FX3 bounce a
@@ -861,3 +902,7 @@ DoomProjectileSystem.MAX_TRAVEL = 8192 * WadConstants.SCALE;   // fail-safe life
 // A_Tracer2 slope chase: map units per tic added to the vertical speed toward
 // the one that would land on the target.
 DoomProjectileSystem.SEEK_SLOPE_RATE = 1 / 8;
+// Height, in world units, the ray toward an overtaking mover's face starts from.
+DoomProjectileSystem.OVERTAKE_PROBE   = WadConstants.SCALE;
+// Twice what the fastest mover travels in a tic (blaze doors, 8 map units).
+DoomProjectileSystem.OVERTAKE_MAX_GAP = 16 * WadConstants.SCALE;

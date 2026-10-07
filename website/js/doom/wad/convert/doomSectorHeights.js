@@ -3,19 +3,35 @@
  * (post-patch) values corrected by the current offset of the sector's mover
  * instances — a door's ceiling is its panel bottom (closed rest = its floor),
  * while a lift, rising floor or stair top rests at its original height and
- * carries the instance's Y delta. Read by the sound flood, the mover pressure
- * and the automap.
+ * carries the instance's Y delta. Read by the sound flood, the mover pressure,
+ * the automap and the missiles a mover overtakes.
  */
 class DoomSectorHeights {
     /**
-     * @param {object} levelData - {sectors, restFh, doorFloorH, moverCodes}
+     * @param {object} levelData - {findSector, sectors, restFh, doorFloorH, moverCodes}
      */
     constructor(levelData) {
+        this._findSector = levelData.findSector;
         this._sectors    = levelData.sectors;
         this._restFh     = levelData.restFh;
         this._doorFloorH = levelData.doorFloorH;
         this._moverCodes = levelData.moverCodes;
         this._moverCache = {};
+    }
+
+    /**
+     * @returns {int|null} the sector under a world position, null when no sector claims it
+     */
+    sectorIndexAt(worldX, worldZ) {
+        const sector = this._findSector(worldX / WadConstants.SCALE, worldZ / WadConstants.SCALE);
+
+        return ((sector !== null) ? sector.si : null);
+    }
+
+    hasMover(si) {
+        const movers = this._movers(si);
+
+        return ((movers.floor !== null) || (movers.door !== null));
     }
 
     floorOf(si) {
