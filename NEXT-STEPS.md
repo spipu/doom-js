@@ -6,22 +6,13 @@ Tracks the major upcoming work and the milestones already reached. Only large mi
 
 When a ToDo item is done, move it to the top of Finished with its completion date.
 
-A ToDo item that specifies a project split into steps (Multiplayer) keeps only what its remaining steps need: what the finished steps built is documented in the project's knowledge base.
+A ToDo item that specifies a project split into steps keeps only what its remaining steps need: what the finished steps built is documented in the project's knowledge base.
 
 ## ToDo
 
 ### Level testing
 
 Finish playing through every level of Doom 2, Freedoom 1 and Freedoom 2.
-
-### Multiplayer testing
-
-Screen sharing has been checked on real devices (a PC with an iPhone, two iPhones); everything else has only run in loopback, two tabs on one machine. To play on real devices:
-
-* **Cooperative and deathmatch**, drop-in and new game, through a whole level change, a death and a departure.
-* **Device matrix**: Android (Chrome), a tablet, two different browsers as subs of one main.
-* **Four real players**: the main's frame time (simulation plus per-turn encoding) and the real turn rate, which the slowest device sets for everyone.
-* **iOS backgrounding**: a sub's screen locked for a few seconds, then for more than 30 s — whether the link survives and the sub picks up again, or is dropped and gets its player back by pairing again under the same nickname.
 
 ### Heretic inventory
 
@@ -110,6 +101,7 @@ A large **performance / rendering** item, to start only **after** everything abo
 
 ## Finished
 
+* **Multiplayer testing** (2026-10-07): cooperative and deathmatch played on real devices — iOS, Android, tablet, mixed browsers, four players, a sub sent to the background.
 * **Multiplayer hardening** (2026-10-01): a sub whose page goes to the background no longer holds the game, a lost player gets its seat back by joining again, and neither a missing image nor a stuck level build blocks a sub.
 * **Deathmatch** (2026-10-01): a new deathmatch from the Multiplayer screen, with frags, both item rules, frag and time limits, a frag table tally and the end of the match.
 * **Projectile and player-body smoothing** (2026-10-01): shots in flight drawn smoothly between their tics, and a player's body flowing over stair steps like its view.
