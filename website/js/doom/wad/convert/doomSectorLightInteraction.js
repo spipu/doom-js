@@ -74,14 +74,22 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     // Every thinker's mutable fields, in build order: a restored level keeps
     // the rooms a line switched off and the strobes it started.
     exportState() {
-        return this._states.map((st) => [st.type, st.light, st.maxLight, st.minLight, st.darkTics, st.count, st.dir]);
+        return this._states.map((st) => ({
+            type:     st.type,
+            light:    st.light,
+            maxLight: st.maxLight,
+            minLight: st.minLight,
+            darkTics: st.darkTics,
+            count:    st.count,
+            dir:      st.dir
+        }));
     }
 
     importState(state) {
         state.forEach((saved, i) => {
             const st = this._states[i];
             if (st !== undefined) {
-                [st.type, st.light, st.maxLight, st.minLight, st.darkTics, st.count, st.dir] = saved;
+                Object.assign(st, saved);
             }
         });
         this._pushFactors();
