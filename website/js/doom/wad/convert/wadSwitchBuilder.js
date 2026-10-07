@@ -50,9 +50,10 @@ class WadSwitchBuilder {
 
         const ld = this._level.linedefs[ldIdx];
         const switchCode = 'switch_' + ldIdx;
-        const isExit = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
+        const isExit     = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
+        const lineAction = WadMapAnalyzer.lineActionOf(this._level.sectors, ld);
         // An exit ignores its tag (vanilla).
-        const targets = ((isExit) ? [] : this._resolveTargets(ld));
+        const targets = ((isExit || (lineAction !== null)) ? [] : this._resolveTargets(ld));
         const split   = WadMapAnalyzer.splitReverseTargets(this._analysis, ld.special, targets);
 
         const geom = ((switchWall.invisible === true)
@@ -62,7 +63,7 @@ class WadSwitchBuilder {
             return null;
         }
         // A visible panel is kept even when it fires nothing.
-        if ((geom.textures.length === 0) && (targets.length === 0) && !isExit) {
+        if ((geom.textures.length === 0) && (targets.length === 0) && !isExit && (lineAction === null)) {
             return null;
         }
 
@@ -101,7 +102,8 @@ class WadSwitchBuilder {
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start, this._liveFloorOf),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
-                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special)
+                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(ld.special),
+                lineAction:     lineAction
             }
         };
     }

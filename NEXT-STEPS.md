@@ -31,7 +31,7 @@ The converter understands vanilla specials only, so most community WADs load wit
 * **BOOM silent teleports**: 207/208 to a landing thing, 243/244 and 262–269 from line to line (keeping the relative position and angle), without fog, sound or freeze. None of the five readable IWADs uses them.
 * **Heretic `Thing_Destroy` (linedef 515)**: `xlat/heretic.txt:17` = `WALK, Thing_Destroy(0,0,0)` → `Level->Massacre()` (`p_lnspec.cpp:1506`, `p_enemy.cpp:3407`, `p_mobj.cpp:1711`): every non-dormant `MF3_ISMONSTER` actor dies from `TELEFRAG_DAMAGE` (hence gibbed), invulnerability lifted.
   * The xlat neutralises it today (`515: 0`): **no linedef of `heretic.wad` carries 515** (scan of the 48 maps; E1M8 only has 2, 11, 31, 36, 62, 88, 97, 103), it is an xlat entry for Raven PWADs.
-  * Planned implementation: `515: 1515`, an extensible `WALK_ACTION_BY_SPECIAL` table (`{1515: 'massacre'}`) forming **a generic "walk line → game action" channel** rather than one more branch beside `stop` / `isExit`, and `DoomMonsterSystem.massacre()` through the existing damage pipeline.
+  * Planned implementation: `515: 1515` in the xlat, a `massacre` entry of the generic line action channel (`LINE_ACTION_BY_SPECIAL`, served by `DoomLineActions`, which already carries the light lines), and `DoomMonsterSystem.massacre()` through the existing damage pipeline.
   * Prerequisite: an explicit `isMonster` flag on the definitions — the 4 `countsKill: false` definitions (barrel, pod, BossBrain, BossEye) are indeed the 4 `: Actor` without `Monster;` in the zscript, but both notions coincide by construction, not by definition.
   * Not verifiable in game on the 6 IWADs: validation through a hand-made test map.
 
@@ -49,8 +49,8 @@ The WAD loads under the fallback profile only. It needs its own thing and specia
 
 The small fidelity gaps knowingly left aside. The deviations attested and accepted (those not meant to be fixed) are not listed here.
 
-* **Systematic converter sweep**: run every Doom 1 / Doom 2 level (then Heretic) through the converter and count the detectable anomalies — faces without texture (index -1), ANIMATED sequence names left static, missing textures, switch slots not drawn, unhandled floor specials — to find oversights of the same kind as those fixed by hand on E2M2 (intermediate frames not animated, missing mover faces, wrong switch slot). Also check the switch usage trace on a level with ordinary lifts.
-* **Closed sectors under sky** (`fh == ch`, sky on both sides, 16 occurrences, all in Freedoom — E1M4, E2M1, E2M9, E3M6, MAP12, MAP15, MAP28): vanilla refuses them (zero height), here they are one-unit steps the player climbs. With no upper wall, the jump guards do not cover them; to handle in the converter if an occurrence gets in the way in game.
+* **Shot switches**: the G1/GR lines painted as a switch (24/46/47, 18 lines in Doom 2 MAP08/MAP18, Freedoom 1 E1M9/E2M7 and Freedoom 2) fire their action and ring, but their image never flips, where vanilla calls P_ChangeSwitchTexture from P_ShootSpecialLine. The `anomalies` bench suite lists them.
+* **Switch usage trace**: check it on a level with ordinary lifts.
 
 ### Rendering performance & quality options
 

@@ -34,6 +34,7 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
         this._stageRules     = null;
         this._exitCallback   = null;
         this._exitSecret     = false;
+        this._lineAction     = null;
     }
 
     get code() {
@@ -55,7 +56,16 @@ class DoomWalkTriggerInteraction extends AbstractInteraction {
         return this;
     }
 
+    // What the crossing runs beyond the movers (DoomLineActions.bind).
+    setLineAction(run) {
+        this._lineAction = run;
+        return this;
+    }
+
     triggered(instance) {
+        if (this._lineAction !== null) {
+            this._lineAction();
+        }
         if (this._stop) {
             DoomTriggerTargets.pause(this._targets);
         } else {

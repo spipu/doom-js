@@ -1,8 +1,8 @@
 /**
  * Walk-trigger builder (W1/WR lines): an invisible zone on the line whose
  * DoomWalkTriggerInteraction starts (or, for the stop lines, pauses) the built
- * movers of its tag when crossed. Walk-over exits (52 / 124 secret) reuse the
- * zone with no targets.
+ * movers of its tag when crossed, or runs its line action. Walk-over exits
+ * (52 / 124 secret) reuse the zone with no targets.
  */
 class WadWalkTriggerBuilder {
     /**
@@ -38,17 +38,18 @@ class WadWalkTriggerBuilder {
     }
 
     _buildWalkTrigger(wt) {
-        const {linedefs} = this._level;
+        const {linedefs, sectors} = this._level;
+        const ld = linedefs[wt.ldIdx];
 
         // An exit ignores its tag (vanilla).
-        const isExit  = (wt.isExit === true);
-        const targets = ((isExit) ? [] : this._resolveTargets(wt.tag, wt.special));
-        if ((targets.length === 0) && !isExit) {
+        const isExit     = (wt.isExit === true);
+        const lineAction = WadMapAnalyzer.lineActionOf(sectors, ld);
+        const targets    = ((isExit || (lineAction !== null)) ? [] : this._resolveTargets(wt.tag, wt.special));
+        if ((targets.length === 0) && !isExit && (lineAction === null)) {
             return null;
         }
         const split = WadMapAnalyzer.splitReverseTargets(this._analysis, wt.special, targets);
 
-        const ld = linedefs[wt.ldIdx];
         const {mesh, radius, segment} = WadMeshBuilder.buildLineZone(this._level, ld, WadConstants.WALK_ZONE_MARGIN);
 
         const walkCode = 'walk_' + wt.ldIdx;
@@ -83,7 +84,8 @@ class WadWalkTriggerBuilder {
                 cycleVariant:   WadConstants.cycleKeyForSpecial(wt.special),
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start, this._liveFloorOf),
                 isExit:         isExit,
-                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special)
+                secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special),
+                lineAction:     lineAction
             }
         };
     }

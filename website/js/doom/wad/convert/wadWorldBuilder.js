@@ -124,6 +124,7 @@ class WadWorldBuilder {
         this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
 
         // Switches + interactions
+        const lineActions = new DoomLineActions();
         const switches = new WadSwitchBuilder(
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf).buildAll();
         for (const sw of switches) {
@@ -134,6 +135,7 @@ class WadWorldBuilder {
             const interaction = new DoomSwitchInteraction(spec.code, spec.targets, spec.mode, spec.tOn, spec.tOff, spec.reverseTargets, spec.cycleVariant, spec.restIndex, spec.swapIndex);
             interaction.setStageRules(spec.stageRules);
             interaction.setTurnEvents(this._turnEvents);
+            interaction.setLineAction(lineActions.bind(spec.lineAction));
             if (spec.remoteSwap) {
                 interaction.setRemoteSwap(spec.remoteSwap);
             }
@@ -153,6 +155,7 @@ class WadWorldBuilder {
             const spec = wt.interactionSpec;
             const interaction = new DoomWalkTriggerInteraction(spec.code, spec.targets, spec.reverseTargets, spec.stop, spec.cycleVariant);
             interaction.setStageRules(spec.stageRules);
+            interaction.setLineAction(lineActions.bind(spec.lineAction));
             if (spec.isExit && (this._onLevelExit !== null)) {
                 interaction.setExitCallback(this._onLevelExit, spec.secret === true);
             }
@@ -213,8 +216,9 @@ class WadWorldBuilder {
 
         let lightInteraction = null;
         if (analysis.lightSectors.length > 0) {
-            lightInteraction = new DoomSectorLightInteraction(analysis.lightSectors);
+            lightInteraction = new DoomSectorLightInteraction(analysis.lightSectors, level.sectors);
             loader.interactions().loadFromData(lightInteraction);
+            lineActions.register('light', (action) => lightInteraction.applyLightAction(action));
         }
 
         const secretZones = this._sectorZones(analysis, bspSectorAt,

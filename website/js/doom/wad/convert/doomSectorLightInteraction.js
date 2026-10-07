@@ -10,18 +10,22 @@
  * where the curve puts it — a dark phase lands ON the floor instead of black,
  * and a room whose rest level already sits there keeps a narrow but non-zero
  * swing. Only the random source deviates from vanilla (Math.random instead of
- * the P_Random table).
+ * the P_Random table). A 'static' sector has no thinker: only a light line
+ * action changes its level, or starts its strobe.
  */
 class DoomSectorLightInteraction extends AbstractInteraction {
     /**
      * @param {object[]} lightSectors - analyzer descriptors
-     *                                  {si, type, darkTics, sync, maxLight, minLight}
+     *                                  {si, type, darkTics, sync, maxLight, minLight, neighbours}
+     * @param {object[]} sectors      - the parsed sectors, whose raw level a
+     *                                  neighbour without a state keeps
      */
-    constructor(lightSectors) {
+    constructor(lightSectors, sectors) {
         super();
-        this._states  = lightSectors.map((lightSector) => this._initState(lightSector));
-        this._clockS  = 0;
-        this._targets = null;
+        this._states    = lightSectors.map((lightSector) => this._initState(lightSector));
+        this._rawLevels = sectors.map((sector) => sector.lightRaw);
+        this._clockS    = 0;
+        this._targets   = null;
         // Lookup by sector index, so the weapon shading can read the same live
         // factor a sector pushes to its walls (DoomSectorLight.factorAt).
         this._bySi = {};
@@ -46,7 +50,41 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     // rest level lands on sectorLightLevel(current). The curve never returns
     // less than SECTOR_LIGHT_MIN, so the division is always safe.
     static _factorOf(st) {
-        return (WadConstants.sectorLightLevel(st.light) / WadConstants.sectorLightLevel(st.maxLight));
+        return (WadConstants.sectorLightLevel(st.light) / WadConstants.sectorLightLevel(st.base));
+    }
+
+    /**
+     * A light line action on the sectors of its tag (EV_LightTurnOn,
+     * EV_TurnTagLightsOff, EV_StartLightStrobing), neighbours read live.
+     *
+     * @param {object} action - WadMapAnalyzer.lineActionOf
+     */
+    applyLightAction(action) {
+        for (const si of action.sectors) {
+            const st = this._bySi[si];
+            if (action.to === 'strobe') {
+                this._startStrobe(st);
+                continue;
+            }
+            st.light = this._levelFor(st, action.to);
+        }
+        this._pushFactors();
+    }
+
+    // Every thinker's mutable fields, in build order: a restored level keeps
+    // the rooms a line switched off and the strobes it started.
+    exportState() {
+        return this._states.map((st) => [st.type, st.light, st.maxLight, st.minLight, st.darkTics, st.count, st.dir]);
+    }
+
+    importState(state) {
+        state.forEach((saved, i) => {
+            const st = this._states[i];
+            if (st !== undefined) {
+                [st.type, st.light, st.maxLight, st.minLight, st.darkTics, st.count, st.dir] = saved;
+            }
+        });
+        this._pushFactors();
     }
 
     // The live light level of every light sector, in build order.
@@ -102,20 +140,22 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     // fire flicker with its 4-tic period (P_SpawnFireFlicker).
     _initState(lightSector) {
         const st = {
-            si:       lightSector.si,
-            type:     lightSector.type,
-            darkTics: lightSector.darkTics,
-            maxLight: lightSector.maxLight,
-            minLight: lightSector.minLight,
-            light:    lightSector.maxLight,
-            dir:      -1,
-            count:    1
+            si:         lightSector.si,
+            type:       lightSector.type,
+            darkTics:   lightSector.darkTics,
+            maxLight:   lightSector.maxLight,
+            minLight:   lightSector.minLight,
+            neighbours: lightSector.neighbours,
+            base:       lightSector.maxLight,
+            light:      lightSector.maxLight,
+            dir:        -1,
+            count:      1
         };
         if (lightSector.type === 'flicker') {
             st.count = (this._rand() & WadConstants.LIGHT_FLASH_MAX_MASK) + 1;
         }
         if (lightSector.type === 'strobe') {
-            st.count = ((lightSector.sync) ? 1 : (this._rand() & 7) + 1);
+            st.count = ((lightSector.sync) ? 1 : this._asyncStrobeCount());
         }
         if (lightSector.type === 'fire') {
             st.count = WadConstants.LIGHT_FIRE_PERIOD_TICS;
@@ -125,6 +165,9 @@ class DoomSectorLightInteraction extends AbstractInteraction {
     }
 
     _stepTic(st) {
+        if (st.type === 'static') {
+            return;
+        }
         if (st.type === 'glow') {
             this._stepGlow(st);
             return;
@@ -187,6 +230,48 @@ class DoomSectorLightInteraction extends AbstractInteraction {
             st.light -= WadConstants.LIGHT_GLOW_SPEED;
             st.dir = -1;
         }
+    }
+
+    // EV_LightTurnOn with 0 takes the brightest neighbour, from 0;
+    // EV_TurnTagLightsOff the darkest, capped at the sector's own level.
+    _levelFor(st, to) {
+        const levels = st.neighbours.map((si) => this._liveLevel(si));
+        if (to === 'brightestNeighbour') {
+            return Math.max(0, ...levels);
+        }
+        if (to === 'darkestNeighbour') {
+            return Math.min(st.light, ...levels);
+        }
+
+        return to;
+    }
+
+    _liveLevel(si) {
+        const st = this._bySi[si];
+
+        return ((st !== undefined) ? st.light : this._rawLevels[si]);
+    }
+
+    // P_SpawnStrobeFlash(sector, SLOWDARK, 0). Vanilla skips a sector whose
+    // mover holds specialdata and may stack a second light thinker; one light
+    // state per sector here, so a sector with an effect keeps its own.
+    _startStrobe(st) {
+        if (st.type !== 'static') {
+            return;
+        }
+        st.type     = 'strobe';
+        st.darkTics = WadConstants.LIGHT_STROBE_SLOW_DARK_TICS;
+        st.maxLight = st.light;
+        st.minLight = this._levelFor(st, 'darkestNeighbour');
+        if (st.minLight === st.maxLight) {
+            st.minLight = 0;
+        }
+        st.count = this._asyncStrobeCount();
+    }
+
+    // P_SpawnStrobeFlash: an async strobe starts 1 to 8 tics in.
+    _asyncStrobeCount() {
+        return (this._rand() & 7) + 1;
     }
 
     _rand() {

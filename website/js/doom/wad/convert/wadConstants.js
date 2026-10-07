@@ -84,7 +84,7 @@ class WadConstants {
         'WALK_TRIGGER_ONCE_BY_SPECIAL', 'SCROLL_WALL_BY_SPECIAL',
         'SECTOR_DAMAGE_BY_SPECIAL', 'LIGHT_EFFECT_BY_SPECIAL',
         'SECTOR_PUSH_BY_SPECIAL', 'SECTOR_FRICTION_BY_SPECIAL',
-        'SECTOR_FLAT_SCROLL_BY_SPECIAL',
+        'SECTOR_FLAT_SCROLL_BY_SPECIAL', 'LINE_ACTION_BY_SPECIAL',
         'SWITCH_SPECIALS', 'SWITCH_REVERSE_SPECIALS', 'SWITCH_EXIT_SPECIALS',
         'WALK_TRIGGER_SPECIALS', 'WALK_STOP_SPECIALS', 'WALK_EXIT_SPECIALS',
         'EXIT_SECRET_SPECIALS', 'TELEPORT_SPECIALS'
@@ -653,7 +653,9 @@ class WadConstants {
         123: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         132: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         134: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
-        136: {mode: 'timed', minOnMs: 1000, minOffMs: 1000}
+        136: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
+        138: {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
+        139: {mode: 'timed', minOnMs: 1000, minOffMs: 1000}
     };
     static SWITCH_INTERACTION_DEFAULT = {mode: 'once', minOnMs: null, minOffMs: null};
 
@@ -666,8 +668,16 @@ class WadConstants {
         return {code: moverCode, v: ((ridesWithFloor) ? vPerUnit : -vPerUnit)};
     }
 
+    // A used line that drives movers or runs a line action.
+    static isSwitchSpecial(special) {
+        return (WadConstants.SWITCH_SPECIALS.has(special) || WadConstants.LINE_ACTION_SWITCH_SPECIALS.has(special));
+    }
+
     // Whether a trigger line can fire more than once (WR / SR / GR).
     static specialRepeats(special) {
+        if (special in WadConstants.LINE_ACTION_BY_SPECIAL) {
+            return (WadConstants.LINE_ACTION_BY_SPECIAL[special].once === false);
+        }
         if (special in WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL) {
             return (WadConstants.WALK_TRIGGER_ONCE_BY_SPECIAL[special] === false);
         }
@@ -848,6 +858,35 @@ class WadConstants {
     // 74 (WR) (EV_CeilingCrushStop). A later start line resumes the target
     // exactly where it froze.
     static WALK_STOP_SPECIALS = new Set([54, 89, 57, 74]);
+
+    // --- Line actions ---
+
+    // What a crossed or used line does to the game beyond the movers: a named
+    // action run on the sectors of its tag (DoomLineActions), with the
+    // activation and the once flag of its line. Light actions (p_spec.c →
+    // p_lights.c): 'to' is a raw level, 'brightestNeighbour' (EV_LightTurnOn
+    // with 0), 'darkestNeighbour' (EV_TurnTagLightsOff) or 'strobe'
+    // (EV_StartLightStrobing).
+    static LINE_ACTION_BY_SPECIAL = {
+        12:  {action: 'light', activation: 'walk',   once: true,  to: 'brightestNeighbour'},
+        13:  {action: 'light', activation: 'walk',   once: true,  to: 255},
+        17:  {action: 'light', activation: 'walk',   once: true,  to: 'strobe'},
+        35:  {action: 'light', activation: 'walk',   once: true,  to: 35},
+        79:  {action: 'light', activation: 'walk',   once: false, to: 35},
+        80:  {action: 'light', activation: 'walk',   once: false, to: 'brightestNeighbour'},
+        81:  {action: 'light', activation: 'walk',   once: false, to: 255},
+        104: {action: 'light', activation: 'walk',   once: true,  to: 'darkestNeighbour'},
+        138: {action: 'light', activation: 'switch', once: false, to: 255},
+        139: {action: 'light', activation: 'switch', once: false, to: 35}
+    };
+
+    // Derived membership sets — never edit these, edit LINE_ACTION_BY_SPECIAL.
+    static LINE_ACTION_WALK_SPECIALS   = null;
+    static LINE_ACTION_SWITCH_SPECIALS = null;
+    static LIGHT_ACTION_SPECIALS       = null;
+
+    // EV_StartLightStrobing spawns its strobe with SLOWDARK dark tics.
+    static LIGHT_STROBE_SLOW_DARK_TICS = 35;
 
     // Longest displacement (world units) still read as a walk step by the
     // line-crossing guard (WadLineCrossing): the player covers at most ~0.22 m
@@ -1199,6 +1238,9 @@ class WadConstants {
         WadConstants.STAIR_SPECIALS              = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, () => true);
         WadConstants.STAIR_SWITCH_SPECIALS       = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'switch'));
         WadConstants.STAIR_WALK_SPECIALS         = WadConstants._specialsWhere(WadConstants.STAIR_BY_SPECIAL, (s) => (s.activation === 'walk'));
+        WadConstants.LINE_ACTION_WALK_SPECIALS   = WadConstants._specialsWhere(WadConstants.LINE_ACTION_BY_SPECIAL, (a) => (a.activation === 'walk'));
+        WadConstants.LINE_ACTION_SWITCH_SPECIALS = WadConstants._specialsWhere(WadConstants.LINE_ACTION_BY_SPECIAL, (a) => (a.activation === 'switch'));
+        WadConstants.LIGHT_ACTION_SPECIALS       = WadConstants._specialsWhere(WadConstants.LINE_ACTION_BY_SPECIAL, (a) => (a.action === 'light'));
         WadConstants._warnOrphanSwitchProfiles();
     }
 
@@ -1208,7 +1250,7 @@ class WadConstants {
     static _warnOrphanSwitchProfiles() {
         for (const key of Object.keys(WadConstants.SWITCH_INTERACTION_BY_SPECIAL)) {
             const special = Number(key);
-            if (WadConstants.SWITCH_SPECIALS.has(special) || WadConstants._WARNED_ORPHAN_SWITCHES.has(special)) {
+            if (WadConstants.isSwitchSpecial(special) || WadConstants._WARNED_ORPHAN_SWITCHES.has(special)) {
                 continue;
             }
             WadConstants._WARNED_ORPHAN_SWITCHES.add(special);

@@ -28,9 +28,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "138": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -128,9 +126,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "13": 5
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -142,11 +138,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "12": 2,
-      "13": 1,
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -352,10 +344,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "12": 4,
-      "13": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -415,9 +404,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 2
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -876,9 +863,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 3
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -974,9 +959,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "13": 4
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1012,9 +995,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "104": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1172,9 +1153,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "104": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1222,10 +1201,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "138": 1,
-      "139": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1361,10 +1337,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "13": 1,
-      "35": 3
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1403,9 +1376,7 @@
       "line 39 special 46 SW1LION",
       "line 533 special 46 SW1LION"
     ],
-    "unhandledLineSpecials": {
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1477,9 +1448,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1503,9 +1472,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1517,9 +1484,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 6
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1531,11 +1496,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 2,
-      "138": 1,
-      "139": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1607,10 +1568,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "12": 1,
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1658,9 +1616,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "17": 4
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1840,9 +1796,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "104": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1890,9 +1844,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "104": 3
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -1952,10 +1904,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "17": 1,
-      "35": 13
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -2015,9 +1964,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "17": 13
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -2029,9 +1976,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 4
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -2043,9 +1988,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 2
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],
@@ -2117,9 +2060,7 @@
     "staticAnimated": [],
     "switchWithoutPartner": [],
     "gunLineSwitches": [],
-    "unhandledLineSpecials": {
-      "35": 1
-    },
+    "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
     "missingSprites": [],

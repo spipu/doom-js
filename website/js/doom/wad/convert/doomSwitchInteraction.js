@@ -33,6 +33,7 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._remoteFaces    = null;
         this._remoteObject   = null;
         this._events         = null;
+        this._lineAction     = null;
 
         if (mode === 'timed') {
             this.setModeTimed(minOnTime, minOffTime);
@@ -65,6 +66,12 @@ class DoomSwitchInteraction extends SwitchInteraction {
         this._remoteSwap   = (spec ?? null);
         this._remoteFaces  = null;
         this._remoteObject = null;
+        return this;
+    }
+
+    // What the press runs beyond the movers (DoomLineActions.bind).
+    setLineAction(run) {
+        this._lineAction = run;
         return this;
     }
 
@@ -106,6 +113,9 @@ class DoomSwitchInteraction extends SwitchInteraction {
     _triggerOn(instance) {
         if (!DoomTriggerTargets.fire(this._targets, this._reverseTargets, this._cycleVariant, this._stageRules)) {
             return false;
+        }
+        if (this._lineAction !== null) {
+            this._lineAction();
         }
         // The button rings from the switch's own position; an exit switch has
         // its dedicated lump (p_switch.c / p_spec.c).

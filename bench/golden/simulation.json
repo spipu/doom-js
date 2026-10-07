@@ -1,7 +1,7 @@
 {
   "Doom1/E1M1@3": {
     "sha": "1fc28f4a7bd4da692a20512873d1dc9d6612443812dbfe1e6796a465c47a9e04",
-    "saveSha": "c4a925b9f4b1aaeb953839350f305014708ccee53548f81fba59338f1ecac645",
+    "saveSha": "d6367766ad9b087c0d741c7ee6231c33517f4c3ef9d85403453164bf4ff2c4b1",
     "frames": 1200,
     "events": 115,
     "dead": false,
@@ -25,7 +25,7 @@
   },
   "freedoom1/E1M1@3": {
     "sha": "a194f18a8810cd913c2826b7d9331dd990f9b8e3268bd43555a4a64998ccc9ef",
-    "saveSha": "55cb40260d65b3cd29f31b445f2f0fa325db5adc2d450cb2d2152b9de48fcb17",
+    "saveSha": "ab574f54b00a127203e372a31ea4ece71ca816a170226ffe51b5d33f472394a6",
     "frames": 1200,
     "events": 129,
     "dead": false,
@@ -37,7 +37,7 @@
   },
   "heretic/E1M1@3": {
     "sha": "2fab7b9efb05fe28058150a18bb1e7bac2f6f38fcb40e596bc24024215514486",
-    "saveSha": "8fec65131d10016eb0e40ef2b3f63584fe95c5f50ba4525f07268e8ff4216cca",
+    "saveSha": "27e7fda8e7ee7678b7cf24193054682779cd8e940f3dd75552750809a4628063",
     "frames": 1200,
     "events": 90,
     "dead": false,
@@ -49,7 +49,7 @@
   },
   "heretic/E1M3@3": {
     "sha": "1467e7fa77b7b291ef46d2b442d3a5604e6aeb7ce1e8f550d502ad122bf65451",
-    "saveSha": "8070df4893e4cf26fef640c6f71d85ec3dc9847a33b895ff6a27d904c9559d43",
+    "saveSha": "49cb86ec781915fd24e6d9fd2b7e7f76f392fcd05fe24b31048ea07269def9d7",
     "frames": 1200,
     "events": 135,
     "dead": false,

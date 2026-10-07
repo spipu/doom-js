@@ -129,31 +129,22 @@ class WadMapAnalyzer {
     // strobes fall back to 0 when no neighbour is darker, fire flicker adds
     // +16. All bounds stay in the RAW lump domain, like vanilla; the interaction
     // converts each step through WadConstants.sectorLightLevel when it renders.
+    // A sector a light line action targets gets a 'static' state: no thinker
+    // until the line sets its level or starts its strobe.
     _identifyLightSectors() {
-        const {linedefs, sidedefs, sectors} = this._level;
-
-        const darkestNeighbour = {};
-        for (const ld of linedefs) {
-            if ((ld.right < 0) || (ld.left < 0)) {
-                continue;
-            }
-            const rSi = sidedefs[ld.right].sector;
-            const lSi = sidedefs[ld.left].sector;
-            if (rSi === lSi) {
-                continue;
-            }
-            darkestNeighbour[rSi] = Math.min(darkestNeighbour[rSi] ?? 255, sectors[lSi].lightRaw);
-            darkestNeighbour[lSi] = Math.min(darkestNeighbour[lSi] ?? 255, sectors[rSi].lightRaw);
-        }
+        const {sectors} = this._level;
+        const neighbours = this._sectorNeighbours();
+        const targeted   = this._lightActionSectorIds();
 
         const lightSectors = [];
         for (let si = 0; si < sectors.length; si++) {
-            const effect = WadConstants.LIGHT_EFFECT_BY_SPECIAL[sectors[si].special];
-            if (effect === undefined) {
+            const effect = (WadConstants.LIGHT_EFFECT_BY_SPECIAL[sectors[si].special] ?? ((targeted.has(si)) ? {type: 'static'} : null));
+            if (effect === null) {
                 continue;
             }
             const maxLight = sectors[si].lightRaw;
-            let minLight = Math.min(maxLight, darkestNeighbour[si] ?? maxLight);
+            const darkest  = Math.min(...neighbours[si].map((n) => sectors[n].lightRaw));
+            let minLight   = Math.min(maxLight, darkest);
             if ((effect.type === 'strobe') && (minLight === maxLight)) {
                 minLight = 0;
             }
@@ -161,16 +152,81 @@ class WadMapAnalyzer {
                 minLight = minLight + WadConstants.LIGHT_FIRE_MIN_OFFSET;
             }
             lightSectors.push({
-                si:       si,
-                type:     effect.type,
-                darkTics: (effect.darkTics ?? 0),
-                sync:     (effect.sync === true),
-                maxLight: maxLight,
-                minLight: minLight
+                si:         si,
+                type:       effect.type,
+                darkTics:   (effect.darkTics ?? 0),
+                sync:       (effect.sync === true),
+                maxLight:   maxLight,
+                minLight:   minLight,
+                neighbours: neighbours[si]
             });
         }
 
         return lightSectors;
+    }
+
+    // Sectors across the two-sided lines of each sector, ascending.
+    _sectorNeighbours() {
+        const {linedefs, sidedefs, sectors} = this._level;
+        const sets = sectors.map(() => new Set());
+        for (const ld of linedefs) {
+            if ((ld.right < 0) || (ld.left < 0)) {
+                continue;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            if (rSi !== lSi) {
+                sets[rSi].add(lSi);
+                sets[lSi].add(rSi);
+            }
+        }
+
+        return sets.map((set) => [...set].sort((a, b) => (a - b)));
+    }
+
+    _lightActionSectorIds() {
+        const ids = new Set();
+        for (const ld of this._level.linedefs) {
+            if (WadConstants.LIGHT_ACTION_SPECIALS.has(ld.special)) {
+                WadMapAnalyzer.sectorsTagged(this._level.sectors, ld.tag).forEach((si) => ids.add(si));
+            }
+        }
+
+        return ids;
+    }
+
+    /**
+     * @param {object[]} sectors
+     * @param {int}      tag
+     * @returns {int[]} the sectors carrying the tag, none for tag 0
+     */
+    static sectorsTagged(sectors, tag) {
+        const ids = [];
+        if (tag === 0) {
+            return ids;
+        }
+        sectors.forEach((sector, si) => {
+            if (sector.tag === tag) {
+                ids.push(si);
+            }
+        });
+
+        return ids;
+    }
+
+    /**
+     * @param {object[]} sectors
+     * @param {object}   ld - a linedef
+     * @returns {object|null} the line action the line runs, on the sectors of
+     *                        its tag (LINE_ACTION_BY_SPECIAL), null for none
+     */
+    static lineActionOf(sectors, ld) {
+        const entry = WadConstants.LINE_ACTION_BY_SPECIAL[ld.special];
+        if (entry === undefined) {
+            return null;
+        }
+
+        return {name: entry.action, to: entry.to, sectors: WadMapAnalyzer.sectorsTagged(sectors, ld.tag)};
     }
 
     // Walk-over linedefs (W1/WR) driving tagged movers, plus the walk-over exits.
@@ -181,10 +237,11 @@ class WadMapAnalyzer {
             const ld = linedefs[ldIdx];
             // Walk doors (2/86/90/109, 'proximity' in DOOR_BY_SPECIAL) open when
             // their line is crossed, not when the door is approached.
-            const isWalkLift  = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
-            const isWalkDoor  = (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'proximity');
-            const isWalkStair = WadConstants.STAIR_WALK_SPECIALS.has(ld.special);
-            if ((isWalkLift || isWalkDoor || isWalkStair) && (ld.tag !== 0)) {
+            const isWalkLift   = WadConstants.WALK_TRIGGER_SPECIALS.has(ld.special);
+            const isWalkDoor   = (WadConstants.DOOR_BY_SPECIAL[ld.special]?.trigger === 'proximity');
+            const isWalkStair  = WadConstants.STAIR_WALK_SPECIALS.has(ld.special);
+            const isWalkAction = WadConstants.LINE_ACTION_WALK_SPECIALS.has(ld.special);
+            if ((isWalkLift || isWalkDoor || isWalkStair || isWalkAction) && (ld.tag !== 0)) {
                 walkTriggers.push({ldIdx: ldIdx, tag: ld.tag, special: ld.special});
             }
             // Exits (52 / 124 secret) ignore their tag, like the exit switches.
@@ -1197,7 +1254,7 @@ class WadMapAnalyzer {
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            if (!WadConstants.SWITCH_SPECIALS.has(ld.special)) {
+            if (!WadConstants.isSwitchSpecial(ld.special)) {
                 continue;
             }
             if (ld.right < 0) {
