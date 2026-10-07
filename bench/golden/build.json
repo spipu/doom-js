@@ -1680,7 +1680,7 @@
     "secrets": 2
   },
   "heretic/E2M5": {
-    "sha": "87022680abdf57ede6048dba7c131b8eacc9ec63f8f2e540fe9ab19bf48488df",
+    "sha": "d213582f67e3129892d1c8b9a677e7d2fd17d2c4dbb7562203f7a1bd43099d9f",
     "objects": 1142,
     "points": 14454,
     "faces": 7935,
@@ -1968,7 +1968,7 @@
     "secrets": 1
   },
   "heretic/E5M2": {
-    "sha": "446b2e13e0bbafec11cfd820d0e9e9aa62522d52a5b4228e35e9e1f73647c774",
+    "sha": "2957bdfa015093f68ffa31329283715b6247cd06841b5cdc16bbeee0976c9a79",
     "objects": 1162,
     "points": 10333,
     "faces": 5560,

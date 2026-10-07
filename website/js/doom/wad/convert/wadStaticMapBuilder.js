@@ -377,11 +377,6 @@ class WadStaticMapBuilder {
             const ceilingSky = WadConstants.isSkyFlat(sec.ct);
             const ct = ((ceilingSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
-            // Heretic eastward flat scroll: map units per tic → UV per second
-            // (64 units per tile); the negative sign makes it flow east.
-            const flatScroll = (WadConstants.SECTOR_FLAT_SCROLL_BY_SPECIAL[sec.special] ?? 0);
-            const uScroll    = ((flatScroll !== 0) ? (-flatScroll / WadConstants.SECONDS_PER_TIC / 64) : 0);
-
             // Floor movers draw their own top flat.
             if (!liftIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
                 if (floorSky) {
@@ -390,7 +385,7 @@ class WadStaticMapBuilder {
                     WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, sec.fh, true, sec.light, {collisionOnly: true});
                 } else if (ft >= 0) {
                     WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
-                        {lightGroup: this._lightGroupOf(si), uScroll: uScroll, noDecal: this._bank.isLiquidFlat(sec.ft)});
+                        WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si));
                 }
             }
             if (ct >= 0) {
@@ -408,6 +403,6 @@ class WadStaticMapBuilder {
             return;
         }
         WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
-            {lightGroup: this._lightGroupOf(si), noDecal: this._bank.isLiquidFlat(sec.ft)});
+            WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si));
     }
 }

@@ -56,7 +56,26 @@ class WadMeshBuilder {
             return;
         }
         WadMeshBuilder.addSectorFlat(mesh, level, ft, si, origFh, true, sec.light,
-            {lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si), noDecal: bank.isLiquidFlat(sec.ft)});
+            WadMeshBuilder.floorFlatOptions(level, bank, analysis, si));
+    }
+
+    // Shared by every builder of a floor flat, static map and movers alike.
+    static floorFlatOptions(level, bank, analysis, si) {
+        const sec = level.sectors[si];
+
+        return {
+            lightGroup: WadMapAnalyzer.lightGroupOf(analysis, si),
+            uScroll:    WadMeshBuilder._flatScrollOf(sec),
+            noDecal:    bank.isLiquidFlat(sec.ft)
+        };
+    }
+
+    // Heretic eastward flat scroll: map units per tic → UV per second
+    // (64 units per tile); the negative sign makes it flow east.
+    static _flatScrollOf(sector) {
+        const speed = (WadConstants.SECTOR_FLAT_SCROLL_BY_SPECIAL[sector.special] ?? 0);
+
+        return ((speed !== 0) ? (-speed / WadConstants.SECONDS_PER_TIC / 64) : 0);
     }
 
     // Floor or ceiling flat from the linedef chains and their holes; only an
