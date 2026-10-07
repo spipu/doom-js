@@ -96,13 +96,13 @@
     "secrets": 1
   },
   "freedoom1/E1M9": {
-    "sha": "d09619f9cf9562c3b479bc3a54956dd3a4855398c4baa2eed7edd8fe727d69b2",
-    "objects": 1060,
+    "sha": "ee35a29bbd8d6fe11d5bbf0ec195e57eb0b4a3e9377272658ebbeefb612a381a",
+    "objects": 1061,
     "points": 18923,
     "faces": 10596,
-    "textures": 1110,
-    "instances": 376,
-    "interactions": 46,
+    "textures": 1111,
+    "instances": 377,
+    "interactions": 47,
     "kills": 106,
     "items": 35,
     "secrets": 5
@@ -180,13 +180,13 @@
     "secrets": 4
   },
   "freedoom1/E2M7": {
-    "sha": "6dc106188005821c91d930e4dd990427c93e7e614bcb36784ebc334c4a008883",
-    "objects": 1095,
+    "sha": "d5555143627c9c319e09f8400e09e4a43a4b3f3c09ca73315557fd2a14267096",
+    "objects": 1096,
     "points": 35843,
     "faces": 20649,
     "textures": 1058,
-    "instances": 512,
-    "interactions": 45,
+    "instances": 513,
+    "interactions": 46,
     "kills": 192,
     "items": 49,
     "secrets": 4
@@ -552,13 +552,13 @@
     "secrets": 4
   },
   "freedoom2/MAP11": {
-    "sha": "b1404b6917c56f91f027532f22aae67b7700014595d2a2d2d8a1415743312227",
-    "objects": 1879,
+    "sha": "25e912306d169d3cbdad7855ccaa27a4c48922ec38d5eae983f3379c305ffdbd",
+    "objects": 1884,
     "points": 41384,
     "faces": 23489,
-    "textures": 1892,
-    "instances": 985,
-    "interactions": 81,
+    "textures": 1893,
+    "instances": 990,
+    "interactions": 86,
     "kills": 267,
     "items": 152,
     "secrets": 12
@@ -660,13 +660,13 @@
     "secrets": 2
   },
   "freedoom2/MAP20": {
-    "sha": "a9314147e40f3eb5d3ad95a9062c8686b6f0b3bfc6efe350c5801b4fee7ccd53",
-    "objects": 1757,
+    "sha": "646b1663317e35375b9f51256f88ddf843eeb3819c3585fc489439346fe4ec70",
+    "objects": 1758,
     "points": 30356,
     "faces": 17316,
     "textures": 1705,
-    "instances": 460,
-    "interactions": 55,
+    "instances": 461,
+    "interactions": 56,
     "kills": 141,
     "items": 59,
     "secrets": 3
@@ -720,13 +720,13 @@
     "secrets": 1
   },
   "freedoom2/MAP25": {
-    "sha": "bf7f51abf0d70ea3d5058d0e2a33de49f081b6f45e0319bd1caff2fcad32faf2",
-    "objects": 1712,
+    "sha": "adc266966150df45a8c043f848fc30a4bce523c278f5bc626dbc72d92460bdad",
+    "objects": 1713,
     "points": 45240,
     "faces": 26362,
     "textures": 1635,
-    "instances": 525,
-    "interactions": 79,
+    "instances": 526,
+    "interactions": 80,
     "kills": 122,
     "items": 48,
     "secrets": 5
@@ -792,25 +792,25 @@
     "secrets": 1
   },
   "freedoom2/MAP31": {
-    "sha": "fce374cf7d662eee3774c22ff443d06891ad05bf860daf0040477afbe08058b0",
-    "objects": 1391,
+    "sha": "0da63b37f10d96e1538077eb412ee7d0836207699e3f79723294ee7f1990e552",
+    "objects": 1393,
     "points": 10061,
     "faces": 5594,
     "textures": 1355,
-    "instances": 90,
-    "interactions": 24,
+    "instances": 92,
+    "interactions": 26,
     "kills": 17,
     "items": 1,
     "secrets": 5
   },
   "freedoom2/MAP32": {
-    "sha": "fcc0e117e60d03bb808d1ca0e77be0659b5b2280faf4119543386c7bc08b63e9",
-    "objects": 1564,
+    "sha": "be1833fec0e50621f0e3b46746fd7006707dcb357533ce5edcdc67cbd0be2e2d",
+    "objects": 1565,
     "points": 11838,
     "faces": 6364,
-    "textures": 1530,
-    "instances": 242,
-    "interactions": 27,
+    "textures": 1531,
+    "instances": 243,
+    "interactions": 28,
     "kills": 81,
     "items": 18,
     "secrets": 3
@@ -1224,13 +1224,13 @@
     "secrets": 1
   },
   "Doom2/MAP08": {
-    "sha": "3a94c540febfa029a2d6ab408565f8e23daa44387216131cc706f2c54230ed29",
-    "objects": 1605,
-    "points": 10675,
+    "sha": "37061b863a6b653b7f0ea103b5ee58f89cfa01d6591529a44e2c9d01f287b293",
+    "objects": 1608,
+    "points": 10676,
     "faces": 5676,
-    "textures": 1609,
-    "instances": 258,
-    "interactions": 26,
+    "textures": 1610,
+    "instances": 261,
+    "interactions": 29,
     "kills": 111,
     "items": 8,
     "secrets": 7
@@ -1344,13 +1344,13 @@
     "secrets": 3
   },
   "Doom2/MAP18": {
-    "sha": "65aaecfbbe071b23df5092f4c22b78c0ea2b841a66d59908fb62ef0bf42576f8",
-    "objects": 1607,
-    "points": 11646,
+    "sha": "d1bb27b269eeba8b3f9050c741510d917176344a960c4661eb374e38303e8e83",
+    "objects": 1609,
+    "points": 11648,
     "faces": 6349,
     "textures": 1603,
-    "instances": 467,
-    "interactions": 27,
+    "instances": 469,
+    "interactions": 29,
     "kills": 127,
     "items": 182,
     "secrets": 4

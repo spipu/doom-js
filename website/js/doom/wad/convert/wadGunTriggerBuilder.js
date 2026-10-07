@@ -3,7 +3,8 @@
  * instance and no zone: a shot is a trace, so the runtime side
  * (DoomGunTriggers) tests every hitscan trace against the line segment in 2D,
  * vanilla PTR_ShootTraverse style. This builder only resolves the world-space
- * segment, the trigger behaviour and the tagged targets of each impact line.
+ * segment, the trigger behaviour and the tagged targets of each impact line,
+ * plus the switch panel it flips when it is painted as one.
  *
  * Targets: 46 opens the tagged doors (EV_DoDoor open — the 'one-way@2'
  * keyframe variant on doors that also carry manual cycles), 24/47 raise the
@@ -16,18 +17,20 @@ class WadGunTriggerBuilder {
      * @param {object}      analysis
      * @param {Set<string>} builtRisingCodes
      * @param {Set<string>} builtDoorCodes
+     * @param {Set<string>} builtSwitchCodes
      * @param {function}    liveFloorOf
      */
-    constructor(level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf) {
+    constructor(level, analysis, builtRisingCodes, builtDoorCodes, builtSwitchCodes, liveFloorOf) {
         this._level            = level;
         this._analysis         = analysis;
         this._builtRisingCodes = builtRisingCodes;
         this._builtDoorCodes   = builtDoorCodes;
+        this._builtSwitchCodes = builtSwitchCodes;
         this._liveFloorOf      = liveFloorOf;
     }
 
     /**
-     * @returns {object[]} [{x1, z1, x2, z2, y, once, used, targets, cycleVariant, stageRules}]
+     * @returns {object[]} [{x1, z1, x2, z2, y, once, used, targets, cycleVariant, stageRules, panelCode}]
      */
     buildAll() {
         const triggers = [];
@@ -56,7 +59,8 @@ class WadGunTriggerBuilder {
 
         // Button sound height: mid-height of the front sector (the vanilla
         // buttonlist soundorg is the line's sector origin).
-        const front = this._level.sectors[this._level.sidedefs[ld.right].sector];
+        const front     = this._level.sectors[this._level.sidedefs[ld.right].sector];
+        const panelCode = 'switch_' + gt.ldIdx;
 
         return {
             x1:          x1,
@@ -68,7 +72,8 @@ class WadGunTriggerBuilder {
             used:        false,
             targets:     targets,
             cycleVariant: WadConstants.cycleKeyForSpecial(gt.special),
-            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets, this._liveFloorOf)
+            stageRules:  WadMapAnalyzer.stageRulesFor(this._analysis, gt.special, targets, this._liveFloorOf),
+            panelCode:   ((this._builtSwitchCodes.has(panelCode)) ? panelCode : null)
         };
     }
 

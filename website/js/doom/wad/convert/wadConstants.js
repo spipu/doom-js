@@ -635,6 +635,7 @@ class WadConstants {
         42:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         43:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         45:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
+        46:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         60:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         61:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
         62:  {mode: 'timed', minOnMs: 1000, minOffMs: 1000},
@@ -1250,7 +1251,7 @@ class WadConstants {
     static _warnOrphanSwitchProfiles() {
         for (const key of Object.keys(WadConstants.SWITCH_INTERACTION_BY_SPECIAL)) {
             const special = Number(key);
-            if (WadConstants.isSwitchSpecial(special) || WadConstants._WARNED_ORPHAN_SWITCHES.has(special)) {
+            if (WadConstants.isSwitchSpecial(special) || WadConstants.GUN_SPECIALS.has(special) || WadConstants._WARNED_ORPHAN_SWITCHES.has(special)) {
                 continue;
             }
             WadConstants._WARNED_ORPHAN_SWITCHES.add(special);

@@ -1254,16 +1254,16 @@ class WadMapAnalyzer {
 
         for (let ldIdx = 0; ldIdx < linedefs.length; ldIdx++) {
             const ld = linedefs[ldIdx];
-            if (!WadConstants.isSwitchSpecial(ld.special)) {
-                continue;
-            }
-            if (ld.right < 0) {
+            // A shot line painted as a switch flips its image too
+            // (P_ShootSpecialLine → P_ChangeSwitchTexture); unpainted, it has no panel.
+            const isGun = WadConstants.GUN_SPECIALS.has(ld.special);
+            if ((!WadConstants.isSwitchSpecial(ld.special) && !isGun) || (ld.right < 0)) {
                 continue;
             }
             const rSd = sidedefs[ld.right];
 
             if (ld.left < 0) {
-                if (WadTextureBank.isBlank(rSd.middle)) {
+                if (WadTextureBank.isBlank(rSd.middle) || (isGun && !WadMapAnalyzer._isSwitchTexture(rSd.middle))) {
                     continue;
                 }
                 ids.add(ldIdx);
@@ -1271,8 +1271,12 @@ class WadMapAnalyzer {
                 continue;
             }
 
+            const slot = this._findSwitchSlot(rSd, sidedefs[ld.left], liftOriginalFh);
+            if (isGun && (slot === null)) {
+                continue;
+            }
             ids.add(ldIdx);
-            walls.set(ldIdx, this._findSwitchSlot(rSd, sidedefs[ld.left], liftOriginalFh) ?? {invisible: true});
+            walls.set(ldIdx, slot ?? {invisible: true});
         }
 
         return {ids: ids, walls: walls};
@@ -1295,10 +1299,14 @@ class WadMapAnalyzer {
             {side: 'left',  slot: 'upper',  texName: lSd.upper,  drawn: (rSec.ch < lSec.ch)},
             {side: 'left',  slot: 'middle', texName: lSd.middle, drawn: true}
         ];
-        const isSwitch = (c) => (c.texName && (/^SW[12]/).test(c.texName));
+        const isSwitch = (c) => WadMapAnalyzer._isSwitchTexture(c.texName);
         const found = (candidates.find((c) => (c.drawn && isSwitch(c))) ?? candidates.find(isSwitch) ?? null);
 
         return ((found !== null) ? {side: found.side, slot: found.slot, texName: found.texName} : null);
+    }
+
+    static _isSwitchTexture(name) {
+        return (Boolean(name) && (/^SW[12]/).test(name));
     }
 
     // Codes of the built instances of a tag. families: [{ids, prefix, built,

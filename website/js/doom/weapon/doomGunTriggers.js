@@ -15,7 +15,7 @@ class DoomGunTriggers {
     }
 
     /**
-     * @param {object[]}       lines  [{x1, z1, x2, z2, once, used, targets, cycleVariant, stageRules}]
+     * @param {object[]}       lines  [{x1, z1, x2, z2, once, used, targets, cycleVariant, stageRules, panelCode}]
      * @param {DoomTurnEvents} events
      */
     constructor(lines, events) {
@@ -62,11 +62,16 @@ class DoomGunTriggers {
     // --- Internal ---
 
     _fire(line) {
+        DoomTriggerTargets.fire(line.targets, null, line.cycleVariant, line.stageRules ?? null);
+        if (line.panelCode !== null) {
+            const panel = loader.instances().getByCode(line.panelCode);
+            loader.interactions().getByCode(line.panelCode).getInteraction().triggered(panel);
+            return;
+        }
         // Vanilla routes every fired impact line through P_ChangeSwitchTexture,
         // which rings the button from the line's position unconditionally.
         this._events.soundAt('switches/normbutn',
             [(line.x1 + line.x2) / 2, line.y, (line.z1 + line.z2) / 2]);
-        DoomTriggerTargets.fire(line.targets, null, line.cycleVariant, line.stageRules ?? null);
     }
 
 }

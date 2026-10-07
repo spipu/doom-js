@@ -99,9 +99,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 890 special 46 SW1STON2"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -185,9 +183,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 3848 special 46 SW1SLAD"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -559,13 +555,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 1175 special 46 SW2WDMET",
-      "line 2961 special 46 SW2WDMET",
-      "line 2965 special 46 SW2WDMET",
-      "line 3597 special 46 SW2WDMET",
-      "line 89 special 46 SW2WDMET"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -673,9 +663,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 642 special 46 SW1HOT"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -735,9 +723,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 666 special 24 SW1LION"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -809,10 +795,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 526 special 46 SW1GARG",
-      "line 585 special 46 SW1GARG"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -824,9 +807,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 290 special 46 SW2SKIN"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -1248,11 +1229,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 243 special 46 SW2LION",
-      "line 370 special 46 SW2GARG",
-      "line 372 special 46 SW2GARG"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],
@@ -1372,10 +1349,7 @@
     "untextured": {},
     "staticAnimated": [],
     "switchWithoutPartner": [],
-    "gunLineSwitches": [
-      "line 39 special 46 SW1LION",
-      "line 533 special 46 SW1LION"
-    ],
+    "gunLineSwitches": [],
     "unhandledLineSpecials": {},
     "unhandledSectorSpecials": {},
     "missingTextures": [],

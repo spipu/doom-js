@@ -52,8 +52,11 @@ class WadSwitchBuilder {
         const switchCode = 'switch_' + ldIdx;
         const isExit     = WadConstants.SWITCH_EXIT_SPECIALS.has(ld.special);
         const lineAction = WadMapAnalyzer.lineActionOf(this._level.sectors, ld);
+        // A shot line's panel only flips: its targets are fired by
+        // DoomGunTriggers, and nothing uses it (no trigger).
+        const isGun = WadConstants.GUN_SPECIALS.has(ld.special);
         // An exit ignores its tag (vanilla).
-        const targets = ((isExit || (lineAction !== null)) ? [] : this._resolveTargets(ld));
+        const targets = ((isExit || isGun || (lineAction !== null)) ? [] : this._resolveTargets(ld));
         const split   = WadMapAnalyzer.splitReverseTargets(this._analysis, ld.special, targets);
 
         const geom = ((switchWall.invisible === true)
@@ -62,8 +65,10 @@ class WadSwitchBuilder {
         if (geom === null) {
             return null;
         }
-        // A visible panel is kept even when it fires nothing.
-        if ((geom.textures.length === 0) && (targets.length === 0) && !isExit && (lineAction === null)) {
+        // A visible panel is kept even when it fires nothing, and so is a shot
+        // line's image painted on a door's face.
+        const flipsRemotely = (isGun && ((geom.remoteSwap ?? null) !== null));
+        if ((geom.textures.length === 0) && (targets.length === 0) && !isExit && (lineAction === null) && !flipsRemotely) {
             return null;
         }
 
@@ -78,7 +83,7 @@ class WadSwitchBuilder {
                 code:              switchCode,
                 position:          [0, 0, 0],
                 rotation:          [0, 0, 0],
-                trigger:           'action',
+                trigger:           ((isGun) ? 'none' : 'action'),
                 loop:              false,
                 onlyOnce:          false,
                 collisionShape:    geom.collisionShape,

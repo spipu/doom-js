@@ -156,8 +156,8 @@ BenchAnomaliesSuite.SEARCH_SCRIPT = `(() => {
     }
 
     // A use line on a plain wall, or a manual door painted as a switch, is
-    // vanilla: only the switch image a shot line flips is looked for
-    // (P_ShootSpecialLine calls P_ChangeSwitchTexture).
+    // vanilla: only a shot line painted as a switch must flip it, through its
+    // panel (P_ShootSpecialLine calls P_ChangeSwitchTexture).
     const switchNoPair = new Set();
     const gunSwitches  = new Set();
     level.linedefs.forEach((ld, index) => {
@@ -170,7 +170,7 @@ BenchAnomaliesSuite.SEARCH_SCRIPT = `(() => {
             if (!exists(bank.getSwitchPartner(name), false)) {
                 switchNoPair.add(name);
             }
-            if (WadConstants.GUN_SPECIALS.has(ld.special)) {
+            if (WadConstants.GUN_SPECIALS.has(ld.special) && (loader.instances().idByCode('switch_' + index) === null)) {
                 gunSwitches.add('line ' + index + ' special ' + ld.special + ' ' + name);
             }
         }

@@ -49,7 +49,6 @@ The WAD loads under the fallback profile only. It needs its own thing and specia
 
 The small fidelity gaps knowingly left aside. The deviations attested and accepted (those not meant to be fixed) are not listed here.
 
-* **Shot switches**: the G1/GR lines painted as a switch (24/46/47, 18 lines in Doom 2 MAP08/MAP18, Freedoom 1 E1M9/E2M7 and Freedoom 2) fire their action and ring, but their image never flips, where vanilla calls P_ChangeSwitchTexture from P_ShootSpecialLine. The `anomalies` bench suite lists them.
 * **Switch usage trace**: check it on a level with ordinary lifts.
 
 ### Rendering performance & quality options

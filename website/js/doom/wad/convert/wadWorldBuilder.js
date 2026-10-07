@@ -124,11 +124,13 @@ class WadWorldBuilder {
         this._registerMoverSounds(analysis, doors, lifts, risingFloors, stairs);
 
         // Switches + interactions
-        const lineActions = new DoomLineActions();
-        const switches = new WadSwitchBuilder(
+        const lineActions      = new DoomLineActions();
+        const builtSwitchCodes = new Set();
+        const switches         = new WadSwitchBuilder(
             level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf).buildAll();
         for (const sw of switches) {
             this._registerInstance(sw, bank, WadConstants.SWITCH_TINT);
+            builtSwitchCodes.add(sw.code);
             this._applyKeyGuard(sw);
             this._applySwitchUseGuard(sw);
             const spec = sw.interactionSpec;
@@ -165,7 +167,7 @@ class WadWorldBuilder {
         // Gun triggers (G1/GR): no zone, the hitscan tests each shot against
         // their segments (P_ShootSpecialLine).
         const gunLines = new WadGunTriggerBuilder(
-            level, analysis, builtRisingCodes, builtDoorCodes, liveFloorOf).buildAll();
+            level, analysis, builtRisingCodes, builtDoorCodes, builtSwitchCodes, liveFloorOf).buildAll();
         this._built.setGunTriggers(new DoomGunTriggers(gunLines, this._turnEvents));
 
         // Teleporters
