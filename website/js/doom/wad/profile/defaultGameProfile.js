@@ -835,39 +835,41 @@ class DefaultGameProfile extends AbstractGameProfile {
     // baron, mancubus, revenant tracer, arachnotron at 0.75). The puff is
     // lighter than gzdoom's BulletPuff (0.4 vs Alpha 0.5, doommisc.zs), floats
     // up 1 map unit/tic and starts a melee hit at frame C (no bright spark).
+    // Bright frames as info.c: only the puff's first, never the blood or smoke.
     effectTemplates() {
         return [
-            {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, meleeStart: 2},
-            {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false},
-            {name: 'fatShotExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],               frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: true},
-            {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true},
-            {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true},
-            {name: 'bfgSprayHit',   sprite: 'BFE2', letters: ['A', 'B', 'C', 'D'],           frameTics: [8, 8, 8, 8],       alpha: 0.75, rise: 0, additive: true},
+            {name: 'puff',          sprite: 'PUFF', letters: ['A', 'B', 'C', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4,  rise: 1, additive: false, bright: [true, false, false, false], meleeStart: 2},
+            {name: 'rocketExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],                frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: false, bright: true},
+            {name: 'fatShotExplode', sprite: 'MISL', letters: ['B', 'C', 'D'],               frameTics: [8, 6, 4],          alpha: 1,    rise: 0, additive: true, bright: true},
+            {name: 'plasmaExplode', sprite: 'PLSE', letters: ['A', 'B', 'C', 'D', 'E'],      frameTics: [4, 4, 4, 4, 4],    alpha: 0.75, rise: 0, additive: true, bright: true},
+            {name: 'bfgExplode',    sprite: 'BFE1', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [8, 8, 8, 8, 8, 8], alpha: 0.75, rise: 0, additive: true, bright: true},
+            {name: 'bfgSprayHit',   sprite: 'BFE2', letters: ['A', 'B', 'C', 'D'],           frameTics: [8, 8, 8, 8],       alpha: 0.75, rise: 0, additive: true, bright: true},
             // P_SpawnBlood: momz 2 under mobj gravity (1/tic²); big hits show
             // the full splash, weaker ones start deeper in (monsterDamageRules).
-            {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false},
+            {name: 'blood',         sprite: 'BLUD', letters: ['C', 'B', 'A'],                frameTics: [8, 8, 8],          alpha: 1,    rise: 2, gravity: 1, additive: false, bright: false},
             // Every monster missile's Death animation, plus the revenant's
             // smoke trail and the archvile's hellfire.
-            {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
-            {name: 'cacoBallDeath',    sprite: 'BAL2', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
-            {name: 'baronBallDeath',   sprite: 'BAL7', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true},
-            {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 0.75, rise: 0, additive: true},
-            {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: true},
-            {name: 'tracerSmoke',      sprite: 'PUFF', letters: ['A', 'B', 'A', 'B', 'C'], frameTics: [4, 4, 4, 4, 4], alpha: 0.5, rise: 1, additive: false},
+            {name: 'impBallDeath',     sprite: 'BAL1', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'cacoBallDeath',    sprite: 'BAL2', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'baronBallDeath',   sprite: 'BAL7', letters: ['C', 'D', 'E'],           frameTics: [6, 6, 6],    alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'arachPlasmaDeath', sprite: 'APBX', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [5, 5, 5, 5, 5], alpha: 0.75, rise: 0, additive: true, bright: true},
+            {name: 'tracerDeath',      sprite: 'FBXP', letters: ['A', 'B', 'C'],           frameTics: [8, 6, 4],    alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'tracerSmoke',      sprite: 'PUFF', letters: ['A', 'B', 'A', 'B', 'C'], frameTics: [4, 4, 4, 4, 4], alpha: 0.5, rise: 1, additive: false, bright: false},
             // SpawnFire: the pillar a boss cube hatches in (same FIRE sprite as
             // the archvile's, its own 8-frame animation).
             {name: 'spawnFire',        sprite: 'FIRE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-                frameTics: [4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: true},
+                frameTics: [4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: true, bright: true},
             // A_BrainScream lays these along a line: the rocket's own explosion
-            // frames, with the damage disabled (SetDamage(0) in the source).
+            // frames, with the damage disabled (SetDamage(0) in the source);
+            // all three Bright as S_BRAINEXPLODE, where zscript leaves D unlit.
             {name: 'brainExplosion',   sprite: 'MISL', letters: ['B', 'C', 'D'], frameTics: [10, 10, 10],
-                alpha: 1, rise: 0, additive: false},
+                alpha: 1, rise: 0, additive: false, bright: true},
             {name: 'vileFire',         sprite: 'FIRE', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'B', 'C', 'D', 'C', 'D', 'C', 'D', 'E', 'D', 'E', 'D', 'E', 'F', 'E', 'F', 'E', 'F', 'G', 'H', 'G', 'H', 'G', 'H'],
-                frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true, spawnSound: ['vile/firestrt', 'vile/firecrkl']},
+                frameTics: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], alpha: 1, rise: 0, additive: true, bright: true, spawnSound: ['vile/firestrt', 'vile/firecrkl']},
             // EV_Teleport fog (zscript TeleportFog: TFOG ABABCDEFGHIJ 6 Bright, RenderStyle Add)
-            {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true},
+            {name: 'teleportFog',   sprite: 'TFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, bright: true},
             // P_RespawnSpecials fog (zscript ItemFog: IFOG ABABCDE 6 Bright)
-            {name: 'itemFog',       sprite: 'IFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E'], frameTics: [6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: false}
+            {name: 'itemFog',       sprite: 'IFOG', letters: ['A', 'B', 'A', 'B', 'C', 'D', 'E'], frameTics: [6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: false, bright: true}
         ];
     }
 

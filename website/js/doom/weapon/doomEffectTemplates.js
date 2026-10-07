@@ -60,7 +60,7 @@ class DoomEffectTemplates {
         // One shared map for both timelines: a chunk replays on landing the
         // very frame its flight ended on, and must not build it twice.
         const byLetter = new Map();
-        const frames   = this._buildFrames(bank, spec, spec.letters, byLetter, false);
+        const frames   = this._buildFrames(bank, spec, spec, byLetter, false);
         // The first-frame tic shortening is a Doom-family quirk (P_SpawnPuff /
         // P_SpawnBlood under GAME_DoomChex): drifting templates get it unless
         // the spec opts out (Heretic blood).
@@ -70,7 +70,7 @@ class DoomEffectTemplates {
             // Frames played where a ballistic effect meets the floor (the
             // Death state of a splash chunk); null = it never lands.
             landing:     ((landing !== null)
-                ? {frames: this._buildFrames(bank, spec, landing.letters, byLetter), frameTics: landing.frameTics}
+                ? {frames: this._buildFrames(bank, spec, landing, byLetter), frameTics: landing.frameTics}
                 : null),
             // The same timelines mirrored left to right, when the spec asks for
             // them: the caller then draws which way each spawn faces, so a
@@ -96,21 +96,22 @@ class DoomEffectTemplates {
         const byLetter = new Map();
 
         return {
-            frames:  this._buildFrames(bank, spec, spec.letters, byLetter, true),
+            frames:  this._buildFrames(bank, spec, spec, byLetter, true),
             landing: ((landing !== null)
-                ? {frames: this._buildFrames(bank, spec, landing.letters, byLetter, true), frameTics: landing.frameTics}
+                ? {frames: this._buildFrames(bank, spec, landing, byLetter, true), frameTics: landing.frameTics}
                 : null)
         };
     }
 
-    // Billboards of one timeline, sharing byLetter with the others of the
-    // same template so a letter used twice costs a single object. Mirroring
-    // flips the anchor with the picture: the offset is measured from the left
-    // edge, which becomes the right one.
-    _buildFrames(bank, spec, letters, byLetter, flipX = false) {
-        const scale  = WadConstants.SCALE;
-        const frames = [];
-        for (const letter of letters) {
+    // Billboards of one timeline (the spec itself or its landing), sharing
+    // byLetter with the others of the same template so a letter used twice
+    // costs a single object. Mirroring flips the anchor with the picture: the
+    // offset is measured from the left edge, which becomes the right one.
+    _buildFrames(bank, spec, timeline, byLetter, flipX = false) {
+        const scale   = WadConstants.SCALE;
+        const brights = DoomEffectTemplates._brightFrames(timeline, spec.name);
+        const frames  = [];
+        timeline.letters.forEach((letter, i) => {
             if (!byLetter.has(letter)) {
                 const spr = bank.get(spec.sprite + letter + '0');
                 const geo = WadGeometry.spriteBillboardData(spr);
@@ -126,9 +127,20 @@ class DoomEffectTemplates {
                     flipX:         flipX,
                 }));
             }
-            frames.push({objId: byLetter.get(letter)});
-        }
+            frames.push({objId: byLetter.get(letter), bright: brights[i]});
+        });
 
         return frames;
+    }
+
+    // Which frames ignore the sector light (zscript Bright).
+    static _brightFrames(timeline, name) {
+        if ((timeline.bright === true) || (timeline.bright === false)) {
+            return timeline.letters.map(() => timeline.bright);
+        }
+        if (Array.isArray(timeline.bright) && (timeline.bright.length === timeline.letters.length)) {
+            return timeline.bright;
+        }
+        throw new Error('Effect template ' + name + ' needs a bright flag for each of its frames');
     }
 }

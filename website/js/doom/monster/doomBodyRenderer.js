@@ -7,13 +7,13 @@
 class DoomBodyRenderer {
     /**
      * @param {Set<DoomBodyView>} views       - the level's bodies
-     * @param {object}            levelData   - sector lights and their live effects
+     * @param {DoomSectorLight}   sectorLight - sector lights and their live effects
      * @param {int|null}          crushedView - the gib pool object, null when the game has none
      * @param {int|null}          emptyView   - the object of the viewed player's own body, null without player bodies
      */
-    constructor(views, levelData, crushedView, emptyView) {
+    constructor(views, sectorLight, crushedView, emptyView) {
         this._views       = views;
-        this._levelData   = levelData;
+        this._sectorLight = sectorLight;
         this._crushedView = crushedView;
         this._emptyView   = emptyView;
         this._shown       = new WeakMap();   // view → what its instance was last given
@@ -89,12 +89,12 @@ class DoomBodyRenderer {
     _drawLight(view, shown) {
         const si     = view.getSector();
         const bright = view.isBright();
-        if ((shown.light !== null) && (shown.litSi === si) && (shown.litBright === bright) && !this._hasLightEffect(si)) {
+        if ((shown.light !== null) && (shown.litSi === si) && (shown.litBright === bright) && !this._sectorLight.hasLightEffect(si)) {
             return;
         }
         shown.litSi     = si;
         shown.litBright = bright;
-        const wanted = ((bright) ? 1 : this._sectorLight(si));
+        const wanted = ((bright) ? 1 : this._sectorLight.lightOf(si));
         if (wanted !== shown.light) {
             shown.light = wanted;
             view.getInstance().setRenderLight(wanted);
@@ -112,20 +112,5 @@ class DoomBodyRenderer {
             view.getInstance().clearRenderOffset();
             shown.offset = false;
         }
-    }
-
-    // True when the sector runs one of the vanilla light thinkers, so its
-    // brightness moves on its own and its bodies must follow every frame.
-    _hasLightEffect(si) {
-        return ((si !== null) && this._levelData.hasLightEffect(si));
-    }
-
-    // Sector brightness as a 0..1 factor; full light when the sector is unknown.
-    _sectorLight(si) {
-        if ((si === null) || (this._levelData.sectors[si] === undefined)) {
-            return 1;
-        }
-
-        return (this._levelData.sectors[si].light / 255) * this._levelData.lightFactorOf(si);
     }
 }

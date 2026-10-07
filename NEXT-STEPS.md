@@ -28,6 +28,7 @@ The converter understands vanilla specials only, so most community WADs load wit
 
 * **DEHACKED**: only the `[STRINGS]` section is read today (`WadDehackedStrings`, for the finale texts). Still missing: things, frames, weapons, sounds, and the `Text` blocks of the old format (replacement by byte offset).
 * **BOOM generalized specials**: ranges of parameterised specials instead of one table entry per number.
+* **BOOM silent teleports**: 207/208 to a landing thing, 243/244 and 262–269 from line to line (keeping the relative position and angle), without fog, sound or freeze. None of the five readable IWADs uses them.
 * **Heretic `Thing_Destroy` (linedef 515)**: `xlat/heretic.txt:17` = `WALK, Thing_Destroy(0,0,0)` → `Level->Massacre()` (`p_lnspec.cpp:1506`, `p_enemy.cpp:3407`, `p_mobj.cpp:1711`): every non-dormant `MF3_ISMONSTER` actor dies from `TELEFRAG_DAMAGE` (hence gibbed), invulnerability lifted.
   * The xlat neutralises it today (`515: 0`): **no linedef of `heretic.wad` carries 515** (scan of the 48 maps; E1M8 only has 2, 11, 31, 36, 62, 88, 97, 103), it is an xlat entry for Raven PWADs.
   * Planned implementation: `515: 1515`, an extensible `WALK_ACTION_BY_SPECIAL` table (`{1515: 'massacre'}`) forming **a generic "walk line → game action" channel** rather than one more branch beside `stop` / `isExit`, and `DoomMonsterSystem.massacre()` through the existing damage pipeline.
@@ -46,7 +47,7 @@ The WAD loads under the fallback profile only. It needs its own thing and specia
 
 ### Vanilla polish pass
 
-The small fidelity gaps knowingly left aside: no fog on a nightmare respawn, blood and late puff frames still fullbright, no silent teleports. The deviations attested and accepted (those not meant to be fixed) are not listed here.
+The small fidelity gaps knowingly left aside. The deviations attested and accepted (those not meant to be fixed) are not listed here.
 
 * **Systematic converter sweep**: run every Doom 1 / Doom 2 level (then Heretic) through the converter and count the detectable anomalies — faces without texture (index -1), ANIMATED sequence names left static, missing textures, switch slots not drawn, unhandled floor specials — to find oversights of the same kind as those fixed by hand on E2M2 (intermediate frames not animated, missing mover faces, wrong switch slot). Also check the switch usage trace on a level with ordinary lifts.
 * **Closed sectors under sky** (`fh == ch`, sky on both sides, 16 occurrences, all in Freedoom — E1M4, E2M1, E2M9, E3M6, MAP12, MAP15, MAP28): vanilla refuses them (zero height), here they are one-unit steps the player climbs. With no upper wall, the jump guards do not cover them; to handle in the converter if an occurrence gets in the way in game.

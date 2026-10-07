@@ -849,10 +849,13 @@ class DoomMonsterSystem {
         const fresh = this._spawnFreshBody(m, m.code + '_r', m.spawn.position);
         fresh.reactiontime = DoomMonsterSystem.RESPAWN_REACTION;
         this._resolveRide(fresh);
-        // P_NightmareRespawn rings the teleport at both ends: the corpse and
-        // the spot.
-        this._events.soundAt('misc/teleport', [...m.inst.getTransform().position]);
-        this._events.soundAt('misc/teleport', [...fresh.inst.getTransform().position]);
+        if (this._effects === null) {
+            return;
+        }
+        const corpse = m.inst.getTransform().position;
+        const spot   = fresh.inst.getTransform().position;
+        this._effects.spawnRingingFog(corpse[0], corpse[1], corpse[2]);
+        this._effects.spawnRingingFog(spot[0], spot[1], spot[2]);
     }
 
     // Fresh runtime body sharing an existing record's def/frames/spawn — the

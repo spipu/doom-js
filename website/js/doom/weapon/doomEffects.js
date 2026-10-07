@@ -11,21 +11,25 @@ class DoomEffects {
      * @param {DoomEffectTemplates} templates
      */
     constructor(templates) {
-        this._templates  = templates;
-        this._active     = [];
-        this._untickedMs = 0;
-        this._collision  = null;
+        this._templates   = templates;
+        this._active      = [];
+        this._untickedMs  = 0;
+        this._collision   = null;
+        this._sectorLight = null;
     }
 
     /**
-     * The world a ballistic effect lands on. Only the templates declaring
-     * landing frames ever query it; without it they simply never land and run
+     * The world a ballistic effect lands on, and the sector light its frames
+     * that are not Bright take. Only the templates declaring landing frames
+     * ever query the collision; without it they simply never land and run
      * their animation out.
      *
-     * @param {Collision} collision
+     * @param {Collision}       collision
+     * @param {DoomSectorLight} sectorLight
      */
-    setWorld(collision) {
-        this._collision = collision;
+    setWorld(collision, sectorLight) {
+        this._collision   = collision;
+        this._sectorLight = sectorLight;
 
         return this;
     }
@@ -46,8 +50,8 @@ class DoomEffects {
         // rise, then falling); without it the drift stays constant (puffs).
         // The timeline is carried by the effect, not read off the template:
         // a landing swaps it for the template's own landing frames.
-        const vel = event.velocity;
-        this._active.push({
+        const vel    = event.velocity;
+        const effect = {
             tpl,
             facing,
             instId,
@@ -63,10 +67,14 @@ class DoomEffects {
             // at the apex, where testing them would freeze the effect in place.
             drifts:    ((vel !== null) || (tpl.rise > 0)),
             landed:    false,
-            follow:    event.follow
-        });
+            follow:    event.follow,
+            light:     null
+        };
+        const inst = loader.instances().get(instId);
+        this._active.push(effect);
+        this._relight(effect, inst);
         if (event.roll !== 0) {
-            loader.instances().get(instId).setRenderRoll(event.roll);
+            inst.setRenderRoll(event.roll);
         }
         if (tpl.spawnSound !== null) {
             for (const soundName of tpl.spawnSound) {
@@ -111,6 +119,7 @@ class DoomEffects {
                 pos[1] = at[1] + effect.tpl.spawnHeight;
                 pos[2] = at[2];
             }
+            this._relight(effect, inst);
             kept.push(effect);
         }
         this._active = kept;
@@ -151,6 +160,20 @@ class DoomEffects {
         effect.elapsed   = 0;
         effect.shown     = 0;
         inst.setObject(effect.frames[0].objId);
+    }
+
+    // Re-read every tic: the sector may flicker, and a drifting effect may
+    // cross into another.
+    _relight(effect, inst) {
+        let wanted = 1;
+        if (!effect.frames[effect.shown].bright && (this._sectorLight !== null)) {
+            const pos = inst.getTransform().position;
+            wanted = this._sectorLight.lightOf(this._sectorLight.sectorAt(pos[0], pos[2]));
+        }
+        if (wanted !== effect.light) {
+            effect.light = wanted;
+            inst.setRenderLight(wanted);
+        }
     }
 
     // Where a riding effect stands this tic: in front of the player, or of the

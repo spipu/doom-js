@@ -703,7 +703,7 @@ class AbstractGameProfile {
             tintGain: 1.3,
             parts: [
                 {
-                    part: 'base', sprite: 'SPLB', alpha: 0.7, rise: 0, additive: false, mirror: true,
+                    part: 'base', sprite: 'SPLB', alpha: 0.7, rise: 0, additive: false, bright: false, mirror: true,
                     pixelsPerUnit: 3.65,
                     frames: [
                         {letter: 'A', key: 'base-1', tics: 5, anchorX: 54, anchorY:  30},
@@ -716,7 +716,7 @@ class AbstractGameProfile {
                     ]
                 },
                 {
-                    part: 'chunk', sprite: 'SPLC', alpha: 0.7, rise: 0, gravity: 0.125, additive: false, mirror: true,
+                    part: 'chunk', sprite: 'SPLC', alpha: 0.7, rise: 0, gravity: 0.125, additive: false, bright: false, mirror: true,
                     pixelsPerUnit: 5.43,
                     frames: [
                         {letter: 'A', key: 'chunk-1', tics: 8,  anchorX: 14, anchorY: 27},
@@ -726,7 +726,7 @@ class AbstractGameProfile {
                     ],
                     // Replayed where it falls back into the liquid, like the
                     // Death state of the Heretic chunk.
-                    landing: {letters: ['D'], frameTics: [10]}
+                    landing: {letters: ['D'], frameTics: [10], bright: false}
                 }
             ]
         };
@@ -772,10 +772,12 @@ class AbstractGameProfile {
      * the load batch. rise is the upward drift in map units/tic (0 = static),
      * gravity its per-tic decay; shorten opts out of the Doom first-frame tic
      * cut; meleeStart is the frame index a melee hit starts the puff at;
-     * spawnHeight lifts the spawn point (gameinfo telefogheight, Doom units).
+     * spawnHeight lifts the spawn point (gameinfo telefogheight, Doom units);
+     * bright names the Bright frames, which ignore the sector light: true or
+     * false for the whole timeline, or one flag per letter (a landing too).
      *
      * @returns {object[]} [{name, sprite, letters, frameTics, alpha, rise,
-     *                       additive, gravity?, shorten?, meleeStart?, spawnHeight?}]
+     *                       additive, bright, gravity?, shorten?, meleeStart?, spawnHeight?}]
      */
     effectTemplates() {
         this._generateException('effectTemplates must be implemented');

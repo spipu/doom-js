@@ -80,6 +80,7 @@ class DoomGenericSplash {
             rise:      part.rise,
             gravity:   (part.gravity ?? 0),
             additive:  part.additive,
+            bright:    part.bright,
             mirror:    (part.mirror === true),
             landing:   (part.landing ?? null)
         };

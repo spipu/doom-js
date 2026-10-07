@@ -223,7 +223,7 @@ class WadWorldBuilder {
         if (secretZones.list.length > 0) {
             this._built.setSecretZones(secretZones);
         }
-        this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors)).setLightEffects(lightInteraction);
+        this._built.setSectorLight(new DoomSectorLight(sectorIdAt, lightInteraction, level.sectors, analysis.lightSectorIds)).setLightEffects(lightInteraction);
 
         const surfaces = this._wireFloorChanges(analysis, animBank, damageInteraction);
 
@@ -238,7 +238,7 @@ class WadWorldBuilder {
         this._registerAmbientSounds(level);
         await this._yield();
 
-        const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction);
+        const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings);
         this._built.setMonsterLevelData(levelData);
         this._registerAutomap(level, levelData.heights);
         this._built.setBossRules(this._bossRules(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes));
@@ -663,7 +663,7 @@ class WadWorldBuilder {
     // a sector may carry a floor mover and a door at once (moverCodes[si] =
     // {floor, door, monsterUse}). monsterLines are the lines a monster fires by
     // crossing (P_CrossSpecialLine).
-    _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings, lightInteraction) {
+    _buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings) {
         const doorFloorH = {};
         const moverCodes = {};
         const moverOf    = (si) => (moverCodes[si] ??= {floor: null, door: null, monsterUse: false});
@@ -727,10 +727,7 @@ class WadWorldBuilder {
             spots:        (this._spots ?? {}),
             levelCode:    this._levelCode,
             // mapinfo `allowmonstertelefrags`.
-            monstersTelefrag: this._profile.monsterTelefragMaps().includes(this._levelCode),
-            lightFactorOf: ((si) => ((lightInteraction !== null) ? lightInteraction.getFactor(si) : 1)),
-            // Bodies in these sectors are re-lit every frame, others on change only.
-            hasLightEffect: ((si) => analysis.lightSectorIds.has(si))
+            monstersTelefrag: this._profile.monsterTelefragMaps().includes(this._levelCode)
         };
         levelData.heights = new DoomSectorHeights(levelData);
         this._sectorHeights = levelData.heights;

@@ -1029,64 +1029,64 @@ class HereticGameProfile extends DefaultGameProfile {
     // powered-mode in-flight puff).
     effectTemplates() {
         return [
-            {name: 'staffPuff',       sprite: 'PUF3', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 1,   additive: false},
-            {name: 'gauntletPuff',    sprite: 'PUF1', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 0.8, additive: false},
-            {name: 'goldwandPuff',    sprite: 'PUF2', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [3, 3, 3, 3, 3], alpha: 1,   rise: 0,   additive: true},
-            {name: 'blasterPuff',     sprite: 'FX17', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [4, 4, 4, 4, 4], alpha: 1,   rise: 0,   additive: true},
+            {name: 'staffPuff',       sprite: 'PUF3', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 1,   additive: false, bright: [true, false, false, false]},
+            {name: 'gauntletPuff',    sprite: 'PUF1', letters: ['A', 'B', 'C', 'D'],      frameTics: [4, 4, 4, 4],    alpha: 0.4, rise: 0.8, additive: false, bright: true},
+            {name: 'goldwandPuff',    sprite: 'PUF2', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [3, 3, 3, 3, 3], alpha: 1,   rise: 0,   additive: true, bright: true},
+            {name: 'blasterPuff',     sprite: 'FX17', letters: ['A', 'B', 'C', 'D', 'E'], frameTics: [4, 4, 4, 4, 4], alpha: 1,   rise: 0,   additive: true, bright: true},
             // Projectile deaths (zscript Death states): the bolts and the
             // hellstaff burst glow (Add), the phoenix explosion and the mace
             // ball break are plain bright frames.
-            {name: 'crossbowExplode1', sprite: 'FX03', letters: ['H', 'I', 'J'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true},
-            {name: 'crossbowExplode3', sprite: 'FX03', letters: ['C', 'D', 'E'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true},
-            {name: 'skullrodExplode',  sprite: 'FX00', letters: ['H', 'I', 'J', 'K', 'L', 'M'],      frameTics: [5, 5, 4, 4, 3, 3],       alpha: 1,   rise: 0, additive: true},
-            {name: 'phoenixExplode',   sprite: 'FX08', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [6, 5, 5, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false},
-            {name: 'phoenixTrail',     sprite: 'FX04', letters: ['B', 'C', 'D', 'E', 'F'],           frameTics: [4, 4, 4, 4, 4],          alpha: 0.4, rise: 0, additive: false},
-            {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false},
+            {name: 'crossbowExplode1', sprite: 'FX03', letters: ['H', 'I', 'J'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'crossbowExplode3', sprite: 'FX03', letters: ['C', 'D', 'E'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'skullrodExplode',  sprite: 'FX00', letters: ['H', 'I', 'J', 'K', 'L', 'M'],      frameTics: [5, 5, 4, 4, 3, 3],       alpha: 1,   rise: 0, additive: true, bright: true},
+            {name: 'phoenixExplode',   sprite: 'FX08', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], frameTics: [6, 5, 5, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false, bright: true},
+            {name: 'phoenixTrail',     sprite: 'FX04', letters: ['B', 'C', 'D', 'E', 'F'],           frameTics: [4, 4, 4, 4, 4],          alpha: 0.4, rise: 0, additive: false, bright: false},
+            {name: 'maceExplode',      sprite: 'FX02', letters: ['F', 'G', 'H', 'I', 'J'],           frameTics: [4, 4, 4, 4, 4],          alpha: 1,   rise: 0, additive: false, bright: true},
             // Heretic blood (BLOD lumps): no damage-staged start and no
             // shortened first tics (Doom-family quirks only).
-            {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false},
+            {name: 'blood',            sprite: 'BLOD', letters: ['C', 'B', 'A'],                     frameTics: [8, 8, 8],                alpha: 1,   rise: 2, gravity: 1, shorten: false, additive: false, bright: false},
             // The two pieces a gargoyle shatters into when its gibbed body hits
             // the floor (hereticimp.zs HereticImpChunk1/2: thrown up at 9, then
             // left lying for 700 tics).
-            {name: 'gargoyleChunk1',   sprite: 'IMPX', letters: ['M', 'N'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false},
-            {name: 'gargoyleChunk2',   sprite: 'IMPX', letters: ['O', 'P'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false},
+            {name: 'gargoyleChunk1',   sprite: 'IMPX', letters: ['M', 'N'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false, bright: false},
+            {name: 'gargoyleChunk2',   sprite: 'IMPX', letters: ['O', 'P'], frameTics: [5, 700], alpha: 1, rise: 9, gravity: 1, shorten: false, additive: false, bright: false},
             // The soul a golem lets go of when it dies (vanilla A_MummySoul:
             // spawned 10 units up, rising 1 unit/tic).
-            {name: 'mummySoul',        sprite: 'MUMM', letters: ['Q', 'R', 'S', 'T', 'U', 'V', 'W'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 1, rise: 1, spawnHeight: 10, additive: false},
+            {name: 'mummySoul',        sprite: 'MUMM', letters: ['Q', 'R', 'S', 'T', 'U', 'V', 'W'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 1, rise: 1, spawnHeight: 10, additive: false, bright: false},
             // Every monster missile's Death animation.
-            {name: 'hereticImpBallDeath', sprite: 'FX10', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
-            {name: 'mummyFX1Death',       sprite: 'FX15', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
-            {name: 'knightAxeDeath',      sprite: 'SPAX', letters: ['D', 'E', 'F'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false},
-            {name: 'redAxeDeath',         sprite: 'RAXE', letters: ['C', 'D', 'E'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false},
-            {name: 'beastBallDeath',      sprite: 'FRB1', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: true},
-            {name: 'snakeProjADeath',     sprite: 'SNFX', letters: ['E', 'F', 'G', 'H', 'I'],      frameTics: [5, 5, 4, 3, 3],    alpha: 1, rise: 0, additive: true},
-            {name: 'snakeProjBDeath',     sprite: 'SNFX', letters: ['L', 'M', 'N', 'O'],           frameTics: [5, 5, 4, 3],       alpha: 1, rise: 0, additive: true},
-            {name: 'wizardFX1Death',      sprite: 'FX11', letters: ['C', 'D', 'E', 'F', 'G'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true},
-            {name: 'sorcererFX1Death',    sprite: 'FX14', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true},
-            {name: 'headFX1Death',        sprite: 'FX05', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
-            {name: 'headFX3Death',        sprite: 'FX06', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true},
-            {name: 'whirlwindDeath',      sprite: 'FX07', letters: ['G', 'F', 'E', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4, rise: 0, additive: false},
-            {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
-            {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false},
-            {name: 'sorcerer2FX1Death',   sprite: 'FX16', letters: ['G', 'H', 'I', 'J', 'K', 'L'],      frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true},
+            {name: 'hereticImpBallDeath', sprite: 'FX10', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'mummyFX1Death',       sprite: 'FX15', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'knightAxeDeath',      sprite: 'SPAX', letters: ['D', 'E', 'F'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false, bright: true},
+            {name: 'redAxeDeath',         sprite: 'RAXE', letters: ['C', 'D', 'E'],                frameTics: [6, 6, 6],          alpha: 1, rise: 0, additive: false, bright: true},
+            {name: 'beastBallDeath',      sprite: 'FRB1', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: true, bright: false},
+            {name: 'snakeProjADeath',     sprite: 'SNFX', letters: ['E', 'F', 'G', 'H', 'I'],      frameTics: [5, 5, 4, 3, 3],    alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'snakeProjBDeath',     sprite: 'SNFX', letters: ['L', 'M', 'N', 'O'],           frameTics: [5, 5, 4, 3],       alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'wizardFX1Death',      sprite: 'FX11', letters: ['C', 'D', 'E', 'F', 'G'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'sorcererFX1Death',    sprite: 'FX14', letters: ['D', 'E', 'F', 'G', 'H'],      frameTics: [5, 5, 5, 5, 5],    alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'headFX1Death',        sprite: 'FX05', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'headFX3Death',        sprite: 'FX06', letters: ['D', 'E', 'F', 'G'],           frameTics: [5, 5, 5, 5],       alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'whirlwindDeath',      sprite: 'FX07', letters: ['G', 'F', 'E', 'D'],           frameTics: [4, 4, 4, 4],       alpha: 0.4, rise: 0, additive: false, bright: false},
+            {name: 'minotaurFX1Death',    sprite: 'FX12', letters: ['C', 'D', 'E', 'F', 'G', 'H'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true, bright: true},
+            {name: 'minotaurFX2Death',    sprite: 'FX13', letters: ['I', 'J', 'K', 'L', 'M'],      frameTics: [4, 4, 4, 4, 4],    alpha: 1, rise: 0, additive: false, bright: true},
+            {name: 'sorcerer2FX1Death',   sprite: 'FX16', letters: ['G', 'H', 'I', 'J', 'K', 'L'],      frameTics: [5, 5, 5, 5, 5, 5], alpha: 1, rise: 0, additive: true, bright: true},
             // Terrain splashes (splashes.zs). The base ripple spreads where it
             // was born; the chunk is thrown out of it and plays its landing
             // frames on the way down (the Death state of a MISSILE chunk). The
             // lava is another mechanism entirely: its smoke only drifts up.
             // Deliberate departure from the sources, which draw all but the
             // lava smoke opaque: water reads better seen through.
-            {name: 'waterSplashBase',   sprite: 'SPSH', letters: ['E', 'F', 'G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false},
-            {name: 'waterSplashChunk',  sprite: 'SPSH', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 16], alpha: 0.7, rise: 0, gravity: 0.125, additive: false,
-                landing: {letters: ['D'], frameTics: [10]}},
-            {name: 'sludgeSplashBase',  sprite: 'SLDG', letters: ['E', 'F', 'G', 'H'], frameTics: [6, 6, 6, 6], alpha: 0.7, rise: 0, additive: false},
-            {name: 'sludgeSplashChunk', sprite: 'SLDG', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 8], alpha: 0.7, rise: 0, gravity: 0.125, additive: false,
-                landing: {letters: ['D'], frameTics: [6]}},
-            {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false},
-            {name: 'lavaSmoke',         sprite: 'LVAS', letters: ['G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5], alpha: 0.4, rise: 0, additive: false},
+            {name: 'waterSplashBase',   sprite: 'SPSH', letters: ['E', 'F', 'G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false, bright: false},
+            {name: 'waterSplashChunk',  sprite: 'SPSH', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 16], alpha: 0.7, rise: 0, gravity: 0.125, additive: false, bright: false,
+                landing: {letters: ['D'], frameTics: [10], bright: false}},
+            {name: 'sludgeSplashBase',  sprite: 'SLDG', letters: ['E', 'F', 'G', 'H'], frameTics: [6, 6, 6, 6], alpha: 0.7, rise: 0, additive: false, bright: false},
+            {name: 'sludgeSplashChunk', sprite: 'SLDG', letters: ['A', 'B', 'C', 'D'], frameTics: [8, 8, 8, 8], alpha: 0.7, rise: 0, gravity: 0.125, additive: false, bright: false,
+                landing: {letters: ['D'], frameTics: [6], bright: false}},
+            {name: 'lavaSplashBase',    sprite: 'LVAS', letters: ['A', 'B', 'C', 'D', 'E', 'F'], frameTics: [5, 5, 5, 5, 5, 5], alpha: 0.7, rise: 0, additive: false, bright: true},
+            {name: 'lavaSmoke',         sprite: 'LVAS', letters: ['G', 'H', 'I', 'J', 'K'], frameTics: [5, 5, 5, 5, 5], alpha: 0.4, rise: 0, additive: false, bright: true},
             // EV_Teleport fog, Raven branch (zscript TELE ABCDEFGHGFEDC 6 Bright, telefogheight 32)
-            {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, spawnHeight: 32},
+            {name: 'teleportFog',      sprite: 'TELE', letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'G', 'F', 'E', 'D', 'C'], frameTics: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], alpha: 1, rise: 0, additive: true, bright: true, spawnHeight: 32},
             // A hidden artifact coming back (zscript Inventory HideSpecial: ACLO A, then BABCBCDC, then D, 4 tics each)
-            {name: 'itemRestore',      sprite: 'ACLO', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'D', 'C', 'D'], frameTics: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false}
+            {name: 'itemRestore',      sprite: 'ACLO', letters: ['A', 'B', 'A', 'B', 'C', 'B', 'C', 'D', 'C', 'D'], frameTics: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4], alpha: 1, rise: 0, additive: false, bright: false}
         ];
     }
 

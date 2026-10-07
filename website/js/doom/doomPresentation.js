@@ -89,10 +89,10 @@ class DoomPresentation {
         this._player             = player;
         this._automap            = builtLevel.getAutomap();
         this._weaponOverlay      = new DoomWeaponOverlay(builtLevel.getWeaponSprites(), this._itemCatalog);
-        this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getMonsterLevelData(), builtLevel.getCrushedCorpseView(),
+        this._bodyRenderer       = new DoomBodyRenderer(builtLevel.getBodyViews(), builtLevel.getSectorLight(), builtLevel.getCrushedCorpseView(),
             builtLevel.getEmptyBodyObject());
         this._projectileRenderer = new DoomProjectileRenderer(builtLevel.getProjectileViews());
-        this._effects            = new DoomEffects(builtLevel.getEffectTemplates()).setWorld(world.getCollision());
+        this._effects            = new DoomEffects(builtLevel.getEffectTemplates()).setWorld(world.getCollision(), builtLevel.getSectorLight());
         this._decals             = ((builtLevel.getDecalTemplates() !== null) ? new DoomDecals(builtLevel.getDecalTemplates()) : null);
         this._turnEventPlayer    = new DoomTurnEventPlayer(this._effects, this._decals, player.getUser(), () => this.startTeleZoom());
         this._levelInfo          = levelInfo;

@@ -45,6 +45,15 @@ class DoomEffectSpawner {
     }
 
     /**
+     * A ringing fog standing on its point, with no offset: each end of a
+     * nightmare respawn (P_NightmareRespawn).
+     */
+    spawnRingingFog(x, y, z) {
+        this.spawn('teleportFog', x, y, z);
+        this._events.soundAt('misc/teleport', [x, y, z]);
+    }
+
+    /**
      * The fog of a player respawning in a netgame (G_CheckSpot): the arrival
      * half of a teleport, ringing too.
      */
