@@ -45,12 +45,6 @@ The WAD loads under the fallback profile only. It needs its own thing and specia
 * **No level of `hexen.wad` converts today** (measured on MAP01): the parser reads the Hexen LINEDEFS (16 bytes, with args) as Doom ones (14), so the sidedef indices are absurd and the analysis breaks as early as `WadMapAnalyzer._identifyLifts` on `sidedefs[ld.right] is undefined` — the launch falls back cleanly to the error modal.
 * The first Hexen step is therefore **the level parser**, before any game semantics. `WadBspTree.build` already refuses this WAD (out-of-bounds index guard), and the polygon fallback is useless as long as the linedefs are misread.
 
-### Vanilla polish pass
-
-The small fidelity gaps knowingly left aside. The deviations attested and accepted (those not meant to be fixed) are not listed here.
-
-* **Switch usage trace**: check it on a level with ordinary lifts.
-
 ### Rendering performance & quality options
 
 The renderer is selectable in game (`display.renderer`, WebGL by default) and the three CPU modes draw the weapon in hand, but they still lag behind WebGL, and there is **no quality setting**: a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone. This is **the** prerequisite of the visibility culling item below (profile before partitioning).
@@ -101,6 +95,7 @@ A large **performance / rendering** item, to start only **after** everything abo
 
 ## Finished
 
+* **Vanilla polish pass** (2026-10-08): a nightmare respawn rings its teleport fog, blood, smoke and late puff frames take their sector light, the light lines and switches turn rooms dark, light them up or set them strobing, shot lines painted as a switch flip their image, and every level is swept for converter anomalies by the bench.
 * **Multiplayer testing** (2026-10-07): cooperative and deathmatch played on real devices — iOS, Android, tablet, mixed browsers, four players, a sub sent to the background.
 * **Multiplayer hardening** (2026-10-01): a sub whose page goes to the background no longer holds the game, a lost player gets its seat back by joining again, and neither a missing image nor a stuck level build blocks a sub.
 * **Deathmatch** (2026-10-01): a new deathmatch from the Multiplayer screen, with frags, both item rules, frag and time limits, a frag table tally and the end of the match.
