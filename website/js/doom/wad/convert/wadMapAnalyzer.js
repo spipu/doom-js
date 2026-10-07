@@ -32,10 +32,12 @@ class WadMapAnalyzer {
         const liftLowerVariants = this._identifyLiftLowers(lifts);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
-        const rising = this._identifyRisingFloors(doors.doorSectorIds, lifts.liftIds, lifts.instantRaise, lifts.liftOriginalFh);
+        // Before the rising floors: a sunken door sector lifted to its rest
+        // floor may already stand at a raise's target (heretic E5M1 pillars).
+        const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps, lifts.liftOriginalFh);
+        const rising = this._identifyRisingFloors(lifts.liftIds, lifts.instantRaise, lifts.liftOriginalFh);
         const ringChanges = this._mergeDonutRings(donuts, doors.doorSectorIds, lifts.liftIds, rising);
         const stairs = this._identifyStairs(doors.doorSectorIds, lifts.liftIds, rising.risingFloorIds);
-        const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps, lifts.liftOriginalFh);
         const floorChange = this._identifyFloorChanges(lifts, rising, ringChanges);
         const switches = this._identifySwitches(lifts.liftOriginalFh);
         const floorMovers = this._identifyFloorMovers(lifts, rising, stairs);
@@ -847,7 +849,7 @@ class WadMapAnalyzer {
     // Rising floors: unlike lifts, fh is not patched, the moving flat rises from
     // the WAD height. A target at the floor moves nothing; a target below it is
     // reached on the first tic (T_MovePlane), the instant-drop trick of E2M1.
-    _identifyRisingFloors(doorSectorIds, liftIds, instantRaise = {}, liftOriginalFh = {}) {
+    _identifyRisingFloors(liftIds, instantRaise = {}, liftOriginalFh = {}) {
         const {sectors} = this._level;
         const linedefs              = this._moverLinedefs();
         const risingFloorIds        = new Set();
@@ -859,8 +861,9 @@ class WadMapAnalyzer {
         for (const ld of linedefs) {
             if (WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special) && (ld.tag !== 0)) {
                 for (let si = 0; si < sectors.length; si++) {
-                    if ((sectors[si].tag === ld.tag)
-                        && !doorSectorIds.has(si) && !liftIds.has(si)) {
+                    // A door or crusher sector keeps its ceiling thinker and
+                    // gets a floor one too (vanilla floordata / ceilingdata).
+                    if ((sectors[si].tag === ld.tag) && !liftIds.has(si)) {
                         const target = this._risingFloorTarget(si, ld.special, liftOriginalFh);
                         if (target === sectors[si].fh) {
                             continue;

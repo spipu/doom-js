@@ -59,7 +59,7 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Isolated technical points
 
-* **Rising floor on a door or crusher sector**: `_identifyRisingFloors` skips door sectors, so a floor-raise special aimed at one moves nothing (E3M4 tags 4/5: S1 18 on the crusher sectors 128/95; E2M4 tag 9: G1 24 on the crusher 142; Heretic E5M1 tag 4: W1 22 on the pillars 139/141/145/147) while vanilla raises the floor under the ceiling thinker. Same generalisation as the door + lift overlap (rest-floor rule of `_computeDoorHeights`), on the `WadRisingFloorBuilder` side.
+* **Crusher bottom over a raised floor**: a crusher whose sector also has a rising floor (Doom 1 E3M4 sectors 95/128, E2M4 sector 142) still goes down to its original floor + 8, through the raised floor, where vanilla `EV_DoCeiling` fixes its bottom at the live floor + 8 when it starts (a crusher already running keeps its old bottom). The crusher cycle is built once at level load. Options weighed, none chosen yet: precomputed keyframe variants per known floor height, picked at start from the live floor (no engine change, saves unchanged, only the heights known at build); or a generic engine method that redefines an instance's animation at runtime (exact bottom for any floor height, but the redefined cycle must then be saved and restored).
 * **`DoomSimulation` split**: the player spawn spots (own start, free start, deathmatch draws, `placeUser`) and the players' bodies and corpses (`_addBody`, `_leaveCorpse`, the 32-corpse queue) are two responsibilities to extract (`DoomPlayerSpawner`, `DoomPlayerBodies`), with the solo bench identical bit for bit as the proof.
 
 ### Visibility culling (PVS / portals) — last, after everything else

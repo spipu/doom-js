@@ -365,8 +365,8 @@ class WadStaticMapBuilder {
             const sec = sectors[si];
 
             if (doorSectorIds.has(si)) {
-                // A door on a lift: the lift's top flat covers the floor.
-                if (!liftIds.has(si)) {
+                // A door on a floor mover: the mover's top flat covers the floor.
+                if (!liftIds.has(si) && !risingFloorIds.has(si)) {
                     this._buildDoorSectorFlat(mesh, si, sec);
                 }
                 continue;
