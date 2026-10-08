@@ -13,9 +13,8 @@ class Object3dRendererBase {
         return true;
     }
 
-    // Whether this renderer reads the screen-space projection (Object3d.pt2d):
-    // the CPU rasterizers do, a GPU renderer projects in its own shader and the
-    // engine then skips the per-vertex pass entirely.
+    // Whether the renderer reads Object3d.pt2d: flat and fast do, webgl and
+    // full project on their own and the engine skips that pass for them.
     needsProjection() {
         return true;
     }
