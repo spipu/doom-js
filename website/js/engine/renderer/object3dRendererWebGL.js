@@ -313,17 +313,13 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 continue;
             }
 
-            // Additive groups (energy sprites) add their colour to the scene and
-            // don't write depth, so overlapping glows accumulate. Textures are
-            // premultiplied (alpha already in the RGB), hence the ONE source
-            // factor in both modes. State is restored after the loop.
-            if (group.blendAdd) {
-                gl.blendFunc(gl.ONE, gl.ONE);
-                gl.depthMask(false);
-            } else {
-                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                gl.depthMask(true);
-            }
+            // Additive groups (energy sprites) add their colour to the scene.
+            // Translucent groups, additive or below full alpha, write no depth:
+            // they must never hide what is drawn behind them after them.
+            // Textures are premultiplied (alpha already in the RGB), hence the
+            // ONE source factor in both modes. State is restored after the loop.
+            gl.blendFunc(gl.ONE, ((group.blendAdd) ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA));
+            gl.depthMask(!group.blendAdd && (group.alpha >= 1));
             const resolvedTexId = this._resolveTexId({ textureId: group.texId, animTextures: group.animTextures }, engine.sceneMs);
             const texture = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
 

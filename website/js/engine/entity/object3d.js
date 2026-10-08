@@ -13,6 +13,7 @@ class Object3d extends AbstractLoadedEntity {
         // are drawn after the opaque ones.
         this.opaqueFaces        = [];
         this.alphaFaces         = [];
+        this._translucent       = false;
         this._groupLightFactors = {};
         this._faceGroupsVersion = 0;
         this._renderTint        = null;
@@ -25,6 +26,12 @@ class Object3d extends AbstractLoadedEntity {
 
     getFaceGroupsVersion() {
         return this._faceGroupsVersion;
+    }
+
+    // A face below full alpha or additive blends over what lies behind it;
+    // a texture with transparent texels alone does not.
+    isTranslucent() {
+        return this._translucent;
     }
 
     // Light factor of the faces sharing a lightGroup; 1 = baked colour untouched
@@ -187,15 +194,18 @@ class Object3d extends AbstractLoadedEntity {
             this._localNormals[k*3+2] = nz;
         }
 
-        this.opaqueFaces = [];
-        this.alphaFaces  = [];
+        this.opaqueFaces  = [];
+        this.alphaFaces   = [];
+        this._translucent = false;
         for (let k = 0; k < this.faceCount; k++) {
             const fc = this.faceList[k];
             if (fc.collisionOnly === true) {
                 continue;
             }
-            fc.isAlpha = ((fc.alpha < 1) || (fc.blendAdd === true) || ((fc.textureId !== null) && loader.textures().get(fc.textureId).isAlpha()));
+            const translucent = ((fc.alpha < 1) || (fc.blendAdd === true));
+            fc.isAlpha = (translucent || ((fc.textureId !== null) && loader.textures().get(fc.textureId).isAlpha()));
             ((fc.isAlpha) ? this.alphaFaces : this.opaqueFaces).push(k);
+            this._translucent = (this._translucent || translucent);
         }
     }
 

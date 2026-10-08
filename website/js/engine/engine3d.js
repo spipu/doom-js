@@ -10,6 +10,7 @@ class Engine3d {
         this.lightOverride    = null; // global light floor 0..1 (scene-wide fullbright), or null
         this.lightBoost       = 0;    // additive scene-wide light 0..1 (brief flashes), 0 = off
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
+        this._translucents    = [];   // translucent instances in view, reused each frame by displayWorld
         this.instanceLight    = 1;    // light multiplier of the instance being drawn (1 for the static map)
         this.instanceRoll     = 0;    // billboard spin of the instance being drawn
         this.instanceScale    = 1;    // billboard vertical squash of the instance being drawn
@@ -320,13 +321,30 @@ class Engine3d {
         this.lightsCalculatePosition();
         this.drawInit();
         this.drawObject(world.getMap());
+        const translucent = this._translucents;
+        translucent.length = 0;
         world.getInstances().forEach((inst) => {
-            if (this.isInView(inst)) {
-                this.drawInstance(inst);
+            if (!this.isInView(inst)) {
+                return;
             }
+            if (inst.getObject().isTranslucent()) {
+                translucent.push(inst);
+                return;
+            }
+            this.drawInstance(inst);
         });
+        // A translucent body writes no depth: it blends over everything
+        // already drawn behind it, so the translucent ones come last, farthest first.
+        translucent.sort((a, b) => (this._viewDepth(b) - this._viewDepth(a)));
+        translucent.forEach((inst) => this.drawInstance(inst));
         this.drawFinish();
         return this;
+    }
+
+    _viewDepth(instance) {
+        const c = instance.getWorldCenter();
+        const m = this.viewMatrix.v;
+        return (m[0][2]*c[0] + m[1][2]*c[1] + m[2][2]*c[2] + m[3][2]);
     }
 
     // Bounding-sphere frustum test in camera space. The render offset widens the
@@ -335,7 +353,7 @@ class Engine3d {
     isInView(instance) {
         const c  = instance.getWorldCenter();
         const m  = this.viewMatrix.v;
-        const cz = m[0][2]*c[0] + m[1][2]*c[1] + m[2][2]*c[2] + m[3][2];
+        const cz = this._viewDepth(instance);
         const r  = instance.getObject().getBoundingRadius() + instance.getRenderOffsetBound() + instance.getRenderRollBound();
         if ((cz + r < this.zBuffer.getNear()) || (cz - r > this.zBuffer.getFar())) {
             return false;
