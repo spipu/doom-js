@@ -268,10 +268,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.near, engine.zBuffer.getNear());
         gl.uniform1f(loc.far,  engine.zBuffer.getFar());
 
-        // An active light override also bypasses the depth curve: a fullbright
-        // scene has no distance attenuation.
         const lightOverride = ((((engine.lightOverride ?? 0) > 0)) ? engine.lightOverride : null);
-        const shading = (((engine.depthShading !== null) && (lightOverride === null)) ? engine.depthShading : this._neutralDepthShading);
+        const shading       = (Object3dRendererBase.frameShading(engine) ?? this._neutralDepthShading);
         gl.uniform1f(loc.dsVis,      shading.visibility);
         gl.uniform1f(loc.dsVisMax,   shading.visibilityMax);
         gl.uniform1f(loc.dsBase,     shading.shadeBase);
@@ -294,10 +292,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 // wrapped) scroll offset baked in here.
                 const scroll      = this._uvOffset(fc, engine.sceneMs);
                 const lightFactor = obj.getFaceLightFactor(fc) * engine.instanceLight;
-                // Depth-curve light level (0..1), taken before the ambient of
-                // _pointColor. Untextured face colours are 0..255.
-                const colorMax  = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
-                const faceLight = Math.min(1.0, ((group.texId !== null) ? colorMax : colorMax / 255.0) * lightFactor);
+                const faceLight   = Object3dRendererBase.faceLight(fc, lightFactor, (group.texId !== null));
                 for (let v = 0; v < 3; v++) {
                     const ptIdx = fc.pts[v];
                     const pt    = obj.pt3d[ptIdx];

@@ -51,7 +51,7 @@ The renderer is selectable in game (`display.renderer`, WebGL by default) and th
 
 What the CPU modes still lack against WebGL, by order of interest:
 
-* **`full`: the sky and distance darkening** (both engine primitives are applied by the WebGL renderer only), nor the global light floor and boost.
+* **`full`: the sky** (the engine primitive is applied by the WebGL renderer only).
 * **`full`: alpha pass** — an **opaque** additive face stays in the opaque pass, so a sprite drawn after it can cover it; translucent bodies blend in the arbitrary order of the instances (WebGL draws them last, farthest first).
 
 On the Heretic fidelity side, one gap found while auditing the state verbs: **sinking into liquids** (`A_SetFloorClip` / `A_UnSetFloorClip`) — the engine has no floor clipping. Doable with what exists (`DoomTerrain.terrainAt` already tells which liquid lies under a point, `Instance.setRenderOffset` shifts the rendering only), but it is a system to lay down, not a verb to wire. The `footclip` each terrain carries is read and dropped by `WadTerrainBank` for lack of a consumer: that is where it would land.

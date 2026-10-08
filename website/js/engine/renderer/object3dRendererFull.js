@@ -13,11 +13,14 @@ class Object3dRendererFull extends Object3dRendererBase {
         this._dt13  = new Float64Array(8);
         this._lt0   = new Float64Array(8);
         this._lt1   = new Float64Array(8);
-        this._image = null;   // ImageData reused across frames
-        this._data  = null;
-        this._depth = null;
-        this._near  = 0;
-        this._far   = 0;
+        this._image   = null;   // ImageData reused across frames
+        this._data    = null;
+        this._depth   = null;
+        this._near    = 0;
+        this._far     = 0;
+        this._floor   = 0;      // scene light floor of the frame, 0 = off
+        this._boost   = 0;      // scene light boost of the frame, 0 = off
+        this._shading = null;   // depth curve of the frame, null = off
     }
 
     get code() {
@@ -37,10 +40,13 @@ class Object3dRendererFull extends Object3dRendererBase {
             this._image.data.fill(0);
         }
         engine.scrData = this._image;
-        this._data  = this._image.data;
-        this._depth = engine.zBuffer.getDepths();
-        this._near  = engine.zBuffer.getNear();
-        this._far   = engine.zBuffer.getFar();
+        this._data    = this._image.data;
+        this._depth   = engine.zBuffer.getDepths();
+        this._near    = engine.zBuffer.getNear();
+        this._far     = engine.zBuffer.getFar();
+        this._floor   = (engine.lightOverride ?? 0);
+        this._boost   = engine.lightBoost;
+        this._shading = Object3dRendererBase.frameShading(engine);
     }
 
     end(engine) {
@@ -55,16 +61,19 @@ class Object3dRendererFull extends Object3dRendererBase {
                     continue;
                 }
 
-                this._buildVertex(this._v0, engine, fc, obj, 0);
-                this._buildVertex(this._v1, engine, fc, obj, 1);
-                this._buildVertex(this._v2, engine, fc, obj, 2);
-
-                const tris          = this._clipNear(engine, this._v0, this._v1, this._v2);
                 const resolvedTexId = this._resolveTexId(fc, engine.sceneMs);
                 const texture       = ((resolvedTexId !== null) ? loader.textures().get(resolvedTexId) : null);
                 const alpha         = fc.alpha;
                 const clampV        = (fc.clampV || false);
                 const blendAdd      = (fc.blendAdd === true);
+                const lightFactor   = obj.getFaceLightFactor(fc) * engine.instanceLight;
+                const faceLight     = Object3dRendererBase.faceLight(fc, lightFactor, (texture !== null));
+
+                this._buildVertex(this._v0, engine, fc, obj, 0, lightFactor, blendAdd, (texture !== null));
+                this._buildVertex(this._v1, engine, fc, obj, 1, lightFactor, blendAdd, (texture !== null));
+                this._buildVertex(this._v2, engine, fc, obj, 2, lightFactor, blendAdd, (texture !== null));
+
+                const tris = this._clipNear(engine, this._v0, this._v1, this._v2);
 
                 for (const tri of tris) {
                     const s0 = tri[0], s1 = tri[1], s2 = tri[2];
@@ -75,7 +84,7 @@ class Object3dRendererFull extends Object3dRendererBase {
                         p3[i] = s2[i];
                     }
                     this._sortVertices();
-                    this._rasterize(engine, alpha, texture, clampV, blendAdd);
+                    this._rasterize(engine, alpha, texture, clampV, blendAdd, faceLight);
                 }
             }
         }
@@ -85,19 +94,41 @@ class Object3dRendererFull extends Object3dRendererBase {
     // cx, cy only serve the near clip. sx/sy are projected here without the
     // integer rounding of pt2d: rounded, a vertex sitting on a neighbour's
     // edge drifts off it and opens a one-pixel hole.
-    _buildVertex(out, engine, fc, obj, idx) {
-        const ptIdx       = fc.pts[idx];
-        const col         = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
-        const pt3d        = obj.pt3d[ptIdx];
-        const scroll      = this._uvOffset(fc, engine.sceneMs);
-        const lightFactor = obj.getFaceLightFactor(fc) * engine.instanceLight;
-        const z           = Math.max(pt3d[2], Object3dRendererFull.PROJECTION_MIN_Z);
+    _buildVertex(out, engine, fc, obj, idx, lightFactor, additive, textured) {
+        const ptIdx  = fc.pts[idx];
+        const col    = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
+        const pt3d   = obj.pt3d[ptIdx];
+        const scroll = this._uvOffset(fc, engine.sceneMs);
+        const z      = Math.max(pt3d[2], Object3dRendererFull.PROJECTION_MIN_Z);
         out[0] = engine.projScaleX * pt3d[0] / z - engine.projOffsetX;
         out[1] = -engine.projScaleY * pt3d[1] / z - engine.projOffsetY;
         out[2] = pt3d[2];
         out[3] = col[0] * lightFactor;  out[4] = col[1] * lightFactor;  out[5] = col[2] * lightFactor;
         out[6] = fc.map[idx][0] + scroll[0]; out[7] = fc.map[idx][1] + scroll[1];
         out[8] = pt3d[0]; out[9] = pt3d[1];
+        if (!additive && ((this._floor > 0) || (this._boost > 0))) {
+            this._relight(out, ((textured) ? 1 : 255));
+        }
+    }
+
+    // Scene light floor then boost on a vertex colour, like the WebGL fragment
+    // shader (hue kept by the floor, boost saturating at full). Done per vertex
+    // here: without point lights the three vertices of a face share one light.
+    _relight(out, unit) {
+        let max = Math.max(out[3], Math.max(out[4], out[5])) / unit;
+        if ((this._floor > 0) && (max < this._floor)) {
+            const scale = ((max > 0) ? this._floor / max : 0);
+            out[3] = ((max > 0) ? out[3] * scale : this._floor * unit);
+            out[4] = ((max > 0) ? out[4] * scale : this._floor * unit);
+            out[5] = ((max > 0) ? out[5] * scale : this._floor * unit);
+            max = this._floor;
+        }
+        if ((this._boost > 0) && (max < 1)) {
+            const add = this._boost * unit;
+            out[3] = Math.min(out[3] + add, unit);
+            out[4] = Math.min(out[4] + add, unit);
+            out[5] = Math.min(out[5] + add, unit);
+        }
     }
 
     // Crossing geometry from the base; this only adds the colour and UV channels
@@ -157,7 +188,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 
-    _rasterize(engine, alpha, texture, clampV = false, blendAdd = false) {
+    _rasterize(engine, alpha, texture, clampV, blendAdd, faceLight) {
         const p1 = this._p1, p2 = this._p2, p3 = this._p3;
         if (texture) {
             p1[6] /= p1[2]; p1[7] /= p1[2];
@@ -204,6 +235,15 @@ class Object3dRendererFull extends Object3dRendererBase {
         // pixels that pass.
         const invNear  = 1 / this._near;
         const invFar   = 1 / this._far;
+        // Depth curve of the face (see Engine3d.setDepthShading), on 1/z as
+        // well; a face lit to the full never darkens (shadeTerm <= 0).
+        const ds        = this._shading;
+        const shadeTerm = ((ds !== null) ? ds.shadeBase - ds.shadeScale * (faceLight + this._boost) : 0);
+        const curve     = (shadeTerm > 0);
+        const dsVis     = ((curve) ? ds.visibility : 0);
+        const dsVisMax  = ((curve) ? ds.visibilityMax : 0);
+        const dsRampM1  = ((curve) ? ds.rampCount - 1 : 0);
+        const dsStep    = ((curve) ? ds.strength / ds.rampCount : 0);
 
         for (let ly = ymin; ly <= ymax; ly++) {
             const yc = ly + 0.5;
@@ -294,17 +334,26 @@ class Object3dRendererFull extends Object3dRendererBase {
                     depth[idx] = lz;
                 }
 
+                let k = 1;
+                if (curve) {
+                    const vis = Math.min(dsVis * inv, dsVisMax);
+                    const di  = Math.min((shadeTerm - vis) * dsRampM1, dsRampM1);
+                    if (di > 0) {
+                        k = 1 - dsStep * di;
+                    }
+                }
+
                 const pixel = idx << 2;
                 let r, g, b, a;
                 if (tex !== null) {
-                    r = (cr * texData[texel]) | 0;
-                    g = (cg * texData[texel + 1]) | 0;
-                    b = (cb * texData[texel + 2]) | 0;
+                    r = (cr * k * texData[texel]) | 0;
+                    g = (cg * k * texData[texel + 1]) | 0;
+                    b = (cb * k * texData[texel + 2]) | 0;
                     a = ((direct) ? 1 : alpha * texData[texel + 3] / 255);
                 } else {
-                    r = cr | 0;
-                    g = cg | 0;
-                    b = cb | 0;
+                    r = (cr * k) | 0;
+                    g = (cg * k) | 0;
+                    b = (cb * k) | 0;
                     a = alpha;
                 }
 

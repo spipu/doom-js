@@ -93,7 +93,7 @@ class Engine3d {
         return this;
     }
 
-    // Per-pixel depth light attenuation (WebGL only), or null to disable:
+    // Per-pixel depth light attenuation (webgl and full), or null to disable:
     //   {visibility, visibilityMax, shadeBase, shadeScale, rampCount, strength}
     //   vis      = min(visibility / viewDepth, visibilityMax)
     //   shade    = shadeBase − shadeScale × light      (light: vertex level 0..1)
@@ -105,14 +105,14 @@ class Engine3d {
     }
 
     // Scene-wide light floor 0..1 (null = off) that also bypasses the depth
-    // shading. WebGL only.
+    // shading. webgl and full.
     setLightOverride(value) {
         this.lightOverride = value;
         return this;
     }
 
     // Scene-wide additive light 0..1 on every non-fullbright face, depth shading
-    // included. WebGL only.
+    // included. webgl and full.
     setLightBoost(value) {
         this.lightBoost = value;
         return this;

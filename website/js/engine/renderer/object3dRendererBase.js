@@ -241,6 +241,20 @@ class Object3dRendererBase {
         );
     }
 
+    // Light level 0..1 of a face for the depth curve, before the ambient of
+    // _pointColor. Untextured face colours are 0..255.
+    static faceLight(fc, lightFactor, textured) {
+        const colorMax = Math.max(fc.color[0], Math.max(fc.color[1], fc.color[2]));
+
+        return Math.min(1, ((textured) ? colorMax : colorMax / 255) * lightFactor);
+    }
+
+    // The depth curve of the frame, null when off: an active light override
+    // bypasses it, a fullbright scene has no distance attenuation.
+    static frameShading(engine) {
+        return (((engine.depthShading !== null) && ((engine.lightOverride ?? 0) <= 0)) ? engine.depthShading : null);
+    }
+
     // Camera space puts the eye at the origin, so normal·vertex >= 0 means the
     // face turns away from it.
     _isBackFace(normal, pt) {
