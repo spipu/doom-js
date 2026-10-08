@@ -635,37 +635,49 @@ class WadMapAnalyzer {
         const liftLowestFh        = {};
         const liftMaxAdjFh        = {};
         const liftVanillaTargetFh = {};
+        // A perpetual plat may rest at its low end: still only when low == high.
+        const isStill = (si) => ((WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si]))
+            ? (liftMaxAdjFh[si] <= liftLowestFh[si])
+            : (liftOriginalFh[si] <= liftLowestFh[si]));
+        const setEnds = (si, adjFh) => {
+            const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
+            // Donut hole: lowers to the sector beyond the ring (EV_DoDonut).
+            const target = ((donutHoleTargetFh[si] !== undefined)
+                ? donutHoleTargetFh[si]
+                : WadMapAnalyzer._lowerTargetFh(rule, adjFh, sectors[si].fh));
+            liftLowestFh[si] = Math.min(target, sectors[si].fh);
+            // High end of a perpetual plat: highest adjacent floor, clamped
+            // so it never sits below the sector's own floor (p_plats.c).
+            liftMaxAdjFh[si] = ((adjFh.length === 0)
+                ? sectors[si].fh
+                : Math.max(Math.max(...adjFh), sectors[si].fh));
+        };
         const computeTargets = () => {
             for (const si of liftIds) {
-                const {adjFh, adjAllFh} = this._liftAdjacentFloors(si, liftIds);
+                const adjFh = this._liftAdjacentFloors(si);
+                const rule  = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
                 liftOriginalFh[si] = sectors[si].fh;
-                const rule = WadConstants.FLOOR_DOWN_BY_SPECIAL[liftSectorSpecial[si]].target;
-                // Donut hole: lowers to the sector beyond the ring (EV_DoDonut).
-                const target = ((donutHoleTargetFh[si] !== undefined)
-                    ? donutHoleTargetFh[si]
-                    : WadMapAnalyzer._lowerTargetFh(rule, adjFh, sectors[si].fh));
-                liftLowestFh[si] = Math.min(target, sectors[si].fh);
-                // Vanilla destination (instant-raise detection only): every
-                // neighbour counts, co-movers included. Lowest seeds at the own
-                // floor, highest at -500 (p_spec.c); turbo adds 8 only when the
-                // highest differs from the current floor (p_floor.c turboLower).
+                setEnds(si, adjFh);
+                // Vanilla destination (instant-raise detection only): lowest
+                // seeds at the own floor, highest at -500 (p_spec.c); turbo adds 8
+                // only when the highest differs from the current floor (p_floor.c turboLower).
                 if ((rule === 'highest') || (rule === 'highest+8')) {
-                    const highest = ((adjAllFh.length === 0) ? WadConstants.HIGHEST_FLOOR_SEED : Math.max(...adjAllFh));
+                    const highest = ((adjFh.length === 0) ? WadConstants.HIGHEST_FLOOR_SEED : Math.max(...adjFh));
                     liftVanillaTargetFh[si] = highest + (((rule === 'highest+8') && (highest !== sectors[si].fh)) ? WadConstants.TURBO_LOWER_OFFSET : 0);
                 } else {
-                    liftVanillaTargetFh[si] = Math.min(sectors[si].fh, ...adjAllFh);
+                    liftVanillaTargetFh[si] = Math.min(sectors[si].fh, ...adjFh);
                 }
-                // High end of a perpetual plat: highest adjacent floor, clamped
-                // so it never sits below the sector's own floor (p_plats.c).
-                liftMaxAdjFh[si] = ((adjFh.length === 0)
-                    ? sectors[si].fh
-                    : Math.max(Math.max(...adjFh), sectors[si].fh));
+            }
+            // Deviation: a lift still on the first firing is built for the floors
+            // its co-moving neighbours lower to (vanilla reads them live at each firing).
+            const firstLowFh = {...liftLowestFh};
+            for (const si of [...liftIds].filter(isStill)) {
+                setEnds(si, this._liftAdjacentFloors(si, (other) => (firstLowFh[other] ?? sectors[other].fh)));
             }
         };
 
-        // Lifts with no lower non-lift neighbour cannot descend and are dropped,
-        // one at a time: a dropped lift becomes a plain neighbour and may give
-        // another candidate the lower floor it was missing.
+        // A lift that cannot descend is dropped, unless another special on its
+        // tag still moves it.
         const instantRaise = {};
         while (true) {
             for (const k of Object.keys(liftOriginalFh)) {
@@ -688,13 +700,7 @@ class WadMapAnalyzer {
                 delete liftSectorSpecial[instant];
                 continue;
             }
-            // A perpetual plat may rest at its low end: dead only when low == high.
-            const dead = [...liftIds].find((si) => {
-                if (WadConstants.FLOOR_PERPETUAL_SPECIALS.has(liftSectorSpecial[si])) {
-                    return (liftMaxAdjFh[si] <= liftLowestFh[si]);
-                }
-                return (liftOriginalFh[si] <= liftLowestFh[si]);
-            });
+            const dead = [...liftIds].find(isStill);
             if (dead === undefined) {
                 break;
             }
@@ -721,12 +727,11 @@ class WadMapAnalyzer {
         };
     }
 
-    // Neighbour floors of si: all of them (P_Find*FloorSurrounding) and the
-    // non-lift ones alone (lift travel and patching).
-    _liftAdjacentFloors(si, liftIds) {
-        const {sidedefs, sectors} = this._level;
-        const adjFh    = [];
-        const adjAllFh = [];
+    // Neighbour floors of si, co-movers included, at their WAD height by
+    // default: what P_Find*FloorSurrounding reads when the tag first fires.
+    _liftAdjacentFloors(si, floorOf = ((other) => this._level.sectors[other].fh)) {
+        const {sidedefs} = this._level;
+        const adjFh = [];
         for (const ld of this._moverLinedefs()) {
             if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
@@ -737,13 +742,10 @@ class WadMapAnalyzer {
             if ((other === null) || (other === si)) {
                 continue;
             }
-            adjAllFh.push(sectors[other].fh);
-            if (!liftIds.has(other)) {
-                adjFh.push(sectors[other].fh);
-            }
+            adjFh.push(floorOf(other));
         }
 
-        return {adjFh: adjFh, adjAllFh: adjAllFh};
+        return adjFh;
     }
 
     // Destination of a floor-lower rule: classic lifts lower to the LOWEST
@@ -782,7 +784,7 @@ class WadMapAnalyzer {
                     continue;
                 }
                 const origFh   = lifts.liftOriginalFh[si];
-                const {adjFh}  = this._liftAdjacentFloors(si, lifts.liftIds);
+                const adjFh    = this._liftAdjacentFloors(si);
                 const targetFh = Math.min(WadMapAnalyzer._lowerTargetFh(rule.target, adjFh, origFh), origFh);
                 if (targetFh >= origFh) {
                     continue;
