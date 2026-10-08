@@ -47,19 +47,20 @@ The WAD loads under the fallback profile only. It needs its own thing and specia
 
 ### Rendering performance & quality options
 
-The renderer is selectable in game (`display.renderer`, WebGL by default) and the three CPU modes draw the weapon in hand, but they still lag behind WebGL, and there is **no quality setting**: a face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone. This is **the** prerequisite of the visibility culling item below (profile before partitioning).
+The renderer is selectable in game (`display.renderer`, WebGL by default) and the three CPU modes draw the weapon in hand, but they still lag behind WebGL.
 
 What the CPU modes still lack against WebGL, by order of interest:
 
 * **`full`: the sky and distance darkening** (both engine primitives are applied by the WebGL renderer only), nor the global light floor and boost.
 * **`full`: alpha pass** — an **opaque** additive face stays in the opaque pass, so a sprite drawn after it can cover it; translucent bodies blend in the arbitrary order of the instances (WebGL draws them last, farthest first).
-* **`flat` / `fast`: no sky, by decision** — fixed grey `#666` background.
 
 On the Heretic fidelity side, one gap found while auditing the state verbs: **sinking into liquids** (`A_SetFloorClip` / `A_UnSetFloorClip`) — the engine has no floor clipping. Doable with what exists (`DoomTerrain.terrainAt` already tells which liquid lies under a point, `Instance.setRenderOffset` shifts the rendering only), but it is a system to lay down, not a verb to wire. The `footclip` each terrain carries is read and dropped by `WadTerrainBank` for lack of a consumer: that is where it would land.
 
 ### Visibility culling (PVS / portals) — last, after everything else
 
 A large **performance / rendering** item, to start only **after** everything above. NB: the sector adjacency graph built for `P_NoiseAlert` is a reusable brick here, and the BSP walk + angular clipper of the automap (`DoomAutomapReveal`) is **exactly** the visibility pass asked for below, already written and proven — on the logic side, not the rendering side.
+
+**First step — quality options**: there is **no quality setting** today. A face and draw-call budget, plus a resolution or draw-distance option, would decide how well it runs on a phone. They come before any partitioning: they are the profiling the item below requires.
 
 **Observed problem**: no visibility culling — every frame, the **whole** map (a single static mesh) is drawn, and the **z-buffer** alone hides what lies behind solid geometry. So above low walls and **through open areas** (the sky writes no depth), the **distant rooms** show (e.g. the E1M1 exit room seen across the courtyard).
 
