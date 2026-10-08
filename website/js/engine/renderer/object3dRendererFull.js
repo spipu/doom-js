@@ -227,7 +227,8 @@ class Object3dRendererFull extends Object3dRendererBase {
         const texH     = ((tex !== null) ? tex.height : 0);
         // Opaque texture: depth test first, hidden pixels skip the texel fetch.
         const texAlpha = ((tex !== null) && tex.isAlpha());
-        const direct   = (!blendAdd && (alpha >= 1) && !texAlpha);
+        const opaque   = (!blendAdd && (alpha >= 1));
+        const direct   = (opaque && !texAlpha);
         const data     = this._data;
         const depth    = this._depth;
         const scrW     = engine.scrWidth;
@@ -323,14 +324,14 @@ class Object3dRendererFull extends Object3dRendererBase {
                     }
                 }
 
-                // An additive glow only TESTS the depth: it must not hide what
-                // is behind it, and two glows crossing must both accumulate.
+                // A translucent face only TESTS the depth, like WebGL: it must
+                // not hide what is drawn behind it afterwards.
                 if (!direct) {
                     if (depth[idx] < lz) {
                         continue;
                     }
                 }
-                if (!blendAdd) {
+                if (opaque) {
                     depth[idx] = lz;
                 }
 
