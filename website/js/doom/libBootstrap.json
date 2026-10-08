@@ -1,5 +1,5 @@
 {
-    "version": "v1.1160",
+    "version": "v1.1165",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -151,6 +151,7 @@
             "/js/doom/wad/convert/doomSectorDamageInteraction.js",
             "/js/doom/wad/convert/doomSectorPushInteraction.js",
             "/js/doom/wad/convert/doomSectorLightInteraction.js",
+            "/js/doom/wad/convert/doomCrusherFloorInteraction.js",
             "/js/doom/wad/convert/doomSecretInteraction.js",
             "/js/doom/wad/convert/doomBuiltLevel.js",
             "/js/doom/wad/convert/wadWorldBuilder.js",

@@ -960,13 +960,13 @@
     "secrets": 6
   },
   "Doom1/E2M4": {
-    "sha": "8d9c5afe503bd8f2c81f1af7e5eeb8d24f884b29f477d228b6cf995e6adc1e30",
+    "sha": "7b685a982d8694b25d8e74884a28a47073543f557f43d2875f2832e86d673526",
     "objects": 1093,
     "points": 11646,
     "faces": 6426,
     "textures": 1051,
     "instances": 333,
-    "interactions": 46,
+    "interactions": 47,
     "kills": 73,
     "items": 48,
     "secrets": 10
@@ -1068,13 +1068,13 @@
     "secrets": 6
   },
   "Doom1/E3M4": {
-    "sha": "45284d64db7ada34d0f566b091c30c8643045a12c397044a199e42a056db6af3",
+    "sha": "adfdf31de54a91881dbe7f996bcb6da76b28a1798278bc9220d37a8ae9eea2fd",
     "objects": 1058,
     "points": 11415,
     "faces": 6303,
     "textures": 1070,
     "instances": 376,
-    "interactions": 35,
+    "interactions": 36,
     "kills": 100,
     "items": 49,
     "secrets": 4

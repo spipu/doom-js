@@ -247,6 +247,7 @@ class WadWorldBuilder {
         const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings);
         this._built.setMonsterLevelData(levelData);
         this._registerAutomap(level, levelData.heights);
+        this._registerCrusherFloors(analysis, levelData);
         this._built.setBossRules(this._bossRules(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes));
         this._built.setBossBrain(this._bossBrain());
 
@@ -662,6 +663,28 @@ class WadWorldBuilder {
             return;
         }
         this._built.setAutomap(new DoomAutomap(new WadAutomapBuilder(level).build(), heights));
+    }
+
+    // A crusher over a floor mover (doom1 E3M4, E2M4) must turn back on the live floor.
+    _registerCrusherFloors(analysis, levelData) {
+        const crushers = [];
+        for (const [key, mover] of Object.entries(levelData.moverCodes)) {
+            const si    = Number(key);
+            const props = analysis.doorProps[si];
+            if ((mover.floor === null) || (mover.door === null) || (props.anim !== 'crusher')) {
+                continue;
+            }
+            crushers.push({
+                si:          si,
+                code:        mover.door,
+                cycle:       WadConstants.doorCycleKey(props.anim, props.speed),
+                closeMargin: props.closeMargin,
+                topCeiling:  analysis.doorHeights[si].ceilH
+            });
+        }
+        if (crushers.length > 0) {
+            loader.interactions().loadFromData(new DoomCrusherFloorInteraction(crushers, levelData.heights));
+        }
     }
 
     // Level data of the monster AI and the sector-height service built from it.

@@ -59,7 +59,6 @@ On the Heretic fidelity side, one gap found while auditing the state verbs: **si
 
 ### Isolated technical points
 
-* **Crusher bottom over a raised floor**: a crusher whose sector also has a rising floor (Doom 1 E3M4 sectors 95/128, E2M4 sector 142) still goes down to its original floor + 8, through the raised floor, where vanilla `EV_DoCeiling` fixes its bottom at the live floor + 8 when it starts (a crusher already running keeps its old bottom). The crusher cycle is built once at level load. Options weighed, none chosen yet: precomputed keyframe variants per known floor height, picked at start from the live floor (no engine change, saves unchanged, only the heights known at build); or a generic engine method that redefines an instance's animation at runtime (exact bottom for any floor height, but the redefined cycle must then be saved and restored).
 * **`DoomSimulation` split**: the player spawn spots (own start, free start, deathmatch draws, `placeUser`) and the players' bodies and corpses (`_addBody`, `_leaveCorpse`, the 32-corpse queue) are two responsibilities to extract (`DoomPlayerSpawner`, `DoomPlayerBodies`), with the solo bench identical bit for bit as the proof.
 
 ### Visibility culling (PVS / portals) — last, after everything else
