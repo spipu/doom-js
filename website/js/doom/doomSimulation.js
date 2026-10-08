@@ -37,10 +37,8 @@ class DoomSimulation {
         this._gunTriggers      = null;        // shot-activated lines
         this._sectorSurfaces   = null;        // floor flats/specials rewritten by the "+change" floors
         this._terrain          = null;
-        this._playerStarts     = {};          // slot → {x, y, z, yaw}, the map's player starts
-        this._deathmatchStarts = [];          // {x, y, z, yaw}, the map's deathmatch starts
-        this._bodies           = new Map();   // player id → DoomPlayerBody, while the subs play
-        this._corpses          = [];          // DoomBodyView of the dead players' left bodies, oldest first
+        this._spawner          = null;        // DoomPlayerSpawner of the started level
+        this._bodies           = null;        // DoomPlayerBodies of the started level
         this._deadMs           = new Map();   // player id → ms since its death
         this._itemRespawns     = null;        // DoomItemRespawnQueue of the level
         this._onLevelExit      = null;        // (secret) => void, what an exit line calls
@@ -77,69 +75,11 @@ class DoomSimulation {
         if (this._monsterDamage !== null) {
             this._monsterDamage.setFriendlyFire(rules.allowsFriendlyFire());
         }
-        if (this._world !== null) {
-            this._showPlayerBodies();
+        if (this._bodies !== null) {
+            this._bodies.show(this._roster.getInLevel(), rules.admitsSubPlayers());
         }
 
         return this;
-    }
-
-    // The players' bodies exist while the subs play their own players.
-    _showPlayerBodies() {
-        for (const player of this._roster.getInLevel()) {
-            if (this._rules.admitsSubPlayers()) {
-                this._addBody(player);
-            } else {
-                this._removeBody(player);
-            }
-        }
-    }
-
-    _addBody(player) {
-        const frames = this._level.getPlayerBodyFrames(DoomPlayerBody.kindOf(player.getId()));
-        if (this._bodies.has(player.getId()) || (frames === null)) {
-            return;
-        }
-        const body = new DoomPlayerBody(player, this._level.getPlayerBodyDef(), frames, this._level.getMonsterLevelData());
-        this._bodies.set(player.getId(), body);
-        this._level.getBodyViews().add(body.getView());
-    }
-
-    // G_PlayerReborn: the dead body stays where it fell, as a corpse in the
-    // slot's colour the respawned player sees too, at most CORPSE_QUEUE of them.
-    _leaveCorpse(player) {
-        const body = (this._bodies.get(player.getId()) ?? null);
-        if (body === null) {
-            return;
-        }
-        const views  = this._level.getBodyViews();
-        const view   = body.getView();
-        const corpse = new DoomBodyView(view.getInstance(), view.getFrames(), DoomPlayerBody.corpseKindOf(player.getId()))
-            .setFrame(view.getFrameKey(), view.isBright())
-            .setFacing(view.getFacing())
-            .setSector(view.getSector())
-            .setRenderScale(view.getRenderScale());
-        views.delete(view);
-        views.add(corpse);
-        this._bodies.delete(player.getId());
-        this._corpses.push(corpse);
-        if (this._corpses.length > DoomSimulation.CORPSE_QUEUE) {
-            this._dropView(this._corpses.shift());
-        }
-    }
-
-    _removeBody(player) {
-        const body = (this._bodies.get(player.getId()) ?? null);
-        if (body === null) {
-            return;
-        }
-        this._dropView(body.getView());
-        this._bodies.delete(player.getId());
-    }
-
-    _dropView(view) {
-        loader.instances().scheduleRemoval(view.getInstance());
-        this._level.getBodyViews().delete(view);
     }
 
     setSkill(skill) {
@@ -251,8 +191,8 @@ class DoomSimulation {
 
         // Vanilla M_ClearRandom.
         this._rng.reset();
-        this._bodies       = new Map();
-        this._corpses      = [];
+        this._spawner      = new DoomPlayerSpawner(this._level.getPlayerStarts(), this._level.getDeathmatchStarts(), world, this._monsters, this._rng);
+        this._bodies       = new DoomPlayerBodies(this._level);
         this._deadMs       = new Map();
         this._limitReached = false;
         this._itemRespawns = new DoomItemRespawnQueue(this._level.getPickups(), this._profile.itemRespawnRules(), this._effects, this._events);
@@ -300,18 +240,17 @@ class DoomSimulation {
                 .setAttackSystems(this._hitscan, this._projectiles)
                 .setFireCallback(() => {
                     this._monsters.noiseAlert(user);
-                    this._bodies.get(player.getId())?.fired();
+                    this._bodies.fired(player.getId());
                 })
-                .setFlashCallback(() => this._bodies.get(player.getId())?.flashed()));
+                .setFlashCallback(() => this._bodies.flashed(player.getId())));
         }
         if (this._rules.admitsSubPlayers()) {
-            this._addBody(player);
+            this._bodies.add(player);
         }
     }
 
     /**
-     * Puts a body on a spot: the given Y is the floor-search ceiling, like the
-     * initial snap in World.finalizeInit, the body drops onto the floor below it.
+     * Puts a body on a spot, dropped onto the floor under it (DoomPlayerSpawner).
      *
      * @param {User}     user
      * @param {number[]} position - [x, y, z]
@@ -319,17 +258,7 @@ class DoomSimulation {
      * @param {number}   pitch
      */
     placeUser(user, position, yaw, pitch) {
-        user.x     = position[0];
-        user.y     = position[1];
-        user.z     = position[2];
-        user.yaw   = yaw;
-        user.pitch = pitch;
-        user.syncPositionTracking();
-
-        const floorY = this._world.getCollision().getFloor(user.x, user.z, user.getRadius(), user.y);
-        if (floorY !== -Infinity) {
-            user.y = floorY;
-        }
+        this._spawner.placeUser(user, position, yaw, pitch);
     }
 
     /**
@@ -340,7 +269,7 @@ class DoomSimulation {
      */
     removePlayer(player) {
         const user = player.getUser();
-        this._removeBody(player);
+        this._bodies.remove(player);
         this._world.removeUser(user);
         this._monsters.forgetActor(user);
         this._projectiles.forgetActor(user);
@@ -370,23 +299,7 @@ class DoomSimulation {
     }
 
     _spawnSpot(slot) {
-        return ((this._rules.spawnsAtDeathmatchStarts()) ? this._deathmatchStart(slot) : this._freeStart(slot));
-    }
-
-    // G_DeathMatchSpawnPlayer: twenty random draws for a free deathmatch start,
-    // then the player's own start (a map without any falls back on it too).
-    _deathmatchStart(slot) {
-        const radius = this._world.getUser().getRadius();
-        if (this._deathmatchStarts.length > 0) {
-            for (let tries = 0; tries < DoomSimulation.DEATHMATCH_SPAWN_TRIES; tries++) {
-                const start = this._deathmatchStarts[this._rng.next() % this._deathmatchStarts.length];
-                if (!this._monsters.isSpotOccupied(start.x, start.z, radius)) {
-                    return start;
-                }
-            }
-        }
-
-        return this._freeStart(slot);
+        return this._spawner.spawnSpot(slot, this._rules.spawnsAtDeathmatchStarts());
     }
 
     // P_SpawnPlayer gives every key in deathmatch.
@@ -394,19 +307,6 @@ class DoomSimulation {
         if (this._rules.givesAllKeys()) {
             this._itemRules.giveAllKeys(user);
         }
-    }
-
-    // G_CheckSpot / G_DoReborn: its own start when free, else another free
-    // start, else its own anyway, else the player 1 start of a map placing
-    // fewer starts. The slot is the player id until the lobby hands them out.
-    _freeStart(slot) {
-        const radius = this._world.getUser().getRadius();
-        const own    = (this._playerStarts[slot] ?? null);
-        const others = Object.keys(this._playerStarts).map(Number).sort((a, b) => (a - b))
-            .filter((other) => (other !== slot)).map((other) => this._playerStarts[other]);
-        const free   = [own, ...others].find((start) => ((start !== null) && !this._monsters.isSpotOccupied(start.x, start.z, radius)));
-
-        return (free ?? own ?? this._playerStarts[DoomPlayer.MAIN_ID] ?? WadConstants.FALLBACK_SPAWN);
     }
 
     _equip(player, restoredState) {
@@ -443,8 +343,6 @@ class DoomSimulation {
         this._sectorDamage     = built.getSectorDamage();
         this._sectorSurfaces   = built.getSectorSurfaces();
         this._terrain          = built.getTerrain();
-        this._playerStarts     = built.getPlayerStarts();
-        this._deathmatchStarts = built.getDeathmatchStarts();
         this._stats.setTotals(built.getSecretsTotal(), built.getKillsTotal(), built.getItemsTotal());
     }
 
@@ -496,9 +394,7 @@ class DoomSimulation {
         if (this._monsters !== null) {
             this._monsters.update(dt);
         }
-        for (const [id, body] of this._bodies) {
-            body.update(dt, (commands.get(id) ?? World.NEUTRAL_COMMAND));
-        }
+        this._bodies.update(dt, commands);
         this._itemRespawns.update(dt);
         this._stats.addMatchTime(dt);
         const timeLimit = this._rules.timeLimitMs();
@@ -562,7 +458,7 @@ class DoomSimulation {
     _respawn(player, command) {
         const user  = player.getUser();
         const start = this._spawnSpot(player.getId());
-        this._leaveCorpse(player);
+        this._bodies.leaveCorpse(player);
         user.revive(user.getMaxEnergy()).setLastCommand(command);
         this.placeUser(user, [start.x, start.y, start.z], start.yaw, 0);
         user.clearEquipment();
@@ -641,10 +537,6 @@ class DoomSimulation {
 
 // Hurt Me Plenty: the vanilla default, and the fallback of an unknown skill.
 DoomSimulation.DEFAULT_SKILL = 3;
-// Dead players' bodies kept on the ground (G_PlayerReborn's bodyque, BODYQUESIZE).
-DoomSimulation.CORPSE_QUEUE = 32;
-// Random deathmatch starts tried for a free one before the player's own start (G_DeathMatchSpawnPlayer).
-DoomSimulation.DEATHMATCH_SPAWN_TRIES = 20;
 // Buttons and impulse the game adds to the engine's in every UserCommand.
 DoomSimulation.BUTTON_FIRE           = 'fire';
 DoomSimulation.BUTTON_WEAPON_NEXT    = 'weaponNext';

@@ -57,10 +57,6 @@ What the CPU modes still lack against WebGL, by order of interest:
 
 On the Heretic fidelity side, one gap found while auditing the state verbs: **sinking into liquids** (`A_SetFloorClip` / `A_UnSetFloorClip`) — the engine has no floor clipping. Doable with what exists (`DoomTerrain.terrainAt` already tells which liquid lies under a point, `Instance.setRenderOffset` shifts the rendering only), but it is a system to lay down, not a verb to wire. The `footclip` each terrain carries is read and dropped by `WadTerrainBank` for lack of a consumer: that is where it would land.
 
-### Isolated technical points
-
-* **`DoomSimulation` split**: the player spawn spots (own start, free start, deathmatch draws, `placeUser`) and the players' bodies and corpses (`_addBody`, `_leaveCorpse`, the 32-corpse queue) are two responsibilities to extract (`DoomPlayerSpawner`, `DoomPlayerBodies`), with the solo bench identical bit for bit as the proof.
-
 ### Visibility culling (PVS / portals) — last, after everything else
 
 A large **performance / rendering** item, to start only **after** everything above. NB: the sector adjacency graph built for `P_NoiseAlert` is a reusable brick here, and the BSP walk + angular clipper of the automap (`DoomAutomapReveal`) is **exactly** the visibility pass asked for below, already written and proven — on the logic side, not the rendering side.

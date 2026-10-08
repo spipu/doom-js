@@ -154,6 +154,8 @@ website/
     │   ├── doomUser.js          Player equipment state
     │   ├── doomPlayer.js        One player across its levels: its body, its weapon, the equipment it enters and carries
     │   ├── doomPlayerBody.js    A player's visible body in cooperative, as the others see it
+    │   ├── doomPlayerBodies.js  The players' bodies of a level and the corpses the dead ones leave
+    │   ├── doomPlayerSpawner.js Where a player's body spawns: its own start, a free one, a random deathmatch start
     │   ├── doomInertInstance.js An instance born in play that nothing touches (body replica, shot, effect, decal)
     │   ├── doomSessionNotice.js The message a session shows over the game (waiting, host paused, respawn prompt, player left)
     │   ├── doomPlayerRoster.js  The players of a game, the local one among them
