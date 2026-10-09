@@ -466,7 +466,10 @@ class WadWorldBuilder {
      * the collisions find it: its sprite is lifted by as much, still hanging
      * from the ceiling.
      *
-     * @param {number} hangHeight - DoomMonsterDef.getHangHeight(), map units
+     * @param {object} frames       - view key → sprite frames, one per rotation
+     * @param {number} alpha        - DoomMonsterDef.getAlpha()
+     * @param {number} hangHeight   - DoomMonsterDef.getHangHeight(), map units
+     * @param {object} billboardIds - cache shared across the level's bodies: (sprite, alpha, hang height) → object id
      * @returns {object} view key → array of object ids (one per rotation)
      */
     _monsterBillboards(frames, alpha, hangHeight, billboardIds) {

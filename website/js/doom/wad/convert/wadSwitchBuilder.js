@@ -12,6 +12,7 @@ class WadSwitchBuilder {
      * @param {Set<string>}    builtDoorCodes - codes of the door instances actually built
      * @param {Set<string>}    builtStairCodes - codes of the stair-step instances actually built
      * @param {Set<string>}    builtRisingCodes - codes of the rising-floor instances actually built
+     * @param {function}       liveFloorOf - (si) → the sector's live floor height, for the stage rules resolved at fire time
      */
     constructor(level, analysis, bank, builtLiftCodes, builtDoorCodes, builtStairCodes, builtRisingCodes, liveFloorOf) {
         this._level            = level;

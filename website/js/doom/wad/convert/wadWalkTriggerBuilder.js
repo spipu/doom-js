@@ -12,6 +12,7 @@ class WadWalkTriggerBuilder {
      * @param {Set<string>}    builtRisingCodes
      * @param {Set<string>}    builtDoorCodes
      * @param {Set<string>}    builtStairCodes
+     * @param {function}       liveFloorOf - (si) → the sector's live floor height, for the stage rules resolved at fire time
      */
     constructor(level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes, liveFloorOf) {
         this._level            = level;
