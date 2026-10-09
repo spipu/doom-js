@@ -35,6 +35,13 @@ class Collision {
             return;
         }
 
+        // Geometry that never moves is indexed once, like the map: the
+        // instance's transform is not applied, its object is read as is.
+        if (instance.getCollisionShape() === 'static') {
+            this._static.push(this._buildStaticCollider(instance.getObject()));
+            return;
+        }
+
         const obj = instance.getObject();
         const localTris = [];
         for (const fc of obj.faceList) {

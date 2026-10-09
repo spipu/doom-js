@@ -48,8 +48,9 @@ class BenchReplicaSuite {
         return [
             new BenchScenario('Doom2',   'MAP01', BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan()),
             new BenchScenario('heretic', 'E1M1',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan()),
-            // The sub builds the water sheets the main's level message asks for.
-            new BenchScenario('heretic', 'E1M3',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan(), true)
+            // The sub builds the water sheets the main's level message asks for:
+            // rivers and falls, sheets riding two lifts and fourteen stair steps.
+            new BenchScenario('heretic', 'E5M2',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan(), true)
         ];
     }
 

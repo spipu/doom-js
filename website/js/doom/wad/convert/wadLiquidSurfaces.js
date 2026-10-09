@@ -3,7 +3,9 @@
  * profile's policy: a sunk floor (Heretic, the sprites stand FOOTCLIPSIZE
  * deep) or a translucent sheet raised over an untouched floor (Doom family,
  * our own addition), and the sheet itself: an instance bodies walk through
- * and shots stop on, like vanilla's floor which IS the water line.
+ * and shots stop on, like vanilla's floor which IS the water line. A sheet
+ * over a floor mover rides it as an instance of its own; every still sheet
+ * of the level is merged into one, indexed once by the collision.
  */
 class WadLiquidSurfaces {
     /**
@@ -78,15 +80,28 @@ class WadLiquidSurfaces {
     }
 
     /**
-     * @returns {object[]} [{code, textures, mesh, instanceData, rideCode}], ascending sector order
+     * @returns {object[]} [{code, textures, mesh, instanceData, rideCode}]: the sheets riding a
+     *                     floor mover, one per sector in ascending order, then the still ones merged
      */
     buildAll() {
         const built = [];
-        for (const key of Object.keys(this._surface).map(Number).sort((a, b) => (a - b))) {
-            const surface = this._buildOne(key);
+        const still = WadMeshBuilder.newMesh();
+        for (const si of Object.keys(this._surface).map(Number).sort((a, b) => (a - b))) {
+            const rideCode = (this._analysis.floorMovers.get(si)?.code ?? null);
+            if (rideCode === null) {
+                this._addSurface(still, si);
+                continue;
+            }
+            const mesh = WadMeshBuilder.newMesh();
+            this._addSurface(mesh, si);
+            const surface = this._finish(mesh, WadLiquidSurfaces.CODE_PREFIX + si, rideCode);
             if (surface !== null) {
                 built.push(surface);
             }
+        }
+        const merged = this._finish(still, WadLiquidSurfaces.STATIC_CODE, null);
+        if (merged !== null) {
+            built.push(merged);
         }
 
         return built;
@@ -164,28 +179,31 @@ class WadLiquidSurfaces {
         return (this._analysis.liftOriginalFh[si] ?? this._level.sectors[si].fh);
     }
 
-    _buildOne(si) {
+    _addSurface(mesh, si) {
         const sec = this._level.sectors[si];
         const ft  = this._bank.ensureFlatTex(sec.ft);
         if (ft < 0) {
-            return null;
+            return;
         }
-        const mesh = WadMeshBuilder.newMesh();
         WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, this._waterLine(si), true, sec.light,
             {...WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si), noDecal: true, shotOnly: true, alpha: this._policy.alpha});
         this._buildSides(mesh, si, ft);
+    }
+
+    // A riding sheet is a collider retransformed with its mover; the merged
+    // still one is indexed once by the collision, like the map.
+    _finish(mesh, code, rideCode) {
         if (mesh.points.length === 0) {
             return null;
         }
         const groups = this._animBank.buildAnimGroups(WadMeshBuilder.remapLocalTextures(mesh.faces));
         WadMeshBuilder.applyAnimMap(mesh.faces, groups.animMap);
-        const code = WadLiquidSurfaces.CODE_PREFIX + si;
 
         return {
             code:     code,
             textures: groups.newList,
             mesh:     mesh,
-            rideCode: (this._analysis.floorMovers.get(si)?.code ?? null),
+            rideCode: rideCode,
             instanceData: {
                 code:              code,
                 position:          [0, 0, 0],
@@ -193,7 +211,7 @@ class WadLiquidSurfaces {
                 trigger:           'none',
                 loop:              false,
                 onlyOnce:          false,
-                collisionShape:    'faces',
+                collisionShape:    ((rideCode !== null) ? 'faces' : 'static'),
                 interactionRadius: null,
                 damage:            null,
                 keyframes:         []
@@ -202,7 +220,8 @@ class WadLiquidSurfaces {
     }
 }
 
-WadLiquidSurfaces.MODE_NONE  = 'none';
-WadLiquidSurfaces.MODE_SINK  = 'sink';
-WadLiquidSurfaces.MODE_RAISE = 'raise';
+WadLiquidSurfaces.MODE_NONE   = 'none';
+WadLiquidSurfaces.MODE_SINK   = 'sink';
+WadLiquidSurfaces.MODE_RAISE  = 'raise';
 WadLiquidSurfaces.CODE_PREFIX = 'liquid_';
+WadLiquidSurfaces.STATIC_CODE = WadLiquidSurfaces.CODE_PREFIX + 'static';
