@@ -24,7 +24,7 @@ class DoomMainRole extends AbstractGameRole {
         this._events     = events;
         this._simulation = new DoomSimulation(roster, rules, events);
         this._builtLevel = null;
-        this._level      = null;        // {levelCode, skill, thingFilter} of the level shown
+        this._level      = null;        // {levelCode, skill, thingFilter, waterEffects} of the level shown
         this._cycle      = null;
         this._recorder   = null;        // DoomNetEvents listening to the turn events while hosting
         this._seats      = new Map();   // player id → {player, state} of a lost player whose seat is reserved
@@ -32,6 +32,10 @@ class DoomMainRole extends AbstractGameRole {
 
     thingFilter() {
         return this._rules.thingFilter();
+    }
+
+    waterEffects() {
+        return doomSettings.getDisplayWaterEffects();
     }
 
     pauseFreezes() {

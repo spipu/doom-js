@@ -111,9 +111,9 @@ BenchReplicaRun.HOST_SCRIPT = `((wadFile, scenario, mode) => {
     };
     return {
         start: async () => {
-            const {world} = await __build(wadFile, game, scenario.level, {skill: scenario.skill, thingFilter: rules.thingFilter(), role: role, events: events});
+            const {world} = await __build(wadFile, game, scenario.level, {skill: scenario.skill, thingFilter: rules.thingFilter(), waterEffects: scenario.waterEffects, role: role, events: events});
             role.enterLevel(world, null, null);
-            role.levelStarted({levelCode: scenario.level, skill: scenario.skill, thingFilter: role.thingFilter()});
+            role.levelStarted({levelCode: scenario.level, skill: scenario.skill, thingFilter: role.thingFilter(), waterEffects: scenario.waterEffects});
             role.startHosting(session, () => {});
             cycle.admitted(peer);
         },
@@ -184,7 +184,7 @@ BenchReplicaRun.GUEST_SCRIPT = `((wadFile, scenario, mode) => {
             if (message.type === DoomNetProtocol.LEVEL_LOAD) {
                 role.levelLoad(message);
                 role.prepareLevel(pending);
-                ({built, world} = await __build(wadFile, game, pending.levelCode, {skill: pending.skill, thingFilter: pending.thingFilter}));
+                ({built, world} = await __build(wadFile, game, pending.levelCode, {skill: pending.skill, thingFilter: pending.thingFilter, waterEffects: pending.waterEffects}));
                 role.adoptLevel(built);
                 role.enterLevel(world);
                 capture = new DoomNetStateCapture(roster, built, role.getLevelStats(), {drain: () => []});

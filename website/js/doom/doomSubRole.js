@@ -25,6 +25,7 @@ class DoomSubRole extends AbstractGameRole {
         this._builtLevel     = null;
         this._applier        = null;
         this._thingFilter    = null;
+        this._waterEffects   = false;
         this._levelSeq       = null;    // the main's sequence number of the level being built
         this._lastStateAt    = null;
         this._notice         = new DoomSessionNotice();
@@ -38,7 +39,7 @@ class DoomSubRole extends AbstractGameRole {
 
     /**
      * @param {function(object)}      playEvent    - DoomPresentation.playTurnEvent
-     * @param {function(object)}      onLevelLoad  - the main started a level: {levelCode, skill, thingFilter, mode, options}
+     * @param {function(object)}      onLevelLoad  - the main started a level: {levelCode, skill, thingFilter, waterEffects, mode, options}
      * @param {function(string|null)} onNotice     - the message to show over the game, null for none
      * @param {function(object)}      onPhase      - the main's tally or story text: its control message
      * @param {function(string)}      onEnd        - the session ended, with its DoomNetProtocol.END_* reason
@@ -55,11 +56,12 @@ class DoomSubRole extends AbstractGameRole {
         return this;
     }
 
-    // The main's thing filter for the level it sent, and which level it is.
-    // What the previous level said of the main (its pause, its death) is over.
+    // The main's thing filter and water sheets for the level it sent, and which
+    // level it is. What the previous level said of the main (its pause, its death) is over.
     prepareLevel(level) {
-        this._thingFilter = level.thingFilter;
-        this._levelSeq    = level.seq;
+        this._thingFilter  = level.thingFilter;
+        this._waterEffects = (level.waterEffects === true);
+        this._levelSeq     = level.seq;
         this._applier     = null;
         this._levelOver   = false;
         this._notice.clear();
@@ -70,6 +72,10 @@ class DoomSubRole extends AbstractGameRole {
 
     thingFilter() {
         return this._thingFilter;
+    }
+
+    waterEffects() {
+        return this._waterEffects;
     }
 
     // A sub's pause only opens its own menu: the main's game goes on.

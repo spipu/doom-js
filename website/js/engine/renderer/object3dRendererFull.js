@@ -99,7 +99,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         const col    = this._pointColor(engine, fc.color, obj.pt3d[ptIdx], fc.normal);
         const pt3d   = obj.pt3d[ptIdx];
         const scroll = this._uvOffset(fc, engine.sceneMs);
-        const z      = Math.max(pt3d[2], Object3dRendererFull.PROJECTION_MIN_Z);
+        const z      = Math.max(pt3d[2], Object3d.PROJECTION_MIN_Z);
         out[0] = engine.projScaleX * pt3d[0] / z - engine.projOffsetX;
         out[1] = -engine.projScaleY * pt3d[1] / z - engine.projOffsetY;
         out[2] = pt3d[2];
@@ -239,7 +239,7 @@ class Object3dRendererFull extends Object3dRendererBase {
         // Depth curve of the face (see Engine3d.setDepthShading), on 1/z as
         // well; a face lit to the full never darkens (shadeTerm <= 0).
         const ds        = this._shading;
-        const shadeTerm = ((ds !== null) ? ds.shadeBase - ds.shadeScale * (faceLight + this._boost) : 0);
+        const shadeTerm = ((ds !== null) ? ds.shadeBase - ds.shadeScale * Math.min(faceLight + this._boost, 1) : 0);
         const curve     = (shadeTerm > 0);
         const dsVis     = ((curve) ? ds.visibility : 0);
         const dsVisMax  = ((curve) ? ds.visibilityMax : 0);
@@ -380,6 +380,3 @@ class Object3dRendererFull extends Object3dRendererBase {
         }
     }
 }
-
-// Same floor as Object3d.ptProjection; vertices behind the eye get clipped anyway.
-Object3dRendererFull.PROJECTION_MIN_Z = 1e-5;

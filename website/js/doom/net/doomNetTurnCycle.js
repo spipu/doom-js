@@ -20,7 +20,7 @@ class DoomNetTurnCycle {
         this._session   = session;
         this._subs      = new Map();   // peer id → {peer, playerId, phase, command, sentAt, awaySince}
         this._turn      = 0;           // the next turn to simulate, counted over the session
-        this._level     = null;        // {levelCode, skill, thingFilter}
+        this._level     = null;        // {levelCode, skill, thingFilter, waterEffects}
         this._levelSeq  = 0;           // counts the levels started, echoed by a sub's levelReady
         this._capture   = null;
         this._recorder  = null;

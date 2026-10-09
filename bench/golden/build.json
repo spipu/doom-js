@@ -839,6 +839,18 @@
     "items": 42,
     "secrets": 6
   },
+  "Doom1/E1M2+water": {
+    "sha": "e3b25cc4beff164c7f67d480a3a740c5ff4fd53ce774ad5ee64d8534559b433f",
+    "objects": 950,
+    "points": 11212,
+    "faces": 6108,
+    "textures": 912,
+    "instances": 245,
+    "interactions": 24,
+    "kills": 41,
+    "items": 42,
+    "secrets": 6
+  },
   "Doom1/E1M3": {
     "sha": "57b74b0df47bef6ecfe2eb1a9fad17e8cbc1fa0b340a3b56aaac90057e69842d",
     "objects": 1063,
@@ -942,6 +954,18 @@
     "faces": 8422,
     "textures": 918,
     "instances": 372,
+    "interactions": 57,
+    "kills": 86,
+    "items": 49,
+    "secrets": 12
+  },
+  "Doom1/E2M2+water": {
+    "sha": "bf3ae41243e7781a42773448af1a17b66d665d82a0ea8c24b0d1326a3c0370e7",
+    "objects": 948,
+    "points": 14805,
+    "faces": 8493,
+    "textures": 918,
+    "instances": 379,
     "interactions": 57,
     "kills": 86,
     "items": 49,
@@ -1158,6 +1182,18 @@
     "faces": 5270,
     "textures": 1528,
     "instances": 174,
+    "interactions": 29,
+    "kills": 70,
+    "items": 20,
+    "secrets": 1
+  },
+  "Doom2/MAP02+water": {
+    "sha": "a435eb38468dc9ff715842b54ef3f13aaa8f8ade157670fed3ea4c584759fa4b",
+    "objects": 1572,
+    "points": 10086,
+    "faces": 5414,
+    "textures": 1528,
+    "instances": 182,
     "interactions": 29,
     "kills": 70,
     "items": 20,
@@ -1559,6 +1595,18 @@
     "items": 4,
     "secrets": 2
   },
+  "heretic/E1M3+water": {
+    "sha": "8856ea92d66b417c58506fdb9bf8ee4abc37a62361d65f219a724e92d115fdf4",
+    "objects": 1118,
+    "points": 10281,
+    "faces": 5461,
+    "textures": 1067,
+    "instances": 381,
+    "interactions": 44,
+    "kills": 102,
+    "items": 4,
+    "secrets": 2
+  },
   "heretic/E1M4": {
     "sha": "0c9adad155b8259469436b6e47db01025aa75e9e18c5affbc5c7933344511005",
     "objects": 1005,
@@ -1710,6 +1758,18 @@
     "faces": 6677,
     "textures": 1316,
     "instances": 460,
+    "interactions": 31,
+    "kills": 100,
+    "items": 10,
+    "secrets": 4
+  },
+  "heretic/E2M7+water": {
+    "sha": "c92ab55898b410a8e0bc70ac0ccbec5ddf203bbdb7ff29bf9a0135e601a17167",
+    "objects": 1264,
+    "points": 12278,
+    "faces": 6818,
+    "textures": 1316,
+    "instances": 476,
     "interactions": 31,
     "kills": 100,
     "items": 10,
@@ -1974,6 +2034,18 @@
     "faces": 5560,
     "textures": 1125,
     "instances": 614,
+    "interactions": 42,
+    "kills": 118,
+    "items": 12,
+    "secrets": 5
+  },
+  "heretic/E5M2+water": {
+    "sha": "e3532802effe5ab5e525ae14d5a2b6077278517fabb07c99bf073e8807453e9a",
+    "objects": 1270,
+    "points": 11419,
+    "faces": 6270,
+    "textures": 1125,
+    "instances": 722,
     "interactions": 42,
     "kills": 118,
     "items": 12,

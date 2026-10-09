@@ -47,7 +47,9 @@ class BenchReplicaSuite {
     static scenarios() {
         return [
             new BenchScenario('Doom2',   'MAP01', BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan()),
-            new BenchScenario('heretic', 'E1M1',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan())
+            new BenchScenario('heretic', 'E1M1',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan()),
+            // The sub builds the water sheets the main's level message asks for.
+            new BenchScenario('heretic', 'E1M3',  BenchScenario.SKILL, BenchReplicaSuite.FRAMES, BenchScenario.standardPlan(), true)
         ];
     }
 

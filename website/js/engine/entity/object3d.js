@@ -246,7 +246,7 @@ class Object3d extends AbstractLoadedEntity {
         for (let k = 0; k < this.ptCount; k++) {
             const p = this.pt2d[k];
             // The flat/fast renderers do not near-clip, so z can be <= 0 here
-            const z = ((this.pt3d[k][2] > 1e-5) ? this.pt3d[k][2] : 1e-5);
+            const z = Math.max(this.pt3d[k][2], Object3d.PROJECTION_MIN_Z);
             p[0] = Math.trunc(engine.projScaleX * this.pt3d[k][0] / z - engine.projOffsetX);
             p[1] = Math.trunc(-engine.projScaleY * this.pt3d[k][1] / z - engine.projOffsetY);
             p[2] = this.pt3d[k][2];
@@ -254,3 +254,6 @@ class Object3d extends AbstractLoadedEntity {
         return this;
     }
 }
+
+// Depth floor of the perspective division, shared with the full renderer's own projection.
+Object3d.PROJECTION_MIN_Z = 1e-5;

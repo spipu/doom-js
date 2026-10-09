@@ -164,5 +164,88 @@
     "heldFrames": 0,
     "removed": [],
     "invalid": 0
+  },
+  "heretic/E1M3@3+water/screen": {
+    "turns": 600,
+    "mismatches": {},
+    "subTraceSha": "c52c9feccea46a7cebc7e313c401a61ff255725c2f269783effe92bbb1ef30c0",
+    "subEventsSha": "b5eadeac6fd2e7a42a2d8d06871ac90f990b7833ed43391f8ffeff991976a2ac",
+    "subEvents": 64,
+    "mainTraceSha": "33148410f1f5c92e163dafb09de22052a293e20103b75d558c5825a9ce3ecf2e",
+    "mainPlayers": [
+      1
+    ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 2,
+      "kills": 0,
+      "killsTotal": 102,
+      "items": 0,
+      "itemsTotal": 4,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "heretic/E1M3@3+water/coop": {
+    "turns": 600,
+    "mismatches": {},
+    "subTraceSha": "e99a94b0a404c0fd235ffa3c83c1b8579824928e61b0fd046f99fd662a2c77a7",
+    "subEventsSha": "05c8b90d56683a452e161d92526f65b66210fa5a63efda7364577ebd344e65c2",
+    "subEvents": 112,
+    "mainTraceSha": "d173ece2d05dd9cf27e88d699b49952372ab42eff6e8d87c80b6cb34523014cd",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 2,
+      "kills": 0,
+      "killsTotal": 102,
+      "items": 0,
+      "itemsTotal": 12,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": []
+    },
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
+  },
+  "heretic/E1M3@3+water/deathmatch": {
+    "turns": 600,
+    "mismatches": {},
+    "subTraceSha": "5ca0a3d870a5a6ded6be9eda9ad58bc73e89f8c11a1447005b9f71466ba9ce5f",
+    "subEventsSha": "aeb2bd33bc4466c14506178fed7a67285a1d37e0e6b03e2795deb46d62c34039",
+    "subEvents": 91,
+    "mainTraceSha": "2c0da83b9904640cb4c0de8bacb16b7544641733e340969aa96cb8a168caaf1f",
+    "mainPlayers": [
+      1,
+      2
+    ],
+    "mainStats": {
+      "secrets": 0,
+      "secretsTotal": 2,
+      "kills": 0,
+      "killsTotal": 102,
+      "items": 0,
+      "itemsTotal": 12,
+      "timeMs": 0,
+      "matchMs": 9999.999999999995,
+      "frags": [
+        {
+          "killer": 1,
+          "victim": 2,
+          "count": 1
+        }
+      ]
+    },
+    "heldFrames": 0,
+    "removed": [],
+    "invalid": 0
   }
 }

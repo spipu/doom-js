@@ -14,17 +14,19 @@ class BenchScenario {
      * @param {int}      skill
      * @param {int}      frames
      * @param {object[]} plan
+     * @param {boolean}  waterEffects - the level is built with its water sheets
      */
-    constructor(wad, level, skill, frames, plan) {
-        this.wad    = wad;
-        this.level  = level;
-        this.skill  = skill;
-        this.frames = frames;
-        this.plan   = plan;
+    constructor(wad, level, skill, frames, plan, waterEffects = false) {
+        this.wad          = wad;
+        this.level        = level;
+        this.skill        = skill;
+        this.frames       = frames;
+        this.plan         = plan;
+        this.waterEffects = waterEffects;
     }
 
     get key() {
-        return this.wad + '/' + this.level + '@' + this.skill;
+        return this.wad + '/' + this.level + '@' + this.skill + ((this.waterEffects) ? BenchScenario.WATER_SUFFIX : '');
     }
 
     /**
@@ -62,9 +64,10 @@ class BenchScenario {
     }
 }
 
-BenchScenario.FRAME_MS = 1000 / 60;
-BenchScenario.FRAMES   = 1200;
-BenchScenario.SKILL    = 3;
+BenchScenario.FRAME_MS     = 1000 / 60;
+BenchScenario.FRAMES       = 1200;
+BenchScenario.SKILL        = 3;
+BenchScenario.WATER_SUFFIX = '+water';
 
 // Inlined in the app-context scripts.
 BenchScenario.COMMAND_SCRIPT = `

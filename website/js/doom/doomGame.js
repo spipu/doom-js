@@ -199,7 +199,7 @@ class DoomGame {
             .load(wadFile, levelCode, {
                 skill:             this._skill,
                 thingFilter:       this._role.thingFilter(),
-                waterEffects:      doomSettings.getDisplayWaterEffects(),
+                waterEffects:      this._role.waterEffects(),
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });
@@ -255,7 +255,7 @@ class DoomGame {
         this._pauseWasDown = true;
 
         this._presentation.startLevelSound(this._mapInfo.musicLumpsFor(this._levelCode));
-        this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, thingFilter: this._role.thingFilter()});
+        this._role.levelStarted({levelCode: this._levelCode, skill: this._skill, thingFilter: this._role.thingFilter(), waterEffects: this._role.waterEffects()});
         this._hosted.releaseSeats();
         // A session opened from the pause and never started: the level just
         // shown is the one its subs build (a save loaded there, a restart).

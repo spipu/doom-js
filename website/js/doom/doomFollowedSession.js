@@ -36,7 +36,7 @@ class DoomFollowedSession {
      *
      * @param {WadFile}     wadFile
      * @param {object|null} wadMeta - null keeps the game's, on a level change
-     * @param {object}      level   - {seq, levelCode, skill, thingFilter}
+     * @param {object}      level   - {seq, levelCode, skill, thingFilter, waterEffects}
      */
     async join(wadFile, wadMeta, level) {
         this._joining = true;

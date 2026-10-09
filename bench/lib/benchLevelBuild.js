@@ -23,21 +23,22 @@ class BenchLevelBuild {
      * @param {object}      wadFile
      * @param {object}      game    - resolveGame() result
      * @param {string}      code    - level code
-     * @param {object|null} options - {skill, thingFilter, role, events, onLevelExit}
+     * @param {object|null} options - {skill, thingFilter, waterEffects, role, events, onLevelExit}
      * @returns {Promise<{built: object, world: object, events: object}>}
      */
     build(wadFile, game, code, options = null) {
         options = (options ?? {});
 
         return this._app.run(BenchLevelBuild.BUILD_SCRIPT, {
-            __wad:         wadFile,
-            __game:        game,
-            __code:        code,
-            __skill:       (options.skill ?? BenchLevelBuild.DEFAULT_SKILL),
-            __thingFilter: (options.thingFilter ?? null),
-            __role:        (options.role ?? null),
-            __events:      (options.events ?? null),
-            __onLevelExit: (options.onLevelExit ?? null)
+            __wad:          wadFile,
+            __game:         game,
+            __code:         code,
+            __skill:        (options.skill ?? BenchLevelBuild.DEFAULT_SKILL),
+            __thingFilter:  (options.thingFilter ?? null),
+            __waterEffects: (options.waterEffects === true),
+            __role:         (options.role ?? null),
+            __events:       (options.events ?? null),
+            __onLevelExit:  (options.onLevelExit ?? null)
         });
     }
 }
@@ -58,10 +59,11 @@ BenchLevelBuild.BUILD_SCRIPT = `(async () => {
     const onLevelExit = (__onLevelExit ?? (() => {}));
     const built = await new DoomLevelLoader(__game.profile, __game.profile.createThingCatalog(), __game.profile.createMonsterCatalog(), __game.itemCatalog)
         .load(__wad, __code, {
-            skill:       __skill,
-            thingFilter: (__thingFilter ?? WadThingBuilder.SINGLE_PLAYER_FILTER),
-            onLevelExit: onLevelExit,
-            turnEvents:  events
+            skill:        __skill,
+            thingFilter:  (__thingFilter ?? WadThingBuilder.SINGLE_PLAYER_FILTER),
+            waterEffects: __waterEffects,
+            onLevelExit:  onLevelExit,
+            turnEvents:   events
         });
     if (__role !== null) {
         __role.adoptLevel(built, onLevelExit);

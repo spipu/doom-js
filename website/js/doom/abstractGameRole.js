@@ -15,6 +15,12 @@ class AbstractGameRole {
         throw new Error('AbstractGameRole: thingFilter not implemented');
     }
 
+    // Whether the level is built with its water sheets: the host's choice,
+    // every device of a session building the same instances.
+    waterEffects() {
+        throw new Error('AbstractGameRole: waterEffects not implemented');
+    }
+
     // Whether this device's pause stops the game, or only opens its menu.
     pauseFreezes() {
         throw new Error('AbstractGameRole: pauseFreezes not implemented');

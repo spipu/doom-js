@@ -1,10 +1,12 @@
 /**
  * Every level of every WAD converted as the game does (skill 3, single-player
- * things), fingerprinted on what the loader holds afterwards. Reads private
- * fields of the engine entities on purpose: a diagnostic tool, not game code.
+ * things), fingerprinted on what the loader holds afterwards, plus a few
+ * liquid levels built again with their water sheets. Reads private fields of
+ * the engine entities on purpose: a diagnostic tool, not game code.
  */
 const crypto = require('crypto');
 const {BenchLevelBuild}  = require('../lib/benchLevelBuild');
+const {BenchScenario}    = require('../lib/benchScenario');
 const {BenchFingerprint} = require('../lib/benchFingerprint');
 const {BenchGolden}      = require('../lib/benchGolden');
 
@@ -17,7 +19,7 @@ class BenchBuildSuite {
      * @param {BenchContext} app
      * @param {{name: string, path: string}[]} wads
      * @param {function(string)} progress
-     * @returns {Promise<object>} key "wad/level" → {sha, counts…}
+     * @returns {Promise<object>} key "wad/level" ("wad/level+water" with the sheets) → {sha, counts…}
      */
     static async run(app, wads, progress) {
         const builds = new BenchLevelBuild(app);
@@ -25,21 +27,28 @@ class BenchBuildSuite {
         for (const wad of wads.filter((w) => !BenchBuildSuite.UNBUILT_WADS.includes(w.name))) {
             const wadFile = app.readWad(wad.path);
             const game    = builds.resolveGame(wadFile);
+            const water   = (BenchBuildSuite.WATER_LEVELS[wad.name] ?? []);
             for (const code of app.run('__wad.getLevelNames()', {__wad: wadFile})) {
-                const key = wad.name + '/' + code;
-                progress(key);
-                app.seedRandom(BenchBuildSuite.SEED);
-                try {
-                    const {built, world} = await builds.build(wadFile, game, code);
-                    result[key] = BenchBuildSuite._digest(app.run(BenchBuildSuite.SUMMARY_SCRIPT)(built, world));
-                } catch (error) {
-                    result[key] = BenchGolden.errorEntry(error);
+                await BenchBuildSuite._buildOne(app, builds, wadFile, game, code, wad.name + '/' + code, false, result, progress);
+                if (water.includes(code)) {
+                    await BenchBuildSuite._buildOne(app, builds, wadFile, game, code, wad.name + '/' + code + BenchScenario.WATER_SUFFIX, true, result, progress);
                 }
-                app.takeLogs();
             }
         }
 
         return result;
+    }
+
+    static async _buildOne(app, builds, wadFile, game, code, key, waterEffects, result, progress) {
+        progress(key);
+        app.seedRandom(BenchBuildSuite.SEED);
+        try {
+            const {built, world} = await builds.build(wadFile, game, code, {waterEffects: waterEffects});
+            result[key] = BenchBuildSuite._digest(app.run(BenchBuildSuite.SUMMARY_SCRIPT)(built, world));
+        } catch (error) {
+            result[key] = BenchGolden.errorEntry(error);
+        }
+        app.takeLogs();
     }
 
     static _digest(summary) {
@@ -127,5 +136,12 @@ BenchBuildSuite.SUMMARY_SCRIPT = `((built, world) => {
 
 // Its Hexen-format LINEDEFS are not read yet (NEXT-STEPS.md § Hexen): no level converts.
 BenchBuildSuite.UNBUILT_WADS = ['hexen'];
+// Liquid levels built a second time with the water sheets: a sunk floor (Heretic)
+// and a raised line (Doom), each with a liquid lift or floor mover.
+BenchBuildSuite.WATER_LEVELS = {
+    heretic: ['E1M3', 'E2M7', 'E5M2'],
+    Doom1:   ['E1M2', 'E2M2'],
+    Doom2:   ['MAP02']
+};
 
 module.exports = {BenchBuildSuite};
