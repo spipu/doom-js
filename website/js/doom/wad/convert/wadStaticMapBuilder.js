@@ -367,14 +367,14 @@ class WadStaticMapBuilder {
 
     _buildFlats(mesh) {
         const {sectors} = this._level;
-        const {doorSectorIds, liftIds, risingFloorIds, stairIds} = this._analysis;
+        const {doorSectorIds, floorMovers} = this._analysis;
 
         for (let si = 0; si < sectors.length; si++) {
             const sec = sectors[si];
 
             if (doorSectorIds.has(si)) {
                 // A door on a floor mover: the mover's top flat covers the floor.
-                if (!liftIds.has(si) && !risingFloorIds.has(si)) {
+                if (!floorMovers.has(si)) {
                     this._buildDoorSectorFlat(mesh, si, sec);
                 }
                 continue;
@@ -385,8 +385,8 @@ class WadStaticMapBuilder {
             const ceilingSky = WadConstants.isSkyFlat(sec.ct);
             const ct = ((ceilingSky) ? -1 : this._bank.ensureFlatTex(sec.ct));
 
-            // Floor movers draw their own top flat.
-            if (!liftIds.has(si) && !risingFloorIds.has(si) && !stairIds.has(si)) {
+            // Built floor movers draw their own top flat.
+            if (!floorMovers.has(si)) {
                 if (floorSky) {
                     // Sky floor (MAP20's exit pit): solid but invisible, vanilla
                     // draws the sky there (R_Subsector).
