@@ -1243,6 +1243,11 @@ class HereticGameProfile extends DefaultGameProfile {
         };
     }
 
+    // The lava and water falls of the animated walls (animated.lmp).
+    liquidWallTextures() {
+        return ['LAVAFL1', 'LAVAFL2', 'LAVAFL3', 'WATRWAL1', 'WATRWAL2', 'WATRWAL3'];
+    }
+
     // Heretic hardcoded animation sequences with their engine speeds
     // (UZDoom filter/game-heretic/animated.lmp) — heretic.wad has no
     // ANIMATED lump, these always apply.
@@ -1284,10 +1289,16 @@ class HereticGameProfile extends DefaultGameProfile {
     // simply drifts up; sludge is silent (its sound resolves to dsempty).
     terrains() {
         return {
-            water:  {base: 'waterSplashBase',  chunk: 'waterSplashChunk',  chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 2}, sound: 'world/watersplash'},
-            lava:   {base: 'lavaSplashBase',   chunk: 'lavaSmoke',         chunkVel: {xVelShift: null, yVelShift: null, zVelShift: 7, baseZVel: 1}, sound: 'world/lavasizzle'},
-            sludge: {base: 'sludgeSplashBase', chunk: 'sludgeSplashChunk', chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 1}}
+            water:  {base: 'waterSplashBase',  chunk: 'waterSplashChunk',  chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 2}, sound: 'world/watersplash', footclip: 10},
+            lava:   {base: 'lavaSplashBase',   chunk: 'lavaSmoke',         chunkVel: {xVelShift: null, yVelShift: null, zVelShift: 7, baseZVel: 1}, sound: 'world/lavasizzle',  footclip: 10},
+            sludge: {base: 'sludgeSplashBase', chunk: 'sludgeSplashChunk', chunkVel: {xVelShift: 8,    yVelShift: 8,    zVelShift: 8, baseZVel: 1}, footclip: 10}
         };
+    }
+
+    // FOOTCLIPSIZE: the floor sinks under the water line, as the original
+    // draws its actors 10 units deep.
+    liquidSurface() {
+        return {mode: 'sink', alpha: 0.5, bedDarkening: 0.2};
     }
 
     terrainGame() {

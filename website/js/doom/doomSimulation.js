@@ -371,11 +371,17 @@ class DoomSimulation {
         for (const player of players) {
             this._respawnOnUse(player, commands.get(player.getId()), dt);
             this._applyPlayerCommand(player, commands.get(player.getId()));
+            const user = player.getUser();
+            user.setStepHeight(WadConstants.ACTOR_STEP_HEIGHT + this._sinkOf(user.x, user.y, user.z));
         }
         this._world.update(dt, new Map(players.map((player) => [player.getUser(), commands.get(player.getId())])));
         for (const player of players) {
             player.getUser().updateEffects(dt);
         }
+    }
+
+    _sinkOf(x, y, z) {
+        return ((this._terrain !== null) ? this._terrain.sinkAt(x, y, z) : 0);
     }
 
     /**

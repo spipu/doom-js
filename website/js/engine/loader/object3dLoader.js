@@ -51,6 +51,9 @@ class Object3dLoader extends AbstractLoader {
             if (f.passableShot === true) {
                 fc.passableShot = true;
             }
+            if (f.shotOnly === true) {
+                fc.shotOnly = true;
+            }
             if (f.noDecal === true) {
                 fc.noDecal = true;
             }

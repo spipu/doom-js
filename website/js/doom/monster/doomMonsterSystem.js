@@ -262,6 +262,13 @@ class DoomMonsterSystem {
         return this;
     }
 
+    // P_TryMove's 24-unit step, counted from the water line for a body sunk in a liquid.
+    stepHeightOf(m) {
+        const pos = m.inst.getTransform().position;
+
+        return (WadConstants.ACTOR_STEP_HEIGHT + ((this._terrain !== null) ? this._terrain.sinkAt(pos[0], pos[1], pos[2]) : 0));
+    }
+
     // Effect spawner (DoomEffectSpawner), consumed by the teleport fog.
     setEffects(effects) {
         this._effects = effects;
@@ -1733,7 +1740,7 @@ class DoomMonsterSystem {
             // Vanilla P_TryMove: a shoved body climbs steps up to 24 units and
             // a move onto NO floor is refused outright (never through the
             // world) — the momentum dies against the obstacle.
-            const step      = WadConstants.ACTOR_STEP_HEIGHT;
+            const step      = this.stepHeightOf(m);
             const solved    = this._collision.resolveWall(pos[0], pos[2], dxM, dzM, r, pos[1], h, step, m.inst);
             const destFloor = this._collision.getFloor(solved.x, solved.z, r, pos[1] + step);
             // A LIVE skidding body obeys the P_TryMove vertical rules too

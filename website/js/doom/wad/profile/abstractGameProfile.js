@@ -586,6 +586,20 @@ class AbstractGameProfile {
     }
 
     /**
+     * How the converter shows the water line of a liquid sector, from the
+     * terrain's footclip: 'sink' lowers the physical floor by it under a sheet
+     * at the WAD height (the original's sunk sprites), 'raise' keeps the floor
+     * and lays the sheet above it, no higher than the lowest bank, 'none' does
+     * nothing. alpha is the sheet's opacity, bedDarkening the share of light
+     * the floor under it loses.
+     *
+     * @returns {{mode: string, alpha: number, bedDarkening: number}}
+     */
+    liquidSurface() {
+        return {mode: 'none', alpha: 1, bedDarkening: 0};
+    }
+
+    /**
      * Game this profile answers to in the `if<game>` conditionals of a WAD's
      * TERRAIN lump (ifdoom / ifheretic / ifhexen / ifstrife): a lump written
      * for another game is skipped whole.
@@ -622,6 +636,16 @@ class AbstractGameProfile {
      */
     vanillaAnimSequences() {
         this._generateException('vanillaAnimSequences must be implemented');
+        return [];
+    }
+
+    /**
+     * Wall textures that show a liquid (falls, drips, lava walls), every
+     * animation frame: like the liquid flats, they take no impact decal.
+     *
+     * @returns {string[]}
+     */
+    liquidWallTextures() {
         return [];
     }
 

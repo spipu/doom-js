@@ -1075,6 +1075,12 @@ class DoomTranslations {
                 it: 'Filtraggio delle texture',
                 es: 'Suavizado de texturas'
             },
+            'settings.display.waterEffects': {
+                fr: 'Effets d\'eau',
+                en: 'Water effects',
+                it: 'Effetti dell\'acqua',
+                es: 'Efectos de agua'
+            },
             'settings.game.fallDamage': {
                 fr: 'Dégâts de chute',
                 en: 'Fall damage',

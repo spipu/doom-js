@@ -199,6 +199,7 @@ class DoomGame {
             .load(wadFile, levelCode, {
                 skill:             this._skill,
                 thingFilter:       this._role.thingFilter(),
+                waterEffects:      doomSettings.getDisplayWaterEffects(),
                 onLevelExit:       onLevelExit,
                 turnEvents:        this._turnEvents
             });

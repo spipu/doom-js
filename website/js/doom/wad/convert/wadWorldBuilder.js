@@ -33,6 +33,7 @@ class WadWorldBuilder {
         this._thingCatalog   = options.thingCatalog ?? null;
         this._skill          = options.skill ?? 3;
         this._thingFilter    = options.thingFilter ?? WadThingBuilder.SINGLE_PLAYER_FILTER;
+        this._waterEffects   = options.waterEffects ?? false;
         this._profile        = options.profile ?? new DoomGameProfile();
         this._monsterCatalog = options.monsterCatalog ?? null;
         this._level          = null;
@@ -40,6 +41,7 @@ class WadWorldBuilder {
         this._built          = null;   // DoomBuiltLevel handed back by build()
         this._useLineCache   = null;   // world-space linedefs of the use traces, see _useLines
         this._sectorHeights  = null;   // live sector heights (DoomSectorHeights), set with the level data
+        this._liquids        = null;   // water lines of the level (WadLiquidSurfaces)
     }
 
     /**
@@ -73,9 +75,11 @@ class WadWorldBuilder {
         }).analyze();
         this._level       = level;
         this._sectorPolys = null;
+        const liquids     = new WadLiquidSurfaces(level, analysis, bank, animBank, terrains, this._profile.liquidSurface(), this._waterEffects).init();
+        this._liquids     = liquids;
 
         // Doors
-        const doors = new WadDoorBuilder(level, analysis, bank, animBank).buildAll();
+        const doors = new WadDoorBuilder(level, analysis, bank, animBank, liquids).buildAll();
         const builtDoorCodes = new Set();
         for (const door of doors) {
             this._registerInstance(door, bank, WadConstants.MOVER_TINT);
@@ -85,7 +89,7 @@ class WadWorldBuilder {
         await this._yield();
 
         // Lifts
-        const lifts = new WadLiftBuilder(level, analysis, bank, animBank).buildAll();
+        const lifts = new WadLiftBuilder(level, analysis, bank, animBank, liquids).buildAll();
         const builtLiftCodes = new Set();
         for (const lift of lifts) {
             this._registerInstance(lift, bank, WadConstants.MOVER_TINT);
@@ -93,7 +97,7 @@ class WadWorldBuilder {
         }
 
         // Rising floors
-        const risingFloors = new WadRisingFloorBuilder(level, analysis, bank, animBank).buildAll();
+        const risingFloors = new WadRisingFloorBuilder(level, analysis, bank, animBank, liquids).buildAll();
         const builtRisingCodes = new Set();
         for (const floor of risingFloors) {
             this._registerInstance(floor, bank, WadConstants.MOVER_TINT);
@@ -101,23 +105,32 @@ class WadWorldBuilder {
         }
 
         // Stairs
-        const stairs = new WadStairBuilder(level, analysis, bank, animBank).buildAll();
+        const stairs = new WadStairBuilder(level, analysis, bank, animBank, liquids).buildAll();
         const builtStairCodes = new Set();
         for (const step of stairs) {
             this._registerInstance(step, bank, WadConstants.MOVER_TINT);
             builtStairCodes.add(step.code);
         }
+        const builtMoverCodes = new Set([...builtLiftCodes, ...builtRisingCodes, ...builtStairCodes]);
         // A predicted mover with empty geometry has no instance to look up.
         for (const [si, mover] of [...analysis.floorMovers]) {
-            if (!builtLiftCodes.has(mover.code) && !builtRisingCodes.has(mover.code) && !builtStairCodes.has(mover.code)) {
+            if (!builtMoverCodes.has(mover.code)) {
                 analysis.floorMovers.delete(si);
+            }
+        }
+
+        // Water lines
+        for (const surface of liquids.buildAll()) {
+            this._registerInstance(surface, bank);
+            if (surface.rideCode !== null) {
+                loader.instances().getByCode(surface.code).setRideOn(loader.instances().getByCode(surface.rideCode));
             }
         }
         // _sectorHeights is set later with the level data, before anything fires.
         const liveFloorOf = ((si) => this._sectorHeights.floorOf(si));
 
         // Static map
-        const mapData = new WadStaticMapBuilder(level, analysis, bank, animBank).build();
+        const mapData = new WadStaticMapBuilder(level, analysis, bank, animBank, liquids).build();
         loader.objects().loadFromData('map', WadMeshBuilder.toLoaderData(mapData.textures, mapData.mesh, bank));
         await this._yield();
 
@@ -246,6 +259,7 @@ class WadWorldBuilder {
 
         const levelData = this._buildMonsterLevelData(level, analysis, builtFloorCodes, builtDoorCodes, walkTriggers, teleporters, landings);
         this._built.setMonsterLevelData(levelData);
+        this._built.getTerrain().setSurface(levelData.heights, (si) => liquids.surfaceOffset(si), (si) => liquids.floorOffset(si));
         this._registerAutomap(level, levelData.heights);
         this._registerCrusherFloors(analysis, levelData);
         this._built.setBossRules(this._bossRules(bossActions, level, analysis, builtLiftCodes, builtRisingCodes, builtDoorCodes, builtStairCodes));
@@ -336,7 +350,7 @@ class WadWorldBuilder {
             level,
             this._thingCatalog,
             spriteBank,
-            (x, y) => this._findSector(x, y),
+            (x, y) => this._physicalSector(x, y),
             this._skill,
             this._monsterCatalog,
             // Out-of-range dev skill: null, the builder falls back to the flag bits.
@@ -1319,7 +1333,16 @@ class WadWorldBuilder {
                 pushZone(s.si, s.special, s.outers);
             }
         }
-        return new DoomSectorZones(zones, bspSectorAt, (si) => (this._sectorHeights.floorOf(si) * WadConstants.SCALE));
+        return new DoomSectorZones(zones, bspSectorAt, (si) => ((this._sectorHeights.floorOf(si) + this._liquids.floorOffset(si)) * WadConstants.SCALE));
+    }
+
+    _physicalSector(doomX, doomY) {
+        const sector = this._findSector(doomX, doomY);
+        if (sector === null) {
+            return null;
+        }
+
+        return {...sector, fh: sector.fh + this._liquids.floorOffset(sector.si)};
     }
 
     // BSP first (R_PointInSubsector), then the smallest containing polygon, then

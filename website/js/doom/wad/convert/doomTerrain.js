@@ -27,6 +27,9 @@ class DoomTerrain {
         this._events        = events;
         this._effects       = null;
         this._tints         = {};
+        this._heights       = null;   // DoomSectorHeights, once the level data exists
+        this._surfaceOf     = null;   // (si) → water line above the live floor, Doom units, null when none
+        this._floorOffsetOf = null;   // (si) → physical floor below the live one, Doom units (<= 0)
         // A stream of its own (vanilla's pr_chunk), NOT the game's table: of
         // the four paths that splash, only the falling body exists in the
         // original, so drawing the other three from the shared table would
@@ -57,6 +60,42 @@ class DoomTerrain {
         this._tints = tints;
 
         return this;
+    }
+
+    /**
+     * Where the water line of each sector stands: a splash is born on it, not
+     * on the floor under it.
+     *
+     * @param {DoomSectorHeights} heights
+     * @param {function}          surfaceOf     (si) → Doom units above the live floor, null without a water line
+     * @param {function}          floorOffsetOf (si) → Doom units the physical floor lies below the live one
+     */
+    setSurface(heights, surfaceOf, floorOffsetOf) {
+        this._heights       = heights;
+        this._surfaceOf     = surfaceOf;
+        this._floorOffsetOf = floorOffsetOf;
+
+        return this;
+    }
+
+    /**
+     * How deep a body standing at this point is sunk under the water line:
+     * its steps are measured from that line, as vanilla's floor IS the line.
+     *
+     * @returns {number} world units, 0 off a sunk floor or above it
+     */
+    sinkAt(worldX, worldY, worldZ) {
+        const si = ((this._heights !== null) ? this._sectorAt(worldX, worldZ) : null);
+        if (si === null) {
+            return 0;
+        }
+        const offset = this._floorOffsetOf(si);
+        if (offset === 0) {
+            return 0;
+        }
+        const floorY = (this._heights.floorOf(si) + offset) * WadConstants.SCALE;
+
+        return ((Math.abs(worldY - floorY) <= WadConstants.ON_FLOOR_TOLERANCE) ? (-offset * WadConstants.SCALE) : 0);
     }
 
     /**
@@ -103,13 +142,29 @@ class DoomTerrain {
      * @returns {object|null} the terrain's splash definition, null on dry ground
      */
     terrainAt(worldX, worldZ) {
-        const si = this._sectorIndexAt(worldX / WadConstants.SCALE, worldZ / WadConstants.SCALE);
+        return this._terrainOf(this._sectorAt(worldX, worldZ));
+    }
+
+    _sectorAt(worldX, worldZ) {
+        return this._sectorIndexAt(worldX / WadConstants.SCALE, worldZ / WadConstants.SCALE);
+    }
+
+    _terrainOf(si) {
         if (si === null) {
             return null;
         }
         const code = this._flats[this._surfaces.flatOf(si).toUpperCase()];
 
         return ((code !== undefined) ? (this._terrains[code] ?? null) : null);
+    }
+
+    _surfaceY(si, y) {
+        if ((this._heights === null) || (si === null)) {
+            return y;
+        }
+        const line = this._surfaceOf(si);
+
+        return ((line !== null) ? ((this._heights.floorOf(si) + line) * WadConstants.SCALE) : y);
     }
 
     /**
@@ -133,14 +188,18 @@ class DoomTerrain {
      * chunk thrown out of it, and the sound. A silent no-op on dry ground, and
      * on a liquid whose terrain declares no splash (the whole Doom family).
      *
-     * @param {number} x, y, z world point, y on the liquid surface
+     * @param {number} x    world X
+     * @param {number} yHit height of the impact, moved up to the sector's water line when it has one
+     * @param {number} z    world Z
      * @returns {boolean} true when a splash was spawned
      */
-    splashAt(x, y, z) {
-        const terrain = this.terrainAt(x, z);
+    splashAt(x, yHit, z) {
+        const si      = this._sectorAt(x, z);
+        const terrain = this._terrainOf(si);
         if ((terrain === null) || (this._effects === null)) {
             return false;
         }
+        const y = this._surfaceY(si, yHit);
         const base  = (terrain.base ?? null);
         const chunk = (terrain.chunk ?? null);
         const sound = (terrain.sound ?? null);

@@ -49,13 +49,12 @@ class WadMeshBuilder {
     }
 
     // Moving top flat of a sector (floor surface at origFh, normal up).
-    static addSectorTopFlat(mesh, level, bank, analysis, si, origFh) {
-        const sec = level.sectors[si];
-        const ft = bank.ensureFlatTex(sec.ft);
+    static addSectorTopFlat(mesh, level, bank, analysis, si, origFh, light) {
+        const ft = bank.ensureFlatTex(level.sectors[si].ft);
         if (ft < 0) {
             return;
         }
-        WadMeshBuilder.addSectorFlat(mesh, level, ft, si, origFh, true, sec.light,
+        WadMeshBuilder.addSectorFlat(mesh, level, ft, si, origFh, true, light,
             WadMeshBuilder.floorFlatOptions(level, bank, analysis, si));
     }
 
@@ -178,20 +177,19 @@ class WadMeshBuilder {
      * flip=true  → back face. yOff is the pixel offset from the top of the texture.
      *
      * @param {object} mesh
-     * @param {int}    texIdx - GLOBAL 0-based bank index, or -1 (face without texture)
-     * @param {object} options - {xOff, yOff, flip, light, clampV, passableUser, passableEnemy, collisionOnly, passableShot, uScrollTexelsPerSec, lightGroup, uvAnchor}
+     * @param {int}    texIdx      - GLOBAL 0-based bank index, or -1 (face without texture)
+     * @param {number} x1, z1      - world position of the line's first vertex
+     * @param {number} x2, z2      - world position of the line's second vertex
+     * @param {number} yBot, yTop  - world heights of the quad
+     * @param {number} wallLenDoom - line length in map units, the U span of the texture
+     * @param {int}    texW, texH  - texture size in texels
+     * @param {object} options     - {xOff, yOff, flip, light, alpha, clampV, passableUser, passableEnemy, collisionOnly, passableShot, shotOnly, noDecal, uScrollTexelsPerSec, lightGroup, uvAnchor}
      */
     static addWallQuad(mesh, texIdx, x1, z1, x2, z2, yBot, yTop, wallLenDoom, texW, texH, options) {
         options = options ?? {};
         const xOff          = options.xOff ?? 0;
         const yOff          = options.yOff ?? 0;
         const flip          = (options.flip === true);
-        const light         = options.light ?? 128;
-        const clampV        = (options.clampV === true);
-        const passableUser  = (options.passableUser === true);
-        const passableEnemy = (options.passableEnemy === true);
-        const collisionOnly = (options.collisionOnly === true);
-        const passableShot  = (options.passableShot === true);
         const uScrollTexels = options.uScrollTexelsPerSec ?? 0;
         const lightGroup    = options.lightGroup ?? null;
         const uvAnchor      = options.uvAnchor ?? null;
@@ -216,29 +214,11 @@ class WadMeshBuilder {
         mesh.points.push([x2, yTop, z2]);
         mesh.points.push([x1, yTop, z1]);
 
-        const shade = Math.trunc(light);
-
-        // One color array per face: fcAdd normalizes it in place.
         const buildFace = (ptsList, mapList) => {
-            const face = {pts: ptsList, color: [shade, shade, shade]};
+            const face = WadMeshBuilder._newFace(ptsList, options);
             if (texIdx >= 0) {
                 face.texture = texIdx + 1;
                 face.map     = mapList;
-            }
-            if (clampV) {
-                face.clampV = true;
-            }
-            if (passableUser) {
-                face.passableUser = true;
-            }
-            if (passableEnemy) {
-                face.passableEnemy = true;
-            }
-            if (collisionOnly) {
-                face.collisionOnly = true;
-            }
-            if (passableShot) {
-                face.passableShot = true;
             }
             if ((uScrollTexels !== 0) && (texIdx >= 0)) {
                 face.uvScroll = {u: uScrollTexels / texW, v: 0};
@@ -362,12 +342,9 @@ class WadMeshBuilder {
     }
 
     static _emitFlatFaces(mesh, texIdx, xz, polyDoom, tris, yHeight, isFloor, options) {
-        const lightGroup    = (options.lightGroup ?? null);
-        const uScroll       = (options.uScroll ?? 0);
-        const collisionOnly = (options.collisionOnly === true);
-        const noDecal       = (options.noDecal === true);
-        const shade         = Math.trunc(options.light ?? 128);
-        const base          = mesh.points.length;
+        const lightGroup = (options.lightGroup ?? null);
+        const uScroll    = (options.uScroll ?? 0);
+        const base       = mesh.points.length;
         for (const [x, z] of xz) {
             mesh.points.push([x, yHeight * WadConstants.SCALE, z]);
         }
@@ -379,10 +356,7 @@ class WadMeshBuilder {
         for (const [a, b, c] of tris) {
             // Floors swap the winding for an upward normal.
             const order = ((isFloor) ? [a, c, b] : [a, b, c]);
-            const face  = {
-                pts:   order.map((idx) => (base + idx + 1)),
-                color: [shade, shade, shade]
-            };
+            const face  = WadMeshBuilder._newFace(order.map((idx) => (base + idx + 1)), options);
             if (texIdx >= 0) {
                 face.texture = texIdx + 1;
                 face.map     = order.map(flatUv);
@@ -393,14 +367,23 @@ class WadMeshBuilder {
             if (uScroll !== 0) {
                 face.uvScroll = {u: uScroll, v: 0};
             }
-            if (collisionOnly) {
-                face.collisionOnly = true;
-            }
-            if (noDecal) {
-                face.noDecal = true;
-            }
             mesh.faces.push(face);
         }
+    }
+
+    // Shade, opacity and the boolean flags any flat or wall face may carry.
+    // One color array per face: fcAdd normalizes it in place.
+    static _newFace(pts, options) {
+        const shade = Math.trunc(options.light ?? 128);
+        const alpha = (options.alpha ?? 1);
+        const face  = {pts: pts, color: ((alpha < 1) ? [shade, shade, shade, alpha] : [shade, shade, shade])};
+        for (const flag of WadMeshBuilder.FACE_FLAGS) {
+            if (options[flag] === true) {
+                face[flag] = true;
+            }
+        }
+
+        return face;
     }
 
     /**
@@ -459,12 +442,26 @@ class WadMeshBuilder {
      * @param {WadTextureBank} bank
      */
     static toLoaderData(localIndices, mesh, bank) {
+        WadMeshBuilder._refuseDecalsOnLiquidWalls(localIndices, mesh.faces, bank);
+
         return {
             textures: localIndices.map((bankIndex) => bank.getLoaderId(bankIndex)),
             points:   mesh.points,
             faces:    mesh.faces
         };
     }
+
+    // Every exported face passes here, whatever builder made it, animated
+    // ones included (their frames share the liquid nature of the first).
+    static _refuseDecalsOnLiquidWalls(localIndices, faces, bank) {
+        for (const face of faces) {
+            const local = (face.texture ?? face.textures?.ids[0] ?? null);
+            if ((local !== null) && bank.isLiquidWall(localIndices[local - 1])) {
+                face.noDecal = true;
+            }
+        }
+    }
 }
 
 WadMeshBuilder.FLAT_AREA_EPSILON = 1e-9;
+WadMeshBuilder.FACE_FLAGS        = ['clampV', 'passableUser', 'passableEnemy', 'collisionOnly', 'passableShot', 'shotOnly', 'noDecal'];

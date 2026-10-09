@@ -42,14 +42,14 @@ class Collision {
                 continue;
             }
             const A = obj.ptOrigin[fc.pts[0]], B = obj.ptOrigin[fc.pts[1]], C = obj.ptOrigin[fc.pts[2]];
-            localTris.push([[A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]], Collision._refusesDecal(fc)]);
+            localTris.push([[A[0],A[1],A[2]], [B[0],B[1],B[2]], [C[0],C[1],C[2]], Collision._refusesDecal(fc), (fc.shotOnly === true)]);
         }
         const dc = {
             instance,
             localTris,
             bRadius:               obj.getBoundingRadius(),
             centerLocal:           obj.getCenter(),
-            floors: [], ceilings: [], walls: [],
+            floors: [], ceilings: [], walls: [], shots: [],
             centerWorld:           [0, 0, 0],
             platformDeltas:        new Map(),   // user → the move this platform gave that user this turn
         };
@@ -152,7 +152,8 @@ class Collision {
     }
 
     // Nearest hit along a normalised direction: {point, dist, normal, tri} or
-    // null. Walls always; opts {floors, ceilings, dynamic, includeShotPassable}.
+    // null. Walls and shot-only surfaces always; opts {floors, ceilings,
+    // dynamic, includeShotPassable}.
     raycast(ox, oy, oz, dx, dy, dz, maxDist = Infinity, opts = {}) {
         const tris  = this._rayScratch;
         const count = this._gatherRay(ox, oz, dx, dz, maxDist, tris, opts);
@@ -194,6 +195,9 @@ class Collision {
         let n = 0;
         for (const sc of this._static) {
             n = sc.grids.walls.queryRay(ox, oz, dx, dz, maxDist, out, n);
+            if (sc.shots.length > 0) {
+                n = sc.grids.shots.queryRay(ox, oz, dx, dz, maxDist, out, n);
+            }
             if (opts.floors) {
                 n = sc.grids.floors.queryRay(ox, oz, dx, dz, maxDist, out, n);
             }
@@ -206,6 +210,7 @@ class Collision {
         }
         for (const dc of this._dynamic) {
             n = Collision._append(dc.walls, out, n);
+            n = Collision._append(dc.shots, out, n);
             if (opts.floors) {
                 n = Collision._append(dc.floors, out, n);
             }
@@ -540,7 +545,7 @@ class Collision {
     // --- Private: collider builders ---
 
     _buildStaticCollider(obj) {
-        const floors = [], ceilings = [], walls = [];
+        const lists = {floors: [], ceilings: [], walls: [], shots: []};
         for (const fc of obj.faceList) {
             if (fc.passableUser) {
                 continue;
@@ -552,33 +557,33 @@ class Collision {
             }
             tri.passableShot = (fc.passableShot === true);
             tri.noDecal      = Collision._refusesDecal(fc);
-            this._classifyTri(tri, floors, ceilings, walls);
+            Collision._classifyTri(tri, (fc.shotOnly === true), lists);
         }
         // Static geometry never moves, so it is indexed once
         const grids = {
-            floors:   new SpatialGrid(floors),
-            ceilings: new SpatialGrid(ceilings),
-            walls:    new SpatialGrid(walls),
+            floors:   new SpatialGrid(lists.floors),
+            ceilings: new SpatialGrid(lists.ceilings),
+            walls:    new SpatialGrid(lists.walls),
+            shots:    new SpatialGrid(lists.shots),
         };
-        return { floors, ceilings, walls, grids };
+        return { ...lists, grids };
     }
 
     static _refusesDecal(fc) {
         return ((fc.noDecal === true) || (fc.collisionOnly === true));
     }
 
-    // The kind is kept on the triangle so a raycast hit can tell its surface
-    _classifyTri(tri, floors, ceilings, walls) {
+    // The kind is kept on the triangle so a raycast hit can tell its surface.
+    // A shot-only triangle goes to the rays' own list, the bodies never see it.
+    static _classifyTri(tri, shotOnly, lists) {
         if (tri.n[1] > Collision.HORIZONTAL_NY) {
             tri.kind = Collision.KIND_FLOOR;
-            floors.push(tri);
         } else if (tri.n[1] < -Collision.HORIZONTAL_NY) {
             tri.kind = Collision.KIND_CEILING;
-            ceilings.push(tri);
         } else {
             tri.kind = Collision.KIND_WALL;
-            walls.push(tri);
         }
+        lists[((shotOnly) ? 'shots' : Collision.LIST_OF_KIND[tri.kind])].push(tri);
     }
 
     _makeTri(A, B, C) {
@@ -605,8 +610,8 @@ class Collision {
     _updateDynamicCollider(dc) {
         const tf     = dc.instance.getTransform();
         const m      = Matrix.composeInstanceTransform(tf);
-        const floors = [], ceilings = [], walls = [];
-        for (const [la, lb, lc, noDecal] of dc.localTris) {
+        const lists  = {floors: [], ceilings: [], walls: [], shots: []};
+        for (const [la, lb, lc, noDecal, shotOnly] of dc.localTris) {
             const wa = m.multiplyPosition([...la, 1]);
             const wb = m.multiplyPosition([...lb, 1]);
             const wc = m.multiplyPosition([...lc, 1]);
@@ -617,11 +622,12 @@ class Collision {
             // Lets a decal ride its mover; static tris leave it undefined.
             tri.instance = dc.instance;
             tri.noDecal  = noDecal;
-            this._classifyTri(tri, floors, ceilings, walls);
+            Collision._classifyTri(tri, shotOnly, lists);
         }
-        dc.floors   = floors;
-        dc.ceilings = ceilings;
-        dc.walls    = walls;
+        dc.floors   = lists.floors;
+        dc.ceilings = lists.ceilings;
+        dc.walls    = lists.walls;
+        dc.shots    = lists.shots;
         const lc = dc.centerLocal;
         const cw = m.multiplyPosition([lc[0], lc[1], lc[2], 1]);
         dc.centerWorld = [cw[0], cw[1], cw[2]];
@@ -1051,6 +1057,7 @@ Collision.RAY_AABB_EPSILON = 1e-6;
 Collision.KIND_FLOOR    = 'floor';
 Collision.KIND_CEILING  = 'ceiling';
 Collision.KIND_WALL     = 'wall';
+Collision.LIST_OF_KIND  = {floor: 'floors', ceiling: 'ceilings', wall: 'walls'};
 // Pressure verdicts of a solid mover on one user (see _solidPressureOn).
 Collision.PRESS_CLEAR = 'clear';
 Collision.PRESS_KEEP  = 'keep';

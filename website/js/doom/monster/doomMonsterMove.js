@@ -124,10 +124,12 @@ class DoomMonsterMove {
             return true;
         }
         // A walker sticks to its destination floor (up AND down steps); a
-        // floater keeps its altitude — its vertical life is the float logic.
+        // floater keeps its altitude — its vertical life is the float logic —
+        // but never under a higher floor, which P_ZMovement lifts it onto.
         const fromX = pos[0];
         const fromZ = pos[2];
-        m.inst.translate(destX - pos[0], ((isFloat) ? 0 : attempt.floor - pos[1]), destZ - pos[2]);
+        const dy    = ((isFloat) ? Math.max(0, attempt.floor - pos[1]) : (attempt.floor - pos[1]));
+        m.inst.translate(destX - pos[0], dy, destZ - pos[2]);
         this._collision.syncBoxFor(m.inst);
         const sec = this._levelData.findSector(destX / S, destZ / S);
         if (sec !== null) {
@@ -261,7 +263,7 @@ class DoomMonsterMove {
         }
         const pos = m.inst.getTransform().position;
         const r   = m.inst.getCollisionRadius();
-        const cap = pos[1] + WadConstants.ACTOR_STEP_HEIGHT;
+        const cap = pos[1] + this._monsters.stepHeightOf(m);
         const own = this._collision.getFloor(pos[0], pos[2], 0.01, cap);
         if ((own === -Infinity) || (Math.abs(pos[1] - own) > WadConstants.ON_FLOOR_TOLERANCE)) {
             return null;   // airborne, or standing on nothing we can read
@@ -306,7 +308,7 @@ class DoomMonsterMove {
         const pos     = m.inst.getTransform().position;
         const r       = m.inst.getCollisionRadius();
         const h       = m.def.getHeight() * S;
-        const step    = WadConstants.ACTOR_STEP_HEIGHT;
+        const step    = this._monsters.stepHeightOf(m);
         const refused = {ok: false, floor: -Infinity, floatok: false};
 
         // Walls and the other bodies' boxes: the slide resolver in test mode —
@@ -366,7 +368,7 @@ class DoomMonsterMove {
             return true;
         }
         const r    = m.inst.getCollisionRadius();
-        const step = WadConstants.ACTOR_STEP_HEIGHT;
+        const step = this._monsters.stepHeightOf(m);
         const capY = m.inst.getTransform().position[1] + step;
         let lowest = destFloor;
         for (const [ox, oz] of DoomMonsterMove.BOX_CORNERS) {

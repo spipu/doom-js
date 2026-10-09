@@ -25,6 +25,7 @@ class WadTextureBank {
         this._wallTexDir  = {};   // name → {dv, offset} (pre-indexed TEXTURE1/2)
         this._wallNames   = [];   // ordered wall texture names (for ANIMATED)
         this._switchPairs = {};   // SW1 name ↔ SW2 name
+        this._liquidWalls = new Set(profile.liquidWallTextures());
 
         this._texList  = [];      // index → {name, loaderId, width, height}
         this._texIndex = {};      // name (or 'FLAT_'+name) → index
@@ -278,6 +279,13 @@ class WadTextureBank {
 
     isLiquidFlat(name) {
         return this._terrainBank.isLiquid(name);
+    }
+
+    // Flats are keyed 'FLAT_<name>': only a wall texture answers under its bare name.
+    isLiquidWall(index) {
+        const name = this.getName(index);
+
+        return ((this._texIndex[name] === index) && this._liquidWalls.has(name));
     }
 
     _initSwitchPairs() {

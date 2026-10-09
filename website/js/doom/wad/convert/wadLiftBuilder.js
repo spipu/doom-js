@@ -29,13 +29,14 @@ class WadLiftBuilder extends AbstractMoverBuilder {
         const liftCode = mover.code;
         const mesh = WadMeshBuilder.newMesh();
 
-        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
+        const topFh = origFh + this._liquids.floorOffset(si);
+        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, topFh, this._liquids.bedLight(si));
         // The riser band must span the full travel amplitude: when the plat
         // sits at its highest point (maxFh, or a raise-cycle top above it),
         // its skirt still has to reach down to minFh.
         const raiseTops  = Object.values(this._analysis.liftRaiseVariants[si] ?? {}).map((r) => r.targetFh);
         const highestFh  = Math.max(maxFh, ...raiseTops);
-        this._buildRisers(mesh, si, origFh, origFh - (highestFh - minFh), liftCode);
+        this._buildRisers(mesh, si, topFh, topFh - (highestFh - minFh), liftCode);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {

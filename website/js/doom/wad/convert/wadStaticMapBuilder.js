@@ -4,16 +4,24 @@
  */
 class WadStaticMapBuilder {
     /**
-     * @param {object}           level    - output of WadLevelParser.parse() (already patched by the analyzer)
-     * @param {object}           analysis - output of WadMapAnalyzer.analyze()
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
+     * @param {object}            level    - output of WadLevelParser.parse() (already patched by the analyzer)
+     * @param {object}            analysis - output of WadMapAnalyzer.analyze()
+     * @param {WadTextureBank}    bank
+     * @param {WadAnimationBank}  animBank
+     * @param {WadLiquidSurfaces} liquids  - the physical floor offsets of the liquid sectors
      */
-    constructor(level, analysis, bank, animBank) {
+    constructor(level, analysis, bank, animBank, liquids) {
         this._level    = level;
         this._analysis = analysis;
         this._bank     = bank;
         this._animBank = animBank;
+        this._liquids  = liquids;
+    }
+
+    // The floor the geometry and the collision stand on: a sunk liquid lies
+    // below the sector's logical height.
+    _floorOf(si) {
+        return (this._level.sectors[si].fh + this._liquids.floorOffset(si));
     }
 
     _lightGroupOf(si) {
@@ -231,9 +239,9 @@ class WadStaticMapBuilder {
         const midPassableUser  = ((ld.flags & WadConstants.ML_BLOCKING) === 0);
         const midPassableEnemy = (midPassableUser && ((ld.flags & WadConstants.ML_BLOCKMONSTERS) === 0));
 
-        const rFh = rSec.fh;
+        const rFh = this._floorOf(rSd.sector);
         const rCh = rSec.ch;
-        const lFh = lSec.fh;
+        const lFh = this._floorOf(lSd.sector);
         const lCh = lSec.ch;
 
         for (const [mSd, mSec, side] of [[rSd, rSec, 'right'], [lSd, lSec, 'left']]) {
@@ -288,12 +296,12 @@ class WadStaticMapBuilder {
     // An instant-drop floor's walls reach down to its target: the mover's
     // skirt hides them at rest, and nothing stands in the way once it fell.
     _wallFloorOf(si) {
-        const fh = this._level.sectors[si].fh;
+        const fh = this._floorOf(si);
         if (!this._analysis.risingFloorInstantIds.has(si)) {
             return fh;
         }
 
-        return Math.min(fh, this._analysis.risingFloorTargetFh[si]);
+        return Math.min(fh, this._analysis.risingFloorTargetFh[si] + this._liquids.floorOffset(si));
     }
 
     _buildBlockingWall(mesh, rFh, rCh, lFh, lCh, wx1, wz1, wx2, wz2, wallLen) {
@@ -382,9 +390,9 @@ class WadStaticMapBuilder {
                 if (floorSky) {
                     // Sky floor (MAP20's exit pit): solid but invisible, vanilla
                     // draws the sky there (R_Subsector).
-                    WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, sec.fh, true, sec.light, {collisionOnly: true});
+                    WadMeshBuilder.addSectorFlat(mesh, this._level, -1, si, this._floorOf(si), true, sec.light, {collisionOnly: true});
                 } else if (ft >= 0) {
-                    WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
+                    WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, this._floorOf(si), true, this._liquids.bedLight(si),
                         WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si));
                 }
             }
@@ -402,7 +410,7 @@ class WadStaticMapBuilder {
         if (ft < 0) {
             return;
         }
-        WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, sec.fh, true, sec.light,
+        WadMeshBuilder.addSectorFlat(mesh, this._level, ft, si, this._floorOf(si), true, this._liquids.bedLight(si),
             WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si));
     }
 }

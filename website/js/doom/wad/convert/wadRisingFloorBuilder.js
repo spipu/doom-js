@@ -23,8 +23,9 @@ class WadRisingFloorBuilder extends AbstractMoverBuilder {
         const floorCode = this._analysis.floorMovers.get(si).code;
         const mesh = WadMeshBuilder.newMesh();
 
-        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh);
-        this._buildRisers(mesh, si, origFh, baseFh, floorCode);
+        const offset = this._liquids.floorOffset(si);
+        WadMeshBuilder.addSectorTopFlat(mesh, this._level, this._bank, this._analysis, si, origFh + offset, this._liquids.bedLight(si));
+        this._buildRisers(mesh, si, origFh + offset, baseFh + offset, floorCode);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {

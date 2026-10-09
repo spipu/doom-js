@@ -22,7 +22,7 @@ class DoomLevelLoader {
     /**
      * @param {WadFile}  wadFile
      * @param {string}   levelCode
-     * @param {object}   options - {skill: int, thingFilter: object, onLevelExit: function(secret), turnEvents: DoomTurnEvents}
+     * @param {object}   options - {skill: int, thingFilter: object, waterEffects: boolean (default false), onLevelExit: function(secret), turnEvents: DoomTurnEvents}
      * @returns {Promise<DoomBuiltLevel>}
      */
     async load(wadFile, levelCode, options) {
@@ -33,6 +33,7 @@ class DoomLevelLoader {
             monsterCatalog:    this._monsterCatalog,
             skill:             options.skill,
             thingFilter:       options.thingFilter,
+            waterEffects:      (options.waterEffects ?? false),
             profile:           this._profile
         }).build();
 

@@ -1250,6 +1250,23 @@ class DefaultGameProfile extends AbstractGameProfile {
         };
     }
 
+    // The animated walls of p_spec.c that show blood, slime, water, lava or
+    // magma; flames and the boss brain keep their decals.
+    liquidWallTextures() {
+        return [
+            'BLODGR1', 'BLODGR2', 'BLODGR3', 'BLODGR4',
+            'SLADRIP1', 'SLADRIP2', 'SLADRIP3',
+            'BLODRIP1', 'BLODRIP2', 'BLODRIP3', 'BLODRIP4',
+            'GSTFONT1', 'GSTFONT2', 'GSTFONT3',
+            'FIRELAV3', 'FIRELAVA',
+            'FIREMAG1', 'FIREMAG2', 'FIREMAG3',
+            'ROCKRED1', 'ROCKRED2', 'ROCKRED3',
+            'BFALL1', 'BFALL2', 'BFALL3', 'BFALL4',
+            'SFALL1', 'SFALL2', 'SFALL3', 'SFALL4',
+            'WFALL1', 'WFALL2', 'WFALL3', 'WFALL4'
+        ];
+    }
+
     // Vanilla Doom hardcoded animation sequences (p_spec.c, 8 tics per frame),
     // used when the WAD has no ANIMATED lump.
     vanillaAnimSequences() {
@@ -1300,7 +1317,13 @@ class DefaultGameProfile extends AbstractGameProfile {
     // all, and no IWAD of the family carries the sprites a splash would need.
     // The entry exists only to keep the impact decals off these flats.
     terrains() {
-        return {liquid: {}};
+        return {liquid: {footclip: 10}};
+    }
+
+    // Our own addition: the Doom family never sank anything, the sheet stays
+    // over an untouched floor.
+    liquidSurface() {
+        return {mode: 'raise', alpha: 0.5, bedDarkening: 0.2};
     }
 
     // The Doom family and everything derived from it (Freedoom, the IWAD

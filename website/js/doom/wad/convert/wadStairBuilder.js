@@ -24,7 +24,7 @@ class WadStairBuilder extends AbstractMoverBuilder {
         const stairCode = mover.code;
         const mesh = WadMeshBuilder.newMesh();
 
-        this._buildTopFlat(mesh, si, sec, origFh);
+        this._buildTopFlat(mesh, si, sec, origFh + this._liquids.floorOffset(si));
         this._buildStairRisers(mesh, si, origFh, targetFh, delta, stairCode);
 
         const textures = this._meshTextures(mesh);
@@ -54,7 +54,7 @@ class WadStairBuilder extends AbstractMoverBuilder {
         for (const chain of chains) {
             const polyDoom = chain.map((vi) => vertexes[vi]);
             WadMeshBuilder.addFlatPolygon(mesh, ft, polyDoom, origFh, true,
-                {...WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si), light: sec.light});
+                {...WadMeshBuilder.floorFlatOptions(this._level, this._bank, this._analysis, si), light: this._liquids.bedLight(si)});
         }
     }
 
@@ -72,7 +72,9 @@ class WadStairBuilder extends AbstractMoverBuilder {
     // delta, origFh] so that once raised it covers [neighbourFinalFh, targetFh].
     _buildStairRisers(mesh, si, origFh, targetFh, delta, stairCode) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const SCALE = WadConstants.SCALE;
+        const SCALE  = WadConstants.SCALE;
+        const topFh  = origFh + this._liquids.floorOffset(si);
+        const peakFh = targetFh + this._liquids.floorOffset(si);
 
         for (const ld of linedefs) {
             if ((ld.right < 0) || (ld.left < 0)) {
@@ -87,8 +89,8 @@ class WadStairBuilder extends AbstractMoverBuilder {
             if (neighbourSi === si) {
                 continue;
             }
-            const neighbourFinalFh = this._finalHeight(neighbourSi);
-            if (targetFh <= neighbourFinalFh) {
+            const neighbourFinalFh = this._finalHeight(neighbourSi) + this._liquids.floorOffset(neighbourSi);
+            if (peakFh <= neighbourFinalFh) {
                 continue;
             }
 
@@ -117,8 +119,8 @@ class WadStairBuilder extends AbstractMoverBuilder {
             const wallLen = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
 
             const botDu = neighbourFinalFh - delta;
-            const topDu = origFh;
-            const uv    = WadMeshBuilder.moverRiserUv(ld, neighbourSd, neighbourSec, origFh, stairCode, th);
+            const topDu = topFh;
+            const uv    = WadMeshBuilder.moverRiserUv(ld, neighbourSd, neighbourSec, topFh, stairCode, th);
 
             WadMeshBuilder.addWallQuad(mesh, ti,
                 wx1, wz1, wx2, wz2,

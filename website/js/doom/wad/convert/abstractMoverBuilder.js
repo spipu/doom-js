@@ -6,16 +6,18 @@
  */
 class AbstractMoverBuilder {
     /**
-     * @param {object}           level
-     * @param {object}           analysis
-     * @param {WadTextureBank}   bank
-     * @param {WadAnimationBank} animBank
+     * @param {object}            level
+     * @param {object}            analysis
+     * @param {WadTextureBank}    bank
+     * @param {WadAnimationBank}  animBank
+     * @param {WadLiquidSurfaces} liquids - the physical floor offsets of the liquid sectors
      */
-    constructor(level, analysis, bank, animBank) {
+    constructor(level, analysis, bank, animBank, liquids) {
         this._level    = level;
         this._analysis = analysis;
         this._bank     = bank;
         this._animBank = animBank;
+        this._liquids  = liquids;
     }
 
     /**

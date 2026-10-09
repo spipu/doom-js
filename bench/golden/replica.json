@@ -85,10 +85,10 @@
   "heretic/E1M1@3/screen": {
     "turns": 600,
     "mismatches": {},
-    "subTraceSha": "4949bc84cc28f8f6f4020a31852c96ed314567e53015a9a80bdb6d6938ae3a3e",
-    "subEventsSha": "5609e22d7617c980f9139718215f1aaa14a6cbe89048051a9f1574cbdb060278",
-    "subEvents": 54,
-    "mainTraceSha": "bef22608f595b92fc82400f8f300cba03524cba66e63aa3d8940f2656484fe6f",
+    "subTraceSha": "f1e5fbe1979ae69f937609bff900bb56993e238116d4efa48debe90cb2ea12b3",
+    "subEventsSha": "9a17bfa27e8dafbfd16bbbd5009d533b85689cba11fc7973ca0a228a0321332d",
+    "subEvents": 64,
+    "mainTraceSha": "3549b3f0cea6fc69d032aaffcf8bb6bbd2aa202e80e4fa06d4ec6c293b0bf413",
     "mainPlayers": [
       1
     ],
@@ -110,10 +110,10 @@
   "heretic/E1M1@3/coop": {
     "turns": 600,
     "mismatches": {},
-    "subTraceSha": "a8afc1b1fb5a2b1346c67ef809c45e2de3b2e89e9ddc757ed8ce95a8d3a1de59",
-    "subEventsSha": "70e6bf1badf8d2418395025dec43de28988ce2897f83cb74b82900f6ed5e70cb",
-    "subEvents": 101,
-    "mainTraceSha": "6d98d994a6a77f1a9b34c36c1e1a4e14e1dfbe3be9e5f4ff81573abd7122ef74",
+    "subTraceSha": "a179310e083895ffff216a63b50630c6aa3822bf6e948a833a3e790f1baeb3da",
+    "subEventsSha": "c68ccba12b36c9db08a2cc2cc898256b6bf5499741faa64ee807891465bf2397",
+    "subEvents": 94,
+    "mainTraceSha": "1b46c21c43b0d15f6f5290fd85fd25e34ba196dd0aac2680ec80581626188738",
     "mainPlayers": [
       1,
       2
@@ -136,10 +136,10 @@
   "heretic/E1M1@3/deathmatch": {
     "turns": 600,
     "mismatches": {},
-    "subTraceSha": "4ecab300a36720dd7f17885f03da26e08ed7083e11eda754cb884b4b029a5da9",
-    "subEventsSha": "404e08da0488e269765d3c9b99161546f2b25012f565ebfd40132b034884f2f9",
+    "subTraceSha": "fc150c305b63859115567a87a63f442d7432b6732f6c0962ce55edf3aadcf676",
+    "subEventsSha": "e1697b715ea2998030d6bdbe518ff54d43bac6dd5f69485fa165870dc815d9c3",
     "subEvents": 116,
-    "mainTraceSha": "30335893850bc353f781cfcac2b1323c07226f650a30fff562b2881250621612",
+    "mainTraceSha": "1a416eeb9a226b214b170b68a45d70279bdb438c48086f456cbb04dd830e7d82",
     "mainPlayers": [
       1,
       2

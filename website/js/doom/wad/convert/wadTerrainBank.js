@@ -64,6 +64,19 @@ class WadTerrainBank {
         return (this._flats[name.toUpperCase()] !== undefined);
     }
 
+    /**
+     * How deep an actor stands in the flat's terrain (FOOTCLIPSIZE), 0 on dry
+     * ground or a terrain that declares none.
+     *
+     * @param {string} name
+     * @returns {number} Doom units
+     */
+    footclipOf(name) {
+        const terrain = this._flats[name.toUpperCase()];
+
+        return ((terrain !== undefined) ? (this._terrains[terrain]?.footclip ?? 0) : 0);
+    }
+
     // Outer grammar: splash / terrain / floor / defaultterrain blocks, wrapped
     // in if<game> … endif conditionals. The lump of another game is skipped
     // whole rather than half-read.
@@ -123,8 +136,8 @@ class WadTerrainBank {
         };
     }
 
-    // terrain <name> [modify] { <key> [value]… }; only the splash it plays and
-    // its liquid flag concern us, the rest of the block is read and dropped.
+    // terrain <name> [modify] { <key> [value]… }; the splash it plays, its
+    // footclip and its liquid flag concern us, the rest of the block is dropped.
     _parseTerrain(cursor, skipping) {
         const name   = this._word(cursor).toLowerCase();
         const fields = this._parseBlock(cursor);
@@ -132,7 +145,7 @@ class WadTerrainBank {
             return;
         }
         const splash = (this._splashes[(fields.splash ?? '').toLowerCase()] ?? null);
-        this._terrains[name] = ((splash !== null) ? splash : {});
+        this._terrains[name] = {...(splash ?? {}), footclip: this._number(fields.footclip, 0)};
         if (fields.liquid !== undefined) {
             this._liquids.add(name);
         }

@@ -73,6 +73,8 @@ class DoomSettings {
             {key: 'display.crosshair',            nameCode: 'settings.display.crosshair',          type: 'bool', default: true},
             {key: 'display.distance_shading',     nameCode: 'settings.display.distanceShading',    type: 'bool', default: true},
             {key: 'display.texture_smoothing',    nameCode: 'settings.display.textureSmoothing',   type: 'bool', default: true},
+            // Read when a level is built: a change shows from the next load on.
+            {key: 'display.water_effects',        nameCode: 'settings.display.waterEffects',       type: 'bool', default: false},
             {key: 'display.show_fps',             nameCode: 'settings.display.showFps',            type: 'bool', default: false},
             // None of these exists in vanilla: fall damage stays off to match it,
             // jumping and crouching are on since they cost nothing when unused.
@@ -524,6 +526,10 @@ class DoomSettings {
 
     getDisplayTextureSmoothing() {
         return (this.get('display.texture_smoothing') === true);
+    }
+
+    getDisplayWaterEffects() {
+        return (this.get('display.water_effects') === true);
     }
 
     getGameFallDamage() {
