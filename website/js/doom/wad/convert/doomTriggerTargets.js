@@ -9,10 +9,10 @@ class DoomTriggerTargets {
      * @param {string[]}    targets        - instance codes to start
      * @param {object[]|null} reverseTargets - {code, timeScale} played backward
      * @param {string|null} cycleVariant    - per-trigger cycle key (door or lift-raise)
-     * @param {object|null} stageRules      - code → stage rule of a staged floor
-     *                                        (WadMapAnalyzer.stageRulesFor): the
-     *                                        height this trigger drives it to,
-     *                                        resolved against the live floor
+     * @param {object|null} stageRules      - code → what this trigger resolves against
+     *                                        the live floors (WadMapAnalyzer.stageRulesFor):
+     *                                        the height it drives a staged floor to, or
+     *                                        the low end a lift runs to
      * @returns {boolean} whether the action took (vanilla EV_* return): at least
      *                    one target accepted it, or there was nothing to drive
      */
@@ -21,9 +21,13 @@ class DoomTriggerTargets {
         for (const code of targets) {
             const inst = loader.instances().getByCode(code);
             const rule = ((stageRules !== null) ? (stageRules[code] ?? null) : null);
-            taken = (((rule !== null)
-                ? inst.startUntilVerticalDelta(DoomTriggerTargets.raiseShiftFor(inst, rule), cycleVariant)
-                : inst.start(cycleVariant)) || taken);
+            if (rule === null) {
+                taken = (inst.start(cycleVariant) || taken);
+            } else if (rule.lowKeyFor !== undefined) {
+                taken = (inst.start(rule.lowKeyFor() ?? cycleVariant) || taken);
+            } else {
+                taken = (inst.startUntilVerticalDelta(DoomTriggerTargets.raiseShiftFor(inst, rule), cycleVariant) || taken);
+            }
         }
         for (const entry of (reverseTargets ?? [])) {
             taken = (loader.instances().getByCode(entry.code).startReverse(entry.timeScale) || taken);

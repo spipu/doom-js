@@ -91,7 +91,7 @@ BenchBuildSuite.SUMMARY_SCRIPT = `((built, world) => {
         collision:    [inst.getCollisionShape(), inst.getCollisionRadius(), inst.getCollisionHeight()],
         trigger:      inst._trigger,
         interaction:  [inst._interactionRadius, inst._interactionShape, (inst._interactionReachBelow ?? null), (inst._interactionReachAbove ?? null)],
-        anim:         [inst._animLoop, inst._animOnlyOnce, inst._autoStart, inst._animKeyframes, (inst._keyframeVariants ?? null), (inst._defaultVariant ?? null), (inst._stageEnds ?? null)],
+        anim:         [inst._animLoop, inst._animOnlyOnce, inst._autoStart, inst._animKeyframes, (inst._animVariants ?? null), (inst._animDefaultVariant ?? null)],
         pressure:     [inst.getBlockedBehavior(), inst._blockedSlowFactor, inst._crushDamage],
         damage:       inst.getDamage(),
         rideOn:       codeOf(inst.getRideOn()),

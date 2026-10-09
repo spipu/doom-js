@@ -30,6 +30,7 @@ class WadMapAnalyzer {
         const doors = this._identifyDoors();
         const lifts = this._identifyLifts(donuts.holeTargetFh);
         const liftLowerVariants = this._identifyLiftLowers(lifts);
+        const {liftLiveLows, liftNeighbourPoses} = this._identifyLiftLiveLows(lifts, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
         const liftRaiseVariants = this._identifyLiftRaises(lifts);
         // Before the rising floors: a sunken door sector lifted to its rest
@@ -59,6 +60,8 @@ class WadMapAnalyzer {
             liftMaxAdjFh:          lifts.liftMaxAdjFh,
             liftRaiseVariants:     liftRaiseVariants,
             liftLowerVariants:     liftLowerVariants,
+            liftLiveLows:          liftLiveLows,
+            liftNeighbourPoses:    liftNeighbourPoses,
             risingFloorIds:        rising.risingFloorIds,
             risingFloorSpecial:    rising.risingFloorSpecial,
             risingFloorTargetFh:   rising.risingFloorTargetFh,
@@ -730,8 +733,13 @@ class WadMapAnalyzer {
     // Neighbour floors of si, co-movers included, at their WAD height by
     // default: what P_Find*FloorSurrounding reads when the tag first fires.
     _liftAdjacentFloors(si, floorOf = ((other) => this._level.sectors[other].fh)) {
+        return this._liftAdjacentSectors(si).map(floorOf);
+    }
+
+    // One entry per two-sided line, like P_Find*FloorSurrounding.
+    _liftAdjacentSectors(si) {
         const {sidedefs} = this._level;
-        const adjFh = [];
+        const adjacent = [];
         for (const ld of this._moverLinedefs()) {
             if ((ld.right < 0) || (ld.left < 0)) {
                 continue;
@@ -742,10 +750,89 @@ class WadMapAnalyzer {
             if ((other === null) || (other === si)) {
                 continue;
             }
-            adjFh.push(floorOf(other));
+            adjacent.push(other);
         }
 
-        return adjFh;
+        return adjacent;
+    }
+
+    // Vanilla reads the neighbour floors live at each firing, so a lift next to a
+    // lowered lift lands deeper; a same-tag neighbour starts with the lift, still at rest.
+    // liftLiveLows: si → {rule, origFh, neighbours: [si…], lows: [fh…]};
+    // liftNeighbourPoses: si → {neighbour si → [fh…]}.
+    _identifyLiftLiveLows(lifts, donutHoleTargetFh) {
+        const {sectors} = this._level;
+        const liftLiveLows       = {};
+        const liftNeighbourPoses = {};
+        const moves = (other, si) => (lifts.liftIds.has(other) && (sectors[other].tag !== sectors[si].tag)
+            && !WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[other]));
+        for (const si of lifts.liftIds) {
+            const neighbours = this._liftAdjacentSectors(si);
+            const posesOf    = (other) => ((moves(other, si)) ? [lifts.liftOriginalFh[other], lifts.liftLowestFh[other]] : [sectors[other].fh]);
+            liftNeighbourPoses[si] = Object.fromEntries(neighbours.map((other) => [other, posesOf(other)]));
+            const special = lifts.liftSectorSpecial[si];
+            if (WadConstants.FLOOR_PERPETUAL_SPECIALS.has(special) || (donutHoleTargetFh[si] !== undefined)) {
+                continue;
+            }
+            if (!neighbours.some((other) => moves(other, si))) {
+                continue;
+            }
+            const rule   = WadConstants.FLOOR_DOWN_BY_SPECIAL[special].target;
+            const origFh = lifts.liftOriginalFh[si];
+            const base   = lifts.liftBaseTargetFh[si];
+            const lows   = new Set();
+            for (const adjFh of WadMapAnalyzer._combinations(neighbours.map(posesOf), WadMapAnalyzer.LIVE_LOW_MAX_COMBINATIONS)) {
+                const low = Math.min(WadMapAnalyzer._lowerTargetFh(rule, adjFh, origFh), origFh);
+                if (low !== base) {
+                    lows.add(low);
+                }
+            }
+            if (lows.size === 0) {
+                continue;
+            }
+            liftLiveLows[si] = {rule: rule, origFh: origFh, neighbours: neighbours, lows: [...lows].sort((a, b) => (a - b))};
+            lifts.liftLowestFh[si] = Math.min(lifts.liftLowestFh[si], ...lows);
+        }
+
+        return {liftLiveLows: liftLiveLows, liftNeighbourPoses: liftNeighbourPoses};
+    }
+
+    // Past the cap, one neighbour moved at a time: the combinations that occur in practice.
+    static _combinations(poses, cap) {
+        const total = poses.reduce((n, list) => (n * list.length), 1);
+        if (total <= cap) {
+            let combos = [[]];
+            for (const list of poses) {
+                combos = combos.flatMap((combo) => list.map((fh) => combo.concat(fh)));
+            }
+
+            return combos;
+        }
+        const rest = poses.map((list) => list[0]);
+
+        return poses.flatMap((list, i) => list.map((fh) => rest.map((fhRest, j) => ((j === i) ? fh : fhRest))));
+    }
+
+    // code → {lowKeyFor()}, null for the base cycle. Another lower special aimed
+    // at the lift keeps its named cycle as built.
+    static liveLowRulesFor(analysis, special, targets, liveFloorOf) {
+        const rules = {};
+        for (const code of targets) {
+            const si = ((code.startsWith('lift_')) ? WadMapAnalyzer._sectorOfCode(code, 'lift_') : null);
+            const live = ((si !== null) ? (analysis.liftLiveLows[si] ?? null) : null);
+            if ((live === null) || (analysis.liftSectorSpecial[si] !== special)) {
+                continue;
+            }
+            rules[code] = {
+                lowKeyFor: () => {
+                    const low = Math.min(WadMapAnalyzer._lowerTargetFh(live.rule, live.neighbours.map(liveFloorOf), live.origFh), live.origFh);
+
+                    return ((live.lows.includes(low)) ? WadConstants.liftLowCycleKey(low) : null);
+                }
+            };
+        }
+
+        return rules;
     }
 
     // Destination of a floor-lower rule: classic lifts lower to the LOWEST
@@ -915,14 +1002,23 @@ class WadMapAnalyzer {
         };
     }
 
-    // code → {origFh, targetFhFor(liveFh)} for the staged targets: EV_DoFloor
-    // computes the destination from the live sector. null when nothing is staged.
+    // What a trigger resolves on the live floors when it fires, by target code:
+    // {origFh, targetFhFor(liveFh)} for a staged floor, {lowKeyFor()} for a
+    // lift next to a mover. null when nothing is live.
     static stageRulesFor(analysis, special, targets, liveFloorOf) {
-        const raise = WadConstants.FLOOR_UP_BY_SPECIAL[special];
-        if (raise === undefined) {
-            return null;
-        }
+        const rules = {
+            ...WadMapAnalyzer._raiseStageRules(analysis, special, targets, liveFloorOf),
+            ...WadMapAnalyzer.liveLowRulesFor(analysis, special, targets, liveFloorOf)
+        };
+
+        return ((Object.keys(rules).length > 0) ? rules : null);
+    }
+
+    static _raiseStageRules(analysis, special, targets, liveFloorOf) {
         const rules = {};
+        if (WadConstants.FLOOR_UP_BY_SPECIAL[special] === undefined) {
+            return rules;
+        }
         for (const code of targets) {
             const staging = ((code.startsWith('risingfloor_'))
                 ? (analysis.risingFloorStaging[WadMapAnalyzer._sectorOfCode(code, 'risingfloor_')] ?? null)
@@ -945,7 +1041,7 @@ class WadMapAnalyzer {
             rules[code] = {origFh: staging.origFh, targetFhFor: targetFhFor};
         }
 
-        return ((Object.keys(rules).length > 0) ? rules : null);
+        return rules;
     }
 
     // P_FindNextHighestFloor: lowest of the floors strictly above baseFh, null
@@ -1479,3 +1575,5 @@ class WadMapAnalyzer {
         return 1;
     }
 }
+
+WadMapAnalyzer.LIVE_LOW_MAX_COMBINATIONS = 16;

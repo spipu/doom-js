@@ -321,8 +321,7 @@ class Collision {
                 continue;
             }
 
-            const floorY = this._scanFloors(user.x, user.z, user.getRadius(), Infinity, dc.floors, dc.floors.length).y;
-            if ((floorY === -Infinity) || (Math.abs(user.y - floorY) > 0.15)) {
+            if (!this._standsOnInstance(user, dc, dy)) {
                 continue;
             }
 
@@ -475,14 +474,15 @@ class Collision {
         if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
             return Collision.PRESS_CLEAR;
         }
-        if (this._standsOnInstance(user, dc)) {
+        const dy = ((prev !== null) ? this._moverFrameDeltaY(dc, prev) : 0);
+        if (this._standsOnInstance(user, dc, dy)) {
             // A rider squeezed between this rising floor and a ceiling is a
             // pressure (T_PlatRaise) the cylinder test cannot see.
-            if (!this._userPinchedBy(user, dc)) {
+            if (!this._userPinchedBy(user, dc, dy)) {
                 return Collision.PRESS_CLEAR;
             }
             // Not rising this turn (wait/descent): nothing to undo.
-            return (((prev === null) || (this._moverFrameDeltaY(dc, prev) <= 1e-8)) ? Collision.PRESS_KEEP : Collision.PRESS_PUSH);
+            return ((dy <= 1e-8) ? Collision.PRESS_KEEP : Collision.PRESS_PUSH);
         }
         if (!this._instanceCylinderIntersects(user, dc)) {
             return Collision.PRESS_CLEAR;
@@ -509,14 +509,13 @@ class Collision {
     // Local vertical gap at the player's position vs his height (the vanilla
     // "thing does not fit" of PIT_ChangeSector). Unfiltered lists on purpose:
     // the pressing (passable) mover itself must keep counting in the gap.
-    _userPinchedBy(user, dc) {
+    _userPinchedBy(user, dc, dy) {
         if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
             return false;
         }
         const r = user.getRadius();
-        // 0.15 above the feet: at 5b the ride is not applied yet, so the mover's
-        // top may still be a frame of travel above them.
-        const floorY = this._findFloor(user.x, user.z, r, user.y + 0.15, Collision.DYN_ALL).y;
+        // At 5b the ride is not applied yet: the mover's top is still a frame of travel above the feet.
+        const floorY = this._findFloor(user.x, user.z, r, user.y + Collision.STAND_TOLERANCE + Math.max(0, dy), Collision.DYN_ALL).y;
         if (floorY === -Infinity) {
             return false;
         }
@@ -524,10 +523,11 @@ class Collision {
         return ((ceilY - floorY) < (user.getCurrentHeight() - 1e-4));
     }
 
-    // Same standing test as applyPlatformRiding
-    _standsOnInstance(user, dc) {
+    // Against the top BEFORE this frame's move: a fast lift outruns the tolerance
+    // on a slow frame and a rider would read as a body stuck in its side.
+    _standsOnInstance(user, dc, dy = 0) {
         const floorY = this._scanFloors(user.x, user.z, user.getRadius(), Infinity, dc.floors, dc.floors.length).y;
-        return ((floorY !== -Infinity) && (Math.abs(user.y - floorY) <= 0.15));
+        return ((floorY !== -Infinity) && (Math.abs(user.y - (floorY - dy)) <= Collision.STAND_TOLERANCE));
     }
 
     // Returns the shared scratch object
@@ -1053,6 +1053,7 @@ class Collision {
 }
 
 Collision.DEPENETRATION_PASSES = 4;
+Collision.STAND_TOLERANCE = 0.15;
 // Which movers join a circle query: none, those within broadphase reach, all
 Collision.DYN_NONE = 0;
 Collision.DYN_NEAR = 1;

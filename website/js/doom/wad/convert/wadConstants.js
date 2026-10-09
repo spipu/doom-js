@@ -229,6 +229,11 @@ class WadConstants {
         return ('lower:' + rule.anim + '@' + rule.speed + '@' + rule.target + '@' + ((rule.onlyOnce) ? 1 : 0));
     }
 
+    // 'low:-128': P_FindLowestFloorSurrounding reads the neighbours live, a lift lands deeper once one has lowered.
+    static liftLowCycleKey(targetFh) {
+        return ('low:' + targetFh);
+    }
+
     // Cycle key driven by a special, whatever the mover family it aims at.
     static cycleKeyForSpecial(special) {
         return (WadConstants.doorCycleKeyForSpecial(special)

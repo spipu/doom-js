@@ -13,7 +13,7 @@
     "gridCircles": 15176,
     "gridSegments": 1102,
     "gridRays": 2395,
-    "~msPerFrame": 0.8
+    "~msPerFrame": 0.74
   },
   "Doom2/MAP01@3": {
     "frames": 1200,
@@ -29,7 +29,7 @@
     "gridCircles": 27399,
     "gridSegments": 2487,
     "gridRays": 2463,
-    "~msPerFrame": 1.6
+    "~msPerFrame": 1.41
   },
   "freedoom1/E1M1@3": {
     "frames": 1200,
@@ -42,10 +42,10 @@
     "floorLookups": 169,
     "ceilingLookups": 3344,
     "raycasts": 1037,
-    "gridCircles": 43452,
-    "gridSegments": 1264,
+    "gridCircles": 43455,
+    "gridSegments": 1266,
     "gridRays": 3053,
-    "~msPerFrame": 1.99
+    "~msPerFrame": 1.61
   },
   "heretic/E1M1@3": {
     "frames": 1200,
@@ -61,7 +61,7 @@
     "gridCircles": 33879,
     "gridSegments": 5923,
     "gridRays": 19997,
-    "~msPerFrame": 3.65
+    "~msPerFrame": 2.31
   },
   "heretic/E1M3@3": {
     "frames": 1200,
@@ -77,6 +77,6 @@
     "gridCircles": 60092,
     "gridSegments": 4929,
     "gridRays": 18839,
-    "~msPerFrame": 5.15
+    "~msPerFrame": 3.75
   }
 }
