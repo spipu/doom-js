@@ -57,7 +57,7 @@
 // command, and the next turn starts once every command is in (or the command timeout has
 // passed). A sub only draws what it receives. English only, like every demo.
 
-const WASM_URL           = '/js/lib/zxing-wasm/zxing_full.wasm';
+const WASM_URL           = '/lib/zxing-wasm/zxing_full.wasm';
 const REFRESH_PERIOD_MS  = 1000;
 const COMMAND_TIMEOUT_MS = 2000;
 const STATE_TYPE         = 1;
@@ -406,7 +406,7 @@ function wireControls()
 }
 
 appBootstrap.disablePwaMode();
-appBootstrap.addBootstrapDefinition('/js/engine/libBootstrap.json');
+appBootstrap.addBootstrapDefinition('/_examples/libBootstrap.json');
 appBootstrap.addBootstrapDefinition('./assets/pairing.json');
 appBootstrap.addBootstrapDefinition('./assets/game.json');
 appBootstrap.setReadyCallback(() => loadApp().catch(fail));

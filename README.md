@@ -139,15 +139,16 @@ website/
 ├── css/                      Shell + menu styles
 ├── assets/uzdoom/            UZDoom impact-decal graphics + finale texts (GPL v3 — own LICENSE.md + README.md)
 ├── assets/spipu/             Our own graphics: the generic splash masks, colourised at level load
-├── _examples/                Spipu3D demos + their assets and bootstrap definitions
+├── _examples/                Spipu3D demos, their assets and definitions, and libBootstrap.json (the engine files the demos load)
+├── lib/libadlmidi/           Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
+├── lib/zxing-wasm/           Vendored zxing-wasm QR code reader and writer (MIT, Apache-2.0, BSD-3 — own LICENSE.md + README.md)
 └── js/
+    ├── libBootstrap.json     The game's bootstrap definition: version + every file it loads (engine, webapp, doom)
+    ├── main.js               Entry point
     ├── webapp/               Generic webapp layer — bootstrap/versioning, IndexedDB wrapper with versioned schema upgrades, translation catalog, content hash, wake lock
     │   ├── net/                 Peer-to-peer network layer — WebRTC and loopback links, compact signals, pairing codes and flows, messages, ping, star sessions
     │   └── qr/                  QR code writing, camera scanning, camera probe and the pairing view (code shown, code read)
-    ├── lib/libadlmidi/       Vendored libADLMIDI-JS OPL3 synthesizer (LGPL v3 — own LICENSE.md + modification README.md)
-    ├── lib/zxing-wasm/       Vendored zxing-wasm QR code reader and writer (MIT, Apache-2.0, BSD-3 — own LICENSE.md + README.md)
     ├── doom/                 The Spipu-Doom game
-    │   ├── libBootstrap.json    Doom bootstrap definition (version + file lists)
     │   ├── doomGame.js          Level lifecycle, game loop, menus of the running game, tally
     │   ├── doomHostedSession.js The session a game hosts for other devices: opened from the pause or the Multiplayer screen, stopped, its lost players' seats
     │   ├── doomFollowedSession.js  A game following another device's session: the levels it sends, its mode changes, its end
@@ -180,7 +181,6 @@ website/
     │   ├── doomTranslations.js  Every user-facing text (en + fr + it + es)
     │   ├── doomFinaleTexts.js   Finale-text catalogs of the games (loaded from assets/)
     │   ├── doomImageAssets.js   Source pixels of every PNG drawn from outside the WAD (decals, splash masks)
-    │   ├── main.js              Entry point
     │   ├── save/                Save slots + level snapshot (deterministic rebuild + state patch)
     │   ├── sound/               Game audio: WAD sound loading, logical-name catalog (profile SNDINFO tables), music orchestration
     │   ├── object/              Immutable definitions (weapons, ammo, items, decorations, thing and item catalogs)
@@ -192,7 +192,6 @@ website/
     │   ├── weapon/              Weapon machinery: psprite machine, hitscan, projectiles, effects, decals, and the drawable weapon and projectile views with their renderers
     │   └── wad/                 WAD reading + IndexedDB storage, game profiles (profile/), on-the-fly converter (convert/)
     └── engine/               Spipu3D — the game-agnostic 3D engine
-        ├── libBootstrap.json    Engine bootstrap definition (version + file lists)
         ├── engine3d.js          Viewport, lights, render loop, frustum culling
         ├── collision.js         FPS physics: spatially indexed triangles, box blockers, mover pressure
         ├── spatialGrid.js       Uniform XZ grid over a static triangle set
@@ -223,7 +222,7 @@ loader.endBatch();                                      // finalizes everything 
 
 ## Webapp bootstrap
 
-Every page is loaded by the generic `appBootstrap` (global instance). Each library declares its files in a `libBootstrap.json` definition (`{version, files: {assets, css, js}}`); pages stack the definitions they need and register their entry point:
+Every page is loaded by the generic `appBootstrap` (global instance) from `libBootstrap.json`-style definitions (`{version, files: {assets, css, js}}`). The game loads one: `js/libBootstrap.json`, which lists every file it uses. The demos stack `_examples/libBootstrap.json` (the engine files, the same list as the game's) with their own definition, and register their entry point:
 
 ```html
 <div id="screen"></div>
@@ -236,13 +235,13 @@ function loadApp()
 }
 
 appBootstrap.disablePwaMode();                                       // demos only — doom keeps PWA mode
-appBootstrap.addBootstrapDefinition('/js/engine/libBootstrap.json');
+appBootstrap.addBootstrapDefinition('/_examples/libBootstrap.json');
 appBootstrap.addBootstrapDefinition('./assets/world.json');
 appBootstrap.setReadyCallback(loadApp);
 </script>
 ```
 
-Versions are aggregated (`v2.001|v1.018`): a change in any stacked definition triggers a full update — in PWA mode the Service Worker clears its cache and re-downloads everything; in classic mode the page reloads with `?v=` cache-busted URLs (`appBootstrap.buildUrl`).
+When several definitions are stacked (the demos), their versions are aggregated (`v2.001|v1.018`): a change in any of them triggers a full update — in PWA mode the Service Worker clears its cache and re-downloads everything; in classic mode the page reloads with `?v=` cache-busted URLs (`appBootstrap.buildUrl`).
 
 ## Page pattern
 
@@ -275,7 +274,7 @@ function animate(timestamp) {
 
 ## Versioning
 
-After any file change, increment the `version` field of the `libBootstrap.json` of the modified library (engine, doom, or the demo's definition JSON). This drives both the PWA cache refresh and the classic-mode cache busting.
+After any file change, increment the `version` of `js/libBootstrap.json`; when the file is loaded by the demos too (an engine file), increment `_examples/libBootstrap.json` as well, and a new engine file is declared in both, in the same order (the bench checks it). This drives both the PWA cache refresh and the classic-mode cache busting.
 
 ## Next steps
 
@@ -286,5 +285,5 @@ The upcoming work is tracked in [./NEXT-STEPS.md](./NEXT-STEPS.md).
 This program is distributed under the MIT License — see the [./LICENSE.md](./LICENSE.md) file, except:
 
 * the `website/assets/uzdoom/` directory (impact-decal graphics and finale texts taken from UZDoom), distributed under the GPL v3, with its own LICENSE.md and attribution README.
-* the `website/js/lib/libadlmidi/` directory (the vendored libADLMIDI-JS music synthesizer), distributed under the LGPL v3, with its own LICENSE.md and attribution README.
-* the `website/js/lib/zxing-wasm/` directory (the vendored QR code library), distributed under the MIT, Apache-2.0 and BSD-3-Clause licences of its three components, all permissive, with its own LICENSE.md.
+* the `website/lib/libadlmidi/` directory (the vendored libADLMIDI-JS music synthesizer), distributed under the LGPL v3, with its own LICENSE.md and attribution README.
+* the `website/lib/zxing-wasm/` directory (the vendored QR code library), distributed under the MIT, Apache-2.0 and BSD-3-Clause licences of its three components, all permissive, with its own LICENSE.md.

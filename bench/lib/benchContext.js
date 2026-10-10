@@ -1,6 +1,6 @@
 /**
  * The game's sources loaded in a Node vm context, as the browser bootstrap
- * would stack them: every file of both libBootstrap.json, in order, in one
+ * would load them: every file of the game's libBootstrap.json, in order, in one
  * global scope. The few browser objects the build and the simulation touch
  * are stubbed; nothing from the presentation runs here.
  */
@@ -107,19 +107,17 @@ class BenchContext {
     }
 
     _loadSources() {
-        for (const bootstrap of BenchContext.BOOTSTRAPS) {
-            const definition = JSON.parse(fs.readFileSync(path.join(BenchContext.WEBSITE, bootstrap), 'utf8'));
-            for (const file of definition.files.js) {
-                if ((file.startsWith('/js/lib/')) || (file.endsWith('/main.js'))) {
-                    continue;
-                }
-                const source = fs.readFileSync(path.join(BenchContext.WEBSITE, file), 'utf8');
-                try {
-                    vm.runInContext(source, this._ctx, {filename: file});
-                } catch (error) {
-                    // Presentation files may need a DOM the bench does not stub.
-                    this._logs.push('SKIP ' + file + ': ' + error.message);
-                }
+        const definition = JSON.parse(fs.readFileSync(path.join(BenchContext.WEBSITE, BenchContext.BOOTSTRAP), 'utf8'));
+        for (const file of definition.files.js) {
+            if ((file.startsWith('/lib/')) || (file.endsWith('/main.js'))) {
+                continue;
+            }
+            const source = fs.readFileSync(path.join(BenchContext.WEBSITE, file), 'utf8');
+            try {
+                vm.runInContext(source, this._ctx, {filename: file});
+            } catch (error) {
+                // Presentation files may need a DOM the bench does not stub.
+                this._logs.push('SKIP ' + file + ': ' + error.message);
             }
         }
     }
@@ -132,13 +130,14 @@ class BenchContext {
     }
 }
 
-BenchContext.WEBSITE        = path.resolve(__dirname, '..', '..', 'website');
-BenchContext.BOOTSTRAPS     = ['js/engine/libBootstrap.json', 'js/doom/libBootstrap.json'];
-BenchContext.PATCH_CATALOGS = ['assets/uzdoom/doom/levelPatches.json', 'assets/uzdoom/heretic/levelPatches.json'];
-BenchContext.ORIGIN         = 'http://bench.local';
+BenchContext.WEBSITE            = path.resolve(__dirname, '..', '..', 'website');
+BenchContext.BOOTSTRAP          = 'js/libBootstrap.json';
+BenchContext.EXAMPLES_BOOTSTRAP = '_examples/libBootstrap.json';
+BenchContext.PATCH_CATALOGS     = ['assets/uzdoom/doom/levelPatches.json', 'assets/uzdoom/heretic/levelPatches.json'];
+BenchContext.ORIGIN             = 'http://bench.local';
 // Numerical Recipes LCG, 32-bit.
-BenchContext.LCG_MULTIPLIER = 1664525;
-BenchContext.LCG_INCREMENT  = 1013904223;
-BenchContext.LCG_MODULUS    = 4294967296;
+BenchContext.LCG_MULTIPLIER     = 1664525;
+BenchContext.LCG_INCREMENT      = 1013904223;
+BenchContext.LCG_MODULUS        = 4294967296;
 
 module.exports = {BenchContext};

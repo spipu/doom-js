@@ -15,16 +15,9 @@
     "unresolved": [],
     "orphans": []
   },
-  "bootstrap/engine": {
+  "bootstrap/js": {
     "versionValid": true,
-    "declared": 52,
-    "missing": [],
-    "duplicates": [],
-    "undeclared": []
-  },
-  "bootstrap/doom": {
-    "versionValid": true,
-    "declared": 275,
+    "declared": 327,
     "missing": [],
     "duplicates": [],
     "undeclared": []
@@ -32,5 +25,13 @@
   "bootstrap/webapp": {
     "files": 32,
     "undeclared": []
+  },
+  "bootstrap/examples": {
+    "versionValid": true,
+    "declared": 52,
+    "missing": [],
+    "notInGame": [],
+    "notInDemos": [],
+    "sameOrder": true
   }
 }

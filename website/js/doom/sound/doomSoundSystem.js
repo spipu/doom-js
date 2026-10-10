@@ -31,8 +31,8 @@ class DoomSoundSystem {
     };
 
     // Vendored OPL synthesizer files (AudioWorklet processor + wasm core).
-    static LIBADLMIDI_PROCESSOR_URL = '/js/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js';
-    static LIBADLMIDI_WASM_URL      = '/js/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm';
+    static LIBADLMIDI_PROCESSOR_URL = '/lib/libadlmidi/libadlmidi.dosbox.slim.processor.js';
+    static LIBADLMIDI_WASM_URL      = '/lib/libadlmidi/libadlmidi.dosbox.slim.core.wasm';
 
     // Logical menu event → tone: navigation and value adjust share the
     // discreet tick, validations the brighter one, back/close the lower one.

@@ -1,14 +1,14 @@
 {
-    "version": "v1.26",
+    "version": "v1.27",
     "files": {
         "assets": [
-            "/js/lib/zxing-wasm/zxing_full.wasm"
+            "/lib/zxing-wasm/zxing_full.wasm"
         ],
         "css": [
             "./assets/pairing.css"
         ],
         "js": [
-            "/js/lib/zxing-wasm/zxing-wasm.full.iife.js",
+            "/lib/zxing-wasm/zxing-wasm.full.iife.js",
             "/js/webapp/net/netConfig.js",
             "/js/webapp/net/netError.js",
             "/js/webapp/net/netHex.js",

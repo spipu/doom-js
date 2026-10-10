@@ -30,11 +30,11 @@ class BenchStaticSuite {
         result['translations/usage']   = BenchStaticSuite._usage(catalog, sources);
 
         const declared = new Set();
-        for (const bootstrap of BenchContext.BOOTSTRAPS) {
-            progress(bootstrap);
-            result['bootstrap/' + path.basename(path.dirname(bootstrap))] = BenchStaticSuite._bootstrap(bootstrap, declared);
-        }
+        progress(BenchContext.BOOTSTRAP);
+        result['bootstrap/' + path.basename(path.dirname(BenchContext.BOOTSTRAP))] = BenchStaticSuite._bootstrap(BenchContext.BOOTSTRAP, declared);
         result['bootstrap/webapp'] = BenchStaticSuite._webapp(declared);
+        progress(BenchContext.EXAMPLES_BOOTSTRAP);
+        result['bootstrap/examples'] = BenchStaticSuite._examples(declared);
 
         return result;
     }
@@ -124,7 +124,29 @@ class BenchStaticSuite {
             declared:     files.length,
             missing:      files.filter((file) => !fs.existsSync(path.join(BenchContext.WEBSITE, file))),
             duplicates:   duplicates,
-            undeclared:   BenchStaticSuite._sourcesOf([tree]).filter((file) => !seen.has(file))
+            undeclared:   BenchStaticSuite._sourcesOf([tree]).filter((file) => ((!seen.has(file)) && (!BenchStaticSuite.PRECACHED_ONLY.includes(file))))
+        };
+    }
+
+    /**
+     * The demos load the engine from their own definition: its files must be exactly the
+     * engine files of the game's, in the same order, or a demo misses an engine change.
+     *
+     * @param {Set<string>} declared - every file of the game's bootstrap
+     * @returns {object}
+     */
+    static _examples(declared) {
+        const definition = JSON.parse(fs.readFileSync(path.join(BenchContext.WEBSITE, BenchContext.EXAMPLES_BOOTSTRAP), 'utf8'));
+        const files      = Object.values(definition.files).flat();
+        const engine     = [...declared].filter((file) => file.startsWith(BenchStaticSuite.ENGINE_PREFIX));
+
+        return {
+            versionValid: BenchStaticSuite.VERSION.test(definition.version),
+            declared:     files.length,
+            missing:      files.filter((file) => !fs.existsSync(path.join(BenchContext.WEBSITE, file))),
+            notInGame:    files.filter((file) => !declared.has(file)),
+            notInDemos:   engine.filter((file) => !files.includes(file)),
+            sameOrder:    (engine.join('|') === files.filter((file) => file.startsWith(BenchStaticSuite.ENGINE_PREFIX)).join('|'))
         };
     }
 
@@ -151,6 +173,7 @@ class BenchStaticSuite {
 
 BenchStaticSuite.TRANSLATED_TREES = ['js/doom', 'js/webapp'];
 BenchStaticSuite.WEBAPP_TREE      = 'js/webapp';
+BenchStaticSuite.ENGINE_PREFIX    = '/js/engine/';
 BenchStaticSuite.CATALOG_FILE     = '/js/doom/doomTranslations.js';
 BenchStaticSuite.PRECACHED_ONLY   = ['/js/webapp/appBootstrap.js', '/js/webapp/appServiceWorker.js'];
 BenchStaticSuite.PLACEHOLDER      = /\{([a-zA-Z0-9_]+)\}/g;
