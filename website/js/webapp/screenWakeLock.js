@@ -14,7 +14,7 @@ class ScreenWakeLock {
     /** @type {boolean} */                 _errorLogged;
     /** @type {WakeLockSentinel|null} */   _sentinel;
 
-    // Every game asks for the lock: they share this one.
+    // Every component asks for the lock: they share this one.
     constructor() {
         if (ScreenWakeLock_private !== null) {
             return ScreenWakeLock_private;

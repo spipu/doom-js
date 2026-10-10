@@ -3,10 +3,10 @@
  * current language and reads every user-facing text by code.
  *
  * A catalog is a flat map of dotted codes to their translations:
- *   {'menu.back': {fr: 'Retour', en: 'Back'}, …}
+ *   {'button.close': {fr: 'Fermer', en: 'Close'}, …}
  *
  * Parameterised texts carry {placeholders} filled from the params object:
- *   get('menu.loading', {level: 'E1M1'}) → 'Chargement du niveau E1M1'
+ *   get('item.count', {count: 3}) → '3 éléments'
  *
  * An unknown code returns the code itself, a missing translation falls back to
  * the fallback language, and each problem is logged once.
