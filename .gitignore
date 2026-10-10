@@ -1,7 +1,6 @@
 /.idea
 /.claude
-/.source
-__pycache__/
-.tmp.claude/
 /.report
+/.tmp.claude
+/.source
 /log
