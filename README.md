@@ -28,8 +28,7 @@ It also **updates itself**: every launch checks for a new version and, when ther
 A modern browser (Chrome, Firefox, Edge) and any static HTTP server (Apache, Nginx, `python3 -m http.server`) — no build step, nothing server side:
 
 ```bash
-cd website
-python3 -m http.server 8080
+python3 -m http.server 8080 --directory website
 ```
 
 Then open `http://localhost:8080` and follow steps 2 and 3 above.
