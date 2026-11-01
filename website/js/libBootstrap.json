@@ -1,5 +1,5 @@
 {
-    "version": "v1.1314",
+    "version": "v1.1315",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -121,6 +121,7 @@
             "/lib/libadlmidi/libadlmidi.js",
             "/js/webapp/screenWakeLock.js",
             "/js/webapp/appViewportStabilizer.js",
+            "/js/webapp/appPlatform.js",
             "/js/webapp/appDatabaseSchema.js",
             "/js/webapp/appDatabaseUpgrade.js",
             "/js/webapp/appDatabase.js",
