@@ -70,6 +70,11 @@ class AppMenuAbstractScreen {
         return 'beta';
     }
 
+    // Copyright holder shown at the end of the footer.
+    _footerOwner() {
+        return 'Spipu';
+    }
+
     // Screens with a parent screen override this to navigate back
     // (Backspace key / gamepad button 1); the root screens ignore it.
     _onBack() {
@@ -223,7 +228,7 @@ class AppMenuAbstractScreen {
         }
         this._footerEl.textContent = this._footerPrefix() + ' ' + appBootstrap.getVersion()
             + ' - ' + appBootstrap.getStatsText((bytes) => AppMenuDom.formatMegabytes(bytes))
-            + ' - © ' + new Date().getFullYear() + ' Spipu';
+            + ' - © ' + new Date().getFullYear() + ' ' + this._footerOwner();
     }
 
     // --- DOM helpers (AppMenuDom wrappers defaulting to the screen container) ---

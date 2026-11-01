@@ -327,6 +327,33 @@ class AppBootstrap {
             return;
         }
 
+        this.startUpdate(serverDefinition);
+    }
+
+    /**
+     * Asked by the application when an update would disturb nobody (no activity running, nothing left to send): reads
+     * the version on the server and, when it differs from the running one, starts the update — the cache is cleared,
+     * then the page reloads.
+     *
+     * @returns {Promise<boolean>} true when the update starts, false when the version is the same or the server
+     *                             unreachable
+     */
+    async checkForUpdate() {
+        if (this.appDefinition === null) {
+            return false;
+        }
+
+        const serverDefinition = new AppDefinition(this.definitionUrls);
+        this.offline = !(await serverDefinition.loadFromServer());
+        if (this.offline || this.appDefinition.hasSameVersion(serverDefinition)) {
+            return false;
+        }
+
+        this.startUpdate(serverDefinition);
+        return true;
+    }
+
+    startUpdate(serverDefinition) {
         this.logDebug('Need update');
         this.trackVersionEvent('update', serverDefinition);
         this.appDefinition = serverDefinition;
