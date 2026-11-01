@@ -119,6 +119,7 @@ class AppBootstrap {
     /** @type {string[]} */ definitionUrls;
     /** @type {Function} */ readyCallback;
     /** @type {Object}   */ stats;
+    /** @type {Promise<boolean>|null} */ updateCheck;
 
     constructor() {
         this.pwaDisabled = false;
@@ -126,6 +127,7 @@ class AppBootstrap {
         this.readyCallback = null;
         this.stats = null;
         this.appDefinition = null;
+        this.updateCheck = null;
     }
 
     disablePwaMode() {
@@ -333,12 +335,23 @@ class AppBootstrap {
     /**
      * Asked by the application when an update would disturb nobody (no activity running, nothing left to send): reads
      * the version on the server and, when it differs from the running one, starts the update — the cache is cleared,
-     * then the page reloads.
+     * then the page reloads. Also refreshes the offline flag shown in the footer. A call made while a check is running
+     * shares its answer.
      *
      * @returns {Promise<boolean>} true when the update starts, false when the version is the same or the server
      *                             unreachable
      */
-    async checkForUpdate() {
+    checkForUpdate() {
+        if (this.updateCheck === null) {
+            this.updateCheck = this.runUpdateCheck().finally(() => {
+                this.updateCheck = null;
+            });
+        }
+
+        return this.updateCheck;
+    }
+
+    async runUpdateCheck() {
         if (this.appDefinition === null) {
             return false;
         }
@@ -359,7 +372,7 @@ class AppBootstrap {
         this.appDefinition = serverDefinition;
         this.appDefinition.saveToLocalStorage();
         if (!this.pwaMode) {
-            this.clearServiceWorkerCache();
+            this.clearServiceWorkerCache().catch((error) => this.logError('Error clearing the cache', error));
             return;
         }
         this.serviceWorker.active.postMessage("clearCache");

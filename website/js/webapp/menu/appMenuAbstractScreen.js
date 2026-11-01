@@ -9,7 +9,8 @@
  * the same selection model on their entries, provided by AppMenuListNavigation
  * (mouse hover, touch, keyboard and gamepad all drive one single highlighted
  * entry). A project gives its brand (_titleText), may override the footer
- * prefix (_footerPrefix) and builds its screens on top (_build).
+ * prefix (_footerPrefix) and copyright holder (_footerOwner), and builds its
+ * screens on top (_build).
  */
 class AppMenuAbstractScreen {
     /**
@@ -122,11 +123,23 @@ class AppMenuAbstractScreen {
         this._container.classList.add('app-menu-screen-simple');
         this._addTitle(this._titleText());
 
+        const {titleEl, subtitleEl} = this._addHeader(titleText, subtitleText);
+
+        return {titleEl: titleEl, subtitleEl: subtitleEl, listEl: this._addElement('div', 'app-menu-list app-menu-list-simple')};
+    }
+
+    /**
+     * Centred header: a title, then a subtitle line, hidden while it is empty.
+     *
+     * @param {string}      titleText
+     * @param {string|null} subtitleText
+     */
+    _addHeader(titleText, subtitleText = null) {
         const header     = this._addElement('div', 'app-menu-header');
         const titleEl    = AppMenuDom.addText(header, 'app-menu-header-title', titleText);
         const subtitleEl = AppMenuDom.addText(header, 'app-menu-header-subtitle', (subtitleText ?? ''));
 
-        return {titleEl: titleEl, subtitleEl: subtitleEl, listEl: this._addElement('div', 'app-menu-list app-menu-list-simple')};
+        return {titleEl: titleEl, subtitleEl: subtitleEl};
     }
 
     /**

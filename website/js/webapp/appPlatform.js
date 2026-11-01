@@ -17,14 +17,18 @@ class AppPlatform {
         if (/iPhone|iPad|iPod/.test(userAgent)) {
             return AppPlatform.SYSTEM_IOS;
         }
-        if (/Macintosh/.test(userAgent) && (window.navigator.maxTouchPoints > 1)) {
+        if (/Macintosh/.test(userAgent) && (window.navigator.maxTouchPoints >= AppPlatform.TABLET_MIN_TOUCH_POINTS)) {
             return AppPlatform.SYSTEM_IOS;
         }
 
         return null;
     }
 
-    // Started from the home screen: navigator.standalone on iOS, the display mode of the manifest elsewhere.
+    /**
+     * Started from the home screen: navigator.standalone on iOS, the display mode of the manifest elsewhere.
+     *
+     * @returns {boolean}
+     */
     static isInstalled() {
         return ((window.navigator.standalone === true) || window.matchMedia('(display-mode: standalone)').matches);
     }
@@ -32,3 +36,6 @@ class AppPlatform {
 
 AppPlatform.SYSTEM_IOS     = 'ios';
 AppPlatform.SYSTEM_ANDROID = 'android';
+
+// A desktop Mac reports no touch point; an iPad several.
+AppPlatform.TABLET_MIN_TOUCH_POINTS = 2;

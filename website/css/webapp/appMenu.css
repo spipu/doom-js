@@ -430,6 +430,11 @@
     transform: translateY(calc((0.9em - var(--app-menu-cap-height, 0.7em)) / 2));
 }
 
+/* Icon without a label (AppMenuDom.addIconOnlyButton): centred in its button, not on the capitals of a text. */
+.app-menu-icon-only::before {
+    transform: none;
+}
+
 .app-menu-icon-language {
     --app-menu-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.8"><circle cx="12" cy="12" r="10.5"/><ellipse cx="12" cy="12" rx="5.2" ry="10.5"/><path d="M1.5 12h21"/></svg>');
 }

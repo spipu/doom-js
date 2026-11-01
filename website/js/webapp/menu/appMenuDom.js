@@ -183,6 +183,15 @@ class AppMenuDom {
         return AppMenuDom.addButton(parent, className + ' app-menu-icon app-menu-icon-' + icon, label, onClick, feedbackMs);
     }
 
+    // A button showing its icon only: its name goes to the tooltip and to screen readers.
+    static addIconOnlyButton(parent, className, icon, name, onClick, feedbackMs = AppMenuDom.PRESS_FEEDBACK_MS) {
+        const button = AppMenuDom.addIconButton(parent, className + ' app-menu-icon-only', icon, '', onClick, feedbackMs);
+        button.title = name;
+        button.setAttribute('aria-label', name);
+
+        return button;
+    }
+
     // The blur avoids a focused button: a focused one would swallow the next
     // Enter as a native re-click (e.g. reopening a freshly closed modal).
     // Propagation stops right away — a delete cross must not select its row.
