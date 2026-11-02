@@ -199,7 +199,9 @@ class WadStaticMapBuilder {
                 this._buildUpperJumpGuard(mesh, rSec, lSec, wx1, wz1, wx2, wz2, wallLen);
             }
 
-            this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall);
+            if (!WadStaticMapBuilder.isDoorRiddenMiddle(this._level, this._analysis, ldIdx)) {
+                this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall);
+            }
 
             // ML_BLOCKING stops walkers at any height, not shots (PIT_CheckLine);
             // a door side uses its open ceiling, its static ch being the closed one.
@@ -231,6 +233,22 @@ class WadStaticMapBuilder {
     // Middle textures: shown once (no vertical tiling), from the side whose
     // sidedef carries it only, like vanilla. Without ML_BLOCKING: a passable
     // "false wall".
+    // A two-sided line between a door and a non-door sector whose middle is
+    // pegged to the top of the opening: WadDoorBuilder hangs it from the door.
+    static isDoorRiddenMiddle(level, analysis, li) {
+        const ld = level.linedefs[li];
+        if ((ld.right < 0) || (ld.left < 0) || ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0)) {
+            return false;
+        }
+        const rSd = level.sidedefs[ld.right];
+        const lSd = level.sidedefs[ld.left];
+        if (analysis.doorSectorIds.has(rSd.sector) === analysis.doorSectorIds.has(lSd.sector)) {
+            return false;
+        }
+
+        return (!WadTextureBank.isBlank(rSd.middle) || !WadTextureBank.isBlank(lSd.middle));
+    }
+
     _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall) {
         const {doorSectorIds} = this._analysis;
         const SCALE = WadConstants.SCALE;

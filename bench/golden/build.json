@@ -180,10 +180,10 @@
     "secrets": 4
   },
   "freedoom1/E2M7": {
-    "sha": "95915fe46fb09367bda6e7a318d4a14341695da8bdcfe545c3d0c922e50d4c99",
+    "sha": "9eeeed39dffb5e4753ce2e1a5acdf0351dc99c87abe9d3bab2e54dd956898986",
     "objects": 1096,
-    "points": 35843,
-    "faces": 20649,
+    "points": 35859,
+    "faces": 20657,
     "textures": 1058,
     "instances": 513,
     "interactions": 46,
@@ -348,10 +348,10 @@
     "secrets": 7
   },
   "freedoom1/E4M3": {
-    "sha": "1ac7c91a1d5ee1762d01de4646599b634f8820ddad9306f0e9dc5c33ebd29544",
+    "sha": "6bdf6393efe9e736704c0a27bf6c77959cbd95a3543a2f3a5564739db424cec9",
     "objects": 1075,
-    "points": 19076,
-    "faces": 10684,
+    "points": 19100,
+    "faces": 10696,
     "textures": 1018,
     "instances": 480,
     "interactions": 57,
@@ -372,10 +372,10 @@
     "secrets": 7
   },
   "freedoom1/E4M5": {
-    "sha": "9078b876b02f257eb86cfe8ccae8ec6524121862de3743b6d80c1df393fa6d71",
+    "sha": "ed9ab0617970d67b651cf8665a08d00981d6844287682c82b8abb044d3910b64",
     "objects": 1077,
-    "points": 18516,
-    "faces": 10307,
+    "points": 18564,
+    "faces": 10331,
     "textures": 1031,
     "instances": 485,
     "interactions": 49,
@@ -696,10 +696,10 @@
     "secrets": 2
   },
   "freedoom2/MAP23": {
-    "sha": "a528642bf34d6b93d9d2fa3f6b835bcce9908a21196bc8e14265726ad272630a",
+    "sha": "39d5ed1e69301abc4f74cf7be5aa4b2e23daeb17fb351ba3fe971cdd341baf7b",
     "objects": 1723,
-    "points": 28837,
-    "faces": 16629,
+    "points": 28845,
+    "faces": 16633,
     "textures": 1764,
     "instances": 733,
     "interactions": 50,
@@ -1932,10 +1932,10 @@
     "secrets": 0
   },
   "heretic/E4M3": {
-    "sha": "75ac1e99b7d70bdf3bfad220c356366bcb81768f9981f5a472838a337e937968",
+    "sha": "df3ef6295737b94f9000283bae5c511f005610e2c47ff655a6351674e73cdf0c",
     "objects": 1489,
-    "points": 15247,
-    "faces": 8438,
+    "points": 15255,
+    "faces": 8442,
     "textures": 1253,
     "instances": 854,
     "interactions": 141,

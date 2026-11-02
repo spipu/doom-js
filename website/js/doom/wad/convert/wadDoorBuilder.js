@@ -34,6 +34,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
         const mesh = WadMeshBuilder.newMesh();
         this._buildPanels(mesh, si, floorH);
         this._buildBottomFlat(mesh, si, sec, floorH);
+        this._buildCeilingPeggedMiddles(mesh, si, floorH, ceilH);
 
         const textures = this._meshTextures(mesh);
         if (textures === null) {
@@ -108,6 +109,65 @@ class WadDoorBuilder extends AbstractMoverBuilder {
                 wallLen, tw, th,
                 {xOff: srcSd.xo, yOff: yo, flip: !doorOnRight, light: neighbourSec.light, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, neighbourSi)});
         }
+    }
+
+    // A middle texture pegged to the top of the opening hangs from the door's
+    // ceiling (R_RenderMaskedSegRange): it rides the door, laid out at the open
+    // pose and parked under the floor while closed. The floor-pegged ones stay
+    // with the static map (WadStaticMapBuilder.isDoorRiddenMiddle).
+    _buildCeilingPeggedMiddles(mesh, si, floorH, ceilH) {
+        const {vertexes, linedefs, sidedefs, sectors} = this._level;
+        const SCALE   = WadConstants.SCALE;
+        const floorOf = (other) => (sectors[other].fh + this._liquids.floorOffset(other));
+        const lift    = ceilH - floorH;
+
+        linedefs.forEach((ld, li) => {
+            if (!WadStaticMapBuilder.isDoorRiddenMiddle(this._level, this._analysis, li)) {
+                return;
+            }
+            const rSi = sidedefs[ld.right].sector;
+            const lSi = sidedefs[ld.left].sector;
+            if ((rSi !== si) && (lSi !== si)) {
+                return;
+            }
+            const neighbourSi = ((rSi === si) ? lSi : rSi);
+            const botDu       = Math.max(floorOf(rSi), floorOf(lSi));
+            const topDu       = Math.min(ceilH, sectors[neighbourSi].ch);
+            if (topDu <= botDu) {
+                return;
+            }
+            const [dx1, dy1] = vertexes[ld.v1];
+            const [dx2, dy2] = vertexes[ld.v2];
+            const [wx1, wz1] = WadGeometry.doomToWorld(dx1, dy1);
+            const [wx2, wz2] = WadGeometry.doomToWorld(dx2, dy2);
+            const wallLen    = WadGeometry.wallLengthDoom(vertexes, ld.v1, ld.v2);
+
+            for (const [sd, side] of [[sidedefs[ld.right], 'right'], [sidedefs[ld.left], 'left']]) {
+                if (WadTextureBank.isBlank(sd.middle)) {
+                    continue;
+                }
+                const ti = this._bank.ensureWallTex(sd.middle);
+                if (ti < 0) {
+                    continue;
+                }
+                const {width: tw, height: th} = this._bank.getDims(ti);
+                const texTop = topDu + sd.yo;
+                const ytop   = Math.min(topDu, texTop);
+                const ybot   = Math.max(botDu, texTop - th);
+                if (ytop <= ybot) {
+                    continue;
+                }
+                const uScroll = ((side === 'right') ? (WadConstants.SCROLL_WALL_BY_SPECIAL[ld.special] ?? 0) : 0);
+                // The static ML_BLOCKING band blocks the line: the face itself never collides.
+                WadMeshBuilder.addWallQuad(mesh, ti,
+                    wx1, wz1, wx2, wz2,
+                    (ybot - lift) * SCALE, (ytop - lift) * SCALE,
+                    wallLen, tw, th,
+                    {xOff: sd.xo, yOff: (texTop - ytop), flip: (side === 'right'), light: sectors[sd.sector].light, clampV: true,
+                     passableUser: true, passableEnemy: true, passableShot: true,
+                     uScrollTexelsPerSec: uScroll, lightGroup: WadMapAnalyzer.lightGroupOf(this._analysis, sd.sector)});
+            }
+        });
     }
 
     // Bottom flat: ceiling flat of the door sector, visible from below when
