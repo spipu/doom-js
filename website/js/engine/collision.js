@@ -509,7 +509,7 @@ class Collision {
     // Local vertical gap at the player's position vs his height (the vanilla
     // "thing does not fit" of PIT_ChangeSector). Unfiltered lists on purpose:
     // the pressing (passable) mover itself must keep counting in the gap.
-    _userPinchedBy(user, dc, dy) {
+    _userPinchedBy(user, dc, dy = 0) {
         if (!this._broadphaseXZ(user.x, user.z, user.getRadius(), dc)) {
             return false;
         }
