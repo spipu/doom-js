@@ -680,8 +680,9 @@ class WadMapAnalyzer {
         };
 
         // A lift that cannot descend is dropped, unless another special on its
-        // tag still moves it.
-        const instantRaise = {};
+        // tag still moves it, or a raise on its tag gives its round trip room.
+        const instantRaise   = {};
+        const revivedLiftIds = new Set();
         while (true) {
             for (const k of Object.keys(liftOriginalFh)) {
                 delete liftOriginalFh[k];
@@ -703,9 +704,13 @@ class WadMapAnalyzer {
                 delete liftSectorSpecial[instant];
                 continue;
             }
-            const dead = [...liftIds].find(isStill);
+            const dead = [...liftIds].find((si) => (!revivedLiftIds.has(si) && isStill(si)));
             if (dead === undefined) {
                 break;
+            }
+            if (this._raisedOutOfStill(dead, liftSectorSpecial[dead], liftOriginalFh)) {
+                revivedLiftIds.add(dead);
+                continue;
             }
             // Another special on the tag may still move it: retried as base first.
             liftSpecials[dead] = liftSpecials[dead].filter((special) => (special !== liftSectorSpecial[dead]));
@@ -726,8 +731,23 @@ class WadMapAnalyzer {
             liftBaseTargetFh:   {...liftLowestFh},
             liftLowestFh:       liftLowestFh,
             liftMaxAdjFh:       liftMaxAdjFh,
-            instantRaise:       instantRaise
+            instantRaise:       instantRaise,
+            revivedLiftIds:     revivedLiftIds
         };
+    }
+
+    // A round-trip plat goes back to its floor of the moment (p_plats.c
+    // plat->high): once a raise has lifted it, it moves (freedoom1 E2M9 s543,
+    // 18 then 62 to the red key).
+    _raisedOutOfStill(si, special, liftOriginalFh) {
+        if (WadConstants.FLOOR_DOWN_BY_SPECIAL[special].anim !== 'round-trip') {
+            return false;
+        }
+        const {sectors} = this._level;
+
+        return this._moverLinedefs().some((ld) => ((ld.tag === sectors[si].tag)
+            && WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special)
+            && (this._risingFloorTarget(si, ld.special, liftOriginalFh) > liftOriginalFh[si])));
     }
 
     // Neighbour floors of si, co-movers included, at their WAD height by
@@ -901,18 +921,21 @@ class WadMapAnalyzer {
     // (vanilla raises from the live floor: MAP30's 140 + 62). The start pose is
     // where the lift rests when the raise fires: lowered for a one-way lower,
     // original height otherwise. Reads liftOriginalFh: sectors[si].fh is patched.
+    // A revived lift also takes the relative raises, which keep the reverse
+    // playback on the other lifts.
     // liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
     _identifyLiftRaises(lifts) {
         const {sectors} = this._level;
         const liftRaiseVariants = {};
         for (const ld of this._moverLinedefs()) {
-            const key = WadConstants.floorRaiseCycleKey(ld.special);
-            if ((ld.tag === 0) || (key === null)) {
+            if ((ld.tag === 0) || !WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special)) {
                 continue;
             }
-            const rule = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
+            const fixedKey = WadConstants.floorRaiseCycleKey(ld.special);
+            const rule     = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
             for (const si of lifts.liftIds) {
-                if ((sectors[si].tag !== ld.tag)
+                const key = (fixedKey ?? ((lifts.revivedLiftIds.has(si)) ? WadConstants.floorAnyRaiseCycleKey(ld.special) : null));
+                if ((key === null) || (sectors[si].tag !== ld.tag)
                     || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si])) {
                     continue;
                 }
@@ -1062,7 +1085,7 @@ class WadMapAnalyzer {
         for (const si of lifts.liftIds) {
             const isPerpetual = WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si]);
             const maxFh = ((isPerpetual) ? lifts.liftMaxAdjFh[si] : lifts.liftOriginalFh[si]);
-            if (maxFh > lifts.liftLowestFh[si]) {
+            if ((maxFh > lifts.liftLowestFh[si]) || lifts.revivedLiftIds.has(si)) {
                 movers.set(si, {code: 'lift_' + si, restFh: lifts.liftOriginalFh[si]});
             }
         }
@@ -1480,24 +1503,28 @@ class WadMapAnalyzer {
     //   pop-up lower, which must start rising.
     // Doors never reverse: they own one forward cycle per special.
     // timeScale replays at the reversing special's vanilla speed.
+    // cycleVariant: the key the trigger starts its targets with, a relative
+    // raise's own key only when a revived lift owns it.
     static splitReverseTargets(analysis, special, targets) {
         const reversed = (code) => ({
             code:      code,
             timeScale: WadMapAnalyzer._specialSpeed(special) / WadMapAnalyzer._targetSpeed(analysis, code)
         });
 
+        let cycleVariant = WadConstants.cycleKeyForSpecial(special);
         if (WadConstants.SWITCH_REVERSE_SPECIALS.has(special)) {
-            return {start: [], reverse: targets.map(reversed)};
+            return {start: [], reverse: targets.map(reversed), cycleVariant: cycleVariant};
         }
         const isRaise  = WadConstants.FLOOR_MOVE_UP_SPECIALS.has(special);
         const isLower  = WadConstants.FLOOR_MOVE_DOWN_SPECIALS.has(special);
-        const raiseKey = WadConstants.floorRaiseCycleKey(special);
+        const raiseKey = WadConstants.floorAnyRaiseCycleKey(special);
         const start    = [];
         const reverse  = [];
         for (const code of targets) {
             if (isRaise && code.startsWith('lift_')) {
                 const liftSi = WadMapAnalyzer._sectorOfCode(code, 'lift_');
                 if ((raiseKey !== null) && (analysis.liftRaiseVariants[liftSi]?.[raiseKey] !== undefined)) {
+                    cycleVariant = raiseKey;
                     start.push(code);
                     continue;
                 }
@@ -1519,7 +1546,7 @@ class WadMapAnalyzer {
             start.push(code);
         }
 
-        return {start: start, reverse: reverse};
+        return {start: start, reverse: reverse, cycleVariant: cycleVariant};
     }
 
     static _popsUpFloor(analysis, special, risingSi) {

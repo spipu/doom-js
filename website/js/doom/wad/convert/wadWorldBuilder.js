@@ -1075,7 +1075,7 @@ class WadWorldBuilder {
                         def:            def,
                         targets:        split.start,
                         reverseTargets: split.reverse,
-                        cycleVariant:   WadConstants.cycleKeyForSpecial(action.special),
+                        cycleVariant:   split.cycleVariant,
                         stageRules:     WadMapAnalyzer.stageRulesFor(analysis, action.special, split.start, ((si) => this._sectorHeights.floorOf(si))),
                         exit:           (action.exit === true)
                     });

@@ -215,7 +215,15 @@ class WadConstants {
             return null;
         }
 
-        return ('raise:' + rule.target + '@' + rule.speed);
+        return WadConstants.floorAnyRaiseCycleKey(special);
+    }
+
+    // Same key for every raise special, relative targets included: only a
+    // revived lift (WadMapAnalyzer._identifyLifts) owns the relative ones.
+    static floorAnyRaiseCycleKey(special) {
+        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special];
+
+        return ((rule === undefined) ? null : ('raise:' + rule.target + '@' + rule.speed));
     }
 
     // Cycle key of a floor-lower special aimed at a lift ('lower:one-way@1@lowest@1'),

@@ -82,7 +82,7 @@ class WadWalkTriggerBuilder {
                 targets:        split.start,
                 reverseTargets: split.reverse,
                 stop:           WadConstants.WALK_STOP_SPECIALS.has(wt.special),
-                cycleVariant:   WadConstants.cycleKeyForSpecial(wt.special),
+                cycleVariant:   split.cycleVariant,
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, wt.special, split.start, this._liveFloorOf),
                 isExit:         isExit,
                 secret:         WadConstants.EXIT_SECRET_SPECIALS.has(wt.special),

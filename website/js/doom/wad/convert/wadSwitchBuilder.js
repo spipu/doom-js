@@ -106,7 +106,7 @@ class WadSwitchBuilder {
                 swapIndex:      (geom.swapIndex ?? null),
                 targets:        split.start,
                 reverseTargets: split.reverse,
-                cycleVariant:   WadConstants.cycleKeyForSpecial(ld.special),
+                cycleVariant:   split.cycleVariant,
                 stageRules:     WadMapAnalyzer.stageRulesFor(this._analysis, ld.special, split.start, this._liveFloorOf),
                 remoteSwap:     (geom.remoteSwap ?? null),
                 isExit:         isExit,
