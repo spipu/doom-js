@@ -249,18 +249,22 @@ class WadStaticMapBuilder {
         return (!WadTextureBank.isBlank(rSd.middle) || !WadTextureBank.isBlank(lSd.middle));
     }
 
+    // Beside a door, a floor-pegged middle stays put and the rising door
+    // ceiling uncovers it: built over the open opening, from both sides.
     _buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall) {
-        const {doorSectorIds} = this._analysis;
+        const {doorSectorIds, doorHeights} = this._analysis;
         const SCALE = WadConstants.SCALE;
 
         const lowerUnpeg       = ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0);
         const midPassableUser  = ((ld.flags & WadConstants.ML_BLOCKING) === 0);
         const midPassableEnemy = (midPassableUser && ((ld.flags & WadConstants.ML_BLOCKMONSTERS) === 0));
+        const besideDoor       = (doorSectorIds.has(rSd.sector) !== doorSectorIds.has(lSd.sector));
+        const openCeilOf       = (sd, sec) => (doorHeights[sd.sector]?.ceilH ?? sec.ch);
 
         const rFh = this._floorOf(rSd.sector);
-        const rCh = rSec.ch;
+        const rCh = ((besideDoor) ? openCeilOf(rSd, rSec) : rSec.ch);
         const lFh = this._floorOf(lSd.sector);
-        const lCh = lSec.ch;
+        const lCh = ((besideDoor) ? openCeilOf(lSd, lSec) : lSec.ch);
 
         for (const [mSd, mSec, side] of [[rSd, rSec, 'right'], [lSd, lSec, 'left']]) {
             if ((switchWall !== null) && (switchWall.side === side) && (switchWall.slot === 'middle')) {
@@ -269,7 +273,7 @@ class WadStaticMapBuilder {
             if (WadTextureBank.isBlank(mSd.middle)) {
                 continue;
             }
-            if (doorSectorIds.has(mSd.sector)) {
+            if (doorSectorIds.has(mSd.sector) && !besideDoor) {
                 continue;
             }
             const ti = this._bank.ensureWallTex(mSd.middle);
