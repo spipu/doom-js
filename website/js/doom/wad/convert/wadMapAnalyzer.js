@@ -709,7 +709,7 @@ class WadMapAnalyzer {
             if (dead === undefined) {
                 break;
             }
-            if (this._raisedOutOfStill(dead, liftSectorSpecial[dead], liftOriginalFh)) {
+            if (this._raiseGivesRoundTripRoom(dead, liftSectorSpecial[dead], liftOriginalFh)) {
                 revivedLiftIds.add(dead);
                 continue;
             }
@@ -740,7 +740,7 @@ class WadMapAnalyzer {
     // A round-trip plat goes back to its floor of the moment (p_plats.c
     // plat->high): once a raise has lifted it, it moves (freedoom1 E2M9 s543,
     // 18 then 62 to the red key).
-    _raisedOutOfStill(si, special, liftOriginalFh) {
+    _raiseGivesRoundTripRoom(si, special, liftOriginalFh) {
         if (WadConstants.FLOOR_DOWN_BY_SPECIAL[special].anim !== 'round-trip') {
             return false;
         }

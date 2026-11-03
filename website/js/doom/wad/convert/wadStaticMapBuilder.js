@@ -199,7 +199,7 @@ class WadStaticMapBuilder {
                 this._buildUpperJumpGuard(mesh, rSec, lSec, wx1, wz1, wx2, wz2, wallLen);
             }
 
-            if (!WadStaticMapBuilder.isDoorRiddenMiddle(this._level, this._analysis, ldIdx)) {
+            if (!WadStaticMapBuilder.isMiddleHungFromDoor(this._level, this._analysis, ldIdx)) {
                 this._buildMiddleWalls(mesh, ld, rSd, rSec, lSd, lSec, wx1, wz1, wx2, wz2, wallLen, switchWall);
             }
 
@@ -235,7 +235,7 @@ class WadStaticMapBuilder {
     // "false wall".
     // A two-sided line between a door and a non-door sector whose middle is
     // pegged to the top of the opening: WadDoorBuilder hangs it from the door.
-    static isDoorRiddenMiddle(level, analysis, li) {
+    static isMiddleHungFromDoor(level, analysis, li) {
         const ld = level.linedefs[li];
         if ((ld.right < 0) || (ld.left < 0) || ((ld.flags & WadConstants.ML_DONTPEGBOTTOM) !== 0)) {
             return false;

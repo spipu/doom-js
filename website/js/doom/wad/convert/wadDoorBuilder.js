@@ -114,20 +114,20 @@ class WadDoorBuilder extends AbstractMoverBuilder {
     // A middle texture pegged to the top of the opening hangs from the door's
     // ceiling (R_RenderMaskedSegRange): it rides the door, laid out at the open
     // pose and parked under the floor while closed. The floor-pegged ones stay
-    // with the static map (WadStaticMapBuilder.isDoorRiddenMiddle).
+    // with the static map (WadStaticMapBuilder.isMiddleHungFromDoor).
     _buildCeilingPeggedMiddles(mesh, si, floorH, ceilH) {
         const {vertexes, linedefs, sidedefs, sectors} = this._level;
-        const SCALE   = WadConstants.SCALE;
-        const floorOf = (other) => (sectors[other].fh + this._liquids.floorOffset(other));
-        const lift    = ceilH - floorH;
+        const SCALE      = WadConstants.SCALE;
+        const floorOf    = (other) => (sectors[other].fh + this._liquids.floorOffset(other));
+        const openTravel = ceilH - floorH;
 
         linedefs.forEach((ld, li) => {
-            if (!WadStaticMapBuilder.isDoorRiddenMiddle(this._level, this._analysis, li)) {
+            if ((ld.right < 0) || (ld.left < 0)) {
                 return;
             }
             const rSi = sidedefs[ld.right].sector;
             const lSi = sidedefs[ld.left].sector;
-            if ((rSi !== si) && (lSi !== si)) {
+            if (((rSi !== si) && (lSi !== si)) || !WadStaticMapBuilder.isMiddleHungFromDoor(this._level, this._analysis, li)) {
                 return;
             }
             const neighbourSi = ((rSi === si) ? lSi : rSi);
@@ -161,7 +161,7 @@ class WadDoorBuilder extends AbstractMoverBuilder {
                 // The static ML_BLOCKING band blocks the line: the face itself never collides.
                 WadMeshBuilder.addWallQuad(mesh, ti,
                     wx1, wz1, wx2, wz2,
-                    (ybot - lift) * SCALE, (ytop - lift) * SCALE,
+                    (ybot - openTravel) * SCALE, (ytop - openTravel) * SCALE,
                     wallLen, tw, th,
                     {xOff: sd.xo, yOff: (texTop - ytop), flip: (side === 'right'), light: sectors[sd.sector].light, clampV: true,
                      passableUser: true, passableEnemy: true, passableShot: true,
