@@ -32,7 +32,7 @@ class WadMapAnalyzer {
         const liftLowerVariants = this._identifyLiftLowers(lifts);
         const {liftLiveLows, liftNeighbourPoses} = this._identifyLiftLiveLows(lifts, donuts.holeTargetFh);
         this._patchLiftFloors(lifts);
-        const liftRaiseVariants = this._identifyLiftRaises(lifts);
+        const {liftRaiseVariants, liftIdleRaises} = this._identifyLiftRaises(lifts);
         // Before the rising floors: a sunken door sector lifted to its rest
         // floor may already stand at a raise's target (heretic E5M1 pillars).
         const doorHeights = this._computeDoorHeights(doors.doorSectorIds, doors.doorProps, lifts.liftOriginalFh);
@@ -59,6 +59,7 @@ class WadMapAnalyzer {
             liftBaseTargetFh:      lifts.liftBaseTargetFh,
             liftMaxAdjFh:          lifts.liftMaxAdjFh,
             liftRaiseVariants:     liftRaiseVariants,
+            liftIdleRaises:        liftIdleRaises,
             liftLowerVariants:     liftLowerVariants,
             liftLiveLows:          liftLiveLows,
             liftNeighbourPoses:    liftNeighbourPoses,
@@ -921,13 +922,17 @@ class WadMapAnalyzer {
     // (vanilla raises from the live floor: MAP30's 140 + 62). The start pose is
     // where the lift rests when the raise fires: lowered for a one-way lower,
     // original height otherwise. Reads liftOriginalFh: sectors[si].fh is patched.
-    // A relative raise becomes a cycle only when it lifts the floor above its
-    // rest (freedoom1 E3M3 s239: 18 then 123); one that brings it back to rest
-    // keeps the reverse playback (E1M5/E1M7 bidirectional plats).
-    // liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
+    // A relative raise becomes a cycle when it stops elsewhere than the rest
+    // (freedoom1 E3M3 s239 above it, freedoom2 MAP25 s18 below it); one that
+    // brings the lift back to rest keeps the reverse playback (E1M5/E1M7
+    // bidirectional plats), and one that cannot rise from the start pose moves
+    // nothing (freedoom2 MAP09 s218).
+    // liftRaiseVariants: si → key → {special, speed, startFh, targetFh};
+    // liftIdleRaises: si → Set of the raise specials that leave it in place.
     _identifyLiftRaises(lifts) {
         const {sectors} = this._level;
         const liftRaiseVariants = {};
+        const liftIdleRaises    = {};
         for (const ld of this._moverLinedefs()) {
             if ((ld.tag === 0) || !WadConstants.FLOOR_MOVE_UP_SPECIALS.has(ld.special)) {
                 continue;
@@ -944,9 +949,10 @@ class WadMapAnalyzer {
                 const startFh  = ((liftAnim === 'one-way') ? lifts.liftBaseTargetFh[si] : lifts.liftOriginalFh[si]);
                 const targetFh = ((numeric) ? (startFh + rule.target) : this._risingFloorTarget(si, ld.special, lifts.liftOriginalFh, null, startFh));
                 if (targetFh <= startFh) {
+                    (liftIdleRaises[si] = (liftIdleRaises[si] ?? new Set())).add(ld.special);
                     continue;
                 }
-                const key = (fixedKey ?? ((targetFh > lifts.liftOriginalFh[si]) ? WadConstants.floorAnyRaiseCycleKey(ld.special) : null));
+                const key = (fixedKey ?? ((targetFh !== lifts.liftOriginalFh[si]) ? WadConstants.floorAnyRaiseCycleKey(ld.special) : null));
                 if (key === null) {
                     continue;
                 }
@@ -959,7 +965,7 @@ class WadMapAnalyzer {
             }
         }
 
-        return liftRaiseVariants;
+        return {liftRaiseVariants: liftRaiseVariants, liftIdleRaises: liftIdleRaises};
     }
 
     // Rising floors: unlike lifts, fh is not patched, the moving flat rises from
@@ -1503,7 +1509,8 @@ class WadMapAnalyzer {
 
     // Splits target codes into {start, reverse} (played backward):
     // - 45 (SWITCH_REVERSE_SPECIALS) reverses all its targets;
-    // - a raise on a lift, without a named cycle, walks it back up (E1M5 plats);
+    // - a raise on a lift, without a named cycle, walks it back up (E1M5 plats),
+    //   unless it cannot rise from the start pose (liftIdleRaises): dropped;
     // - a lower on a rising floor walks it back down (E1M8 shaft), except a
     //   ring hit by its own donut special and a pop-up floor hit by its own
     //   pop-up lower, which must start rising.
@@ -1534,7 +1541,9 @@ class WadMapAnalyzer {
                     start.push(code);
                     continue;
                 }
-                reverse.push(reversed(code));
+                if (!analysis.liftIdleRaises[liftSi]?.has(special)) {
+                    reverse.push(reversed(code));
+                }
                 continue;
             }
             if (isLower && code.startsWith('lift_')
