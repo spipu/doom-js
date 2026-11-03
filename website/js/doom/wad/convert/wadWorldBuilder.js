@@ -411,7 +411,7 @@ class WadWorldBuilder {
             if (countsItem) {
                 itemsTotal++;
             }
-            const ride     = this._resolveThingFloor(thing, analysis, builtFloorCodes);
+            const ride     = this._resolveThingFloor(thing, thing.anchorTop, analysis, builtFloorCodes);
             const position = [thing.position[0], thing.position[1] + ride.liftY, thing.position[2]];
             const data     = {
                 code:                  code,
@@ -471,22 +471,24 @@ class WadWorldBuilder {
      * Billboard object per (sprite view, alpha, hang height): the spectre
      * shares the demon's SARG lumps, the Heretic ghosts their base monsters'.
      * A hanging body stands hangHeight below its ceiling, where the shots and
-     * the collisions find it: its sprite is lifted by as much, still hanging
-     * from the ceiling.
+     * the collisions find it, and draws its sprite top at its own top offset
+     * above that point, as vanilla does (R_ProjectSprite) — lifted when the
+     * picture would reach below its floor, floorGap under that point.
      *
      * @param {object} frames       - view key → sprite frames, one per rotation
      * @param {number} alpha        - DoomMonsterDef.getAlpha()
      * @param {number} hangHeight   - DoomMonsterDef.getHangHeight(), map units
-     * @param {object} billboardIds - cache shared across the level's bodies: (sprite, alpha, hang height) → object id
+     * @param {object} billboardIds - cache shared across the level's bodies: (sprite, alpha, hang height, floor gap) → object id
+     * @param {number} floorGap     - map units from the hanging body up to its floor, 0 when above it
      * @returns {object} view key → array of object ids (one per rotation)
      */
-    _monsterBillboards(frames, alpha, hangHeight, billboardIds) {
+    _monsterBillboards(frames, alpha, hangHeight, billboardIds, floorGap = 0) {
         const scale   = WadConstants.SCALE;
         const ceiling = (hangHeight > 0);
         const objectIdsByView = {};
         for (const viewKey of Object.keys(frames)) {
             objectIdsByView[viewKey] = frames[viewKey].map((spr) => {
-                const objKey = spr.loaderId + '|' + alpha + '|' + hangHeight;
+                const objKey = spr.loaderId + '|' + alpha + '|' + hangHeight + '|' + floorGap;
                 if (billboardIds[objKey] === undefined) {
                     const geo  = WadGeometry.spriteBillboardData(spr);
                     const sink = spr.topOffset - spr.height;
@@ -496,7 +498,7 @@ class WadWorldBuilder {
                         halfWidth:     geo.halfWidth,
                         height:        geo.height,
                         anchorOffsetX: geo.anchorOffsetX,
-                        anchorOffsetY: ((ceiling) ? (sink + hangHeight) : Math.max(0, sink)) * scale,
+                        anchorOffsetY: ((ceiling) ? Math.max(spr.topOffset, floorGap + spr.height) : Math.max(0, sink)) * scale,
                         anchorTop:     ceiling,
                         light:         WadWorldBuilder.FULLBRIGHT,
                         alpha:         alpha,
@@ -642,10 +644,10 @@ class WadWorldBuilder {
     // its current sector. Its view is filed here, so a device that only
     // displays the level knows every placed body.
     _registerMonsterThing(thing, i, analysis, builtFloorCodes, billboardIds) {
-        const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.getHangHeight(), billboardIds);
+        const frames = this._monsterBillboards(thing.frames, thing.alpha, thing.def.getHangHeight(), billboardIds, thing.floorGap);
 
         const code       = WadWorldBuilder.MONSTER_CODE_PREFIX + i;
-        const ride       = this._resolveThingFloor(thing, analysis, builtFloorCodes);
+        const ride       = this._resolveThingFloor(thing, thing.def.isCeiling(), analysis, builtFloorCodes);
         const spawnState = thing.def.getState('spawn0');
         loader.instances().loadFromData(null, {
             code:            code,
@@ -790,10 +792,11 @@ class WadWorldBuilder {
     }
 
     // Floor instance a thing rides, plus the Y shift back to a lift's rest
-    // height: its sector fh is patched to the low position.
-    _resolveThingFloor(thing, analysis, builtFloorCodes) {
+    // height: its sector fh is patched to the low position. A hanging thing
+    // never rides its floor (P_ThingHeightClip only moves what touches it).
+    _resolveThingFloor(thing, hanging, analysis, builtFloorCodes) {
         const SCALE = WadConstants.SCALE;
-        const sec = this._findSector(thing.position[0] / SCALE, thing.position[2] / SCALE);
+        const sec = ((hanging) ? null : this._findSector(thing.position[0] / SCALE, thing.position[2] / SCALE));
         if (sec === null) {
             return {floorCode: null, liftY: 0};
         }

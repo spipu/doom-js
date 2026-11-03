@@ -6,7 +6,8 @@
  * solid + radius drive the collision phase: a solid decoration blocks the player
  * with a vertical cylinder of that radius (Doom MF_SOLID things); non-solid ones
  * are walked through. ceiling marks the hanging decorations (Doom spawnceiling):
- * they anchor their top to the ceiling instead of their foot to the floor.
+ * they hang height map units below the ceiling (info.c), their sprite drawn from
+ * there by its own top offset, whatever the size of its picture.
  */
 class DoomDecoration extends AbstractDoomObject {
     constructor(definition) {
@@ -14,6 +15,7 @@ class DoomDecoration extends AbstractDoomObject {
         this._solid   = (definition.solid === true);
         this._radius  = definition.radius ?? 0;
         this._ceiling = (definition.ceiling === true);
+        this._height  = definition.height ?? 0;
     }
 
     isSolid() {
@@ -26,5 +28,10 @@ class DoomDecoration extends AbstractDoomObject {
 
     isCeiling() {
         return this._ceiling;
+    }
+
+    // P_SpawnMobj ONCEILINGZ: z = ceilingz - height.
+    getHangHeight() {
+        return ((this._ceiling) ? this._height : 0);
     }
 }

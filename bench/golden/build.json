@@ -300,7 +300,7 @@
     "secrets": 4
   },
   "freedoom1/E3M8": {
-    "sha": "c2285846fa28ba193050aa3c7cb229ed84ea5eb794663419e4ef53948eaceffc",
+    "sha": "9b2a971016a02766f571da4f538deef4bc39730d11146821d35a025fca937831",
     "objects": 891,
     "points": 7200,
     "faces": 3954,
@@ -1488,7 +1488,7 @@
     "secrets": 4
   },
   "Doom2/MAP27": {
-    "sha": "78ac161c5e7ab7703930c013a2bc6e4cb822131a739c9f4af1ef39d4f29ee36b",
+    "sha": "1862b8f1bd3e3fc98932c27773f818680430e87ea06b57ad5d6447d3ad2e508e",
     "objects": 1846,
     "points": 13925,
     "faces": 7486,
@@ -1608,7 +1608,7 @@
     "secrets": 2
   },
   "heretic/E1M4": {
-    "sha": "ff4cb7c262bd620ffe2157f75e42d5d148b539838bee8286f3310bd90ec110d4",
+    "sha": "4e1ef8da8881f64643a59a13c73471972a6f5e2ed917af323661029fc8b8dfcb",
     "objects": 1005,
     "points": 17860,
     "faces": 9860,
@@ -1644,7 +1644,7 @@
     "secrets": 8
   },
   "heretic/E1M7": {
-    "sha": "35d0bd9af33aa82f82d52f80fb9b98c6d74b26fc35427131b8cb03123fcd9a98",
+    "sha": "37a3e73399c05b4fa41ae4492c5768941c1284fbce5faa21c71edb68fe03620f",
     "objects": 1262,
     "points": 17437,
     "faces": 9703,
@@ -1728,7 +1728,7 @@
     "secrets": 2
   },
   "heretic/E2M5": {
-    "sha": "712c102d5be585d02f9e47f020adb4e29699851cd7191bbaa47cc1606db888ea",
+    "sha": "a2b8d7f8818ace7f1f448d90fe819b69e1939c16f7030f3032b3ce19bf8aad3c",
     "objects": 1142,
     "points": 14662,
     "faces": 8039,
@@ -1908,7 +1908,7 @@
     "secrets": 7
   },
   "heretic/E4M1": {
-    "sha": "b542aaed36e4d7054bfe9e1c59070e77221fe49f963caece82f45dc7db97c739",
+    "sha": "9fed875ba54061510e22fb3e5be7c39ec610d68b10c45cebacaba7e3a0ebb629",
     "objects": 1281,
     "points": 13750,
     "faces": 7610,
@@ -1944,7 +1944,7 @@
     "secrets": 3
   },
   "heretic/E4M4": {
-    "sha": "8cda3005f0afac0446c277104a21cb7cdb793fee0752cd764e76651fe7f2668c",
+    "sha": "ecbb4b249a90fb03303ac6a0e41389a07284f0d2b24aa52198cd2e54660e475f",
     "objects": 1361,
     "points": 13696,
     "faces": 7542,
@@ -1956,7 +1956,7 @@
     "secrets": 6
   },
   "heretic/E4M5": {
-    "sha": "2761e139ab6e0b2cf3e43a3b043ae39b0dae915bfdf7e9f77ea607f31d1b89c3",
+    "sha": "dd12b63713cfbb49f9453bf9fdb5de9b902464b71756947542a36647581947c1",
     "objects": 1333,
     "points": 14614,
     "faces": 8174,
@@ -2016,7 +2016,7 @@
     "secrets": 5
   },
   "heretic/E5M1": {
-    "sha": "c3999715f2eca706cf37ca47b15b0afdc3bc8604f10b7506ad70dc5e3b41b80d",
+    "sha": "5c4d6d16f3ccb028dd6c9c9136e8c93783f71ca964b15e831280bc886385c8bc",
     "objects": 1311,
     "points": 11808,
     "faces": 6341,
@@ -2028,7 +2028,7 @@
     "secrets": 1
   },
   "heretic/E5M2": {
-    "sha": "66093ebc68207ca448e56ae57e599333aef64fffe24ebcf19ef20066445952e6",
+    "sha": "83848b145dd9fdbea2daf918b9b40dbb9d8cbe5c64dba665038203bb00f0688d",
     "objects": 1162,
     "points": 10337,
     "faces": 5562,
@@ -2040,7 +2040,7 @@
     "secrets": 5
   },
   "heretic/E5M2+water": {
-    "sha": "90d16f371485ca1bb2e0d2c830c3babafd50722fb20102ad47da7f4d6675b5c2",
+    "sha": "b7e66039a2922a79db1ce7174444f580abb028256f98b55574d7f16f67ec7f27",
     "objects": 1179,
     "points": 11423,
     "faces": 6272,
@@ -2052,7 +2052,7 @@
     "secrets": 5
   },
   "heretic/E5M3": {
-    "sha": "d2d61d6f5b690f9aabfbcd8ec93038fb06acb8e44580d5d1fcc2265e57ed00c5",
+    "sha": "422df24a3525a4e1d4fde247a95a642478f774ecc93fa70ecbd1d176a7018989",
     "objects": 1237,
     "points": 13371,
     "faces": 7511,
@@ -2148,7 +2148,7 @@
     "secrets": 0
   },
   "heretic/E6M2": {
-    "sha": "ca629d621579354540a4c01665dc791fe515d674461e8d2c5aa242e357537d72",
+    "sha": "293d2ba8951ea8cd8a8d7200bc67a326b92b4782ffb146311f2a7f761c75eb56",
     "objects": 942,
     "points": 16185,
     "faces": 9037,

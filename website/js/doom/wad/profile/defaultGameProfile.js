@@ -188,18 +188,18 @@ class DefaultGameProfile extends AbstractGameProfile {
             poolBlood1:    new DoomDecoration({code: 'poolBlood1',    name: 'Pool of blood',      sprite: 'POB1A0', solid: false, radius: 0}),
             poolBlood2:    new DoomDecoration({code: 'poolBlood2',    name: 'Pool of blood',      sprite: 'POB2A0', solid: false, radius: 0}),
             poolBrains:    new DoomDecoration({code: 'poolBrains',    name: 'Pool of brains',     sprite: 'BRS1A0', solid: false, radius: 0}),
-            // Ceiling-hung (solid set per type; anchored to the ceiling)
-            hangTwitching: new DoomDecoration({code: 'hangTwitching', name: 'Hanging twitching',  sprite: 'GOR1A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangArmsOut:   new DoomDecoration({code: 'hangArmsOut',   name: 'Hanging arms out',   sprite: 'GOR2A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangOneLeg:    new DoomDecoration({code: 'hangOneLeg',    name: 'Hanging one-legged', sprite: 'GOR3A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangLegsPair:  new DoomDecoration({code: 'hangLegsPair',  name: 'Hanging pair of legs', sprite: 'GOR4A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangLeg:       new DoomDecoration({code: 'hangLeg',       name: 'Hanging leg',        sprite: 'GOR5A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangGuts1:     new DoomDecoration({code: 'hangGuts1',     name: 'Hanging victim guts', sprite: 'HDB1A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangGuts2:     new DoomDecoration({code: 'hangGuts2',     name: 'Hanging guts/brain', sprite: 'HDB2A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangTorso1:    new DoomDecoration({code: 'hangTorso1',    name: 'Hanging torso down', sprite: 'HDB3A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangTorso2:    new DoomDecoration({code: 'hangTorso2',    name: 'Hanging torso open', sprite: 'HDB4A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangTorso3:    new DoomDecoration({code: 'hangTorso3',    name: 'Hanging torso 1leg', sprite: 'HDB5A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true}),
-            hangTorso4:    new DoomDecoration({code: 'hangTorso4',    name: 'Hanging torso noleg', sprite: 'HDB6A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true})
+            // Ceiling-hung (solid set per type; height from info.c)
+            hangTwitching: new DoomDecoration({code: 'hangTwitching', name: 'Hanging twitching',  sprite: 'GOR1A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true, height: 68}),
+            hangArmsOut:   new DoomDecoration({code: 'hangArmsOut',   name: 'Hanging arms out',   sprite: 'GOR2A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true, height: 84}),
+            hangOneLeg:    new DoomDecoration({code: 'hangOneLeg',    name: 'Hanging one-legged', sprite: 'GOR3A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true, height: 84}),
+            hangLegsPair:  new DoomDecoration({code: 'hangLegsPair',  name: 'Hanging pair of legs', sprite: 'GOR4A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true, height: 68}),
+            hangLeg:       new DoomDecoration({code: 'hangLeg',       name: 'Hanging leg',        sprite: 'GOR5A0', solid: false, radius: 16 * WadConstants.SCALE, ceiling: true, height: 52}),
+            hangGuts1:     new DoomDecoration({code: 'hangGuts1',     name: 'Hanging victim guts', sprite: 'HDB1A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 88}),
+            hangGuts2:     new DoomDecoration({code: 'hangGuts2',     name: 'Hanging guts/brain', sprite: 'HDB2A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 88}),
+            hangTorso1:    new DoomDecoration({code: 'hangTorso1',    name: 'Hanging torso down', sprite: 'HDB3A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 64}),
+            hangTorso2:    new DoomDecoration({code: 'hangTorso2',    name: 'Hanging torso open', sprite: 'HDB4A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 64}),
+            hangTorso3:    new DoomDecoration({code: 'hangTorso3',    name: 'Hanging torso 1leg', sprite: 'HDB5A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 64}),
+            hangTorso4:    new DoomDecoration({code: 'hangTorso4',    name: 'Hanging torso noleg', sprite: 'HDB6A0', solid: true,  radius: 16 * WadConstants.SCALE, ceiling: true, height: 64})
         };
     }
 
@@ -299,6 +299,7 @@ class DefaultGameProfile extends AbstractGameProfile {
             50:   {kind: 'decoration', code: 'hangArmsOut',   solid: true},
             59:   {kind: 'decoration', code: 'hangArmsOut',   solid: false},
             51:   {kind: 'decoration', code: 'hangOneLeg',    solid: true},
+            // 84 as UZDoom NonsolidMeat3, not info.c's 52: that one hides its waist in the ceiling.
             61:   {kind: 'decoration', code: 'hangOneLeg',    solid: false},
             52:   {kind: 'decoration', code: 'hangLegsPair',  solid: true},
             60:   {kind: 'decoration', code: 'hangLegsPair',  solid: false},

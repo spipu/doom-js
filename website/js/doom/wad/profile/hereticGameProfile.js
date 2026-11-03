@@ -426,16 +426,16 @@ class HereticGameProfile extends DefaultGameProfile {
             keyGizmoYellow:  new DoomDecoration({code: 'keyGizmoYellow',  name: 'Yellow key gizmo',   sprite: 'KGZ1A0', solid: true,  radius: 16 * WadConstants.SCALE}),
             // Wall torch (+NOGRAVITY, sits against a wall at floor height)
             wallTorch:       new DoomDecoration({code: 'wallTorch',       name: 'Wall torch',         sprite: 'WTRHA0', solid: false, radius: 0}),
-            skullHang70:     new DoomDecoration({code: 'skullHang70',     name: 'Hanging skull 70',   sprite: 'SKH1A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            skullHang60:     new DoomDecoration({code: 'skullHang60',     name: 'Hanging skull 60',   sprite: 'SKH2A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            skullHang45:     new DoomDecoration({code: 'skullHang45',     name: 'Hanging skull 45',   sprite: 'SKH3A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            skullHang35:     new DoomDecoration({code: 'skullHang35',     name: 'Hanging skull 35',   sprite: 'SKH4A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            chandelier:      new DoomDecoration({code: 'chandelier',      name: 'Chandelier',         sprite: 'CHDLA0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            stalactiteSmall: new DoomDecoration({code: 'stalactiteSmall', name: 'Small stalactite',   sprite: 'STCSA0', solid: true,  radius: 8 * WadConstants.SCALE,  ceiling: true}),
-            stalactiteLarge: new DoomDecoration({code: 'stalactiteLarge', name: 'Large stalactite',   sprite: 'STCLA0', solid: true,  radius: 12 * WadConstants.SCALE, ceiling: true}),
-            moss1:           new DoomDecoration({code: 'moss1',           name: 'Hanging moss 1',     sprite: 'MOS1A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            moss2:           new DoomDecoration({code: 'moss2',           name: 'Hanging moss 2',     sprite: 'MOS2A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true}),
-            hangingCorpse:   new DoomDecoration({code: 'hangingCorpse',   name: 'Hanging corpse',     sprite: 'HCORA0', solid: true,  radius: 8 * WadConstants.SCALE,  ceiling: true})
+            skullHang70:     new DoomDecoration({code: 'skullHang70',     name: 'Hanging skull 70',   sprite: 'SKH1A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 70}),
+            skullHang60:     new DoomDecoration({code: 'skullHang60',     name: 'Hanging skull 60',   sprite: 'SKH2A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 60}),
+            skullHang45:     new DoomDecoration({code: 'skullHang45',     name: 'Hanging skull 45',   sprite: 'SKH3A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 45}),
+            skullHang35:     new DoomDecoration({code: 'skullHang35',     name: 'Hanging skull 35',   sprite: 'SKH4A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 35}),
+            chandelier:      new DoomDecoration({code: 'chandelier',      name: 'Chandelier',         sprite: 'CHDLA0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 60}),
+            stalactiteSmall: new DoomDecoration({code: 'stalactiteSmall', name: 'Small stalactite',   sprite: 'STCSA0', solid: true,  radius: 8 * WadConstants.SCALE,  ceiling: true, height: 36}),
+            stalactiteLarge: new DoomDecoration({code: 'stalactiteLarge', name: 'Large stalactite',   sprite: 'STCLA0', solid: true,  radius: 12 * WadConstants.SCALE, ceiling: true, height: 68}),
+            moss1:           new DoomDecoration({code: 'moss1',           name: 'Hanging moss 1',     sprite: 'MOS1A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 23}),
+            moss2:           new DoomDecoration({code: 'moss2',           name: 'Hanging moss 2',     sprite: 'MOS2A0', solid: false, radius: 20 * WadConstants.SCALE, ceiling: true, height: 27}),
+            hangingCorpse:   new DoomDecoration({code: 'hangingCorpse',   name: 'Hanging corpse',     sprite: 'HCORA0', solid: true,  radius: 8 * WadConstants.SCALE,  ceiling: true, height: 104})
         };
     }
 

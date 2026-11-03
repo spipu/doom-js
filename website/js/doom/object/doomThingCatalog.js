@@ -6,7 +6,7 @@
  * resolution mechanics, shared by every game.
  *
  * Decorations are DoomDecoration definitions (sprite + solid + radius +
- * ceiling); pickups carry their sprite + a gameplay `effect` consumed when
+ * ceiling + height); pickups carry their sprite + a gameplay `effect` consumed when
  * picked up. Enemies, starts and teleport landings are absent from the
  * tables on purpose (not displayed, resolved to null).
  */
@@ -41,7 +41,7 @@ class DoomThingCatalog {
         // 'bossSpot' and the Icon of Sin's 'bossTarget' lists must never mix.
         if (entry.kind === 'spot') {
             return {kind: 'spot', spotGroup: entry.group, code: null, frames: [], animDuration: 0,
-                solid: false, radius: 0, ceiling: false, effect: null, notDeathmatch: false, spawnerGroup: null};
+                solid: false, radius: 0, ceiling: false, hangHeight: 0, effect: null, notDeathmatch: false, spawnerGroup: null};
         }
         if (entry.kind === 'decoration') {
             const decoration = this._decorations[entry.code];
@@ -53,6 +53,7 @@ class DoomThingCatalog {
                 solid:         ((entry.solid !== undefined) ? (entry.solid === true) : decoration.isSolid()),
                 radius:        decoration.getRadius(),
                 ceiling:       decoration.isCeiling(),
+                hangHeight:    decoration.getHangHeight(),
                 effect:        null,
                 notDeathmatch: false,
                 spawnerGroup:  null
@@ -66,6 +67,7 @@ class DoomThingCatalog {
             solid:         false,
             radius:        0,
             ceiling:       false,
+            hangHeight:    0,
             effect:        entry.effect,
             // MF_NOTDMATCH: never spawned in deathmatch (the keys).
             notDeathmatch: (entry.notDeathmatch === true),

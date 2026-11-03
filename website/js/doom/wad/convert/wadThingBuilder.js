@@ -213,16 +213,22 @@ class WadThingBuilder {
 
         // Floor things are floor-clipped like modern ports (vanilla lets feet
         // sink a few pixels, unseen without free look).
-        const sink = view.topOffset - view.height;
+        const sink    = view.topOffset - view.height;
+        // Vanilla draws the sprite top at z + topoffset, z = ceilingz - height
+        // (P_SpawnMobj, R_ProjectSprite): the picture size plays no part. A
+        // picture reaching below the floor is lifted onto it, as floor things.
+        const anchorY = ((desc.ceiling)
+            ? Math.max(view.topOffset - desc.hangHeight, sect.fh - sect.ch + view.height)
+            : Math.max(0, sink));
 
         return {
-            key:           desc.frames.join('|'),
+            key:           desc.frames.join('|') + '|' + anchorY,
             texIds:        view.texIds,
             animDuration:  desc.animDuration,
             halfWidth:     geo.halfWidth,
             height:        geo.height,
             anchorOffsetX: geo.anchorOffsetX,
-            anchorOffsetY: ((desc.ceiling) ? sink : Math.max(0, sink)) * scale,
+            anchorOffsetY: anchorY * scale,
             anchorTop:     desc.ceiling,
             si:            sect.si,
             light:         sect.light,
@@ -252,6 +258,9 @@ class WadThingBuilder {
             frames:     frames,
             si:         sect.si,
             position:   WadGeometry.doomToWorld(thing.x, thing.y, baseH),
+            // A ceiling body lower than its floor (Doom2 MAP32 Keens) lifts its
+            // pictures onto that floor.
+            floorGap:   Math.max(0, sect.fh - baseH),
             solid:      true,
             radius:     def.getRadius() * WadConstants.SCALE,
             alpha:      def.getAlpha(),
