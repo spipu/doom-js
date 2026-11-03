@@ -240,7 +240,7 @@
     "secrets": 4
   },
   "freedoom1/E3M3": {
-    "sha": "bcf1a7f424de61e45c43fd764c55130c561d01b43f0c0637ee82a3f5516ad184",
+    "sha": "5a7367b4f38a129a1dda347d6ab1208b028feccd59e062aa2a0fc6155747bba3",
     "objects": 1195,
     "points": 36125,
     "faces": 20983,
@@ -276,7 +276,7 @@
     "secrets": 4
   },
   "freedoom1/E3M6": {
-    "sha": "ae8f8d8b0bae0c994e99a62b0d1635dbae85c4774cf285b80b0fe209be0f0cdb",
+    "sha": "a6c485387e82510ce38a789299d3abba6256be5bc25a051be4d8c0e6a8472a4a",
     "objects": 903,
     "points": 13798,
     "faces": 7819,
@@ -480,7 +480,7 @@
     "secrets": 2
   },
   "freedoom2/MAP05": {
-    "sha": "0c50a0dc3f564d34fb6af61fe9608fe1d75d888f078afaf72a5d1da04c30e029",
+    "sha": "c0f21ecfd2891a296622754aab8a6832a4da6208430ca405a23c38b5961f8368",
     "objects": 1550,
     "points": 16455,
     "faces": 9135,
@@ -552,7 +552,7 @@
     "secrets": 4
   },
   "freedoom2/MAP11": {
-    "sha": "8c882b05cc81b1aad109b4133837d3c88582973485be656edd49f8020076da30",
+    "sha": "5a981408b0907e22168e17cbf4b8182786d3dce188f505bddd23d55c872bd8d7",
     "objects": 1884,
     "points": 41420,
     "faces": 23507,
@@ -564,7 +564,7 @@
     "secrets": 12
   },
   "freedoom2/MAP12": {
-    "sha": "3dc2d08119ef04c9eb114310ab1d4edb08c01a8e3b44b315b7c0c68315832557",
+    "sha": "3d01766012f587b903dcd6beba8240bbf4bc898b78c77dfa01ef660c687c6cd4",
     "objects": 1670,
     "points": 58430,
     "faces": 34327,

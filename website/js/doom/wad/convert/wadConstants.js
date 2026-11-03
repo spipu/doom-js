@@ -218,8 +218,8 @@ class WadConstants {
         return WadConstants.floorAnyRaiseCycleKey(special);
     }
 
-    // Same key for every raise special, relative targets included: only a
-    // revived lift (WadMapAnalyzer._identifyLifts) owns the relative ones.
+    // Same key for every raise special, relative targets included: a lift owns
+    // the relative ones only when they lift it above its rest (WadMapAnalyzer._identifyLiftRaises).
     static floorAnyRaiseCycleKey(special) {
         const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special];
 

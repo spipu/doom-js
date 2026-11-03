@@ -921,8 +921,9 @@ class WadMapAnalyzer {
     // (vanilla raises from the live floor: MAP30's 140 + 62). The start pose is
     // where the lift rests when the raise fires: lowered for a one-way lower,
     // original height otherwise. Reads liftOriginalFh: sectors[si].fh is patched.
-    // A revived lift also takes the relative raises, which keep the reverse
-    // playback on the other lifts.
+    // A relative raise becomes a cycle only when it lifts the floor above its
+    // rest (freedoom1 E3M3 s239: 18 then 123); one that brings it back to rest
+    // keeps the reverse playback (E1M5/E1M7 bidirectional plats).
     // liftRaiseVariants: si → key → {special, speed, startFh, targetFh}.
     _identifyLiftRaises(lifts) {
         const {sectors} = this._level;
@@ -934,16 +935,19 @@ class WadMapAnalyzer {
             const fixedKey = WadConstants.floorRaiseCycleKey(ld.special);
             const rule     = WadConstants.FLOOR_UP_BY_SPECIAL[ld.special];
             for (const si of lifts.liftIds) {
-                const key = (fixedKey ?? ((lifts.revivedLiftIds.has(si)) ? WadConstants.floorAnyRaiseCycleKey(ld.special) : null));
-                if ((key === null) || (sectors[si].tag !== ld.tag)
+                if ((sectors[si].tag !== ld.tag)
                     || WadConstants.FLOOR_PERPETUAL_SPECIALS.has(lifts.liftSectorSpecial[si])) {
                     continue;
                 }
                 const liftAnim = WadConstants.FLOOR_DOWN_BY_SPECIAL[lifts.liftSectorSpecial[si]].anim;
                 const numeric  = (typeof rule.target === 'number');
                 const startFh  = ((liftAnim === 'one-way') ? lifts.liftBaseTargetFh[si] : lifts.liftOriginalFh[si]);
-                const targetFh = ((numeric) ? (startFh + rule.target) : this._risingFloorTarget(si, ld.special, lifts.liftOriginalFh));
+                const targetFh = ((numeric) ? (startFh + rule.target) : this._risingFloorTarget(si, ld.special, lifts.liftOriginalFh, null, startFh));
                 if (targetFh <= startFh) {
+                    continue;
+                }
+                const key = (fixedKey ?? ((targetFh > lifts.liftOriginalFh[si]) ? WadConstants.floorAnyRaiseCycleKey(ld.special) : null));
+                if (key === null) {
                     continue;
                 }
                 (liftRaiseVariants[si] = (liftRaiseVariants[si] ?? {}))[key] = {
@@ -1168,18 +1172,20 @@ class WadMapAnalyzer {
     }
 
     // Target floor height of a rising sector (vanilla p_floor.c / p_plats.c),
-    // neighbour lifts read at their rest height.
-    _risingFloorTarget(si, special, liftOriginalFh = {}, neighbourIds = null) {
+    // neighbour lifts read at their rest height; fromFh = the floor when the
+    // raise fires (a lift's start pose), the sector's own floor by default.
+    _risingFloorTarget(si, special, liftOriginalFh = {}, neighbourIds = null, fromFh = null) {
         const {linedefs, sidedefs, sectors} = this._level;
-        const sec  = sectors[si];
-        const rule = WadConstants.FLOOR_UP_BY_SPECIAL[special].target;
+        const sec    = sectors[si];
+        const rule   = WadConstants.FLOOR_UP_BY_SPECIAL[special].target;
+        const baseFh = (fromFh ?? sec.fh);
 
         if (typeof rule === 'number') {
-            return sec.fh + rule;
+            return baseFh + rule;
         }
 
         if (rule === 'shortestLower') {
-            return (sec.fh + (this._shortestLowerTextureAround(si) ?? 0));
+            return (baseFh + (this._shortestLowerTextureAround(si) ?? 0));
         }
 
         const ids        = (neighbourIds ?? this._neighbourSectorIds(si));
@@ -1187,7 +1193,7 @@ class WadMapAnalyzer {
 
         if (rule === 'nextHigher') {
             const floors = ids.map((n) => (liftOriginalFh[n] ?? sectors[n].fh));
-            return (WadMapAnalyzer.nextHighestFloor(floors, sec.fh) ?? sec.fh);
+            return (WadMapAnalyzer.nextHighestFloor(floors, baseFh) ?? baseFh);
         }
 
         // 'lowestCeiling' / 'lowestCeilingCrush' — P_FindLowestCeilingSurrounding
@@ -1504,7 +1510,7 @@ class WadMapAnalyzer {
     // Doors never reverse: they own one forward cycle per special.
     // timeScale replays at the reversing special's vanilla speed.
     // cycleVariant: the key the trigger starts its targets with, a relative
-    // raise's own key only when a revived lift owns it.
+    // raise's own key only when a lift owns it.
     static splitReverseTargets(analysis, special, targets) {
         const reversed = (code) => ({
             code:      code,
