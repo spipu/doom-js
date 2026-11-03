@@ -141,6 +141,12 @@ class AppServiceWorker {
     }
 
     fetch(event) {
+        // Only the GET of the application's own files are cached: a call to another origin (an API) or another
+        // method is left to the browser, untouched (cache.put refuses POST and PUT, an API answer must never be replayed).
+        if ((event.request.method !== 'GET') || (new URL(event.request.url).origin !== self.location.origin)) {
+            return;
+        }
+
         if (event.request.url.indexOf('swBypass=1') !== -1) {
             event.respondWith(fetch(event.request));
             return;
