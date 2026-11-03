@@ -319,6 +319,9 @@ class DoomSimulation {
             user.importState(restoredState);
         } else if (carried === null) {
             this._itemRules.setupLoadout(user);
+        } else if (player.carriesOutdatedSave()) {
+            user.importState(carried);
+            user.restartFromOutdatedSave();
         } else {
             user.importState(carried);
             user.resetForNewLevel(this._itemCatalog);

@@ -86,7 +86,7 @@ class WadThingBuilder {
      * @returns {object[]} {key, texIds, animDuration, halfWidth, height,
      *                      anchorOffsetX, anchorOffsetY, anchorTop, si, light,
      *                      position:[x,y,z], type (THING editor number),
-     *                      kind, solid, radius, effect}
+     *                      kind, solid, radius, hangHeight, effect}
      */
     buildAll() {
         const entries  = [];
@@ -209,16 +209,18 @@ class WadThingBuilder {
 
         const view  = this._frameView(desc, sprites);
         const geo   = WadGeometry.spriteBillboardData(view);
-        const baseH = ((desc.ceiling) ? sect.ch : sect.fh);
+        // A hanging thing stands at z = ceilingz - height (P_SpawnMobj), its
+        // collision box filling that height up to the ceiling.
+        const baseH = ((desc.ceiling) ? (sect.ch - desc.hangHeight) : sect.fh);
 
         // Floor things are floor-clipped like modern ports (vanilla lets feet
         // sink a few pixels, unseen without free look).
         const sink    = view.topOffset - view.height;
-        // Vanilla draws the sprite top at z + topoffset, z = ceilingz - height
-        // (P_SpawnMobj, R_ProjectSprite): the picture size plays no part. A
-        // picture reaching below the floor is lifted onto it, as floor things.
+        // Vanilla draws the sprite top at z + topoffset (R_ProjectSprite): the
+        // picture size plays no part. A picture reaching below the floor is
+        // lifted onto it, as floor things.
         const anchorY = ((desc.ceiling)
-            ? Math.max(view.topOffset - desc.hangHeight, sect.fh - sect.ch + view.height)
+            ? Math.max(view.topOffset, sect.fh - baseH + view.height)
             : Math.max(0, sink));
 
         return {
@@ -237,6 +239,7 @@ class WadThingBuilder {
             kind:          desc.kind,
             solid:         desc.solid,
             radius:        desc.radius,
+            hangHeight:    desc.hangHeight * scale,
             effect:        desc.effect
         };
     }

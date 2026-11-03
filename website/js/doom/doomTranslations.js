@@ -310,10 +310,46 @@ class DoomTranslations {
                 es: 'No se puede guardar estando muerto'
             },
             'menu.save.incompatible': {
-                fr: 'Sauvegarde incompatible avec cette version du jeu',
-                en: 'Save incompatible with this game version',
-                it: 'Salvataggio incompatibile con questa versione del gioco',
-                es: 'Partida guardada incompatible con esta versión del juego'
+                fr: 'Sauvegarde incompatible',
+                en: 'Incompatible save',
+                it: 'Salvataggio incompatibile',
+                es: 'Partida guardada incompatible'
+            },
+            'menu.save.incompatibleDetail': {
+                fr: 'Cette sauvegarde vient d\'une version du jeu trop différente pour être reprise.\nLe niveau {level} peut être recommencé depuis le début, avec l\'équipement de départ.',
+                en: 'This save comes from a game version too different to be resumed.\nLevel {level} can be restarted from the beginning, with the starting equipment.',
+                it: 'Questo salvataggio proviene da una versione del gioco troppo diversa per essere ripreso.\nIl livello {level} può essere ricominciato dall\'inizio, con l\'equipaggiamento iniziale.',
+                es: 'Esta partida guardada procede de una versión del juego demasiado distinta para reanudarse.\nEl nivel {level} puede reiniciarse desde el principio, con el equipo inicial.'
+            },
+            'menu.save.outdated': {
+                fr: 'Sauvegarde d\'une version précédente',
+                en: 'Save from an earlier version',
+                it: 'Salvataggio di una versione precedente',
+                es: 'Partida guardada de una versión anterior'
+            },
+            'menu.save.outdatedDetail': {
+                fr: 'Le niveau {level} ne peut pas reprendre là où vous l\'aviez laissé,\nmais il peut être recommencé depuis le début.',
+                en: 'Level {level} cannot resume where you left it,\nbut it can be restarted from the beginning.',
+                it: 'Il livello {level} non può riprendere da dove l\'avevi lasciato,\nma può essere ricominciato dall\'inizio.',
+                es: 'El nivel {level} no puede reanudarse donde lo dejaste,\npero puede reiniciarse desde el principio.'
+            },
+            'menu.save.restartEquipped': {
+                fr: 'Recommencer avec mon équipement et mes clés',
+                en: 'Start over with my equipment and keys',
+                it: 'Ricomincia con il mio equipaggiamento e le mie chiavi',
+                es: 'Volver a empezar con mi equipo y mis llaves'
+            },
+            'menu.save.restartFresh': {
+                fr: 'Recommencer avec l\'équipement de départ',
+                en: 'Start over with the starting equipment',
+                it: 'Ricomincia con l\'equipaggiamento iniziale',
+                es: 'Volver a empezar con el equipo inicial'
+            },
+            'menu.save.deleteSave': {
+                fr: 'Supprimer la sauvegarde',
+                en: 'Delete the save',
+                it: 'Elimina il salvataggio',
+                es: 'Eliminar la partida guardada'
             },
             'menu.save.loadError': {
                 fr: 'Impossible de charger la sauvegarde',

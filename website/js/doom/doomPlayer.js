@@ -10,14 +10,16 @@ class DoomPlayer {
      * @param {int} id - unique within the game, stable for its whole length
      */
     constructor(id) {
-        this._id           = id;
-        this._user         = null;
-        this._weapon       = null;
-        this._weaponView   = new DoomWeaponView();
-        this._entryState   = null;
-        this._carriedState = null;
-        this._restartState = null;
-        this._inLevel      = false;
+        this._id                      = id;
+        this._user                    = null;
+        this._weapon                  = null;
+        this._weaponView              = new DoomWeaponView();
+        this._entryState              = null;
+        this._entryFromOutdatedSave   = false;
+        this._carriedState            = null;
+        this._carriedFromOutdatedSave = false;
+        this._restartState            = null;
+        this._inLevel                 = false;
     }
 
     getId() {
@@ -99,7 +101,8 @@ class DoomPlayer {
 
     // Snapshot of the equipment once the level has handed it out: what a restart replays.
     markLevelEntry() {
-        this._entryState = this._user.exportState();
+        this._entryState            = this._user.exportState();
+        this._entryFromOutdatedSave = this._carriedFromOutdatedSave;
 
         return this;
     }
@@ -119,6 +122,8 @@ class DoomPlayer {
     packForNextLevel() {
         const inLevel = this._inLevel;
         this._inLevel = false;
+        // A restart replays the entry, the keys of an outdated save included.
+        this._carriedFromOutdatedSave = ((this._restartState !== null) && this._entryFromOutdatedSave);
         if (this._restartState !== null) {
             this._carriedState = this._restartState;
             this._restartState = null;
@@ -133,10 +138,12 @@ class DoomPlayer {
     }
 
     /**
-     * @param {object} state - the equipment to take into the level about to be built
+     * @param {object|null} state            - the equipment to take into the level about to be built, null for a fresh loadout
+     * @param {boolean}     fromOutdatedSave - an outdated save's level restarted with that equipment, keys included (DoomUser.restartFromOutdatedSave)
      */
-    carry(state) {
-        this._carriedState = state;
+    carry(state, fromOutdatedSave = false) {
+        this._carriedState            = state;
+        this._carriedFromOutdatedSave = fromOutdatedSave;
 
         return this;
     }
@@ -146,6 +153,10 @@ class DoomPlayer {
      */
     getCarriedState() {
         return this._carriedState;
+    }
+
+    carriesOutdatedSave() {
+        return this._carriedFromOutdatedSave;
     }
 }
 

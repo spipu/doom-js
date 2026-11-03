@@ -13,7 +13,7 @@
 class DoomThingCatalog {
     /**
      * @param {object} decorations - code → DoomDecoration
-     * @param {object} thingTypes  - editor number → {kind, sprite|code, frames?, animDuration?, solid?, effect?, notDeathmatch?}
+     * @param {object} thingTypes  - editor number → {kind, sprite|code, frames?, animDuration?, solid?, radius?, effect?, notDeathmatch?}
      */
     constructor(decorations, thingTypes) {
         this._decorations = decorations;
@@ -51,7 +51,7 @@ class DoomThingCatalog {
                 frames:        (entry.frames ?? [decoration.getSprite()]),
                 animDuration:  (entry.animDuration ?? 0),
                 solid:         ((entry.solid !== undefined) ? (entry.solid === true) : decoration.isSolid()),
-                radius:        decoration.getRadius(),
+                radius:        (entry.radius ?? decoration.getRadius()),
                 ceiling:       decoration.isCeiling(),
                 hangHeight:    decoration.getHangHeight(),
                 effect:        null,

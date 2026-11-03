@@ -58,23 +58,49 @@ class DoomGameSnapshot {
      * A save that only keeps its level, skill and the player's equipment: it
      * loads as an entry into the level, the level in its initial state.
      *
-     * @param {object} snapshot
+     * @param {object}  snapshot
+     * @param {boolean} fromOutdatedSave - an outdated save's level restarted with its equipment and keys (DoomUser.restartFromOutdatedSave)
      * @returns {object}
      */
-    static levelStartOf(snapshot) {
+    static levelStartOf(snapshot, fromOutdatedSave = false) {
         return {
-            formatVersion: snapshot.formatVersion,
-            wadId:         snapshot.wadId,
-            levelCode:     snapshot.levelCode,
-            skill:         snapshot.skill,
-            savedAt:       snapshot.savedAt,
-            levelStart:    true,
-            player:        {state: snapshot.player.state}
+            formatVersion:    snapshot.formatVersion,
+            wadId:            snapshot.wadId,
+            levelCode:        snapshot.levelCode,
+            skill:            snapshot.skill,
+            savedAt:          snapshot.savedAt,
+            levelStart:       true,
+            fromOutdatedSave: fromOutdatedSave,
+            player:           {state: snapshot.player.state}
+        };
+    }
+
+    /**
+     * The save's level from its start with a new game's equipment: only the
+     * slot metadata is read, so a save no longer readable still restarts.
+     *
+     * @param {object} saveMeta - {wadId, levelCode, skill, savedAt}
+     * @returns {object}
+     */
+    static freshStartOf(saveMeta) {
+        return {
+            formatVersion:    DoomSaveStore.FORMAT_VERSION,
+            wadId:            saveMeta.wadId,
+            levelCode:        saveMeta.levelCode,
+            skill:            saveMeta.skill,
+            savedAt:          saveMeta.savedAt,
+            levelStart:       true,
+            fromOutdatedSave: false,
+            player:           {state: null}
         };
     }
 
     static isLevelStart(snapshot) {
         return ((snapshot !== null) && (snapshot.levelStart === true));
+    }
+
+    static isFromOutdatedSave(snapshot) {
+        return (DoomGameSnapshot.isLevelStart(snapshot) && (snapshot.fromOutdatedSave === true));
     }
 
     // Runs once the rebuilt level is wired, before the first frame. The player
@@ -83,8 +109,8 @@ class DoomGameSnapshot {
         if (DoomGameSnapshot.isLevelStart(snapshot)) {
             return;
         }
-        // itemsFound and levelTimeMs postdate FORMAT_VERSION 2; the version is
-        // compared strictly, so bumping it would discard every existing save.
+        // itemsFound and levelTimeMs postdate format 2: an addition the older
+        // saves miss defaults here instead of bumping the version.
         context.stats.restoreProgress(snapshot.stats.secretsFound, snapshot.stats.killsCount,
             (snapshot.stats.itemsFound ?? 0), (snapshot.stats.levelTimeMs ?? 0));
         // Surfaces first: the mover hooks replayed by the instance import read

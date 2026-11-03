@@ -431,6 +431,17 @@ class DoomUser extends User {
         this._effects = {};
         return this;
     }
+
+    // Back at the start of the level an outdated save no longer resumes: the
+    // keys stay, the timed effects go, and the health comes back to full when
+    // below, so a save made at the brink does not leave the player stuck.
+    restartFromOutdatedSave() {
+        this._effects = {};
+        if (this.getEnergy() < this.getMaxEnergy()) {
+            this.setEnergy(this.getMaxEnergy());
+        }
+        return this;
+    }
 }
 
 // Post-armor health points below zero past which the death is the extreme

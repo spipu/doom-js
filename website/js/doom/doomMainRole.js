@@ -189,7 +189,7 @@ class DoomMainRole extends AbstractGameRole {
         const local      = this._roster.getLocal();
         const levelStart = DoomGameSnapshot.isLevelStart(snapshot);
         if (levelStart) {
-            local.carry(snapshot.player.state);
+            local.carry(snapshot.player.state, DoomGameSnapshot.isFromOutdatedSave(snapshot));
         }
         this._simulation.startLevel(world);
         this._simulation.addPlayer(local, (((snapshot !== null) && !levelStart) ? snapshot.player.state : null));

@@ -8,7 +8,9 @@
  */
 class DoomSaveStore {
     static MAX_SLOTS      = 5;
-    static FORMAT_VERSION = 2;
+    // "major.minor": a change the saved level state no longer replays bumps the
+    // minor, a change of the player's state the major (compatibilityOf).
+    static FORMAT_VERSION = '2.1';
 
     constructor() {
         this._database = null;
@@ -77,9 +79,42 @@ class DoomSaveStore {
         ]);
     }
 
+    /**
+     * How far a snapshot's format is from the game's: the same, a minor one
+     * (the level state no longer replays, the player's state still reads) or
+     * a major one (nothing reads). A level-start snapshot only keeps the
+     * player's state, so a minor gap leaves it whole. The first saves wrote a
+     * plain number, read as its major version.
+     *
+     * @param {object} snapshot
+     * @returns {string} COMPAT_SAME, COMPAT_MINOR or COMPAT_MAJOR
+     */
+    static compatibilityOf(snapshot) {
+        const saved   = DoomSaveStore._parseVersion(snapshot.formatVersion);
+        const current = DoomSaveStore._parseVersion(DoomSaveStore.FORMAT_VERSION);
+        if (saved.major !== current.major) {
+            return DoomSaveStore.COMPAT_MAJOR;
+        }
+        if ((saved.minor === current.minor) || DoomGameSnapshot.isLevelStart(snapshot)) {
+            return DoomSaveStore.COMPAT_SAME;
+        }
+
+        return DoomSaveStore.COMPAT_MINOR;
+    }
+
+    static _parseVersion(version) {
+        const parts = String(version).split('.');
+
+        return {major: Number(parts[0]), minor: Number(parts[1] ?? 0)};
+    }
+
     async _slot(wadId, slot) {
         return this._database.getByIndex(DoomDatabaseSchema.SAVE, DoomDatabaseSchema.SAVE_BY_SLOT, [wadId, slot]);
     }
 }
+
+DoomSaveStore.COMPAT_SAME  = 'same';
+DoomSaveStore.COMPAT_MINOR = 'minor';
+DoomSaveStore.COMPAT_MAJOR = 'major';
 
 const doomSaveStore = new DoomSaveStore();

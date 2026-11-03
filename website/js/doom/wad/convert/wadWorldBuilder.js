@@ -437,6 +437,9 @@ class WadWorldBuilder {
             if (ride.floorCode !== null) {
                 loader.instances().getByCode(code).setRideOn(loader.instances().getByCode(ride.floorCode));
             }
+            if (thing.anchorTop) {
+                loader.instances().getByCode(code).setCollisionHeight(thing.hangHeight);
+            }
             if (isPickup) {
                 // The recipe that brings it back when the items respawn: the
                 // descriptor at the rest pose of the floor it follows.

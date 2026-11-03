@@ -577,6 +577,14 @@
     text-overflow: ellipsis;
 }
 
+/* What an outdated save can still do, stacked above the Back button. */
+.doom-menu-modal-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    margin-bottom: 1.4em;
+}
+
 /* Story text between two chapters. Capped like the options modal, so a long
    text scrolls inside the modal instead of growing it past the screen. */
 .doom-menu-modal-finale {

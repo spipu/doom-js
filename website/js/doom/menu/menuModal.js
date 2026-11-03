@@ -1,8 +1,77 @@
 /**
  * The doom modals: the confirmation, information, loading and error ones of
- * AppMenuModal, plus the end-of-level tally and the finale texts.
+ * AppMenuModal, plus the end-of-level tally, the finale texts and the offer
+ * made for a save of another format version.
  */
 class MenuModal extends AppMenuModal {
+    /**
+     * A save the game can no longer resume as is: its level starts over, with
+     * the saved equipment and keys when only a minor version differs (the
+     * player's state still reads), else with a new game's; or the save goes.
+     * The first choice preselected is the one that loses the least.
+     *
+     * @param {string} compatibility - DoomSaveStore.COMPAT_MINOR or COMPAT_MAJOR
+     * @param {object} saveMeta      - the slot's metadata
+     * @param {object} snapshot      - the save, unused for a major gap
+     * @param {object} handlers      - {start(snapshot), deleted(), back()}
+     */
+    outdatedSave(compatibility, saveMeta, snapshot, handlers) {
+        const minor   = (compatibility === DoomSaveStore.COMPAT_MINOR);
+        const level   = {level: saveMeta.levelCode};
+        const choices = [];
+        if (minor) {
+            choices.push({label: appTranslator.get('menu.save.restartEquipped'),
+                action: () => this._startOver(DoomGameSnapshot.levelStartOf(snapshot, true), handlers)});
+        }
+        choices.push({label: appTranslator.get('menu.save.restartFresh'),
+            action: () => this._startOver(DoomGameSnapshot.freshStartOf(saveMeta), handlers)});
+        choices.push({label: appTranslator.get('menu.save.deleteSave'),
+            action: () => this._deleteOutdated(saveMeta, handlers)});
+
+        AppMenuSound.play(AppMenuSound.PROMPT);
+        const {modal} = this._createShell(appTranslator.get(((minor) ? 'menu.save.outdated' : 'menu.save.incompatible')),
+            'app-menu-modal app-menu-modal-fit', 'app-menu-modal-message app-menu-modal-title');
+        AppMenuDom.addText(modal, 'app-menu-modal-message',
+            appTranslator.get(((minor) ? 'menu.save.outdatedDetail' : 'menu.save.incompatibleDetail'), level));
+
+        const list    = AppMenuDom.addElement(modal, 'div', 'doom-menu-modal-choices');
+        const buttons = choices.map((choice) => AppMenuDom.addButton(list, 'app-menu-button app-menu-button-block', choice.label, choice.action));
+        const actions = AppMenuDom.addElement(modal, 'div', 'app-menu-modal-actions');
+        const back    = AppMenuDom.addButton(actions, 'app-menu-button app-menu-button-secondary', appTranslator.get('menu.back'), () => {
+            this.close();
+            handlers.back();
+        });
+
+        this._nav = new AppMenuListNavigation(() => back.click(), () => !this._isTopOverlay()).setEscapeAsBack(true);
+        for (const button of [...buttons, back]) {
+            this._nav.addButtonItem(button);
+        }
+        this._nav.attach().selectIndex(0);
+        this._dismissOnOverlayClick(() => back.click());
+
+        return this;
+    }
+
+    _startOver(snapshot, handlers) {
+        this.close();
+        handlers.start(snapshot);
+    }
+
+    // Confirmed above this modal: a cancel comes back to the choices.
+    _deleteOutdated(saveMeta, handlers) {
+        new MenuModal(this._display).confirm(appTranslator.get('menu.save.deleteConfirm', {n: saveMeta.slot}), () => {
+            doomSaveStore.remove(saveMeta.wadId, saveMeta.slot)
+                .then(() => {
+                    this.close();
+                    handlers.deleted();
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.showError(appTranslator.get('menu.storageUnavailable'), error.message, () => handlers.back());
+                });
+        }, null, null, true);
+    }
+
     /**
      * End-of-level tally: the level's closing sentence as a title, the time
      * large in the middle, one line per score (label, a progress bar, the

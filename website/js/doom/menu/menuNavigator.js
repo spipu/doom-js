@@ -433,16 +433,32 @@ class MenuNavigator {
 
     // Saved-game counterpart of _launchGame.
     async _launchFromSave(meta, saveMeta) {
-        const modal = new MenuModal(this._display)
-            .showLoading(appTranslator.get('menu.level.loading', {level: saveMeta.levelCode, wad: WadRegistry.displayTitle(meta)}));
+        const modal = this._showSaveLoading(new MenuModal(this._display), meta, saveMeta.levelCode);
+        let snapshot = null;
         try {
-            const {snapshot} = await doomSaveStore.read(saveMeta.wadId, saveMeta.slot);
-            if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
-                modal.showError(appTranslator.get('menu.save.incompatible'), null, () => {
-                    this.openWadMenu(meta);
-                });
-                return;
-            }
+            snapshot = (await doomSaveStore.read(saveMeta.wadId, saveMeta.slot)).snapshot;
+        } catch (error) {
+            this._showBuildError(error, modal, meta);
+            return;
+        }
+        const compatibility = DoomSaveStore.compatibilityOf(snapshot);
+        if (compatibility !== DoomSaveStore.COMPAT_SAME) {
+            modal.outdatedSave(compatibility, saveMeta, snapshot, {
+                start:   (restart) => this._startFromSnapshot(meta, restart, this._showSaveLoading(modal, meta, restart.levelCode)),
+                deleted: () => this.openWadMenu(meta),
+                back:    () => this.openWadMenu(meta)
+            });
+            return;
+        }
+        await this._startFromSnapshot(meta, snapshot, modal);
+    }
+
+    _showSaveLoading(modal, meta, levelCode) {
+        return modal.showLoading(appTranslator.get('menu.level.loading', {level: levelCode, wad: WadRegistry.displayTitle(meta)}));
+    }
+
+    async _startFromSnapshot(meta, snapshot, modal) {
+        try {
             this._selectedDifficulty = snapshot.skill;
 
             const wadFile = await this._registry.getWadFile(meta.id);

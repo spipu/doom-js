@@ -475,12 +475,20 @@ class DoomGame {
             new MenuModal(display).showError(appTranslator.get('menu.save.loadError'), error.message, () => {});
             return;
         }
-        if (snapshot.formatVersion !== DoomSaveStore.FORMAT_VERSION) {
-            new MenuModal(display).info(appTranslator.get('menu.save.incompatible'));
+        const compatibility = DoomSaveStore.compatibilityOf(snapshot);
+        if (compatibility !== DoomSaveStore.COMPAT_SAME) {
+            new MenuModal(display).outdatedSave(compatibility, saveMeta, snapshot, {
+                start:   (restart) => this._startFromSnapshot(restart),
+                deleted: () => {},
+                back:    () => {}
+            });
             return;
         }
+        await this._startFromSnapshot(snapshot);
+    }
 
-        // In place, like a level change: a shared screen carries on, the subs follow.
+    // In place, like a level change: a shared screen carries on, the subs follow.
+    async _startFromSnapshot(snapshot) {
         this._transitioning = true;
         this.closeGameMenu();
         this.setRestoreSnapshot(snapshot);
