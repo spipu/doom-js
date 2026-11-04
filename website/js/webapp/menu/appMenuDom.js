@@ -7,6 +7,7 @@ class AppMenuDom {
     // action fires — the press stays visible on mouse, keyboard, gamepad and
     // touch alike.
     static PRESS_FEEDBACK_MS = 250;
+    static HTML_TAG_PATTERN  = /<(\/?)(b|i|u)>/gi;
     static _pressing         = false;
 
     static isPressing() {
@@ -55,6 +56,39 @@ class AppMenuDom {
         element.textContent = text;
 
         return element;
+    }
+
+    static addHtmlText(parent, className, html) {
+        const element = AppMenuDom.addElement(parent, 'div', className);
+        AppMenuDom.setHtmlContent(element, html);
+
+        return element;
+    }
+
+    // A text with the formatting tags of HTML_TAG_PATTERN only (bold, italic, underline), without attribute.
+    // Never parsed as HTML: the tags are built by createElement, anything else (another tag, an attribute, a
+    // closing tag without its opening one) stays plain text; an opening tag never closed runs to the end.
+    static setHtmlContent(element, html) {
+        element.textContent = '';
+        const stack = [element];
+        let last    = 0;
+        for (const match of html.matchAll(AppMenuDom.HTML_TAG_PATTERN)) {
+            const current = stack[stack.length - 1];
+            current.appendChild(document.createTextNode(html.slice(last, match.index)));
+            last = match.index + match[0].length;
+
+            const tagName = match[2].toLowerCase();
+            if (match[1] === '') {
+                stack.push(current.appendChild(document.createElement(tagName)));
+                continue;
+            }
+            if ((stack.length > 1) && (current.tagName.toLowerCase() === tagName)) {
+                stack.pop();
+                continue;
+            }
+            current.appendChild(document.createTextNode(match[0]));
+        }
+        stack[stack.length - 1].appendChild(document.createTextNode(html.slice(last)));
     }
 
     // Opens in a new tab: the app is a PWA, so following a link in place would
