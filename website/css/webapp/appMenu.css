@@ -785,6 +785,12 @@
     white-space: pre;
 }
 
+/* The typed text has the height of the caret: the field keeps its height once a character is typed, whatever the
+   line height of the font (taller on iOS: the field used to grow slightly at the first character). */
+.app-menu-text-value {
+    line-height: 1.1em;
+}
+
 /* End-of-text insertion point: a pure CSS blink, no timer to clean up. */
 .app-menu-text-caret {
     width: 0.08em;
