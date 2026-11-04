@@ -8,6 +8,14 @@
  * French, QWERTY otherwise); a charset character the layout lacks gets a row
  * of its own. Every key keeps its grid slot (row, column, span), the grid the
  * list navigation walks.
+ *
+ * A definition with `layout: 'phone'` (a code of digits: PIN…) gets the keypad
+ * of a phone instead: 1 2 3 / 4 5 6 / 7 8 9 / _ 0 erase / cancel validate.
+ *
+ * A definition with `cancel: 'corner'` has no cancel key: the text entry modal
+ * puts a close cross in its top right corner instead. The command row is then
+ * space + validate, validate as wide as the erase key above it (validate alone
+ * without space); the phone keypad ends with erase 0 validate.
  */
 class AppMenuVirtualKeyboard {
     static get COLUMNS() {
@@ -29,6 +37,27 @@ class AppMenuVirtualKeyboard {
 
     static get SPACE() {
         return ' ';
+    }
+
+    static get LAYOUT_PHONE() {
+        return 'phone';
+    }
+
+    static get CANCEL_CORNER() {
+        return 'corner';
+    }
+
+    // Three keys a row, two grid columns each: the command row splits in two halves.
+    static get PHONE_ROWS() {
+        return ['123', '456', '789'];
+    }
+
+    static get PHONE_COLUMNS() {
+        return 6;
+    }
+
+    static get PHONE_KEY_SPAN() {
+        return 2;
     }
 
     static get LAYOUTS() {
@@ -75,10 +104,14 @@ class AppMenuVirtualKeyboard {
      * @param {AppMenuListNavigation} nav - every key becomes one of its entries, in reading order
      */
     build(parent, nav) {
-        const grid = AppMenuDom.addElement(parent, 'div', 'app-menu-keyboard');
-        grid.style.gridTemplateColumns = 'repeat(' + AppMenuVirtualKeyboard.COLUMNS + ', 1fr)';
-        for (const row of this._layout()) {
+        const grid = AppMenuDom.addElement(parent, 'div', 'app-menu-keyboard' + (this.isPhone() ? ' app-menu-keyboard-phone' : ''));
+        grid.style.gridTemplateColumns = 'repeat(' + (this.isPhone() ? AppMenuVirtualKeyboard.PHONE_COLUMNS : AppMenuVirtualKeyboard.COLUMNS) + ', 1fr)';
+        for (const row of (this.isPhone() ? this._phoneLayout() : this._layout())) {
             for (const slot of row) {
+                if (slot.kind === 'blank') {
+                    AppMenuDom.addElement(grid, 'span', 'app-menu-key-blank').style.gridColumn = 'span ' + slot.span;
+                    continue;
+                }
                 this._addKey(grid, slot);
             }
         }
@@ -88,6 +121,20 @@ class AppMenuVirtualKeyboard {
         nav.setGrid(this._keys.map((key) => ({row: key.row, column: key.column, span: key.span})));
 
         return this;
+    }
+
+    /**
+     * @returns {boolean} the keypad of a phone (definition `layout: 'phone'`)
+     */
+    isPhone() {
+        return (this._definition.layout === AppMenuVirtualKeyboard.LAYOUT_PHONE);
+    }
+
+    /**
+     * @returns {boolean} a cancel key on the keyboard (false with `cancel: 'corner'`: the modal shows a close cross)
+     */
+    hasCancelKey() {
+        return (this._definition.cancel !== AppMenuVirtualKeyboard.CANCEL_CORNER);
     }
 
     setValidateEnabled(enabled) {
@@ -108,12 +155,34 @@ class AppMenuVirtualKeyboard {
         const columns = AppMenuVirtualKeyboard.COLUMNS;
         const rows    = this._characterRows().map((chars) => chars.map((char) => ({kind: 'char', char: char, span: 1})));
         const free    = columns - ((rows.length > 0) ? rows[rows.length - 1].length : columns);
+        let eraseSpan = free;
         if (free < AppMenuVirtualKeyboard.ERASE_MIN_SPAN) {
+            eraseSpan = columns;
             rows.push([{kind: 'erase', span: columns}]);
         } else {
             rows[rows.length - 1].push({kind: 'erase', span: free});
         }
-        rows.push(this._commandRow());
+        rows.push(this._commandRow(eraseSpan));
+
+        return rows.map((row, rowIndex) => AppMenuVirtualKeyboard._placed(row, rowIndex));
+    }
+
+    // Keypad of a phone: digit rows reduced to the charset, then an empty slot, 0 and erase, then cancel and validate.
+    _phoneLayout() {
+        const span    = AppMenuVirtualKeyboard.PHONE_KEY_SPAN;
+        const charset = Array.from(this._definition.charset);
+        const rows    = AppMenuVirtualKeyboard.PHONE_ROWS
+            .map((row) => Array.from(row).filter((char) => charset.includes(char)).map((char) => ({kind: 'char', char: char, span: span})))
+            .filter((row) => (row.length > 0));
+        const zero = (charset.includes('0') ? {kind: 'char', char: '0', span: span} : {kind: 'blank', span: span});
+        if (!this.hasCancelKey()) {
+            rows.push([{kind: 'erase', span: span}, zero, {kind: 'validate', span: span}]);
+
+            return rows.map((row, rowIndex) => AppMenuVirtualKeyboard._placed(row, rowIndex));
+        }
+        rows.push([{kind: 'blank', span: span}, zero, {kind: 'erase', span: span}]);
+        const half = AppMenuVirtualKeyboard.PHONE_COLUMNS / 2;
+        rows.push([{kind: 'cancel', span: half}, {kind: 'validate', span: half}]);
 
         return rows.map((row, rowIndex) => AppMenuVirtualKeyboard._placed(row, rowIndex));
     }
@@ -140,13 +209,26 @@ class AppMenuVirtualKeyboard {
         return AppMenuVirtualKeyboard.LAYOUTS[code];
     }
 
-    _commandRow() {
+    // Without cancel key, validate takes the width of the erase key right above it (the side width of the space
+    // key when erase fills a row of its own), space the rest.
+    _commandRow(eraseSpan) {
         const columns = AppMenuVirtualKeyboard.COLUMNS;
-        if (!this._definition.charset.includes(AppMenuVirtualKeyboard.SPACE)) {
+        const space   = this._definition.charset.includes(AppMenuVirtualKeyboard.SPACE);
+        const side    = (columns - AppMenuVirtualKeyboard.SPACE_SPAN) / 2;
+        if (!this.hasCancelKey()) {
+            if (!space) {
+                return [{kind: 'validate', span: columns}];
+            }
+            const validateSpan = ((eraseSpan < columns) ? eraseSpan : Math.ceil(side));
+
+            return [
+                {kind: 'char', char: AppMenuVirtualKeyboard.SPACE, span: columns - validateSpan},
+                {kind: 'validate', span: validateSpan}
+            ];
+        }
+        if (!space) {
             return [{kind: 'cancel', span: columns / 2}, {kind: 'validate', span: columns / 2}];
         }
-        const side = (columns - AppMenuVirtualKeyboard.SPACE_SPAN) / 2;
-
         return [
             {kind: 'cancel', span: Math.floor(side)},
             {kind: 'char', char: AppMenuVirtualKeyboard.SPACE, span: AppMenuVirtualKeyboard.SPACE_SPAN},

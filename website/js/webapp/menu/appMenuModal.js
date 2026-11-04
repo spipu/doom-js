@@ -37,7 +37,8 @@ class AppMenuModal {
             this.close();
         });
 
-        const confirmButton = AppMenuDom.addButton(actions, 'app-menu-button', confirmLabel, () => {
+        // A destroying action is marked on its button: its look is the project's.
+        const confirmButton = AppMenuDom.addButton(actions, 'app-menu-button' + (destructive ? ' app-menu-button-destructive' : ''), confirmLabel, () => {
             this.close();
             onConfirm();
         });

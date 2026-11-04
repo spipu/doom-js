@@ -804,6 +804,26 @@
     gap: 0.6em;
 }
 
+/* Close cross in the top right corner of a modal (text entry with `cancel: 'corner'`): its look is the project's. */
+.app-menu-modal-text-entry {
+    position: relative;
+}
+
+.app-menu-button.app-menu-modal-close {
+    position: absolute;
+    top: 0.6em;
+    right: 0.6em;
+}
+
+/* Keypad of a phone (a code of digits): a narrower modal, an empty slot left of 0. */
+.app-menu-modal-text-entry-phone {
+    width: 40%;
+}
+
+.app-menu-key-blank {
+    visibility: hidden;
+}
+
 .app-menu-button.app-menu-key {
     display: flex;
     align-items: center;

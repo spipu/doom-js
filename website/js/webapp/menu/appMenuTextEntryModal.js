@@ -38,7 +38,8 @@ class AppMenuTextEntryModal extends AppMenuModal {
         this._onValidate = onValidate;
         this._onCancel   = onCancel;
 
-        const {modal} = this._createShell(title, 'app-menu-modal app-menu-modal-text-entry', 'app-menu-modal-message');
+        const phone   = (definition.layout === AppMenuVirtualKeyboard.LAYOUT_PHONE);
+        const {modal} = this._createShell(title, 'app-menu-modal app-menu-modal-text-entry' + (phone ? ' app-menu-modal-text-entry-phone' : ''), 'app-menu-modal-message');
         const field   = AppMenuDom.addElement(modal, 'div', 'app-menu-text-field');
         this._valueEl = AppMenuDom.addElement(field, 'span', 'app-menu-text-value');
         AppMenuDom.addElement(field, 'span', 'app-menu-text-caret');
@@ -52,6 +53,11 @@ class AppMenuTextEntryModal extends AppMenuModal {
             onCancel:   () => this._cancel()
         }).build(modal, this._nav);
         this._nav.attach().selectIndex(this._keyboard.getValidateIndex());
+
+        // No cancel key (`cancel: 'corner'`): a close cross in the top right corner of the modal cancels.
+        if (!this._keyboard.hasCancelKey()) {
+            AppMenuDom.addIconOnlyButton(modal, 'app-menu-button app-menu-modal-close', 'close', appTranslator.get('menu.cancel'), () => this._cancel());
+        }
 
         // Capture phase: the list navigation would otherwise take Backspace and Escape as back keys.
         document.addEventListener('keydown', this._keyListener, true);
