@@ -7,9 +7,14 @@
  * the validate key and physical typing never moves it, so typing then pressing
  * Enter validates. Validation stays disabled while the sanitized value is
  * empty; cancelling is always possible. The caret stays at the end: erasing
- * removes the last character.
+ * removes the last character. A definition with `masked: true` (a PIN…) shows
+ * one star per typed character instead of the characters themselves.
  */
 class AppMenuTextEntryModal extends AppMenuModal {
+    static get MASK_CHAR() {
+        return '*';
+    }
+
     /**
      * @param {AppMenuDisplay} display
      */
@@ -120,7 +125,9 @@ class AppMenuTextEntryModal extends AppMenuModal {
     }
 
     _render() {
-        this._valueEl.textContent = this._text;
+        this._valueEl.textContent = (this._definition.masked
+            ? AppMenuTextEntryModal.MASK_CHAR.repeat(Array.from(this._text).length)
+            : this._text);
         this._keyboard.setValidateEnabled(AppSettings.sanitizeText(this._definition, this._text) !== '');
     }
 
