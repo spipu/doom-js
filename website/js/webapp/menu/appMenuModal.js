@@ -85,13 +85,17 @@ class AppMenuModal {
 
     /**
      * Loading modal: pulsing message, without buttons and not closable by
-     * clicking. Closed programmatically via close().
+     * clicking. Closed programmatically via close(). Its overlay is marked
+     * `app-menu-overlay-loading` (busy for assistive technologies): the
+     * project can give it its own backdrop.
      *
      * @param {string} message
      */
     showLoading(message) {
         this._createShell(message, 'app-menu-modal app-menu-modal-fit',
             'app-menu-modal-message app-menu-modal-loading');
+        this._overlay.classList.add('app-menu-overlay-loading');
+        this._overlay.setAttribute('aria-busy', 'true');
 
         return this;
     }
