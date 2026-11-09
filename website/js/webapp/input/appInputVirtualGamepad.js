@@ -47,6 +47,9 @@ class AppInputVirtualGamepad {
         this._buttonEls  = null;
         this._visible    = false;
 
+        // Its own copy of the buttons: placeButton never writes the table the page handed over.
+        this._layout.buttons = Object.fromEntries(Object.entries(this._layout.buttons).map(([name, button]) => [name, Object.assign({}, button)]));
+
         this._color      = Object.assign({}, AppInputVirtualGamepad.COLORS, this._layout.colors);
 
         this._joy1    = { x: 0, y: 0 };
@@ -155,6 +158,30 @@ class AppInputVirtualGamepad {
         }
 
         return this._allowButton(control, allowed);
+    }
+
+    /**
+     * Moves a button of the layout (its top left corner, in fractions of the
+     * display), so that a page lays it out its own way. Survives the overlay
+     * rebuild; an unknown button is ignored.
+     *
+     * @param {string} name
+     * @param {number} x
+     * @param {number} y
+     */
+    placeButton(name, x, y) {
+        const button = this._layout.buttons[name];
+        if (button === undefined) {
+            return this;
+        }
+        button.x = x;
+        button.y = y;
+        if (this._buttonEls !== null) {
+            this._buttonEls[name].style.left = (x * 100) + '%';
+            this._buttonEls[name].style.top  = (y * 100) + '%';
+        }
+
+        return this;
     }
 
     // Stick deflections, -1..+1, screen convention (right and down positive).

@@ -57,7 +57,7 @@ class AnimationPlayer {
      *
      * @param {AnimationClip} clip
      * @param {{time?: number, speed?: number, loop?: boolean}} options - time below 0 = a delay holding the first
-     *        pose; speed 1 by default
+     *        pose; speed 1 by default, never below 0 (an error)
      */
     play(clip, options = {}) {
         this._start(this._current, clip, options);
@@ -75,6 +75,8 @@ class AnimationPlayer {
      * @param {{time?: number, speed?: number, loop?: boolean}} options
      */
     crossFadeTo(clip, duration, options = {}) {
+        // Checked before the tracks swap: a refused speed leaves the player as it was.
+        AnimationPlayer._checkedSpeed(options.speed ?? 1);
         if ((this._current.clip === null) || (duration <= 0)) {
             return this.play(clip, options);
         }
@@ -104,10 +106,10 @@ class AnimationPlayer {
     /**
      * The speed of the clip playing, from the next advance on; the clip fading out keeps its own.
      *
-     * @param {number} speed - 1: the clip's own pace
+     * @param {number} speed - 1: the clip's own pace; never below 0 (an error)
      */
     setSpeed(speed) {
-        this._current.speed = speed;
+        this._current.speed = AnimationPlayer._checkedSpeed(speed);
 
         return this;
     }
@@ -272,19 +274,29 @@ class AnimationPlayer {
         }
     }
 
+    // A track only moves forward: a negative speed would leave its time below 0, never looped back.
+    static _checkedSpeed(speed) {
+        if (speed < 0) {
+            throw new Error('AnimationPlayer - the speed must not be negative: ' + speed);
+        }
+
+        return speed;
+    }
+
     static _track() {
         return {clip: null, cursors: null, cursorsByClip: new Map(), time: 0, speed: 1, loop: false, fresh: false, turns: 0, rootX: 0, rootZ: 0};
     }
 
     // Cursors kept per clip and per track: a clip played again reuses them.
     _start(track, clip, options) {
+        const speed = AnimationPlayer._checkedSpeed(options.speed ?? 1);
         if (!track.cursorsByClip.has(clip)) {
             track.cursorsByClip.set(clip, clip.createCursors());
         }
         track.clip    = clip;
         track.cursors = track.cursorsByClip.get(clip);
         track.time    = (options.time ?? 0);
-        track.speed   = (options.speed ?? 1);
+        track.speed   = speed;
         track.loop    = (options.loop === true);
         track.fresh   = true;
         this._anchorRoot(track);

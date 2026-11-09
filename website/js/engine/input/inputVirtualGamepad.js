@@ -57,6 +57,19 @@ class InputVirtualGamepad {
         return this;
     }
 
+    /**
+     * Moves a button away from the engine layout (top left corner, fractions
+     * of the screen).
+     *
+     * @param {string} control a name of InputVirtualGamepad.BUTTONS
+     * @param {number} x
+     * @param {number} y
+     */
+    placeButton(control, x, y) {
+        this._pad.placeButton(control, x, y);
+        return this;
+    }
+
     readJoy1X() {
         return this._pad.readMoveX();
     }

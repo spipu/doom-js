@@ -254,6 +254,19 @@ class Inputs {
     }
 
     /**
+     * Lays a button of the virtual pad out the page's own way: its top left
+     * corner, in fractions of the screen; the others keep the engine layout.
+     *
+     * @param {string} control a button of InputVirtualGamepad.BUTTONS
+     * @param {number} x
+     * @param {number} y
+     */
+    setVirtualPadButtonPosition(control, x, y) {
+        this._virtualGamepad.placeButton(control, x, y);
+        return this;
+    }
+
+    /**
      * Same idea for the mouse: a page that never looks with it takes its
      * pointer lock away, so a click leaves the cursor alone.
      *
