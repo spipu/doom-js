@@ -97,6 +97,21 @@ class AnimationPlayer {
         return this._current.time;
     }
 
+    getSpeed() {
+        return this._current.speed;
+    }
+
+    /**
+     * The speed of the clip playing, from the next advance on; the clip fading out keeps its own.
+     *
+     * @param {number} speed - 1: the clip's own pace
+     */
+    setSpeed(speed) {
+        this._current.speed = speed;
+
+        return this;
+    }
+
     isFinished() {
         const track = this._current;
 
