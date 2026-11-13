@@ -599,6 +599,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform float     u_lightBoost;
             uniform float     u_dsVis, u_dsVisMax, u_dsBase, u_dsScale, u_dsRamp, u_dsStrength;
             uniform float     u_coreWhite;
+            uniform float     u_glowFar, u_glowFarMax;
             varying vec3 v_color;
             varying vec2 v_uv;
             varying float v_light;
@@ -654,6 +655,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 float dsLight = v_light + u_lightBoost;
                 float dsIndex = clamp((u_dsBase - (u_dsScale * dsLight) - dsVis) * (u_dsRamp - 1.0), 0.0, u_dsRamp - 1.0);
                 col = col * (1.0 - (u_dsStrength * dsIndex / u_dsRamp));
+                // Bloom's glow pass only (0 = off): past u_glowFar the glow grows with the depth, up to u_glowFarMax
+                // times, so the halo of a thinning distant line keeps its size on screen.
+                if (u_glowFar > 0.0) {
+                    col = col * clamp(v_depth / u_glowFar, 1.0, u_glowFarMax);
+                }
                 // Premultiplied output: the face opacity also scales the RGB
                 // (the texture alpha is already baked into t.rgb at upload).
                 gl_FragColor = vec4(col * u_alpha, a);
@@ -688,6 +694,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             dsRamp:     gl.getUniformLocation(this._program, 'u_dsRamp'),
             dsStrength: gl.getUniformLocation(this._program, 'u_dsStrength'),
             coreWhite:  gl.getUniformLocation(this._program, 'u_coreWhite'),
+            glowFar:    gl.getUniformLocation(this._program, 'u_glowFar'),
+            glowFarMax: gl.getUniformLocation(this._program, 'u_glowFarMax'),
         };
 
         this._vbo = gl.createBuffer();

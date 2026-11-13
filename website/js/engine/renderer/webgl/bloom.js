@@ -30,6 +30,8 @@ class RendererWebglBloom {
         this._batchCount   = 0;
         this._weights      = new Float32Array(RendererWebglBloom.MAX_LEVELS);
         this._glowDepthShading = 1;
+        this._glowFar          = 0;
+        this._glowFarMax       = 1;
     }
 
     /**
@@ -54,6 +56,8 @@ class RendererWebglBloom {
         this._glowFloats = 0;
         this._batchCount = 0;
         this._glowDepthShading = RendererWebglBloom._param(engine.bloom, 'glowDepthShading');
+        this._glowFar          = RendererWebglBloom._param(engine.bloom, 'glowFar');
+        this._glowFarMax       = RendererWebglBloom._param(engine.bloom, 'glowFarMax');
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._glowFbo);
         gl.viewport(0, 0, this._width, this._height);
         gl.clearColor(0, 0, 0, 0);
@@ -118,6 +122,8 @@ class RendererWebglBloom {
         gl.depthMask(false);
         gl.blendFunc(gl.ONE, gl.ONE);
         gl.uniform1f(loc.coreWhite, 0);
+        gl.uniform1f(loc.glowFar, this._glowFar);
+        gl.uniform1f(loc.glowFarMax, this._glowFarMax);
         gl.bindBuffer(gl.ARRAY_BUFFER, renderer._vbo);
         for (let b = 0; b < this._batchCount; b++) {
             const batch = this._batches[b];
@@ -142,6 +148,7 @@ class RendererWebglBloom {
         gl.depthFunc(gl.LESS);
         gl.depthMask(true);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.uniform1f(loc.glowFar, 0);
         this._glowFloats = 0;
         this._batchCount = 0;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._sceneFbo);
@@ -517,7 +524,9 @@ class RendererWebglBloom {
 }
 
 // glowDepthShading: the share of the scene's depth shading (Engine3d.setDepthShading) the glow keeps, 0 to 1.
-RendererWebglBloom.DEFAULTS        = Object.freeze({strength: 2.5, levels: 4, levelWeights: Object.freeze([1.0, 0.8, 0.6, 0.4]), resolution: 0.5, coreWhite: 0.5, glowDepthShading: 1});
+// glowFar (view depth, 0 = off) / glowFarMax: past glowFar the glow grows with the depth, up to glowFarMax times, so the
+// halo of a distant line keeps its size on screen.
+RendererWebglBloom.DEFAULTS        = Object.freeze({strength: 2.5, levels: 4, levelWeights: Object.freeze([1.0, 0.8, 0.6, 0.4]), resolution: 0.5, coreWhite: 0.5, glowDepthShading: 1, glowFar: 0, glowFarMax: 1});
 RendererWebglBloom.MAX_LEVELS      = 6;
 RendererWebglBloom.VERTEX_FLOATS   = 9;
 RendererWebglBloom.MIN_GLOW_FLOATS = 1024;
