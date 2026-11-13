@@ -9,6 +9,7 @@ class Engine3d {
         this.depthShading     = null; // depth-based light attenuation curve params, or null
         this.lightOverride    = null; // global light floor 0..1 (scene-wide fullbright), or null
         this.lightBoost       = 0;    // additive scene-wide light 0..1 (brief flashes), 0 = off
+        this.bloom            = null; // WebGL glow of the faces marked glow (setBloom), or null
         this._overlayCallback = null; // invoked after the scene to draw 2D screen overlays
         this._translucents    = [];   // translucent instances in view, reused each frame by displayWorld
         this.instanceLight    = 1;    // light multiplier of the instance being drawn (1 for the static map)
@@ -117,6 +118,13 @@ class Engine3d {
     // included. webgl and full.
     setLightBoost(value) {
         this.lightBoost = value;
+        return this;
+    }
+
+    // WebGL only, null to disable: the faces marked glow get a halo of their colour, their core goes towards white.
+    //   {strength, levels, levelWeights, resolution, coreWhite}, each optional (RendererWebglBloom.DEFAULTS)
+    setBloom(params) {
+        this.bloom = params;
         return this;
     }
 

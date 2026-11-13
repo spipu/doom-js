@@ -1,5 +1,5 @@
 {
-    "version": "v1.1393",
+    "version": "v1.1398",
     "files": {
         "assets": [
             "/assets/uzdoom/doom/sprite/chip1.png",
@@ -96,17 +96,19 @@
             "/js/engine/animation/animationPlayer.js",
             "/js/engine/animation/animatedInstance.js",
             "/js/engine/zBuffer.js",
-            "/js/engine/renderer/faceDepthQueue.js",
+            "/js/engine/renderer/base/faceDepthQueue.js",
             "/js/engine/renderer/object3dRendererBase.js",
             "/js/engine/renderer/object3dRendererFast.js",
             "/js/engine/renderer/object3dRendererFull.js",
             "/js/engine/renderer/object3dRendererFlat.js",
+            "/js/engine/renderer/webgl/bloom.js",
             "/js/engine/renderer/object3dRendererWebGL.js",
             "/js/engine/renderer/object3dRendererList.js",
             "/js/engine/engine3d.js",
             "/js/engine/spatialGrid.js",
             "/js/engine/collision.js",
             "/js/webapp/input/appInputMapping.js",
+            "/js/webapp/input/appInputSwipe.js",
             "/js/webapp/input/appInputKeyboard.js",
             "/js/webapp/input/appInputGamepad.js",
             "/js/webapp/input/appInputMouse.js",

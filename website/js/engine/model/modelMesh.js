@@ -51,7 +51,8 @@ class ModelMesh {
      * @param {{color: number[], doubleSided: boolean}[]} materials
      * @param {function(object): number[]}               materialColor - [r, g, b(, alpha)], 0-255 (alpha 0-1)
      * @param {boolean}                                  mirror        - x negated, the faces turned inside out
-     * @returns {{points: number[][], faces: {pts: int[], color: number[]}[]}}
+     * @returns {{points: number[][], faces: {pts: int[], color: number[], glow?: boolean}[]}} - glow on the faces of a
+     *          material whose extras say glow: true
      */
     toObjectData(materials, materialColor, mirror) {
         const sx     = ((mirror) ? -1 : 1);
@@ -65,13 +66,24 @@ class ModelMesh {
             const [a, b, c] = face.indices.map((index) => (index + 1));
             const material  = materials[face.material];
             const color     = materialColor(material);
-            faces.push({pts: ((mirror) ? [a, c, b] : [a, b, c]), color: [...color]});
+            const glow      = ((material.extras !== undefined) && (material.extras !== null) && (material.extras.glow === true));
+            faces.push(ModelMesh._faceData(((mirror) ? [a, c, b] : [a, b, c]), color, glow));
             if (material.doubleSided) {
-                faces.push({pts: ((mirror) ? [a, b, c] : [a, c, b]), color: [...color]});
+                faces.push(ModelMesh._faceData(((mirror) ? [a, b, c] : [a, c, b]), color, glow));
             }
         }
 
         return {points, faces};
+    }
+
+    // A face of the object data, its colour copied (Object3d.fcAdd rewrites it in place).
+    static _faceData(pts, color, glow) {
+        const face = {pts: pts, color: [...color]};
+        if (glow) {
+            face.glow = true;
+        }
+
+        return face;
     }
 
     _check(condition, message) {

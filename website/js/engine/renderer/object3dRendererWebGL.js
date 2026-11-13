@@ -18,6 +18,9 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         // Attenuation exactly 1.0; rampCount stays non-zero because the shader
         // divides by it.
         this._neutralDepthShading = {visibility: 0.0, visibilityMax: 0.0, shadeBase: 0.0, shadeScale: 0.0, rampCount: 32.0, strength: 0.0};
+        // Engine3d.setBloom: resources made on the first bloom frame, freed on the first frame without it.
+        this._bloom      = new RendererWebglBloom();
+        this._bloomState = new Float32Array(RendererWebglBloom.STATE_SIZE);
     }
 
     get code() {
@@ -54,6 +57,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             this._setup(gl);
         }
         this._syncTextureFilter(gl, engine);
+        if (engine.bloom !== null) {
+            this._bloom.begin(gl, engine);
+        } else if (this._bloom.hasResources()) {
+            this._bloom.release(gl);
+        }
         gl.viewport(0, 0, engine.scrWidth, engine.scrHeight);
         const bg = engine.background;
         gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1.0);
@@ -62,14 +70,27 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             this._drawSky(gl, engine);
         }
         gl.useProgram(this._program);
+        gl.uniform1f(this._loc.coreWhite, 0);
     }
 
+    // With bloom, the glowing faces of the layer are drawn against its depth before it is cleared.
     clearDepth(engine) {
         const gl = engine.scrCtx;
         if (!gl) {
             return;
         }
+        if (engine.bloom !== null) {
+            this._bloom.flushGlow(gl, this);
+        }
         gl.clear(gl.DEPTH_BUFFER_BIT);
+    }
+
+    end(engine) {
+        super.end(engine);
+        const gl = engine.scrCtx;
+        if (gl && (engine.bloom !== null)) {
+            this._bloom.end(gl, engine, this);
+        }
     }
 
     // Cylindrical-sky pre-pass: a full-screen quad sampling the sky texture by
@@ -293,6 +314,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
         gl.uniform1f(loc.depthBias, engine.instanceDepthBias);
 
         const lightOverride = ((((engine.lightOverride ?? 0) > 0)) ? engine.lightOverride : null);
+        const bloomOn       = (engine.bloom !== null);
+        const coreWhite     = ((bloomOn) ? (engine.bloom.coreWhite ?? RendererWebglBloom.DEFAULTS.coreWhite) : 0);
         const shading       = (Object3dRendererBase.frameShading(engine) ?? this._neutralDepthShading);
         gl.uniform1f(loc.dsVis,      shading.visibility);
         gl.uniform1f(loc.dsVisMax,   shading.visibilityMax);
@@ -344,36 +367,75 @@ class Object3dRendererWebGL extends Object3dRendererBase {
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
             gl.bufferData(gl.ARRAY_BUFFER, vertices.subarray(0, floatCount), gl.DYNAMIC_DRAW);
+            this._bindVertexLayout(gl);
 
-            const stride = 9 * 4;
-            gl.enableVertexAttribArray(loc.aPos);
-            gl.vertexAttribPointer(loc.aPos,   3, gl.FLOAT, false, stride,  0);
-            gl.enableVertexAttribArray(loc.aColor);
-            gl.vertexAttribPointer(loc.aColor, 3, gl.FLOAT, false, stride, 12);
-            gl.enableVertexAttribArray(loc.aUv);
-            gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
-            gl.enableVertexAttribArray(loc.aLight);
-            gl.vertexAttribPointer(loc.aLight, 1, gl.FLOAT, false, stride, 32);
-
+            const lightFloor = (((lightOverride !== null) && !group.blendAdd) ? lightOverride : 0);
+            const lightBoost = ((group.blendAdd) ? 0 : engine.lightBoost);
             gl.uniform1f(loc.alpha, group.alpha);
             gl.uniform1i(loc.clampV, ((group.clampV) ? 1 : 0));
             // Flooring or boosting an additive glow would oversaturate the
             // accumulation.
-            gl.uniform1f(loc.lightFloor, (((lightOverride !== null) && !group.blendAdd) ? lightOverride : 0));
-            gl.uniform1f(loc.lightBoost, ((group.blendAdd) ? 0 : engine.lightBoost));
-            if (texture) {
+            gl.uniform1f(loc.lightFloor, lightFloor);
+            gl.uniform1f(loc.lightBoost, lightBoost);
+            const glTexture = ((texture) ? this._getTexture(gl, texture) : null);
+            if (glTexture !== null) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, this._getTexture(gl, texture));
+                gl.bindTexture(gl.TEXTURE_2D, glTexture);
                 gl.uniform1i(loc.uTex, 0);
             } else {
                 gl.uniform1i(loc.hasTex, 0);
             }
+            if (bloomOn) {
+                gl.uniform1f(loc.coreWhite, ((group.glow) ? coreWhite : 0));
+            }
 
             gl.drawArrays(gl.TRIANGLES, 0, floatCount / 9);
+            if (bloomOn && group.glow) {
+                this._recordGlow(engine, shading, group, vertices, floatCount, lightFloor, lightBoost, glTexture);
+            }
         }
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.depthMask(true);
+    }
+
+    // The 9-float vertex layout of the scene program on the bound buffer: position, colour, uv, light.
+    _bindVertexLayout(gl) {
+        const loc    = this._loc;
+        const stride = 9 * 4;
+        gl.enableVertexAttribArray(loc.aPos);
+        gl.vertexAttribPointer(loc.aPos,   3, gl.FLOAT, false, stride,  0);
+        gl.enableVertexAttribArray(loc.aColor);
+        gl.vertexAttribPointer(loc.aColor, 3, gl.FLOAT, false, stride, 12);
+        gl.enableVertexAttribArray(loc.aUv);
+        gl.vertexAttribPointer(loc.aUv,    2, gl.FLOAT, false, stride, 24);
+        gl.enableVertexAttribArray(loc.aLight);
+        gl.vertexAttribPointer(loc.aLight, 1, gl.FLOAT, false, stride, 32);
+    }
+
+    // Every value the scene program read for this glowing group, kept with its vertices for the glow pass.
+    _recordGlow(engine, shading, group, vertices, floatCount, lightFloor, lightBoost, glTexture) {
+        const state = this._bloomState;
+        state[RendererWebglBloom.STATE_SX]          = engine.projScaleX;
+        state[RendererWebglBloom.STATE_SY]          = engine.projScaleY;
+        state[RendererWebglBloom.STATE_OX]          = engine.projOffsetX;
+        state[RendererWebglBloom.STATE_OY]          = engine.projOffsetY;
+        state[RendererWebglBloom.STATE_W]           = engine.scrWidth;
+        state[RendererWebglBloom.STATE_H]           = engine.scrHeight;
+        state[RendererWebglBloom.STATE_NEAR]        = engine.zBuffer.getNear();
+        state[RendererWebglBloom.STATE_FAR]         = engine.zBuffer.getFar();
+        state[RendererWebglBloom.STATE_DEPTH_BIAS]  = engine.instanceDepthBias;
+        state[RendererWebglBloom.STATE_DS_VIS]      = shading.visibility;
+        state[RendererWebglBloom.STATE_DS_VIS_MAX]  = shading.visibilityMax;
+        state[RendererWebglBloom.STATE_DS_BASE]     = shading.shadeBase;
+        state[RendererWebglBloom.STATE_DS_SCALE]    = shading.shadeScale;
+        state[RendererWebglBloom.STATE_DS_RAMP]     = shading.rampCount;
+        state[RendererWebglBloom.STATE_DS_STRENGTH] = shading.strength;
+        state[RendererWebglBloom.STATE_ALPHA]       = group.alpha;
+        state[RendererWebglBloom.STATE_CLAMP_V]     = ((group.clampV) ? 1 : 0);
+        state[RendererWebglBloom.STATE_LIGHT_FLOOR] = lightFloor;
+        state[RendererWebglBloom.STATE_LIGHT_BOOST] = lightBoost;
+        this._bloom.record(vertices, floatCount, state, glTexture, group.blendAdd);
     }
 
     // Faces grouped by draw state, opaque groups first. Cached per object and
@@ -391,10 +453,11 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                 const fc       = obj.faceList[k];
                 const clampV   = (fc.clampV || false);
                 const blendAdd = (fc.blendAdd || false);
+                const glow     = (fc.glow || false);
                 const animKey  = ((fc.animTextures) ? fc.animTextures.ids.join('-') : fc.textureId);
-                const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd;
+                const key      = animKey + ',' + fc.alpha + ',' + clampV + ',' + blendAdd + ',' + glow;
                 if (!groups.has(key)) {
-                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, clampV, blendAdd, faces: [] });
+                    groups.set(key, { texId: fc.textureId, animTextures: fc.animTextures, alpha: fc.alpha, clampV, blendAdd, glow, faces: [] });
                 }
                 groups.get(key).faces.push(k);
             }
@@ -535,6 +598,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             uniform float     u_lightFloor;
             uniform float     u_lightBoost;
             uniform float     u_dsVis, u_dsVisMax, u_dsBase, u_dsScale, u_dsRamp, u_dsStrength;
+            uniform float     u_coreWhite;
             varying vec3 v_color;
             varying vec2 v_uv;
             varying float v_light;
@@ -579,6 +643,8 @@ class Object3dRendererWebGL extends Object3dRendererBase {
                     col = min(lit, vec3(1.0));
                     a   = u_alpha;
                 }
+                // Bloom: the core of a glowing face goes towards white, its halo keeps the colour (0 = off).
+                col = col + (vec3(1.0) - col) * u_coreWhite;
                 // Depth shading (engine.setDepthShading): the pixel darkens
                 // with the view depth, the darker the face light the sooner,
                 // scaled by the curve strength. Disabled = neutral uniforms
@@ -621,6 +687,7 @@ class Object3dRendererWebGL extends Object3dRendererBase {
             dsScale:    gl.getUniformLocation(this._program, 'u_dsScale'),
             dsRamp:     gl.getUniformLocation(this._program, 'u_dsRamp'),
             dsStrength: gl.getUniformLocation(this._program, 'u_dsStrength'),
+            coreWhite:  gl.getUniformLocation(this._program, 'u_coreWhite'),
         };
 
         this._vbo = gl.createBuffer();

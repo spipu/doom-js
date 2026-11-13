@@ -4,7 +4,7 @@ class Object3dRendererBase {
         this._lightContribution = [0, 0, 0];
         this._uvOffsetOut       = [0, 0];
         this._spriteCanvases    = new WeakMap();
-        this._queue             = new FaceDepthQueue();
+        this._queue             = new RendererBaseFaceDepthQueue();
         this._styles            = [];
         this._styleIndex        = new Map();
     }
@@ -59,7 +59,7 @@ class Object3dRendererBase {
                 ctx.fillStyle   = this._styles[current][0];
                 ctx.strokeStyle = this._styles[current][1];
             }
-            const o = t * FaceDepthQueue.STRIDE;
+            const o = t * RendererBaseFaceDepthQueue.STRIDE;
             ctx.beginPath();
             ctx.moveTo(geometry[o], geometry[o + 1]);
             ctx.lineTo(geometry[o + 2], geometry[o + 3]);

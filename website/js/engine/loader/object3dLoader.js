@@ -57,6 +57,12 @@ class Object3dLoader extends AbstractLoader {
             if (f.noDecal === true) {
                 fc.noDecal = true;
             }
+            if (f.glow === true) {
+                fc.glow = true;
+            }
+            if (f.blendAdd === true) {
+                fc.blendAdd = true;
+            }
         });
     }
 }

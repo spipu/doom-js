@@ -13,6 +13,8 @@ class Face {
         this.passableShot  = false;
         this.shotOnly      = false;   // stops shots only, bodies walk through
         this.noDecal       = false;
+        this.glow          = false;   // WebGL bloom: the face glows (Engine3d.setBloom)
+        this.blendAdd      = false;   // adds its colour to what lies behind it
         this.animTextures  = animTextures;
         this.uvScroll      = uvScroll;
         // {code, v, instance}: V follows v × the vertical shift of instance
