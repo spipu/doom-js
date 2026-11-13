@@ -29,6 +29,7 @@ class RendererWebglBloom {
         this._batches      = [];
         this._batchCount   = 0;
         this._weights      = new Float32Array(RendererWebglBloom.MAX_LEVELS);
+        this._glowDepthShading = 1;
     }
 
     /**
@@ -52,6 +53,7 @@ class RendererWebglBloom {
         }
         this._glowFloats = 0;
         this._batchCount = 0;
+        this._glowDepthShading = RendererWebglBloom._param(engine.bloom, 'glowDepthShading');
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._glowFbo);
         gl.viewport(0, 0, this._width, this._height);
         gl.clearColor(0, 0, 0, 0);
@@ -120,6 +122,11 @@ class RendererWebglBloom {
         for (let b = 0; b < this._batchCount; b++) {
             const batch = this._batches[b];
             RendererWebglBloom._applyState(gl, loc, batch.state);
+            // The share of the depth shading the glow keeps (glowDepthShading): 1 as the scene, 0 a halo as bright far
+            // as near, so a thin distant line keeps its halo.
+            if (this._glowDepthShading !== 1) {
+                gl.uniform1f(loc.dsStrength, (batch.state[RendererWebglBloom.STATE_DS_STRENGTH] * this._glowDepthShading));
+            }
             if (batch.texture !== null) {
                 gl.uniform1i(loc.hasTex, 1);
                 gl.activeTexture(gl.TEXTURE0);
@@ -509,7 +516,8 @@ class RendererWebglBloom {
     }
 }
 
-RendererWebglBloom.DEFAULTS        = Object.freeze({strength: 2.5, levels: 4, levelWeights: Object.freeze([1.0, 0.8, 0.6, 0.4]), resolution: 0.5, coreWhite: 0.5});
+// glowDepthShading: the share of the scene's depth shading (Engine3d.setDepthShading) the glow keeps, 0 to 1.
+RendererWebglBloom.DEFAULTS        = Object.freeze({strength: 2.5, levels: 4, levelWeights: Object.freeze([1.0, 0.8, 0.6, 0.4]), resolution: 0.5, coreWhite: 0.5, glowDepthShading: 1});
 RendererWebglBloom.MAX_LEVELS      = 6;
 RendererWebglBloom.VERTEX_FLOATS   = 9;
 RendererWebglBloom.MIN_GLOW_FLOATS = 1024;
